@@ -1,10 +1,9 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { snackbarMessage } from "@fiftyone/state";
+import { useNotification } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
 import { RoundButton } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 import {
@@ -21,15 +20,16 @@ const useActivate = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedFields);
   const activateFields = useOperatorExecutor("activate_annotation_schemas");
-  const setMessage = useSetRecoilState(snackbarMessage);
+  const setMessage = useNotification();
 
   return useCallback(() => {
     addToActiveSchema(selected);
     activateFields.execute({ paths: Array.from(selected) });
     setSelected(new Set());
-    setMessage(
-      `${selected.size} schema${selected.size > 1 ? "s" : ""} activated`
-    );
+    setMessage({
+      msg: `${selected.size} schema${selected.size > 1 ? "s" : ""} activated`,
+      variant: "success",
+    });
   }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
 };
 
@@ -59,7 +59,7 @@ const otherFieldsWithSchema = atom((get) =>
 const useDeleteSchema = () => {
   const deleteSchema = useOperatorExecutor("delete_annotation_schema");
   const deletePaths = useSetAtom(deleteSchemas);
-  const setMessage = useSetRecoilState(snackbarMessage);
+  const setMessage = useNotification();
   const remove = useSetAtom(removeSelection);
 
   return useCallback(
@@ -67,7 +67,7 @@ const useDeleteSchema = () => {
       deleteSchema.execute({ path });
       deletePaths([path]);
 
-      setMessage(`${path} schema deleted`);
+      setMessage({ msg: `${path} schema deleted`, variant: "success" });
       remove([path]);
     },
     [deleteSchema.execute, deletePaths, remove, setMessage]
@@ -159,7 +159,13 @@ const FallbackItem = () => {
     return null;
   }
 
-  return <MutedItem>No fields are available for annotation</MutedItem>;
+  return (
+    <MutedItem style={{ padding: "1rem", height: "auto" }}>
+      You're viewing schema fields that are not in your active schema. Adding a
+      field from this list will append it to your schema — it won’t replace or
+      modify existing active fields.
+    </MutedItem>
+  );
 };
 
 const OtherFields = () => {

@@ -18,6 +18,7 @@ export default function useDelete() {
 
   const exit = useExit(false);
   const setSaving = useSetAtom(isSaving);
+  const setNotification = fos.useNotification();
 
   return useCallback(() => {
     if (!label) {
@@ -42,9 +43,17 @@ export default function useDelete() {
           setter();
           setSaving(false);
           exit();
+          setNotification({
+            msg: `Label "${label.data.label}" successfully deleted.`,
+            variant: "success",
+          });
         },
         onError: () => {
           setSaving(false);
+          setNotification({
+            msg: `Label "${label.data.label}" not successfully deleted. Try again.`,
+            variant: "error",
+          });
         },
       },
     });

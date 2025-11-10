@@ -5,6 +5,11 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
+import {
+  SET_EGO_VIEW_EVENT,
+  SET_TOP_VIEW_EVENT,
+  SET_ZOOM_TO_SELECTED_EVENT,
+} from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { annotationPlaneAtom, cameraViewStatusAtom } from "../state";
 
@@ -116,6 +121,36 @@ export const useCameraViews = ({
         event.target instanceof HTMLTextAreaElement;
 
       if (isInputMode) {
+        return;
+      }
+
+      if (event.code === "KeyT") {
+        setCameraViewStatus({
+          viewName: "Top view",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+        return;
+      }
+
+      if (event.code === "KeyE") {
+        setCameraViewStatus({
+          viewName: "Ego view",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+        return;
+      }
+
+      if (event.code === "KeyZ") {
+        setCameraViewStatus({
+          viewName: "Crop",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_ZOOM_TO_SELECTED_EVENT));
         return;
       }
 

@@ -240,6 +240,7 @@ export class InteractionManager {
     this.canvas.addEventListener("pointerup", this.handlePointerUp);
     this.canvas.addEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.addEventListener("pointerleave", this.handlePointerLeave);
+    this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
     this.eventBus.on(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
@@ -456,6 +457,14 @@ export class InteractionManager {
       const point = this.getCanvasPoint(event);
       this.hoveredHandler.onHoverLeave?.(point, event);
       this.hoveredHandler = undefined;
+    }
+  };
+
+  private handleWheel = (event: WheelEvent): void => {
+    // If we are zooming in with mouse and target is canvas, prevent default
+    // because we want zoom to be handled by canvas only
+    if (event.target === this.canvas) {
+      event.preventDefault();
     }
   };
 
@@ -809,6 +818,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
     this.canvas.removeEventListener("pointercancel", this.handlePointerCancel);
     this.canvas.removeEventListener("pointerleave", this.handlePointerLeave);
+    this.canvas.removeEventListener("wheel", this.handleWheel);
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
     this.eventBus.off(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);

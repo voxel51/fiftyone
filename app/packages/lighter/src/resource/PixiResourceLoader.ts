@@ -62,8 +62,11 @@ export class PixiResourceLoader implements ResourceLoader {
 
     await Assets.init({
       preferences: {
-        preferCreateImageBitmap: true,
-        preferWorkers: true,
+        // Note: having these on will incur a `fetch` request
+        // that requires a CORS preflight request.
+        // Keep these off.
+        preferCreateImageBitmap: false,
+        preferWorkers: false,
       },
       texturePreference: {
         resolution,

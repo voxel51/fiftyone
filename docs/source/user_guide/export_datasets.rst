@@ -1737,7 +1737,7 @@ formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -1749,6 +1749,21 @@ flag to the export.
 Unlabeled images have no corresponding TXT file in `data/`.
 
 .. note::
+
+    By default, only the bounding boxes of |Detections| fields are exported.
+    However, you can choose to export instance segmentation masks as polygons
+    by passing the optional `use_masks=True` argument to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`:
+
+    .. code-block:: python
+
+        # Export instance segmentation masks as polygons
+        dataset.export(
+            ...
+            dataset_type=fo.types.YOLOv4Dataset,
+            use_masks=True,
+            tolerance=2,  # optional tolerance when converting masks to polygons
+        )
 
     See :class:`YOLOv4DatasetExporter <fiftyone.utils.yolo.YOLOv4DatasetExporter>`
     for parameters that can be passed to methods like
@@ -1910,7 +1925,7 @@ to an object in the image of the same name, in one of the following formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -1924,6 +1939,21 @@ path for each image is obtained by replacing `images/` with `labels/` in the
 respective image path.
 
 .. note::
+
+    By default, only the bounding boxes of |Detections| fields are exported.
+    However, you can choose to export instance segmentation masks as polygons
+    by passing the optional `use_masks=True` argument to
+    :meth:`export() <fiftyone.core.collections.SampleCollection.export>`:
+
+    .. code-block:: python
+
+        # Export instance segmentation masks as polygons
+        dataset.export(
+            ...
+            dataset_type=fo.types.YOLOv5Dataset,
+            use_masks=True,
+            tolerance=2,  # optional tolerance when converting masks to polygons
+        )
 
     See :class:`YOLOv5DatasetExporter <fiftyone.utils.yolo.YOLOv5DatasetExporter>`
     for parameters that can be passed to methods like

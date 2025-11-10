@@ -649,7 +649,7 @@ class Detections(_HasLabelList, Label):
 
         Args:
             tolerance (2): a tolerance, in pixels, when generating approximate
-                polylines for the instance masks
+                polylines for the instance masks. Typical values are 1-3 pixels
             filled (True): whether the polylines should be filled
 
         Returns:
@@ -766,7 +766,7 @@ class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
-        if mask_size is None and frame_size:
+        if mask_size is None and frame_size is not None:
             w, h = frame_size
             rel_mask_w = bounding_box[2]
             rel_mask_h = bounding_box[3]

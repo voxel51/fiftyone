@@ -10,13 +10,11 @@ import {
   AnnotationLabel,
   datasetId as fosDatasetId,
   modalSample,
-  snackbarErrors,
-  snackbarMessage,
   useRefreshSample,
 } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { JSONDeltas, patchSample } from "../../../client";
 import { transformSampleData } from "../../../client/transformer";
 import { parseTimestamp } from "../../../client/util";
@@ -28,8 +26,6 @@ import { OpType, buildJsonPath, buildLabelDeltas } from "./deltas";
 export const useOverlayPersistence = (scene: Scene2D | null) => {
   const datasetId = useRecoilValue(fosDatasetId);
   const currentSample = useRecoilValue(modalSample)?.sample;
-  const setSnackbarMessage = useSetRecoilState(snackbarMessage);
-  const setSnackbarErrors = useSetRecoilState(snackbarErrors);
   const refreshSample = useRefreshSample();
 
   // The annotation endpoint requires a version token in order to execute
@@ -76,25 +72,16 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
               cleanedSample
             );
           }
-
-          setSnackbarMessage("Changes have been saved");
         } catch (error) {
           console.error("error patching sample", error);
-          setSnackbarErrors([error.message ?? error]);
+
           return false;
         }
       }
 
       return true;
     },
-    [
-      currentSample,
-      datasetId,
-      refreshSample,
-      setSnackbarErrors,
-      setSnackbarMessage,
-      versionToken,
-    ]
+    [currentSample, datasetId, refreshSample, versionToken]
   );
 
   // callback which handles both mutation (upsert) and deletion

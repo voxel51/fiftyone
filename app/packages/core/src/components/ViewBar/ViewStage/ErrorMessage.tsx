@@ -40,7 +40,7 @@ const ErrorMessage = React.memo(
     const ref = useRef();
     const [errorTimeout, setErrorTimeout] = useState(null);
     const { error, errorId } = state.context;
-    const [props, set] = useSpring(() => {
+    const [props, api] = useSpring(() => {
       const obj = followRef
         ? {
             left: followRef.current.getBoundingClientRect().x,
@@ -60,12 +60,12 @@ const ErrorMessage = React.memo(
     useEffect(() => {
       errorTimeout && clearTimeout(errorTimeout);
       !errorId && setErrorTimeout(setTimeout(() => send("CLEAR_ERROR"), 1000));
-      set({ opacity: errorId ? 1 : 0 });
+      api.start({ opacity: errorId ? 1 : 0 });
     }, [errorId]);
 
     useOutsideClick(ref, () => send("CLEAR_ERROR_ID"));
 
-    useFollow(barRef, followRef, set);
+    useFollow(barRef, followRef, api);
 
     return (
       <ErrorMessageDiv
