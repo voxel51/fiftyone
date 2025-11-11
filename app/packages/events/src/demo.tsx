@@ -77,6 +77,14 @@ const Sink = () => {
       // type-safe payload access
     ) => console.log(data.id, data.name);
 
+    const asyncEventAHandler: EventHandler<
+      DemoEventGroup["demo:eventA"]
+    > = async (data) => {
+      // Simulate async work
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      console.log("Async handler completed for:", data.id);
+    };
+
     const eventBHandler: EventHandler<DemoEventGroup["demo:eventB"]> = (
       data
       // type-safe payload access
@@ -86,11 +94,13 @@ const Sink = () => {
       console.log("Event D received (no payload)");
 
     eventBus.on("demo:eventA", eventAHandler);
+    eventBus.on("demo:eventA", asyncEventAHandler);
     eventBus.on("demo:eventB", eventBHandler);
     eventBus.on("demo:eventD", eventDHandler);
 
     return () => {
       eventBus.off("demo:eventA", eventAHandler);
+      eventBus.off("demo:eventA", asyncEventAHandler);
       eventBus.off("demo:eventB", eventBHandler);
       eventBus.off("demo:eventD", eventDHandler);
     };
@@ -102,6 +112,12 @@ const Sink = () => {
   // Optional payload handler
   useDemoEventHandler("demo:eventD", () => {
     console.log("Event D received (no payload)");
+  });
+
+  // Async handler using the hook - handlers run in parallel
+  useDemoEventHandler("demo:eventA", async (data) => {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    console.log("Hook async handler completed:", data.name);
   });
 
   return <Fragment />;

@@ -42,15 +42,24 @@ export class EventDispatcher<T extends EventGroup> {
 
   /**
    * Registers an event handler.
+   * Handlers can be synchronous or asynchronous. Async handlers run in parallel and don't block other handlers.
    *
    * @template E - Event type key
    * @param event - Event type name
-   * @param handler - Handler function
+   * @param handler - Handler function (sync or async)
    *
    * @example
    * ```typescript
-   * const handler = (data: DemoEventGroup["demo:eventA"]) => console.log(data.id);
-   * eventBus.on("demo:eventA", handler);
+   * // Synchronous handler
+   * const syncHandler = (data: DemoEventGroup["demo:eventA"]) => console.log(data.id);
+   * eventBus.on("demo:eventA", syncHandler);
+   *
+   * // Asynchronous handler
+   * eventBus.on("demo:eventA", async (data) => {
+   *   await fetch(`/api/events/${data.id}`);
+   * });
+   *
+   * // No payload
    * eventBus.on("demo:eventD", () => console.log("no payload"));
    * ```
    */
@@ -114,10 +123,17 @@ export class EventDispatcher<T extends EventGroup> {
    *
    * @example
    * ```typescript
+   * // Synchronous handlers
    * eventBus.dispatch("demo:eventA", { id: "some-id", name: "some-name" });
    * eventBus.dispatch("demo:eventB", { value: 42 });
-    // No payload
+   *
+   * // No payload
    * eventBus.dispatch("demo:eventD");
+   *
+   * // Async handlers are supported and run in parallel
+   * eventBus.on("demo:eventA", async (data) => {
+   *   await fetch(`/api/events/${data.id}`);
+   * });
    * ```
    */
   public dispatch<E extends keyof T>(
@@ -126,14 +142,37 @@ export class EventDispatcher<T extends EventGroup> {
   ): void {
     const data = args[0] as T[E];
     const typeHandlers = this.handlers[event];
-    if (typeHandlers) {
-      typeHandlers.forEach((handler) => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(`error handling event '${String(event)}'`, error);
+    if (!typeHandlers || typeHandlers.length === 0) {
+      return;
+    }
+
+    // Collect all handler results (sync handlers return void, async return Promise<void>)
+    const promises = typeHandlers.map((handler, index) => {
+      try {
+        const result = handler(data);
+        // If handler returns a Promise, return it; otherwise wrap void in resolved Promise
+        return result instanceof Promise ? result : Promise.resolve();
+      } catch (error) {
+        // Sync handler threw synchronously - log and return rejected promise
+        console.error(
+          `error handling event '${String(event)}' in handler ${index}`,
+          error
+        );
+        return Promise.reject(error);
+      }
+    });
+
+    // Wait for all handlers to settle (complete or reject) without blocking dispatch
+    // This ensures all handlers run in parallel and errors don't prevent others from running
+    Promise.allSettled(promises).then((results) => {
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          console.error(
+            `error handling event '${String(event)}' in handler ${index}`,
+            result.reason
+          );
         }
       });
-    }
+    });
   }
 }

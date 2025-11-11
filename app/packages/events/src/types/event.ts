@@ -15,15 +15,23 @@ export type EventGroup = Record<string, unknown>;
 
 /**
  * A handler function for a specific event type.
+ * Handlers can be synchronous (return void) or asynchronous (return Promise<void>).
+ * Async handlers are executed in parallel and do not block other handlers.
  *
  * @template T - The type of the event payload
  * @param data - The event payload (required unless T extends undefined | null)
+ * @returns void for sync handlers, or Promise<void> for async handlers
  *
  * @example
  * ```typescript
- * // Required payload
- * const handler: EventHandler<DomainEventGroup["domainFoo:login"]> = (data) => {
+ * // Synchronous handler with payload
+ * const syncHandler: EventHandler<DomainEventGroup["domainFoo:login"]> = (data) => {
  *   console.log(data.id, data.timestamp);
+ * };
+ *
+ * // Asynchronous handler with payload
+ * const asyncHandler: EventHandler<DomainEventGroup["domainFoo:login"]> = async (data) => {
+ *   await fetch(`/api/log/${data.id}`);
  * };
  *
  * // Optional payload (when event type is undefined/null)
@@ -35,5 +43,5 @@ export type EventGroup = Record<string, unknown>;
 export type EventHandler<T extends unknown = undefined> = T extends
   | undefined
   | null
-  ? () => void
-  : (data: T) => void;
+  ? () => void | Promise<void>
+  : (data: T) => void | Promise<void>;
