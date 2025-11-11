@@ -1126,8 +1126,10 @@ class PipelineExecutionContext(object):
     total_stages: int
     """The total number of stages in the pipeline"""
 
-    child_errors: Optional[dict[str, str]] = None
-    """Mapping from child operation str IDs to error messages, if available"""
+    pipeline_errors: Optional[dict[str, str]] = None
+    """Mapping from past pipeline child operation str IDs to error messages,
+    if available
+    """
 
     num_distributed_tasks: int = 0
     """The number of distributed tasks in the current stage"""
@@ -1138,14 +1140,14 @@ class PipelineExecutionContext(object):
         active,
         curr_stage_index,
         total_stages,
-        child_errors=None,
+        pipeline_errors=None,
         num_distributed_tasks=0,
         **_,
     ):
         self.active = active
         self.curr_stage_index = curr_stage_index
         self.total_stages = total_stages
-        self.child_errors = child_errors
+        self.pipeline_errors = pipeline_errors
         self.num_distributed_tasks = num_distributed_tasks
 
 

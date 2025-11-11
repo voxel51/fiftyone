@@ -848,7 +848,7 @@ class DelegatedOperationService(object):
                         active=parent_doc.pipeline_run_info.active,
                         curr_stage_index=stage_index,
                         total_stages=len(parent_doc.pipeline.stages),
-                        child_errors=parent_doc.pipeline_run_info.child_errors,
+                        pipeline_errors=parent_doc.pipeline_run_info.child_errors,
                         num_distributed_tasks=(
                             parent_doc.pipeline.stages[
                                 stage_index
