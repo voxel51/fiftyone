@@ -271,6 +271,8 @@ export class InteractionManager {
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
+        this.renderer.disableZoomPan();
+
         const type = handler.isDragging?.()
           ? LIGHTER_EVENTS.OVERLAY_DRAG_START
           : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
@@ -329,8 +331,6 @@ export class InteractionManager {
       }
 
       if (handler.isMoving?.()) {
-        this.renderer.disableZoomPan();
-
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
