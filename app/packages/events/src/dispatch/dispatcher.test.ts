@@ -215,6 +215,7 @@ describe("EventDispatcher", () => {
     });
 
     test("should handle asynchronous handlers", async () => {
+      vi.useFakeTimers();
       const handler = vi.fn(async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
       });
@@ -223,12 +224,14 @@ describe("EventDispatcher", () => {
       dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
 
       // Wait for async handler to complete
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await vi.runAllTimersAsync();
 
       expect(handler).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
     });
 
     test("should run multiple async handlers in parallel", async () => {
+      vi.useFakeTimers();
       const callOrder: number[] = [];
       const handler1 = vi.fn(async () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
@@ -250,7 +253,7 @@ describe("EventDispatcher", () => {
       dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
 
       // Wait for all handlers to complete
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await vi.runAllTimersAsync();
 
       // All handlers should have been called
       expect(handler1).toHaveBeenCalledTimes(1);
@@ -259,6 +262,7 @@ describe("EventDispatcher", () => {
 
       // Handler 3 should complete first, then 2, then 1 (parallel execution)
       expect(callOrder).toEqual([3, 2, 1]);
+      vi.useRealTimers();
     });
 
     test("should handle errors in synchronous handlers gracefully", () => {
@@ -287,6 +291,7 @@ describe("EventDispatcher", () => {
     });
 
     test("should handle errors in asynchronous handlers gracefully", async () => {
+      vi.useFakeTimers();
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
@@ -305,13 +310,14 @@ describe("EventDispatcher", () => {
       dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
 
       // Wait for handlers to complete
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await vi.runAllTimersAsync();
 
       expect(handler1).toHaveBeenCalledTimes(1);
       expect(handler2).toHaveBeenCalledTimes(1);
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
+      vi.useRealTimers();
     });
 
     test("should not block dispatch when handlers throw errors", () => {
@@ -341,6 +347,7 @@ describe("EventDispatcher", () => {
     });
 
     test("should handle mixed sync and async handlers", async () => {
+      vi.useFakeTimers();
       const syncHandler = vi.fn(() => {
         // Synchronous
       });
@@ -357,8 +364,9 @@ describe("EventDispatcher", () => {
       expect(syncHandler).toHaveBeenCalledTimes(1);
 
       // Wait for async handler
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await vi.runAllTimersAsync();
       expect(asyncHandler).toHaveBeenCalledTimes(1);
+      vi.useRealTimers();
     });
   });
 });
