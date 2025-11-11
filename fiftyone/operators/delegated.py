@@ -70,7 +70,7 @@ def _execute_operator_in_child_process(
 
     logger = logging.getLogger(__name__)
     service = DelegatedOperationService()
-    result = None
+    operation = None
 
     try:
         operation = service.get(operation_id)
@@ -94,7 +94,11 @@ def _execute_operator_in_child_process(
             logger.info("Operation %s complete", operation.id)
     except Exception:
         result = ExecutionResult(error=traceback.format_exc())
-        service.set_failed(doc_id=operation_id, result=result)
+        service.set_failed(
+            doc_id=operation_id,
+            result=result,
+            update_pipeline=operation.parent_id if operation else None,
+        )
         if log:
             logger.error("Operation %s failed\n%s", operation_id, result.error)
 
@@ -285,6 +289,7 @@ class DelegatedOperationService(object):
         run_link=None,
         log_path=None,
         required_state=None,
+        update_pipeline=None,
     ):
         """Sets the given delegated operation to failed state.
 
@@ -303,12 +308,17 @@ class DelegatedOperationService(object):
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
                 performed if the referenced operation matches this state.
+            update_pipeline (None): an optional ID of the parent
+                operation to update with this failure message, applicable only
+                for pipeline children. If provided, the parent operation will
+                NOT be marked as failed, but the error message will be recorded
+                in its pipeline run info.
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
                 update was performed, else ``None``.
         """
-        return self._repo.update_run_state(
+        child_doc = self._repo.update_run_state(
             _id=doc_id,
             run_state=ExecutionRunState.FAILED,
             result=result,
@@ -317,6 +327,13 @@ class DelegatedOperationService(object):
             progress=progress,
             required_state=required_state,
         )
+        if update_pipeline and result and result.error:
+            self._repo.add_child_error(
+                parent_id=update_pipeline,
+                child_id=doc_id,
+                error_message=result.error,
+            )
+        return child_doc
 
     def set_pinned(self, doc_id, pinned=True):
         """Sets the pinned flag for the given delegated operation.
@@ -621,10 +638,16 @@ class DelegatedOperationService(object):
                 )
             return self._execute_operation_sync(operation, log)
         except Exception as e:
-            logger.exception("Uncaught exception when executing operator")
+            logger.exception(
+                "Uncaught exception when executing operator", exc_info=True
+            )
             err = ExecutionResult(error=traceback.format_exc())
             try:
-                self.set_failed(doc_id=operation.id, result=err)
+                self.set_failed(
+                    doc_id=operation.id,
+                    result=err,
+                    update_pipeline=operation.parent_id,
+                )
             except Exception:
                 logger.exception(
                     "Failed to mark operation %s as FAILED", operation.id
@@ -638,14 +661,17 @@ class DelegatedOperationService(object):
             self.set_completed(doc_id=operation.id, result=result)
             if log:
                 logger.info("Operation %s complete", operation.id)
-        except Exception as e:
+        except Exception:
             logger.debug(
-                "Uncaught exception when executing operator. Error=%s",
-                e,
+                "Uncaught exception when executing operator",
                 exc_info=True,
             )
             result = ExecutionResult(error=traceback.format_exc())
-            self.set_failed(doc_id=operation.id, result=result)
+            self.set_failed(
+                doc_id=operation.id,
+                result=result,
+                update_pipeline=operation.parent_id,
+            )
             if log:
                 logger.info(
                     "Operation %s failed\n%s", operation.id, result.error
@@ -822,6 +848,7 @@ class DelegatedOperationService(object):
                         active=parent_doc.pipeline_run_info.active,
                         curr_stage_index=stage_index,
                         total_stages=len(parent_doc.pipeline.stages),
+                        child_errors=parent_doc.pipeline_run_info.child_errors,
                         num_distributed_tasks=(
                             parent_doc.pipeline.stages[
                                 stage_index
