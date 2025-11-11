@@ -17,7 +17,7 @@ Use "least capability" principle. Choose the simplest pattern that works:
 3. **Domain hook patterns**:
     - `use<Feature>()`: Read API, must be idempotent (e.g., `useLighter()`,
       `useTimeline()`)
-    - `use<Feature>Actions()`: Commands, can have side-effects (e.g.,
+    - `use<Feature><Action>()` or `use<Action><Feature>()`: Commands, can have side-effects (e.g.,
       `useCreateTimeline()`, `useLighterSetup()`)
 4. **File layout**:
     - `packages/<domain>/model/atoms.ts` (not exported)
