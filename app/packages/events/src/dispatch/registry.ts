@@ -1,4 +1,4 @@
-import { EventDispatcher } from "../dispatch";
+import { EventDispatcher } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
 
 /**
