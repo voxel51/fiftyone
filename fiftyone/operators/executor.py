@@ -1126,11 +1126,13 @@ class PipelineExecutionContext(object):
     total_stages: int
     """The total number of stages in the pipeline"""
 
+    pipeline_errors: Optional[dict[str, str]] = None
+    """Mapping from past pipeline child operation str IDs to error messages,
+    if available
+    """
+
     num_distributed_tasks: int = 0
     """The number of distributed tasks in the current stage"""
-
-    error: Optional[str] = None
-    """Error message, if any. Applicable only if the pipeline is not active"""
 
     # Overriding default init so we swallow extra kwargs
     def __init__(
@@ -1138,14 +1140,14 @@ class PipelineExecutionContext(object):
         active,
         curr_stage_index,
         total_stages,
-        error=None,
+        pipeline_errors=None,
         num_distributed_tasks=0,
         **_,
     ):
         self.active = active
         self.curr_stage_index = curr_stage_index
         self.total_stages = total_stages
-        self.error = error
+        self.pipeline_errors = pipeline_errors
         self.num_distributed_tasks = num_distributed_tasks
 
 
