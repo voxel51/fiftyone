@@ -265,7 +265,7 @@ describe("EventDispatcher", () => {
       vi.useRealTimers();
     });
 
-    test("should handle errors in synchronous handlers gracefully", () => {
+    test("should handle errors in synchronous handlers gracefully", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
@@ -285,6 +285,10 @@ describe("EventDispatcher", () => {
 
       expect(handler1).toHaveBeenCalledTimes(1);
       expect(handler2).toHaveBeenCalledTimes(1);
+
+      // Wait for async error logging to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       expect(consoleErrorSpy).toHaveBeenCalled();
 
       consoleErrorSpy.mockRestore();
@@ -320,7 +324,7 @@ describe("EventDispatcher", () => {
       vi.useRealTimers();
     });
 
-    test("should not block dispatch when handlers throw errors", () => {
+    test("should not block dispatch when handlers throw errors", async () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
@@ -341,6 +345,10 @@ describe("EventDispatcher", () => {
       expect(dispatchCompleted).toBe(true);
       expect(handler1).toHaveBeenCalledTimes(1);
       expect(handler2).toHaveBeenCalledTimes(1);
+
+      // Wait for async error logging to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
 
       consoleErrorSpy.mockRestore();
