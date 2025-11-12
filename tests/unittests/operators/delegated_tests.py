@@ -1234,7 +1234,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     ):
         with patch.object(self.svc, "get") as do_get_mock:
             parent_run_info = PipelineRunInfo(
-                active=False, expected_children=[1, 1, 5], stage_index=2
+                active=False,
+                expected_children=[1, 1, 5],
+                stage_index=2,
+                child_errors={"child1": "error1", "child2": "error2"},
             )
             parent_id = ObjectId()
             pipeline = Pipeline(
@@ -1282,6 +1285,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 num_distributed_tasks=pipeline.stages[
                     parent_run_info.stage_index
                 ].num_distributed_tasks,
+                pipeline_errors=parent_run_info.child_errors,
             )
             prepare_operator_mock.assert_called_once_with(
                 operator_uri=child_do.operator,
@@ -1780,3 +1784,58 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_failed_exec_adds_child_error_to_parent(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(operator_uri="@test/op1", name="one"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(name="three", operator_uri="@test/op3"),
+            ]
+        )
+        parent_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+        self.docs_to_delete.append(parent_doc)
+
+        #####
+        child_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(child_doc)
+        child_doc.parent_id = parent_doc.id
+        self.svc.execute_operation(child_doc)
+        #####
+
+        updated_parent_do = self.svc.get(parent_doc.id)
+        self.assertIn(
+            str(child_doc.id), updated_parent_do.pipeline_run_info.child_errors
+        )
+        self.assertIn(
+            "MockOperator failed",
+            updated_parent_do.pipeline_run_info.child_errors[
+                str(child_doc.id)
+            ],
+        )
