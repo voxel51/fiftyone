@@ -21,7 +21,7 @@ const useDemoEventHandler = createUseEventHandler<DemoEventGroup>();
 
 const Source = () => {
   const [count, setCount] = useState(0);
-  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>();
 
   // compile-time error; "foo" is not a key of DemoEventGroup
   // eventBus.dispatch("foo", {bar: "baz"});
@@ -69,7 +69,7 @@ const Source = () => {
 };
 
 const Sink = () => {
-  const eventBus = useEventBus<DemoEventGroup>({ channelId: "default" });
+  const eventBus = useEventBus<DemoEventGroup>();
 
   useEffect(() => {
     const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (
