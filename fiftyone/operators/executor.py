@@ -527,6 +527,8 @@ async def resolve_execution_options(registry, operator_uri, request_params):
         with ctx:
             execution_options = operator.resolve_execution_options(ctx)
 
+        return execution_options
+
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 

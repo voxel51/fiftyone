@@ -109,9 +109,7 @@ def _execute_operator_in_child_process(
                 update_pipeline=operation.parent_id if operation else None,
             )
             if log:
-                logger.error(
-                    "Operation %s failed\n%s", operation_id, result.error
-                )
+                logger.exception("Operation %s failed", operation_id)
 
 
 class DelegatedOperationService(object):
@@ -655,9 +653,7 @@ class DelegatedOperationService(object):
                     )
                 return self._execute_operation_sync(operation, log)
             except Exception as e:
-                logger.exception(
-                    "Uncaught exception when executing operator", exc_info=True
-                )
+                logger.exception("Uncaught exception when executing operator")
                 err = ExecutionResult(error=traceback.format_exc())
                 try:
                     self.set_failed(
@@ -912,8 +908,8 @@ class DelegatedOperationService(object):
                     outputs_schema = outputs.to_json()
             except (AttributeError, Exception):
                 logger.warning(
-                    "Failed to resolve output schema for the operation."
-                    + traceback.format_exc(),
+                    "Failed to resolve output schema for the operation",
+                    exc_info=True,
                 )
 
             execution_result = ExecutionResult(
