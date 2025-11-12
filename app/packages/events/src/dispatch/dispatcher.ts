@@ -147,17 +147,13 @@ export class EventDispatcher<T extends EventGroup> {
     }
 
     // Collect all handler results (sync handlers return void, async return Promise<void>)
-    const promises = typeHandlers.map((handler, index) => {
+    const promises = typeHandlers.map((handler) => {
       try {
         const result = handler(data);
         // If handler returns a Promise, return it; otherwise wrap void in resolved Promise
         return result instanceof Promise ? result : Promise.resolve();
       } catch (error) {
-        // Sync handler threw synchronously - log and return rejected promise
-        console.error(
-          `error handling event '${String(event)}' in handler ${index}`,
-          error
-        );
+        // Sync handler threw synchronously - return rejected promise
         return Promise.reject(error);
       }
     });
