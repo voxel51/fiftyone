@@ -86,11 +86,11 @@ export function createUseSynchronizedEventStateWithDefaults<
   return function useEventStateHook<K extends keyof T>(
     event: K,
     defaultValue?: T[K]
-  ): T[K] {
+  ): T[K] | undefined {
     const defaultVal = defaultValue ?? defaults[event];
     if (defaultVal === undefined) {
-      // No default provided - return undefined (cast to T[K] for type compatibility)
-      return useEventState<T, K>(event) as T[K];
+      // No default provided - return undefined
+      return useEventState<T, K>(event);
     }
     return useEventState<T, K>(event, defaultVal);
   };
