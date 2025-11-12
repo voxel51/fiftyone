@@ -27,13 +27,12 @@ function getDispatcher<T extends EventGroup>(
  * part of the React component tree.
  *
  * @template T - EventGroup type defining event types and payloads
- * @param channelId - Channel identifier (defaults to "default")
  * @returns Event dispatcher with on, off, and dispatch methods
  *
  * @example
  * ```typescript
  * // ✅ Good: Non-React usage
- * const bus = getEventBus<MyEventGroup>("my-channel");
+ * const bus = getEventBus<MyEventGroup>();
  * bus.on("my:event", (data) => console.log(data));
  * bus.dispatch("my:event", { value: 42 });
  *
@@ -44,10 +43,8 @@ function getDispatcher<T extends EventGroup>(
  * }
  * ```
  */
-export function getEventBus<T extends EventGroup>(
-  channelId = "default"
-): EventDispatcher<T> {
-  return getDispatcher<T>(channelId);
+export function getEventBus<T extends EventGroup>(): EventDispatcher<T> {
+  return getDispatcher<T>("default");
 }
 
 /**

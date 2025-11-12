@@ -143,7 +143,7 @@ describe("createUseEventHandler", () => {
     expect(handler).toHaveBeenCalledWith(undefined);
   });
 
-  test("should use default channel when no channelId is provided", () => {
+  test("should use shared event bus", () => {
     const useTestEventHandler = createUseEventHandler<TestEventGroup>();
     const handler = vi.fn();
 
@@ -158,39 +158,6 @@ describe("createUseEventHandler", () => {
     busResult.current.dispatch("test:eventA", { id: "1", name: "test" });
 
     expect(handler).toHaveBeenCalledTimes(1);
-  });
-
-  test("should use specified channelId", () => {
-    const useTestEventHandlerChannel1 =
-      createUseEventHandler<TestEventGroup>("channel1");
-    const useTestEventHandlerChannel2 =
-      createUseEventHandler<TestEventGroup>("channel2");
-    const handler1 = vi.fn();
-    const handler2 = vi.fn();
-
-    const { result: busResult1 } = renderHook(() =>
-      useEventBus<TestEventGroup>({ channelId: "channel1" })
-    );
-
-    const { result: busResult2 } = renderHook(() =>
-      useEventBus<TestEventGroup>({ channelId: "channel2" })
-    );
-
-    renderHook(() => {
-      useTestEventHandlerChannel1("test:eventA", handler1);
-    });
-
-    renderHook(() => {
-      useTestEventHandlerChannel2("test:eventA", handler2);
-    });
-
-    busResult1.current.dispatch("test:eventA", { id: "1", name: "test1" });
-    busResult2.current.dispatch("test:eventA", { id: "2", name: "test2" });
-
-    expect(handler1).toHaveBeenCalledTimes(1);
-    expect(handler1).toHaveBeenCalledWith({ id: "1", name: "test1" });
-    expect(handler2).toHaveBeenCalledTimes(1);
-    expect(handler2).toHaveBeenCalledWith({ id: "2", name: "test2" });
   });
 
   test("should handle multiple handlers for the same event", () => {

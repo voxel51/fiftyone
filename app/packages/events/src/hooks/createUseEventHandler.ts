@@ -3,11 +3,10 @@ import { EventGroup, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
 /**
- * Factory function that creates a type-safe event handler hook for a specific channel.
+ * Factory function that creates a type-safe event handler hook.
  * The returned hook automatically registers/unregisters handlers on mount/unmount.
  *
  * @template T - EventGroup type defining event types and payloads
- * @param channelId - Optional channel identifier (defaults to "default")
  * @returns A hook function that registers event handlers with automatic cleanup
  *
  * @example
@@ -25,14 +24,12 @@ import { useEventBus } from "./useEventBus";
  * }
  * ```
  */
-export function createUseEventHandler<T extends EventGroup>(
-  channelId = "default"
-) {
+export function createUseEventHandler<T extends EventGroup>() {
   return function useEventHandler<K extends keyof T>(
     event: K,
     handler: EventHandler<T[K]>
   ) {
-    const bus = useEventBus<T>({ channelId });
+    const bus = useEventBus<T>();
 
     useEffect(() => {
       bus.on(event, handler);
