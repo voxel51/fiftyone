@@ -538,16 +538,17 @@ class BaseRun(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load info for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
-                "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "Failed to load info for %s with key '%s'. This may be because"
+                " the %s used fiftyone==%s but you are currently using "
+                "fiftyone==%s. We recommend that you re-run the method with "
+                "your current FiftyOne version. \nThe original error is %s."
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
                     foc.VERSION,
+                    repr(e),
                 )
             ) from e
 
@@ -717,18 +718,19 @@ class BaseRun(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load results for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
-                "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "Failed to load results for %s with key '%s'. This may be because"
+                " the %s used fiftyone==%s but you are currently using "
+                "fiftyone==%s. We recommend that you re-run the method with "
+                "your current FiftyOne version. \nThe original error is %s."
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
                     foc.VERSION,
+                    repr(e),
                 )
-            ) from e
+            ) from e            
 
         # Cache the results for future use in this session
         if cache:
