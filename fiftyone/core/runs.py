@@ -730,7 +730,7 @@ class BaseRun(Configurable):
                     foc.VERSION,
                     repr(e),
                 )
-            ) from e            
+            ) from e
 
         # Cache the results for future use in this session
         if cache:
