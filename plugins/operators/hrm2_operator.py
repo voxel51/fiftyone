@@ -6,7 +6,6 @@ HRM2.0 3D Human Mesh Reconstruction Operator
 |
 """
 
-import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 import fiftyone.zoo as foz
@@ -174,31 +173,23 @@ class ApplyHRM2Model(foo.Operator):
             ctx.log(f"Failed to load HRM2 model: {e}")
             return {"error": str(e)}
 
-        # Apply the model and create grouped dataset
+        # Apply the model to dataset
         ctx.log(f"Applying HRM2 model to {len(dataset)} samples...")
-        ctx.log(
-            "This will convert your dataset to grouped format with image and 3D slices."
-        )
 
         try:
-            model.apply_to_dataset_as_groups(
-                dataset,
+            dataset.apply_model(
+                model,
                 label_field=output_field,
                 batch_size=batch_size,
                 num_workers=num_workers,
-                image_slice_name="image",
-                scene_slice_name="3d",
             )
 
+            ctx.log(f"Successfully applied HRM2 model.")
             ctx.log(
-                f"Successfully applied HRM2 model. Dataset converted to grouped format."
+                f"Created field: '{output_field}' containing HumanPose3D labels"
             )
             ctx.log(
-                f"Created fields: '{output_field}_2d' (on images) and "
-                f"'{output_field}_3d' (on 3D scenes)"
-            )
-            ctx.log(
-                "Use the slice selector in the App to toggle between image and 3D views."
+                "Each sample now has SMPL parameters, 3D keypoints, and optionally mesh data."
             )
 
             # Trigger a dataset refresh
@@ -207,12 +198,10 @@ class ApplyHRM2Model(foo.Operator):
             return {
                 "success": True,
                 "message": (
-                    f"HRM2 predictions saved. Use slice selector to view 3D meshes."
+                    f"HRM2 predictions saved in field '{output_field}'."
                 ),
-                "output_field_2d": f"{output_field}_2d",
-                "output_field_3d": f"{output_field}_3d",
+                "output_field": output_field,
                 "num_samples": len(dataset),
-                "media_type": dataset.media_type,
             }
 
         except Exception as e:

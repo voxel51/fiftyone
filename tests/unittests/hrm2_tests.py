@@ -203,9 +203,8 @@ class HRM2ConfigTests(HRM2TestBase):
         self.assertEqual(config.smpl_model_path, self.mock_smpl_path)
         self.assertEqual(config.checkpoint_version, "2.0b")
         self.assertTrue(config.export_meshes)
-        self.assertTrue(config.enable_multi_person)
-        self.assertEqual(config.detector_type, "vitdet")
-        self.assertEqual(config.detection_score_thresh, 0.5)
+        self.assertIsNone(config.detections_field)
+        self.assertTrue(config.ragged_batches)
 
     def test_hrm2_config_custom_parameters(self):
         """Test HRM2Config with custom parameters."""
@@ -217,9 +216,7 @@ class HRM2ConfigTests(HRM2TestBase):
             "checkpoint_version": "1.0",
             "export_meshes": False,
             "mesh_output_dir": mesh_dir,
-            "enable_multi_person": False,
-            "detector_type": "regnety",
-            "detection_score_thresh": 0.7,
+            "detections_field": "ground_truth_detections",
         }
 
         config = HRM2Config(config_dict)
@@ -227,9 +224,8 @@ class HRM2ConfigTests(HRM2TestBase):
         self.assertEqual(config.checkpoint_version, "1.0")
         self.assertFalse(config.export_meshes)
         self.assertEqual(config.mesh_output_dir, mesh_dir)
-        self.assertFalse(config.enable_multi_person)
-        self.assertEqual(config.detector_type, "regnety")
-        self.assertEqual(config.detection_score_thresh, 0.7)
+        self.assertEqual(config.detections_field, "ground_truth_detections")
+        self.assertTrue(config.ragged_batches)
 
     def test_hrm2_config_invalid_smpl_path(self):
         """Test that HRM2Config raises error for invalid SMPL path."""
@@ -372,7 +368,7 @@ class HRM2ModelTests(HRM2TestBase):
             "smpl_model_path": kwargs.get("smpl_model_path", None),
             "checkpoint_version": kwargs.get("checkpoint_version", "2.0b"),
             "export_meshes": kwargs.get("export_meshes", False),
-            "enable_multi_person": kwargs.get("enable_multi_person", False),
+            "detections_field": kwargs.get("detections_field", None),
         }
 
         return HRM2Config(config_dict)
@@ -387,29 +383,42 @@ class HRM2ModelTests(HRM2TestBase):
     )
     @patch("os.path.exists", return_value=True)
     @patch("torch.load", return_value={"state_dict": {}})
+    @patch("hmr2.models.HMR2")
+    @patch("hmr2.configs.get_config")
     def test_hrm2_model_initialization(
-        self, mock_load, mock_exists, mock_resolve_config, mock_get_checkpoint
+        self,
+        mock_get_config,
+        mock_hmr2_class,
+        mock_load,
+        mock_exists,
+        mock_resolve_config,
+        mock_get_checkpoint,
     ):
         """Test HRM2Model initialization with mocked dependencies."""
         import fiftyone.utils.hrm2 as hrm2_module
-        from hmr2.configs import get_config
-        from hmr2.models import HMR2
 
         # Setup mock config
         mock_cfg = MagicMock()
         mock_cfg.SMPL.MODEL_PATH = "/tmp/smpl"
         mock_cfg.SMPL.MEAN_PARAMS = "/tmp/smpl_mean_params.npz"
         mock_cfg.SMPL.JOINT_REGRESSOR_EXTRA = "/tmp/J_regressor_extra.npy"
-        get_config.return_value = mock_cfg
+        mock_cfg.MODEL.IMAGE_SIZE = 256
+        mock_cfg.MODEL.IMAGE_MEAN = [0.485, 0.456, 0.406]
+        mock_cfg.MODEL.IMAGE_STD = [0.229, 0.224, 0.225]
+        mock_cfg.EXTRA.FOCAL_LENGTH = 5000.0
+        mock_get_config.return_value = mock_cfg
 
-        # Setup mock HMR2 model
+        # Setup mock HMR2 model instance
         mock_hmr2_instance = MockHMR2Model(mock_cfg)
-        HMR2.return_value = mock_hmr2_instance
+        mock_hmr2_class.return_value = mock_hmr2_instance
 
         config = self._create_mock_config()
         model = hrm2_module.HRM2Model(config)
 
         self.assertIsNotNone(model)
+        # Explicitly load the model (parent class uses lazy loading)
+        if model._hmr2 is None:
+            model._load_model(config)
         self.assertIsNotNone(model._hmr2)
 
     @patch(
@@ -447,79 +456,51 @@ class HRM2ModelTests(HRM2TestBase):
         # Create test image
         img = Image.open(self._ref_image_path)
 
-        # Mock the prediction
-        with patch.object(model, "_predict_all") as mock_predict:
-            mock_predict.return_value = [
-                {
-                    "people": [
-                        {
-                            "smpl_params": {
-                                "body_pose": [[0.1] * 3] * 23,
-                                "betas": [0.0] * 10,
-                                "global_orient": [[0.0] * 3],
-                                "camera": [2.0, 0.0, 0.0],
-                            },
-                            "keypoints_3d": [[0.0, 0.0, 0.0]] * 24,
-                            "keypoints_2d": [[100.0, 100.0]] * 24,
-                            "bbox": None,
-                            "person_id": 0,
-                        }
-                    ],
-                    "scene_path": None,
-                }
-            ]
+        # Ensure model has output processor
+        import torch
+        from fiftyone.utils.hrm2 import HRM2OutputProcessor
+
+        if model._output_processor is None:
+            model._output_processor = HRM2OutputProcessor(
+                smpl_model=None,
+                export_meshes=False,
+            )
+
+        # Mock the _inference_single_person method
+        with patch.object(model, "_inference_single_person") as mock_inference:
+            # Return raw output format with tensors
+            mock_inference.return_value = {
+                "people": [
+                    {
+                        "pred_cam": torch.tensor([2.0, 0.0, 0.0]),
+                        "pred_smpl_params": {
+                            "body_pose": torch.randn(69),
+                            "betas": torch.zeros(10),
+                            "global_orient": torch.zeros(3),
+                        },
+                        "pred_keypoints_3d": torch.zeros(24, 3),
+                        "pred_keypoints_2d": torch.ones(24, 2) * 100.0,
+                        "bbox": None,
+                        "person_id": 0,
+                        "camera_translation": None,
+                    }
+                ],
+                "img_shape": (480, 640),
+            }
 
             result = model.predict(img)
 
-        self.assertIsNotNone(result)
-        self.assertIn("people", result)
-        self.assertEqual(len(result["people"]), 1)
+        # Result should be a HumanPose3D label
+        from fiftyone.utils.hrm2 import HumanPose3D
 
-    @patch(
-        "fiftyone.utils.hrm2._get_hrm2_checkpoint_path",
-        return_value="/tmp/hrm2_checkpoint.ckpt",
-    )
-    @patch(
-        "fiftyone.utils.hrm2._resolve_hrm2_config_path",
-        return_value="/tmp/model_config.yaml",
-    )
-    @patch("os.path.exists", return_value=True)
-    @patch("torch.load", return_value={"state_dict": {}})
-    def test_hrm2_model_multi_person_mode(
-        self, mock_load, mock_exists, mock_resolve_config, mock_get_checkpoint
-    ):
-        """Test HRM2Model initialization with multi-person detection enabled."""
-        from fiftyone.utils.hrm2 import HRM2Model, PersonDetectorConfig
-        from hmr2.configs import get_config
-        from hmr2.models import HMR2
-
-        # Setup mocks
-        mock_cfg = MagicMock()
-        mock_cfg.SMPL.MODEL_PATH = "/tmp/smpl"
-        mock_cfg.SMPL.MEAN_PARAMS = "/tmp/smpl_mean_params.npz"
-        mock_cfg.SMPL.JOINT_REGRESSOR_EXTRA = "/tmp/J_regressor_extra.npy"
-        get_config.return_value = mock_cfg
-
-        mock_hmr2_instance = MockHMR2Model(mock_cfg)
-        HMR2.return_value = mock_hmr2_instance
-
-        # Mock PersonDetectorConfig to avoid needing real detector setup
-        with patch(
-            "fiftyone.utils.hrm2.PersonDetectorConfig"
-        ) as mock_detector_config_class:
-            mock_detector_config = MagicMock()
-            mock_detector_config.entrypoint_fcn = (
-                lambda **kwargs: MockDetectron2Predictor()
-            )
-            mock_detector_config.entrypoint_args = {}
-            mock_detector_config.score_thresh = 0.5
-            mock_detector_config.detector_type = "vitdet"
-            mock_detector_config_class.return_value = mock_detector_config
-
-            config = self._create_mock_config(enable_multi_person=True)
-            model = HRM2Model(config)
-
-            self.assertIsNotNone(model._person_detector)
+        self.assertIsInstance(result, HumanPose3D)
+        self.assertIsNotNone(result.people)
+        self.assertEqual(len(result.people), 1)
+        # Verify the processed output has expected structure
+        person = result.people[0]
+        self.assertIn("smpl_params", person)
+        self.assertIn("keypoints_3d", person)
+        self.assertIn("person_id", person)
 
 
 class HRM2DatasetTests(HRM2TestBase):
@@ -535,78 +516,6 @@ class HRM2DatasetTests(HRM2TestBase):
         dataset = fo.Dataset()
         dataset.add_samples(samples)
         return dataset
-
-    @drop_datasets
-    @patch(
-        "fiftyone.utils.hrm2._get_hrm2_checkpoint_path",
-        return_value="/tmp/hrm2_checkpoint.ckpt",
-    )
-    @patch(
-        "fiftyone.utils.hrm2._resolve_hrm2_config_path",
-        return_value="/tmp/model_config.yaml",
-    )
-    @patch("os.path.exists", return_value=True)
-    @patch("torch.load", return_value={"state_dict": {}})
-    def test_hrm2_apply_to_dataset_as_groups(
-        self, mock_load, mock_exists, mock_resolve_config, mock_get_checkpoint
-    ):
-        """Test applying HRM2 model to dataset and creating groups."""
-        from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
-        from hmr2.configs import get_config
-        from hmr2.models import HMR2
-
-        # Setup mocks
-        mock_cfg = MagicMock()
-        mock_cfg.SMPL.MODEL_PATH = "/tmp/smpl"
-        mock_cfg.SMPL.MEAN_PARAMS = "/tmp/smpl_mean_params.npz"
-        mock_cfg.SMPL.JOINT_REGRESSOR_EXTRA = "/tmp/J_regressor_extra.npy"
-        get_config.return_value = mock_cfg
-
-        mock_hmr2_instance = MockHMR2Model(mock_cfg)
-        HMR2.return_value = mock_hmr2_instance
-
-        config = HRM2Config(
-            {
-                "model_path": "/tmp/hrm2_test_model.pth",
-                "smpl_model_path": None,
-                "export_meshes": False,
-                "enable_multi_person": False,
-            }
-        )
-        model = HRM2Model(config)
-        model._hmr2 = mock_hmr2_instance
-
-        dataset = self._make_dataset()
-
-        # Mock _predict_all to return test predictions
-        with patch.object(model, "_predict_all") as mock_predict:
-            mock_predict.return_value = [
-                {
-                    "people": [
-                        {
-                            "smpl_params": {
-                                "body_pose": [[0.1] * 3] * 23,
-                                "betas": [0.0] * 10,
-                                "global_orient": [[0.0] * 3],
-                                "camera": [2.0, 0.0, 0.0],
-                            },
-                            "keypoints_3d": [[0.0, 0.0, 0.0]] * 24,
-                            "keypoints_2d": [[100.0, 100.0]] * 24,
-                            "bbox": [50.0, 50.0, 150.0, 200.0],
-                            "person_id": 0,
-                        }
-                    ],
-                    "scene_path": None,
-                }
-            ] * 3
-
-            result_dataset = model.apply_to_dataset_as_groups(
-                dataset, label_field="human_pose", batch_size=1
-            )
-
-        # Dataset should be converted to grouped format
-        self.assertEqual(result_dataset.media_type, "group")
-        self.assertGreater(len(result_dataset), 0)
 
 
 class HumanPoseLabelTests(HRM2TestBase):
@@ -730,83 +639,6 @@ class HumanPoseLabelTests(HRM2TestBase):
         self.assertIsNotNone(retrieved["pose_3d"])
         self.assertEqual(len(retrieved["pose_3d"].people), 1)
         self.assertEqual(retrieved["pose_3d"].confidence, 0.9)
-
-
-class PersonDetectorTests(HRM2TestBase):
-    """Tests for PersonDetector class."""
-
-    def test_person_detector_vitdet_initialization(self):
-        """Test PersonDetector initialization with ViTDet."""
-        from fiftyone.utils.hrm2 import PersonDetector, PersonDetectorConfig
-
-        config_dict = {
-            "model_path": "/tmp/person_detector_vitdet_test.pth",
-            "detector_type": "vitdet",
-            "score_thresh": 0.6,
-        }
-        config = PersonDetectorConfig(config_dict)
-
-        # Mock the entrypoint function
-        mock_detector_instance = MockDetectron2Predictor()
-        with patch.object(
-            config, "entrypoint_fcn", return_value=mock_detector_instance
-        ):
-            detector = PersonDetector(config)
-
-        self.assertEqual(detector.score_thresh, 0.6)
-        self.assertEqual(detector.detector_type, "vitdet")
-        self.assertIsNotNone(detector._detector)
-
-    def test_person_detector_regnety_initialization(self):
-        """Test PersonDetector initialization with RegNetY."""
-        from fiftyone.utils.hrm2 import PersonDetector, PersonDetectorConfig
-
-        config_dict = {
-            "model_path": "/tmp/person_detector_regnety_test.pth",
-            "detector_type": "regnety",
-            "score_thresh": 0.5,
-        }
-        config = PersonDetectorConfig(config_dict)
-
-        # Mock the entrypoint function
-        mock_detector_instance = MockDetectron2Predictor()
-        with patch.object(
-            config, "entrypoint_fcn", return_value=mock_detector_instance
-        ):
-            detector = PersonDetector(config)
-
-        self.assertEqual(detector.score_thresh, 0.5)
-        self.assertEqual(detector.detector_type, "regnety")
-        self.assertIsNotNone(detector._detector)
-
-    def test_person_detector_detect(self):
-        """Test PersonDetector detection on an image."""
-        from fiftyone.utils.hrm2 import PersonDetector, PersonDetectorConfig
-
-        config_dict = {
-            "model_path": "/tmp/person_detector_test.pth",
-            "detector_type": "regnety",
-            "score_thresh": 0.5,
-        }
-        config = PersonDetectorConfig(config_dict)
-
-        # Mock the entrypoint function
-        mock_detector_instance = MockDetectron2Predictor()
-        with patch.object(
-            config, "entrypoint_fcn", return_value=mock_detector_instance
-        ):
-            detector = PersonDetector(config)
-
-        # Create test image (BGR format for OpenCV)
-        img = np.random.randint(0, 255, size=(480, 640, 3), dtype=np.uint8)
-
-        boxes = detector.detect(img)
-
-        self.assertIsInstance(boxes, np.ndarray)
-        self.assertEqual(
-            boxes.shape[1], 4
-        )  # Each box should have [x1, y1, x2, y2]
-        self.assertEqual(len(boxes), 2)  # Mock returns 2 detections
 
 
 if __name__ == "__main__":
