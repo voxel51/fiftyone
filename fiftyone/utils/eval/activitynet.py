@@ -368,8 +368,9 @@ class ActivityNetDetectionResults(DetectionResults):
         self.thresholds = (
             np.asarray(thresholds) if thresholds is not None else None
         )
+        self.full_classwise_AP = np.array(classwise_AP)
 
-        self._classwise_AP = classwise_AP.mean(0)
+        self._classwise_AP = self.full_classwise_AP.mean(0)
 
     def plot_pr_curves(
         self, classes=None, iou_thresh=None, backend="plotly", **kwargs
@@ -489,6 +490,7 @@ class ActivityNetDetectionResults(DetectionResults):
         recall = d["recall"]
         iou_threshs = d["iou_threshs"]
         thresholds = d.get("thresholds", None)
+        full_classwise_AP = d["full_classwise_AP"]
         return super()._from_dict(
             d,
             samples,
@@ -496,6 +498,7 @@ class ActivityNetDetectionResults(DetectionResults):
             eval_key,
             precision=precision,
             recall=recall,
+            classwise_AP=full_classwise_AP,
             iou_threshs=iou_threshs,
             thresholds=thresholds,
             **kwargs,
