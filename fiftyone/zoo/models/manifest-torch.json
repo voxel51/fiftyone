@@ -8110,7 +8110,7 @@
             "date_added": "2025-09-04 12:45:00"
         },
         {
-            "base_name": "pubmed-clip-vit-base-patch32",
+            "base_name": "pubmed-clip-vit-base-patch32-torch",
             "base_filename": null,
             "version": null,
             "description": "Zero-shot medical image classifier trained on biomedical image–text pairs.",
