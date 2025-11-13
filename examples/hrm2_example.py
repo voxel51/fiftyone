@@ -6,27 +6,44 @@ This script shows how to:
 2. Apply the HRM2 model for 3D human mesh reconstruction
 3. Visualize the results in the FiftyOne App
 
-The HRM2 model supports both single-person and multi-person detection modes.
-In multi-person mode, Detectron2 is used to detect all people in each image.
+The HRM2 model supports both single-person and multi-person modes:
+- Single-person: Processes the full image, best for images with one person
+- Multi-person: Uses pre-computed person detections via --detections-field
 
 Before running this script:
 1. Install dependencies: pip install torch torchvision trimesh smplx
 2. Install 4D-Humans: pip install git+https://github.com/shubham-goel/4D-Humans.git
-3. Install Detectron2 (for multi-person): pip install 'git+https://github.com/facebookresearch/detectron2.git'
-4. Download SMPL_NEUTRAL.pkl from https://smpl.is.tue.mpg.de/
+3. Download SMPL_NEUTRAL.pkl from https://smpl.is.tue.mpg.de/
 
 Usage:
-    # From image directory with multi-person detection:
-    python hrm2_example.py --images-dir /path/to/images --smpl-path /path/to/SMPL_NEUTRAL.pkl
-
-    # From FiftyOne Zoo dataset with custom detector settings:
-    python hrm2_example.py --zoo-dataset coco-2017 --zoo-split validation \
-        --smpl-path /path/to/SMPL_NEUTRAL.pkl \
-        --detector-type vitdet --detection-score-thresh 0.7
-
-    # Single-person mode (faster, no Detectron2 required):
+    # Single-person mode (processes full image):
     python hrm2_example.py --images-dir /path/to/images \
-        --smpl-path /path/to/SMPL_NEUTRAL.pkl --no-multi-person
+        --smpl-path /path/to/SMPL_NEUTRAL.pkl
+
+    # From FiftyOne Zoo dataset:
+    python hrm2_example.py --zoo-dataset coco-2017 --zoo-split validation \
+        --smpl-path /path/to/SMPL_NEUTRAL.pkl
+
+    # Multi-person mode (requires pre-computed detections):
+    # First run a person detector to populate a field, then:
+    python hrm2_example.py --images-dir /path/to/images \
+        --smpl-path /path/to/SMPL_NEUTRAL.pkl \
+        --detections-field ground_truth_detections
+
+Advanced Usage:
+    # Custom output processor (programmatic API):
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config, HRM2OutputProcessor
+
+    class CustomHRM2Processor(HRM2OutputProcessor):
+        def __call__(self, outputs, frame_size, confidence_thresh=None):
+            # Custom postprocessing logic here
+            return super().__call__(outputs, frame_size, confidence_thresh)
+
+    config = HRM2Config({
+        "smpl_model_path": "/path/to/SMPL_NEUTRAL.pkl",
+        "output_processor_cls": CustomHRM2Processor,
+    })
+    model = HRM2Model(config)
 """
 
 import argparse
@@ -112,22 +129,11 @@ def main():
         help="Disable mesh export (only compute keypoints and SMPL params)",
     )
     parser.add_argument(
-        "--no-multi-person",
-        action="store_true",
-        help="Disable multi-person detection (single person mode)",
-    )
-    parser.add_argument(
-        "--detector-type",
+        "--detections-field",
         type=str,
-        default="vitdet",
-        choices=["vitdet", "regnety"],
-        help="Person detector type: 'vitdet' (more accurate) or 'regnety' (faster)",
-    )
-    parser.add_argument(
-        "--detection-score-thresh",
-        type=float,
-        default=0.5,
-        help="Minimum confidence score for person detections",
+        default=None,
+        help="Field name containing person detections for multi-person mode. "
+        "If not provided, processes images in single-person mode.",
     )
 
     args = parser.parse_args()
@@ -282,11 +288,10 @@ def main():
     print(f"\n2. Loading HRM2 model (version {args.checkpoint_version})...")
     print(f"   SMPL model: {args.smpl_path}")
     print(
-        f"   Multi-person mode: {'disabled' if args.no_multi_person else 'enabled'}"
+        f"   Mode: {'Multi-person' if args.detections_field else 'Single-person'}"
     )
-    if not args.no_multi_person:
-        print(f"   Detector type: {args.detector_type}")
-        print(f"   Detection threshold: {args.detection_score_thresh}")
+    if args.detections_field:
+        print(f"   Detections field: {args.detections_field}")
 
     try:
         extra = {}
@@ -298,9 +303,7 @@ def main():
             checkpoint_version=args.checkpoint_version,
             export_meshes=not args.no_export_meshes,
             confidence_thresh=args.confidence_thresh,
-            enable_multi_person=not args.no_multi_person,
-            detector_type=args.detector_type,
-            detection_score_thresh=args.detection_score_thresh,
+            detections_field=args.detections_field,
             **extra,
         )
         print("   ✓ Model loaded successfully")
@@ -319,13 +322,13 @@ def main():
         print(
             "  2. Downloaded SMPL_NEUTRAL.pkl from https://smpl.is.tue.mpg.de/"
         )
-        if not args.no_multi_person:
-            print(
-                "  3. Installed Detectron2 (for multi-person): pip install 'git+https://github.com/facebookresearch/detectron2.git'"
-            )
-            print(
-                "     OR run with --no-multi-person to skip Detectron2 requirement"
-            )
+        print("\nFor multi-person mode:")
+        print(
+            "  - Run a person detection model first to populate a detections field"
+        )
+        print(
+            "  - Then use --detections-field <field_name> to process each detected person"
+        )
         return
 
     # Apply model and create grouped dataset
@@ -364,7 +367,7 @@ def main():
     print(f"   Total samples: {len(dataset)}")
     print(f"   Media type: {dataset.media_type}")
 
-    # Get slices
+    # Get slices for grouped dataset
     image_slice = dataset.select_group_slices("image")
     scene_slice = dataset.select_group_slices("3d")
 

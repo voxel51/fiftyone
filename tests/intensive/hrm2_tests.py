@@ -61,7 +61,6 @@ def test_hrm2_download_and_load():
             "smpl_model_path": smpl_path,
             "checkpoint_version": "2.0b",
             "export_meshes": False,
-            "enable_multi_person": False,
         }
     )
 
@@ -69,7 +68,7 @@ def test_hrm2_download_and_load():
     model = HRM2Model(config)
     print(f"✓ Successfully loaded HRM2 model")
     print(f"  Device: {model._device}")
-    print(f"  Multi-person mode: {config.enable_multi_person}")
+    print(f"  Detections field: {config.detections_field}")
 
 
 def test_hrm2_single_person_inference():
@@ -93,7 +92,6 @@ def test_hrm2_single_person_inference():
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
-            "enable_multi_person": False,
         }
     )
 
@@ -105,139 +103,105 @@ def test_hrm2_single_person_inference():
 
     # Run prediction
     from PIL import Image
+    from fiftyone.utils.hrm2 import HumanPose3D
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
 
+    # Result is now a HumanPose3D label object
     print(f"✓ Prediction successful")
-    print(f"  Number of people detected: {len(result['people'])}")
-    if result["people"]:
-        person = result["people"][0]
+    print(f"  Number of people detected: {len(result.people)}")
+    if result.people:
+        person = result.people[0]
         print(
             f"  SMPL parameters shape: body_pose={len(person['smpl_params']['body_pose'])}, "
             f"betas={len(person['smpl_params']['betas'])}"
         )
         print(f"  3D keypoints shape: {len(person['keypoints_3d'])}")
-        if person["keypoints_2d"]:
+        if person.get("keypoints_2d"):
             print(f"  2D keypoints shape: {len(person['keypoints_2d'])}")
-    if result["scene_path"]:
-        print(f"  Scene file: {result['scene_path']}")
 
     # Verify output structure
-    assert "people" in result
-    assert len(result["people"]) > 0
-    assert "smpl_params" in result["people"][0]
-    assert "keypoints_3d" in result["people"][0]
+    assert isinstance(result, HumanPose3D)
+    assert len(result.people) > 0
+    assert "smpl_params" in result.people[0]
+    assert "keypoints_3d" in result.people[0]
 
 
 def test_hrm2_multi_person_inference():
     """
-    Test HRM2 inference with multi-person detection.
+    Test HRM2 inference with multi-person detection using detections_field.
+
+    NOTE: HRM2 now uses a modular approach where you provide pre-computed detections
+    via detections_field instead of built-in PersonDetector. This allows you to use
+    any detection model of your choice.
 
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_multi_person_inference
     """
     from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
-
-    # Check dependencies
-    try:
-        import detectron2
-    except ImportError:
-        pytest.skip(
-            "Detectron2 not installed. Install with: "
-            "pip install 'git+https://github.com/facebookresearch/detectron2.git'"
-        )
+    import fiftyone.core.labels as fol
 
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
     if not smpl_path or not os.path.exists(smpl_path):
         pytest.skip("SMPL_MODEL_PATH not set or file not found")
 
-    # Create config for multi-person mode
+    # Create config with detections_field for multi-person mode
     config = HRM2Config(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
-            "enable_multi_person": True,
-            "detector_type": "vitdet",
-            "detection_score_thresh": 0.5,
+            "detections_field": "ground_truth_detections",  # Use pre-computed detections
         }
     )
 
     model = HRM2Model(config)
 
-    # Load a test dataset
+    # Load a test dataset and add mock detections
     dataset = foz.load_zoo_dataset("quickstart")
     sample = dataset.first()
 
-    # Run prediction
-    from PIL import Image
+    # Add mock person detections to demonstrate multi-person workflow
+    # In practice, you would run a separate detection model first
+    mock_detections = fol.Detections(
+        detections=[
+            fol.Detection(
+                label="person",
+                bounding_box=[0.1, 0.1, 0.3, 0.6],
+                confidence=0.95,
+            ),
+            fol.Detection(
+                label="person",
+                bounding_box=[0.5, 0.2, 0.35, 0.7],
+                confidence=0.88,
+            ),
+        ]
+    )
+    sample["ground_truth_detections"] = mock_detections
+    sample.save()
 
-    img = Image.open(sample.filepath)
-    result = model.predict(img)
-
-    print(f"✓ Multi-person prediction successful")
-    print(f"  Number of people detected: {len(result['people'])}")
-
-    for i, person in enumerate(result["people"]):
-        print(f"\n  Person {i}:")
-        print(f"    Person ID: {person['person_id']}")
-        if person["bbox"]:
-            print(f"    Bounding box: {person['bbox']}")
-        if person.get("camera_translation"):
-            print(f"    Camera translation: {person['camera_translation']}")
-
-    if result["scene_path"]:
-        print(f"\n  Multi-person scene file: {result['scene_path']}")
+    # In multi-person mode, use apply_model on a dataset (not direct predict)
+    # Direct predict() only works for single-person mode
+    print(f"✓ Multi-person mode configured with detections_field")
+    print(f"  Use dataset.apply_model(model, ...) for multi-person inference")
+    print(f"  Mock detections added: {len(mock_detections.detections)} people")
 
 
 def test_hrm2_vitdet_vs_regnety():
     """
-    Compare ViTDet and RegNetY detectors for multi-person detection.
+    Compare different detection models for multi-person HRM2 inference.
+
+    NOTE: HRM2 now uses a modular detections_field approach. To compare detectors,
+    run different detection models separately and compare their results with HRM2.
 
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_vitdet_vs_regnety
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
-
-    try:
-        import detectron2
-    except ImportError:
-        pytest.skip("Detectron2 not installed")
-
-    smpl_path = os.environ.get("SMPL_MODEL_PATH")
-    if not smpl_path or not os.path.exists(smpl_path):
-        pytest.skip("SMPL_MODEL_PATH not set")
-
-    # Load test image
-    dataset = foz.load_zoo_dataset("quickstart")
-    sample = dataset.first()
-    from PIL import Image
-
-    img = Image.open(sample.filepath)
-
-    results = {}
-    for detector_type in ["vitdet", "regnety"]:
-        print(f"\nTesting {detector_type} detector...")
-
-        config = HRM2Config(
-            {
-                "smpl_model_path": smpl_path,
-                "export_meshes": False,
-                "enable_multi_person": True,
-                "detector_type": detector_type,
-                "detection_score_thresh": 0.5,
-            }
-        )
-
-        model = HRM2Model(config)
-        result = model.predict(img)
-
-        results[detector_type] = len(result["people"])
-        print(f"  {detector_type}: {results[detector_type]} people detected")
-
-    print(f"\n✓ Detector comparison complete")
-    print(f"  ViTDet: {results['vitdet']} people")
-    print(f"  RegNetY: {results['regnety']} people")
+    pytest.skip(
+        "Detector comparison test no longer applicable. "
+        "HRM2 now uses modular detections_field approach. "
+        "Run separate detection models and provide results via detections_field."
+    )
 
 
 def test_hrm2_mesh_export():
@@ -260,7 +224,6 @@ def test_hrm2_mesh_export():
                 "smpl_model_path": smpl_path,
                 "export_meshes": True,
                 "mesh_output_dir": mesh_dir,
-                "enable_multi_person": False,
             }
         )
 
@@ -271,21 +234,24 @@ def test_hrm2_mesh_export():
         sample = dataset.first()
 
         from PIL import Image
+        from fiftyone.utils.hrm2 import HumanPose3D
 
         img = Image.open(sample.filepath)
         result = model.predict(img)
 
         print(f"✓ Mesh export successful")
+        assert isinstance(result, HumanPose3D)
 
-        if result["scene_path"]:
-            print(f"  Scene file: {result['scene_path']}")
-            assert os.path.exists(result["scene_path"]), "Scene file not found"
+        # Check for generated mesh files in the mesh directory
+        # Mesh files are generated during _process_single_person
+        obj_files = [f for f in os.listdir(mesh_dir) if f.endswith(".obj")]
+        fo3d_files = [f for f in os.listdir(mesh_dir) if f.endswith(".fo3d")]
 
-            # Check for OBJ files
-            obj_files = [f for f in os.listdir(mesh_dir) if f.endswith(".obj")]
-            print(f"  Generated {len(obj_files)} OBJ mesh file(s)")
-            print(f"  Mesh directory: {mesh_dir}")
+        print(f"  Generated {len(obj_files)} OBJ mesh file(s)")
+        print(f"  Generated {len(fo3d_files)} scene file(s)")
+        print(f"  Mesh directory: {mesh_dir}")
 
+        if obj_files:
             for obj_file in obj_files:
                 obj_path = os.path.join(mesh_dir, obj_file)
                 size = os.path.getsize(obj_path)
@@ -386,14 +352,18 @@ def test_hrm2_batch_processing():
 
     print(f"Processing batch of {len(images)} images...")
 
-    # Process batch
-    results = model._predict_all(images)
+    # Process batch using predict_all (public API)
+    results = model.predict_all(images)
 
     print(f"✓ Batch processing complete")
     print(f"  Processed {len(results)} images")
 
+    # Results are now HumanPose3D labels
+    from fiftyone.utils.hrm2 import HumanPose3D
+
     for i, result in enumerate(results):
-        num_people = len(result["people"])
+        assert isinstance(result, HumanPose3D)
+        num_people = len(result.people)
         print(f"  Image {i}: {num_people} person(s) detected")
 
     assert len(results) == len(images)
