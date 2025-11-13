@@ -358,9 +358,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def __deepcopy__(self, memo):
         return self  # datasets are singletons
 
-    def __len__(self):
-        return self.count()
-
     def _estimated_count(self, frames=False):
         if frames:
             if self._frame_collection is None:

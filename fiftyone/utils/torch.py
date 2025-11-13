@@ -1720,7 +1720,7 @@ class KeypointDetectorOutputProcessor(OutputProcessor):
                     # Not visible
                     points.append((float("nan"), float("nan")))
                 else:
-                    points.append((p[0] / width, p[1] / height))
+                    points.append((float(p[0] / width), float(p[1] / height)))
 
             _detections.append(
                 fol.Detection(

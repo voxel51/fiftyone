@@ -5,7 +5,7 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import contextlib
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -24,6 +24,9 @@ from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from .utils import is_method_overridden, create_operator_response
 from .operator import Operator
+
+# This is for reduced code conflicts with enterprise logging
+logging_context = contextlib.nullcontext
 
 
 def get_operators(registry: PermissionedOperatorRegistry):
@@ -92,22 +95,28 @@ class ExecuteOperator(HTTPEndpoint):
         if operator_uri is None:
             raise ValueError("Operator URI must be provided")
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
-        )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
-
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri
-                or "None",
-                "loading_errors": registry.list_errors(),
+        with logging_context(
+            {
+                "operator_uri": operator_uri,
+                "dataset": dataset_name,
             }
-            raise HTTPException(status_code=404, detail=error_detail)
+        ):
+            registry = await PermissionedOperatorRegistry.from_exec_request(
+                request, dataset_ids=dataset_ids
+            )
+            if registry.can_execute(operator_uri) is False:
+                return create_permission_error(operator_uri)
 
-        result = await execute_or_delegate_operator(operator_uri, data)
-        return await create_operator_response(result)
+            if registry.operator_exists(operator_uri) is False:
+                error_detail = {
+                    "message": "Operator '%s' does not exist" % operator_uri
+                    or "None",
+                    "loading_errors": registry.list_errors(),
+                }
+                raise HTTPException(status_code=404, detail=error_detail)
+
+            result = await execute_or_delegate_operator(operator_uri, data)
+            return await create_operator_response(result)
 
 
 def create_response_generator(generator):

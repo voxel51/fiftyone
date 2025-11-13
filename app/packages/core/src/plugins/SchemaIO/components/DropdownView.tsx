@@ -40,7 +40,6 @@ export default function DropdownView(props: ViewPropsType) {
   const [IconComponent, setIconComponent] =
     useState<React.ComponentType<any> | null>(null);
   const [key, setUserChanged] = useKey(path, schema, data, true);
-  const [selected, setSelected] = useState(false);
 
   const handleOnChange = useCallback(
     (value: any) => {
@@ -93,6 +92,12 @@ export default function DropdownView(props: ViewPropsType) {
       return labels;
     }, {});
   }, [choices]);
+
+  // Compute selected state from data instead of using useState to avoid setState during render
+  const selected = useMemo(() => {
+    const value = computedDefaultValue;
+    return value != null && value !== "" && !(Array.isArray(value) && value.length === 0);
+  }, [computedDefaultValue]);
 
   const getIconOnlyStyles = () => ({
     "&.MuiInputBase-root.MuiOutlinedInput-root.MuiInputBase-colorPrimary": {
@@ -173,66 +178,72 @@ export default function DropdownView(props: ViewPropsType) {
     );
   }
 
+  const selectElement = (
+    <Select
+      key={key}
+      disabled={readOnly}
+      autoFocus={autoFocus(props)}
+      value={computedDefaultValue}
+      size="small"
+      fullWidth={!icon}
+      displayEmpty
+      title={compact ? description : undefined}
+      renderValue={(value) => {
+        if (icon) {
+          return renderIcon();
+        }
+        const unselected = value?.length === 0;
+        if (unselected) {
+          if (compact) {
+            return placeholder || label;
+          }
+          return placeholder;
+        }
+        if (multiple) {
+          return value.map((item) => choiceLabels[item] || item).join(", ");
+        }
+        return choiceLabels[value] || value;
+      }}
+      onChange={(e) => {
+        handleOnChange(e.target.value);
+      }}
+      multiple={multiple}
+      {...selectProps}
+      MenuProps={{
+        ...MenuProps,
+        sx: {
+          zIndex: (theme) => theme.zIndex.operatorPalette + 1,
+          ...(MenuProps?.sx || {}),
+        },
+      }}
+    >
+      {choices.map(({ value, ...choice }) => (
+        <MenuItem
+          disabled={readOnly ?? choice.readOnly}
+          key={value}
+          value={value}
+          onClick={() => {
+            // Only trigger onClick when re-selecting the current value,
+            // since MUI's onChange doesn't fire in that case
+            if (addOnClickToMenuItems && value === computedDefaultValue) {
+              handleOnChange(value);
+            }
+          }}
+          {...getComponentProps(props, "optionContainer")}
+        >
+          <ChoiceMenuItemBody {...choice} {...props} />
+        </MenuItem>
+      ))}
+    </Select>
+  );
+
   return (
     <FieldWrapper {...props} hideHeader={compact}>
-      <Tooltip title={tooltipTitle}>
-        <Select
-          key={key}
-          disabled={readOnly}
-          autoFocus={autoFocus(props)}
-          defaultValue={computedDefaultValue}
-          size="small"
-          fullWidth={!icon}
-          displayEmpty
-          title={compact ? description : undefined}
-          renderValue={(value) => {
-            if (icon) {
-              return renderIcon();
-            }
-            const unselected = value?.length === 0;
-            setSelected(!unselected);
-            if (unselected) {
-              if (compact) {
-                return placeholder || label;
-              }
-              return placeholder;
-            }
-            if (multiple) {
-              return value.map((item) => choiceLabels[item] || item).join(", ");
-            }
-            return choiceLabels[value] || value;
-          }}
-          onChange={(e) => {
-            const value = e.target.value;
-            handleOnChange(value);
-          }}
-          multiple={multiple}
-          {...selectProps}
-          MenuProps={{
-            ...MenuProps,
-            sx: {
-              zIndex: (theme) => theme.zIndex.operatorPalette + 1,
-              ...(MenuProps?.sx || {}),
-            },
-          }}
-        >
-          {choices.map(({ value, ...choice }) => (
-            <MenuItem
-              disabled={readOnly ?? choice.readOnly}
-              key={value}
-              value={value}
-              onClick={() => {
-                if (addOnClickToMenuItems) {
-                  handleOnChange(value);
-                }
-              }}
-              {...getComponentProps(props, "optionContainer")}
-            >
-              <ChoiceMenuItemBody {...choice} {...props} />
-            </MenuItem>
-          ))}
-        </Select>
-      </Tooltip>
+      {tooltipTitle ? (
+        <Tooltip title={tooltipTitle}>{selectElement}</Tooltip>
+      ) : (
+        selectElement
+      )}
     </FieldWrapper>
   );
 }

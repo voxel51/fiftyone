@@ -253,10 +253,13 @@ class SampleCollection(object):
         return self.summary()
 
     def __bool__(self):
-        return len(self) > 0
+        if self._is_full_collection():
+            return self.count() > 0
+        else:
+            return self.limit(1).count() > 0
 
     def __len__(self):
-        raise NotImplementedError("Subclass must implement __len__()")
+        return self.count()
 
     def __contains__(self, sample_id):
         try:

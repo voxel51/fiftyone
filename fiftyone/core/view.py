@@ -99,9 +99,6 @@ class DatasetView(foc.SampleCollection):
         other_d = other._serialize(include_uuids=False)
         return d == other_d
 
-    def __len__(self):
-        return self.count()
-
     def __getitem__(self, id_filepath_slice):
         if isinstance(id_filepath_slice, numbers.Integral):
             raise KeyError(

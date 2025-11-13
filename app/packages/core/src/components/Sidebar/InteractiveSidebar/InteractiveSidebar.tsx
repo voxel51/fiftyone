@@ -8,7 +8,7 @@ import type { InteractiveItems, RenderEntry } from "./types";
 import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
-import { Direction, MARGIN, fn, getEntryKey } from "./utils";
+import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
 
 const InteractiveSidebar = ({
   isDisabled,
@@ -83,7 +83,7 @@ const InteractiveSidebar = ({
   }
 
   const placeItems = useCallback(() => {
-    const { results: placements, minHeight } = fn(
+    const { results: placements, minHeight } = calculateItemLayout(
       items.current,
       order.current,
       order.current,
