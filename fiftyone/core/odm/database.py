@@ -255,7 +255,6 @@ def _is_client_closed(client):
 
 
 def _connect():
-    print("_connect()")
     global _client
     if _is_client_closed(_client):
         _client = None
