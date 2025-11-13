@@ -529,8 +529,8 @@ export abstract class AbstractLooker<
   getRootEvents(): Events<State> {
     return {
       mouseenter: ({ update }) =>
-        update(({ config: { thumbnail } }) => {
-          if (thumbnail) {
+        update(({ config: { thumbnail, disableControls } }) => {
+          if (thumbnail || disableControls) {
             return { hovering: true };
           }
           return {
@@ -539,7 +539,7 @@ export abstract class AbstractLooker<
           };
         }),
       mouseleave: ({ update }) => {
-        !this.state.config.thumbnail &&
+        !this.state.config.thumbnail && !this.state.config.disableControls &&
           this.dispatchEvent("options", { showControls: false });
         update({
           hovering: false,
@@ -549,7 +549,7 @@ export abstract class AbstractLooker<
         });
       },
       mousemove: ({ update }) => {
-        if (this.state.config.thumbnail) {
+        if (this.state.config.thumbnail || this.state.config.disableControls) {
           return;
         }
         if (this.hideControlsTimeout) {
