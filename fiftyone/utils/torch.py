@@ -1125,6 +1125,55 @@ class ToPILImage(object):
         return F.to_pil_image(img)
 
 
+def to_numpy_image(img):
+    """Convert image to numpy array in HWC uint8 format.
+
+    Handles PIL.Image, torch.Tensor, and numpy array inputs.
+    Automatically handles CHW→HWC conversion for tensors and
+    normalized [0,1] → uint8 [0,255] scaling.
+
+    Args:
+        img: image as PIL.Image, numpy array, or torch.Tensor
+
+    Returns:
+        numpy array in HWC uint8 format (height, width, channels)
+
+    Example::
+
+        import numpy as np
+        from PIL import Image
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # From PIL Image
+        pil_img = Image.open("image.jpg")
+        np_img = fout.to_numpy_image(pil_img)
+
+        # From torch tensor (CHW format, normalized [0,1])
+        tensor_img = torch.rand(3, 256, 256)
+        np_img = fout.to_numpy_image(tensor_img)
+
+        # From numpy array (passthrough if already correct format)
+        np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
+        result = fout.to_numpy_image(np_img)
+    """
+    if isinstance(img, Image.Image):
+        return np.array(img)
+    elif isinstance(img, torch.Tensor):
+        img_np = img.cpu().numpy()
+        # Convert CHW to HWC if needed
+        if img_np.ndim == 3 and img_np.shape[0] in (1, 3, 4):
+            img_np = img_np.transpose(1, 2, 0)
+        # Scale to 0-255 if normalized
+        if img_np.max() <= 1.0:
+            img_np = (img_np * 255).astype(np.uint8)
+        return img_np
+    elif isinstance(img, np.ndarray):
+        return img
+    else:
+        raise ValueError(f"Unsupported image type: {type(img)}")
+
+
 class MinResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
     that its minimum dimensions are at least the specified size.
