@@ -9,6 +9,7 @@ import {
 } from "./schemaTranslator";
 
 import widgets from "./widgets";
+import templates from "./templates";
 
 import type { IChangeEvent } from "@rjsf/core";
 import type { ValidatorType, UiSchema } from "@rjsf/utils";
@@ -90,6 +91,7 @@ export default function SmartForm(props: SmartFormProps) {
       uiSchema={mergedUiSchema}
       validator={props.validator || validator}
       widgets={widgets}
+      templates={templates}
       formData={formData}
       onChange={handleChange}
       onSubmit={handleSubmit}
