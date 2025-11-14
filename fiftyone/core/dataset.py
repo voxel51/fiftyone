@@ -3446,7 +3446,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dicts = [doc for _, doc in samples_and_docs]
         try:
             # adds `_id` to each dict
-            res = self._sample_collection.insert_many(dicts)
+            res = self._sample_collection.insert_many(dicts, ordered=False)
         except BulkWriteError as bwe:
             msg = bwe.details["writeErrors"][0]["errmsg"]
             raise ValueError(msg) from bwe
