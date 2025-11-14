@@ -1,3 +1,4 @@
+import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import {
@@ -24,7 +25,7 @@ import type {
   LoadingStatusWithContext,
   ShadeBy,
 } from "./types";
-import { LoadingStatus, TransformArchetype } from "./types";
+import { Archetype3d, LoadingStatus } from "./types";
 
 // =============================================================================
 // GENERAL 3D
@@ -94,16 +95,6 @@ export const isLevaConfigPanelOnAtom = atom<boolean>({
 export const isStatusBarOnAtom = atom<boolean>({
   key: "fo3d-isStatusBarOn",
   default: false,
-});
-
-export const annotationToolbarPositionAtom = atom<number>({
-  key: "fo3d-annotationToolbarPosition",
-  default: 50,
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-annotationToolbarPosition", {
-      valueClass: "number",
-    }),
-  ],
 });
 
 // GRID & BACKGROUND
@@ -295,6 +286,16 @@ export const hoveredLabelAtom = atom<OverlayLabel | null>({
 // ANNOTATION RELATED
 // =============================================================================
 
+export const annotationToolbarPositionAtom = atom<number>({
+  key: "fo3d-annotationToolbarPosition",
+  default: 50,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-annotationToolbarPosition", {
+      valueClass: "number",
+    }),
+  ],
+});
+
 /**
  * Shared cursor position in 3D space for annotation interactions.
  * Used to track the current cursor position across different annotation panes.
@@ -308,7 +309,9 @@ export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
  * The currently selected label for annotation operations.
  * Used to track which label is being actively edited or manipulated.
  */
-export const selectedLabelForAnnotationAtom = atom<OverlayLabel | null>({
+export const selectedLabelForAnnotationAtom = atom<
+  (Partial<PolylineLabel> & { _id: string }) | null
+>({
   key: "fo3d-selectedLabelForAnnotation",
   default: null,
 });
@@ -423,13 +426,15 @@ export const hoveredVertexAtom = atom<{
 });
 
 /**
- * Transform data for temporary polyline segments.
+ * This atom stores temporary transform data for polylines being edited.
+ * Changes accumulate here as users manipulate polylines in the 3D canvas,
+ * and is cleared once user commits changes or exits edit mode.
  */
-export const polylinePointTransformsAtom = atom<Record<
+export const stagedPolylineTransformsAtom = atom<Record<
   string,
   PolylinePointTransformData
 > | null>({
-  key: "fo3d-polylinePointTransforms",
+  key: "fo3d-stagedPolylineTransforms",
   default: {},
 });
 
@@ -455,7 +460,7 @@ export const transformSpaceAtom = atom<TransformSpace>({
  * The currently selected archetype for transformation.
  */
 export const currentArchetypeSelectedForTransformAtom =
-  atom<TransformArchetype | null>({
+  atom<Archetype3d | null>({
     key: "fo3d-currentArchetypeSelectedForTransformAtom",
     default: null,
   });
@@ -560,7 +565,7 @@ export const clearTransformStateSelector = selector({
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);
-    // Note: We don't clear polylinePointTransforms here as it should persist
+    // Note: We don't clear stagedPolylineTransforms here as it should persist
     set(activeSegmentationStateAtom, {
       isActive: false,
       vertices: [],

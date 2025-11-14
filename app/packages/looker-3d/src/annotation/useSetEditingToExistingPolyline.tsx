@@ -1,4 +1,3 @@
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import { savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import * as fos from "@fiftyone/state";
@@ -8,24 +7,27 @@ import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import {
   clearTransformStateSelector,
-  polylinePointTransformsAtom,
+  stagedPolylineTransformsAtom,
 } from "../state";
-import { PolylinePointTransformData } from "./types";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
-import { useSyncWithPolylinePointTransforms } from "./useSyncWithPolylinePointTransforms";
+import { useSyncWithStagedPolylineTransforms } from "./useSyncWithStagedPolylineTransforms";
 
 /**
- * Hook to set editing atom for existing polylines when clicked
+ * This hook returns a function, which when called, achieves two things
+ * when an existing polyline is clicked on the canvas:
+ * 1. It sets the editing atom for the existing polyline
+ * 2. It adds the polyline to the "staging" area
  */
 export const useSetEditingToExistingPolyline = () => {
   const setEditing = useSetAtom(editingAtom);
   const resetEditing = useResetAtom(editingAtom);
   const resetCurrentEditing = useResetAtom(currentEditingPolylineAtom);
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
-  const setPolylinePointTransforms = useSetRecoilState(
-    polylinePointTransformsAtom
+  const setStagedPolylineTransforms = useSetRecoilState(
+    stagedPolylineTransformsAtom
   );
-  const syncWithPolylinePointTransforms = useSyncWithPolylinePointTransforms();
+  const syncWithStagedPolylineTransforms =
+    useSyncWithStagedPolylineTransforms();
 
   useEffect(() => {
     return () => {
@@ -38,30 +40,13 @@ export const useSetEditingToExistingPolyline = () => {
 
   const jotaiStore = getDefaultStore();
 
-  const syncWithSidebar = useCallback(
-    (label: fos.PolylineAnnotationLabel["data"]) => {
-      const { points3d: _points3d, _id, label: _label, ...rest } = label;
-
-      setPolylinePointTransforms((prev) => {
-        return {
-          ...(prev ?? {}),
-          [label._id]: {
-            ...((prev ?? {})[label._id] ?? ({} as PolylinePointTransformData)),
-            label: _label,
-            misc: {
-              ...coerceStringBooleans(rest ?? {}),
-            },
-          },
-        };
-      });
-    },
-    []
-  );
-
   return useCallback(
     (label: fos.PolylineAnnotationLabel["data"] & { path: string }) => {
-      syncWithPolylinePointTransforms(label);
+      // This polyline may be manipulated now from the canvas,
+      // which is why we add it to "staging"
+      syncWithStagedPolylineTransforms(label);
 
+      // This takes care of the sidebar
       setCurrentEditing({
         isNew: false,
         data: label,
@@ -71,14 +56,13 @@ export const useSetEditingToExistingPolyline = () => {
           id: label._id,
           field: label.path,
           label: label,
-          updateLabel: syncWithSidebar,
           getLabel: () => {
             return { ...label };
           },
           setSelected: (selected: boolean) => {
             if (!selected) {
               clearTransformState({});
-              setPolylinePointTransforms(null);
+              setStagedPolylineTransforms(null);
             }
           },
         },
@@ -88,6 +72,6 @@ export const useSetEditingToExistingPolyline = () => {
 
       jotaiStore.set(savedLabel, label);
     },
-    [syncWithSidebar, syncWithPolylinePointTransforms]
+    [syncWithStagedPolylineTransforms]
   );
 };

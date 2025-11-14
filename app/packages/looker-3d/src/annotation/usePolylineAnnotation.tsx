@@ -10,8 +10,8 @@ import {
   currentActiveAnnotationField3dAtom,
   editSegmentsModeAtom,
   hoveredLabelAtom,
-  polylinePointTransformsAtom,
   selectedPolylineVertexAtom,
+  stagedPolylineTransformsAtom,
   tempLabelTransformsAtom,
   tempVertexTransformsAtom,
 } from "../state";
@@ -40,8 +40,8 @@ export const usePolylineAnnotation = ({
 }: UsePolylineAnnotationProps) => {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
-    polylinePointTransformsAtom
+  const [polylinePointTransforms, setStagedPolylineTransforms] = useRecoilState(
+    stagedPolylineTransformsAtom
   );
 
   const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
@@ -116,7 +116,7 @@ export const usePolylineAnnotation = ({
             pointIndex={pointIndex}
             tooltipDescriptor="Vertex"
             onPointMove={(newPosition) => {
-              setPolylinePointTransforms((prev) => {
+              setStagedPolylineTransforms((prev) => {
                 const labelId = label._id;
                 const currentSegments = prev[labelId]?.segments || [];
 
@@ -187,9 +187,6 @@ export const usePolylineAnnotation = ({
   ]);
 
   const syncPolylineTransformationToTempStore = useCallback(() => {
-    const controls = transformControlsRef.current;
-    if (!controls) return;
-
     const grp = contentRef.current;
     if (!grp) return;
 
@@ -237,7 +234,7 @@ export const usePolylineAnnotation = ({
 
     const worldDelta = deltaPosition;
 
-    setPolylinePointTransforms((prev) => {
+    setStagedPolylineTransforms((prev) => {
       const labelId = label._id;
 
       const newSegments = applyDeltaToAllPoints(points3d, [
@@ -270,7 +267,7 @@ export const usePolylineAnnotation = ({
     currentActiveField,
     label._id,
     points3d,
-    setPolylinePointTransforms,
+    setStagedPolylineTransforms,
     startMatrix,
     setTempPolylineTransforms,
   ]);
@@ -331,7 +328,7 @@ export const usePolylineAnnotation = ({
         const { segmentIndex, newVertexPosition } = clickResult;
 
         // Insert the new vertex into the segment
-        setPolylinePointTransforms((prev) => {
+        setStagedPolylineTransforms((prev) => {
           const labelId = label._id;
           const currentSegments = prev[labelId]?.segments || [];
 
