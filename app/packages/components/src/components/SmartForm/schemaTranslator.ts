@@ -194,14 +194,14 @@ function translateToUISchema(
 
     case "DropdownView":
     case "Dropdown":
-      if (view.choices && Array.isArray(view.choices)) {
-        // For dropdowns with choices, we need to set enum in schema
-        // but we handle UI representation here
-        uiSchema["ui:widget"] = "select";
-        if (view.placeholder) {
-          uiSchema["ui:placeholder"] = view.placeholder;
-        }
-      }
+      uiSchema["ui:widget"] = "Dropdown";
+      // Map DropdownView-specific options to ui:options
+      uiSchema["ui:options"] = {
+        multiple: view.multiple,
+        compact: view.compact,
+        color: view.color,
+        variant: view.variant,
+      };
       break;
 
     case "RadioView":

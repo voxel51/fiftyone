@@ -1,10 +1,7 @@
 import AutoComplete from "./AutoComplete";
+import Dropdown from "./Dropdown";
 
-// const widgets = {
-// 	AutoComplete,
-// };
-
-//export default widgets;
 export default {
   AutoComplete,
+  Dropdown,
 };
