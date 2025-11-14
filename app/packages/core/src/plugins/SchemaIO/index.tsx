@@ -1,6 +1,5 @@
 import { SchemaIOComponent as SchemaIO } from "./SchemaIOComponent";
-import Form from "@rjsf/mui";
-import validator from "@rjsf/validator-ajv8";
+import SmartForm from "../../../../components/src/components/SmartForm";
 
 const SIO = false;
 
@@ -9,21 +8,19 @@ export function SchemaIOComponent(props) {
     return <SchemaIO {...props} />;
   } else {
     return (
-      <Form
+      <SmartForm
         schema={props.schema}
-        uiSchema={{}}
-        validator={validator}
-        formData={props.data}
-        onChange={({ formData }) => {
-          console.log("[RJSF Change]", formData);
+        data={props.data}
+        onChange={(data) => {
+          console.log("[SmartForm Change]", data);
           if (props.onChange) {
-            props.onChange(formData);
+            props.onChange(data);
           }
         }}
-        onSubmit={({ formData }) => {
-          console.log("[RJSF Submit]", formData);
+        onSubmit={(data) => {
+          console.log("[SmartForm Submit]", data);
           if (props.onChange) {
-            props.onChange(formData);
+            props.onChange(data);
           }
         }}
       />
