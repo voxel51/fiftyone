@@ -13,7 +13,7 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
+from typing import Any, Optional, List, Union, Tuple
 import warnings
 
 import cv2
@@ -1125,7 +1125,9 @@ class ToPILImage(object):
         return F.to_pil_image(img)
 
 
-def to_numpy_image(img):
+def to_numpy_image(
+    img: Union[Image.Image, np.ndarray, torch.Tensor]
+) -> np.ndarray:
     """Convert image to numpy array in HWC uint8 format.
 
     Handles PIL.Image, torch.Tensor, and numpy array inputs.
@@ -1172,6 +1174,212 @@ def to_numpy_image(img):
         return img
     else:
         raise ValueError(f"Unsupported image type: {type(img)}")
+
+
+def ensure_rgb_numpy(img_np: np.ndarray) -> np.ndarray:
+    """Ensure numpy image is in RGB format (HWC uint8).
+
+    Handles grayscale, single-channel, and RGBA inputs by converting
+    to 3-channel RGB format.
+
+    Args:
+        img_np: numpy array (HWC uint8)
+
+    Returns:
+        numpy array in RGB format (HWC uint8, 3 channels)
+
+    Example::
+
+        import numpy as np
+        import fiftyone.utils.torch as fout
+
+        # Convert grayscale to RGB
+        gray_img = np.random.randint(0, 255, (256, 256), dtype=np.uint8)
+        rgb_img = fout.ensure_rgb_numpy(gray_img)
+        print(rgb_img.shape)  # (256, 256, 3)
+
+        # Strip alpha channel
+        rgba_img = np.random.randint(0, 255, (256, 256, 4), dtype=np.uint8)
+        rgb_img = fout.ensure_rgb_numpy(rgba_img)
+        print(rgb_img.shape)  # (256, 256, 3)
+    """
+    if img_np.ndim == 2:
+        return np.repeat(img_np[..., None], 3, axis=2)
+    elif img_np.shape[2] == 1:
+        return np.repeat(img_np, 3, axis=2)
+    elif img_np.shape[2] == 4:
+        return img_np[..., :3]
+    return img_np
+
+
+def convert_to_tensor_chw(
+    img: Union[Image.Image, np.ndarray, torch.Tensor]
+) -> torch.Tensor:
+    """Convert various image formats to CHW tensor in [0, 1] range.
+
+    Handles PIL Images, numpy arrays (HWC/CHW), and torch tensors.
+    Automatically converts grayscale to RGB and strips alpha channels.
+
+    Args:
+        img: input image in various formats (PIL.Image, np.ndarray, or
+            torch.Tensor)
+
+    Returns:
+        torch.Tensor in CHW format, float, range [0, 1], 3 channels
+
+    Example::
+
+        import numpy as np
+        from PIL import Image
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # From PIL Image
+        pil_img = Image.open("image.jpg")
+        tensor = fout.convert_to_tensor_chw(pil_img)
+        print(tensor.shape)  # torch.Size([3, H, W])
+
+        # From numpy array (HWC uint8)
+        np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
+        tensor = fout.convert_to_tensor_chw(np_img)
+        print(tensor.shape)  # torch.Size([3, 256, 256])
+    """
+    # Convert PIL to numpy first
+    if isinstance(img, Image.Image):
+        img = np.array(img)
+
+    if isinstance(img, np.ndarray):
+        # Ensure HWC uint8, strip alpha channel if present
+        if img.ndim == 2:
+            img = np.repeat(img[..., None], 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 1:
+            img = np.repeat(img, 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 4:
+            # Strip alpha channel (RGBA -> RGB)
+            img = img[..., :3]
+        elif img.ndim == 3 and img.shape[2] == 3:
+            pass  # Already RGB
+        else:
+            logger.warning(
+                f"Unexpected numpy array shape: {img.shape}, attempting to use as-is"
+            )
+        img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
+    elif isinstance(img, torch.Tensor):
+        if img.ndim == 3 and img.shape[0] in (1, 3, 4):
+            img_t = img.float().clone()
+        elif img.ndim == 3 and img.shape[2] in (1, 3, 4):
+            img_t = img.permute(2, 0, 1).float().clone()
+        else:
+            # Assume already CHW float
+            img_t = img.float().clone()
+        # Handle different channel counts
+        if img_t.shape[0] == 1:
+            img_t = img_t.repeat(3, 1, 1)
+        elif img_t.shape[0] == 4:
+            # Strip alpha channel (RGBA -> RGB)
+            img_t = img_t[:3, :, :]
+    else:
+        raise ValueError(
+            f"Unsupported image type: {type(img)}. "
+            f"Expected PIL.Image, np.ndarray, or torch.Tensor"
+        )
+
+    return img_t
+
+
+def resize_tensor(
+    img_t: torch.Tensor, target_h: int, target_w: int
+) -> torch.Tensor:
+    """Resize tensor to target dimensions using bilinear interpolation.
+
+    Args:
+        img_t: input tensor (CHW, float)
+        target_h: target height
+        target_w: target width
+
+    Returns:
+        resized tensor (CHW, float)
+
+    Example::
+
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # Resize a CHW tensor
+        img = torch.rand(3, 256, 256)
+        resized = fout.resize_tensor(img, 512, 512)
+        print(resized.shape)  # torch.Size([3, 512, 512])
+    """
+    return torch.nn.functional.interpolate(
+        img_t.unsqueeze(0),
+        size=(target_h, target_w),
+        mode="bilinear",
+        align_corners=False,
+    )[0]
+
+
+def normalize_tensor(
+    img_t: torch.Tensor,
+    mean: Union[List[float], np.ndarray, torch.Tensor],
+    std: Union[List[float], np.ndarray, torch.Tensor],
+) -> torch.Tensor:
+    """Normalize tensor using provided mean and std values.
+
+    Args:
+        img_t: input tensor (CHW, float, range [0, 1])
+        mean: mean values for each channel (list or array of 3 values)
+        std: standard deviation values for each channel (list or array of 3
+            values)
+
+    Returns:
+        normalized tensor (CHW, float, normalized)
+
+    Example::
+
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # Normalize with ImageNet mean and std
+        img = torch.rand(3, 256, 256)
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        normalized = fout.normalize_tensor(img, mean, std)
+    """
+    mean_t = torch.tensor(mean, dtype=img_t.dtype)
+    std_t = torch.tensor(std, dtype=img_t.dtype)
+    return (img_t - mean_t.view(3, 1, 1)) / std_t.view(3, 1, 1)
+
+
+def get_target_size(
+    image_size: Union[int, List[int], Tuple[int, int]]
+) -> Tuple[int, int]:
+    """Get target image size as (height, width) tuple.
+
+    Handles both single integer values and (height, width) tuples/lists.
+
+    Args:
+        image_size: target image size, either a single integer (for square
+            images) or a (height, width) tuple/list
+
+    Returns:
+        tuple of (height, width) for model input
+
+    Example::
+
+        import fiftyone.utils.torch as fout
+
+        # Square size
+        h, w = fout.get_target_size(256)
+        print(h, w)  # 256 256
+
+        # Non-square size
+        h, w = fout.get_target_size([384, 512])
+        print(h, w)  # 384 512
+    """
+    if isinstance(image_size, (list, tuple)):
+        return int(image_size[0]), int(image_size[1])
+    else:
+        return int(image_size), int(image_size)
 
 
 class MinResize(object):

@@ -90,7 +90,7 @@ def main():
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="Overwrite existing dataset without prompting",
+        help="Overwrite existing dataset if it exists; otherwise reuse existing dataset",
     )
     parser.add_argument(
         "--smpl-path",
@@ -123,17 +123,41 @@ def main():
         default=None,
         help="Torch device to use (e.g. 'cuda:0', 'cpu'). Defaults to CUDA if available",
     )
-    parser.add_argument(
-        "--no-export-meshes",
-        action="store_true",
-        help="Disable mesh export (only compute keypoints and SMPL params)",
-    )
+    # Mesh export is always enabled; removing flag to avoid broken behavior without meshes
     parser.add_argument(
         "--detections-field",
         type=str,
         default=None,
         help="Field name containing person detections for multi-person mode. "
         "If not provided, processes images in single-person mode.",
+    )
+    parser.add_argument(
+        "--auto-detect-persons",
+        action="store_true",
+        help="If set and --detections-field is not provided, run a YOLO detector to create person boxes",
+    )
+    parser.add_argument(
+        "--detector-model",
+        type=str,
+        default="yolov8n-coco-torch",
+        help="Zoo model to use for person detection (Ultralytics)",
+    )
+    parser.add_argument(
+        "--detector-confidence",
+        type=float,
+        default=0.25,
+        help="Confidence threshold for detector",
+    )
+    parser.add_argument(
+        "--detector-field",
+        type=str,
+        default="person_dets",
+        help="Label field to store auto-detected person boxes (use 'frames.<name>' for videos)",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug output showing detailed HRM2 and SMPL values for each person",
     )
 
     args = parser.parse_args()
@@ -237,36 +261,10 @@ def main():
                         f"   ✓ Created dataset '{dataset_name}' with {len(dataset)} samples"
                     )
                 else:
-                    print(f"   ⚠ Dataset '{dataset_name}' already exists")
-                    response = (
-                        input(
-                            "   Do you want to (o)verwrite it, (u)se it, or (c)ancel? [o/u/c]: "
-                        )
-                        .lower()
-                        .strip()
+                    dataset = fo.load_dataset(dataset_name)
+                    print(
+                        f"   ✓ Using existing dataset '{dataset_name}' with {len(dataset)} samples"
                     )
-
-                    if response == "o":
-                        print(
-                            f"   Deleting existing dataset '{dataset_name}'..."
-                        )
-                        fo.delete_dataset(dataset_name)
-                        dataset = fo.Dataset.from_dir(
-                            args.images_dir,
-                            dataset_type=fo.types.ImageDirectory,
-                            name=dataset_name,
-                        )
-                        print(
-                            f"   ✓ Created dataset '{dataset_name}' with {len(dataset)} samples"
-                        )
-                    elif response == "u":
-                        dataset = fo.load_dataset(dataset_name)
-                        print(
-                            f"   ✓ Using existing dataset '{dataset_name}' with {len(dataset)} samples"
-                        )
-                    else:
-                        print("   Cancelled by user")
-                        sys.exit(0)
             else:
                 dataset = fo.Dataset.from_dir(
                     args.images_dir,
@@ -283,6 +281,40 @@ def main():
     if dataset is None or len(dataset) == 0:
         print("   ✗ Error: Dataset is empty. No samples to process.")
         sys.exit(1)
+
+    # Optionally auto-detect persons if no detections field was provided
+    if args.detections_field is None and args.auto_detect_persons:
+        try:
+            print(
+                "\n1b. Running person detector (Ultralytics) to create detections..."
+            )
+            extra = {}
+            if args.device:
+                extra["device"] = args.device
+            detector = foz.load_zoo_model(
+                args.detector_model,
+                confidence_thresh=args.detector_confidence,
+                **extra,
+            )
+            det_field = args.detector_field
+            print(f"   Detecting persons into field '{det_field}'...")
+            dataset.apply_model(detector, label_field=det_field)
+
+            # Keep only person detections
+            for sample in dataset:
+                dets = sample[det_field]
+                if dets and getattr(dets, "detections", None):
+                    dets.detections = [
+                        d for d in dets.detections if d.label == "person"
+                    ]
+                    sample[det_field] = dets
+                    sample.save()
+
+            args.detections_field = det_field
+            print("   ✓ Person detections complete")
+        except Exception as e:
+            print(f"   ✗ Failed to run detector: {e}")
+            print("   Proceeding in single-person mode")
 
     # Load HRM2 model
     print(f"\n2. Loading HRM2 model (version {args.checkpoint_version})...")
@@ -301,12 +333,17 @@ def main():
             "hrm2-torch",
             smpl_model_path=args.smpl_path,
             checkpoint_version=args.checkpoint_version,
-            export_meshes=not args.no_export_meshes,
+            export_meshes=True,
             confidence_thresh=args.confidence_thresh,
             detections_field=args.detections_field,
+            debug=args.debug,
             **extra,
         )
         print("   ✓ Model loaded successfully")
+        if args.debug:
+            print(
+                "   ⚠ Debug mode enabled - detailed output will be printed for each person"
+            )
     except Exception as e:
         print(f"   ✗ Failed to load model: {e}")
         try:
