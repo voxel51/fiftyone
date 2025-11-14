@@ -12,6 +12,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import MagicMock, Mock, patch, PropertyMock
+from types import SimpleNamespace
 
 import numpy as np
 from PIL import Image
@@ -252,6 +253,58 @@ class HRM2ConfigTests(HRM2TestBase):
         config = HRM2Config(config_dict)
         self.assertIsNone(config.smpl_model_path)
 
+    def test_hrm2_config_output_processor_args_serializable(self):
+        """Test that config.output_processor_args contains only serializable parameters."""
+        from fiftyone.utils.hrm2 import HRM2Config
+        import json
+
+        config_dict = {
+            "checkpoint_version": "2.0b",
+            "export_meshes": True,
+            "confidence_thresh": 0.5,
+        }
+
+        config = HRM2Config(config_dict)
+
+        # Check that output_processor_args are set correctly
+        self.assertIsNotNone(config.output_processor_args)
+        self.assertIn("export_meshes", config.output_processor_args)
+        self.assertIn("confidence_thresh", config.output_processor_args)
+        self.assertIn("mesh_output_dir", config.output_processor_args)
+
+        # Verify non-serializable args are NOT in config
+        self.assertNotIn("smpl_model", config.output_processor_args)
+        self.assertNotIn("device", config.output_processor_args)
+
+        # Test JSON serialization
+        try:
+            json_str = json.dumps(config.output_processor_args)
+            self.assertIsNotNone(json_str)
+        except Exception as e:
+            self.fail(f"Config args should be JSON-serializable: {e}")
+
+    def test_hrm2_config_output_processor_args_values(self):
+        """Test that output_processor_args are correctly populated from config."""
+        from fiftyone.utils.hrm2 import HRM2Config
+
+        mesh_dir = os.path.join(self.root_dir, "test_meshes")
+        config_dict = {
+            "export_meshes": False,
+            "mesh_output_dir": mesh_dir,
+            "confidence_thresh": 0.7,
+        }
+
+        config = HRM2Config(config_dict)
+
+        # Verify args match config values
+        self.assertEqual(config.output_processor_args["export_meshes"], False)
+        self.assertEqual(
+            config.output_processor_args["mesh_output_dir"], mesh_dir
+        )
+        self.assertEqual(
+            config.output_processor_args["confidence_thresh"], 0.7
+        )
+
 
 class HRM2UtilityTests(unittest.TestCase):
     """Tests for HRM2 utility functions."""
@@ -354,6 +407,93 @@ class HRM2UtilityTests(unittest.TestCase):
         self.assertEqual(result.shape, (1, 3))
         # tz should be positive (depth)
         self.assertGreater(result[0, 2].item(), 0)
+
+
+class HRM2OutputProcessorTests(HRM2TestBase):
+    """Tests for HRM2OutputProcessor class."""
+
+    def test_output_processor_without_smpl(self):
+        """Test that output processor disables mesh export when SMPL is missing."""
+        from fiftyone.utils.hrm2 import HRM2OutputProcessor
+
+        processor = HRM2OutputProcessor(
+            export_meshes=True,
+            mesh_output_dir="/tmp/test_meshes",
+            confidence_thresh=0.5,
+        )
+
+        # Should warn and disable mesh export
+        self.assertFalse(processor.export_meshes)
+        self.assertIsNone(processor._smpl)
+
+    def test_output_processor_with_smpl(self):
+        """Test that output processor keeps mesh export enabled with SMPL model."""
+        import torch
+        from fiftyone.utils.hrm2 import HRM2OutputProcessor
+
+        # Create a mock SMPL model
+        mock_smpl = torch.nn.Linear(1, 1)
+        mock_device = torch.device("cpu")
+
+        processor = HRM2OutputProcessor(
+            smpl_model=mock_smpl,
+            device=mock_device,
+            export_meshes=True,
+            mesh_output_dir="/tmp/test_meshes",
+            confidence_thresh=0.5,
+        )
+
+        # Should keep mesh export enabled
+        self.assertTrue(processor.export_meshes)
+        self.assertIsNotNone(processor._smpl)
+        self.assertEqual(processor._device, mock_device)
+
+    def test_output_processor_resource_injection_workflow(self):
+        """Test the complete workflow of config → runtime resource injection."""
+        import torch
+        import json
+        from fiftyone.utils.hrm2 import HRM2Config, HRM2OutputProcessor
+
+        # Step 1: Create config with serializable args only
+        config_dict = {
+            "checkpoint_version": "2.0b",
+            "export_meshes": True,
+            "confidence_thresh": 0.5,
+        }
+
+        config = HRM2Config(config_dict)
+
+        # Step 2: Verify config args are serializable
+        self.assertIn("export_meshes", config.output_processor_args)
+        self.assertIn("confidence_thresh", config.output_processor_args)
+        self.assertNotIn("smpl_model", config.output_processor_args)
+        self.assertNotIn("device", config.output_processor_args)
+
+        # Step 3: Simulate runtime resource injection
+        processor_args = config.output_processor_args.copy()
+        mock_smpl = torch.nn.Linear(1, 1)
+        mock_device = torch.device("cpu")
+
+        processor_args.update(
+            {
+                "smpl_model": mock_smpl,
+                "device": mock_device,
+            }
+        )
+
+        # Step 4: Create processor with injected resources
+        processor = HRM2OutputProcessor(**processor_args)
+
+        self.assertTrue(processor.export_meshes)
+        self.assertIsNotNone(processor._smpl)
+
+        # Step 5: Cleanup config (simulate what _build_output_processor does)
+        config.output_processor_args.pop("smpl_model", None)
+        config.output_processor_args.pop("device", None)
+
+        # Step 6: Verify config is still serializable
+        json_str = json.dumps(config.output_processor_args)
+        self.assertIsNotNone(json_str)
 
 
 class HRM2ModelTests(HRM2TestBase):
@@ -501,6 +641,128 @@ class HRM2ModelTests(HRM2TestBase):
         self.assertIn("smpl_params", person)
         self.assertIn("keypoints_3d", person)
         self.assertIn("person_id", person)
+
+    def test_inference_single_person_uses_shared_preprocessor(self):
+        """Ensure single-person inference uses shared ViTDet preprocessing."""
+        from fiftyone.utils.hrm2 import HRM2Model
+        from fiftyone.utils.torch import get_target_size
+
+        model = object.__new__(HRM2Model)
+        model.config = SimpleNamespace(debug=False, confidence_thresh=None)
+        model._device = "cpu"
+        model._hmr2 = SimpleNamespace()
+        model._hmr2.cfg = SimpleNamespace(
+            MODEL=SimpleNamespace(
+                IMAGE_SIZE=256,
+                IMAGE_MEAN=[0.485, 0.456, 0.406],
+                IMAGE_STD=[0.229, 0.224, 0.225],
+            ),
+            EXTRA=SimpleNamespace(FOCAL_LENGTH=5000.0),
+        )
+
+        test_img = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        mock_preprocessor = MagicMock()
+        mock_img_tensor = MagicMock(name="img_tensor")
+        box_center = np.array([320.0, 240.0], dtype=np.float32)
+        crop_size = 512.0
+        img_size = np.array([640.0, 480.0], dtype=np.float32)
+        mock_preprocessor.return_value = (
+            mock_img_tensor,
+            box_center,
+            crop_size,
+            img_size,
+        )
+
+        target_h, target_w = get_target_size(model._hmr2.cfg.MODEL.IMAGE_SIZE)
+        expected_focal = (
+            model._hmr2.cfg.EXTRA.FOCAL_LENGTH
+            / max(target_h, target_w)
+            * img_size.max()
+        )
+
+        dummy_cam_t = np.array([0.1, 0.2, 30.0], dtype=np.float32)
+        pred_cam = np.array([2.0, 0.1, 0.2], dtype=np.float32)
+        pred_pose = np.zeros(1, dtype=np.float32)
+        pred_betas = np.zeros(1, dtype=np.float32)
+        pred_global_orient = np.zeros(1, dtype=np.float32)
+        pred_keypoints_3d = np.zeros((1, 3), dtype=np.float32)
+        pred_keypoints_2d = np.zeros((1, 2), dtype=np.float32)
+        dummy_vertices = np.zeros((6890, 3), dtype=np.float32)
+
+        class DummyTensor:
+            def __init__(self, array):
+                self._array = array
+
+            def cpu(self):
+                return self
+
+            def numpy(self):
+                return self._array
+
+        outputs = {"pred_vertices": [DummyTensor(dummy_vertices)]}
+
+        with patch.object(
+            model, "_get_preprocessor", return_value=mock_preprocessor
+        ):
+            with patch.object(
+                model, "_to_numpy", return_value=test_img.copy()
+            ):
+                with patch.object(
+                    model, "_run_inference", return_value=outputs
+                ):
+                    with patch.object(
+                        model,
+                        "_extract_predictions",
+                        return_value=(
+                            pred_cam,
+                            pred_pose,
+                            pred_betas,
+                            pred_global_orient,
+                            pred_keypoints_3d,
+                            pred_keypoints_2d,
+                        ),
+                    ):
+                        with patch(
+                            "fiftyone.utils.hrm2.cam_crop_to_full",
+                            return_value=dummy_cam_t,
+                        ) as mock_cam_full:
+                            with patch.object(
+                                model,
+                                "_build_person_raw",
+                                return_value={"person": 0},
+                            ) as mock_build:
+                                with patch.object(
+                                    model, "_print_debug_output"
+                                ):
+                                    result = model._inference_single_person(
+                                        test_img, 0
+                                    )
+
+        self.assertEqual(mock_preprocessor.call_count, 1)
+        args, kwargs = mock_preprocessor.call_args
+        self.assertEqual(kwargs, {})
+        self.assertEqual(len(args), 1)
+        np.testing.assert_array_equal(args[0], test_img)
+
+        mock_cam_full.assert_called_once()
+        cam_args, cam_kwargs = mock_cam_full.call_args
+        self.assertEqual(len(cam_kwargs), 0)
+        self.assertEqual(len(cam_args), 5)
+        self.assertTrue(np.allclose(cam_args[0], pred_cam))
+        self.assertTrue(np.allclose(cam_args[1], box_center))
+        self.assertAlmostEqual(cam_args[2], crop_size)
+        self.assertTrue(np.allclose(cam_args[3], img_size))
+        self.assertAlmostEqual(cam_args[4], expected_focal)
+
+        self.assertEqual(mock_build.call_count, 1)
+        _, build_kwargs = mock_build.call_args
+        self.assertTrue(
+            np.allclose(build_kwargs["camera_translation"], dummy_cam_t)
+        )
+
+        self.assertEqual(result["img_shape"], (480, 640))
+        self.assertEqual(result["people"], [{"person": 0}])
 
 
 class HRM2DatasetTests(HRM2TestBase):

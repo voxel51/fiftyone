@@ -12,7 +12,10 @@ import tempfile
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 import warnings
+import hashlib
+import uuid
 
+import cv2
 import numpy as np
 from PIL import Image
 
@@ -25,10 +28,23 @@ import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
+from fiftyone.utils.torch import (
+    ensure_rgb_numpy,
+    resize_tensor,
+    normalize_tensor,
+    get_target_size,
+)
 import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torch
+
+try:
+    from skimage.filters import (  # pylint: disable=no-name-in-module
+        gaussian as _skimage_gaussian,
+    )
+except Exception:  # pragma: no cover - dependency optional
+    _skimage_gaussian = None
 
 logger = logging.getLogger(__name__)
 
@@ -361,18 +377,219 @@ def _detections_to_boxes(
     return np.array(boxes)
 
 
+def _expand_to_aspect_ratio(
+    input_shape: Union[np.ndarray, List[float], Tuple[float, float]],
+    target_aspect_ratio: Optional[Tuple[float, float]] = None,
+) -> np.ndarray:
+    if target_aspect_ratio is None:
+        return np.array(input_shape, dtype=np.float32)
+
+    w, h = input_shape
+    target_w, target_h = target_aspect_ratio
+    if h / w < target_h / target_w:
+        h = max(w * target_h / target_w, h)
+    else:
+        w = max(h * target_w / target_h, w)
+    return np.array([w, h], dtype=np.float32)
+
+
+def _gen_trans_from_patch_cv(
+    c_x: float,
+    c_y: float,
+    src_width: float,
+    src_height: float,
+    dst_width: float,
+    dst_height: float,
+    scale: float,
+    rot: float,
+) -> np.ndarray:
+    src_w = src_width * scale
+    src_h = src_height * scale
+
+    rot_rad = np.pi * rot / 180
+    sn, cs = np.sin(rot_rad), np.cos(rot_rad)
+
+    src_center = np.array([c_x, c_y], dtype=np.float32)
+    src_down = np.array([0, src_h * 0.5], dtype=np.float32)
+    src_right = np.array([src_w * 0.5, 0], dtype=np.float32)
+
+    rot_mat = np.array([[cs, -sn], [sn, cs]], dtype=np.float32)
+    src_downdir = rot_mat @ src_down
+    src_rightdir = rot_mat @ src_right
+
+    dst_center = np.array(
+        [dst_width * 0.5, dst_height * 0.5], dtype=np.float32
+    )
+    dst_downdir = np.array([0, dst_height * 0.5], dtype=np.float32)
+    dst_rightdir = np.array([dst_width * 0.5, 0], dtype=np.float32)
+
+    src = np.stack(
+        [src_center, src_center + src_downdir, src_center + src_rightdir]
+    )
+    dst = np.stack(
+        [dst_center, dst_center + dst_downdir, dst_center + dst_rightdir]
+    )
+
+    return cv2.getAffineTransform(
+        src.astype(np.float32), dst.astype(np.float32)
+    )
+
+
+def _generate_image_patch_cv2(
+    img: np.ndarray,
+    c_x: float,
+    c_y: float,
+    bb_width: float,
+    bb_height: float,
+    patch_width: float,
+    patch_height: float,
+    do_flip: bool,
+    scale: float,
+    rot: float,
+    border_mode: int = cv2.BORDER_CONSTANT,
+    border_value: int = 0,
+) -> Tuple[np.ndarray, np.ndarray]:
+    if do_flip:
+        img = img[:, ::-1, :]
+        c_x = img.shape[1] - c_x - 1
+
+    trans = _gen_trans_from_patch_cv(
+        c_x, c_y, bb_width, bb_height, patch_width, patch_height, scale, rot
+    )
+    img_patch = cv2.warpAffine(
+        img,
+        trans,
+        (int(patch_width), int(patch_height)),
+        flags=cv2.INTER_LINEAR,
+        borderMode=border_mode,
+        borderValue=border_value,
+    )
+    return img_patch, trans
+
+
+def _convert_cvimg_to_tensor(cvimg: np.ndarray) -> np.ndarray:
+    img = cvimg.transpose(2, 0, 1).astype(np.float32)
+    return img
+
+
+def _apply_antialias(
+    img: np.ndarray, downsampling_factor: float
+) -> np.ndarray:
+    if downsampling_factor <= 1.1:
+        return img
+
+    sigma = max((downsampling_factor - 1.0) / 2.0, 0.0)
+    if sigma <= 0:
+        return img
+
+    if _skimage_gaussian is not None:
+        return _skimage_gaussian(
+            img, sigma=sigma, channel_axis=2, preserve_range=True
+        ).astype(img.dtype)
+
+    # Fallback to OpenCV Gaussian blur with an approximate kernel
+    kernel = int(max(3, 2 * round(sigma * 3) + 1))
+    return cv2.GaussianBlur(img, (kernel, kernel), sigmaX=sigma, sigmaY=sigma)
+
+
+class _HRM2CropHelper:
+    """Reimplements the 4D-Humans ViTDet cropping pipeline.
+
+    The helper mirrors the preprocessing performed by
+    ``hmr2.datasets.vitdet_dataset.ViTDetDataset`` so that both the
+    detection-driven and single-image paths feed the HRM2 network crops that
+    match the training distribution. It handles aspect-ratio expansion,
+    optional anti-alias filtering, affine warping, and 0-255 mean/std
+    normalization, and returns the canonical metadata required by
+    ``cam_crop_to_full``.
+    """
+
+    def __init__(self, cfg):
+        image_size = getattr(cfg.MODEL, "IMAGE_SIZE", 256)
+        target_h, target_w = get_target_size(image_size)
+        self.patch_height = target_h
+        self.patch_width = target_w
+        self.mean = 255.0 * np.array(cfg.MODEL.IMAGE_MEAN, dtype=np.float32)
+        self.std = 255.0 * np.array(cfg.MODEL.IMAGE_STD, dtype=np.float32)
+        self.bbox_shape = getattr(cfg.MODEL, "BBOX_SHAPE", None)
+
+    def __call__(
+        self, img: np.ndarray, bbox: Optional[np.ndarray] = None
+    ) -> Tuple[torch.Tensor, np.ndarray, float, np.ndarray]:
+        if bbox is None:
+            bbox = np.array(
+                [0.0, 0.0, float(img.shape[1]), float(img.shape[0])],
+                dtype=np.float32,
+            )
+        else:
+            bbox = np.array(bbox, dtype=np.float32)
+
+        # Convert RGB -> BGR for OpenCV parity with upstream pipeline
+        img_cv2 = img[:, :, ::-1].copy()
+
+        center = (bbox[2:4] + bbox[0:2]) / 2.0
+        wh = bbox[2:4] - bbox[0:2]
+        if self.bbox_shape is not None:
+            wh = _expand_to_aspect_ratio(wh, self.bbox_shape)
+        bbox_size = float(max(wh[0], wh[1]))
+
+        downsampling_factor = (
+            bbox_size / max(self.patch_height, self.patch_width)
+        ) / 2.0
+        img_cv2 = _apply_antialias(img_cv2, downsampling_factor)
+
+        patch, _ = _generate_image_patch_cv2(
+            img_cv2,
+            center[0],
+            center[1],
+            bbox_size,
+            bbox_size,
+            self.patch_width,
+            self.patch_height,
+            False,
+            1.0,
+            0,
+        )
+        patch = patch[:, :, ::-1]  # back to RGB
+        img_tensor = _convert_cvimg_to_tensor(patch)
+
+        for c in range(min(img_tensor.shape[0], len(self.mean))):
+            img_tensor[c] = (img_tensor[c] - self.mean[c]) / self.std[c]
+
+        img_tensor = torch.from_numpy(img_tensor).float()
+        img_size = np.array(
+            [float(img.shape[1]), float(img.shape[0])], dtype=np.float32
+        )
+        return img_tensor, center.astype(np.float32), bbox_size, img_size
+
+
 class HRM2OutputProcessor(fout.OutputProcessor):
     """Converts HRM2 raw outputs to FiftyOne HumanPose3D labels.
 
     This processor handles all postprocessing logic including tensor-to-Python
     conversion, mesh generation, and label creation.
 
+    **Resource Requirements:**
+    - If ``export_meshes=True``, requires ``smpl_model`` and ``device`` to be provided
+    - These resources are injected at runtime by HRM2Model._build_output_processor()
+    - Config parameters (export_meshes, mesh_output_dir) are set in HRM2Config
+
+    **Postprocessing Pipeline:**
+    1. Convert raw tensors to Python types (_process_person)
+    2. Generate 3D meshes using SMPL model (_generate_scene)
+    3. Create .fo3d scene files with camera setup
+    4. Return HumanPose3D labels with scene_path
+
     Args:
-        smpl_model (None): Optional SMPL model for mesh generation
-        export_meshes (True): whether to generate 3D mesh files
-        mesh_output_dir (None): directory for mesh output
-        confidence_thresh (None): minimum confidence threshold
-        device (None): device for SMPL model operations
+        smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh generation.
+            Required if export_meshes=True
+        export_meshes (True): whether to generate 3D mesh files. If True, requires
+            smpl_model and device
+        mesh_output_dir (None): directory for mesh output. If None, uses
+            FiftyOne's model zoo directory
+        confidence_thresh (None): minimum confidence threshold for filtering
+        device (None): torch.device for SMPL model operations. Required if
+            export_meshes=True
     """
 
     def __init__(
@@ -395,8 +612,30 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             )
         # Ensure directory exists
         etau.ensure_dir(self.mesh_output_dir)
+        # Create a per-run subdirectory to avoid collisions across runs/batches
+        self._run_dir = os.path.join(
+            self.mesh_output_dir, f"run_{uuid.uuid4().hex[:8]}"
+        )
+        etau.ensure_dir(self._run_dir)
         self.confidence_thresh = confidence_thresh
         self._device = device
+        # Fallback counter for UIDs when filepath is not available
+        self._uid_counter = 0
+
+        # Validate resource requirements
+        if self.export_meshes and self._smpl is None:
+            logger.warning(
+                "export_meshes=True but no SMPL model provided. "
+                "3D mesh generation will be disabled. "
+                "To enable mesh export, provide smpl_model_path in HRM2Config."
+            )
+            self.export_meshes = False
+
+        if self.export_meshes and self._device is None:
+            logger.warning(
+                "export_meshes=True but no device provided. "
+                "This may cause issues during mesh generation."
+            )
 
     def __call__(
         self,
@@ -429,8 +668,17 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             # Generate scene if enabled
             scene_path = None
             if self._smpl is not None and self.export_meshes and people_data:
+                # Compute a stable UID for this sample from its filepath
+                filepath = output.get("filepath")
+                if filepath:
+                    uid = hashlib.sha1(filepath.encode("utf-8")).hexdigest()[
+                        :10
+                    ]
+                else:
+                    self._uid_counter += 1
+                    uid = f"idx{self._uid_counter:06d}"
                 scene_path = self._generate_scene(
-                    people_data, idx, output.get("img_shape")
+                    people_data, uid, output.get("img_shape")
                 )
 
             # Create label with scene_path
@@ -473,6 +721,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             },
             "keypoints_3d": to_list(person_raw["pred_keypoints_3d"]),
             "keypoints_2d": to_list(person_raw.get("pred_keypoints_2d")),
+            "vertices": to_list(person_raw.get("pred_vertices")),
             "bbox": person_raw.get("bbox"),
             "person_id": person_raw["person_id"],
         }
@@ -491,14 +740,14 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     def _generate_scene(
         self,
         people_data: List[Dict],
-        idx: int,
+        uid: str,
         img_shape: Optional[Tuple[int, int]] = None,
     ) -> Optional[str]:
         """Generate 3D scene with multiple person meshes and optimal camera.
 
         Args:
             people_data: list of person detection dictionaries (processed)
-            idx: image index for file naming
+            uid: unique identifier for the sample for file naming
             img_shape: optional (height, width) for camera setup
 
         Returns:
@@ -514,39 +763,22 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         mesh_objects = []
         for person in people_data:
             person_id = person["person_id"]
-            smpl_params = person["smpl_params"]
 
-            # Extract SMPL parameters from lists
-            body_pose = np.array(smpl_params["body_pose"])
-            betas = np.array(smpl_params["betas"])
-            global_orient = np.array(smpl_params["global_orient"])
-
-            # Run SMPL forward pass
-            body_pose_torch = (
-                torch.from_numpy(body_pose)
-                .unsqueeze(0)
-                .float()
-                .to(self._device)
-            )
-            betas_torch = (
-                torch.from_numpy(betas).unsqueeze(0).float().to(self._device)
-            )
-            global_orient_torch = (
-                torch.from_numpy(global_orient)
-                .unsqueeze(0)
-                .float()
-                .to(self._device)
-            )
-
-            output = self._smpl(
-                betas=betas_torch,
-                body_pose=body_pose_torch,
-                global_orient=global_orient_torch,
-                pose2rot=False,
-            )
-
-            vertices = output.vertices.detach().cpu().numpy()[0]
+            # Get vertices from HMR2 output (already computed)
+            vertices = np.array(person["vertices"])
             faces = self._smpl.faces
+
+            # Translate into camera frame before applying coordinate system flip
+            if (
+                "camera_translation" in person
+                and person["camera_translation"] is not None
+            ):
+                cam_t = np.array(person["camera_translation"])
+                vertices = vertices + cam_t
+            else:
+                logger.warning(
+                    "Camera translation not found for person %s", person_id
+                )
 
             # **CRITICAL: Apply 180° rotation around X-axis to fix coordinate system**
             # This converts from SMPL coordinates (Y-up) to rendering coordinates (Y-down)
@@ -558,14 +790,6 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             )
             vertices = (rot_matrix @ vertices_homogeneous.T).T[:, :3]
 
-            # Apply camera translation if available (multi-person mode)
-            if (
-                "camera_translation" in person
-                and person["camera_translation"] is not None
-            ):
-                cam_t = np.array(person["camera_translation"])
-                vertices = vertices + cam_t
-
             # Track vertices for bounding box
             all_vertices.append(vertices)
 
@@ -573,14 +797,14 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
 
             # Save as OBJ
-            mesh_filename = f"human_mesh_{idx}_person_{person_id}.obj"
-            mesh_path = os.path.join(self.mesh_output_dir, mesh_filename)
+            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
+            mesh_path = os.path.join(self._run_dir, mesh_filename)
             mesh.export(mesh_path)
 
             # Store mesh object for later
             mesh_objects.append(
                 ObjMesh(
-                    name=f"human_{idx}_person_{person_id}", obj_path=mesh_path
+                    name=f"human_{uid}_person_{person_id}", obj_path=mesh_path
                 )
             )
 
@@ -631,8 +855,8 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             scene.add(mesh_obj)
 
         # Save scene
-        scene_filename = f"human_scene_{idx}.fo3d"
-        scene_path = os.path.join(self.mesh_output_dir, scene_filename)
+        scene_filename = f"human_scene_{uid}.fo3d"
+        scene_path = os.path.join(self._run_dir, scene_filename)
         scene.write(scene_path)
 
         return scene_path
@@ -865,6 +1089,9 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "detections_field", default=None
         )
 
+        # Debug mode for detailed output
+        self.debug = self.parse_bool(d, "debug", default=False)
+
         # Set up HRM2 model entrypoint if not already configured
         if d.get("entrypoint_fcn") is None:
             d["entrypoint_fcn"] = load_hrm2_model
@@ -889,12 +1116,24 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         # Enable ragged batches for heterogeneous data from GetItem
         d["ragged_batches"] = True
 
-        # Configure output processor
+        # Configure output processor class and arguments
+        # Following TorchImageModel pattern: config owns serializable args,
+        # runtime resources (smpl_model, device) are injected in _build_output_processor()
         if d.get("output_processor_cls") is None:
             d["output_processor_cls"] = HRM2OutputProcessor
 
         if d.get("output_processor_args") is None:
             d["output_processor_args"] = {}
+
+        # Set serializable output processor arguments from config
+        # Note: runtime resources (smpl_model, device) will be injected later
+        d["output_processor_args"].update(
+            {
+                "export_meshes": self.export_meshes,
+                "mesh_output_dir": self.mesh_output_dir,
+                "confidence_thresh": d.get("confidence_thresh"),
+            }
+        )
 
         super().__init__(d)
 
@@ -938,6 +1177,7 @@ class HRM2Model(
         # Set instance attributes BEFORE parent init (which calls _load_model)
         self._hmr2: Optional[Any] = None
         self._smpl: Optional[Any] = None
+        self._preprocessor: Optional[_HRM2CropHelper] = None
         self._mesh_output_dir: str = config.mesh_output_dir
         if self._mesh_output_dir is None:
             # Use FiftyOne's model zoo directory for persistent storage
@@ -963,11 +1203,21 @@ class HRM2Model(
         # The checkpoint paths are resolved in the load_hrm2_model() entrypoint function
 
     def _load_model(self, config: HRM2Config) -> Any:
-        """Load the HRM2 model and SMPL body model."""
+        """Load the HRM2 model and SMPL body model.
+
+        **Loading Order (Critical for Output Processor Pattern):**
+        1. Load HRM2 model via parent's entrypoint
+        2. Load SMPL model (runtime resource needed by output processor)
+        3. Build output processor and inject SMPL model + device
+
+        This order allows the output processor to receive runtime resources
+        (SMPL model, device) that can't be serialized in the config.
+        """
         # Load HRM2 model using parent's entrypoint mechanism
         self._hmr2 = super()._load_model(config)
 
         # Load SMPL model separately if configured
+        # This is a runtime resource that will be injected into the output processor
         if config.smpl_model_path:
             self._smpl = load_smpl_model(
                 smpl_model_path=config.smpl_model_path,
@@ -986,37 +1236,70 @@ class HRM2Model(
                 "available. Please provide smpl_model_path in config."
             )
 
-        # Build output processor AFTER SMPL is loaded
+        # Build output processor AFTER loading all resources
+        # This allows _build_output_processor() to inject runtime resources
+        # (self._smpl, self._device) into the processor
         self._output_processor = self._build_output_processor()
 
         return self._hmr2
 
     def _build_output_processor(self, config=None):
-        """Build the output processor with SMPL model and mesh settings.
+        """Build the output processor with runtime resource injection.
+
+        Following the Ultralytics pattern (see ultralytics.py:577-586), this method:
+        1. Starts with config.output_processor_args (set in HRM2Config.__init__)
+        2. Injects runtime resources that can't be serialized (SMPL model, device)
+        3. Builds the processor
+        4. Cleans up non-serializable objects from config (for JSON export)
+
+        This separation allows:
+        - Config to be serialized to JSON
+        - Runtime resources to be passed to processor
+        - Clean separation of concerns
 
         Args:
             config: optional config (parent class passes this, but we use self.config)
         """
-        if self.config.output_processor_cls is None:
+        if config is None:
+            config = self.config
+
+        if config.output_processor_cls is None:
             return None
 
-        # Prepare args for processor
-        args = (
-            self.config.output_processor_args.copy()
-            if self.config.output_processor_args
-            else {}
-        )
+        # Start with config's output_processor_args (already set in HRM2Config.__init__)
+        # These are serializable parameters: export_meshes, mesh_output_dir, confidence_thresh
+        if not config.output_processor_args:
+            config.output_processor_args = {}
+
+        args = config.output_processor_args.copy()
+
+        # Inject runtime resources that couldn't be in config
+        # (These are non-serializable: loaded model objects, device objects)
         args.update(
             {
-                "smpl_model": self._smpl,  # Pass loaded SMPL model
-                "export_meshes": self.config.export_meshes,
-                "mesh_output_dir": self._mesh_output_dir,
-                "confidence_thresh": self.config.confidence_thresh,
-                "device": self._device,
+                "smpl_model": self._smpl,  # Loaded SMPL model (torch.nn.Module)
+                "device": self._device,  # torch.device object
             }
         )
 
-        return self.config.output_processor_cls(**args)
+        # Build processor using parent's class resolution logic
+        output_processor_cls = config.output_processor_cls
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
+        # Pass classes if available (may not be set yet during _load_model)
+        # The parent will call this again after setting _classes
+        processor = output_processor_cls(
+            classes=getattr(self, "_classes", None), **args
+        )
+
+        # Clean up non-serializable objects from config for JSON export
+        # (Following Ultralytics pattern)
+        if config.output_processor_args:
+            config.output_processor_args.pop("smpl_model", None)
+            config.output_processor_args.pop("device", None)
+
+        return processor
 
     def build_get_item(
         self, field_mapping: Optional[Dict[str, str]] = None
@@ -1129,6 +1412,15 @@ class HRM2Model(
 
         return field_name
 
+    def _get_preprocessor(self) -> _HRM2CropHelper:
+        if self._hmr2 is None:
+            raise RuntimeError(
+                "HRM2 model must be loaded before preprocessing images"
+            )
+        if self._preprocessor is None:
+            self._preprocessor = _HRM2CropHelper(self._hmr2.cfg)
+        return self._preprocessor
+
     def _predict_all(
         self, batch_data: List[Dict[str, Any]]
     ) -> List["HumanPose3D"]:
@@ -1192,6 +1484,9 @@ class HRM2Model(
             else:
                 output = self._inference_single_person(img, idx)
 
+            # Carry filepath through for UID generation in output processor
+            output["filepath"] = data.get("filepath")
+
             raw_outputs.append(output)
 
         return raw_outputs
@@ -1206,71 +1501,6 @@ class HRM2Model(
             numpy array in HWC uint8 format
         """
         return fout.to_numpy_image(img)
-
-    def _ensure_rgb_numpy(self, img_np: np.ndarray) -> np.ndarray:
-        """Ensure numpy image is in RGB format (HWC uint8).
-
-        Handles grayscale, single-channel, and RGBA inputs by converting
-        to 3-channel RGB format.
-
-        Args:
-            img_np: numpy array (HWC uint8)
-
-        Returns:
-            numpy array in RGB format (HWC uint8, 3 channels)
-        """
-        if img_np.ndim == 2:
-            return np.repeat(img_np[..., None], 3, axis=2)
-        elif img_np.shape[2] == 1:
-            return np.repeat(img_np, 3, axis=2)
-        elif img_np.shape[2] == 4:
-            return img_np[..., :3]
-        return img_np
-
-    def _get_target_size(self) -> Tuple[int, int]:
-        """Get target image size (height, width) from model config.
-
-        Returns:
-            tuple of (height, width) for model input
-        """
-        target_hw = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
-        if isinstance(target_hw, (list, tuple)):
-            return int(target_hw[1]), int(target_hw[0])
-        else:
-            return int(target_hw), int(target_hw)
-
-    def _normalize_tensor(self, img_t: torch.Tensor) -> torch.Tensor:
-        """Normalize tensor using model's mean and std.
-
-        Args:
-            img_t: input tensor (CHW, float, range [0, 1])
-
-        Returns:
-            normalized tensor (CHW, float, normalized)
-        """
-        mean = torch.tensor(self._hmr2.cfg.MODEL.IMAGE_MEAN, dtype=img_t.dtype)
-        std = torch.tensor(self._hmr2.cfg.MODEL.IMAGE_STD, dtype=img_t.dtype)
-        return (img_t - mean.view(3, 1, 1)) / std.view(3, 1, 1)
-
-    def _resize_tensor(
-        self, img_t: torch.Tensor, target_h: int, target_w: int
-    ) -> torch.Tensor:
-        """Resize tensor to target dimensions using bilinear interpolation.
-
-        Args:
-            img_t: input tensor (CHW, float)
-            target_h: target height
-            target_w: target width
-
-        Returns:
-            resized tensor (CHW, float)
-        """
-        return torch.nn.functional.interpolate(
-            img_t.unsqueeze(0),
-            size=(target_h, target_w),
-            mode="bilinear",
-            align_corners=False,
-        )[0]
 
     def _run_inference(self, img_t: torch.Tensor) -> Dict[str, Any]:
         """Run HMR2 inference on preprocessed tensor.
@@ -1333,6 +1563,7 @@ class HRM2Model(
         pred_global_orient: np.ndarray,
         pred_keypoints_3d: np.ndarray,
         pred_keypoints_2d: Optional[np.ndarray],
+        pred_vertices: np.ndarray,
         person_id: int = 0,
         bbox: Optional[List[float]] = None,
         camera_translation: Optional[np.ndarray] = None,
@@ -1349,6 +1580,7 @@ class HRM2Model(
             pred_global_orient: SMPL global orientation
             pred_keypoints_3d: 3D keypoint locations
             pred_keypoints_2d: optional 2D keypoint locations
+            pred_vertices: 3D mesh vertices from HMR2
             person_id: person identifier
             bbox: optional bounding box [x1, y1, x2, y2]
             camera_translation: optional camera translation [tx, ty, tz]
@@ -1379,6 +1611,9 @@ class HRM2Model(
             if pred_keypoints_2d is not None
             and isinstance(pred_keypoints_2d, np.ndarray)
             else pred_keypoints_2d,
+            "pred_vertices": torch.from_numpy(pred_vertices).cpu()
+            if isinstance(pred_vertices, np.ndarray)
+            else pred_vertices,
             "bbox": bbox,
             "person_id": person_id,
         }
@@ -1391,62 +1626,6 @@ class HRM2Model(
             )
 
         return person_dict
-
-    def _convert_to_tensor_chw(
-        self, img: Union[Image.Image, np.ndarray, torch.Tensor]
-    ) -> torch.Tensor:
-        """Convert various image formats to CHW tensor in [0, 1] range.
-
-        Handles PIL Images, numpy arrays (HWC/CHW), and torch tensors.
-        Automatically converts grayscale to RGB and strips alpha channels.
-
-        Args:
-            img: input image in various formats
-
-        Returns:
-            torch.Tensor in CHW format, float, range [0, 1], 3 channels
-        """
-        # Convert PIL to numpy first
-        if isinstance(img, Image.Image):
-            img = np.array(img)
-
-        if isinstance(img, np.ndarray):
-            # Ensure HWC uint8, strip alpha channel if present
-            if img.ndim == 2:
-                img = np.repeat(img[..., None], 3, axis=2)
-            elif img.ndim == 3 and img.shape[2] == 1:
-                img = np.repeat(img, 3, axis=2)
-            elif img.ndim == 3 and img.shape[2] == 4:
-                # Strip alpha channel (RGBA -> RGB)
-                img = img[..., :3]
-            elif img.ndim == 3 and img.shape[2] == 3:
-                pass  # Already RGB
-            else:
-                logger.warning(
-                    f"Unexpected numpy array shape: {img.shape}, attempting to use as-is"
-                )
-            img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
-        elif isinstance(img, torch.Tensor):
-            if img.ndim == 3 and img.shape[0] in (1, 3, 4):
-                img_t = img.float().clone()
-            elif img.ndim == 3 and img.shape[2] in (1, 3, 4):
-                img_t = img.permute(2, 0, 1).float().clone()
-            else:
-                # Assume already CHW float
-                img_t = img.float().clone()
-            # Handle different channel counts
-            if img_t.shape[0] == 1:
-                img_t = img_t.repeat(3, 1, 1)
-            elif img_t.shape[0] == 4:
-                # Strip alpha channel (RGBA -> RGB)
-                img_t = img_t[:3, :, :]
-        else:
-            raise ValueError(
-                f"Unsupported image type for HRM2 preprocessing: {type(img)}. "
-                f"Expected PIL.Image, np.ndarray, or torch.Tensor"
-            )
-
-        return img_t
 
     def _inference_with_detections(self, img, detections, global_idx):
         """Run inference using provided detections (multi-person mode).
@@ -1461,7 +1640,7 @@ class HRM2Model(
         """
         # Convert to numpy and ensure RGB
         img_np = fout.to_numpy_image(img)
-        img_np = self._ensure_rgb_numpy(img_np)
+        img_np = ensure_rgb_numpy(img_np)
 
         # Convert detections to boxes
         boxes = _detections_to_boxes(detections, img_np)
@@ -1498,21 +1677,11 @@ class HRM2Model(
             person detection dict with raw tensors
         """
         x1, y1, x2, y2 = box
-        w, h = x2 - x1, y2 - y1
 
-        # Compute box center and expanded size
-        cx, cy = (x1 + x2) / 2.0, (y1 + y2) / 2.0
-        box_size = max(w, h) * 1.2  # 1.2 scale for context
-
-        # Compute crop bounds (clamped to image)
-        x1_crop = int(max(0, cx - box_size / 2))
-        y1_crop = int(max(0, cy - box_size / 2))
-        x2_crop = int(min(img_np.shape[1], cx + box_size / 2))
-        y2_crop = int(min(img_np.shape[0], cy + box_size / 2))
-
-        # Crop and preprocess
-        img_crop = img_np[y1_crop:y2_crop, x1_crop:x2_crop]
-        img_crop_t = self._preprocess_image(img_crop)
+        preprocessor = self._get_preprocessor()
+        img_crop_t, box_center, crop_size, img_size = preprocessor(
+            img_np, np.array([x1, y1, x2, y2], dtype=np.float32)
+        )
 
         # Run inference
         outputs = self._run_inference(img_crop_t)
@@ -1527,17 +1696,31 @@ class HRM2Model(
             pred_keypoints_2d,
         ) = self._extract_predictions(outputs)
 
-        # Transform camera from crop to full image space
-        img_size = np.array([img_np.shape[1], img_np.shape[0]])
-        box_center = np.array([cx, cy])
+        # Extract vertices from outputs
+        pred_vertices = outputs["pred_vertices"][0].cpu().numpy()
 
-        target_size = max(self._get_target_size())  # Get max of (h, w)
+        # Transform camera from crop to full image space
+        image_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
+        target_h, target_w = get_target_size(image_size)
+        target_size = max(target_h, target_w)  # Get max of (h, w)
         focal_length = (
             self._hmr2.cfg.EXTRA.FOCAL_LENGTH / target_size * img_size.max()
         )
 
         cam_t_full = cam_crop_to_full(
-            pred_cam, box_center, box_size, img_size, focal_length
+            pred_cam, box_center, crop_size, img_size, focal_length
+        )
+
+        # Print debug output if enabled
+        self._print_debug_output(
+            outputs,
+            person_idx,
+            pred_cam,
+            pred_cam_t_full=cam_t_full,
+            img_shape=(img_np.shape[0], img_np.shape[1]),
+            box_center=box_center,
+            box_size=crop_size,
+            focal_length=focal_length,
         )
 
         # Build raw person data (tensors on CPU)
@@ -1548,6 +1731,7 @@ class HRM2Model(
             pred_global_orient,
             pred_keypoints_3d,
             pred_keypoints_2d,
+            pred_vertices,
             person_id=person_idx,
             bbox=[float(x1), float(y1), float(x2), float(y2)],
             camera_translation=cam_t_full,
@@ -1567,20 +1751,17 @@ class HRM2Model(
         Returns:
             raw output dict with single person in 'people' list and 'img_shape'
         """
-        # Convert to CHW tensor
-        img_t = self._convert_to_tensor_chw(img)
+        # Convert to numpy and ensure RGB ordering
+        img_np = self._to_numpy(img)
+        img_np = ensure_rgb_numpy(img_np)
+        img_shape = (img_np.shape[0], img_np.shape[1])  # (height, width)
 
-        # Get image shape before resizing
-        img_shape = (img_t.shape[1], img_t.shape[2])  # (height, width)
-
-        # Resize and normalize
-        target_h, target_w = self._get_target_size()
-        img_t = self._resize_tensor(img_t, target_h, target_w)
-        img_t = self._normalize_tensor(img_t)
-        img_t = img_t.to(self._device)
+        # Use shared preprocessor to mirror ViTDet cropping pipeline
+        preprocessor = self._get_preprocessor()
+        img_crop_t, box_center, crop_size, img_size = preprocessor(img_np)
 
         # Run inference
-        outputs = self._run_inference(img_t)
+        outputs = self._run_inference(img_crop_t)
 
         # Extract predictions
         (
@@ -1592,6 +1773,32 @@ class HRM2Model(
             pred_keypoints_2d,
         ) = self._extract_predictions(outputs)
 
+        # Extract vertices from outputs
+        pred_vertices = outputs["pred_vertices"][0].cpu().numpy()
+
+        # Project camera parameters to full image coordinates
+        image_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
+        target_h, target_w = get_target_size(image_size)
+        target_size = max(target_h, target_w)
+        focal_length = (
+            self._hmr2.cfg.EXTRA.FOCAL_LENGTH / target_size * img_size.max()
+        )
+        cam_t_full = cam_crop_to_full(
+            pred_cam, box_center, crop_size, img_size, focal_length
+        )
+
+        # Print debug output if enabled
+        self._print_debug_output(
+            outputs,
+            0,  # person_id
+            pred_cam,
+            pred_cam_t_full=cam_t_full,
+            img_shape=img_shape,
+            box_center=box_center,
+            box_size=crop_size,
+            focal_length=focal_length,
+        )
+
         # Build raw person data
         person_data = self._build_person_raw(
             pred_cam,
@@ -1600,9 +1807,10 @@ class HRM2Model(
             pred_global_orient,
             pred_keypoints_3d,
             pred_keypoints_2d,
+            pred_vertices,
             person_id=0,
             bbox=None,
-            camera_translation=None,
+            camera_translation=cam_t_full,
         )
 
         return {"people": [person_data], "img_shape": img_shape}
@@ -1620,13 +1828,140 @@ class HRM2Model(
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
 
         # Resize
-        target_h, target_w = self._get_target_size()
-        img_t = self._resize_tensor(img_t, target_h, target_w)
+        target_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
+        target_h, target_w = get_target_size(target_size)
+        img_t = resize_tensor(img_t, target_h, target_w)
 
         # Normalize
-        img_t = self._normalize_tensor(img_t)
+        mean = self._hmr2.cfg.MODEL.IMAGE_MEAN
+        std = self._hmr2.cfg.MODEL.IMAGE_STD
+        img_t = normalize_tensor(img_t, mean, std)
 
         return img_t
+
+    def _print_debug_output(
+        self,
+        outputs: Dict[str, Any],
+        person_id: int,
+        pred_cam: np.ndarray,
+        pred_cam_t_full: Optional[np.ndarray] = None,
+        img_shape: Optional[Tuple[int, int]] = None,
+        box_center: Optional[np.ndarray] = None,
+        box_size: Optional[float] = None,
+        focal_length: Optional[float] = None,
+    ):
+        """Print debug output matching 4D-Humans demo.py format.
+
+        Args:
+            outputs: raw model outputs
+            person_id: person identifier
+            pred_cam: camera parameters [s, tx, ty]
+            pred_cam_t_full: camera translation in full image space [tx, ty, tz]
+            img_shape: (height, width) of the image
+            box_center: bounding box center [cx, cy]
+            box_size: bounding box size
+            focal_length: camera focal length
+        """
+        if not self.config.debug:
+            return
+
+        print(f"\n{'-'*80}")
+        print(f"[PERSON {person_id}] HMR2 and SMPL Output Values")
+        print(f"{'-'*80}")
+
+        # Camera parameters - crop
+        print(f"\n[CAMERA PARAMETERS - CROP]")
+        print(f"  pred_cam (s, tx, ty): {pred_cam}")
+        print(
+            f"  pred_cam shape: {pred_cam.shape if hasattr(pred_cam, 'shape') else 'N/A'}"
+        )
+
+        # Camera parameters - full image
+        if pred_cam_t_full is not None:
+            print(f"\n[CAMERA PARAMETERS - FULL IMAGE]")
+            print(f"  pred_cam_t_full (tx, ty, tz): {pred_cam_t_full}")
+            if "pred_cam_t" in outputs:
+                pred_cam_t = outputs["pred_cam_t"][0].detach().cpu().numpy()
+                print(f"  pred_cam_t (tx, ty, tz): {pred_cam_t}")
+
+        # Additional camera info
+        if img_shape is not None:
+            print(f"\n[IMAGE AND DETECTION INFO]")
+            print(f"  Image size (h, w): {img_shape}")
+            if box_center is not None:
+                print(f"  Box center (cx, cy): {box_center}")
+            if box_size is not None:
+                print(f"  Box size: {box_size}")
+            if focal_length is not None:
+                print(f"  Focal length: {focal_length}")
+
+        # SMPL parameters
+        if "pred_smpl_params" in outputs:
+            smpl_params = outputs["pred_smpl_params"]
+            print(f"\n[SMPL PARAMETERS]")
+            if "body_pose" in smpl_params:
+                body_pose = smpl_params["body_pose"][0].detach().cpu().numpy()
+                print(f"  Body pose shape: {body_pose.shape}")
+                print(
+                    f"  Body pose (first 10 values): {body_pose.flatten()[:10]}"
+                )
+            if "betas" in smpl_params:
+                betas = smpl_params["betas"][0].detach().cpu().numpy()
+                print(f"  Shape parameters (betas): {betas}")
+                print(f"  Betas shape: {betas.shape}")
+            if "global_orient" in smpl_params:
+                global_orient = (
+                    smpl_params["global_orient"][0].detach().cpu().numpy()
+                )
+                print(f"  Global orientation: {global_orient}")
+                print(f"  Global orient shape: {global_orient.shape}")
+
+        # Vertices
+        if "pred_vertices" in outputs:
+            vertices = outputs["pred_vertices"][0].detach().cpu().numpy()
+            print(f"\n[3D MESH VERTICES]")
+            print(f"  Vertices shape: {vertices.shape}")
+            print(f"  Number of vertices: {len(vertices)}")
+            print(f"  Vertices min: {vertices.min(axis=0)}")
+            print(f"  Vertices max: {vertices.max(axis=0)}")
+            print(f"  Vertices mean: {vertices.mean(axis=0)}")
+            print(f"  First 5 vertices:\n{vertices[:5]}")
+
+        # Keypoints/Joints
+        if "pred_keypoints_3d" in outputs:
+            keypoints = outputs["pred_keypoints_3d"][0].detach().cpu().numpy()
+            print(f"\n[3D KEYPOINTS/JOINTS]")
+            print(f"  Keypoints shape: {keypoints.shape}")
+            print(f"  Number of keypoints: {len(keypoints)}")
+            print(f"  Keypoints:\n{keypoints}")
+
+        # 2D keypoints
+        if "pred_keypoints_2d" in outputs:
+            keypoints_2d = (
+                outputs["pred_keypoints_2d"][0].detach().cpu().numpy()
+            )
+            print(f"\n[2D KEYPOINTS]")
+            print(f"  2D Keypoints shape: {keypoints_2d.shape}")
+            print(f"  2D Keypoints (first 5):\n{keypoints_2d[:5]}")
+
+        # Additional outputs
+        print(f"\n[ADDITIONAL OUTPUTS]")
+        for key in outputs.keys():
+            if key not in [
+                "pred_cam",
+                "pred_cam_t",
+                "pred_vertices",
+                "pred_smpl_params",
+                "pred_keypoints_3d",
+                "pred_keypoints_2d",
+            ]:
+                try:
+                    value = outputs[key][0].detach().cpu().numpy()
+                    print(f"  {key} shape: {value.shape}")
+                    if value.size <= 20:
+                        print(f"  {key}: {value}")
+                except Exception:
+                    pass
 
     def apply_to_dataset_as_groups(
         self,
