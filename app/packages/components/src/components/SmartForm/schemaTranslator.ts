@@ -230,7 +230,9 @@ function translateToUISchema(
       };
       addWarning(
         context,
-        `${component} mapped to textarea at: ${context.path.join(".")}. Consider custom widget for syntax highlighting.`
+        `${component} mapped to textarea at: ${context.path.join(
+          "."
+        )}. Consider custom widget for syntax highlighting.`
       );
       break;
 
@@ -238,7 +240,9 @@ function translateToUISchema(
       uiSchema["ui:widget"] = "file";
       addWarning(
         context,
-        `FileView may require custom widget configuration at: ${context.path.join(".")}`
+        `FileView may require custom widget configuration at: ${context.path.join(
+          "."
+        )}`
       );
       break;
 
@@ -323,7 +327,9 @@ function translateToUISchema(
       // These are custom SchemaIO components without direct RJSF equivalents
       addWarning(
         context,
-        `Custom component "${component}" requires custom widget implementation at: ${context.path.join(".")}`
+        `Custom component "${component}" requires custom widget implementation at: ${context.path.join(
+          "."
+        )}`
       );
       break;
   }
@@ -343,6 +349,11 @@ function translateToUISchema(
   } else if (view.description && !uiSchema["ui:help"]) {
     uiSchema["ui:help"] = view.description;
   }
+
+  // Hide submit button by default
+  uiSchema["ui:submitButtonOptions"] = {
+    norender: true,
+  };
 
   return uiSchema;
 }
@@ -418,10 +429,7 @@ export function translateSchemaComplete(
  * SchemaIO may use null for empty values, while RJSF expects actual empty values
  * (empty strings, empty arrays, etc.)
  */
-export function convertSchemaIODataToRJSF(
-  data: any,
-  schema: SchemaType
-): any {
+export function convertSchemaIODataToRJSF(data: any, schema: SchemaType): any {
   if (data === null || data === undefined) {
     // Return appropriate empty value based on schema type
     return getEmptyValueForType(schema.type);
