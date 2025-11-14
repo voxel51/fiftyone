@@ -3603,7 +3603,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3641,7 +3640,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3679,7 +3677,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
