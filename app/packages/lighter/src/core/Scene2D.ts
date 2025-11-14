@@ -144,6 +144,7 @@ export class Scene2D {
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
   private readonly sceneId: string | undefined;
+  private isRenderLoopActive: boolean = false;
 
   private abortController = new AbortController();
 
@@ -878,9 +879,18 @@ export class Scene2D {
   }
 
   public async startRenderLoop(): Promise<void> {
+    this.isRenderLoopActive = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
     });
+  }
+
+  /**
+   * Gets whether the render loop is currently active.
+   * @returns True if the render loop is active, false otherwise.
+   */
+  get renderLoopActive(): boolean {
+    return this.isRenderLoopActive;
   }
 
   /**

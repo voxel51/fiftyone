@@ -1,6 +1,8 @@
 import { EventDispatcher } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
 
+export const DEFAULT_CHANNEL_ID = "default";
+
 /**
  * Static registry of event dispatchers by channel ID.
  */

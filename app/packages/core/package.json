@@ -82,6 +82,7 @@
         "vite-plugin-relay": "^1.0.7"
     },
     "peerDependencies": {
+        "@fiftyone/annotation": "*",
         "@mui/icons-material": "*",
         "@mui/material": "*",
         "@react-spring/web": "*",

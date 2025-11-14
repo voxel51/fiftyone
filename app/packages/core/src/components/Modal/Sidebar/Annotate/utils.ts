@@ -8,16 +8,25 @@
  * @param records - The records to sanitize
  * @returns The sanitized records
  */
-export function coerceStringBooleans(
-  records: Record<string, unknown>
-): Record<string, unknown> {
+export function coerceStringBooleans<T extends Record<string, unknown>>(
+  records: T
+): T {
   if (typeof records !== "object" || records === null) return records;
 
   return Object.fromEntries(
     Object.entries(records).map(([key, value]) => {
       if (value === "true") return [key, true];
       if (value === "false") return [key, false];
+
+      if (
+        !Array.isArray(value) &&
+        typeof value === "object" &&
+        value !== null
+      ) {
+        return [key, coerceStringBooleans(value as Record<string, unknown>)];
+      }
+
       return [key, value];
     })
-  );
+  ) as T;
 }

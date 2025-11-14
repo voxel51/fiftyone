@@ -32,11 +32,11 @@ import {
   isActivelySegmentingSelector,
   isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
-  polylinePointTransformsAtom,
+  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
-import { TransformArchetype } from "../types";
+import { Archetype3d } from "../types";
 import { isValidPolylineSegment, toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -74,7 +74,7 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
-  const polylinePointTransforms = useRecoilValue(polylinePointTransformsAtom);
+  const polylinePointTransforms = useRecoilValue(stagedPolylineTransformsAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -143,7 +143,7 @@ export const ThreeDLabels = ({
   const handleSelect = useCallback(
     (
       label: OverlayLabel,
-      archetype: TransformArchetype,
+      archetype: Archetype3d,
       e: ThreeEvent<MouseEvent>
     ) => {
       if (isSegmenting) return;
@@ -323,7 +323,7 @@ export const ThreeDLabels = ({
       }
     }
 
-    // Check for any label ids in polylinePointTransformsAtom that are not in newPolylineOverlays
+    // Check for any label ids in stagedPolylineTransformsAtom that are not in newPolylineOverlays
     // and create new polyline overlays for them
     const existingPolylineIds = new Set(
       rawOverlays

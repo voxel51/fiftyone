@@ -422,7 +422,13 @@ export const SidePanel = ({
             position={position}
             up={cameraUp.toArray() as [number, number, number]}
           />
-          <MapControls makeDefault screenSpacePanning enableRotate={false} />
+          <MapControls
+            makeDefault
+            screenSpacePanning
+            zoomToCursor
+            enableRotate={false}
+            zoomSpeed={0.8}
+          />
           <Bounds fit clip observe={observe} margin={1.25}>
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
@@ -431,7 +437,7 @@ export const SidePanel = ({
             {isSceneInitialized && (
               <ThreeDLabels
                 sampleMap={{ fo3d: sample as any }}
-                globalOpacity={0.15}
+                globalOpacity={0.5}
               />
             )}
             <AnnotationPlane

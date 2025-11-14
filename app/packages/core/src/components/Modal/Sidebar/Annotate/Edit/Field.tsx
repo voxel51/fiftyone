@@ -11,7 +11,7 @@ import {
   isNew,
 } from "./state";
 import { useRecoilValue } from "recoil";
-import { polylinePointTransformsAtom } from "@fiftyone/looker-3d/src/state";
+import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -50,7 +50,7 @@ const Field = () => {
   const isCreating = useAtomValue(isNew);
 
   const polylinePointTransforms =
-    useRecoilValue(polylinePointTransformsAtom) ?? {};
+    useRecoilValue(stagedPolylineTransformsAtom) ?? {};
 
   if (!isCreating) {
     return null;

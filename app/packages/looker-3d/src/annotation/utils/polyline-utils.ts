@@ -1,3 +1,4 @@
+import { Coordinates } from "@fiftyone/looker/src/state";
 import type { Vector3Tuple } from "three";
 import type { PolylineSegmentTransform, SelectedPoint } from "../types";
 
@@ -406,4 +407,20 @@ export function updateVertexPosition(
   }
 
   return newSegments;
+}
+
+/**
+ * Converts an array of 3D points to an array of polyline segments.
+ *
+ * @param points3d - Array of 3D points
+ * @returns Array of polyline segments
+ */
+export function points3dToPolylineSegments(
+  points3d: Coordinates[][]
+): PolylineSegmentTransform[] {
+  return points3d.map((segment) => ({
+    points: segment.map(
+      (point) => [point[0], point[1], point[2]] as [number, number, number]
+    ),
+  }));
 }

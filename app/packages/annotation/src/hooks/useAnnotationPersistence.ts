@@ -2,8 +2,18 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { OverlayEventDetail, Scene2D } from "@fiftyone/lighter";
-import { LIGHTER_EVENTS } from "@fiftyone/lighter";
+import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
+import { transformSampleData } from "@fiftyone/core/src/client/transformer";
+import { parseTimestamp } from "@fiftyone/core/src/client/util";
+import {
+  OpType,
+  buildJsonPath,
+  buildLabelDeltas,
+} from "@fiftyone/core/src/components/Modal/Lighter/deltas";
 import { Sample } from "@fiftyone/looker";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import {
@@ -13,20 +23,17 @@ import {
   useRefreshSample,
 } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { JSONDeltas, patchSample } from "../../../client";
-import { transformSampleData } from "../../../client/transformer";
-import { parseTimestamp } from "../../../client/util";
-import { OpType, buildJsonPath, buildLabelDeltas } from "./deltas";
 
 /**
- * Hook that handles overlay persistence events.
+ * Hook that handles annotation persistence events.
  */
-export const useOverlayPersistence = (scene: Scene2D | null) => {
+export const useAnnotationPersistence = () => {
   const datasetId = useRecoilValue(fosDatasetId);
   const currentSample = useRecoilValue(modalSample)?.sample;
   const refreshSample = useRefreshSample();
+  const eventBus = useAnnotationEventBus();
 
   // The annotation endpoint requires a version token in order to execute
   // mutations.
@@ -53,6 +60,10 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
      * @param sampleDeltas Deltas to apply
      */
     async (sampleDeltas: JSONDeltas): Promise<boolean> => {
+      if (!datasetId || !currentSample?._id || !versionToken) {
+        return false;
+      }
+
       if (sampleDeltas.length > 0) {
         try {
           const response = await patchSample({
@@ -119,58 +130,59 @@ export const useOverlayPersistence = (scene: Scene2D | null) => {
   );
 
   const handlePersistOverlay = useCallback(
-    async (
-      event: CustomEvent<
-        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY>
-      >
-    ) => {
+    async (data: {
+      sourceId: string;
+      label: AnnotationLabel;
+      schema: Field;
+    }) => {
       const success = await handlePersistenceEvent(
-        event.detail.label,
-        event.detail.schema,
+        data.label,
+        data.schema,
         "mutate"
       );
 
       if (success) {
-        event.detail.onSuccess?.();
+        eventBus.dispatch("annotation:notification:upsertSuccess", {
+          sourceId: data.sourceId,
+          type: "upsert",
+        });
       } else {
-        event.detail.onError?.();
+        eventBus.dispatch("annotation:notification:upsertError", {
+          sourceId: data.sourceId,
+          type: "upsert",
+        });
       }
     },
-    [handlePersistenceEvent]
+    [handlePersistenceEvent, eventBus]
   );
 
   const handleRemoveOverlay = useCallback(
-    async (
-      event: CustomEvent<
-        OverlayEventDetail<typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY>
-      >
-    ) => {
+    async (data: {
+      sourceId: string;
+      label: AnnotationLabel;
+      schema: Field;
+    }) => {
       const success = await handlePersistenceEvent(
-        event.detail.label,
-        event.detail.schema,
+        data.label,
+        data.schema,
         "delete"
       );
 
       if (success) {
-        event.detail.onSuccess?.();
+        eventBus.dispatch("annotation:notification:deleteSuccess", {
+          sourceId: data.sourceId,
+          type: "delete",
+        });
       } else {
-        event.detail.onError?.();
+        eventBus.dispatch("annotation:notification:deleteError", {
+          sourceId: data.sourceId,
+          type: "delete",
+        });
       }
     },
-    [handlePersistenceEvent]
+    [handlePersistenceEvent, eventBus]
   );
 
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
-
-    scene.on(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
-    scene.on(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
-
-    return () => {
-      scene.off(LIGHTER_EVENTS.DO_PERSIST_OVERLAY, handlePersistOverlay);
-      scene.off(LIGHTER_EVENTS.DO_REMOVE_OVERLAY, handleRemoveOverlay);
-    };
-  }, [handlePersistOverlay, handleRemoveOverlay, scene]);
+  useAnnotationEventHandler("annotation:command:upsert", handlePersistOverlay);
+  useAnnotationEventHandler("annotation:command:delete", handleRemoveOverlay);
 };

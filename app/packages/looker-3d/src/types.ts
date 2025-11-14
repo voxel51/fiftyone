@@ -115,8 +115,4 @@ export interface EventHandlers {
   restEventHandlers: Record<string, any>;
 }
 
-export type TransformArchetype =
-  | "point"
-  | "cuboid"
-  | "polyline"
-  | "annotation-plane";
+export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";

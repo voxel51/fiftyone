@@ -1,5 +1,5 @@
 {
-    "name": "@fiftyone/events",
+    "name": "@fiftyone/annotation",
     "version": "1.0.0",
     "scripts": {
         "dev": "vite",
@@ -12,9 +12,6 @@
         "dist"
     ],
     "main": "src/index.ts",
-    "dependencies": {
-        "@fiftyone/analytics": "*"
-    },
     "devDependencies": {
         "@testing-library/dom": "^10.4.0",
         "@testing-library/react": "^16.2.0",
@@ -32,8 +29,8 @@
     },
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
+        "@fiftyone/events": "*",
         "jotai": "*",
-        "react": "*",
-        "uuid": "*"
+        "react": "*"
     }
 }

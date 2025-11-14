@@ -3,18 +3,19 @@ import {
   savedLabel,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import { useAtomValue, useSetAtom } from "jotai";
+import { isEqual } from "lodash";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { polylinePointTransformsAtom } from "../state";
+import { stagedPolylineTransformsAtom } from "../state";
 
 /**
- * Hook that performs reverse sync - when polylinePointTransformsAtom changes,
- * it syncs the current annotation's points3d with coordinates from the transform data
+ * Hook that performs reverse sync - when staged polyline coordinates are changed (from the canvas),
+ * it syncs the sidebar label's points3d with coordinates from the staging area
  */
 export const useReverseSyncPolylinePointTransforms = () => {
   const currentAnnotation = useAtomValue(current);
   const setCurrentData = useSetAtom(current);
-  const polylinePointTransforms = useRecoilValue(polylinePointTransformsAtom);
+  const polylinePointTransforms = useRecoilValue(stagedPolylineTransformsAtom);
   const setSavedLabel = useSetAtom(savedLabel);
 
   useEffect(() => {
@@ -37,21 +38,7 @@ export const useReverseSyncPolylinePointTransforms = () => {
     );
 
     const currentPoints3d = currentAnnotation.data.points3d;
-    const hasChanged =
-      !currentPoints3d ||
-      currentPoints3d.length !== newPoints3d.length ||
-      currentPoints3d.some(
-        (segment, segmentIndex) =>
-          !newPoints3d[segmentIndex] ||
-          segment.length !== newPoints3d[segmentIndex].length ||
-          segment.some(
-            (point, pointIndex) =>
-              !newPoints3d[segmentIndex][pointIndex] ||
-              point[0] !== newPoints3d[segmentIndex][pointIndex][0] ||
-              point[1] !== newPoints3d[segmentIndex][pointIndex][1] ||
-              point[2] !== newPoints3d[segmentIndex][pointIndex][2]
-          )
-      );
+    const hasChanged = !isEqual(currentPoints3d, newPoints3d);
 
     if (hasChanged) {
       setCurrentData({
@@ -72,5 +59,5 @@ export const useReverseSyncPolylinePointTransforms = () => {
         points3d: newPoints3d,
       });
     }
-  }, [polylinePointTransforms, currentAnnotation, setCurrentData]);
+  }, [polylinePointTransforms, currentAnnotation]);
 };

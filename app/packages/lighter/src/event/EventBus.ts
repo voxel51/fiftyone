@@ -2,8 +2,6 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { AnnotationLabel } from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 import { Command } from "../commands/Command";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
@@ -109,10 +107,6 @@ export const LIGHTER_EVENTS = {
   DO_OVERLAY_HOVER: "do-overlay-hover",
   /** Emitted when the overlay needs to be forced to unhover state */
   DO_OVERLAY_UNHOVER: "do-overlay-unhover",
-  /** Emitted when the overlay needs to be persisted */
-  DO_PERSIST_OVERLAY: "do-persist-overlay",
-  /** Emitted when the overlay needs to be removed */
-  DO_REMOVE_OVERLAY: "do-remove-overlay",
 } as const;
 
 /**
@@ -318,24 +312,6 @@ export type DoLighterEvent =
   | {
       type: typeof LIGHTER_EVENTS.DO_OVERLAY_UNHOVER;
       detail: { id: string };
-    }
-  | {
-      type: typeof LIGHTER_EVENTS.DO_PERSIST_OVERLAY;
-      detail: {
-        label: AnnotationLabel;
-        schema: Field;
-        onSuccess?: () => void;
-        onError?: (error?: Error | string) => void;
-      };
-    }
-  | {
-      type: typeof LIGHTER_EVENTS.DO_REMOVE_OVERLAY;
-      detail: {
-        label: AnnotationLabel;
-        schema: Field;
-        onSuccess?: () => void;
-        onError?: (error?: Error | string) => void;
-      };
     };
 
 /**
