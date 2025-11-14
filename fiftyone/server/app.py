@@ -108,6 +108,7 @@ app = Starlette(
                 "access-control-allow-origin",
                 "authorization",
                 "content-type",
+                "if-match",
             ],
         ),
         Middleware(HeadersMiddleware),

@@ -7,6 +7,9 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
+import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
+import useExit from "./Sidebar/Annotate/Edit/useExit";
+import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
 
 const Arrow = styled.span<{
@@ -26,7 +29,7 @@ const Arrow = styled.span<{
         : "0.75rem"
       : "initial"};
   left: ${(props) => (props.$isRight ? "initial" : "0.75rem")};
-  z-index: 99999;
+  z-index: 10000;
   padding: 0.75rem;
   top: 50%;
   width: 3rem;
@@ -122,10 +125,14 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const keyboardHandler = useCallback(
     (e: KeyboardEvent) => {
       const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
+
+      // Prevent navigation when interacting with any form field
+      if (
+        active?.tagName === "INPUT" ||
+        active?.tagName === "TEXTAREA" ||
+        active?.tagName === "SELECT"
+      ) {
+        return;
       }
 
       if (e.altKey || e.ctrlKey || e.metaKey) {
@@ -142,6 +149,17 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   );
 
   fos.useEventHandler(document, "keyup", keyboardHandler);
+  const { confirmExit } = useConfirmExit(useExit(), useSave());
+
+  const next = useCallback(
+    () => confirmExit(nextNavigator.navigate),
+    [confirmExit, nextNavigator]
+  );
+
+  const previous = useCallback(
+    () => confirmExit(previousNavigator.navigate),
+    [confirmExit, previousNavigator]
+  );
 
   if (!modal) {
     return null;
@@ -153,7 +171,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         <Arrow
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
-          onClick={previousNavigator.navigate}
+          onClick={previous}
         >
           <LookerArrowLeftIcon data-cy="nav-left-button" />
         </Arrow>
@@ -163,7 +181,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           $isRight
           $isSidebarVisible={isSidebarVisible}
           $sidebarWidth={sidebarwidth}
-          onClick={nextNavigator.navigate}
+          onClick={next}
         >
           <LookerArrowRightIcon data-cy="nav-right-button" />
         </Arrow>

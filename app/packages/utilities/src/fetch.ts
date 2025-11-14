@@ -8,26 +8,131 @@ import { NetworkError, ServerError } from "./errors";
 
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
+let fetchFunctionExtendedSingleton: FetchFunctionExtended;
 let fetchHeaders: HeadersInit;
 let fetchPathPrefix = "";
+
+/**
+ * Supported methods for accessing response data.
+ */
+export type FetchResultType =
+  | "json"
+  | "blob"
+  | "text"
+  | "arrayBuffer"
+  | "json-stream";
+
+/**
+ * Configuration for a `fetch` call.
+ */
+export type FetchFunctionConfig<T> = {
+  method: string;
+  path: string;
+  body?: T;
+  result?: FetchResultType;
+  retries?: number;
+  retryCodes?: number[];
+  errorHandler?: (response: Response) => void | Promise<void>;
+  headers?: Record<string, string>;
+};
+
+/**
+ * Parsed fetch response with response headers.
+ */
+export type FetchFunctionResult<T> = {
+  response: T;
+  headers?: Headers;
+};
 
 export interface FetchFunction {
   <A, R>(
     method: string,
     path: string,
     body?: A,
-    result?: "json" | "blob" | "text" | "arrayBuffer" | "json-stream",
+    result?: FetchResultType,
     retries?: number,
-    retryCodes?: number[]
+    retryCodes?: number[],
+    errorHandler?: (response: Response) => void | Promise<void>,
+    headers?: Record<string, string>
   ): Promise<R>;
+}
+
+/**
+ * Extension of {@link FetchFunction} which provides response headers.
+ */
+export interface FetchFunctionExtended {
+  <A, R>(
+    method: string,
+    path: string,
+    body?: A,
+    result?: FetchResultType,
+    retries?: number,
+    retryCodes?: number[],
+    errorHandler?: (response: Response) => void | Promise<void>,
+    headers?: Record<string, string>
+  ): Promise<FetchFunctionResult<R>>;
 }
 
 export const getFetchFunction = () => {
   return fetchFunctionSingleton;
 };
 
+/**
+ * Wrapper for {@link getFetchFunction} which provides response headers and
+ * configuration via {@link FetchFunctionConfig}.
+ */
+export const getFetchFunctionExtended =
+  (): (<A, R>(
+    config: FetchFunctionConfig<A>
+  ) => Promise<FetchFunctionResult<R>>) =>
+  <A>(config: FetchFunctionConfig<A>) =>
+    fetchFunctionExtendedSingleton(
+      config.method,
+      config.path,
+      config.body,
+      config.result,
+      config.retries,
+      config.retryCodes,
+      config.errorHandler,
+      config.headers
+    );
+
 export const getFetchHeaders = () => {
   return fetchHeaders;
+};
+
+const headersAsRecord = (headers: HeadersInit): Record<string, string> => {
+  if (!headers) {
+    return {};
+  }
+
+  let result = {};
+
+  if (headers instanceof Headers) {
+    headers.forEach((value, name) => (result[name] = value));
+  } else if (Array.isArray(headers)) {
+    // [["header-1", "value-1"], ["header-2", "value-2"]]
+    headers.forEach(([name, value]) => (result[name] = value));
+  } else {
+    // {"header-1": "value-1", "header-2": "value-2"}
+    result = {
+      ...headers,
+    };
+  }
+
+  return result;
+};
+
+export const mergeHeaders = (
+  ...headers: HeadersInit[]
+): Record<string, string> => {
+  return (
+    headers
+      // convert everything to Record<string, string>
+      .map((h) => headersAsRecord(h))
+      // reduce with spread, ignoring any undefined values
+      .reduce((a, b) => (a && b ? { ...a, ...b } : a ?? b), {})
+  );
 };
 
 export const getFetchOrigin = () => {
@@ -73,17 +178,20 @@ export const getFetchParameters = () => {
 
 export const setFetchFunction = (
   origin: string,
-  headers: HeadersInit = {},
+  defaultHeaders: HeadersInit = {},
   pathPrefix = ""
 ) => {
-  setFetchParameters(origin, headers, pathPrefix);
-  const fetchFunction: FetchFunction = async (
+  setFetchParameters(origin, defaultHeaders, pathPrefix);
+
+  const fetchFunctionExtended: FetchFunctionExtended = async (
     method,
     path,
     body = null,
     result = "json",
     retries = 2,
     retryCodes = [502, 503, 504],
+    errorHandler,
+    headers
   ) => {
     let url: string;
     const controller = new AbortController();
@@ -102,10 +210,11 @@ export const setFetchFunction = (
       }${path}`;
     }
 
-    headers = {
-      "Content-Type": "application/json",
-      ...headers,
-    };
+    headers = mergeHeaders(
+      { "Content-Type": "application/json" },
+      defaultHeaders,
+      headers
+    );
 
     const fetchCall = retries
       ? fetchRetry(fetch, {
@@ -132,50 +241,85 @@ export const setFetchFunction = (
       referrerPolicy: "same-origin",
     });
 
-    if (response.status >= 400) {
-      const errorMetadata = {
-        code: response.status,
-        statusText: response.statusText,
-        bodyResponse: "",
-        route: response.url,
-        payload: body as object,
-        stack: null,
-        requestHeaders: headers,
-        responseHeaders: response.headers,
-        message: "",
-      };
-      let ErrorClass = NetworkError;
-
-      try {
-        const error = await response.json();
-        errorMetadata.bodyResponse = error;
-        if (error.stack) errorMetadata.stack = error?.stack;
-        errorMetadata.message = error?.message;
-        if (error?.stack) {
-          console.error(error.stack)
-        }
-        ErrorClass = ServerError;
-      } catch {
-        // if response body is not JSON
-        try {
-          errorMetadata.bodyResponse = await response.text();
-        } catch {
-          // skip response body if it cannot be read as text
-        }
-        errorMetadata.message = response.statusText;
+    if (!response.ok) {
+      if (errorHandler) {
+        await errorHandler(response);
       }
+      // if custom error handler doesn't throw, use default error handling
 
-      throw new ErrorClass(errorMetadata, errorMetadata.message);
+      if (response.status >= 400) {
+        const errorMetadata = {
+          code: response.status,
+          statusText: response.statusText,
+          bodyResponse: "",
+          route: response.url,
+          payload: body as object,
+          stack: null,
+          requestHeaders: headers,
+          responseHeaders: response.headers,
+          message: "",
+        };
+        let ErrorClass = NetworkError;
+
+        try {
+          const error = await response.json();
+          errorMetadata.bodyResponse = error;
+          if (error.stack) errorMetadata.stack = error?.stack;
+          errorMetadata.message = error?.message;
+          if (error?.stack) {
+            console.error(error.stack);
+          }
+          ErrorClass = ServerError;
+        } catch {
+          // if response body is not JSON
+          try {
+            errorMetadata.bodyResponse = await response.text();
+          } catch {
+            // skip response body if it cannot be read as text
+          }
+          errorMetadata.message = response.statusText;
+        }
+
+        throw new ErrorClass(errorMetadata, errorMetadata.message);
+      }
     }
 
     if (result === "json-stream") {
-      return new JSONStreamParser(response, controller);
+      return {
+        response: new JSONStreamParser(response, controller),
+        headers: response.headers,
+      };
     }
 
-    return await response[result]();
+    return {
+      response: await response[result](),
+      headers: response.headers,
+    };
   };
 
-  fetchFunctionSingleton = fetchFunction;
+  fetchFunctionExtendedSingleton = fetchFunctionExtended;
+
+  // convenience method which omits response headers
+  fetchFunctionSingleton = async <A, R>(
+    method: string,
+    path: string,
+    body: A = null,
+    result: FetchResultType = "json",
+    retries: number = 2,
+    retryCodes: number[] = [502, 503, 504],
+    errorHandler: (response: Response) => void | Promise<void>,
+    headers: Record<string, string>
+  ) =>
+    fetchFunctionExtended<A, R>(
+      method,
+      path,
+      body,
+      result,
+      retries,
+      retryCodes,
+      errorHandler,
+      headers
+    ).then((res) => res.response);
 };
 
 class JSONStreamParser {

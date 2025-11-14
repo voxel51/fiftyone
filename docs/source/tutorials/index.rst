@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Exploring Kaputt Dataset
+    :description: Learn how to work with the Kaputt dataset in FiftyOne.
+    :link: kaputt_dataset.html
+    :image: https://cdn.voxel51.com/kaputt_overview.webp
+    :tags: Dataset-Evaluation
+
+.. customcarditem::
     :header: DINOv3 visual search
     :description: Leverage the power of DINOv3 embeddings for visual search, similarity analysis, and foreground segmentation in FiftyOne. Learn to compute embeddings, visualize them, and build classifiers using this state-of-the-art vision model.
     :link: dinov3.html
@@ -211,6 +218,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>

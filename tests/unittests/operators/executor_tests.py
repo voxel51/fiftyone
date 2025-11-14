@@ -60,6 +60,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
                 "params": request_params["params"],
                 "request_params": request_params,
                 "user": None,
+                "pipeline": None,
             },
         )
         self.assertDictEqual(ctx.params, request_params["params"])

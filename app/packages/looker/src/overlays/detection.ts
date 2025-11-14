@@ -68,7 +68,7 @@ const getIndexIdFromInstanceIdForLabel = (
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
   mask_path?: string;
-  bounding_box: BoundingBox;
+  bounding_box?: BoundingBox;
 
   // valid for 3D bounding boxes
   dimensions?: [number, number, number];

@@ -93,6 +93,7 @@ export default function WorkspaceEditor() {
               hideActions
               readonly
               noBorder
+              insideModal={true}
             />
           </Stack>
         </Stack>

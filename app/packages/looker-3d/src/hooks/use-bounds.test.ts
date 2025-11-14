@@ -8,6 +8,7 @@ vi.useFakeTimers();
 vi.mock("three", () => {
   return {
     Box3: vi.fn(),
+    Vector3: vi.fn(),
   };
 });
 
@@ -17,81 +18,316 @@ describe("useFo3dBounds", () => {
     vi.resetAllMocks();
   });
 
-  it("does not set bounding box when objectRef.current is null", () => {
+  it("returns null when objectRef.current is null", () => {
     const objectRef = { current: null } as React.RefObject<Group>;
 
     const { result } = renderHook(() => useFo3dBounds(objectRef));
 
-    expect(result.current).toBeNull();
+    expect(result.current.boundingBox).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(result.current).toBeNull();
+    // The hook should return null when objectRef.current is null
+    expect(result.current.boundingBox).toBeNull();
   });
 
   it("sets bounding box when bounding box stabilizes", () => {
-    const objectRef = { current: {} } as React.RefObject<Group>;
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
 
+    // Mock Box3 to return unstable boxes initially, then stabilize
     let callCount = 0;
-
-    // mock Box3 to return changing boxes initially,
-    // then stable boxes
-    const boxes = [
-      // changing boxes
-      {
-        min: { x: 0, y: 0, z: 0, equals: vi.fn(() => false) },
-        max: { x: 1, y: 1, z: 1, equals: vi.fn(() => false) },
-      },
-      // stable boxes
-      {
-        min: { x: 0.5, y: 0.5, z: 0.5, equals: vi.fn(() => true) },
-        max: { x: 1.5, y: 1.5, z: 1.5, equals: vi.fn(() => true) },
-      },
-    ];
-
     const MockBox3 = vi.fn().mockImplementation(() => {
-      const box = boxes[callCount < 5 ? 0 : 1];
       callCount++;
+      // Return different boxes for the first 3 calls (unstable)
+      // Then return a consistent stable box (calls 4+)
+      if (callCount <= 3) {
+        return {
+          min: { x: callCount * 0.1, y: callCount * 0.1, z: callCount * 0.1 },
+          max: {
+            x: 1 + callCount * 0.1,
+            y: 1 + callCount * 0.1,
+            z: 1 + callCount * 0.1,
+          },
+          setFromObject: vi.fn().mockReturnThis(),
+        };
+      }
       return {
-        min: box.min,
-        max: box.max,
+        min: { x: 0.5, y: 0.5, z: 0.5 },
+        max: { x: 1.5, y: 1.5, z: 1.5 },
         setFromObject: vi.fn().mockReturnThis(),
       };
     });
 
-    // set the implementation of the mocked Box3
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    const { result, unmount } = renderHook(() => useFo3dBounds(objectRef));
+
+    // Initially, boundingBox should be null
+    expect(result.current.boundingBox).toBeNull();
+
+    // Advance time to allow the box to stabilize
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // After stabilization, bounding box should be set to the stable values
+    expect(result.current.boundingBox).not.toBeNull();
+    expect(result.current.boundingBox?.min.x).toBe(0.5);
+    expect(result.current.boundingBox?.min.y).toBe(0.5);
+    expect(result.current.boundingBox?.min.z).toBe(0.5);
+    expect(result.current.boundingBox?.max.x).toBe(1.5);
+    expect(result.current.boundingBox?.max.y).toBe(1.5);
+    expect(result.current.boundingBox?.max.z).toBe(1.5);
+
+    unmount();
+  });
+
+  it("returns null when bounds are incomputable (non-finite box)", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    // Mock Box3 to return a box with non-finite values
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      return {
+        min: { x: Infinity, y: 0, z: 0, equals: vi.fn(() => true) },
+        max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
     (Box3 as unknown as Mock).mockImplementation(MockBox3);
 
     const { result } = renderHook(() => useFo3dBounds(objectRef));
 
-    expect(result.current).toBeNull();
-
-    act(() => {
-      for (let i = 0; i < 10; i++) {
-        vi.advanceTimersByTime(50);
-      }
-    });
-
-    expect(result.current).not.toBeNull();
-    expect(result.current.min).toEqual(boxes[1].min);
-    expect(result.current.max).toEqual(boxes[1].max);
-  });
-
-  it("does not proceed if predicate returns false", () => {
-    const objectRef = { current: {} } as React.RefObject<Group>;
-    const predicate = vi.fn(() => false);
-
-    const { result } = renderHook(() => useFo3dBounds(objectRef, predicate));
-
-    expect(result.current).toBeNull();
-    expect(predicate).toHaveBeenCalled();
+    expect(result.current.boundingBox).toBeNull();
 
     act(() => {
       vi.advanceTimersByTime(500);
     });
 
-    expect(result.current).toBeNull();
+    // The hook should return null when bounds are incomputable
+    expect(result.current.boundingBox).toBeNull();
+  });
+
+  it("waits for predicate before computing bounds", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+    let callCount = 0;
+    const predicate = vi.fn(() => {
+      callCount++;
+      // Return true after 3 calls to simulate a condition becoming ready
+      return callCount > 3;
+    });
+
+    // Mock Box3 to return a valid stable box
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      return {
+        min: { x: 0, y: 0, z: 0, equals: vi.fn(() => true) },
+        max: { x: 1, y: 1, z: 1, equals: vi.fn(() => true) },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    const { result } = renderHook(() => useFo3dBounds(objectRef, predicate));
+
+    expect(result.current.boundingBox).toBeNull();
+
+    // Advance time to allow predicate to return true
+    act(() => {
+      for (let i = 0; i < 20; i++) {
+        vi.advanceTimersByTime(50);
+      }
+    });
+
+    // After predicate returns true, bounding box should be computed
+    expect(predicate).toHaveBeenCalled();
+    expect(callCount).toBeGreaterThan(3);
+    expect(result.current.boundingBox).not.toBeNull();
+  });
+
+  it("tracks isComputing state during computation", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    // Mock Box3 to return a stable box after multiple calls
+    let callCount = 0;
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      callCount++;
+      return {
+        min: { x: 0.5, y: 0.5, z: 0.5 },
+        max: { x: 1.5, y: 1.5, z: 1.5 },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    const { result, unmount } = renderHook(() => useFo3dBounds(objectRef));
+
+    // Should be computing initially
+    expect(result.current.isComputing).toBe(true);
+
+    // After stabilization, should no longer be computing
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(result.current.isComputing).toBe(false);
+    expect(result.current.boundingBox).not.toBeNull();
+
+    unmount();
+  });
+
+  it("allows recomputing bounds via recomputeBounds callback", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    let computeCallCount = 0;
+    let computeCycleCount = 0; // Track which computation cycle we're in
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      computeCallCount++;
+      // Return different boxes based on compute cycle
+      // Cycle 1: small values, Cycle 2: large values
+      const isSecondCycle = computeCallCount > 3;
+      const scale = isSecondCycle ? 10 : 1;
+      return {
+        min: { x: scale * 0.5, y: scale * 0.5, z: scale * 0.5 },
+        max: { x: scale * 1.5, y: scale * 1.5, z: scale * 1.5 },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    const { result, unmount } = renderHook(() => useFo3dBounds(objectRef));
+
+    // Wait for initial computation
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    const firstBoundingBox = result.current.boundingBox;
+    expect(firstBoundingBox?.min.x).toBe(0.5); // First cycle, small values
+
+    // Trigger recomputation
+    act(() => {
+      result.current.recomputeBounds();
+    });
+
+    // Wait for new computation
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // Should have new bounding box from second cycle with larger values
+    expect(result.current.boundingBox).not.toBeNull();
+    expect(result.current.boundingBox?.min.x).toBe(5); // 10 * 0.5 from second cycle
+    expect(result.current.boundingBox?.max.x).toBe(15); // 10 * 1.5 from second cycle
+
+    unmount();
+  });
+
+  it("respects custom stableSamples option", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    let computeCount = 0;
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      computeCount++;
+      return {
+        min: { x: 0.5, y: 0.5, z: 0.5 },
+        max: { x: 1.5, y: 1.5, z: 1.5 },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    // With stableSamples=1, should stabilize after just 1 consistent box
+    const { result, unmount } = renderHook(() =>
+      useFo3dBounds(objectRef, undefined, { stableSamples: 1 })
+    );
+
+    expect(result.current.boundingBox).toBeNull();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // Should have computed quickly with just 1 sample needed
+    expect(result.current.boundingBox).not.toBeNull();
+    expect(computeCount).toBeLessThan(5); // Should need fewer calls than default (3 samples)
+
+    unmount();
+  });
+
+  it("respects custom epsilon tolerance for box equality", () => {
+    const objectRef = {
+      current: {
+        updateWorldMatrix: vi.fn(),
+      },
+    } as unknown as React.RefObject<Group>;
+
+    let callCount = 0;
+    // Create boxes that are slightly different but within epsilon tolerance
+    const MockBox3 = vi.fn().mockImplementation(() => {
+      callCount++;
+      const baseMin = 0.5;
+      const baseMax = 1.5;
+      // Add tiny variations within 0.001 epsilon
+      const variation = callCount === 1 ? 0.0001 : 0.0003;
+      return {
+        min: {
+          x: baseMin + variation,
+          y: baseMin + variation,
+          z: baseMin + variation,
+        },
+        max: {
+          x: baseMax + variation,
+          y: baseMax + variation,
+          z: baseMax + variation,
+        },
+        setFromObject: vi.fn().mockReturnThis(),
+      };
+    });
+
+    (Box3 as unknown as Mock).mockImplementation(MockBox3);
+
+    // Use looser epsilon tolerance (0.001) so boxes are considered equal
+    const { result, unmount } = renderHook(() =>
+      useFo3dBounds(objectRef, undefined, { stableSamples: 3, epsilon: 0.001 })
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    // Should stabilize because boxes are within epsilon tolerance
+    expect(result.current.boundingBox).not.toBeNull();
+
+    unmount();
   });
 });

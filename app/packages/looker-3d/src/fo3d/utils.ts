@@ -12,6 +12,7 @@ import {
   Vector3,
   type Vector3Tuple,
 } from "three";
+import * as paths from "../../../utilities/src/paths";
 import type {
   FoMeshBasicMaterialProps,
   FoMeshLambertMaterialProps,
@@ -19,7 +20,9 @@ import type {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import * as paths from "../../../utilities/src/paths";
+
+export const getCameraPositionKey = (datasetName?: string) =>
+  `${datasetName ?? "fiftyone"}-fo3d-camera-position`;
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -150,11 +153,13 @@ export const getResolvedUrlForFo3dAsset = (
 };
 
 export const getThreeMaterialFromFo3dMaterial = (
-  foMtl: Record<string, number | string | boolean>
+  foMtl: Record<string, number | string | boolean>,
+  avoidZFighting: boolean = true
 ) => {
   const { _type, ...props } = foMtl;
   props["transparent"] = (props.opacity as number) < 1;
   props["side"] = DoubleSide;
+  props["depthWrite"] = !avoidZFighting;
 
   if (foMtl._type === "MeshBasicMaterial") {
     return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);

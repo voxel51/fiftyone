@@ -1,0 +1,27 @@
+.responsive-banner
+  margin-bottom: 20px
+  
+  a
+    display: block
+    &:hover video
+      opacity: 0.9
+
+  video
+    width: 100%
+    height: auto
+    display: block
+    border-radius: 8px
+    pointer-events: none
+
+  .banner-mobile
+    display: none
+
+  .banner-desktop
+    display: block
+
+  @media (max-width: $tablet)
+    .banner-mobile
+      display: block !important
+    .banner-desktop
+      display: none !important
+

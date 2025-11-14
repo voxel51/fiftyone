@@ -2,7 +2,7 @@ import { useTrackEvent } from "@fiftyone/analytics";
 import { EditableLabel } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useMutation } from "@fiftyone/state";
-import { ArrowBack, Close } from "@mui/icons-material";
+import { ArrowBack, Close, ExpandMore } from "@mui/icons-material";
 import {
   Box,
   CircularProgress,
@@ -77,6 +77,11 @@ export default function Evaluation(props: EvaluationProps) {
       currentMethod
     );
   }, [data, name]);
+
+  const hasAdditionalCompareOptions = useMemo(() => {
+    if (!compareKey) return compareKeys.length > 0;
+    return compareKeys.some((item) => item.key !== compareKey);
+  }, [compareKeys, compareKey]);
 
   const status = useMemo(() => {
     return statuses[id];
@@ -170,71 +175,92 @@ export default function Evaluation(props: EvaluationProps) {
 
           {/* Compare dropdown section */}
           {canCompare && (
-            <EvaluationSelect
-              key={compareKey}
-              ghost
-              defaultValue={compareKey}
-              displayEmpty
-              placeholder="Select a comparison"
-              renderValue={
-                !compareKey
-                  ? () => (
-                      <Typography color="secondary">
-                        Select a comparison
-                      </Typography>
-                    )
-                  : undefined
-              }
-              onChange={(e) => {
-                setLoadingCompare(false);
-                onChangeCompareKey(e.target.value as string);
-              }}
-              endAdornment={
-                compareKey ? (
-                  <IconButton
-                    sx={{ mr: 1 }}
-                    onClick={() => {
-                      onChangeCompareKey("");
-                    }}
-                  >
-                    <Close />
-                  </IconButton>
-                ) : null
-              }
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={0.5}
               sx={{ pl: 1 }}
             >
-              {compareKeys.map(
-                ({ key, type, method, disabled, tooltip, tooltipBody }) => {
-                  const menuItem = (
-                    <MenuItem value={key} key={key} disabled={disabled}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <EvaluationIcon
-                          type={type as ConcreteEvaluationType}
-                          method={method}
-                          color={COMPARE_KEY_SECONDARY_COLOR}
-                        />
-                        <Typography>{key}</Typography>
-                      </Stack>
-                    </MenuItem>
-                  );
-                  return disabled ? (
-                    <Tooltip
-                      key={key}
-                      title={
-                        <>
-                          <Typography variant="subtitle1">{tooltip}</Typography>
-                          <Typography variant="body2">{tooltipBody}</Typography>
-                        </>
-                      }
-                    >
-                      <span>{menuItem}</span>
-                    </Tooltip>
-                  ) : (
-                    menuItem
-                  );
+              <EvaluationSelect
+                ghost
+                value={compareKey || ""}
+                displayEmpty
+                placeholder="Select a comparison"
+                IconComponent={
+                  hasAdditionalCompareOptions ? ExpandMore : () => null
                 }
-              )}
-            </EvaluationSelect>
+                renderValue={
+                  !compareKey
+                    ? () => (
+                        <Typography color="secondary">
+                          Select a comparison
+                        </Typography>
+                      )
+                    : undefined
+                }
+                onChange={(e) => {
+                  setLoadingCompare(false);
+                  onChangeCompareKey(e.target.value as string);
+                }}
+              >
+                {compareKeys.map(
+                  ({ key, type, method, disabled, tooltip, tooltipBody }) => {
+                    const menuItem = (
+                      <MenuItem value={key} key={key} disabled={disabled}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <EvaluationIcon
+                            type={type as ConcreteEvaluationType}
+                            method={method}
+                            color={COMPARE_KEY_SECONDARY_COLOR}
+                          />
+                          <Typography>{key}</Typography>
+                        </Stack>
+                      </MenuItem>
+                    );
+                    return disabled ? (
+                      <Tooltip
+                        key={key}
+                        title={
+                          <>
+                            <Typography variant="subtitle1">
+                              {tooltip}
+                            </Typography>
+                            <Typography variant="body2">
+                              {tooltipBody}
+                            </Typography>
+                          </>
+                        }
+                      >
+                        <span>{menuItem}</span>
+                      </Tooltip>
+                    ) : (
+                      menuItem
+                    );
+                  }
+                )}
+              </EvaluationSelect>
+              {compareKey ? (
+                <IconButton
+                  disableRipple
+                  size="small"
+                  sx={{
+                    padding: 0,
+                    "&:hover": {
+                      backgroundColor: "transparent",
+                    },
+                    "&:focus, &:focus-visible": {
+                      outline: "none",
+                      boxShadow: "none",
+                    },
+                  }}
+                  onClick={() => {
+                    onChangeCompareKey("");
+                  }}
+                >
+                  <Close fontSize="small" />
+                </IconButton>
+              ) : null}
+            </Stack>
           )}
         </Stack>
 

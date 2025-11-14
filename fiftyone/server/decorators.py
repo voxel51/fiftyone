@@ -15,16 +15,8 @@ from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
-from fiftyone.core.utils import run_sync_task
+from fiftyone.core.utils import create_response
 from fiftyone.server import utils
-
-
-async def create_response(response: dict):
-    """Creates a JSON response from the given dictionary."""
-    return Response(
-        await run_sync_task(lambda: utils.json.dumps(response)),
-        headers={"Content-Type": "application/json"},
-    )
 
 
 def route(func):

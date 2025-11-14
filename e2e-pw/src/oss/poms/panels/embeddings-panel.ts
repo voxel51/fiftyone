@@ -26,7 +26,36 @@ export class EmbeddingsPom {
   }
 
   async selectAll() {
-    const { x, y, width, height } = await this.plotContainer.boundingBox();
+    await this.plotContainer.waitFor({ state: "visible" });
+
+    // Wait for bounding box to be available (can be null even after visible)
+    let boundingBox: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null = null;
+
+    await expect
+      .poll(
+        async () => {
+          boundingBox = await this.plotContainer.boundingBox();
+          return boundingBox;
+        },
+        {
+          message: "Waiting for embeddings plot container bounding box",
+          timeout: 5000,
+        }
+      )
+      .not.toBeNull();
+
+    if (!boundingBox) {
+      throw new Error(
+        "Unable to get bounding box for embeddings plot container"
+      );
+    }
+
+    const { x, y, width, height } = boundingBox;
 
     const [x1, y1] = [x, y + 100];
     const [x2, y2] = [x + width, y + 100];

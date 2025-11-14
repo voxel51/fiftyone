@@ -19,7 +19,7 @@ const ToggleSidebar = React.forwardRef<
       onClick={() => {
         setVisible(!visible);
       }}
-      title={`${visible ? "Hide" : "Show"} sidebar`}
+      title={`${visible ? "Hide" : "Show"} sidebar (s)`}
       tooltipPlacement={modal ? "bottom" : "top"}
       open={visible}
       icon={

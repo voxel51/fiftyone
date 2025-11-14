@@ -2285,7 +2285,7 @@ to an object in the image of the same name, in one of the following formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -2300,11 +2300,19 @@ The `data/` folder may contain nested subfolders.
 
     By default, all annotations are loaded as |Detections|, converting any
     polylines to tight bounding boxes if necessary. However, you can choose to
-    load YOLO annotations as |Polylines| by passing the optional `label_type`
-    argument to methods like
+    load YOLO annotations as instance segmentations or polygons by passing the
+    optional `label_type` argument to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
+
+        # Load annotations as instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_type="instances",
+            mask_size=(width, height),  # optional size for each dense mask
+            ...
+        )
 
         # Load annotations as polygons
         dataset = fo.Dataset.from_dir(
@@ -2553,7 +2561,7 @@ to an object in the image of the same name, in one of the following formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -2571,11 +2579,19 @@ subfolders of parallelly organized images and labels.
 
     By default, all annotations are loaded as |Detections|, converting any
     polylines to tight bounding boxes if necessary. However, you can choose to
-    load YOLO annotations as |Polylines| by passing the optional `label_type`
-    argument to methods like
+    load YOLO annotations as instance segmentations or polygons by passing the
+    optional `label_type` argument to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
+
+        # Load annotations as instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_type="instances",
+            mask_size=(width, height),  # optional size for each dense mask
+            ...
+        )
 
         # Load annotations as polygons
         dataset = fo.Dataset.from_dir(

@@ -1,7 +1,9 @@
 import { folder, useControls } from "leva";
 import { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { PANEL_ORDER_PCD_CONTROLS } from "../constants";
 import { getThreeMaterialFromFo3dMaterial } from "../fo3d/utils";
+import { avoidZFightingAtom } from "../state";
 import type { FoMeshMaterial } from "./use-fo3d";
 
 export const useMeshMaterialControls = (
@@ -9,6 +11,7 @@ export const useMeshMaterialControls = (
   foMeshMaterial: FoMeshMaterial,
   omitColorControls = false
 ) => {
+  const avoidZFighting = useRecoilValue(avoidZFightingAtom);
   const [opacity, setOpacity] = useState(foMeshMaterial.opacity);
   const [renderAsWireframe, setRenderAsWireframe] = useState(
     foMeshMaterial.wireframe
@@ -132,16 +135,19 @@ export const useMeshMaterialControls = (
   );
 
   const material = useMemo(() => {
-    return getThreeMaterialFromFo3dMaterial({
-      ...foMeshMaterial,
-      opacity,
-      wireframe: renderAsWireframe,
-      color,
-      metalness,
-      roughness,
-      emissiveColor,
-      emissiveIntensity,
-    });
+    return getThreeMaterialFromFo3dMaterial(
+      {
+        ...foMeshMaterial,
+        opacity,
+        wireframe: renderAsWireframe,
+        color,
+        metalness,
+        roughness,
+        emissiveColor,
+        emissiveIntensity,
+      },
+      avoidZFighting
+    );
   }, [
     foMeshMaterial,
     opacity,
@@ -151,6 +157,7 @@ export const useMeshMaterialControls = (
     roughness,
     emissiveColor,
     emissiveIntensity,
+    avoidZFighting,
   ]);
 
   return {

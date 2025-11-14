@@ -6592,6 +6592,42 @@ class DynamicFieldTests(unittest.TestCase):
         dynamic_schema = dataset.get_dynamic_frame_field_schema()
         self.assertIn("ground_truth.detections.area", dynamic_schema)
 
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        # Declare dynamic fields via dict syntax
+
+        dataset2 = dataset.clone()
+
+        dynamic_schema = dataset2.get_dynamic_field_schema()
+        dataset2.add_dynamic_sample_fields(dynamic_schema)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dynamic_schema = dataset2.get_dynamic_frame_field_schema()
+        dataset2.add_dynamic_frame_fields(dynamic_schema)
+
+        schema = dataset2.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
         # Declare all dynamic fields
 
         dataset.add_dynamic_sample_fields()

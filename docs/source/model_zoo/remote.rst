@@ -27,7 +27,7 @@ Working with remotely-sourced models
 ------------------------------------
 
 Working with remotely-sourced zoo models is just like
-:ref:`built-in zoo models <model-zoo-models>`, as both varieties support
+:ref:`built-in zoo models <model-zoo>`, as both varieties support
 the :ref:`full zoo API <model-zoo-api>`.
 
 When specifying remote sources, you can provide any of the following:

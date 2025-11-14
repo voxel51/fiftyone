@@ -11,6 +11,9 @@ import ExecutionOptionItem from "../../ExecutionOptionItem";
  * @param onClose Callback for context menu close events
  * @param executionOptions List of operator execution options
  * @param onClick Callback for an option being clicked
+ * @param insideModal If true, elevate z-index to appear above modals
+ * @param anchorOrigin Controls where the menu attaches to the anchor element
+ * @param transformOrigin Controls which point of the menu aligns with the anchor
  */
 export const OperatorExecutionMenu = ({
   anchor,
@@ -18,15 +21,37 @@ export const OperatorExecutionMenu = ({
   onClose,
   executionOptions,
   onOptionClick,
+  insideModal = false,
+  anchorOrigin,
+  transformOrigin,
 }: {
   anchor?: Element | null;
   open: boolean;
   onClose: () => void;
   executionOptions: OperatorExecutionOption[];
   onOptionClick?: (option: OperatorExecutionOption) => void;
+  insideModal?: boolean;
+  anchorOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
+  transformOrigin?: {
+    vertical: "top" | "bottom" | "center";
+    horizontal: "left" | "right" | "center";
+  };
 }) => {
   return (
-    <Menu anchorEl={anchor} open={open} onClose={onClose}>
+    <Menu
+      anchorEl={anchor}
+      open={open}
+      onClose={onClose}
+      anchorOrigin={anchorOrigin}
+      transformOrigin={transformOrigin}
+      sx={{
+        // Elevate z-index above dialogs (1300) when inside a modal
+        zIndex: insideModal ? 1800 : undefined,
+      }}
+    >
       {executionOptions.map((target) => (
         <Item
           key={target.id}

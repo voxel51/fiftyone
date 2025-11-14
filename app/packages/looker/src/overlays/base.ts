@@ -16,9 +16,9 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
-  id: string;
+  id?: string;
   frame_number?: number;
-  tags: string[];
+  tags?: string[];
   index?: number;
   _renderStatus?: DenseLabelRenderStatus;
 
@@ -67,7 +67,7 @@ export type LabelMask = {
 };
 
 export interface RegularLabel extends BaseLabel {
-  _id?: string;
+  _id: string;
   label?: string;
   confidence?: number | NONFINITE;
 }

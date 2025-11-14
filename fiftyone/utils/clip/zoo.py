@@ -197,5 +197,8 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
             self._output_processor.store_logits = self.store_logits
 
         return self._output_processor(
-            output, frame_size, confidence_thresh=self.config.confidence_thresh
+            output,
+            frame_size,
+            confidence_thresh=self.config.confidence_thresh,
+            classes=self.config.filter_classes,
         )

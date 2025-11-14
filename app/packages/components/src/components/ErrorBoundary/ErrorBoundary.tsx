@@ -73,13 +73,16 @@ export const ErrorDisplayMarkup = <T extends AppError>({
         content: JSON.stringify(error.payload, null, 2),
       });
   } else if (error instanceof OperatorError) {
+    if (error.message) {
+      messages.push({ message: "Message", content: error.message });
+    }
     if (error.operator) {
       messages.push({ message: "Operator", content: error.operator });
     }
     if (error instanceof PanelEventError) {
       messages.push({ message: "Event", content: error.event });
     }
-    messages.push({ message: error.message, content: error.stack });
+    messages.push({ message: "Trace", content: error.stack });
   }
   if (error.stack && !(error instanceof OperatorError)) {
     messages = [...messages, { message: "Trace", content: error.stack }];

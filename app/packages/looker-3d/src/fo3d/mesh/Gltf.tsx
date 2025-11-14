@@ -1,7 +1,9 @@
-import { getSampleSrc } from "@fiftyone/state";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useGLTF } from "@react-three/drei";
-import { useEffect, useMemo, useRef } from "react";
-import { AnimationMixer, Mesh, type Quaternion, type Vector3 } from "three";
+import { useMemo, useRef } from "react";
+import { useRecoilValue } from "recoil";
+import { AnimationMixer, type Quaternion, type Vector3 } from "three";
+import { SkeletonUtils } from "three-stdlib";
 import type { GltfAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
@@ -25,6 +27,7 @@ export const Gltf = ({
   children: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const gltfUrl = useMemo(
     () =>
@@ -40,9 +43,24 @@ export const Gltf = ({
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);
 
-  const { scene, animations } = useGLTF(gltfUrl, true, undefined, (loader) => {
-    loader.setResourcePath(resourcePath);
-  });
+  const { scene: scene_, animations } = useGLTF(
+    gltfUrl,
+    true,
+    undefined,
+    (loader) => {
+      loader.setResourcePath(resourcePath);
+    }
+  );
+
+  // Deep clone scene when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const scene = useMemo(() => {
+    if (isInMultiPanelView && scene_) {
+      // Use SkeletonUtils otherwise skeletons might de-bind
+      return SkeletonUtils.clone(scene_);
+    }
+    return scene_;
+  }, [scene_, isInMultiPanelView]);
 
   usePercolateMaterial(scene, material);
 

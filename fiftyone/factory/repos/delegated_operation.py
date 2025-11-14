@@ -8,7 +8,7 @@ FiftyOne delegated operation repository.
 
 import logging
 from datetime import datetime
-from typing import Any, List
+from typing import Any, List, Optional, Union
 
 import pymongo
 from bson import ObjectId
@@ -38,15 +38,24 @@ class DelegatedOperationRepo(object):
         """Queue an operation to be executed by a delegated operator."""
         raise NotImplementedError("subclass must implement queue_operation()")
 
+    def add_child_error(
+        self,
+        parent_id: Union[ObjectId, str],
+        child_id: Union[ObjectId, str],
+        error_message: str,
+    ) -> None:
+        """Add an error message for a child operation to its parent."""
+        raise NotImplementedError("subclass must implement add_child_error()")
+
     def update_run_state(
         self,
         _id: ObjectId,
-        run_state: ExecutionRunState,
-        result: ExecutionResult = None,
-        run_link: str = None,
-        log_path: str = None,
-        progress: ExecutionProgress = None,
-        required_state: ExecutionRunState = None,
+        run_state: Optional[ExecutionRunState],
+        result: Optional[ExecutionResult] = None,
+        run_link: Optional[str] = None,
+        log_path: Optional[str] = None,
+        progress: Optional[ExecutionProgress] = None,
+        required_state: Optional[ExecutionRunState] = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -287,15 +296,30 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         )
         return DelegatedOperationDocument().from_pymongo(doc)
 
+    def add_child_error(
+        self,
+        parent_id: Union[ObjectId, str],
+        child_id: Union[ObjectId, str],
+        error_message: str,
+    ) -> None:
+        self._collection.update_one(
+            filter={"_id": ObjectId(parent_id)},
+            update={
+                "$set": {
+                    f"pipeline_run_info.child_errors.{str(child_id)}": error_message
+                }
+            },
+        )
+
     def update_run_state(
         self,
         _id: ObjectId,
-        run_state: ExecutionRunState,
-        result: ExecutionResult = None,
-        run_link: str = None,
-        log_path: str = None,
-        progress: ExecutionProgress = None,
-        required_state: ExecutionRunState = None,
+        run_state: Optional[ExecutionRunState],
+        result: Optional[ExecutionResult] = None,
+        run_link: Optional[str] = None,
+        log_path: Optional[str] = None,
+        progress: Optional[ExecutionProgress] = None,
+        required_state: Optional[ExecutionRunState] = None,
     ) -> DelegatedOperationDocument:
         update = None
 

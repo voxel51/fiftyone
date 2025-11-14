@@ -83,6 +83,15 @@ test.describe.serial("quickstart", () => {
     await sidebar.asserter.assertFilterIsVisible("id", "categorical");
   });
 
+  test("selection bookmark", async ({ page, grid }) => {
+    await grid.toggleSelectFirstSample();
+    await grid.actionsRow.assert.hasFiltersBookmark();
+    const gridRefresh = grid.getWaitForGridRefreshPromise();
+    await grid.actionsRow.bookmarkFilters();
+    await gridRefresh;
+    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
+  });
+
   test("entry counts text when toPatches then groupedBy", async ({
     grid,
     fiftyoneLoader,
@@ -98,17 +107,6 @@ test.describe.serial("quickstart", () => {
     });
 
     await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
-  });
-
-  test("selection bookmark", async ({ page, grid }) => {
-    await grid.toggleSelectFirstSample();
-    await grid.actionsRow.assert.hasFiltersBookmark();
-    const gridRefresh = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.bookmarkFilters();
-    await gridRefresh;
-    await expect(page.getByTestId("entry-counts")).toHaveText(
-      "1 group of patch"
-    );
   });
 
   test("sidebar persistence", async ({ grid, modal, sidebar }) => {

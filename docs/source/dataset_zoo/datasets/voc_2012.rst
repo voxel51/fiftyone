@@ -1,0 +1,67 @@
+.. _dataset-zoo-voc-2012:
+
+VOC-2012
+--------
+
+.. default-role:: code
+
+The dataset for the PASCAL Visual Object Classes Challenge 2012
+(VOC2012) for the detection competition.
+
+A total of 11540 images are included in this dataset, where each image
+contains a set of objects, out of 20 different classes, making a total of
+27450 annotated objects.
+
+Note that, as per the official dataset, the test set of VOC2012 does not
+contain annotations.
+
+**Details**
+
+-   Dataset name: ``voc-2012``
+-   Dataset source: http://host.robots.ox.ac.uk/pascal/VOC/voc2012
+-   Dataset size: 3.59 GB
+-   Tags: ``image, detection``
+-   Supported splits: ``train, validation, test``
+-   ZooDataset classes:
+
+    -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.tf.VOC2012Dataset>` (TF backend)
+    -   :class:`VOC2012Dataset <fiftyone.zoo.datasets.torch.VOC2012Dataset>` (Torch backend)
+
+.. note::
+
+    The ``test`` split is only available via the
+    :ref:`TensorFlow backend <dataset-zoo-ml-backend>`.
+
+.. note::
+
+    You must have the
+    :ref:`Torch or TensorFlow backend(s) <dataset-zoo-ml-backend>` installed to
+    load this dataset.
+
+**Example usage**
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("voc-2012", split="validation")
+
+        session = fo.launch_app(dataset)
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        fiftyone zoo datasets load voc-2012 --split validation
+
+        fiftyone app launch voc-2012-validation
+
+.. image:: /images/dataset_zoo/voc-2012-validation.png
+   :alt: voc-2012-validation
+   :align: center

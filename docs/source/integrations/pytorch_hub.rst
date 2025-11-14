@@ -212,7 +212,7 @@ ___________________________________
 You can add PyTorch Hub models to your :ref:`local model zoo <model-zoo-add>`
 and then load and use them via the :mod:`fiftyone.zoo` package and the CLI
 using the same syntax that you would with the
-:ref:`publicly available models <model-zoo-models>`:
+:ref:`publicly available models <model-zoo>`:
 
 .. code-block:: python
     :linenos:

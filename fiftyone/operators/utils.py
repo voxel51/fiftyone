@@ -6,10 +6,17 @@ FiftyOne operator utilities.
 |
 """
 
-from datetime import datetime, timedelta
 import logging
+import traceback
 
-from .operator import Operator
+from datetime import datetime, timedelta
+from typing import Union
+
+from fiftyone.core.utils import create_response
+from starlette.exceptions import HTTPException
+from starlette.responses import JSONResponse, Response
+
+from .executor import ExecutionResult
 
 
 class ProgressHandler(logging.Handler):
@@ -107,3 +114,43 @@ def is_new(release_date, days=30):
         raise ValueError("release_date must be a string or datetime object")
 
     return (datetime.now() - release_date).days <= days
+
+
+async def create_operator_response(
+    result: ExecutionResult,
+) -> Union[Response, JSONResponse]:
+    """
+    Creates a :class:`starlette.responses.JSONResponse` from the given
+    :class:`fiftyone.operators.executor.ExecutionResult` or returns a
+    server error :class:`starlette.responses.JSONResponse` if serialization fails.
+
+    Args:
+        result: the operator execution result
+
+    Returns:
+        :class:`starlette.responses.Response` or
+        :class:`starlette.responses.JSONResponse`
+    """
+    try:
+        return await create_response(result.to_json())
+    except Exception as e:
+        # Immediately re-raise starlette HTTP exceptions
+        if isinstance(e, HTTPException):
+            raise e
+
+        # Cast non-starlette HTTP exceptions as JSON with 500 status code
+        logging.exception(e)
+
+        msg = (
+            f"Failed to serialize operator result. {e}."
+            + " Make sure that the return value of the operation is JSON-serializable."
+        )
+        return JSONResponse(
+            {
+                "kind": "Server Error",
+                "error": msg,
+                "message": msg,
+                "stack": traceback.format_exc(),
+            },
+            status_code=500,
+        )

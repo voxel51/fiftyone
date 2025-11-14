@@ -80,7 +80,13 @@ const FoAxesHelper = ({
   return <>{axisComponents}</>;
 };
 
-export const Gizmos = () => {
+export const Gizmos = ({
+  isGizmoHelperVisible,
+  isGridVisible,
+}: {
+  isGizmoHelperVisible: boolean;
+  isGridVisible: boolean;
+}) => {
   const { upVector, sceneBoundingBox } = useFo3dContext();
   const isGridOn = useRecoilValue(isGridOnAtom);
 
@@ -146,7 +152,7 @@ export const Gizmos = () => {
 
   return (
     <>
-      {isGridOn && (
+      {isGridOn && isGridVisible && (
         <>
           <Grid
             quaternion={gridHelperQuarternion}
@@ -167,9 +173,11 @@ export const Gizmos = () => {
           <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
         </>
       )}
-      <GizmoHelper alignment="top-left" margin={[80, 100]}>
-        <GizmoViewport />
-      </GizmoHelper>
+      {isGizmoHelperVisible && (
+        <GizmoHelper alignment="top-left" margin={[80, 100]}>
+          <GizmoViewport />
+        </GizmoHelper>
+      )}
     </>
   );
 };

@@ -201,14 +201,16 @@ export class OperatorResult {
     public errorMessage: string = null
   ) {}
 
-  static create(options: {
-    operator?: Operator;
-    result?: object;
-    executor?: Executor;
-    error?: string;
-    delegated?: boolean;
-    errorMessage?: string;
-  } = {}): OperatorResult {
+  static create(
+    options: {
+      operator?: Operator;
+      result?: object;
+      executor?: Executor;
+      error?: string;
+      delegated?: boolean;
+      errorMessage?: string;
+    } = {}
+  ): OperatorResult {
     return new OperatorResult(
       options.operator || null,
       options.result || {},

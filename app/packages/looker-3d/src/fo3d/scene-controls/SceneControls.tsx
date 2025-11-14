@@ -1,13 +1,15 @@
+import * as fos from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { useMemo, useRef } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { Vector3 } from "three";
 import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
-import { CAMERA_POSITION_KEY } from "../../Environment";
 import { FoScene } from "../../hooks";
+import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
-import { getOrthonormalAxis } from "../utils";
+import { getCameraPositionKey, getOrthonormalAxis } from "../utils";
 import { Lights } from "./lights/Lights";
 
 export const SceneControls = ({
@@ -24,7 +26,12 @@ export const SceneControls = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
+    isComputingSceneBoundingBox,
   } = useFo3dContext();
+
+  const datasetName = useRecoilValue(fos.datasetName);
+  const [avoidZFighting, setAvoidZFighting] =
+    useRecoilState(avoidZFightingAtom);
 
   const dirFromUpVector = useMemo(
     () => getOrthonormalAxis(upVector),
@@ -37,6 +44,8 @@ export const SceneControls = ({
   const CAMERA_UPDATE_INTERVAL = 250;
 
   useFrame((state) => {
+    if (isComputingSceneBoundingBox) return;
+
     const now = Date.now();
     const cameraControls = cameraControlsRef?.current;
     if (
@@ -49,7 +58,7 @@ export const SceneControls = ({
         target: cameraControls.getTarget(new Vector3()).toArray(),
       };
       window?.localStorage.setItem(
-        CAMERA_POSITION_KEY,
+        getCameraPositionKey(datasetName),
         JSON.stringify(cameraState)
       );
       lastCameraUpdateRef.current = now;
@@ -78,6 +87,13 @@ export const SceneControls = ({
             label: "Auto Rotate",
             onChange: (value) => {
               setAutoRotate(value);
+            },
+          },
+          "Avoid Z fighting": {
+            value: avoidZFighting,
+            label: "Avoid Z fighting",
+            onChange: (value) => {
+              setAvoidZFighting(value);
             },
           },
         },

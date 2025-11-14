@@ -15,14 +15,13 @@ import fiftyone.operators.cache.utils as focu
 
 
 def auto_serialize(value):
-    """
-    Serializes a value for storage in the execution cache.
+    """Serializes a value for storage in the execution cache.
 
     Args:
         value: the value to serialize
 
     Returns:
-        The serialized value.
+        the serialized value
     """
     if isinstance(value, fo.Sample):
         return focu._make_sample_dict(value)
@@ -60,14 +59,13 @@ def auto_serialize(value):
 
 
 def auto_deserialize(value):
-    """
-    Deserializes a value from the execution cache.
+    """Deserializes a value from the execution cache.
 
     Args:
         value: the value to deserialize
 
     Returns:
-        The deserialized value.
+        the deserialized value
     """
     if focu._is_sample_dict(value):
         value = {k: v for k, v in value.items() if k != "_cls"}

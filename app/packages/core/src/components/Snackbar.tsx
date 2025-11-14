@@ -2,6 +2,7 @@ import { ExternalLink, Toast, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Launch } from "@mui/icons-material";
 import { Button } from "@mui/material";
+import { SnackbarProvider } from "notistack";
 import React from "react";
 import { useRecoilState } from "recoil";
 
@@ -83,11 +84,29 @@ function SnackbarLinks() {
   ) : null;
 }
 
+function SnackbarMessage() {
+  const [message, setSnackMessage] = useRecoilState(fos.snackbarMessage);
+
+  return message ? (
+    <Toast
+      duration={SNACK_VISIBLE_DURATION}
+      layout={LAYOUT}
+      message={<div style={{ width: "100%" }}>{message}</div>}
+      onHandleClose={() => setSnackMessage(null)}
+      primary={() => {
+        return <Dismiss onClick={() => setSnackMessage(null)} />;
+      }}
+    />
+  ) : null;
+}
+
 export default function Snackbar() {
   return (
     <>
       <SnackbarErrors />
       <SnackbarLinks />
+      <SnackbarMessage />
+      <SnackbarProvider />
     </>
   );
 }

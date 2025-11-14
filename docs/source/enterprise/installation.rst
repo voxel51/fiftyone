@@ -254,10 +254,11 @@ here is an example configuration:
 
     [
         {
-            "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "method": ["GET", "HEAD"],
-            "responseHeader": ["*"],
-            "maxAgeSeconds": 86400
+            "AllowedHeaders": ["*"],
+            "AllowedMethods": ["GET", "HEAD"],
+            "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
+            "ExposeHeaders": [],
+            "MaxAgeSeconds": 86400
         }
     ]
 

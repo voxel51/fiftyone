@@ -50,7 +50,6 @@ export default function (props: Props) {
       ref={hoverRef}
       onClick={onClick}
       data-cy={dataCy}
-      role="option"
     >
       <RowLabelContainer>
         <TextContainer>

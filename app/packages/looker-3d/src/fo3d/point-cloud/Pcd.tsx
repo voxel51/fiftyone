@@ -9,7 +9,7 @@ import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
-import { HoveredPointMarker } from "../components/HoveredPointMarker";
+import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";

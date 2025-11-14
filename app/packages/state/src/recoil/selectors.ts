@@ -8,19 +8,14 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import {
-  currentSlice,
-  fieldVisibilityStage,
-  gridSortBy,
-  isGroup,
-} from "@fiftyone/state";
+import { fieldVisibilityStage, gridSortBy } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
-import { isModalActive, modalSample, modalSelector } from "./modal";
+import { modalSample, modalSelector } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -408,24 +403,7 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    let methods = get(datasetAtom)?.brainMethods || [];
-    const isGroupDataset = get(isGroup);
-    const activeSlice = get(currentSlice(get(isModalActive)));
-
-    if (isGroupDataset && activeSlice) {
-      methods = methods.filter(({ viewStages }) => {
-        return viewStages.some((vs) => {
-          const { _cls, kwargs } = JSON.parse(vs);
-          if (_cls === "fiftyone.core.stages.SelectGroupSlices") {
-            const sliceValue = kwargs.filter(
-              (kwarg: string[]) => kwarg[0] === "slices"
-            )?.[0]?.[1];
-            if (sliceValue && sliceValue !== activeSlice) return false;
-          }
-          return true;
-        });
-      });
-    }
+    const methods = get(datasetAtom)?.brainMethods || [];
 
     return methods
       .filter(
