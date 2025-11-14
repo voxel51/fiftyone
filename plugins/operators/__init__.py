@@ -22,7 +22,7 @@ import fiftyone.utils.data as foud
 from fiftyone.core.odm.workspace import default_workspace_factory
 
 from .group_by import GroupBy
-from .model_evaluation import ConfigureScenario
+from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
 from .annotation import (
     ActivateAnnotationSchemas,
     AddBoundingBox,
@@ -3291,6 +3291,7 @@ def register(p):
     p.register(ListFiles)
     p.register(DownloadFileOperator)
     p.register(ConfigureScenario)
+    p.register(ConfigureScenarioPlotResolver)
 
     # view stages
     p.register(GroupBy)
