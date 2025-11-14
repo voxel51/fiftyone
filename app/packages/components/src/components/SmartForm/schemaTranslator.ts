@@ -179,7 +179,8 @@ function translateToUISchema(
   // Handle different view types
   switch (component) {
     case "FieldView":
-      // Basic text input - use default RJSF widget
+      // Basic text input - use custom TextWidget (no built-in label)
+      uiSchema["ui:widget"] = "TextWidget";
       if (view.placeholder) {
         uiSchema["ui:placeholder"] = view.placeholder;
       }
@@ -333,6 +334,14 @@ function translateToUISchema(
         )}`
       );
       break;
+  }
+
+  // Default to TextWidget for basic types if no widget specified
+  if (!uiSchema["ui:widget"] && !component) {
+    const type = schemaIO.type;
+    if (type === "string" || type === "number" || type === "integer") {
+      uiSchema["ui:widget"] = "TextWidget";
+    }
   }
 
   // Handle common view properties
