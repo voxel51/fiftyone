@@ -4,10 +4,10 @@ import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Light
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import {
   EventBus,
-  lighterSceneAtom,
   MockRenderer2D,
   MockResourceLoader,
   Scene2D,
+  defaultLighterSceneAtom,
 } from "@fiftyone/lighter";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
@@ -117,7 +117,7 @@ export const MediaTypeFo3dComponent = () => {
     return foScene.children?.length ?? 0;
   }, [foScene]);
 
-  const [scene, setScene] = useAtom(lighterSceneAtom);
+  const [scene, setScene] = useAtom(defaultLighterSceneAtom);
 
   // Hack: Setup a ghost lighter for human annotation needs
   // Todo: Remove this and abstract out event bus / annotaion system from Lighter

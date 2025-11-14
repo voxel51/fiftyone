@@ -3,9 +3,9 @@
  */
 
 import { atom } from "jotai";
-import { Scene2D } from "./core/Scene2D";
+import type { Scene2D } from "./core/Scene2D";
 
 /**
  * Atom to store the current lighter scene instance
  */
-export const lighterSceneAtom = atom<Scene2D | null>(null);
+export const defaultLighterSceneAtom = atom<Scene2D | null>(null);
