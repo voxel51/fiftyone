@@ -210,12 +210,13 @@ function translateToUISchema(
       break;
 
     case "AutocompleteView":
-      // RJSF doesn't have native autocomplete, map to select or custom widget
-      uiSchema["ui:widget"] = "select";
-      addWarning(
-        context,
-        `AutocompleteView mapped to select widget at: ${context.path.join(".")}`
-      );
+      uiSchema["ui:widget"] = "AutoComplete";
+      // Map AutocompleteView-specific options to ui:options
+      uiSchema["ui:options"] = {
+        freeSolo: view.allow_user_input ?? true,
+        allowClear: view.allow_clearing ?? true,
+        allowDuplicates: view.allow_duplicates ?? true,
+      };
       break;
 
     case "ColorView":
@@ -376,12 +377,41 @@ export function addChoicesToSchema(
   schemaIO: any
 ): RJSFSchema {
   const view = schemaIO.view;
+  const component = view?.component || view?.name;
 
   if (view?.choices && Array.isArray(view.choices)) {
-    schema.enum = view.choices.map((choice: any) => choice.value);
-    schema.enumNames = view.choices.map(
+    const enumValues = view.choices.map((choice: any) => choice.value);
+    const enumNames = view.choices.map(
       (choice: any) => choice.label || choice.value
     );
+
+    // For array types (multi-select AutocompleteView), add items definition
+    if (schema.type === "array") {
+      // Create items schema with enum values from choices
+      schema.items = {
+        type: "string",
+        enum: enumValues.length > 0 ? enumValues : undefined,
+        enumNames: enumNames.length > 0 ? enumNames : undefined,
+      };
+      // Store choices in examples for the AutoComplete widget to use
+      if (enumValues.length > 0) {
+        schema.examples = enumValues;
+      }
+    } else {
+      // For non-array types, add enum directly to schema
+      schema.enum = enumValues;
+      schema.enumNames = enumNames;
+    }
+  } else if (
+    schema.type === "array" &&
+    !schema.items &&
+    component === "AutocompleteView"
+  ) {
+    // For AutocompleteView arrays with no choices, add a default string items definition
+    // This allows freeSolo mode to work
+    schema.items = {
+      type: "string",
+    };
   }
 
   // Recursively process properties

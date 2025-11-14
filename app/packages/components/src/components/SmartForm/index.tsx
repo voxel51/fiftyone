@@ -1,14 +1,18 @@
 import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
-import type { IChangeEvent } from "@rjsf/core";
-import type { ValidatorType, UiSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+
 import {
   convertSchemaIODataToRJSF,
   convertRJSFDataToSchemaIO,
   translateSchemaComplete,
 } from "./schemaTranslator";
+
+import widgets from "./widgets";
+
+import type { IChangeEvent } from "@rjsf/core";
+import type { ValidatorType, UiSchema } from "@rjsf/utils";
+import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 export interface SmartFormProps {
   schema: SchemaType;
@@ -27,11 +31,6 @@ export default function SmartForm(props: SmartFormProps) {
     warnings,
   } = translateSchemaComplete(props.schema);
 
-  // Log any translation warnings
-  if (warnings.length > 0) {
-    console.warn("[SmartForm] Schema translation warnings:", warnings);
-  }
-
   // Convert SchemaIO data to RJSF format
   const formData = props.data
     ? convertSchemaIODataToRJSF(props.data, props.schema)
@@ -39,6 +38,16 @@ export default function SmartForm(props: SmartFormProps) {
 
   // Merge provided uiSchema with generated uiSchema (provided takes precedence)
   const mergedUiSchema = { ...generatedUiSchema, ...props.uiSchema };
+
+  console.log("[SchemaIO]", props.schema);
+  console.log("[JSON Schema]", jsonSchema);
+  console.log("[UI Schema]", generatedUiSchema);
+  console.log("[Data]", props.data);
+
+  // Log any translation warnings
+  if (warnings.length > 0) {
+    console.warn("[SmartForm] Schema translation warnings:", warnings);
+  }
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (!event) return;
@@ -80,6 +89,7 @@ export default function SmartForm(props: SmartFormProps) {
       schema={jsonSchema}
       uiSchema={mergedUiSchema}
       validator={props.validator || validator}
+      widgets={widgets}
       formData={formData}
       onChange={handleChange}
       onSubmit={handleSubmit}
