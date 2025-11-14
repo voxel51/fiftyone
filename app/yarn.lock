@@ -1516,6 +1516,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@chainner/node-path@npm:^0.1.1":
+  version: 0.1.1
+  resolution: "@chainner/node-path@npm:0.1.1"
+  checksum: 10/2f71d598c730daf6d833aadb50c8773a24e0bc9f567c67e855ee0e9a2b6c4c0230de1f654ffc2a34936fb82f548b080025d3134ea381709e59999473296d3965
+  languageName: node
+  linkType: hard
+
 "@choojs/findup@npm:^0.2.0":
   version: 0.2.1
   resolution: "@choojs/findup@npm:0.2.1"
@@ -2855,6 +2862,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
+    "@chainner/node-path": "npm:^0.1.1"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     fetch-retry: "npm:^5.0.3"
     lodash: "npm:^4.17.21"
