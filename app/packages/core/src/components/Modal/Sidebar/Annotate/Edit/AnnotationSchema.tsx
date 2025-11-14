@@ -1,8 +1,4 @@
-import {
-  LIGHTER_EVENTS,
-  UpdateLabelCommand,
-  useLighter,
-} from "@fiftyone/lighter";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
@@ -12,10 +8,9 @@ import {
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-import { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { coerceStringBooleans } from "../utils";
 import {
   currentData,
   currentField,
@@ -104,7 +99,7 @@ const useSchema = () => {
   const config = useAtomValue(currentSchema);
 
   return useMemo(() => {
-    const properties = {};
+    const properties: Record<string, any> = {};
 
     const attributes = config?.attributes;
     properties.label = createSelect("label", config?.classes ?? []);
@@ -115,7 +110,10 @@ const useSchema = () => {
       }
 
       if (attributes[attr].type === "input") {
-        properties[attr] = createInput(attr);
+        properties[attr] = createInput(
+          attr,
+          attributes[attr].ftype || STRING_FIELD
+        );
       }
 
       if (attributes[attr].type === "radio") {
@@ -143,22 +141,23 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          return data.length ? Number.parseFloat(data) : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            return data.length ? Number.parseFloat(data) : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            return data.length ? Number.parseInt(data) : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          return data.length ? Number.parseInt(data) : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
@@ -167,43 +166,11 @@ const AnnotationSchema = () => {
   const schema = useSchema();
   const [data, save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
-  const lighter = useLighter();
+  const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
 
   const schemaKeys = Object.keys(schema.properties);
-
-  useEffect(() => {
-    const handler = (event) => {
-      // Here, this would be true for `undo` or `redo`
-
-      if (!(event.detail?.command instanceof UpdateLabelCommand)) {
-        const label = overlay?.label;
-
-        if (label) {
-          save(label);
-        }
-
-        return;
-      }
-
-      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
-
-      if (newLabel) {
-        save(newLabel);
-      }
-    };
-
-    lighter.scene?.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
-    lighter.scene?.on(LIGHTER_EVENTS.REDO, handler);
-    lighter.scene?.on(LIGHTER_EVENTS.UNDO, handler);
-
-    return () => {
-      lighter.scene?.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
-      lighter.scene?.off(LIGHTER_EVENTS.REDO, handler);
-      lighter.scene?.off(LIGHTER_EVENTS.UNDO, handler);
-    };
-  }, [lighter.scene, overlay, save]);
 
   if (!field) {
     throw new Error("no field");
@@ -236,9 +203,11 @@ const AnnotationSchema = () => {
             return;
           }
 
-          lighter.scene?.executeCommand(
-            new UpdateLabelCommand(overlay, overlay.label, value)
-          );
+          eventBus.dispatch("annotation:notification:sidebarValueUpdated", {
+            overlayId: overlay.id,
+            currentLabel: overlay.label as any,
+            value,
+          });
         }}
       />
     </div>

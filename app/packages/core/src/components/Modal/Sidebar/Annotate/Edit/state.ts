@@ -87,8 +87,8 @@ export const currentField = atom(
     if (!label) {
       return;
     }
-    label.overlay.updateField(path);
-    label.overlay.updateLabel({ _id: label.data._id });
+    label.overlay?.updateField(path);
+    label.overlay?.updateLabel({ _id: label.data._id });
     set(current, { ...label, path, data: { _id: label.data._id } });
   }
 );

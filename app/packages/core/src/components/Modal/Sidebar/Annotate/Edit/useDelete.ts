@@ -1,7 +1,12 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import { generateSourceId } from "@fiftyone/events";
+import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { getFieldSchema } from "../../../Lighter/deltas";
 import { current, deleteValue } from "./state";
@@ -10,6 +15,7 @@ import { isSaving } from "./useSave";
 
 export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
+  const eventBus = useAnnotationEventBus();
   const label = useAtomValue(current);
   const setter = useSetAtom(deleteValue);
   const schema = useRecoilValue(
@@ -19,6 +25,63 @@ export default function useDelete() {
   const exit = useExit(false);
   const setSaving = useSetAtom(isSaving);
   const setNotification = fos.useNotification();
+
+  const sourceIdRef = useRef<string | null>(null);
+
+  useAnnotationEventHandler(
+    "annotation:notification:deleteSuccess",
+    useCallback(
+      (payload) => {
+        // Only process if this notification is for our mutation
+        if (payload.sourceId !== sourceIdRef.current) {
+          return;
+        }
+
+        if (payload.type !== "delete") {
+          return;
+        }
+
+        // Clear the sourceId after processing
+        sourceIdRef.current = null;
+
+        removeOverlay(label?.overlay.id);
+        setter();
+        setSaving(false);
+        setNotification({
+          msg: `Label "${label.data.label}" successfully deleted.`,
+          variant: "success",
+        });
+        exit();
+      },
+      [label, removeOverlay, setter, setSaving, setNotification]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:deleteError",
+    useCallback(
+      (payload) => {
+        // Only process if this notification is for our mutation
+        if (payload.sourceId !== sourceIdRef.current) {
+          return;
+        }
+
+        if (payload.type !== "delete") {
+          return;
+        }
+
+        // Clear the sourceId after processing
+        sourceIdRef.current = null;
+
+        setSaving(false);
+        setNotification({
+          msg: `Label "${label.data.label}" not successfully deleted. Try again.`,
+          variant: "error",
+        });
+      },
+      [label, setSaving, setNotification]
+    )
+  );
 
   return useCallback(() => {
     if (!label) {
@@ -33,29 +96,15 @@ export default function useDelete() {
     }
 
     setSaving(true);
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: {
-        label,
-        schema: getFieldSchema(schema, label?.path)!,
-        onSuccess: () => {
-          removeOverlay(label?.overlay.id);
-          setter();
-          setSaving(false);
-          exit();
-          setNotification({
-            msg: `Label "${label.data.label}" successfully deleted.`,
-            variant: "success",
-          });
-        },
-        onError: () => {
-          setSaving(false);
-          setNotification({
-            msg: `Label "${label.data.label}" not successfully deleted. Try again.`,
-            variant: "error",
-          });
-        },
-      },
+
+    sourceIdRef.current = generateSourceId(
+      `delete-${label.data.label}-${label.data._id}`
+    );
+
+    eventBus.dispatch("annotation:command:delete", {
+      sourceId: sourceIdRef.current,
+      label,
+      schema: getFieldSchema(schema, label?.path)!,
     });
-  }, [exit, label, scene, setter, removeOverlay, schema, setSaving]);
+  }, [eventBus, label, scene, schema, setSaving]);
 }

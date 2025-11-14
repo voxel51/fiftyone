@@ -1,3 +1,4 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
@@ -80,11 +81,24 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
   }, [scene, isHoveringThisRow, label.overlay.id]);
 
   const color = useColor(label.overlay);
+
+  const annotationEventBus = useAnnotationEventBus();
+
   return (
     <Container
       onClick={() => {
         const store = getDefaultStore();
         scene?.selectOverlay(store.get(atom).overlay.id);
+
+        annotationEventBus.dispatch(
+          "annotation:notification:sidebarLabelSelected",
+          {
+            id: label.overlay.id,
+            type: label.type,
+            data: label.data,
+          }
+        );
+
         setEditing(atom);
 
         store.set(savedLabel, store.get(atom).data);

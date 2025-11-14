@@ -2587,6 +2587,7 @@ __metadata:
   peerDependencies:
     jotai: "*"
     react: "*"
+    uuid: "*"
   languageName: unknown
   linkType: soft
 

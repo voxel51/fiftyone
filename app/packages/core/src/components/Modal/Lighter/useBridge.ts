@@ -2,10 +2,16 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { LIGHTER_EVENTS, type Scene2D } from "@fiftyone/lighter";
-import { useEffect } from "react";
+import {
+  useAnnotationEventHandler,
+  useAnnotationPersistence,
+} from "@fiftyone/annotation";
+import { LIGHTER_EVENTS, Scene2D, UpdateLabelCommand } from "@fiftyone/lighter";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect } from "react";
+import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
+import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
 import useColorMappingContext from "./useColorMappingContext";
-import { useOverlayPersistence } from "./useOverlayPersistence";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
@@ -17,7 +23,68 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
-  useOverlayPersistence(scene);
+
+  useAnnotationPersistence();
+
+  const save = useSetAtom(currentData);
+  const overlay = useAtomValue(currentOverlay);
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarValueUpdated",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        const overlay = scene.getOverlay(payload.overlayId);
+
+        if (!overlay) {
+          return;
+        }
+
+        scene.executeCommand(
+          new UpdateLabelCommand(overlay, payload.currentLabel, payload.value)
+        );
+      },
+      [scene]
+    )
+  );
+
+  useEffect(() => {
+    if (!scene) {
+      return;
+    }
+
+    const handler = (event: any) => {
+      // Here, this would be true for `undo` or `redo`
+      if (!(event.detail?.command instanceof UpdateLabelCommand)) {
+        const label = overlay?.label;
+
+        if (label) {
+          save(label);
+        }
+
+        return;
+      }
+
+      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
+
+      if (newLabel) {
+        save(newLabel);
+      }
+    };
+
+    scene.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
+    scene.on(LIGHTER_EVENTS.REDO, handler);
+    scene.on(LIGHTER_EVENTS.UNDO, handler);
+
+    return () => {
+      scene.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
+      scene.off(LIGHTER_EVENTS.REDO, handler);
+      scene.off(LIGHTER_EVENTS.UNDO, handler);
+    };
+  }, [scene, overlay, save]);
 
   const context = useColorMappingContext();
 

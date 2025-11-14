@@ -1,10 +1,10 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { lighterSceneAtom } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
@@ -93,7 +93,6 @@ const Annotate = () => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(schemas) === null;
   const editing = useAtomValue(isEditing);
-  const scene = useAtomValue(lighterSceneAtom);
 
   const mediaType = useRecoilValue(fos.mediaType);
   const annotationSupported = isAnnotationSupported(mediaType);
@@ -102,7 +101,7 @@ const Annotate = () => {
       ? GROUP_UNSUPPORTED
       : undefined;
 
-  if (annotationSupported && (loading || !scene)) {
+  if (annotationSupported && loading) {
     return <Loading />;
   }
 
