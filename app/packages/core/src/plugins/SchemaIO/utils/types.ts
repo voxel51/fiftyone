@@ -72,6 +72,10 @@ export type ViewPropsType<Schema extends SchemaType = SchemaType> = {
     params: { [key: string]: any },
     props: ViewPropsType
   ) => void;
+  onValidationErrors?: (
+    basePath: string,
+    errors: ValidationErrorType[]
+  ) => void;
 };
 
 export type CustomComponentsType = {
@@ -80,4 +84,9 @@ export type CustomComponentsType = {
 
 export type AncestorsType = {
   [path: string]: SchemaType;
+};
+
+export type ValidationErrorType = {
+  path: string;
+  reason: string;
 };

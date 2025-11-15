@@ -1,5 +1,4 @@
 import { types } from "@fiftyone/operators";
-import { DropdownView } from "../../SchemaIO/components";
 
 const inputComponentsByType = {
   Object: "ObjectView",
@@ -12,6 +11,7 @@ const inputComponentsByType = {
   Map: "MapView",
   File: "FileExplorerView",
   UploadedFile: "FileView",
+  ResolvableProperty: "ResolvablePropertyView",
 };
 const outputComponentsByType = {
   Object: "ObjectView",
@@ -166,6 +166,19 @@ function getSchema(property, options = {}) {
       },
       computedOptions
     );
+  }
+
+  if (typeName === "ResolvableProperty") {
+    schema.resolver = property.type.resolver;
+    schema.debounce = property.type.debounce;
+    schema.throttle = property.type.throttle;
+    schema.wait = property.type.wait;
+    schema.auto_update = property.type.auto_update;
+    schema.dependencies = property.type.dependencies;
+    schema.params = property.type.params;
+    schema.validate = property.type.validate;
+    schema.leading = property.type.leading;
+    schema.trailing = property.type.trailing;
   }
 
   return schema;

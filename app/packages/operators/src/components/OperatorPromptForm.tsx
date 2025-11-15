@@ -17,11 +17,13 @@ export function OperatorPromptForm({ operatorPrompt }) {
   return (
     <Box component={"form"} p={2} onSubmit={operatorPrompt.onSubmit}>
       <OperatorIO
+        id={operatorPrompt.id}
         schema={operatorPrompt.inputFields}
         onChange={setFormState}
         data={operatorPrompt.promptingOperator.params}
         errors={operatorPrompt?.validationErrors || []}
         initialData={operatorPrompt.promptingOperator.initialParams}
+        onValidationErrors={operatorPrompt.setCustomValidationErrors}
       />
     </Box>
   );

@@ -19,6 +19,7 @@ export default function OperatorPromptOutput({ operatorPrompt, outputFields }) {
     <Box p={2}>
       {outputFields && (
         <OperatorIO
+          id={operatorPrompt.id}
           type="output"
           data={result}
           schema={operatorPrompt.outputFields}

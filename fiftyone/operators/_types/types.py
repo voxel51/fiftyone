@@ -883,6 +883,53 @@ class Property(BaseType):
         )
 
 
+class ResolvableProperty(BaseType):
+    """Represents a resolvable property.
+
+    Args:
+        resolver (str): operator to resolve the schema for this property
+        debounce (None): debounce time in milliseconds
+        throttle (None): throttle time in milliseconds
+        wait (None): wait time in milliseconds
+        auto_update (True): whether to auto-update the property when dependencies change
+        dependencies (list): list of property names that this property depends on
+        params (dict): parameters to pass to the resolver
+        validate (False): whether the property should be validated. If True, the operator
+            will not be allowed to execute until this property is resolved and validated.
+        leading (False): whether to invoke the resolver on the leading edge when
+            debouncing or throttling is enabled.
+        trailing (True): whether to invoke the resolver on the trailing edge when
+            debouncing or throttling is enabled.
+    """
+
+    def __init__(self, resolver: str, **kwargs):
+        self.resolver = resolver
+        self.debounce = kwargs.get("debounce", None)
+        self.throttle = kwargs.get("throttle", None)
+        self.wait = kwargs.get("wait", None)
+        self.auto_update = kwargs.get("auto_update", True)
+        self.dependencies = kwargs.get("dependencies", None)
+        self.params = kwargs.get("params", None)
+        self.validate = kwargs.get("validate", False)
+        self.leading = kwargs.get("leading", False)
+        self.trailing = kwargs.get("trailing", True)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "resolver": self.resolver,
+            "debounce": self.debounce,
+            "throttle": self.throttle,
+            "wait": self.wait,
+            "auto_update": self.auto_update,
+            "dependencies": self.dependencies,
+            "params": self.params,
+            "validate": self.validate,
+            "leading": self.leading,
+            "trailing": self.trailing,
+        }
+
+
 class String(BaseType):
     """Represents a string.
 
