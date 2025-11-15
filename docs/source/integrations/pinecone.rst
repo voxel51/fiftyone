@@ -40,7 +40,7 @@ FiftyOne datasets and use this to query your data is as follows:
     a model to use to generate embeddings
 
 3)  Use the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-    methodto generate a Pinecone similarity index for the samples or object
+    method to generate a Pinecone similarity index for the samples or object
     patches in a dataset by setting the parameter `backend="pinecone"` and
     specifying a `brain_key` of your choice
 
