@@ -339,7 +339,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           continue;
         }
 
-        const field = getField([...path.split("."), k], fieldSchema);
+        const field = getField([...pathParts, k], fieldSchema);
 
         // Handle dynamic embedded document fields that don't define an explicit ftype
         if (!field) {
