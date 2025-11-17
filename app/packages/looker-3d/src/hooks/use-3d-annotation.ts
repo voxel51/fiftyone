@@ -8,6 +8,7 @@ import { useSetRecoilState } from "recoil";
 import { PolylinePointTransformData } from "../annotation/types";
 import { points3dToPolylineSegments } from "../annotation/utils/polyline-utils";
 import {
+  hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
   stagedPolylineTransformsAtom,
 } from "../state";
@@ -22,6 +23,7 @@ export const use3dAnnotation = () => {
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
   const save = useSetAtom(currentData);
 
@@ -103,5 +105,24 @@ export const use3dAnnotation = () => {
       },
       [save]
     )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelHover",
+    useCallback((payload) => {
+      setHoveredLabel({
+        _id: payload.id,
+        path: "",
+        selected: false,
+        _cls: "",
+      });
+    }, [])
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelUnhover",
+    useCallback(() => {
+      setHoveredLabel(null);
+    }, [])
   );
 };

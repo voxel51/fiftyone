@@ -48,6 +48,19 @@ export type AnnotationEventGroup = {
     type: AnnotationLabel["type"];
     data?: Partial<AnnotationLabel["data"]>;
   };
+  /**
+   * Notification event emitted when a label is hovered.
+   */
+  "annotation:notification:sidebarLabelHover": {
+    id: string;
+    tooltip?: boolean;
+  };
+  /**
+   * Notification event emitted when a label is unhovered.
+   */
+  "annotation:notification:sidebarLabelUnhover": {
+    id: string;
+  };
 };
 
 export const useAnnotationEventHandler =

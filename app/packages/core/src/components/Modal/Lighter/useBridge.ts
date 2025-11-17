@@ -46,6 +46,40 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelHover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        scene.dispatchSafely({
+          type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
+          detail: { id: payload.id, tooltip: payload.tooltip ?? false },
+        });
+      },
+      [scene]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelUnhover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        scene.dispatchSafely({
+          type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
+          detail: { id: payload.id },
+        });
+      },
+      [scene]
+    )
+  );
+
   useEffect(() => {
     if (!scene) {
       return;

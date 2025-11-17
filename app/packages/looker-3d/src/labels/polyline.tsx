@@ -44,8 +44,9 @@ export const Polyline = ({
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
-  const { setIsHovered } = useHoverState();
+  useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
     tooltip,
     label
@@ -275,12 +276,12 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={() => {
-            setIsHovered(true);
+            setHoveredLabel(label);
             handleAnnotationPointerOver();
             onPointerOver();
           }}
           onPointerOut={() => {
-            setIsHovered(false);
+            setHoveredLabel(null);
             handleAnnotationPointerOut();
             onPointerOut();
           }}
