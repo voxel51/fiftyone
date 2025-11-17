@@ -6,6 +6,7 @@
  * since those widgets handle their own labels via FieldWrapper.
  */
 
+import React from "react";
 import { FieldTemplateProps } from "@rjsf/utils";
 import { Box, Typography } from "@mui/material";
 
@@ -34,7 +35,8 @@ export default function FieldTemplate(props: FieldTemplateProps) {
 
   // Check if this field is using a custom SchemaIO widget
   const widget = uiSchema?.["ui:widget"];
-  const isSchemaIOWidget = typeof widget === "string" && SCHEMAIO_WIDGETS.includes(widget);
+  const isSchemaIOWidget =
+    typeof widget === "string" && SCHEMAIO_WIDGETS.includes(widget);
 
   // For SchemaIO widgets, don't render the label here (they handle it themselves)
   const shouldShowLabel = displayLabel && label && !isSchemaIOWidget;
@@ -44,7 +46,6 @@ export default function FieldTemplate(props: FieldTemplateProps) {
       className={classNames}
       style={style}
       sx={{
-        marginBottom: 2,
         width: "100%",
       }}
     >
