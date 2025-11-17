@@ -2,10 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import {
-  useAnnotationEventBus,
-  useAnnotationEventHandler,
-} from "@fiftyone/annotation";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 import { parseTimestamp } from "@fiftyone/core/src/client/util";
@@ -23,9 +20,9 @@ import { useRecoilValue } from "recoil";
 import { OpType, buildJsonPath, buildLabelDeltas } from "../deltas";
 
 /**
- * Hook that handles annotation persistence events.
+ * Hook that provides functions related to annotation persistence.
  */
-export const useAnnotationPersistence = () => {
+export const useAnnotationActions = () => {
   const datasetId = useRecoilValue(fosDatasetId);
   const currentSample = useRecoilValue(modalSample)?.sample;
   const refreshSample = useRefreshSample();
@@ -92,7 +89,7 @@ export const useAnnotationPersistence = () => {
   );
 
   // callback which handles both mutation (upsert) and deletion
-  const handlePersistenceEvent = useCallback(
+  const handlePersistence = useCallback(
     async (
       annotationLabel: AnnotationLabel,
       schema: Field,
@@ -125,76 +122,94 @@ export const useAnnotationPersistence = () => {
     [currentSample, handlePatchSample]
   );
 
-  const handlePersistOverlay = useCallback(
-    async (data: {
-      sourceId: string;
-      label: AnnotationLabel;
-      schema: Field;
-    }) => {
+  /**
+   * Upsert an annotation label.
+   * @param label The label to upsert
+   * @param schema The schema of the label
+   * @param onSuccess Callback invoked on successful upsert
+   * @param onError Callback invoked on error
+   */
+  const upsertAnnotation = useCallback(
+    async (
+      label: AnnotationLabel,
+      schema: Field,
+      onSuccess?: () => void,
+      onError?: (error?: Error) => void
+    ) => {
+      const labelId = label.data._id;
       try {
-        const success = await handlePersistenceEvent(
-          data.label,
-          data.schema,
-          "mutate"
-        );
+        const success = await handlePersistence(label, schema, "mutate");
 
         if (success) {
           eventBus.dispatch("annotation:notification:upsertSuccess", {
-            sourceId: data.sourceId,
+            labelId,
             type: "upsert",
           });
+          onSuccess?.();
         } else {
           eventBus.dispatch("annotation:notification:upsertError", {
-            sourceId: data.sourceId,
+            labelId,
             type: "upsert",
           });
+          onError?.();
         }
       } catch (error) {
         eventBus.dispatch("annotation:notification:upsertError", {
-          sourceId: data.sourceId,
+          labelId,
           type: "upsert",
-          error,
+          error: error as Error,
         });
+        onError?.(error as Error);
       }
     },
-    [handlePersistenceEvent, eventBus]
+    [handlePersistence, eventBus]
   );
 
-  const handleRemoveOverlay = useCallback(
-    async (data: {
-      sourceId: string;
-      label: AnnotationLabel;
-      schema: Field;
-    }) => {
+  /**
+   * Delete an annotation label.
+   * @param label The label to delete
+   * @param schema The schema of the label
+   * @param onSuccess Callback invoked on successful delete
+   * @param onError Callback invoked on error
+   */
+  const deleteAnnotation = useCallback(
+    async (
+      label: AnnotationLabel,
+      schema: Field,
+      onSuccess?: () => void,
+      onError?: (error?: Error) => void
+    ) => {
+      const labelId = label.data._id;
       try {
-        const success = await handlePersistenceEvent(
-          data.label,
-          data.schema,
-          "delete"
-        );
+        const success = await handlePersistence(label, schema, "delete");
 
         if (success) {
           eventBus.dispatch("annotation:notification:deleteSuccess", {
-            sourceId: data.sourceId,
+            labelId,
             type: "delete",
           });
+          onSuccess?.();
         } else {
           eventBus.dispatch("annotation:notification:deleteError", {
-            sourceId: data.sourceId,
+            labelId,
             type: "delete",
           });
+          onError?.();
         }
       } catch (error) {
         eventBus.dispatch("annotation:notification:deleteError", {
-          sourceId: data.sourceId,
+          labelId,
           type: "delete",
-          error,
+          error: error as Error,
         });
+        onError?.(error as Error);
       }
     },
-    [handlePersistenceEvent, eventBus]
+    [handlePersistence, eventBus]
   );
 
-  useAnnotationEventHandler("annotation:command:upsert", handlePersistOverlay);
-  useAnnotationEventHandler("annotation:command:delete", handleRemoveOverlay);
+  return {
+    upsertAnnotation,
+    deleteAnnotation,
+  };
 };

@@ -2,10 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import {
-  useAnnotationEventHandler,
-  useAnnotationPersistence,
-} from "@fiftyone/annotation";
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { LIGHTER_EVENTS, Scene2D, UpdateLabelCommand } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
@@ -23,8 +20,6 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
-
-  useAnnotationPersistence();
 
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);

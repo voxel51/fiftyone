@@ -1,7 +1,4 @@
-import {
-  useAnnotationEventHandler,
-  useAnnotationPersistence,
-} from "@fiftyone/annotation";
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { currentData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -19,8 +16,6 @@ import {
  * Hook that initializes 3D annotation.
  */
 export const use3dAnnotation = () => {
-  useAnnotationPersistence();
-
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
   );

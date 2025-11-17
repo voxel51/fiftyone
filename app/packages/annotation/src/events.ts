@@ -5,34 +5,17 @@ import { Field } from "@fiftyone/utilities";
 export const AnnotationChannelId = "default";
 
 type MutationError<T> = {
-  sourceId: string;
+  labelId: string;
   type: T;
   error?: Error;
 };
 
 type MutationSuccess<T> = {
-  sourceId: string;
+  labelId: string;
   type: T;
 };
 
 export type AnnotationEventGroup = {
-  /**
-   * Mutation event to trigger an upsert operation.
-   */
-  "annotation:command:upsert": {
-    /**
-     * The id of the source of the upsert event.
-     */
-    sourceId: string;
-    /**
-     * The label that is being upserted.
-     */
-    label: AnnotationLabel;
-    /**
-     * The schema of the label that is being upserted.
-     */
-    schema: Field;
-  };
   /**
    * Notification event emitted when a label is upserted successfully.
    */
@@ -41,23 +24,6 @@ export type AnnotationEventGroup = {
    * Notification event emitted when an error occurs while upserting a label.
    */
   "annotation:notification:upsertError": MutationError<"upsert">;
-  /**
-   * Mutation event to trigger a delete operation.
-   */
-  "annotation:command:delete": {
-    /**
-     * The id of the source of the delete event.
-     */
-    sourceId: string;
-    /**
-     * The label that is being deleted.
-     */
-    label: AnnotationLabel;
-    /**
-     * The schema of the label that is being deleted.
-     */
-    schema: Field;
-  };
   /**
    * Notification event emitted when a label is deleted successfully.
    */
