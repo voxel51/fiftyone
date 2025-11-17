@@ -314,3 +314,467 @@ class TestObject3DBasics(unittest.TestCase):
         self.assertListEqual(
             list(sub.traverse(include_self=False)), objects[2:4]
         )
+
+
+class TestObject3DRemove(unittest.TestCase):
+    def setUp(self):
+        """Set up a scene graph for testing remove operations."""
+        self.root = Object3D("root")
+        self.child1 = Object3D("child1")
+        self.child2 = Object3D("child2")
+        self.child3 = Object3D("child3")
+        self.grandchild1 = Object3D("grandchild1")
+        self.grandchild2 = Object3D("grandchild2")
+        self.grandchild3 = Object3D("grandchild3")
+        self.great_grandchild = Object3D("great_grandchild")
+
+        # Build hierarchy:
+        # root
+        #   - child1
+        #     - grandchild1
+        #       - great_grandchild
+        #     - grandchild2
+        #   - child2
+        #   - child3
+        #     - grandchild3
+        self.child1.add(self.grandchild1, self.grandchild2)
+        self.grandchild1.add(self.great_grandchild)
+        self.child3.add(self.grandchild3)
+        self.root.add(self.child1, self.child2, self.child3)
+
+    def test_remove_by_reference_single_direct_child(self):
+        """Test removing a single direct child by reference."""
+        self.root.remove(self.child2)
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+        self.assertTrue(any(c is self.child1 for c in self.root.children))
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+        self.assertEqual(len(self.root.children), 2)
+
+    def test_remove_by_reference_multiple_direct_children(self):
+        """Test removing multiple direct children by reference."""
+        self.root.remove(self.child1, self.child3)
+        self.assertFalse(any(c is self.child1 for c in self.root.children))
+        self.assertFalse(any(c is self.child3 for c in self.root.children))
+        self.assertTrue(any(c is self.child2 for c in self.root.children))
+        self.assertEqual(len(self.root.children), 1)
+
+    def test_remove_by_reference_recursive_grandchild(self):
+        """Test removing a grandchild recursively."""
+        self.root.remove(self.grandchild1)
+        self.assertFalse(
+            any(c is self.grandchild1 for c in self.child1.children)
+        )
+        self.assertTrue(
+            any(c is self.grandchild2 for c in self.child1.children)
+        )
+        self.assertEqual(len(self.child1.children), 1)
+
+    def test_remove_by_reference_recursive_deep_nested(self):
+        """Test removing a deeply nested node."""
+        self.root.remove(self.great_grandchild)
+        self.assertNotIn(self.great_grandchild, self.grandchild1.children)
+        self.assertEqual(len(self.grandchild1.children), 0)
+
+    def test_remove_by_reference_multiple_nested(self):
+        """Test removing multiple nested nodes."""
+        self.root.remove(self.grandchild1, self.grandchild3)
+        self.assertFalse(
+            any(c is self.grandchild1 for c in self.child1.children)
+        )
+        self.assertFalse(
+            any(c is self.grandchild3 for c in self.child3.children)
+        )
+        self.assertTrue(
+            any(c is self.grandchild2 for c in self.child1.children)
+        )
+        self.assertEqual(len(self.child1.children), 1)
+        self.assertEqual(len(self.child3.children), 0)
+
+    def test_remove_by_reference_cannot_remove_self(self):
+        """Test that removing self raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            self.root.remove(self.root)
+        self.assertIn("Cannot remove self", str(context.exception))
+
+    def test_remove_by_reference_not_found(self):
+        """Test that removing a non-existent object raises ValueError."""
+        orphan = Object3D("orphan")
+        with self.assertRaises(ValueError) as context:
+            self.root.remove(orphan)
+        self.assertIn("not found in scene graph", str(context.exception))
+
+    def test_remove_by_reference_empty_args(self):
+        """Test that remove with no arguments does nothing."""
+        initial_children_count = len(self.root.children)
+        self.root.remove()
+        self.assertEqual(len(self.root.children), initial_children_count)
+
+    def test_remove_by_name_single_match(self):
+        """Test removing a single node by name."""
+        self.root.remove_by_name("child2")
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+        self.assertTrue(any(c is self.child1 for c in self.root.children))
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+
+    def test_remove_by_name_multiple_matches(self):
+        """Test removing multiple nodes with the same name."""
+        duplicate = Object3D("child2")
+        self.root.add(duplicate)
+
+        self.root.remove_by_name("child2")
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+        self.assertFalse(any(c is duplicate for c in self.root.children))
+        self.assertEqual(len(self.root.children), 2)
+
+    def test_remove_by_name_recursive(self):
+        """Test removing a nested node by name."""
+        self.root.remove_by_name("grandchild1")
+        self.assertFalse(
+            any(c is self.grandchild1 for c in self.child1.children)
+        )
+        self.assertTrue(
+            any(c is self.grandchild2 for c in self.child1.children)
+        )
+
+    def test_remove_by_name_deeply_nested(self):
+        """Test removing a deeply nested node by name."""
+        self.root.remove_by_name("great_grandchild")
+        self.assertFalse(
+            any(c is self.great_grandchild for c in self.grandchild1.children)
+        )
+        self.assertEqual(len(self.grandchild1.children), 0)
+
+    def test_remove_by_name_cannot_remove_self(self):
+        """Test that removing self by name raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            self.root.remove_by_name("root")
+        self.assertIn("Cannot remove self", str(context.exception))
+
+    def test_remove_by_name_not_found(self):
+        """Test that removing a non-existent name raises ValueError."""
+        with self.assertRaises(ValueError) as context:
+            self.root.remove_by_name("nonexistent")
+        self.assertIn("not found in scene graph", str(context.exception))
+
+    def test_remove_by_uuid_single_match(self):
+        """Test removing a node by UUID."""
+        target_uuid = self.child2.uuid
+        self.root.remove_by_uuid(target_uuid)
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+        self.assertTrue(any(c is self.child1 for c in self.root.children))
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+
+    def test_remove_by_uuid_recursive(self):
+        """Test removing a nested node by UUID."""
+        target_uuid = self.grandchild1.uuid
+        self.root.remove_by_uuid(target_uuid)
+        self.assertFalse(
+            any(c is self.grandchild1 for c in self.child1.children)
+        )
+        self.assertTrue(
+            any(c is self.grandchild2 for c in self.child1.children)
+        )
+
+    def test_remove_by_uuid_deeply_nested(self):
+        """Test removing a deeply nested node by UUID."""
+        target_uuid = self.great_grandchild.uuid
+        self.root.remove_by_uuid(target_uuid)
+        self.assertFalse(
+            any(c is self.great_grandchild for c in self.grandchild1.children)
+        )
+        self.assertEqual(len(self.grandchild1.children), 0)
+
+    def test_remove_by_uuid_cannot_remove_self(self):
+        """Test that removing self by UUID raises ValueError."""
+        root_uuid = self.root.uuid
+        with self.assertRaises(ValueError) as context:
+            self.root.remove_by_uuid(root_uuid)
+        self.assertIn("Cannot remove self", str(context.exception))
+
+    def test_remove_by_uuid_not_found(self):
+        """Test that removing a non-existent UUID raises ValueError."""
+        import uuid as uuid_module
+
+        fake_uuid = str(uuid_module.uuid4())
+        with self.assertRaises(ValueError) as context:
+            self.root.remove_by_uuid(fake_uuid)
+        self.assertIn("not found in scene graph", str(context.exception))
+
+    def test_remove_preserves_other_nodes(self):
+        """Test that removing one node doesn't affect others."""
+        initial_grandchild2_children = len(self.grandchild2.children)
+        initial_child3_children = len(self.child3.children)
+
+        self.root.remove(self.grandchild1)
+
+        # grandchild2 should still exist and have its children intact
+        self.assertTrue(
+            any(c is self.grandchild2 for c in self.child1.children)
+        )
+        self.assertEqual(
+            len(self.grandchild2.children), initial_grandchild2_children
+        )
+
+        # child3 and its children should be unaffected
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+        self.assertEqual(len(self.child3.children), initial_child3_children)
+        self.assertTrue(
+            any(c is self.grandchild3 for c in self.child3.children)
+        )
+
+    def test_remove_all_children_then_add_back(self):
+        """Test removing all children and then adding them back."""
+        self.root.remove(self.child1, self.child2, self.child3)
+        self.assertEqual(len(self.root.children), 0)
+
+        # Add them back
+        self.root.add(self.child1, self.child2, self.child3)
+        self.assertEqual(len(self.root.children), 3)
+        self.assertTrue(any(c is self.child1 for c in self.root.children))
+        self.assertTrue(any(c is self.child2 for c in self.root.children))
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+
+    def test_remove_by_name_then_by_reference(self):
+        """Test removing by name, then by reference."""
+        self.root.remove_by_name("child2")
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+
+        self.root.remove(self.child1)
+        self.assertFalse(any(c is self.child1 for c in self.root.children))
+        self.assertEqual(len(self.root.children), 1)
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+
+    def test_remove_by_uuid_then_by_name(self):
+        """Test removing by UUID, then by name."""
+        self.root.remove_by_uuid(self.child2.uuid)
+        self.assertFalse(any(c is self.child2 for c in self.root.children))
+
+        self.root.remove_by_name("grandchild3")
+        self.assertFalse(
+            any(c is self.grandchild3 for c in self.child3.children)
+        )
+        self.assertEqual(len(self.child3.children), 0)
+
+
+class TestObject3DFindAndExecute(unittest.TestCase):
+    def setUp(self):
+        """Set up a scene graph for testing find_and_execute operations."""
+        self.root = Object3D("root")
+        self.child1 = Object3D("child1")
+        self.child2 = Object3D("child2")
+        self.child3 = Object3D("child3")
+        self.grandchild1 = Object3D("grandchild1")
+        self.grandchild2 = Object3D("grandchild2")
+        self.grandchild3 = Object3D("grandchild3")
+        self.great_grandchild = Object3D("great_grandchild")
+
+        # Build hierarchy:
+        # root
+        #   - child1
+        #     - grandchild1
+        #       - great_grandchild
+        #     - grandchild2
+        #   - child2
+        #   - child3
+        #     - grandchild3
+        self.child1.add(self.grandchild1, self.grandchild2)
+        self.grandchild1.add(self.great_grandchild)
+        self.child3.add(self.grandchild3)
+        self.root.add(self.child1, self.child2, self.child3)
+
+    def test_find_and_collect_by_name(self):
+        """Test finding and collecting nodes by name."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name == "grandchild1"
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 1)
+        self.assertIs(matches[0], self.grandchild1)
+
+    def test_find_and_collect_multiple_by_name(self):
+        """Test finding and collecting multiple nodes with the same name."""
+        # Add another node with the same name
+        duplicate = Object3D("child2")
+        self.root.add(duplicate)
+
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name == "child2"
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 2)
+        self.assertIn(self.child2, matches)
+        self.assertIn(duplicate, matches)
+
+    def test_find_and_collect_by_uuid(self):
+        """Test finding and collecting a node by UUID."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.uuid == self.grandchild2.uuid
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 1)
+        self.assertIs(matches[0], self.grandchild2)
+
+    def test_find_and_collect_nested(self):
+        """Test finding and collecting deeply nested nodes."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name == "great_grandchild"
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 1)
+        self.assertIs(matches[0], self.great_grandchild)
+
+    def test_find_and_execute_action(self):
+        """Test finding nodes and executing an action on them."""
+        updated_count = 0
+
+        def predicate(child: Object3D) -> bool:
+            return child.name.startswith("grandchild")
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            nonlocal updated_count
+            child.visible = False
+            updated_count += 1
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(updated_count, 3)
+        self.assertFalse(self.grandchild1.visible)
+        self.assertFalse(self.grandchild2.visible)
+        self.assertFalse(self.grandchild3.visible)
+        self.assertTrue(self.child1.visible)
+        self.assertTrue(self.child2.visible)
+
+    def test_stop_on_first_match(self):
+        """Test stopping after first match is found."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name.startswith("child")
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(
+            self.root, predicate, on_match, stop_on_first_match=True
+        )
+
+        self.assertEqual(len(matches), 1)
+        self.assertIn(matches[0], [self.child1, self.child2, self.child3])
+
+    def test_stop_on_first_match_with_callback_return_false(self):
+        """Test stopping when callback returns False."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name.startswith("grandchild")
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return False
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 1)
+        self.assertIn(
+            matches[0], [self.grandchild1, self.grandchild2, self.grandchild3]
+        )
+
+    def test_find_all_children(self):
+        """Test finding all direct children."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child in self.root.children
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 3)
+        self.assertIn(self.child1, matches)
+        self.assertIn(self.child2, matches)
+        self.assertIn(self.child3, matches)
+
+    def test_find_nothing(self):
+        """Test finding when no nodes match the predicate."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name == "nonexistent"
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 0)
+
+    def test_custom_predicate(self):
+        """Test using a custom predicate function."""
+        matches = []
+
+        def predicate(child: Object3D) -> bool:
+            return "grandchild" in child.name
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            matches.append(child)
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(matches), 3)
+        self.assertIn(self.grandchild1, matches)
+        self.assertIn(self.grandchild2, matches)
+        self.assertIn(self.grandchild3, matches)
+        self.assertNotIn(self.great_grandchild, matches)
+
+    def test_find_and_collect_with_parent_info(self):
+        """Test collecting both parent and child information."""
+        parent_child_pairs = []
+
+        def predicate(child: Object3D) -> bool:
+            return child.name == "grandchild1"
+
+        def on_match(parent: Object3D, child: Object3D) -> bool:
+            parent_child_pairs.append((parent, child))
+            return True
+
+        self.root.find_and_execute(self.root, predicate, on_match)
+
+        self.assertEqual(len(parent_child_pairs), 1)
+        parent, child = parent_child_pairs[0]
+        self.assertIs(parent, self.child1)
+        self.assertIs(child, self.grandchild1)
