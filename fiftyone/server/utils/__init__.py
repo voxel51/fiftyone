@@ -154,21 +154,21 @@ def meets_type(field: fof.Field, type_or_types):
     )
 
 
-def attach_frame_if_necessary(view, frame_number, modal, slice=None):
+def attach_frame_if_necessary(view, frame_number, modal, group_slice=None):
     """Attaches a frame to view when applicable
 
     Args:
         view: the dataset view
         frame_number: a frame number
         modal: whether this is an App modal request
-        slice (None): the group slice
+        group_slice (None): the group slice
 
     Returns:
         a new view and whether the attachment is true
     """
     is_video = view.media_type == fom.VIDEO
     if view.media_type == fom.MIXED:
-        is_video = view._dataset.group_media_types[slice] == fom.VIDEO
+        is_video = view._dataset.group_media_types[group_slice] == fom.VIDEO
 
     if is_video and frame_number is not None:
         default_filter = F("frame_number") == 1

@@ -8,13 +8,9 @@ FiftyOne Server utils tests.
 
 import unittest
 
-import strawberry as gql
-from strawberry.schema.config import StrawberryConfig
-
 import fiftyone as fo
 
 from fiftyone.server.utils import attach_frame_if_necessary
-from fiftyone.server.query import Dataset
 
 from decorators import drop_datasets
 
@@ -42,7 +38,7 @@ class TestServerUtils(unittest.TestCase):
             video_group.select_group_slices(media_type="video"),
             1,
             False,
-            slice="video",
+            group_slice="video",
         )
         serialized = view._serialize(include_uuids=False)
         self.assertEqual(is_video, True)
@@ -108,7 +104,7 @@ class TestServerUtils(unittest.TestCase):
             video_group.select_group_slices(_allow_mixed=True),
             1,
             False,
-            slice="video",
+            group_slice="video",
         )
         serialized = view._serialize(include_uuids=False)
         self.assertEqual(is_video, True)
