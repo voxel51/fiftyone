@@ -80,7 +80,7 @@ class Tag(HTTPEndpoint):
         )
 
         view, is_video = fosu.attach_frame_if_necessary(
-            view, current_frame, modal
+            view, current_frame, modal, slice=slice
         )
 
         samples = []

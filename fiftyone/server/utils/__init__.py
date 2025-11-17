@@ -17,6 +17,7 @@ import fiftyone.core.dataset as fod
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
+from fiftyone.server.utils import http, json
 
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
@@ -153,13 +154,14 @@ def meets_type(field: fof.Field, type_or_types):
     )
 
 
-def attach_frame_if_necessary(view, frame_number, modal):
+def attach_frame_if_necessary(view, frame_number, modal, slice=None):
     """Attaches a frame to view when applicable
 
     Args:
         view: the dataset view
         frame_number: a frame number
         modal: whether this is an App modal request
+        slice (None): the group slice
 
     Returns:
         a new view and whether the attachment is true

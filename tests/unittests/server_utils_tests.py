@@ -39,7 +39,10 @@ class TestServerUtils(unittest.TestCase):
 
         ### VIDEO slice(s)
         view, is_video = attach_frame_if_necessary(
-            video_group.select_group_slices(media_type="video"), 1, False
+            video_group.select_group_slices(media_type="video"),
+            1,
+            False,
+            slice="video",
         )
         serialized = view._serialize(include_uuids=False)
         self.assertEqual(is_video, True)
@@ -102,7 +105,10 @@ class TestServerUtils(unittest.TestCase):
 
         ### MIXED
         view, is_video = attach_frame_if_necessary(
-            video_group.select_group_slices(_allow_mixed=True), 1, False
+            video_group.select_group_slices(_allow_mixed=True),
+            1,
+            False,
+            slice="video",
         )
         serialized = view._serialize(include_uuids=False)
         self.assertEqual(is_video, True)
