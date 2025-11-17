@@ -10,6 +10,8 @@ import {
 import widgets from "./widgets";
 import templates from "./templates";
 
+export { isSchemaIOSchema, isJSONSchema } from "./translators";
+
 import type { IChangeEvent } from "@rjsf/core";
 import type { ValidatorType, UiSchema } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";

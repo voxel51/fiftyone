@@ -1,12 +1,12 @@
 import { SchemaIOComponent as SchemaIO } from "./SchemaIOComponent";
-import SmartForm from "../../../../components/src/components/SmartForm";
-
-const SIO = false;
+import SmartForm, {
+  isJSONSchema,
+} from "../../../../components/src/components/SmartForm";
 
 export function SchemaIOComponent(props) {
-  if (SIO) {
-    return <SchemaIO {...props} />;
-  } else {
+  if (props.useJSONSchema || isJSONSchema(props.schema)) {
     return <SmartForm {...props} />;
+  } else {
+    return <SchemaIO {...props} />;
   }
 }

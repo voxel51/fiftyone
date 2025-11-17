@@ -216,6 +216,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        useJSONSchema={true}
         schema={schema}
         data={data}
         onChange={async (changes) => {
