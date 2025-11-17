@@ -76,4 +76,11 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus) {
+    // Force worker restart so retries happen in a fresh worker
+    process.exit(1);
+  }
+});
+
 export { Browser, expect, Locator, Page } from "@playwright/test";
