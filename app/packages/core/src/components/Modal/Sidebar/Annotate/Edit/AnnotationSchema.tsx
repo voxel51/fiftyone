@@ -148,11 +148,15 @@ const useHandleChanges = () => {
 
         if (typeof data === "string") {
           if (schema?.ftype === FLOAT_FIELD) {
-            return data.length ? Number.parseFloat(data) : null;
+            if (!data.length) return null;
+            const parsed = Number.parseFloat(data);
+            return Number.isNaN(parsed) ? null : parsed;
           }
 
           if (schema?.ftype === INT_FIELD) {
-            return data.length ? Number.parseInt(data) : null;
+            if (!data.length) return null;
+            const parsed = Number.parseInt(data);
+            return Number.isNaN(parsed) ? null : parsed;
           }
         }
 
