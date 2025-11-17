@@ -2,13 +2,13 @@ import { getFieldSchema, useAnnotationActions } from "@fiftyone/annotation";
 import type { BaseOverlay } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { addValue, current, savedLabel } from "./state";
 import useExit from "./useExit";
 
-export const isSaving = atom(false);
+export const isSavingAtom = atom(false);
 
 export default function useSave() {
   const { scene, addOverlay } = useLighter();
@@ -19,12 +19,12 @@ export default function useSave() {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const setSaving = useSetAtom(isSaving);
+  const [isSaving, setSaving] = useAtom(isSavingAtom);
   const exit = useExit(false);
   const setNotification = fos.useNotification();
 
   return useCallback(() => {
-    if (!label) {
+    if (!label || isSaving) {
       return;
     }
 
@@ -64,12 +64,12 @@ export default function useSave() {
   }, [
     upsertAnnotation,
     label,
+    isSaving,
     schema,
     scene,
     addOverlay,
     setter,
     saved,
-    setSaving,
     exit,
     setNotification,
   ]);

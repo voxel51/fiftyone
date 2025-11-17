@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { current, deleteValue } from "./state";
 import useExit from "./useExit";
-import { isSaving } from "./useSave";
+import { isSavingAtom } from "./useSave";
 
 export default function useDelete() {
   const { scene, removeOverlay } = useLighter();
@@ -18,7 +18,7 @@ export default function useDelete() {
   );
 
   const exit = useExit(false);
-  const setSaving = useSetAtom(isSaving);
+  const setSaving = useSetAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
   return useCallback(() => {
