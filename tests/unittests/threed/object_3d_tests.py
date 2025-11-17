@@ -555,6 +555,30 @@ class TestObject3DRemove(unittest.TestCase):
         )
         self.assertEqual(len(self.child3.children), 0)
 
+    def test_remove_ancestor_and_descendant_together(self):
+        """Test removing an ancestor and one of its descendants in the same call."""
+        initial_root_children_count = len(self.root.children)
+
+        self.assertTrue(any(c is self.child1 for c in self.root.children))
+        self.assertTrue(
+            any(c is self.grandchild1 for c in self.child1.children)
+        )
+
+        self.root.remove(self.child1, self.grandchild1)
+
+        self.assertFalse(any(c is self.child1 for c in self.root.children))
+        self.assertEqual(
+            len(self.root.children), initial_root_children_count - 1
+        )
+
+        all_nodes_under_root = list(self.root.traverse(include_self=False))
+        self.assertNotIn(self.grandchild1, all_nodes_under_root)
+
+        self.assertNotIn(self.grandchild2, all_nodes_under_root)
+
+        self.assertTrue(any(c is self.child2 for c in self.root.children))
+        self.assertTrue(any(c is self.child3 for c in self.root.children))
+
 
 class TestObject3DFindAndExecute(unittest.TestCase):
     def setUp(self):
@@ -755,11 +779,11 @@ class TestObject3DFindAndExecute(unittest.TestCase):
 
         self.root.find_and_execute(self.root, predicate, on_match)
 
-        self.assertEqual(len(matches), 3)
+        self.assertEqual(len(matches), 4)
         self.assertIn(self.grandchild1, matches)
         self.assertIn(self.grandchild2, matches)
         self.assertIn(self.grandchild3, matches)
-        self.assertNotIn(self.great_grandchild, matches)
+        self.assertIn(self.great_grandchild, matches)
 
     def test_find_and_collect_with_parent_info(self):
         """Test collecting both parent and child information."""

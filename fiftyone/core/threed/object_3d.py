@@ -81,11 +81,8 @@ class Object3D(object):
         )
 
     def __hash__(self):
-        """Return the hash of this object based on name, visible,
-        and transform matrix."""
-        # convert the matrix to a tuple for hashing
-        matrix_tuple = tuple(self.local_transform_matrix.flatten())
-        return hash((self.name, matrix_tuple))
+        """Return the hash of this object based on its immutable uuid."""
+        return hash(self._uuid)
 
     def __iter__(self):
         return iter(self.children)
@@ -249,6 +246,10 @@ class Object3D(object):
         It can be used for finding and removing nodes, collecting nodes,
         updating nodes, etc.
 
+        The traversal continues into the subtrees of both matching and
+        non-matching nodes. For matching nodes, the subtree is traversed
+        when on_match returns True and stop_on_first_match is False.
+
         Args:
             node: the node to start searching from
             predicate: a function that takes a child Object3D and returns
@@ -276,6 +277,12 @@ class Object3D(object):
             if predicate(child):
                 should_continue = on_match(node, child)
                 if stop_on_first_match or not should_continue:
+                    return True
+                # Recurse into matching child when on_match returns True
+                # and stop_on_first_match is False
+                if self.find_and_execute(
+                    child, predicate, on_match, stop_on_first_match
+                ):
                     return True
             else:
                 if self.find_and_execute(
@@ -376,7 +383,7 @@ class Object3D(object):
                 f"Objects with name '{name}' not found in scene graph"
             )
 
-    def remove_by_uuid(self, uuid: str) -> None:
+    def remove_by_uuid(self, target_uuid: str) -> None:
         """Remove the object with the given UUID from the scene graph recursively.
 
         This method searches recursively through the entire scene graph starting
@@ -384,19 +391,19 @@ class Object3D(object):
         parent's children list. UUIDs should be unique, so only one match is expected.
 
         Args:
-            uuid: the UUID of the object to remove
+            target_uuid: the UUID of the object to remove
 
         Raises:
             ValueError: if attempting to remove this object itself by UUID
             ValueError: if no object with the given UUID is found
         """
-        if self.uuid == uuid:
+        if self.uuid == target_uuid:
             raise ValueError("Cannot remove self from the scene graph")
 
         found = False
 
         def predicate(child: "Object3D") -> bool:
-            return child.uuid == uuid
+            return child.uuid == target_uuid
 
         def on_match(parent: "Object3D", child: "Object3D") -> bool:
             nonlocal found
@@ -411,7 +418,7 @@ class Object3D(object):
 
         if not found:
             raise ValueError(
-                f"Object with UUID '{uuid}' not found in scene graph"
+                f"Object with UUID '{target_uuid}' not found in scene graph"
             )
 
     def _get_asset_paths(self) -> List[str]:
