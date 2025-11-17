@@ -1,4 +1,5 @@
 import {
+  getFieldSchema,
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
@@ -8,7 +9,6 @@ import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { getFieldSchema } from "../../../Lighter/deltas";
 import { current, deleteValue } from "./state";
 import useExit from "./useExit";
 import { isSaving } from "./useSave";
@@ -28,6 +28,12 @@ export default function useDelete() {
 
   const sourceIdRef = useRef<string | null>(null);
 
+  // Capture a stable snapshot of label data at dispatch time to avoid stale closures
+  const labelSnapshotRef = useRef<{
+    overlayId: string;
+    labelName: string;
+  } | null>(null);
+
   useAnnotationEventHandler(
     "annotation:notification:deleteSuccess",
     useCallback(
@@ -44,16 +50,24 @@ export default function useDelete() {
         // Clear the sourceId after processing
         sourceIdRef.current = null;
 
-        removeOverlay(label?.overlay.id);
+        const snapshot = labelSnapshotRef.current;
+        labelSnapshotRef.current = null;
+
+        if (!snapshot) {
+          setSaving(false);
+          return;
+        }
+
+        removeOverlay(snapshot.overlayId);
         setter();
         setSaving(false);
         setNotification({
-          msg: `Label "${label.data.label}" successfully deleted.`,
+          msg: `Label "${snapshot.labelName}" successfully deleted.`,
           variant: "success",
         });
         exit();
       },
-      [label, removeOverlay, setter, setSaving, setNotification]
+      [removeOverlay, setter, setSaving, setNotification, exit]
     )
   );
 
@@ -73,13 +87,21 @@ export default function useDelete() {
         // Clear the sourceId after processing
         sourceIdRef.current = null;
 
+        const snapshot = labelSnapshotRef.current;
+        labelSnapshotRef.current = null;
+
+        if (!snapshot) {
+          setSaving(false);
+          return;
+        }
+
         setSaving(false);
         setNotification({
-          msg: `Label "${label.data.label}" not successfully deleted. Try again.`,
+          msg: `Label "${snapshot.labelName}" not successfully deleted. Try again.`,
           variant: "error",
         });
       },
-      [label, setSaving, setNotification]
+      [setSaving, setNotification]
     )
   );
 
@@ -101,10 +123,17 @@ export default function useDelete() {
       `delete-${label.data.label}-${label.data._id}`
     );
 
+    // Capture a stable snapshot of label data at dispatch time
+    // to avoid stale references in async success/error handlers
+    labelSnapshotRef.current = {
+      overlayId: label.overlay.id,
+      labelName: label.data.label ?? "Label",
+    };
+
     eventBus.dispatch("annotation:command:delete", {
       sourceId: sourceIdRef.current,
       label,
       schema: getFieldSchema(schema, label?.path)!,
     });
-  }, [eventBus, label, scene, schema, setSaving]);
+  }, [eventBus, label, scene, schema, exit, removeOverlay]);
 }

@@ -1,14 +1,16 @@
 import {
+  getFieldSchema,
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import { generateSourceId } from "@fiftyone/events";
+import type { BaseOverlay } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
+import type { AnnotationLabel } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useRef } from "react";
 import { useRecoilValue } from "recoil";
-import { getFieldSchema } from "../../../Lighter/deltas";
 import { addValue, current, savedLabel } from "./state";
 import useExit from "./useExit";
 
@@ -29,6 +31,13 @@ export default function useSave() {
 
   const sourceIdRef = useRef<string | null>(null);
 
+  // Capture a stable snapshot of label data at dispatch time to avoid stale closures
+  const labelSnapshotRef = useRef<{
+    overlay: AnnotationLabel["overlay"] & { id: string };
+    labelData: AnnotationLabel["data"];
+    labelName: string;
+  } | null>(null);
+
   useAnnotationEventHandler(
     "annotation:notification:upsertSuccess",
     useCallback(
@@ -45,31 +54,30 @@ export default function useSave() {
         // Clear the sourceId after processing
         sourceIdRef.current = null;
 
+        const snapshot = labelSnapshotRef.current;
+        labelSnapshotRef.current = null;
+
+        if (!snapshot) {
+          setSaving(false);
+          return;
+        }
+
         setter();
 
         if (scene && scene.renderLoopActive) {
           scene.exitInteractiveMode();
-          addOverlay(label.overlay);
+          addOverlay(snapshot.overlay as BaseOverlay);
         }
 
-        saved(label.data);
+        saved(snapshot.labelData);
         setSaving(false);
         exit();
         setNotification({
-          msg: `Label "${label.data.label}" saved successfully.`,
+          msg: `Label "${snapshot.labelName}" saved successfully.`,
           variant: "success",
         });
       },
-      [
-        scene,
-        addOverlay,
-        exit,
-        label,
-        setter,
-        saved,
-        setSaving,
-        setNotification,
-      ]
+      [scene, addOverlay, exit, setter, saved, setSaving, setNotification]
     )
   );
 
@@ -89,13 +97,21 @@ export default function useSave() {
         // Clear the sourceId after processing
         sourceIdRef.current = null;
 
+        const snapshot = labelSnapshotRef.current;
+        labelSnapshotRef.current = null;
+
+        if (!snapshot) {
+          setSaving(false);
+          return;
+        }
+
         setSaving(false);
         setNotification({
-          msg: `Label "${label.data.label}" not saved successfully. Try again.`,
+          msg: `Label "${snapshot.labelName}" not saved successfully. Try again.`,
           variant: "error",
         });
       },
-      [label, setSaving, setNotification]
+      [setSaving, setNotification]
     )
   );
 
@@ -109,6 +125,14 @@ export default function useSave() {
     sourceIdRef.current = generateSourceId(
       `save-${label.data.label}-${label.data._id}`
     );
+
+    // Capture a stable snapshot of label data at dispatch time
+    // to avoid stale references in async success/error handlers
+    labelSnapshotRef.current = {
+      overlay: label.overlay,
+      labelData: label.data,
+      labelName: label.data.label ?? "Label",
+    };
 
     eventBus.dispatch("annotation:command:upsert", {
       sourceId: sourceIdRef.current,
