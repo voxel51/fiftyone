@@ -6,7 +6,7 @@ import {
   convertSchemaIODataToRJSF,
   convertRJSFDataToSchemaIO,
   translateSchemaComplete,
-} from "./schemaTranslator";
+} from "./translators";
 
 import widgets from "./widgets";
 import templates from "./templates";
