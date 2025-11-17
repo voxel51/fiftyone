@@ -76,12 +76,8 @@ class Object3D(object):
     def __eq__(self, other):
         if not isinstance(other, Object3D):
             return False
-        return (
-            self.name == other.name
-            and self.visible == other.visible
-            and np.array_equal(
-                self.local_transform_matrix, other.local_transform_matrix
-            )
+        return self.name == other.name and np.array_equal(
+            self.local_transform_matrix, other.local_transform_matrix
         )
 
     def __hash__(self):
@@ -89,7 +85,7 @@ class Object3D(object):
         and transform matrix."""
         # convert the matrix to a tuple for hashing
         matrix_tuple = tuple(self.local_transform_matrix.flatten())
-        return hash((self.name, self.visible, matrix_tuple))
+        return hash((self.name, matrix_tuple))
 
     def __iter__(self):
         return iter(self.children)
