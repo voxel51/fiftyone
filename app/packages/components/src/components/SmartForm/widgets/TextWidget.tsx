@@ -1,7 +1,6 @@
 /**
- * Custom text widget that doesn't render its own label
- *
- * The FieldTemplate handles labels, so we only render the input field.
+ * Simple text input widget without built-in label
+ * (FieldTemplate handles labels)
  */
 
 import { WidgetProps } from "@rjsf/utils";
@@ -14,17 +13,16 @@ export default function TextWidget(props: WidgetProps) {
     disabled,
     readonly,
     autofocus,
-    onChange,
-    onBlur,
-    onFocus,
-    options,
+    onChange = () => {},
+    onBlur = () => {},
+    onFocus = () => {},
     placeholder,
     schema,
     rawErrors = [],
   } = props;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value === "" ? options.emptyValue : event.target.value);
+    onChange(event.target.value);
   };
 
   const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
@@ -35,10 +33,14 @@ export default function TextWidget(props: WidgetProps) {
     onFocus(id, event.target.value);
   };
 
+  const inputType =
+    schema.type === "number" || schema.type === "integer" ? "number" : "text";
+
   return (
     <TextField
       id={id}
-      value={value || ""}
+      type={inputType}
+      value={value ?? ""}
       placeholder={placeholder}
       disabled={disabled || readonly}
       autoFocus={autofocus}
@@ -48,7 +50,6 @@ export default function TextWidget(props: WidgetProps) {
       onFocus={handleFocus}
       fullWidth
       size="small"
-      // No label prop - FieldTemplate handles labels
     />
   );
 }
