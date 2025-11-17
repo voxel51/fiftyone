@@ -6,22 +6,19 @@ import {
 } from "./utils";
 import { translateToJSONSchema, addChoicesToSchema } from "./schema";
 import { translateToUISchema } from "./ui";
+import { convertSchemaIODataToRJSF } from "./data";
 
-// Re-export types and utilities
-export type {
-  TranslationResult,
-  TranslationOptions,
-  TranslationContext,
-};
-export { addWarning, getEmptyValueForType } from "./utils";
+export type { TranslationResult, TranslationOptions, TranslationContext };
+export {
+  addWarning,
+  getEmptyValueForType,
+  isSchemaIOSchema,
+  isJSONSchema,
+} from "./utils";
 
-// Re-export translator functions
 export { translateToJSONSchema, addChoicesToSchema } from "./schema";
 export { translateToUISchema } from "./ui";
-export {
-  convertSchemaIODataToRJSF,
-  convertRJSFDataToSchemaIO,
-} from "./data";
+export { convertSchemaIODataToRJSF, convertRJSFDataToSchemaIO } from "./data";
 
 /**
  * Translates a SchemaIO schema to JSON Schema (RJSF) and UI Schema
@@ -44,13 +41,19 @@ export function translateSchema(
 }
 
 /**
- * Complete translation with choice processing
+ * Complete translation with choice processing and optional data conversion
  */
 export function translateSchemaComplete(
   schemaIO: SchemaType,
+  data?: any,
   options: TranslationOptions = {}
 ): TranslationResult {
   const result = translateSchema(schemaIO, options);
   result.schema = addChoicesToSchema(result.schema, schemaIO);
+
+  if (data !== undefined) {
+    result.formData = convertSchemaIODataToRJSF(data, schemaIO);
+  }
+
   return result;
 }

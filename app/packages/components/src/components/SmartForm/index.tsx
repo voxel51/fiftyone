@@ -3,7 +3,6 @@ import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 
 import {
-  convertSchemaIODataToRJSF,
   convertRJSFDataToSchemaIO,
   translateSchemaComplete,
 } from "./translators";
@@ -25,63 +24,43 @@ export interface SmartFormProps {
 }
 
 export default function SmartForm(props: SmartFormProps) {
-  // Translate SchemaIO schema to JSON Schema and UI Schema
   const {
     schema: jsonSchema,
     uiSchema: generatedUiSchema,
     warnings,
-  } = translateSchemaComplete(props.schema);
+    formData,
+  } = translateSchemaComplete(props.schema, props.data);
 
-  // Convert SchemaIO data to RJSF format
-  const formData = props.data
-    ? convertSchemaIODataToRJSF(props.data, props.schema)
-    : undefined;
-
-  // Merge provided uiSchema with generated uiSchema (provided takes precedence)
   const mergedUiSchema = { ...generatedUiSchema, ...props.uiSchema };
 
-  console.log("[SchemaIO]", props.schema);
-  console.log("[JSON Schema]", jsonSchema);
-  console.log("[UI Schema]", generatedUiSchema);
-  console.log("[Data]", props.data);
+  // console.log("[SchemaIO]", props.schema);
+  // console.log("[JSON Schema]", jsonSchema);
+  // console.log("[UI Schema]", generatedUiSchema);
+  // console.log("[Data]", props.data);
 
-  // Log any translation warnings
   if (warnings.length > 0) {
     console.warn("[SmartForm] Schema translation warnings:", warnings);
   }
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
-    if (!event) return;
-
-    console.log("[RJSF Change]", event.formData);
     if (props.onChange) {
-      // Convert RJSF data back to SchemaIO format
       const schemaIOData = convertRJSFDataToSchemaIO(
         event.formData,
         props.schema
       );
+
       props.onChange(schemaIOData);
     }
   };
 
   const handleSubmit = (event: IChangeEvent, _nativeEvent: React.FormEvent) => {
-    if (!event) return;
-
-    console.log("[RJSF Submit]", event.formData);
     if (props.onSubmit) {
-      // Convert RJSF data back to SchemaIO format
       const schemaIOData = convertRJSFDataToSchemaIO(
         event.formData,
         props.schema
       );
+
       props.onSubmit(schemaIOData);
-    } else if (props.onChange) {
-      // Fallback to onChange if onSubmit is not provided
-      const schemaIOData = convertRJSFDataToSchemaIO(
-        event.formData,
-        props.schema
-      );
-      props.onChange(schemaIOData);
     }
   };
 

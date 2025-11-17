@@ -3,6 +3,7 @@
  * (FieldTemplate handles labels)
  */
 
+import React from "react";
 import { WidgetProps } from "@rjsf/utils";
 import { TextField } from "@mui/material";
 
