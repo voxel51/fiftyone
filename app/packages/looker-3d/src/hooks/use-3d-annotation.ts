@@ -40,11 +40,11 @@ export const use3dAnnotation = () => {
 
       const polylineData = payload.data as PolylineLabel;
 
-      if (!polylineData.points3d) {
+      const points3d = (polylineData as PolylineLabel).points3d;
+
+      if (!Array.isArray(points3d)) {
         return;
       }
-
-      const points3d = (polylineData as PolylineLabel).points3d;
 
       // Update staging area with the new polyline
       // overwrite any previously staged polyline
@@ -62,36 +62,46 @@ export const use3dAnnotation = () => {
 
   useAnnotationEventHandler(
     "annotation:notification:sidebarValueUpdated",
-    useCallback((payload) => {
-      const coerced = coerceStringBooleans(payload.value as PolylineLabel);
-      const { points3d, _id, label, ...rest } = coerced;
+    useCallback(
+      (payload) => {
+        if (
+          payload.value?.["type"] !== "Polyline" ||
+          !Array.isArray(payload.value?.["points3d"])
+        ) {
+          return;
+        }
 
-      setStagedPolylineTransforms((prev) => {
-        if (!prev) {
+        const coerced = coerceStringBooleans(payload.value as PolylineLabel);
+        const { points3d, _id, label, ...rest } = coerced;
+
+        setStagedPolylineTransforms((prev) => {
+          if (!prev) {
+            return {
+              [_id]: {
+                segments: points3dToPolylineSegments(points3d),
+                label: label ?? "",
+                misc: {
+                  ...(rest ?? {}),
+                },
+              },
+            };
+          }
+
           return {
+            ...prev,
             [_id]: {
-              segments: points3dToPolylineSegments(points3d),
-              label: label ?? "",
+              ...(prev[_id] ?? ({} as PolylinePointTransformData)),
+              label,
               misc: {
                 ...(rest ?? {}),
               },
             },
           };
-        }
+        });
 
-        return {
-          ...prev,
-          [_id]: {
-            ...(prev[_id] ?? ({} as PolylinePointTransformData)),
-            label,
-            misc: {
-              ...(rest ?? {}),
-            },
-          },
-        };
-      });
-
-      save(coerced);
-    }, [])
+        save(coerced);
+      },
+      [save]
+    )
   );
 };

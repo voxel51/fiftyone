@@ -46,7 +46,7 @@ function getDispatcher<T extends EventGroup>(
  * ```
  */
 export function getEventBus<T extends EventGroup>(): EventDispatcher<T> {
-  return getDispatcher<T>("default");
+  return getDispatcher<T>(DEFAULT_CHANNEL_ID);
 }
 
 /**
