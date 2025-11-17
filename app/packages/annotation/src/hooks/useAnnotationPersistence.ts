@@ -9,11 +9,6 @@ import {
 import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 import { parseTimestamp } from "@fiftyone/core/src/client/util";
-import {
-  OpType,
-  buildJsonPath,
-  buildLabelDeltas,
-} from "@fiftyone/core/src/components/Modal/Lighter/deltas";
 import { Sample } from "@fiftyone/looker";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import {
@@ -25,6 +20,7 @@ import {
 import { Field } from "@fiftyone/utilities";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { OpType, buildJsonPath, buildLabelDeltas } from "../deltas";
 
 /**
  * Hook that handles annotation persistence events.
@@ -135,21 +131,29 @@ export const useAnnotationPersistence = () => {
       label: AnnotationLabel;
       schema: Field;
     }) => {
-      const success = await handlePersistenceEvent(
-        data.label,
-        data.schema,
-        "mutate"
-      );
+      try {
+        const success = await handlePersistenceEvent(
+          data.label,
+          data.schema,
+          "mutate"
+        );
 
-      if (success) {
-        eventBus.dispatch("annotation:notification:upsertSuccess", {
-          sourceId: data.sourceId,
-          type: "upsert",
-        });
-      } else {
+        if (success) {
+          eventBus.dispatch("annotation:notification:upsertSuccess", {
+            sourceId: data.sourceId,
+            type: "upsert",
+          });
+        } else {
+          eventBus.dispatch("annotation:notification:upsertError", {
+            sourceId: data.sourceId,
+            type: "upsert",
+          });
+        }
+      } catch (error) {
         eventBus.dispatch("annotation:notification:upsertError", {
           sourceId: data.sourceId,
           type: "upsert",
+          error,
         });
       }
     },
@@ -162,21 +166,29 @@ export const useAnnotationPersistence = () => {
       label: AnnotationLabel;
       schema: Field;
     }) => {
-      const success = await handlePersistenceEvent(
-        data.label,
-        data.schema,
-        "delete"
-      );
+      try {
+        const success = await handlePersistenceEvent(
+          data.label,
+          data.schema,
+          "delete"
+        );
 
-      if (success) {
-        eventBus.dispatch("annotation:notification:deleteSuccess", {
-          sourceId: data.sourceId,
-          type: "delete",
-        });
-      } else {
+        if (success) {
+          eventBus.dispatch("annotation:notification:deleteSuccess", {
+            sourceId: data.sourceId,
+            type: "delete",
+          });
+        } else {
+          eventBus.dispatch("annotation:notification:deleteError", {
+            sourceId: data.sourceId,
+            type: "delete",
+          });
+        }
+      } catch (error) {
         eventBus.dispatch("annotation:notification:deleteError", {
           sourceId: data.sourceId,
           type: "delete",
+          error,
         });
       }
     },

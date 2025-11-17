@@ -7,7 +7,7 @@ export const AnnotationChannelId = "default";
 type MutationError<T> = {
   sourceId: string;
   type: T;
-  error?: Error | string;
+  error?: Error;
 };
 
 type MutationSuccess<T> = {
