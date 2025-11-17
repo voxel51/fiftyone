@@ -76,13 +76,8 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
-test.afterEach(async ({}, testInfo) => {
-  if (testInfo.status !== testInfo.expectedStatus) {
-    // Small delay to allow cleanup
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Force worker restart so retries happen in a fresh worker
-    process.exit(1);
-  }
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
 });
 
 export { Browser, expect, Locator, Page } from "@playwright/test";

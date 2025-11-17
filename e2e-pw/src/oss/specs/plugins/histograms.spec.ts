@@ -13,10 +13,6 @@ const test = base.extend<{ histogram: HistogramPom; panel: GridPanelPom }>({
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   await fiftyoneLoader.executePythonCode(`

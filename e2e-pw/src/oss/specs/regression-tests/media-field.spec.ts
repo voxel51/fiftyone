@@ -41,10 +41,6 @@ const writeImages = async () => {
   await Promise.all(createPromises);
 };
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 

@@ -45,10 +45,6 @@ const imagePaths = [1, 2, 3, 4]
   .flat()
   .map((imgName) => `/tmp/${imgName}o${orderGen.next().value}.png`);
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   // create a dataset with two groups, each with 2 image samples
