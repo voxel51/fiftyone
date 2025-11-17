@@ -61,6 +61,22 @@ export type AnnotationEventGroup = {
   "annotation:notification:sidebarLabelUnhover": {
     id: string;
   };
+  /**
+   * Notification event emitted when a canvas overlay is hovered.
+   * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
+   * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
+   */
+  "annotation:notification:canvasOverlayHover": {
+    id: string;
+  };
+  /**
+   * Notification event emitted when a canvas overlay is unhovered.
+   * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
+   * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
+   */
+  "annotation:notification:canvasOverlayUnhover": {
+    id: string;
+  };
 };
 
 export const useAnnotationEventHandler =
