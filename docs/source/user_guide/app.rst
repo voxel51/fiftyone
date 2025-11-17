@@ -19,6 +19,16 @@ visualize, browse, and interact directly with your
     :ref:`plugin framework <fiftyone-plugins>` to customize and extend the
     behavior of the App!
 
+.. note::
+
+    **From single-user to team workspace:** If you're collaborating across multiple
+    users and environments, check out the FiftyOne Enterprise App, which adds a
+    centralized, always-on web UI with dataset organization, permissions, versioning,
+    and sharing built in.
+    
+    Learn more about the `Enterprise App <https://docs.voxel51.com/enterprise/app.html>`_
+    and `Enterprise overview <https://docs.voxel51.com/enterprise/overview.html>`_.
+
 App environments
 ________________
 
@@ -240,6 +250,15 @@ dataset from you web browser.
 Check out the :ref:`environments page <environments>` for more information on
 possible configurations of local/remote/cloud data and App access.
 
+
+.. note::
+
+    **Enterprise option:** For persistent, multi-user access with fine-grained dataset
+    permissions and SSO, use the FiftyOne Enterprise App, which runs as a shared
+    web portal for your team.
+    
+    Learn more about `roles and permissions <https://docs.voxel51.com/enterprise/roles_and_permissions.html>`_
+    and the `Enterprise overview <https://docs.voxel51.com/enterprise/overview.html>`_.
 Remote machine
 --------------
 

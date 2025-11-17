@@ -97,6 +97,22 @@ workflow:
 .. note::
 
     Check out the :ref:`tutorials page <tutorials>` for detailed examples
+
+.. note::
+
+    **Enterprise workflows built on Brain:** In FiftyOne Enterprise, Brain-powered
+    analyses are exposed as guided workflows in the Data Quality panel, which
+    automatically scans datasets for common issues (e.g., brightness, blurriness,
+    near duplicates) and helps you tag and remediate problem samples at scale.
+    
+    Learn more about `Data Quality workflows <https://docs.voxel51.com/enterprise/data_quality.html>`_.
+
+For very large datasets and multi-team workflows, FiftyOne Enterprise pairs
+Brain methods with centralized storage, roles & permissions, and dataset
+versioning so teams can share curated views and track how curation impacts
+model performance over time.
+
+Learn more about `FiftyOne Enterprise <https://docs.voxel51.com/enterprise/overview.html>`_.
     demonstrating the use of many Brain capabilities.
 
 .. _brain-embeddings-visualization:

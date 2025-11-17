@@ -715,6 +715,16 @@ Each data format is represented by a subclass of
 :class:`fiftyone.types.Dataset`, which is used by the Python library and CLI to
 refer to the corresponding dataset format when reading the dataset from disk.
 
+.. note::
+
+    **FiftyOne Enterprise users:** If your data lives in cloud buckets or data lakes,
+    FiftyOne Enterprise provides direct support for cloud-backed media (S3, GCS, Azure,
+    MinIO) and Data Lens to query external stores like PostgreSQL, Databricks, or BigQuery
+    and import only the samples you need into a managed Enterprise dataset.
+    
+    Learn more about `cloud-backed media <https://docs.voxel51.com/enterprise/installation.html>`_
+    and `Data Lens <https://docs.voxel51.com/enterprise/data_lens.html>`_.
+
 .. table::
     :widths: 40 60
 
@@ -5652,6 +5662,24 @@ above format as follows:
 .. _custom-dataset-importer:
 
 Custom formats
+
+.. _locking-baseline-enterprise:
+
+Locking in a clean baseline (Enterprise)
+-----------------------------------------
+
+.. note::
+
+    The features described in this section are available only to
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users.
+
+After large imports, teams can use Dataset Versioning in FiftyOne Enterprise to
+snapshot the "clean baseline" and safely iterate on labels, filters, and
+augmentations while preserving a known-good version for training and audits.
+
+For more information, see the
+`dataset versioning <https://docs.voxel51.com/enterprise/dataset_versioning.html>`_
+documentation.
 ______________
 
 If your data does not follow one of the previous formats, then the simplest and

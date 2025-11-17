@@ -15,6 +15,30 @@ core tool to suit your specific needs. From advanced computer vision models to
 integrations with other popular AI tools, this curated collection of plugins
 will transform FiftyOne into your bespoke visual AI development workbench.
 
+.. _managing-plugins-enterprise:
+
+Managing plugins and secrets in Enterprise
+-------------------------------------------
+
+.. note::
+
+    The features described in this section are available only to
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users.
+
+In FiftyOne Enterprise, admins can centrally manage which plugins and
+operators are enabled, set organization-wide defaults, and store sensitive
+credentials (API keys, login details) securely via the Secrets interface—so teams
+can safely run custom workflows from the App without hard-coding secrets.
+
+Enterprise plugins can expose **delegated operations** that run on your compute
+cluster or orchestrator and are tracked on a dataset's Runs page, providing a
+history of ingestion, curation, and evaluation jobs.
+
+Learn more:
+  - `Enterprise plugins <https://docs.voxel51.com/enterprise/plugins.html>`_
+  - `Secrets management <https://docs.voxel51.com/enterprise/secrets.html>`_
+  - `Management SDK <https://docs.voxel51.com/enterprise/management_sdk.html>`_
+
 .. raw:: html
 
     <div class="plugins-search-container">

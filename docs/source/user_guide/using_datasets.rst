@@ -181,6 +181,28 @@ shell and run the command again:
 you'll see that the `my_second_dataset` and `2020.08.04.12.36.29` datasets have
 been deleted because they were not persistent.
 
+.. _sharing-datasets-enterprise:
+
+Sharing datasets with your team (Enterprise)
+---------------------------------------------
+
+.. note::
+
+    The features described in this section are available only to
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users.
+
+In FiftyOne Enterprise, datasets are first-class shared objects. You can invite
+teammates, assign roles (Admin, Member, Collaborator, Guest), and control per-dataset
+permissions such as `Can view`, `Can tag`, `Can edit`, or `Can manage`,
+directly from the Enterprise App.
+
+Use dataset-level access controls to safely share curated datasets with
+stakeholders while preventing accidental edits or deletions.
+
+For more information, see the
+`roles and permissions <https://docs.voxel51.com/enterprise/roles_and_permissions.html>`_
+documentation.
+
 .. _dataset-version:
 
 Dataset version
@@ -888,6 +910,28 @@ Multiple samples can be efficiently added to a dataset in batches:
     )
 
     print(len(dataset))
+
+.. _dataset-versioning-enterprise:
+
+Versioning dataset states over time (Enterprise)
+-------------------------------------------------
+
+.. note::
+
+    The features described in this section are available only to
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users.
+
+For production workflows, FiftyOne Enterprise provides Dataset Versioning,
+which lets you capture immutable snapshots of a dataset's state (schema,
+samples, saved views, brain runs, evaluations) so you can reliably reproduce
+experiments, compare model runs, and roll back unwanted changes.
+
+Snapshots can be archived to cold storage to control database size while still
+preserving a complete history of how your dataset evolved.
+
+For more information, see the
+`dataset versioning <https://docs.voxel51.com/enterprise/dataset_versioning.html>`_
+documentation.
     # 4
 
 .. _accessing-samples-in-a-dataset:
