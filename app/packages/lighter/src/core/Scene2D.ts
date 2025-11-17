@@ -879,6 +879,10 @@ export class Scene2D {
   }
 
   public async startRenderLoop(): Promise<void> {
+    if (this.isRenderLoopActive) {
+      return;
+    }
+
     this.isRenderLoopActive = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
@@ -1319,6 +1323,8 @@ export class Scene2D {
    */
   destroy(): void {
     if (this.isDestroyed) return;
+
+    this.isRenderLoopActive = false;
 
     // Clear all overlays
     this.clear();
