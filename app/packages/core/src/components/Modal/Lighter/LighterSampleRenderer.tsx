@@ -1,9 +1,9 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
+import type { ImageOptions, ImageOverlay, SceneAtom } from "@fiftyone/lighter";
 import {
-  ImageOptions,
-  ImageOverlay,
+  defaultLighterSceneAtom,
   overlayFactory,
   useLighter,
   useLighterSetupWithPixi,
@@ -11,12 +11,15 @@ import {
 import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
+import type { RefObject } from "react";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { singletonCanvas } from "./SharedCanvas";
+import { defaultCanvas } from "./ReusableCanvas";
 import { useBridge } from "./useBridge";
 
 export interface LighterSampleRendererProps {
+  /** Scene atom */
+  atom: SceneAtom;
   /** Custom CSS class name */
   className?: string;
   /** Sample to display */
@@ -27,6 +30,7 @@ export interface LighterSampleRendererProps {
  * Lighter unit sample renderer with PixiJS renderer.
  */
 export const LighterSampleRenderer = ({
+  atom = defaultLighterSceneAtom,
   className = "",
   sample,
 }: LighterSampleRendererProps) => {
@@ -41,7 +45,7 @@ export const LighterSampleRenderer = ({
   }, []);
 
   // Get access to the lighter instance
-  const { scene, isReady, addOverlay } = useLighter();
+  const { scene, isReady, addOverlay } = useLighter(atom);
 
   // use a ref for the sample data, effects do not run solely because the
   // sample changed
@@ -88,23 +92,26 @@ export const LighterSampleRenderer = ({
         flexDirection: "column",
       }}
     >
-      {containerRef.current && <LighterSetupImpl containerRef={containerRef} />}
+      {containerRef.current && (
+        <LighterSetupImpl atom={atom} containerRef={containerRef} />
+      )}
     </div>
   );
 };
 
 const LighterSetupImpl = (props: {
-  containerRef: React.RefObject<HTMLDivElement>;
+  atom: SceneAtom;
+  containerRef: RefObject<HTMLDivElement>;
 }) => {
-  const { containerRef } = props;
+  const { atom, containerRef } = props;
 
   const options = useRecoilValue(
     fos.lookerOptions({ modal: true, withFilter: false })
   );
 
-  const canvas = singletonCanvas.getCanvas(containerRef.current);
+  const canvas = defaultCanvas.getCanvas(containerRef.current);
 
-  const { scene } = useLighterSetupWithPixi(canvas, options);
+  const { scene } = useLighterSetupWithPixi(canvas, options, atom);
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
