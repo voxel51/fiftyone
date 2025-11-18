@@ -30,6 +30,7 @@ export const useLighter = (atom = defaultLighterSceneAtom) => {
       return;
     }
 
+    // assign referenced callbacks when the effect runs
     const callbacks = registeredCallbacks.current;
 
     return () => {
