@@ -3,6 +3,9 @@ import { addWarning, type TranslationContext } from "./utils";
 
 /**
  * Translates SchemaIO view to UI Schema
+ *
+ * Note: Uses `any` for schemaIO parameter due to recursive processing of
+ * dynamic schema structures with varying shapes.
  */
 export function translateToUISchema(
   schemaIO: any,

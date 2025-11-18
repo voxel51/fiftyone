@@ -1,8 +1,12 @@
 import type { RJSFSchema } from "@rjsf/utils";
+import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { addWarning, type TranslationContext } from "./utils";
 
 /**
  * Translates SchemaIO type to JSON Schema
+ *
+ * Note: Uses `any` for schemaIO parameter due to recursive processing of
+ * dynamic schema structures with varying shapes.
  */
 export function translateToJSONSchema(
   schemaIO: any,
@@ -131,7 +135,7 @@ export function translateToJSONSchema(
  */
 export function addChoicesToSchema(
   schema: RJSFSchema,
-  schemaIO: any
+  schemaIO: SchemaType
 ): RJSFSchema {
   const view = schemaIO.view;
   const component = view?.component || view?.name;

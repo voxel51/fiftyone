@@ -45,7 +45,7 @@ export function translateSchema(
  */
 export function translateSchemaComplete(
   schemaIO: SchemaType,
-  data?: any,
+  data?: unknown,
   options: TranslationOptions = {}
 ): TranslationResult {
   const result = translateSchema(schemaIO, options);

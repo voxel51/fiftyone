@@ -5,7 +5,7 @@ export interface TranslationResult {
   schema: RJSFSchema;
   uiSchema: UiSchema;
   warnings: string[];
-  formData?: any;
+  formData?: unknown;
 }
 
 export interface TranslationOptions {
@@ -26,7 +26,7 @@ export function addWarning(context: TranslationContext, message: string) {
   }
 }
 
-export function getEmptyValueForType(type: string): any {
+export function getEmptyValueForType(type: string): unknown {
   switch (type) {
     case "string":
       return "";

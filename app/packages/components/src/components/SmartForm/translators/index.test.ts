@@ -94,9 +94,7 @@ describe("translateSchema", () => {
       view: { component: "CustomView" },
     };
 
-    expect(() =>
-      translateSchema(schemaIO, { strictMode: true })
-    ).toThrow();
+    expect(() => translateSchema(schemaIO, { strictMode: true })).toThrow();
   });
 });
 
@@ -272,9 +270,7 @@ describe("end-to-end integration", () => {
     ]);
 
     // Check UI schema
-    expect(result.uiSchema.username?.["ui:placeholder"]).toBe(
-      "Enter username"
-    );
+    expect(result.uiSchema.username?.["ui:placeholder"]).toBe("Enter username");
     expect(result.uiSchema.email?.["ui:placeholder"]).toBe("your@email.com");
     expect(result.uiSchema.role?.["ui:widget"]).toBe("Dropdown");
     expect(result.uiSchema.tags?.["ui:widget"]).toBe("AutoComplete");

@@ -7,7 +7,10 @@ import { getEmptyValueForType } from "./utils";
  * SchemaIO may use null for empty values, while RJSF expects actual empty values
  * (empty strings, empty arrays, etc.)
  */
-export function convertSchemaIODataToRJSF(data: any, schema: SchemaType): any {
+export function convertSchemaIODataToRJSF(
+  data: unknown,
+  schema: SchemaType
+): unknown {
   if (data === null || data === undefined) {
     // Return appropriate empty value based on schema type
     return getEmptyValueForType(schema.type);
@@ -17,11 +20,11 @@ export function convertSchemaIODataToRJSF(data: any, schema: SchemaType): any {
 
   switch (type) {
     case "object":
-      if (typeof data !== "object" || Array.isArray(data)) {
+      if (typeof data !== "object" || data === null || Array.isArray(data)) {
         return {};
       }
 
-      const result: any = {};
+      const result: Record<string, unknown> = {};
       if (schema.properties) {
         // Process each property recursively
         for (const [key, propSchema] of Object.entries(schema.properties)) {
@@ -82,10 +85,10 @@ export function convertSchemaIODataToRJSF(data: any, schema: SchemaType): any {
  * (depending on context and user interaction)
  */
 export function convertRJSFDataToSchemaIO(
-  formData: any,
+  formData: unknown,
   schema: SchemaType,
   options: { coerceEmpty?: boolean } = {}
-): any {
+): unknown {
   const { coerceEmpty = false } = options;
 
   if (formData === null || formData === undefined) {
@@ -96,11 +99,15 @@ export function convertRJSFDataToSchemaIO(
 
   switch (type) {
     case "object":
-      if (typeof formData !== "object" || Array.isArray(formData)) {
+      if (
+        typeof formData !== "object" ||
+        formData === null ||
+        Array.isArray(formData)
+      ) {
         return null;
       }
 
-      const result: any = {};
+      const result: Record<string, unknown> = {};
       if (schema.properties) {
         for (const [key, propSchema] of Object.entries(schema.properties)) {
           if (key in formData) {
