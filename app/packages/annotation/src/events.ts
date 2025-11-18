@@ -78,8 +78,3 @@ export type AnnotationEventGroup = {
     id: string;
   };
 };
-
-export const useAnnotationEventHandler =
-  createUseEventHandler<AnnotationEventGroup>();
-
-export const useAnnotationEventBus = () => useEventBus<AnnotationEventGroup>();

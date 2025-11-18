@@ -1,4 +1,5 @@
-import { getFieldSchema, useAnnotationActions } from "@fiftyone/annotation";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -9,8 +10,8 @@ import useExit from "./useExit";
 import { isSavingAtom } from "./useSave";
 
 export default function useDelete() {
+  const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
-  const { deleteAnnotation } = useAnnotationActions();
   const label = useAtomValue(current);
   const setter = useSetAtom(deleteValue);
   const schema = useRecoilValue(
@@ -21,7 +22,7 @@ export default function useDelete() {
   const setSaving = useSetAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
-  return useCallback(() => {
+  return useCallback(async () => {
     if (!label) {
       return;
     }
@@ -38,33 +39,30 @@ export default function useDelete() {
 
     setSaving(true);
 
-    deleteAnnotation(
-      label,
-      getFieldSchema(schema, label?.path)!,
-      () => {
-        // onSuccess callback
-        removeOverlay(label.overlay.id);
-        setter();
-        setSaving(false);
-        setNotification({
-          msg: `Label "${label.data.label ?? "Label"}" successfully deleted.`,
-          variant: "success",
-        });
-        exit();
-      },
-      () => {
-        // onError callback
-        setSaving(false);
-        setNotification({
-          msg: `Label "${
-            label.data.label ?? "Label"
-          }" not successfully deleted. Try again.`,
-          variant: "error",
-        });
-      }
-    );
+    try {
+      await commandBus.execute(
+        new DeleteAnnotationCommand(label, getFieldSchema(schema, label?.path)!)
+      );
+
+      removeOverlay(label.overlay.id);
+      setter();
+      setSaving(false);
+      setNotification({
+        msg: `Label "${label.data.label ?? "Label"}" successfully deleted.`,
+        variant: "success",
+      });
+      exit();
+    } catch (error) {
+      setSaving(false);
+      setNotification({
+        msg: `Label "${
+          label.data.label ?? "Label"
+        }" not successfully deleted. Try again.`,
+        variant: "error",
+      });
+    }
   }, [
-    deleteAnnotation,
+    commandBus,
     label,
     scene,
     schema,

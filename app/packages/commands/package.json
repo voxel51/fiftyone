@@ -1,5 +1,5 @@
 {
-    "name": "@fiftyone/annotation",
+    "name": "@fiftyone/commands",
     "version": "1.0.0",
     "scripts": {
         "dev": "vite",
@@ -29,9 +29,6 @@
     },
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
-        "@fiftyone/commands": "*",
-        "@fiftyone/events": "*",
-        "jotai": "*",
         "react": "*"
     }
 }

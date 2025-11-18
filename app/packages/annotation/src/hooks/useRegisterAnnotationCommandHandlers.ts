@@ -3,6 +3,7 @@
  */
 
 import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useRegisterCommandHandler } from "@fiftyone/commands";
 import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 import { parseTimestamp } from "@fiftyone/core/src/client/util";
@@ -17,12 +18,14 @@ import {
 import { Field } from "@fiftyone/utilities";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { DeleteAnnotationCommand, UpsertAnnotationCommand } from "../commands";
 import { OpType, buildJsonPath, buildLabelDeltas } from "../deltas";
 
 /**
- * Hook that provides functions related to annotation persistence.
+ * Hook that registers command handlers for annotation persistence.
+ * This should be called once in the composition root.
  */
-export const useAnnotationActions = () => {
+export const useRegisterAnnotationCommandHandlers = () => {
   const datasetId = useRecoilValue(fosDatasetId);
   const currentSample = useRecoilValue(modalSample)?.sample;
   const refreshSample = useRefreshSample();
@@ -122,94 +125,77 @@ export const useAnnotationActions = () => {
     [currentSample, handlePatchSample]
   );
 
-  /**
-   * Upsert an annotation label.
-   * @param label The label to upsert
-   * @param schema The schema of the label
-   * @param onSuccess Callback invoked on successful upsert
-   * @param onError Callback invoked on error
-   */
-  const upsertAnnotation = useCallback(
-    async (
-      label: AnnotationLabel,
-      schema: Field,
-      onSuccess?: () => void,
-      onError?: (error?: Error) => void
-    ) => {
-      const labelId = label.data._id;
-      try {
-        const success = await handlePersistence(label, schema, "mutate");
+  useRegisterCommandHandler(
+    UpsertAnnotationCommand,
+    useCallback(
+      async (cmd) => {
+        const labelId = cmd.label.data._id;
+        try {
+          const success = await handlePersistence(
+            cmd.label,
+            cmd.schema,
+            "mutate"
+          );
 
-        if (success) {
-          eventBus.dispatch("annotation:notification:upsertSuccess", {
-            labelId,
-            type: "upsert",
-          });
-          onSuccess?.();
-        } else {
+          if (success) {
+            eventBus.dispatch("annotation:notification:upsertSuccess", {
+              labelId,
+              type: "upsert",
+            });
+          } else {
+            eventBus.dispatch("annotation:notification:upsertError", {
+              labelId,
+              type: "upsert",
+            });
+          }
+          return success;
+        } catch (error) {
           eventBus.dispatch("annotation:notification:upsertError", {
             labelId,
             type: "upsert",
+            error: error as Error,
           });
-          onError?.();
+          throw error;
         }
-      } catch (error) {
-        eventBus.dispatch("annotation:notification:upsertError", {
-          labelId,
-          type: "upsert",
-          error: error as Error,
-        });
-        onError?.(error as Error);
-      }
-    },
-    [handlePersistence, eventBus]
+      },
+      [handlePersistence, eventBus]
+    )
   );
 
-  /**
-   * Delete an annotation label.
-   * @param label The label to delete
-   * @param schema The schema of the label
-   * @param onSuccess Callback invoked on successful delete
-   * @param onError Callback invoked on error
-   */
-  const deleteAnnotation = useCallback(
-    async (
-      label: AnnotationLabel,
-      schema: Field,
-      onSuccess?: () => void,
-      onError?: (error?: Error) => void
-    ) => {
-      const labelId = label.data._id;
-      try {
-        const success = await handlePersistence(label, schema, "delete");
+  useRegisterCommandHandler(
+    DeleteAnnotationCommand,
+    useCallback(
+      async (cmd) => {
+        const labelId = cmd.label.data._id;
+        try {
+          const success = await handlePersistence(
+            cmd.label,
+            cmd.schema,
+            "delete"
+          );
 
-        if (success) {
-          eventBus.dispatch("annotation:notification:deleteSuccess", {
-            labelId,
-            type: "delete",
-          });
-          onSuccess?.();
-        } else {
+          if (success) {
+            eventBus.dispatch("annotation:notification:deleteSuccess", {
+              labelId,
+              type: "delete",
+            });
+          } else {
+            eventBus.dispatch("annotation:notification:deleteError", {
+              labelId,
+              type: "delete",
+            });
+          }
+          return success;
+        } catch (error) {
           eventBus.dispatch("annotation:notification:deleteError", {
             labelId,
             type: "delete",
+            error: error as Error,
           });
-          onError?.();
+          throw error;
         }
-      } catch (error) {
-        eventBus.dispatch("annotation:notification:deleteError", {
-          labelId,
-          type: "delete",
-          error: error as Error,
-        });
-        onError?.(error as Error);
-      }
-    },
-    [handlePersistence, eventBus]
+      },
+      [handlePersistence, eventBus]
+    )
   );
-
-  return {
-    upsertAnnotation,
-    deleteAnnotation,
-  };
 };
