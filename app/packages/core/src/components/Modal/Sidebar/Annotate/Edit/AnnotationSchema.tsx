@@ -22,6 +22,10 @@ import {
   currentOverlay,
   currentSchema,
 } from "./state";
+import type {
+  NumberSchemaType,
+  SchemaType,
+} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 const getLabel = (value) => {
   if (typeof value === "boolean") {
@@ -35,20 +39,31 @@ const getLabel = (value) => {
   return value;
 };
 
-const createInput = (name: string, ftype: string) => {
-  return {
-    type:
-      ftype === STRING_FIELD
-        ? "string"
-        : ftype === BOOLEAN_FIELD
-        ? "boolean"
-        : "number",
+const createInput = (
+  name: string,
+  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+): SchemaType => {
+  const type =
+    ftype === STRING_FIELD
+      ? "string"
+      : ftype === BOOLEAN_FIELD
+      ? "boolean"
+      : "number";
+
+  const schema: SchemaType = {
+    type,
     view: {
       name: "PrimitiveView",
       label: name,
       component: "PrimitiveView",
     },
   };
+
+  if (multipleOf) {
+    (schema as NumberSchemaType).multipleOf = multipleOf;
+  }
+
+  return schema;
 };
 
 const createRadio = (name: string, choices) => {
@@ -115,7 +130,7 @@ const useSchema = () => {
       }
 
       if (attributes[attr].type === "input") {
-        properties[attr] = createInput(attr);
+        properties[attr] = createInput(attr, attributes[attr]);
       }
 
       if (attributes[attr].type === "radio") {

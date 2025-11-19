@@ -38,6 +38,16 @@ export default function TextWidget(props: WidgetProps) {
   const inputType =
     schema.type === "number" || schema.type === "integer" ? "number" : "text";
 
+  // Build inputProps with step for number inputs
+  const inputProps: Record<string, any> = {
+    "data-1p-ignore": true,
+  };
+
+  // Honor multipleOf for number inputs (maps to step attribute)
+  if (inputType === "number" && schema.multipleOf !== undefined) {
+    inputProps.step = schema.multipleOf;
+  }
+
   return (
     <Box sx={{ width: "100%" }}>
       {label && (
@@ -71,9 +81,7 @@ export default function TextWidget(props: WidgetProps) {
         onFocus={handleFocus}
         fullWidth
         size="small"
-        inputProps={{
-          "data-1p-ignore": true,
-        }}
+        inputProps={inputProps}
       />
     </Box>
   );
