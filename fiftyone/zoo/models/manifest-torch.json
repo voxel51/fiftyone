@@ -7592,7 +7592,14 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "rtdetr"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "rtdetr"
+            ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -7628,6 +7635,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "rtdetr",
@@ -7665,6 +7673,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7702,6 +7711,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7739,6 +7749,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7776,6 +7787,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7813,6 +7825,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
