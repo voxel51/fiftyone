@@ -717,6 +717,12 @@ class ExecutionContext(contextlib.AbstractContextManager):
             return self.view.select_labels(self.selected_labels)
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
+        if target == constants.ViewTarget.CUSTOM_VIEW_TARGET:
+            if (
+                view_stages := self.params.get("custom_view_target")
+            ) is not None:
+                # pylint: disable-next-line=protected-access
+                return fov.DatasetView._build(self.dataset, view_stages)
 
         return self.view if self.has_custom_view else self.dataset
 
