@@ -2367,6 +2367,39 @@ class DropdownView(Dropdown):
         super().__init__(**kwargs)
 
 
+class DateTimeView(View):
+    """
+    Displays a date/time input - response in epoch time
+
+    Examples::
+        start_datetime_selector = types.DateTimeView(date_only=True)
+        inputs.int(
+            "start_datetime",
+            required=True,
+            label="Start Date/time",
+            description="Start date/time for filtering samples",
+            view=start_datetime_selector,
+        )
+
+
+        end_datetime_selector = types.DateTimeView()
+        inputs.int(
+            "end_datetime",
+            required=False,
+            label="End Date/time",
+            description="Start date/time for filtering samples",
+            view=end_datetime_selector,
+        )
+
+    Args:
+        date_only (False): whether to display a date only input
+            and not require HH:MM:SS
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class LabelValueView(View):
     """Displays a label-value component. Used for displaying a label and a
     corresponding value.

@@ -2,14 +2,19 @@ import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
+  dateFromDateString,
+  dateFromDateTimeString,
   FLOAT_FIELD,
+  formatDatePicker,
+  formatDateTimePicker,
+  INPUT_TYPE_DATE,
+  INPUT_TYPE_DATE_TIME,
   INT_FIELD,
+  styles,
 } from "@fiftyone/utilities";
-import { DateTime } from "luxon";
 import type { CSSProperties } from "react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
-import styled from "styled-components";
 
 export type InputType =
   | typeof DATE_TIME_FIELD
@@ -26,138 +31,23 @@ export interface InputProps<T extends InputType> {
   value: number | null;
 }
 
-const StyledInputContainer = styled.div`
-  font-size: 14px;
-  border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
-  position: relative;
-  margin: 0.5rem 0;
-  max-width: calc(50% - 0.5rem);
-`;
-
-const StyledInput = styled.input`
-  &::-webkit-calendar-picker-indicator {
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="${({
-      theme,
-    }) =>
-      theme.text
-        .secondary}" d="M20 3h-1V1h-2v2H7V1H5v2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 18H4V8h16v13z"/></svg>');
-  }
-
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  /* Firefox */
-  &[type="number"] {
-    -moz-appearance: textfield;
-  }
-
-  background-color: transparent;
-  border: none;
-  color: ${({ theme }) => theme.text.secondary};
-  height: 2rem;
-  border: none;
-  align-items: center;
-  font-weight: bold;
-  width: 100%;
-
-  &:focus {
-    border: none;
-    outline: none;
-    font-weight: bold;
-  }
-
-  &::placeholder {
-    color: ${({ theme }) => theme.text.secondary};
-    font-weight: bold;
-  }
-`;
-
 const TYPE_MAP = {
-  [DATE_FIELD]: "date",
-  [DATE_TIME_FIELD]: "datetime-local",
+  [DATE_FIELD]: INPUT_TYPE_DATE,
+  [DATE_TIME_FIELD]: INPUT_TYPE_DATE_TIME,
   [FLOAT_FIELD]: "string",
   [INT_FIELD]: "string",
 };
 
 const FROM_INPUT = (timeZone: string) => ({
-  [DATE_FIELD]: (v) => {
-    const [year, month, day] = v.split("-").map(Number);
-    return Date.UTC(year, month - 1, day);
-  },
-  [DATE_TIME_FIELD]: (v) => {
-    const [date, time] = v.split("T");
-    const [year, month, day] = date.split("-").map(Number);
-    const times = time.split(":");
-    if (times.length === 3) {
-      const [hour, minute, second] = time.split(":");
-      return DateTime.fromObject(
-        { year, month, day, hour, minute, second },
-        { zone: timeZone }
-      ).valueOf();
-    }
-
-    const [hour, minute] = time.split(":");
-    return DateTime.fromObject(
-      { year, month, day, hour, minute },
-      { zone: timeZone }
-    ).valueOf();
-  },
+  [DATE_FIELD]: dateFromDateString,
+  [DATE_TIME_FIELD]: (v) => dateFromDateTimeString(timeZone, v),
   [INT_FIELD]: (v) => Number.parseInt(v, 10),
   [FLOAT_FIELD]: (v) => Number.parseFloat(v),
 });
 
 const TO_INPUT = (timeZone: string) => ({
-  [DATE_FIELD]: (v) => {
-    const date = new Date(v);
-    const year = Intl.DateTimeFormat("en", {
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(date);
-    const month = Intl.DateTimeFormat("en", {
-      month: "2-digit",
-      timeZone: "UTC",
-    }).format(date);
-    const day = Intl.DateTimeFormat("en", {
-      day: "2-digit",
-      timeZone: "UTC",
-    }).format(date);
-
-    return `${year}-${month}-${day}`;
-  },
-  [DATE_TIME_FIELD]: (v) => {
-    const date = new Date(v);
-    const year = Intl.DateTimeFormat("en", {
-      year: "numeric",
-      timeZone,
-    }).format(date);
-    const month = Intl.DateTimeFormat("en", {
-      month: "2-digit",
-      timeZone,
-    }).format(date);
-    const day = Intl.DateTimeFormat("en", { day: "2-digit", timeZone }).format(
-      date
-    );
-    const hour = Intl.DateTimeFormat("en", {
-      hour: "2-digit",
-      hour12: false,
-      timeZone,
-    }).format(date);
-    const minutes = Intl.DateTimeFormat("en", {
-      minute: "2-digit",
-      timeZone,
-    }).format(date);
-    const seconds = Intl.DateTimeFormat("en", {
-      second: "2-digit",
-      timeZone,
-    }).format(date);
-
-    return `${year}-${month}-${day}T${hour}:${handleDigits(
-      minutes
-    )}:${handleDigits(seconds)}`;
-  },
+  [DATE_FIELD]: formatDatePicker,
+  [DATE_TIME_FIELD]: (v) => formatDateTimePicker(timeZone, v),
   [INT_FIELD]: (v) => String(v),
   [FLOAT_FIELD]: (v) => String(v),
 });
@@ -187,10 +77,10 @@ export function Input<T extends InputType>({
   }, [ftype, to, value]);
 
   return (
-    <StyledInputContainer
+    <styles.StyledInputContainer
       style={{ borderBottom: `1px solid ${color}`, width: "50%" }}
     >
-      <StyledInput
+      <styles.StyledInput
         type={TYPE_MAP[ftype]}
         placeholder={placeholder}
         value={state ?? ""}
@@ -205,6 +95,6 @@ export function Input<T extends InputType>({
           onSubmit(state === "" ? null : from[ftype](state));
         }}
       />
-    </StyledInputContainer>
+    </styles.StyledInputContainer>
   );
 }
