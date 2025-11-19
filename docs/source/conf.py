@@ -98,11 +98,18 @@ source_suffix = [".rst", ".md"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-# This pattern also affects html_static_path and html_extra_path.
+# Updated to exclude all except Getting Started
 exclude_patterns = [
     "_includes",
-    "model_zoo/models/model_cards.rst",
-    "dataset_zoo/datasets/dataset_cards.rst",
+    "model_zoo/**",
+    "dataset_zoo/**",
+    "plugins/**",
+    "user_guide/**",
+    "tutorials/**",
+    "recipes/**",
+    "cheat_sheets/**",
+    "FAQ/**"
+    # ... add more sections to exclude as needed
 ]
 
 # A string of reStructuredText that will be included at the beginning of every
