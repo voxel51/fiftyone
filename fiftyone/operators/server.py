@@ -7,6 +7,7 @@ FiftyOne operator server.
 """
 import contextlib
 import types
+from sse_starlette.sse import EventSourceResponse
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -238,6 +239,38 @@ class ResolveExecutionOptions(HTTPEndpoint):
         return result.to_dict() if result else {}
 
 
+class SubscribeToExecutionStoreAsOperator(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> EventSourceResponse:
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
+        operator_uri = data.get("operator_uri", None)
+        if operator_uri is None:
+            raise ValueError("Operator URI must be provided")
+
+        registry = await PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=dataset_ids
+        )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
+
+        if registry.operator_exists(operator_uri) is False:
+            error_detail = {
+                "message": "Operator '%s' does not exist" % operator_uri,
+                "loading_errors": registry.list_errors(),
+            }
+            raise HTTPException(status_code=404, detail=error_detail)
+
+        execution_result = await execute_or_delegate_operator(
+            operator_uri, data
+        )
+
+        if execution_result.is_sse:
+            return execution_result.result
+        else:
+            return execution_result.to_json()
+
+
 OperatorRoutes = [
     ("/operators", ListOperators),
     ("/operators/execute", ExecuteOperator),
@@ -245,4 +278,8 @@ OperatorRoutes = [
     ("/operators/resolve-type", ResolveType),
     ("/operators/resolve-placements", ResolvePlacements),
     ("/operators/resolve-execution-options", ResolveExecutionOptions),
+    (
+        "/operators/subscribe-execution-store",
+        SubscribeToExecutionStoreAsOperator,
+    ),
 ]
