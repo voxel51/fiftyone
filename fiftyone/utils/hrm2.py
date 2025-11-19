@@ -8,12 +8,8 @@ HRM2.0 (4D-Humans) model integration.
 
 import logging
 import os
-import tempfile
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
-import warnings
-import hashlib
-import uuid
 
 import cv2
 import numpy as np
@@ -23,7 +19,6 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.config as foc
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
@@ -33,6 +28,7 @@ from fiftyone.utils.torch import (
     resize_tensor,
     normalize_tensor,
     get_target_size,
+    detections_to_boxes,
 )
 import fiftyone.zoo.models as fozm
 
@@ -51,38 +47,12 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "load_hrm2_model",
     "load_smpl_model",
+    "apply_hrm2_to_dataset_as_groups",
     "HRM2Config",
     "HRM2ModelConfig",
     "HRM2Model",
     "HRM2GetItem",
-    "HumanPose2D",
-    "HumanPose3D",
 ]
-
-
-def _numpy_to_python(obj: Any) -> Any:
-    """Recursively convert numpy types to Python native types.
-
-    This is necessary for MongoDB/BSON serialization which doesn't support numpy types.
-
-    Args:
-        obj: object to convert (numpy types, dicts, lists, or primitives)
-
-    Returns:
-        converted object with Python native types
-    """
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    elif isinstance(obj, (np.floating, np.float32, np.float64)):
-        return float(obj)
-    elif isinstance(obj, (np.integer, np.int32, np.int64)):
-        return int(obj)
-    elif isinstance(obj, dict):
-        return {k: _numpy_to_python(v) for k, v in obj.items()}
-    elif isinstance(obj, (list, tuple)):
-        return [_numpy_to_python(item) for item in obj]
-    else:
-        return obj
 
 
 def cam_crop_to_full(
@@ -328,59 +298,20 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
         return torch.load(checkpoint_path, **load_kwargs)
 
 
-def _detections_to_boxes(
-    detections: Optional[fol.Detections],
-    img_shape: Union[Tuple[int, int], Image.Image, np.ndarray, torch.Tensor],
-) -> Optional[np.ndarray]:
-    """Convert FiftyOne Detections to bounding boxes in absolute coordinates.
-
-    Converts FiftyOne's relative bounding box format [x, y, w, h] (normalized 0-1)
-    to absolute pixel coordinates [x1, y1, x2, y2].
-
-    Args:
-        detections: fol.Detections object or None
-        img_shape: (height, width) tuple, or image object (PIL/numpy/torch)
-
-    Returns:
-        numpy array of boxes [[x1, y1, x2, y2], ...] in absolute pixel
-        coordinates, or None if no detections
-    """
-    if detections is None or len(detections.detections) == 0:
-        return None
-
-    # Get image dimensions from various input types
-    if isinstance(img_shape, tuple):
-        img_h, img_w = img_shape
-    elif isinstance(img_shape, Image.Image):
-        img_w, img_h = img_shape.size
-    elif isinstance(img_shape, np.ndarray):
-        img_h, img_w = img_shape.shape[:2]
-    elif isinstance(img_shape, torch.Tensor):
-        if img_shape.ndim == 3 and img_shape.shape[0] in (1, 3, 4):  # CHW
-            img_h, img_w = img_shape.shape[1], img_shape.shape[2]
-        else:  # HWC
-            img_h, img_w = img_shape.shape[:2]
-    else:
-        raise ValueError(f"Unsupported image type: {type(img_shape)}")
-
-    boxes = []
-    for detection in detections.detections:
-        # FiftyOne format: [x, y, w, h] in relative coordinates [0, 1]
-        x, y, w, h = detection.bounding_box
-        # Convert to absolute coordinates [x1, y1, x2, y2]
-        x1 = x * img_w
-        y1 = y * img_h
-        x2 = (x + w) * img_w
-        y2 = (y + h) * img_h
-        boxes.append([x1, y1, x2, y2])
-
-    return np.array(boxes)
-
-
 def _expand_to_aspect_ratio(
     input_shape: Union[np.ndarray, List[float], Tuple[float, float]],
     target_aspect_ratio: Optional[Tuple[float, float]] = None,
 ) -> np.ndarray:
+    """Expand bounding box dimensions to match a target aspect ratio.
+
+    Args:
+        input_shape: (width, height) of the current bounding box
+        target_aspect_ratio: desired (width, height) aspect ratio
+
+    Returns:
+        numpy array of [width, height] expanded to match the target ratio while
+        fully containing the original box
+    """
     if target_aspect_ratio is None:
         return np.array(input_shape, dtype=np.float32)
 
@@ -403,6 +334,21 @@ def _gen_trans_from_patch_cv(
     scale: float,
     rot: float,
 ) -> np.ndarray:
+    """Generate an affine transformation matrix for cropping a patch.
+
+    Args:
+        c_x: center x coordinate of the source crop
+        c_y: center y coordinate of the source crop
+        src_width: width of the source crop
+        src_height: height of the source crop
+        dst_width: width of the destination patch
+        dst_height: height of the destination patch
+        scale: scaling factor
+        rot: rotation angle in degrees
+
+    Returns:
+        2x3 affine transformation matrix
+    """
     src_w = src_width * scale
     src_h = src_height * scale
 
@@ -449,6 +395,25 @@ def _generate_image_patch_cv2(
     border_mode: int = cv2.BORDER_CONSTANT,
     border_value: int = 0,
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Extract an image patch using affine transformation.
+
+    Args:
+        img: input image (HWC)
+        c_x: center x coordinate of the crop
+        c_y: center y coordinate of the crop
+        bb_width: width of the bounding box
+        bb_height: height of the bounding box
+        patch_width: width of the output patch
+        patch_height: height of the output patch
+        do_flip: whether to horizontally flip the image
+        scale: scaling factor
+        rot: rotation angle in degrees
+        border_mode: OpenCV border mode
+        border_value: border value for constant padding
+
+    Returns:
+        tuple of (patch image, transformation matrix)
+    """
     if do_flip:
         img = img[:, ::-1, :]
         c_x = img.shape[1] - c_x - 1
@@ -468,6 +433,14 @@ def _generate_image_patch_cv2(
 
 
 def _convert_cvimg_to_tensor(cvimg: np.ndarray) -> np.ndarray:
+    """Convert an OpenCV image (HWC) to a tensor-ready format (CHW).
+
+    Args:
+        cvimg: image array in HWC format
+
+    Returns:
+        image array in CHW format
+    """
     img = cvimg.transpose(2, 0, 1).astype(np.float32)
     return img
 
@@ -475,6 +448,15 @@ def _convert_cvimg_to_tensor(cvimg: np.ndarray) -> np.ndarray:
 def _apply_antialias(
     img: np.ndarray, downsampling_factor: float
 ) -> np.ndarray:
+    """Apply anti-aliasing blur to the image if significant downsampling is needed.
+
+    Args:
+        img: input image
+        downsampling_factor: ratio of input size to output size
+
+    Returns:
+        blurred image if downsampling factor > 1.1, else original image
+    """
     if downsampling_factor <= 1.1:
         return img
 
@@ -502,9 +484,11 @@ class _HRM2CropHelper:
     optional anti-alias filtering, affine warping, and 0-255 mean/std
     normalization, and returns the canonical metadata required by
     ``cam_crop_to_full``.
+
+    **All preprocessing operations are performed on CPU.**
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg: Any) -> None:
         image_size = getattr(cfg.MODEL, "IMAGE_SIZE", 256)
         target_h, target_w = get_target_size(image_size)
         self.patch_height = target_h
@@ -556,6 +540,7 @@ class _HRM2CropHelper:
         for c in range(min(img_tensor.shape[0], len(self.mean))):
             img_tensor[c] = (img_tensor[c] - self.mean[c]) / self.std[c]
 
+        # All preprocessing is done on CPU - tensor created from numpy is on CPU by default
         img_tensor = torch.from_numpy(img_tensor).float()
         img_size = np.array(
             [float(img.shape[1]), float(img.shape[0])], dtype=np.float32
@@ -567,26 +552,24 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     """Converts HRM2 raw outputs to FiftyOne HumanPose3D labels.
 
     This processor handles all postprocessing logic including tensor-to-Python
-    conversion, mesh generation, and label creation.
+    conversion and label creation. Scene export is deferred to the HumanPose3D
+    label's export_scene() method, following FiftyOne's standard pattern.
 
     **Resource Requirements:**
-    - If ``export_meshes=True``, requires ``smpl_model`` and ``device`` to be provided
+    - If ``export_meshes=True``, requires ``smpl_model`` to prepare scene metadata
     - These resources are injected at runtime by HRM2Model._build_output_processor()
-    - Config parameters (export_meshes, mesh_output_dir) are set in HRM2Config
+    - Config parameter export_meshes is set in HRM2Config
 
     **Postprocessing Pipeline:**
     1. Convert raw tensors to Python types (_process_person)
-    2. Generate 3D meshes using SMPL model (_generate_scene)
-    3. Create .fo3d scene files with camera setup
-    4. Return HumanPose3D labels with scene_path
+    2. Prepare scene metadata using SMPL model (_prepare_scene_data)
+    3. Return HumanPose3D labels with all data needed for later export
 
     Args:
-        smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh generation.
+        smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh metadata.
             Required if export_meshes=True
-        export_meshes (True): whether to generate 3D mesh files. If True, requires
-            smpl_model and device
-        mesh_output_dir (None): directory for mesh output. If None, uses
-            FiftyOne's model zoo directory
+        export_meshes (True): whether to prepare mesh metadata for later export.
+            If True, requires smpl_model
         confidence_thresh (None): minimum confidence threshold for filtering
         device (None): torch.device for SMPL model operations. Required if
             export_meshes=True
@@ -596,7 +579,6 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         self,
         smpl_model=None,
         export_meshes=True,
-        mesh_output_dir=None,
         confidence_thresh=None,
         device=None,
         **kwargs,
@@ -604,29 +586,14 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         super().__init__(**kwargs)
         self._smpl = smpl_model
         self.export_meshes = export_meshes
-        self.mesh_output_dir = mesh_output_dir
-        if self.mesh_output_dir is None:
-            # Use FiftyOne's model zoo directory for persistent storage
-            self.mesh_output_dir = os.path.join(
-                fo.config.model_zoo_dir, "hrm2_meshes"
-            )
-        # Ensure directory exists
-        etau.ensure_dir(self.mesh_output_dir)
-        # Create a per-run subdirectory to avoid collisions across runs/batches
-        self._run_dir = os.path.join(
-            self.mesh_output_dir, f"run_{uuid.uuid4().hex[:8]}"
-        )
-        etau.ensure_dir(self._run_dir)
         self.confidence_thresh = confidence_thresh
         self._device = device
-        # Fallback counter for UIDs when filepath is not available
-        self._uid_counter = 0
 
         # Validate resource requirements
         if self.export_meshes and self._smpl is None:
             logger.warning(
                 "export_meshes=True but no SMPL model provided. "
-                "3D mesh generation will be disabled. "
+                "Scene metadata preparation will be disabled. "
                 "To enable mesh export, provide smpl_model_path in HRM2Config."
             )
             self.export_meshes = False
@@ -634,7 +601,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         if self.export_meshes and self._device is None:
             logger.warning(
                 "export_meshes=True but no device provided. "
-                "This may cause issues during mesh generation."
+                "This may cause issues during scene metadata preparation."
             )
 
     def __call__(
@@ -642,7 +609,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         outputs: List[Dict[str, Any]],
         frame_size: Tuple[int, int],
         confidence_thresh: Optional[float] = None,
-    ) -> List["HumanPose3D"]:
+    ) -> List[fol.HumanPose3D]:
         """Convert raw HRM2 outputs to HumanPose3D labels.
 
         Args:
@@ -665,26 +632,34 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 person_dict = self._process_person(person_raw)
                 people_data.append(person_dict)
 
-            # Generate scene if enabled
-            scene_path = None
+            # Prepare scene data if enabled
+            scene_data = None
             if self._smpl is not None and self.export_meshes and people_data:
-                # Compute a stable UID for this sample from its filepath
-                filepath = output.get("filepath")
-                if filepath:
-                    uid = hashlib.sha1(filepath.encode("utf-8")).hexdigest()[
-                        :10
-                    ]
-                else:
-                    self._uid_counter += 1
-                    uid = f"idx{self._uid_counter:06d}"
-                scene_path = self._generate_scene(
-                    people_data, uid, output.get("img_shape")
+                scene_data = self._prepare_scene_data(
+                    people_data, output.get("img_shape")
                 )
 
-            # Create label with scene_path
-            label = HumanPose3D(
-                people=people_data, confidence=None, scene_path=scene_path
-            )
+            # Create label with scene metadata (no scene_path yet - set during export)
+            if scene_data:
+                # Construct Person3D objects from scene data
+                person3d_list = self._build_person3d_objects(
+                    scene_data["people"]
+                )
+                label = fol.HumanPose3D(
+                    people=person3d_list,
+                    smpl_faces=scene_data["smpl_faces"],
+                    frame_size=scene_data["frame_size"],
+                    scene_path=None,  # Will be set during export
+                )
+            else:
+                # No scene export - construct Person3D objects from people data
+                person3d_list = self._build_person3d_objects(people_data)
+                label = fol.HumanPose3D(
+                    people=person3d_list,
+                    scene_path=None,
+                    smpl_faces=None,
+                    frame_size=None,
+                )
             labels.append(label)
 
         return labels
@@ -692,13 +667,16 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     def _process_person(self, person_raw: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single person's raw tensors to Python types.
 
+        All postprocessing is done on CPU - tensors are explicitly moved to CPU
+        before conversion to Python native types.
+
         Args:
             person_raw: Dict with raw tensor outputs from model
 
         Returns:
             Dict with Python native types ready for MongoDB serialization
         """
-        # Helper to safely convert tensors to lists
+        # Helper to safely convert tensors to lists (all postprocessing on CPU)
         def to_list(x):
             if x is None:
                 return None
@@ -735,38 +713,37 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 person_raw["camera_translation"]
             )
 
-        return _numpy_to_python(person_dict)
+        return fou.numpy_to_python(person_dict)
 
-    def _generate_scene(
+    def _prepare_scene_data(
         self,
         people_data: List[Dict],
-        uid: str,
         img_shape: Optional[Tuple[int, int]] = None,
-    ) -> Optional[str]:
-        """Generate 3D scene with multiple person meshes and optimal camera.
+    ) -> Dict:
+        """Prepare all data needed for scene export.
+
+        This method applies coordinate transformations to vertices and collects
+        all metadata needed for later export. No files are written.
 
         Args:
             people_data: list of person detection dictionaries (processed)
-            uid: unique identifier for the sample for file naming
             img_shape: optional (height, width) for camera setup
 
         Returns:
-            path to the generated .fo3d scene file
+            Dict with:
+                - people: List of per-person dicts with transformed vertices
+                - smpl_faces: numpy array (F, 3) - mesh topology
+                - frame_size: [height, width] for camera setup
         """
         import trimesh
-        from fiftyone.core.threed import Scene, ObjMesh, PerspectiveCamera
 
-        # Track all vertices for bounding box calculation
-        all_vertices = []
-
-        # Generate mesh for each person
-        mesh_objects = []
+        # Process each person's vertices with coordinate transformations
+        processed_people = []
         for person in people_data:
             person_id = person["person_id"]
 
             # Get vertices from HMR2 output (already computed)
             vertices = np.array(person["vertices"])
-            faces = self._smpl.faces
 
             # Translate into camera frame before applying coordinate system flip
             if (
@@ -790,76 +767,65 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             )
             vertices = (rot_matrix @ vertices_homogeneous.T).T[:, :3]
 
-            # Track vertices for bounding box
-            all_vertices.append(vertices)
-
-            # Create mesh
-            mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-
-            # Save as OBJ
-            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
-            mesh_path = os.path.join(self._run_dir, mesh_filename)
-            mesh.export(mesh_path)
-
-            # Store mesh object for later
-            mesh_objects.append(
-                ObjMesh(
-                    name=f"human_{uid}_person_{person_id}", obj_path=mesh_path
-                )
+            # Store transformed vertices and other person data
+            processed_people.append(
+                {
+                    "vertices": vertices.tolist(),  # Convert to list for serialization
+                    "person_id": person_id,
+                    "bbox": person.get("bbox"),
+                    "smpl_params": person.get("smpl_params"),
+                    "keypoints_3d": person.get("keypoints_3d"),
+                    "keypoints_2d": person.get("keypoints_2d"),
+                }
             )
 
-        # Create scene and configure camera based on mesh bounds
-        camera = PerspectiveCamera(up="Y")
+        # Prepare scene metadata
+        frame_size = list(img_shape) if img_shape is not None else [512, 512]
 
-        if img_shape is not None and len(img_shape) == 2:
-            img_h, img_w = img_shape
-            if img_h:
-                camera.aspect = float(img_w) / float(img_h)
+        scene_data = {
+            "people": processed_people,
+            "smpl_faces": self._smpl.faces.copy(),  # Copy for storage in label
+            "frame_size": frame_size,
+        }
 
-        if all_vertices:
-            vertices = np.concatenate(all_vertices, axis=0)
-            mins = vertices.min(axis=0)
-            maxs = vertices.max(axis=0)
-            center = (mins + maxs) / 2.0
-            extents = maxs - mins
-            max_extent = float(np.max(extents))
-            max_extent = max(max_extent, 1e-2)
+        return scene_data
 
-            half_fov_rad = np.radians(camera.fov) / 2.0
-            tan_half_fov = np.tan(half_fov_rad)
-            if tan_half_fov < 1e-3:
-                tan_half_fov = 1e-3
+    def _build_person3d_objects(
+        self, people_data: List[Dict[str, Any]]
+    ) -> List[fol.Person3D]:
+        """Build Person3D objects from processed person dictionaries.
 
-            distance = (max_extent / 2.0) / tan_half_fov
-            distance = max(distance, max_extent)
-            distance = max(distance, 0.5)
-            distance *= 1.2
+        Args:
+            people_data: list of person dictionaries with processed data
 
-            camera.position = (
-                center + np.array([0.0, 0.0, distance])
-            ).tolist()
-            camera.look_at = center.tolist()
+        Returns:
+            list of Person3D embedded document instances
+        """
+        person3d_list = []
 
-            near = max(0.01, distance - max_extent * 2.0)
-            far = distance + max_extent * 5.0
-            if far <= near:
-                far = near + max_extent * 5.0 + 1.0
+        for person_dict in people_data:
+            # Extract SMPL params and construct SMPLParams object
+            smpl_dict = person_dict.get("smpl_params", {})
+            smpl_params = fol.SMPLParams(
+                body_pose=smpl_dict.get("body_pose"),
+                betas=smpl_dict.get("betas"),
+                global_orient=smpl_dict.get("global_orient"),
+                camera=smpl_dict.get("camera"),
+            )
 
-            camera.near = near
-            camera.far = far
+            # Construct Person3D object
+            person3d = fol.Person3D(
+                person_id=person_dict.get("person_id"),
+                bbox=person_dict.get("bbox"),
+                vertices=person_dict.get("vertices"),
+                keypoints_3d=person_dict.get("keypoints_3d"),
+                keypoints_2d=person_dict.get("keypoints_2d"),
+                smpl_params=smpl_params,
+                camera_translation=person_dict.get("camera_translation"),
+            )
+            person3d_list.append(person3d)
 
-        scene = Scene(camera=camera)
-
-        # Add all meshes to scene
-        for mesh_obj in mesh_objects:
-            scene.add(mesh_obj)
-
-        # Save scene
-        scene_filename = f"human_scene_{uid}.fo3d"
-        scene_path = os.path.join(self._run_dir, scene_filename)
-        scene.write(scene_path)
-
-        return scene_path
+        return person3d_list
 
 
 class HRM2GetItem(fout.GetItem):
@@ -1050,6 +1016,150 @@ def load_smpl_model(
     return model
 
 
+def apply_hrm2_to_dataset_as_groups(
+    model: "HRM2Model",
+    dataset: "fo.Dataset",
+    label_field: str = "human_pose",
+    batch_size: int = 1,
+    num_workers: int = 4,
+    image_slice_name: str = "image",
+    scene_slice_name: str = "3d",
+    output_dir: Optional[str] = None,
+) -> "fo.Dataset":
+    """Apply HRM2 model to a dataset and create grouped samples.
+
+    This function converts an image dataset into a grouped dataset where each
+    group contains:
+    - An image slice with the original image and 2D keypoints
+    - A 3D slice with the reconstructed mesh scene and 3D data
+
+    This is the standard FiftyOne pattern for linking 2D images with 3D
+    reconstructions and enables 3D visualization in the FiftyOne App.
+
+    Args:
+        model: an HRM2Model instance
+        dataset: the FiftyOne dataset to process
+        label_field (str): base name for label fields (will create
+            "{label_field}_2d" on image samples and "{label_field}_3d" on
+            scene samples)
+        batch_size (int): batch size for inference
+        num_workers (int): number of workers for data loading
+        image_slice_name (str): name for the image slice in groups
+        scene_slice_name (str): name for the 3D scene slice in groups
+        output_dir (None): directory for .fo3d scenes and meshes. If None,
+            defaults to fo.config.model_zoo_dir/hrm2. Pass False to disable
+            file export (in-memory labels only)
+
+    Returns:
+        the grouped dataset
+    """
+    # Set default output_dir if not specified
+    if output_dir is None:
+        output_dir = os.path.join(fo.config.model_zoo_dir, "hrm2")
+        import fiftyone.core.storage as fos
+
+        output_dir = fos.normalize_path(output_dir)
+    elif output_dir is False:
+        output_dir = None  # Disable export
+
+    # Check if dataset is already grouped
+    if dataset.media_type == "group":
+        logger.warning(
+            "Dataset is already grouped. This will add new slices to "
+            "existing groups."
+        )
+        is_already_grouped = True
+    else:
+        is_already_grouped = False
+
+    # Store original sample info before clearing
+    logger.info(f"Processing {len(dataset)} samples...")
+    original_data = []
+    for sample in dataset.iter_samples():
+        original_data.append(
+            {
+                "filepath": sample.filepath,
+                "id": sample.id,
+                "fields": {
+                    k: sample[k]
+                    for k in sample.field_names
+                    if k not in ["id", "filepath", "metadata", "_media_type"]
+                },
+            }
+        )
+
+    # Apply model to get predictions
+    dataset.apply_model(
+        model,
+        label_field=label_field,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        output_dir=output_dir,
+    )
+
+    # Collect predictions with scene paths
+    predictions = []
+    for sample in dataset.iter_samples():
+        pred = sample[label_field]
+        predictions.append(pred)
+
+    # Clear dataset to rebuild with groups
+    logger.info("Creating grouped dataset structure...")
+    dataset.clear()
+
+    # Set up the dataset for groups
+    dataset.add_group_field("group", default=image_slice_name)
+
+    # Create all new samples with groups
+    all_new_samples = []
+
+    for idx, (orig_data, pred) in enumerate(zip(original_data, predictions)):
+        # Create group
+        group = fo.Group()
+
+        # Create image sample with group and 2D data
+        image_sample = fo.Sample(filepath=orig_data["filepath"])
+        image_sample["group"] = group.element(image_slice_name)
+
+        # Restore original fields
+        for field_name, field_value in orig_data["fields"].items():
+            image_sample[field_name] = field_value
+
+        # Add 2D keypoints if available
+        if pred and pred.people:
+            people_list = pred.people
+            # Store first person's 2D keypoints (if available)
+            for person in people_list:
+                if person.keypoints_2d is not None:
+                    keypoints_2d_field = f"{label_field}_2d"
+                    image_sample[keypoints_2d_field] = fol.HumanPose2D(
+                        keypoints=person.keypoints_2d,
+                        bounding_box=person.bbox,
+                    )
+                    break  # Only store first person for now
+
+        all_new_samples.append(image_sample)
+
+        # Create 3D scene sample if mesh was generated
+        if pred and pred.scene_path is not None:
+            scene_sample = fo.Sample(filepath=pred.scene_path)
+            scene_sample["group"] = group.element(scene_slice_name)
+
+            # Store 3D pose data
+            scene_sample[f"{label_field}_3d"] = pred
+            all_new_samples.append(scene_sample)
+
+    # Add all samples at once - FiftyOne will detect groups automatically
+    logger.info(f"Adding {len(all_new_samples)} samples to dataset...")
+    dataset.add_samples(all_new_samples)
+
+    logger.info(f"Created grouped dataset with {len(predictions)} groups")
+    logger.info(f"Dataset media type is now: {dataset.media_type}")
+    logger.info(f"Dataset group slices: {dataset.group_slices}")
+
+    return dataset
+
+
 class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running an :class:`HRM2Model`.
 
@@ -1058,9 +1168,9 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
             register at https://smpl.is.tue.mpg.de/ to obtain this file
         checkpoint_version ("2.0b"): version of HRM2 checkpoint to use
         confidence_thresh (None): confidence threshold for keypoint filtering
-        export_meshes (True): whether to export 3D meshes as OBJ files
-        mesh_output_dir (None): directory to save mesh files. If None, uses
-            temp directory
+        export_meshes (True): whether to prepare 3D mesh metadata for later export.
+            If True, HumanPose3D labels will contain all data needed for export.
+            Actual files are written when output_dir is provided to apply_model()
         detections_field (None): optional field name containing person detections
             to use for multi-person processing. If provided, HRM2 will process
             each detected person separately. If None, processes the full image
@@ -1080,17 +1190,11 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "checkpoint_version", default="2.0b"
         )
         self.export_meshes = self.parse_bool(d, "export_meshes", default=True)
-        self.mesh_output_dir = self.parse_string(
-            d, "mesh_output_dir", default=None
-        )
 
         # Detections field for multi-person processing
         self.detections_field = self.parse_string(
             d, "detections_field", default=None
         )
-
-        # Debug mode for detailed output
-        self.debug = self.parse_bool(d, "debug", default=False)
 
         # Set up HRM2 model entrypoint if not already configured
         if d.get("entrypoint_fcn") is None:
@@ -1117,8 +1221,8 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         d["ragged_batches"] = True
 
         # Configure output processor class and arguments
-        # Following TorchImageModel pattern: config owns serializable args,
-        # runtime resources (smpl_model, device) are injected in _build_output_processor()
+        # Config owns serializable args; runtime resources (smpl_model, device)
+        # are injected in _build_output_processor()
         if d.get("output_processor_cls") is None:
             d["output_processor_cls"] = HRM2OutputProcessor
 
@@ -1130,7 +1234,6 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         d["output_processor_args"].update(
             {
                 "export_meshes": self.export_meshes,
-                "mesh_output_dir": self.mesh_output_dir,
                 "confidence_thresh": d.get("confidence_thresh"),
             }
         )
@@ -1157,7 +1260,6 @@ class HRM2ModelConfig(HRM2Config):
 
 
 class HRM2Model(
-    fout.TorchSamplesMixin,
     fout.TorchImageModel,
     fom.SupportsGetItem,
 ):
@@ -1169,6 +1271,43 @@ class HRM2Model(
     This model implements the SupportsGetItem mixin to enable efficient batch
     processing with PyTorch DataLoaders and the FiftyOne apply_model() framework.
 
+    **Processing Pipeline:**
+    - **Preprocessing**: All done on CPU (_HRM2CropHelper, _preprocess_image)
+    - **Inference**: Tensors moved to device for forward pass only
+    - **Postprocessing**: All done on CPU (_extract_predictions, _process_person)
+
+    **Output Storage:**
+    When export_meshes=True, 3D scenes (.fo3d) and meshes (.obj) are written
+    to disk during apply_model(). The output location is controlled by the
+    output_dir parameter:
+
+    - If output_dir is specified: scenes written to that directory
+    - If output_dir is None: no files written (labels have in-memory data only)
+    - Recommended: use fo.config.model_zoo_dir + '/hrm2' for persistent storage
+
+    Example:
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        # Load model
+        model = foz.load_zoo_model("hrm2-2.0b")
+
+        # Option 1: Global model cache (default for apply_hrm2_to_dataset_as_groups)
+        output_dir = os.path.join(fo.config.model_zoo_dir, "hrm2")
+
+        # Option 2: Custom location
+        output_dir = "/path/to/my/scenes"
+
+        # Option 3: Disable file export (in-memory only)
+        output_dir = None
+
+        # Apply model with output control
+        dataset.apply_model(
+            model,
+            label_field="pose3d",
+            output_dir=output_dir  # Where .fo3d and .obj files go
+        )
+
     Args:
         config: an :class:`HRM2Config`
     """
@@ -1178,17 +1317,8 @@ class HRM2Model(
         self._hmr2: Optional[Any] = None
         self._smpl: Optional[Any] = None
         self._preprocessor: Optional[_HRM2CropHelper] = None
-        self._mesh_output_dir: str = config.mesh_output_dir
-        if self._mesh_output_dir is None:
-            # Use FiftyOne's model zoo directory for persistent storage
-            self._mesh_output_dir = os.path.join(
-                fo.config.model_zoo_dir, "hrm2_meshes"
-            )
-        # Ensure directory exists
-        etau.ensure_dir(self._mesh_output_dir)
 
-        # Now initialize parent classes
-        fout.TorchSamplesMixin.__init__(self)
+        # Now initialize parent class
         fout.TorchImageModel.__init__(self, config)
 
     def _download_model(self, config: HRM2Config) -> None:
@@ -1243,10 +1373,12 @@ class HRM2Model(
 
         return self._hmr2
 
-    def _build_output_processor(self, config=None):
+    def _build_output_processor(
+        self, config: Optional[HRM2Config] = None
+    ) -> Optional[HRM2OutputProcessor]:
         """Build the output processor with runtime resource injection.
 
-        Following the Ultralytics pattern (see ultralytics.py:577-586), this method:
+        This method:
         1. Starts with config.output_processor_args (set in HRM2Config.__init__)
         2. Injects runtime resources that can't be serialized (SMPL model, device)
         3. Builds the processor
@@ -1294,7 +1426,6 @@ class HRM2Model(
         )
 
         # Clean up non-serializable objects from config for JSON export
-        # (Following Ultralytics pattern)
         if config.output_processor_args:
             config.output_processor_args.pop("smpl_model", None)
             config.output_processor_args.pop("device", None)
@@ -1313,7 +1444,7 @@ class HRM2Model(
         Args:
             field_mapping: optional dict mapping required_keys to dataset
                 field names. If not provided, will attempt to auto-configure from
-                the model's needs_fields or config.
+                the model's config.
 
         Returns:
             an :class:`HRM2GetItem` instance
@@ -1324,8 +1455,18 @@ class HRM2Model(
 
         # Auto-add prompt_field if we have a detections field
         if "prompt_field" not in field_mapping:
-            prompt_field = self._get_field()
+            # Check for "detections_field" in kwargs (legacy/config alias)
+            if "detections_field" in field_mapping:
+                prompt_field = field_mapping["detections_field"]
+            else:
+                # Fall back to config
+                prompt_field = getattr(self.config, "detections_field", None)
+
             if prompt_field:
+                # Handle video frames
+                if prompt_field.startswith("frames."):
+                    prompt_field = prompt_field[len("frames.") :]
+
                 field_mapping["prompt_field"] = prompt_field
 
         return HRM2GetItem(
@@ -1336,7 +1477,7 @@ class HRM2Model(
 
     def predict(
         self, img: Union[Image.Image, np.ndarray, torch.Tensor]
-    ) -> "HumanPose3D":
+    ) -> fol.HumanPose3D:
         """Run HRM2 inference on a single image.
 
         This method performs single-person 3D human mesh reconstruction on the
@@ -1358,7 +1499,7 @@ class HRM2Model(
             Union[Image.Image, np.ndarray, torch.Tensor, Dict[str, Any]]
         ],
         samples: Optional[Any] = None,
-    ) -> List["HumanPose3D"]:
+    ) -> List[fol.HumanPose3D]:
         """Run HRM2 inference on a list of images or batch data.
 
         This method performs single-person 3D human mesh reconstruction on each
@@ -1391,27 +1532,6 @@ class HRM2Model(
 
         return self._predict_all(batch_data)
 
-    def _get_field(self) -> Optional[str]:
-        """Get the detection field name from needs_fields or config.
-
-        Returns:
-            field name string or None
-        """
-        # First check needs_fields (set by apply_model with prompt_field)
-        if "prompt_field" in self.needs_fields:
-            field_name = self.needs_fields["prompt_field"]
-        elif self.needs_fields:
-            field_name = next(iter(self.needs_fields.values()), None)
-        else:
-            # Fall back to config
-            field_name = getattr(self.config, "detections_field", None)
-
-        # Handle video frames
-        if field_name is not None and field_name.startswith("frames."):
-            field_name = field_name[len("frames.") :]
-
-        return field_name
-
     def _get_preprocessor(self) -> _HRM2CropHelper:
         if self._hmr2 is None:
             raise RuntimeError(
@@ -1423,7 +1543,7 @@ class HRM2Model(
 
     def _predict_all(
         self, batch_data: List[Dict[str, Any]]
-    ) -> List["HumanPose3D"]:
+    ) -> List[fol.HumanPose3D]:
         """Process batch and return labels via output processor.
 
         This method receives data from the GetItem instance, performs inference
@@ -1491,26 +1611,20 @@ class HRM2Model(
 
         return raw_outputs
 
-    def _to_numpy(self, img):
-        """Convert image to numpy array in HWC uint8 format.
-
-        Args:
-            img: image as PIL.Image, numpy array, or torch.Tensor
-
-        Returns:
-            numpy array in HWC uint8 format
-        """
-        return fout.to_numpy_image(img)
-
     def _run_inference(self, img_t: torch.Tensor) -> Dict[str, Any]:
         """Run HMR2 inference on preprocessed tensor.
 
+        The input tensor (preprocessed on CPU) is moved to the model's device
+        for inference. All preprocessing happens on CPU before this call, and
+        all postprocessing (via _extract_predictions) happens on CPU after.
+
         Args:
-            img_t: preprocessed image tensor (CHW, float, normalized)
+            img_t: preprocessed image tensor (CHW, float, normalized) on CPU
 
         Returns:
             dict with HMR2 model outputs including SMPL parameters and keypoints
         """
+        # Move preprocessed CPU tensor to device only for inference
         batch = {"img": img_t.unsqueeze(0).to(self._device)}
         with torch.no_grad():
             return self._hmr2(batch)
@@ -1527,13 +1641,17 @@ class HRM2Model(
     ]:
         """Extract SMPL parameters and keypoints from HMR2 outputs.
 
+        All postprocessing is done on CPU - all tensors are explicitly moved
+        to CPU before conversion to numpy arrays.
+
         Args:
             outputs: dict from HMR2 model containing predictions
 
         Returns:
             tuple of (pred_cam, pred_pose, pred_betas, pred_global_orient,
-                     pred_keypoints_3d, pred_keypoints_2d)
+                     pred_keypoints_3d, pred_keypoints_2d) as numpy arrays
         """
+        # All postprocessing on CPU - explicitly move tensors from device
         pred_cam = outputs["pred_cam"][0].cpu().numpy()
         pred_pose = outputs["pred_smpl_params"]["body_pose"][0].cpu().numpy()
         pred_betas = outputs["pred_smpl_params"]["betas"][0].cpu().numpy()
@@ -1568,10 +1686,11 @@ class HRM2Model(
         bbox: Optional[List[float]] = None,
         camera_translation: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
-        """Build raw person detection dictionary with tensors.
+        """Build raw person detection dictionary with tensors on CPU.
 
-        This returns raw outputs (tensors on CPU) for processing by the
-        output processor. No conversion to Python types is performed here.
+        All postprocessing is done on CPU. This returns raw outputs (tensors
+        explicitly placed on CPU) for processing by the output processor.
+        No conversion to Python types is performed here.
 
         Args:
             pred_cam: camera parameters [s, tx, ty]
@@ -1627,7 +1746,12 @@ class HRM2Model(
 
         return person_dict
 
-    def _inference_with_detections(self, img, detections, global_idx):
+    def _inference_with_detections(
+        self,
+        img: Union[Image.Image, np.ndarray, torch.Tensor],
+        detections: fol.Detections,
+        global_idx: int,
+    ) -> Dict[str, Any]:
         """Run inference using provided detections (multi-person mode).
 
         Args:
@@ -1643,7 +1767,7 @@ class HRM2Model(
         img_np = ensure_rgb_numpy(img_np)
 
         # Convert detections to boxes
-        boxes = _detections_to_boxes(detections, img_np)
+        boxes = detections_to_boxes(detections, img_np)
 
         if boxes is None or len(boxes) == 0:
             logger.warning(
@@ -1664,7 +1788,13 @@ class HRM2Model(
             "img_shape": (img_np.shape[0], img_np.shape[1]),  # (height, width)
         }
 
-    def _inference_person_crop(self, img_np, box, person_idx, global_idx):
+    def _inference_person_crop(
+        self,
+        img_np: np.ndarray,
+        box: np.ndarray,
+        person_idx: int,
+        global_idx: int,
+    ) -> Dict[str, Any]:
         """Run inference on a single person crop from the image.
 
         Args:
@@ -1711,18 +1841,6 @@ class HRM2Model(
             pred_cam, box_center, crop_size, img_size, focal_length
         )
 
-        # Print debug output if enabled
-        self._print_debug_output(
-            outputs,
-            person_idx,
-            pred_cam,
-            pred_cam_t_full=cam_t_full,
-            img_shape=(img_np.shape[0], img_np.shape[1]),
-            box_center=box_center,
-            box_size=crop_size,
-            focal_length=focal_length,
-        )
-
         # Build raw person data (tensors on CPU)
         return self._build_person_raw(
             pred_cam,
@@ -1752,7 +1870,7 @@ class HRM2Model(
             raw output dict with single person in 'people' list and 'img_shape'
         """
         # Convert to numpy and ensure RGB ordering
-        img_np = self._to_numpy(img)
+        img_np = fout.to_numpy_image(img)
         img_np = ensure_rgb_numpy(img_np)
         img_shape = (img_np.shape[0], img_np.shape[1])  # (height, width)
 
@@ -1787,18 +1905,6 @@ class HRM2Model(
             pred_cam, box_center, crop_size, img_size, focal_length
         )
 
-        # Print debug output if enabled
-        self._print_debug_output(
-            outputs,
-            0,  # person_id
-            pred_cam,
-            pred_cam_t_full=cam_t_full,
-            img_shape=img_shape,
-            box_center=box_center,
-            box_size=crop_size,
-            focal_length=focal_length,
-        )
-
         # Build raw person data
         person_data = self._build_person_raw(
             pred_cam,
@@ -1815,16 +1921,17 @@ class HRM2Model(
 
         return {"people": [person_data], "img_shape": img_shape}
 
-    def _preprocess_image(self, img):
+    def _preprocess_image(self, img: np.ndarray) -> torch.Tensor:
         """Preprocess a single image for HMR2.
 
         Args:
             img: numpy array (HWC, uint8)
 
         Returns:
-            torch tensor (CHW, float, normalized)
+            torch.Tensor: torch tensor (CHW, float, normalized) on CPU
         """
-        # Convert to tensor
+        # All preprocessing is done on CPU
+        # Convert to tensor (from_numpy creates CPU tensor)
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
 
         # Resize
@@ -1838,310 +1945,3 @@ class HRM2Model(
         img_t = normalize_tensor(img_t, mean, std)
 
         return img_t
-
-    def _print_debug_output(
-        self,
-        outputs: Dict[str, Any],
-        person_id: int,
-        pred_cam: np.ndarray,
-        pred_cam_t_full: Optional[np.ndarray] = None,
-        img_shape: Optional[Tuple[int, int]] = None,
-        box_center: Optional[np.ndarray] = None,
-        box_size: Optional[float] = None,
-        focal_length: Optional[float] = None,
-    ):
-        """Print debug output matching 4D-Humans demo.py format.
-
-        Args:
-            outputs: raw model outputs
-            person_id: person identifier
-            pred_cam: camera parameters [s, tx, ty]
-            pred_cam_t_full: camera translation in full image space [tx, ty, tz]
-            img_shape: (height, width) of the image
-            box_center: bounding box center [cx, cy]
-            box_size: bounding box size
-            focal_length: camera focal length
-        """
-        if not self.config.debug:
-            return
-
-        print(f"\n{'-'*80}")
-        print(f"[PERSON {person_id}] HMR2 and SMPL Output Values")
-        print(f"{'-'*80}")
-
-        # Camera parameters - crop
-        print(f"\n[CAMERA PARAMETERS - CROP]")
-        print(f"  pred_cam (s, tx, ty): {pred_cam}")
-        print(
-            f"  pred_cam shape: {pred_cam.shape if hasattr(pred_cam, 'shape') else 'N/A'}"
-        )
-
-        # Camera parameters - full image
-        if pred_cam_t_full is not None:
-            print(f"\n[CAMERA PARAMETERS - FULL IMAGE]")
-            print(f"  pred_cam_t_full (tx, ty, tz): {pred_cam_t_full}")
-            if "pred_cam_t" in outputs:
-                pred_cam_t = outputs["pred_cam_t"][0].detach().cpu().numpy()
-                print(f"  pred_cam_t (tx, ty, tz): {pred_cam_t}")
-
-        # Additional camera info
-        if img_shape is not None:
-            print(f"\n[IMAGE AND DETECTION INFO]")
-            print(f"  Image size (h, w): {img_shape}")
-            if box_center is not None:
-                print(f"  Box center (cx, cy): {box_center}")
-            if box_size is not None:
-                print(f"  Box size: {box_size}")
-            if focal_length is not None:
-                print(f"  Focal length: {focal_length}")
-
-        # SMPL parameters
-        if "pred_smpl_params" in outputs:
-            smpl_params = outputs["pred_smpl_params"]
-            print(f"\n[SMPL PARAMETERS]")
-            if "body_pose" in smpl_params:
-                body_pose = smpl_params["body_pose"][0].detach().cpu().numpy()
-                print(f"  Body pose shape: {body_pose.shape}")
-                print(
-                    f"  Body pose (first 10 values): {body_pose.flatten()[:10]}"
-                )
-            if "betas" in smpl_params:
-                betas = smpl_params["betas"][0].detach().cpu().numpy()
-                print(f"  Shape parameters (betas): {betas}")
-                print(f"  Betas shape: {betas.shape}")
-            if "global_orient" in smpl_params:
-                global_orient = (
-                    smpl_params["global_orient"][0].detach().cpu().numpy()
-                )
-                print(f"  Global orientation: {global_orient}")
-                print(f"  Global orient shape: {global_orient.shape}")
-
-        # Vertices
-        if "pred_vertices" in outputs:
-            vertices = outputs["pred_vertices"][0].detach().cpu().numpy()
-            print(f"\n[3D MESH VERTICES]")
-            print(f"  Vertices shape: {vertices.shape}")
-            print(f"  Number of vertices: {len(vertices)}")
-            print(f"  Vertices min: {vertices.min(axis=0)}")
-            print(f"  Vertices max: {vertices.max(axis=0)}")
-            print(f"  Vertices mean: {vertices.mean(axis=0)}")
-            print(f"  First 5 vertices:\n{vertices[:5]}")
-
-        # Keypoints/Joints
-        if "pred_keypoints_3d" in outputs:
-            keypoints = outputs["pred_keypoints_3d"][0].detach().cpu().numpy()
-            print(f"\n[3D KEYPOINTS/JOINTS]")
-            print(f"  Keypoints shape: {keypoints.shape}")
-            print(f"  Number of keypoints: {len(keypoints)}")
-            print(f"  Keypoints:\n{keypoints}")
-
-        # 2D keypoints
-        if "pred_keypoints_2d" in outputs:
-            keypoints_2d = (
-                outputs["pred_keypoints_2d"][0].detach().cpu().numpy()
-            )
-            print(f"\n[2D KEYPOINTS]")
-            print(f"  2D Keypoints shape: {keypoints_2d.shape}")
-            print(f"  2D Keypoints (first 5):\n{keypoints_2d[:5]}")
-
-        # Additional outputs
-        print(f"\n[ADDITIONAL OUTPUTS]")
-        for key in outputs.keys():
-            if key not in [
-                "pred_cam",
-                "pred_cam_t",
-                "pred_vertices",
-                "pred_smpl_params",
-                "pred_keypoints_3d",
-                "pred_keypoints_2d",
-            ]:
-                try:
-                    value = outputs[key][0].detach().cpu().numpy()
-                    print(f"  {key} shape: {value.shape}")
-                    if value.size <= 20:
-                        print(f"  {key}: {value}")
-                except Exception:
-                    pass
-
-    def apply_to_dataset_as_groups(
-        self,
-        dataset,
-        label_field="human_pose",
-        batch_size=1,
-        num_workers=4,
-        image_slice_name="image",
-        scene_slice_name="3d",
-    ):
-        """Apply HRM2 model to a dataset and create grouped samples.
-
-        This method converts an image dataset into a grouped dataset where each
-        group contains:
-        - An image slice with the original image and 2D keypoints
-        - A 3D slice with the reconstructed mesh scene and 3D data
-
-        This is the standard FiftyOne pattern for linking 2D images with 3D
-        reconstructions and enables 3D visualization in the FiftyOne App.
-
-        Args:
-            dataset: the FiftyOne dataset to process
-            label_field (str): base name for label fields (will create
-                "{label_field}_2d" on image samples and "{label_field}_3d" on
-                scene samples)
-            batch_size (int): batch size for inference
-            num_workers (int): number of workers for data loading
-            image_slice_name (str): name for the image slice in groups
-            scene_slice_name (str): name for the 3D scene slice in groups
-
-        Returns:
-            the grouped dataset
-        """
-        # Check if dataset is already grouped
-        if dataset.media_type == "group":
-            logger.warning(
-                "Dataset is already grouped. This will add new slices to "
-                "existing groups."
-            )
-            is_already_grouped = True
-        else:
-            is_already_grouped = False
-
-        # Store original sample info before clearing
-        logger.info(f"Processing {len(dataset)} samples...")
-        original_data = []
-        for sample in dataset.iter_samples():
-            original_data.append(
-                {
-                    "filepath": sample.filepath,
-                    "id": sample.id,
-                    "fields": {
-                        k: sample[k]
-                        for k in sample.field_names
-                        if k
-                        not in ["id", "filepath", "metadata", "_media_type"]
-                    },
-                }
-            )
-
-        # Apply model to get predictions
-        dataset.apply_model(
-            self,
-            label_field=label_field,
-            batch_size=batch_size,
-            num_workers=num_workers,
-        )
-
-        # Collect predictions with scene paths
-        predictions = []
-        for sample in dataset.iter_samples():
-            pred = sample[label_field]
-            predictions.append(pred)
-
-        # Clear dataset to rebuild with groups
-        logger.info("Creating grouped dataset structure...")
-        dataset.clear()
-
-        # Set up the dataset for groups
-        dataset.add_group_field("group", default=image_slice_name)
-
-        # Create all new samples with groups
-        all_new_samples = []
-
-        for idx, (orig_data, pred) in enumerate(
-            zip(original_data, predictions)
-        ):
-            # Create group
-            group = fo.Group()
-
-            # Create image sample with group and 2D data
-            image_sample = fo.Sample(filepath=orig_data["filepath"])
-            image_sample["group"] = group.element(image_slice_name)
-
-            # Restore original fields
-            for field_name, field_value in orig_data["fields"].items():
-                image_sample[field_name] = field_value
-
-            # Add 2D keypoints if available
-            if pred and pred.people:
-                people_list = pred.people
-                # Store first person's 2D keypoints (if available)
-                for person in people_list:
-                    if person.get("keypoints_2d") is not None:
-                        keypoints_2d_field = f"{label_field}_2d"
-                        image_sample[keypoints_2d_field] = HumanPose2D(
-                            keypoints=person["keypoints_2d"],
-                            bounding_box=person.get("bbox"),
-                        )
-                        break  # Only store first person for now
-
-            all_new_samples.append(image_sample)
-
-            # Create 3D scene sample if mesh was generated
-            if pred and pred.scene_path is not None:
-                scene_sample = fo.Sample(filepath=pred.scene_path)
-                scene_sample["group"] = group.element(scene_slice_name)
-
-                # Store 3D pose data
-                scene_sample[f"{label_field}_3d"] = pred
-                all_new_samples.append(scene_sample)
-
-        # Add all samples at once - FiftyOne will detect groups automatically
-        logger.info(f"Adding {len(all_new_samples)} samples to dataset...")
-        dataset.add_samples(all_new_samples)
-
-        logger.info(f"Created grouped dataset with {len(predictions)} groups")
-        logger.info(f"Dataset media type is now: {dataset.media_type}")
-        logger.info(f"Dataset group slices: {dataset.group_slices}")
-
-        return dataset
-
-
-class HumanPose2D(fol.Label):
-    """2D human pose keypoints for image samples.
-
-    Args:
-        keypoints (None): list of 2D keypoint locations (Nx2) in pixel coordinates
-        confidence (None): per-keypoint confidence scores (N,)
-        bounding_box (None): bounding box around the detected person [x, y, w, h]
-    """
-
-    keypoints = fof.ListField()
-    confidence = fof.ListField()
-    bounding_box = fof.ListField()
-
-    def __init__(
-        self, keypoints=None, confidence=None, bounding_box=None, **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.keypoints = keypoints
-        self.confidence = confidence
-        self.bounding_box = bounding_box
-
-
-class HumanPose3D(fol.Label):
-    """3D human pose and SMPL parameters for 3D scene samples.
-
-    Supports both single-person and multi-person scenarios.
-
-    Args:
-        people (None): list of person detection dictionaries. Each dictionary contains:
-            - smpl_params: dict with body_pose, betas, global_orient, camera
-            - keypoints_3d: list of 3D keypoint locations
-            - keypoints_2d: optional 2D keypoint locations
-            - camera_translation: [tx, ty, tz] in full image coordinates (multi-person mode)
-            - bbox: [x1, y1, x2, y2] bounding box (multi-person mode)
-            - person_id: integer person identifier
-        confidence (None): overall confidence score for the prediction
-        scene_path (None): path to the .fo3d scene file containing the 3D meshes
-    """
-
-    people = fof.ListField()
-    confidence = fof.FloatField()
-    scene_path = fof.StringField()
-
-    def __init__(
-        self, people=None, confidence=None, scene_path=None, **kwargs
-    ):
-        super().__init__(**kwargs)
-        self.people = people
-        self.confidence = confidence
-        self.scene_path = scene_path

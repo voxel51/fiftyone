@@ -1382,6 +1382,52 @@ def get_target_size(
         return int(image_size), int(image_size)
 
 
+def detections_to_boxes(detections, img_shape):
+    """Convert FiftyOne Detections to bounding boxes in absolute coordinates.
+
+    Converts FiftyOne's relative bounding box format [x, y, w, h] (normalized 0-1)
+    to absolute pixel coordinates [x1, y1, x2, y2].
+
+    Args:
+        detections: a :class:`fiftyone.core.labels.Detections` or None
+        img_shape: (height, width) tuple, or image object (PIL/numpy/torch)
+
+    Returns:
+        numpy array of boxes [[x1, y1, x2, y2], ...] in absolute pixel
+        coordinates, or None if no detections
+    """
+    if detections is None or len(detections.detections) == 0:
+        return None
+
+    # Get image dimensions from various input types
+    if isinstance(img_shape, tuple):
+        img_h, img_w = img_shape
+    elif isinstance(img_shape, Image.Image):
+        img_w, img_h = img_shape.size
+    elif isinstance(img_shape, np.ndarray):
+        img_h, img_w = img_shape.shape[:2]
+    elif isinstance(img_shape, torch.Tensor):
+        if img_shape.ndim == 3 and img_shape.shape[0] in (1, 3, 4):  # CHW
+            img_h, img_w = img_shape.shape[1], img_shape.shape[2]
+        else:  # HWC
+            img_h, img_w = img_shape.shape[:2]
+    else:
+        raise ValueError(f"Unsupported image type: {type(img_shape)}")
+
+    boxes = []
+    for detection in detections.detections:
+        # FiftyOne format: [x, y, w, h] in relative coordinates [0, 1]
+        x, y, w, h = detection.bounding_box
+        # Convert to absolute coordinates [x1, y1, x2, y2]
+        x1 = x * img_w
+        y1 = y * img_h
+        x2 = (x + w) * img_w
+        y2 = (y + h) * img_h
+        boxes.append([x1, y1, x2, y2])
+
+    return np.array(boxes)
+
+
 class MinResize(object):
     """Transform that resizes the PIL image or torch Tensor, if necessary, so
     that its minimum dimensions are at least the specified size.
