@@ -1,6 +1,7 @@
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import { useAtomValue } from "jotai";
 import React, { useMemo } from "react";
 import Draggable from "react-draggable";
 import { useRecoilValue } from "recoil";
@@ -87,6 +88,7 @@ export default () => {
     0,
     false
   );
+  const isAnnotating = useAtomValue(fos.modalMode) === "annotate";
 
   return (
     <Draggable
@@ -100,10 +102,10 @@ export default () => {
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
         <HiddenLabels modal />
-        <Selected modal lookerRef={activeLookerRef} />
+        {!isAnnotating && <Selected modal lookerRef={activeLookerRef} />}
         <ColorScheme modal />
-        <Similarity modal />
-        <Tag modal lookerRef={activeLookerRef} />
+        {!isAnnotating && <Similarity modal />}
+        {!isAnnotating && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />
         {isGroup && <GroupVisibility />}
         <BrowseOperations modal />

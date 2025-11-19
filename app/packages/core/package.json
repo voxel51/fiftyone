@@ -12,6 +12,7 @@
         "@fiftyone/components": "*",
         "@fiftyone/feature-flags": "*",
         "@fiftyone/flashlight": "*",
+        "@fiftyone/lighter": "*",
         "@fiftyone/looker": "*",
         "@fiftyone/map": "*",
         "@fiftyone/operators": "*",

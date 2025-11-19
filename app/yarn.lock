@@ -2452,6 +2452,7 @@ __metadata:
     "@fiftyone/components": "npm:*"
     "@fiftyone/feature-flags": "npm:*"
     "@fiftyone/flashlight": "npm:*"
+    "@fiftyone/lighter": "npm:*"
     "@fiftyone/looker": "npm:*"
     "@fiftyone/map": "npm:*"
     "@fiftyone/operators": "npm:*"
@@ -2637,7 +2638,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/lighter@workspace:packages/lighter":
+"@fiftyone/lighter@npm:*, @fiftyone/lighter@workspace:packages/lighter":
   version: 0.0.0-use.local
   resolution: "@fiftyone/lighter@workspace:packages/lighter"
   dependencies:

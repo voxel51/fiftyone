@@ -5,21 +5,21 @@
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
 import {
-  MoveOverlayCommand,
   type Movable,
+  MoveOverlayCommand,
 } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
-  TransformOverlayCommand,
   type TransformOptions,
+  TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
 import {
   DoLighterEvent,
   LIGHTER_EVENTS,
-  LighterEventDetail,
   type LighterEvent,
+  LighterEventDetail,
 } from "../event/EventBus";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
@@ -143,7 +143,6 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
-  private readonly sceneId: string | undefined;
 
   private abortController = new AbortController();
 
@@ -160,7 +159,6 @@ export class Scene2D {
       config.renderer
     );
     this.sceneOptions = config.options;
-    this.sceneId = config.sceneId;
 
     // Listen for scene options changes to trigger re-rendering
     config.eventBus.on(
@@ -1755,13 +1753,5 @@ export class Scene2D {
     }
 
     return this.interactiveMode;
-  }
-
-  /**
-   * Gets the scene ID for this instance.
-   * @returns Scene ID.
-   */
-  public getSceneId(): string | undefined {
-    return this.sceneId;
   }
 }

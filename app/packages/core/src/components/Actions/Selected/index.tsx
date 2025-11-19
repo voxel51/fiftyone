@@ -80,7 +80,7 @@ export default ({
         data-cy="action-manage-selected"
       />
       {open &&
-        (modal && lookerRef?.current ? (
+        (modal ? (
           <Modal
             anchorRef={ref}
             close={() => setOpen(false)}
