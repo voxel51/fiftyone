@@ -97,7 +97,7 @@ class PEVisionEncoderConfig(fout.TorchImageModelConfig):
                 self.ragged_batches = False
 
         self.pool = self.parse_bool(d, "pool", True)
-        self.project = self.parse_bool(d, "project", True)
+        self.project = self.parse_bool(d, "project", False)
         self.norm = self.parse_bool(d, "norm", True)
         self.layer_idx = self.parse_int(d, "layer_idx", -1)
         self.strip_cls_token = self.parse_bool(d, "strip_cls_token", False)
