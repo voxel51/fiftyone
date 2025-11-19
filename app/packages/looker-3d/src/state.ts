@@ -435,10 +435,9 @@ export const hoveredVertexAtom = atom<{
  * Changes accumulate here as users manipulate polylines in the 3D canvas,
  * and is cleared once user commits changes or exits edit mode.
  */
-export const stagedPolylineTransformsAtom = atom<Record<
-  string,
-  PolylinePointTransformData
-> | null>({
+export const stagedPolylineTransformsAtom = atom<
+  Record<string, PolylinePointTransformData>
+>({
   key: "fo3d-stagedPolylineTransforms",
   default: {},
 });

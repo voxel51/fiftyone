@@ -47,7 +47,7 @@ export default function useExit(revertLabel = true) {
      * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
-    setStagedPolylineTransforms(null);
+    setStagedPolylineTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.

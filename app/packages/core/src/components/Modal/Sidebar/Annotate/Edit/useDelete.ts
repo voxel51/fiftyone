@@ -2,7 +2,7 @@ import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import { current, deleteValue } from "./state";
@@ -19,11 +19,11 @@ export default function useDelete() {
   );
 
   const exit = useExit(false);
-  const setSaving = useSetAtom(isSavingAtom);
+  const [isSaving, setSaving] = useAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
   return useCallback(async () => {
-    if (!label) {
+    if (!label || isSaving) {
       return;
     }
 
@@ -74,6 +74,7 @@ export default function useDelete() {
   }, [
     commandBus,
     label,
+    isSaving,
     scene,
     schema,
     exit,

@@ -54,7 +54,7 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
         annotationEventBus.dispatch(
           "annotation:notification:canvasOverlayHover",
           {
-            id: label.id,
+            id: label.id ?? label._id,
           }
         );
       }
@@ -63,17 +63,18 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
     }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
     onPointerOut: useCallback(() => {
       if (canAnnotate) {
+        debugger;
         annotationEventBus.dispatch(
           "annotation:notification:canvasOverlayUnhover",
           {
-            id: label.id,
+            id: label.id ?? label._id,
           }
         );
       }
 
       _onPointerOut();
     }, [label, canAnnotate, annotationEventBus, _onPointerOut]),
-    restEventHandlers,
+    ...restEventHandlers,
   };
 };
 

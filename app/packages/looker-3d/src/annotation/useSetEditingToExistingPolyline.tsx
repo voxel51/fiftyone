@@ -62,7 +62,7 @@ export const useSetEditingToExistingPolyline = () => {
           setSelected: (selected: boolean) => {
             if (!selected) {
               clearTransformState({});
-              setStagedPolylineTransforms(null);
+              setStagedPolylineTransforms({});
             }
           },
         },

@@ -208,7 +208,7 @@ describe("useRegisterCommandHandler", () => {
     expect(result).toBe("hello");
   });
 
-  it("should handle registration errors gracefully", () => {
+  it("should handle registration errors gracefully", async () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -234,7 +234,9 @@ describe("useRegisterCommandHandler", () => {
       expect.any(Error)
     );
 
-    expect(bus.execute(new TestCommand(5))).resolves.toEqual({ value: 5 });
+    await expect(bus.execute(new TestCommand(5))).resolves.toEqual({
+      value: 5,
+    });
 
     consoleErrorSpy.mockRestore();
   });

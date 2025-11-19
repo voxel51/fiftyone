@@ -250,7 +250,7 @@ export const useAnnotationActions = () => {
 
   // Custom exit function that also clears polyline transforms
   const customExit = useCallback(() => {
-    setStagedPolylineTransforms(null);
+    setStagedPolylineTransforms({});
     setSelectedLabelForAnnotation(null);
     setEditing(null);
     setEditSegmentsMode(false);

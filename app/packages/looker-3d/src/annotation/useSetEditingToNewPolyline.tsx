@@ -100,7 +100,7 @@ export const useSetEditingToNewPolyline = () => {
           setSelected: (selected: boolean) => {
             if (!selected) {
               clearTransformState({});
-              setStagedPolylineTransforms(null);
+              setStagedPolylineTransforms({});
             }
           },
         },
