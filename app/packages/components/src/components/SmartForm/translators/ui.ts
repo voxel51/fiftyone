@@ -112,15 +112,17 @@ export function translateToUISchema(
       break;
 
     case "GridView":
-      // Handle GridView layout (HStackView, VStackView, etc.)
+      // GridView is a layout container - hide title and apply layout options
+      uiSchema["ui:options"] = {
+        ...uiSchema["ui:options"],
+        hideTitle: true, // GridView is just a layout container
+        gap: view.gap,
+        align_x: view.align_x,
+        align_y: view.align_y,
+      };
+
       if (view.orientation === "horizontal") {
-        uiSchema["ui:options"] = {
-          ...uiSchema["ui:options"],
-          layout: "horizontal",
-          gap: view.gap,
-          align_x: view.align_x,
-          align_y: view.align_y,
-        };
+        uiSchema["ui:options"].layout = "horizontal";
       }
 
       // Handle nested properties

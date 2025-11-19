@@ -15,10 +15,11 @@ export default function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
   const layout = uiSchema?.["ui:options"]?.layout;
   const isHorizontal = layout === "horizontal";
   const gap = uiSchema?.["ui:options"]?.gap ?? 2;
+  const hideTitle = uiSchema?.["ui:options"]?.hideTitle === true;
 
   return (
     <Box sx={{ width: "100%" }}>
-      {title && (
+      {title && !hideTitle && (
         <Box
           component="h3"
           sx={{
