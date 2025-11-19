@@ -8415,7 +8415,7 @@
             "source": "https://github.com/facebookresearch/perception_models/",
             "author": "Daniel Bolya, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 278284008,
+            "size_bytes": 2684747432,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.pe.PEVisionEncoder",
                 "config": {
