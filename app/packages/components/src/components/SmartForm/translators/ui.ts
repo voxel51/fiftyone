@@ -111,6 +111,30 @@ export function translateToUISchema(
       }
       break;
 
+    case "GridView":
+      // Handle GridView layout (HStackView, VStackView, etc.)
+      if (view.orientation === "horizontal") {
+        uiSchema["ui:options"] = {
+          ...uiSchema["ui:options"],
+          layout: "horizontal",
+          gap: view.gap,
+          align_x: view.align_x,
+          align_y: view.align_y,
+        };
+      }
+
+      // Handle nested properties
+      if (schemaIO.properties) {
+        for (const [key, value] of Object.entries(schemaIO.properties)) {
+          const propContext = {
+            ...context,
+            path: [...context.path, key],
+          };
+          uiSchema[key] = translateToUISchema(value, propContext);
+        }
+      }
+      break;
+
     case "ListView":
       if (schemaIO.items && !Array.isArray(schemaIO.items)) {
         uiSchema.items = translateToUISchema(schemaIO.items, {

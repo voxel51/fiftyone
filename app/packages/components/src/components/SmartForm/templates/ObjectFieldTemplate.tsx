@@ -9,17 +9,15 @@ import { ObjectFieldTemplateProps } from "@rjsf/utils";
 import { Box } from "@mui/material";
 
 export default function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
-  const { properties, title, description } = props;
+  const { properties, title, description, uiSchema } = props;
+
+  // Check if this object should use horizontal layout (GridView)
+  const layout = uiSchema?.["ui:options"]?.layout;
+  const isHorizontal = layout === "horizontal";
+  const gap = uiSchema?.["ui:options"]?.gap ?? 2;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 2, // Consistent spacing between fields
-        width: "100%",
-      }}
-    >
+    <Box sx={{ width: "100%" }}>
       {title && (
         <Box
           component="h3"
@@ -45,11 +43,26 @@ export default function ObjectFieldTemplate(props: ObjectFieldTemplateProps) {
           {description}
         </Box>
       )}
-      {properties.map((element) => (
-        <Box key={element.name} sx={{ width: "100%" }}>
-          {element.content}
-        </Box>
-      ))}
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: isHorizontal ? "row" : "column",
+          gap: gap,
+          width: "100%",
+        }}
+      >
+        {properties.map((element) => (
+          <Box
+            key={element.name}
+            sx={{
+              width: isHorizontal ? "auto" : "100%",
+              flex: isHorizontal ? 1 : "none",
+            }}
+          >
+            {element.content}
+          </Box>
+        ))}
+      </Box>
     </Box>
   );
 }
