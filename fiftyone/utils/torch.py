@@ -13,7 +13,7 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
+from typing import Iterable
 import warnings
 
 import cv2
@@ -331,9 +331,13 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
 
     Args:
         model: the Torch model, a :class:`torch:torch.nn.Module`
-        layer_name (None): the name of the embeddings layer whose output to
+        layer_name (None): the name(s) of the embeddings layer whose output to
             save, or ``None`` if this model instance should not expose
-            embeddings. Prepend ``"<"`` to save the input tensor instead
+            embeddings. Prepend ``"<"`` to save the input tensor instead. If
+            multiple layer names are provided as an iterable, the outputs are
+            a dict mapping layer names to their outputs. In this case,
+            ``as_feature_extractor`` must be ``True``, and the user must
+            implement the method `flatten_multilayer_embeddings()`.
         as_feature_extractor (False): whether to operate the model as a feature
             extractor. If ``layer_name`` is provided, this layer is passed to
             torchvision's ``create_feature_extractor()`` function. If no
@@ -341,14 +345,32 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
             feature extraction
     """
 
-    def __init__(self, model, layer_name=None, as_feature_extractor=False):
+    def __init__(
+        self,
+        model,
+        layer_name=None,
+        as_feature_extractor=False,
+    ):
+
+        if layer_name is not None and not isinstance(layer_name, str):
+            if not as_feature_extractor:
+                logger.warning(
+                    "Multiple layer names are provided, "
+                    "but `as_feature_extractor` is not enabled. "
+                    "Enabling `as_feature_extractor`."
+                )
+                as_feature_extractor = True
+
         if as_feature_extractor:
             if layer_name is not None:
+                if isinstance(layer_name, str):
+                    layer_name = [layer_name]
                 self._model = create_feature_extractor(
-                    model, return_nodes=[layer_name]
+                    model, return_nodes=layer_name
                 )
-
-            embeddings_layer = None
+            embeddings_layer = (
+                None if isinstance(layer_name, str) else layer_name
+            )
         elif layer_name is not None:
             embeddings_layer = SaveLayerTensor(model, layer_name)
         else:
@@ -361,6 +383,11 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
     def has_embeddings(self):
         return self._embeddings_layer is not None or self._as_feature_extractor
 
+    def flatten_multilayer_embeddings(self, embeddings_dict):
+        raise NotImplementedError(
+            "subclasses must implement flatten_multilayer_embeddings()"
+        )
+
     def embed(self, arg):
         if isinstance(arg, torch.Tensor):
             args = arg.unsqueeze(0)
@@ -368,7 +395,11 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
             args = [arg]
 
         if self._as_feature_extractor:
-            return self._predict_all(args)[0]
+            output = self._predict_all(args)
+            if self._embeddings_layer is None:
+                return output[0]
+            else:
+                return self.flatten_multilayer_embeddings(output)
 
         self._predict_all(args)
         return self.get_embeddings()[0]
@@ -504,13 +535,18 @@ class TorchImageModelConfig(foc.Config):
         image_std (None): a 3-array of std values in ``[0, 1]`` for
             preprocessing the input images
             inputs that are lists of Tensors
-        embeddings_layer (None): the name of a layer whose output to expose as
-            embeddings. Prepend ``"<"`` to save the input tensor instead
+        embeddings_layer (None): the name(s) of the embeddings layer whose output to
+            save, or ``None`` if this model instance should not expose
+            embeddings. Prepend ``"<"`` to save the input tensor instead. If
+            multiple layer names are provided as an iterable, the outputs are
+            a dict mapping layer names to their outputs. In this case,
+            ``as_feature_extractor`` must be ``True``, and the user must
+            implement the method `flatten_multilayer_embeddings()`.
         as_feature_extractor (False): whether to operate the model as a feature
             extractor. If ``embeddings_layer`` is provided, this layer is
             passed to torchvision's ``create_feature_extractor()`` function. If
             no ``embeddings_layer`` is provided, the model's output is used
-            as-is for feature extraction
+            as-is for feature extraction.
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
         cudnn_benchmark (None): a value to use for
