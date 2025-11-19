@@ -1,7 +1,5 @@
 """FiftyOne Integration with Perception Encoder by Meta.
 """
-from typing import Optional
-
 import fiftyone as fo
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
