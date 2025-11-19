@@ -11,7 +11,8 @@ export function dateFromDateString(v: string): number {
 export function dateFromDateTimeString(timeZone: string, v: string): number {
   const [date, time] = v.split("T");
   const [year, month, day] = date.split("-").map(Number);
-  const times = time.split(":");
+  const times = time.split(":"); // HH:MM:SS or HH:MM, we handle both cases
+
   if (times.length === 3) {
     const [hour, minute, second] = times.map(Number);
     return DateTime.fromObject(
@@ -27,7 +28,7 @@ export function dateFromDateTimeString(timeZone: string, v: string): number {
   ).valueOf();
 }
 
-export function formatDateTimePicker(timeZone: string, v: string): string {
+export function formatDateTimePicker(timeZone: string, v: number): string {
   const date = new Date(v);
   const year = Intl.DateTimeFormat("en", {
     year: "numeric",
