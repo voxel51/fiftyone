@@ -2391,6 +2391,18 @@ class DateTimeView(View):
             view=end_datetime_selector,
         )
 
+        ...
+
+        start_datetime = ctx.params.get("start_datetime", None)
+        end_datetime = ctx.params.get("end_datetime", None)
+
+        if start_datetime:
+            start = fou.timestamp_to_datetime(start_datetime)
+            print(f"start: {start}")
+        if end_datetime:
+            end = fou.timestamp_to_datetime(end_datetime)
+            print(f"end: {end}")
+
     Args:
         date_only (False): whether to display a date only input
             and not require HH:MM:SS

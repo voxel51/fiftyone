@@ -16,6 +16,7 @@ import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
+import fiftyone.core.utils as fou
 import fiftyone.operators.types as types
 from fiftyone.operators import execution_cache
 import fiftyone.utils.data as foud
@@ -2252,6 +2253,50 @@ def _update_summary_field_inputs(ctx, inputs):
         prop.invalid = True
 
 
+class FilterSamplesByDateTime(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="filter_samples_by_datetime",
+            label="Filter samples by datetime",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        start_datetime_selector = types.DateTimeView(date_only=True)
+        inputs.int(
+            "start_datetime",
+            required=True,
+            label="Start Date/time",
+            description="Start date/time for filtering samples",
+            view=start_datetime_selector,
+        )
+
+        end_datetime_selector = types.DateTimeView()
+        inputs.int(
+            "end_datetime",
+            required=False,
+            label="End Date/time",
+            description="Start date/time for filtering samples",
+            view=end_datetime_selector,
+        )
+
+        return types.Property(inputs, view=types.View(label="Filter samples"))
+
+    def execute(self, ctx):
+        start_datetime = ctx.params.get("start_datetime", None)
+        end_datetime = ctx.params.get("end_datetime", None)
+
+        if start_datetime:
+            start = fou.timestamp_to_datetime(start_datetime)
+            print(f"start: {start}")
+        if end_datetime:
+            end = fou.timestamp_to_datetime(end_datetime)
+            print(f"end: {end}")
+
+
 class DeleteSummaryField(foo.Operator):
     @property
     def config(self):
@@ -3274,6 +3319,7 @@ def register(p):
     p.register(CreateSummaryField)
     p.register(UpdateSummaryField)
     p.register(DeleteSummaryField)
+    p.register(FilterSamplesByDateTime)
     p.register(AddGroupSlice)
     p.register(RenameGroupSlice)
     p.register(DeleteGroupSlice)

@@ -53,3 +53,4 @@ operators:
   - load_group_by
   - add_bounding_box
   - remove_bounding_box
+  - filter_samples_by_datetime
