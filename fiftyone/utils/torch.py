@@ -519,6 +519,11 @@ class TorchImageModelConfig(foc.Config):
         device (None): a string specifying the device to use, eg
             ``("cuda:0", "mps", "cpu")``. By default, CUDA is used if
             available, else CPU is used
+        compile (None): whether to compile the model with ``torch.compile()``
+            This can provide significant speedups for some models in PyTorch 2.0+.
+            Note that not all models are compatible with ``torch.compile()``,
+            so this option should be used with caution.
+        compile_args (None): a dict of arguments to pass to ``torch.compile()``
     """
 
     def __init__(self, d):
@@ -593,6 +598,8 @@ class TorchImageModelConfig(foc.Config):
             d, "cudnn_benchmark", default=None
         )
         self.device = self.parse_string(d, "device", default=None)
+        self.compile = self.parse_bool(d, "compile", default=False)
+        self.compile_args = self.parse_dict(d, "compile_args", default=None)
 
 
 class ImageGetItem(GetItem):
@@ -1013,6 +1020,11 @@ class TorchImageModel(
             model = model.half()
 
         model.eval()
+
+        if config.compile:
+            logger.info("Compiling model with torch.compile()...")
+            kwargs = config.compile_args or {}
+            model = torch.compile(model, **kwargs)
 
         return model
 
