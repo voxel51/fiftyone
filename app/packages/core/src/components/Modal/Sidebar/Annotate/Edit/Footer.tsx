@@ -7,7 +7,7 @@ import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
 import { currentField, hasChanges, isNew } from "./state";
 import useExit from "./useExit";
-import useSave, { isSaving } from "./useSave";
+import useSave, { isSavingAtom } from "./useSave";
 import { Stack } from "@mui/material";
 
 const SaveFooter = () => {
@@ -16,7 +16,7 @@ const SaveFooter = () => {
   const onDiscard = useExit();
   const showCancel = useAtomValue(isNew);
   const changes = useAtomValue(hasChanges);
-  const saving = useAtomValue(isSaving);
+  const saving = useAtomValue(isSavingAtom);
 
   return (
     <>

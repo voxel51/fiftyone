@@ -1,6 +1,7 @@
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
 export const hoveringLabelIds = atom<string[]>([]);
 
@@ -39,4 +40,23 @@ export default function useHover() {
       scene?.off(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
     };
   }, [scene]);
+
+  useAnnotationEventHandler(
+    "annotation:notification:canvasOverlayHover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      store.set(hoveringLabelIds, [...store.get(hoveringLabelIds), payload.id]);
+    }, [])
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:canvasOverlayUnhover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      store.set(
+        hoveringLabelIds,
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+      );
+    }, [])
+  );
 }

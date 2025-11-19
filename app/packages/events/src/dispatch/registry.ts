@@ -1,6 +1,8 @@
 import { EventDispatcher } from "../dispatch/dispatcher";
 import { EventGroup } from "../types";
 
+export const DEFAULT_CHANNEL_ID = "default";
+
 /**
  * Static registry of event dispatchers by channel ID.
  */
@@ -44,7 +46,7 @@ function getDispatcher<T extends EventGroup>(
  * ```
  */
 export function getEventBus<T extends EventGroup>(): EventDispatcher<T> {
-  return getDispatcher<T>("default");
+  return getDispatcher<T>(DEFAULT_CHANNEL_ID);
 }
 
 /**
