@@ -43,18 +43,21 @@ export default function DateTimeView(props: ViewPropsType) {
 
     // populate the user-facing field with data from the backend
     setFormattedDate(formatDate(data));
-  }, [data, formatDate, inputType]);
+  }, [data, formatDate]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const timestamp = parseTimestamp(e.target.value);
+    if (isNaN(timestamp)) {
+      return;
+    }
     onChange(path, timestamp);
     setUserChanged();
   }
 
   return (
     <FieldWrapper {...props} hideHeader={compact}>
-      <styles.StyledInputContainer>
-        <styles.StyledInput
+      <styles.DateTimeInputContainer>
+        <styles.DateTimeInput
           key={key}
           disabled={readOnly}
           type={inputType}
@@ -62,7 +65,7 @@ export default function DateTimeView(props: ViewPropsType) {
           value={formattedDate}
           onChange={handleChange}
         />
-      </styles.StyledInputContainer>
+      </styles.DateTimeInputContainer>
     </FieldWrapper>
   );
 }

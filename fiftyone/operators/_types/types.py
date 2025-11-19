@@ -2377,7 +2377,7 @@ class DateTimeView(View):
             "start_datetime",
             required=True,
             label="Start Date/time",
-            description="Start date/time for filtering samples",
+            description="Start date/time...",
             view=start_datetime_selector,
         )
 
@@ -2387,7 +2387,7 @@ class DateTimeView(View):
             "end_datetime",
             required=False,
             label="End Date/time",
-            description="Start date/time for filtering samples",
+            description="End date/time...",
             view=end_datetime_selector,
         )
 

@@ -62,6 +62,6 @@ describe("dateFromDateTimeString", () => {
 describe("formatDateTimePicker", () => {
   it("formats a UTC datetime string correctly", () => {
     const result = formatDateTimePicker("UTC", 1718469000000);
-    expect(result).toBe("2024-06-15T12:30:00");
+    expect(result).toBe("2024-06-15T16:30:00");
   });
 });

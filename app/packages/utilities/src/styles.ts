@@ -32,7 +32,7 @@ export const scrollbarStyles = `
 }
 `;
 
-export const StyledInputContainer = styled.div`
+export const DateTimeInputContainer = styled.div`
   font-size: 14px;
   border-bottom: 1px ${({ theme }) => theme.primary.plainColor} solid;
   position: relative;
@@ -40,7 +40,7 @@ export const StyledInputContainer = styled.div`
   max-width: calc(50% - 0.5rem);
 `;
 
-export const StyledInput = styled.input`
+export const DateTimeInput = styled.input`
   &::-webkit-calendar-picker-indicator {
     background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="15" viewBox="0 0 24 24"><path fill="${({
       theme,

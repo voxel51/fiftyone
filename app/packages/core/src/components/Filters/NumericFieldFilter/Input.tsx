@@ -52,13 +52,6 @@ const TO_INPUT = (timeZone: string) => ({
   [FLOAT_FIELD]: (v) => String(v),
 });
 
-const handleDigits = (digits: string) => {
-  return Number.parseInt(digits).toLocaleString("en-US", {
-    minimumIntegerDigits: 2,
-    useGrouping: false,
-  });
-};
-
 export function Input<T extends InputType>({
   color,
   onSubmit,
@@ -77,10 +70,10 @@ export function Input<T extends InputType>({
   }, [ftype, to, value]);
 
   return (
-    <styles.StyledInputContainer
+    <styles.DateTimeInputContainer
       style={{ borderBottom: `1px solid ${color}`, width: "50%" }}
     >
-      <styles.StyledInput
+      <styles.DateTimeInput
         type={TYPE_MAP[ftype]}
         placeholder={placeholder}
         value={state ?? ""}
@@ -95,6 +88,6 @@ export function Input<T extends InputType>({
           onSubmit(state === "" ? null : from[ftype](state));
         }}
       />
-    </styles.StyledInputContainer>
+    </styles.DateTimeInputContainer>
   );
 }
