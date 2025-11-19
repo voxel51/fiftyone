@@ -103,7 +103,7 @@ def test_hrm2_single_person_inference():
 
     # Run prediction
     from PIL import Image
-    from fiftyone.utils.hrm2 import HumanPose3D
+    from fiftyone.core.labels import HumanPose3D
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
@@ -114,18 +114,18 @@ def test_hrm2_single_person_inference():
     if result.people:
         person = result.people[0]
         print(
-            f"  SMPL parameters shape: body_pose={len(person['smpl_params']['body_pose'])}, "
-            f"betas={len(person['smpl_params']['betas'])}"
+            f"  SMPL parameters shape: body_pose={len(person.smpl_params.body_pose)}, "
+            f"betas={len(person.smpl_params.betas)}"
         )
-        print(f"  3D keypoints shape: {len(person['keypoints_3d'])}")
-        if person.get("keypoints_2d"):
-            print(f"  2D keypoints shape: {len(person['keypoints_2d'])}")
+        print(f"  3D keypoints shape: {len(person.keypoints_3d)}")
+        if person.keypoints_2d:
+            print(f"  2D keypoints shape: {len(person.keypoints_2d)}")
 
     # Verify output structure
     assert isinstance(result, HumanPose3D)
     assert len(result.people) > 0
-    assert "smpl_params" in result.people[0]
-    assert "keypoints_3d" in result.people[0]
+    assert person.smpl_params is not None
+    assert person.keypoints_3d is not None
 
 
 def test_hrm2_multi_person_inference():
@@ -217,45 +217,37 @@ def test_hrm2_mesh_export():
     if not smpl_path or not os.path.exists(smpl_path):
         pytest.skip("SMPL_MODEL_PATH not set")
 
-    # Create temporary directory for meshes
-    with tempfile.TemporaryDirectory() as mesh_dir:
-        config = HRM2Config(
-            {
-                "smpl_model_path": smpl_path,
-                "export_meshes": True,
-                "mesh_output_dir": mesh_dir,
-            }
-        )
+    # Create config with mesh export enabled
+    config = HRM2Config(
+        {
+            "smpl_model_path": smpl_path,
+            "export_meshes": True,
+        }
+    )
 
-        model = HRM2Model(config)
+    model = HRM2Model(config)
 
-        # Load test image
-        dataset = foz.load_zoo_dataset("quickstart")
-        sample = dataset.first()
+    # Load test image
+    dataset = foz.load_zoo_dataset("quickstart")
+    sample = dataset.first()
 
-        from PIL import Image
-        from fiftyone.utils.hrm2 import HumanPose3D
+    from PIL import Image
+    from fiftyone.core.labels import HumanPose3D
 
-        img = Image.open(sample.filepath)
-        result = model.predict(img)
+    img = Image.open(sample.filepath)
+    result = model.predict(img)
 
-        print(f"✓ Mesh export successful")
-        assert isinstance(result, HumanPose3D)
+    print(f"✓ Mesh export successful")
+    assert isinstance(result, HumanPose3D)
 
-        # Check for generated mesh files in the mesh directory
-        # Mesh files are generated during _process_single_person
-        obj_files = [f for f in os.listdir(mesh_dir) if f.endswith(".obj")]
-        fo3d_files = [f for f in os.listdir(mesh_dir) if f.endswith(".fo3d")]
-
-        print(f"  Generated {len(obj_files)} OBJ mesh file(s)")
-        print(f"  Generated {len(fo3d_files)} scene file(s)")
-        print(f"  Mesh directory: {mesh_dir}")
-
-        if obj_files:
-            for obj_file in obj_files:
-                obj_path = os.path.join(mesh_dir, obj_file)
-                size = os.path.getsize(obj_path)
-                print(f"    - {obj_file} ({size} bytes)")
+    # Check result structure
+    print(f"  Number of people: {len(result.people)}")
+    if result.people:
+        person = result.people[0]
+        if person.vertices:
+            print(f"  Vertices shape: {len(person.vertices)}")
+        if result.smpl_faces is not None:
+            print(f"  SMPL faces shape: {len(result.smpl_faces)}")
 
 
 def test_hrm2_full_pipeline():
@@ -265,19 +257,21 @@ def test_hrm2_full_pipeline():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_full_pipeline
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import (
+        HRM2Model,
+        HRM2Config,
+        apply_hrm2_to_dataset_as_groups,
+    )
 
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
     if not smpl_path or not os.path.exists(smpl_path):
         pytest.skip("SMPL_MODEL_PATH not set")
 
-    # Create config
+    # Create config (removed deprecated enable_multi_person and detector_type)
     config = HRM2Config(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
-            "enable_multi_person": True,
-            "detector_type": "vitdet",
         }
     )
 
@@ -293,8 +287,9 @@ def test_hrm2_full_pipeline():
 
     print(f"Processing {len(test_dataset)} samples...")
 
-    # Apply model and create grouped dataset
-    result_dataset = model.apply_to_dataset_as_groups(
+    # Apply model and create grouped dataset using module-level function
+    result_dataset = apply_hrm2_to_dataset_as_groups(
+        model,
         test_dataset,
         label_field="human_pose",
         batch_size=1,
@@ -335,7 +330,6 @@ def test_hrm2_batch_processing():
         {
             "smpl_model_path": smpl_path,
             "export_meshes": False,
-            "enable_multi_person": False,
         }
     )
 
@@ -359,7 +353,7 @@ def test_hrm2_batch_processing():
     print(f"  Processed {len(results)} images")
 
     # Results are now HumanPose3D labels
-    from fiftyone.utils.hrm2 import HumanPose3D
+    from fiftyone.core.labels import HumanPose3D
 
     for i, result in enumerate(results):
         assert isinstance(result, HumanPose3D)
