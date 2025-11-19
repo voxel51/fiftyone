@@ -51,6 +51,9 @@ export default function TextWidget(props: WidgetProps) {
       onFocus={handleFocus}
       fullWidth
       size="small"
+      inputProps={{
+        "data-1p-ignore": true,
+      }}
     />
   );
 }

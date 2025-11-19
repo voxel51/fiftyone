@@ -18,7 +18,6 @@ export function translateToUISchema(
 
   const component = view.component || view.name;
 
-  // Handle different view types
   switch (component) {
     case "FieldView":
       if (view.placeholder) {
@@ -38,7 +37,6 @@ export function translateToUISchema(
     case "DropdownView":
     case "Dropdown":
       uiSchema["ui:widget"] = "Dropdown";
-      // Map DropdownView-specific options to ui:options
       uiSchema["ui:options"] = {
         multiple: view.multiple,
         compact: view.compact,
@@ -54,7 +52,6 @@ export function translateToUISchema(
 
     case "AutocompleteView":
       uiSchema["ui:widget"] = "AutoComplete";
-      // Map AutocompleteView-specific options to ui:options
       uiSchema["ui:options"] = {
         freeSolo: view.allow_user_input ?? true,
         allowClear: view.allow_clearing ?? true,
@@ -115,7 +112,6 @@ export function translateToUISchema(
       break;
 
     case "ListView":
-      // Array list view
       if (schemaIO.items && !Array.isArray(schemaIO.items)) {
         uiSchema.items = translateToUISchema(schemaIO.items, {
           ...context,
@@ -125,7 +121,6 @@ export function translateToUISchema(
       break;
 
     case "TupleView":
-      // Tuple view with fixed items
       if (schemaIO.items && Array.isArray(schemaIO.items)) {
         uiSchema.items = schemaIO.items.map((item: any, index: number) =>
           translateToUISchema(item, {
@@ -137,7 +132,6 @@ export function translateToUISchema(
       break;
 
     case "MapView":
-      // Key-value pairs
       uiSchema["ui:options"] = {
         addable: true,
         orderable: false,
@@ -150,7 +144,6 @@ export function translateToUISchema(
       break;
 
     case "OneOfView":
-      // Handle oneOf selector
       if (schemaIO.types) {
         uiSchema["ui:options"] = {
           discriminator: true,
@@ -178,7 +171,6 @@ export function translateToUISchema(
       break;
   }
 
-  // Handle common view properties
   if (view.read_only || view.readOnly) {
     uiSchema["ui:readonly"] = true;
   }
@@ -187,7 +179,6 @@ export function translateToUISchema(
     uiSchema["ui:placeholder"] = view.placeholder;
   }
 
-  // Add help text from caption or description
   if (view.caption) {
     uiSchema["ui:help"] = view.caption;
   } else if (view.description && !uiSchema["ui:help"]) {

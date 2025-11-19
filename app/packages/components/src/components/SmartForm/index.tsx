@@ -36,11 +36,6 @@ export default function SmartForm(props: SmartFormProps) {
 
   const mergedUiSchema = { ...generatedUiSchema, ...props.uiSchema };
 
-  // console.log("[SchemaIO]", props.schema);
-  // console.log("[JSON Schema]", jsonSchema);
-  // console.log("[UI Schema]", generatedUiSchema);
-  // console.log("[Data]", props.data);
-
   if (warnings.length > 0) {
     console.warn("[SmartForm] Schema translation warnings:", warnings);
   }
