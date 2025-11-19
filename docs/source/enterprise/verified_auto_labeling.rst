@@ -23,9 +23,9 @@ How it works
 ____________
 
 1. **Configure auto-labeling**
-    Tailor the run configuration to the specific needs of your dataset. Choose
-    your models, define your classes of interest, and provide optional model
-    configuration.
+    Tailor the run configuration to the specific needs of your dataset and
+    task. Choose your models, define your classes of interest, and provide
+    optional model configuration.
 
 2. **Generate labels**
     Run auto-labeling using a configured
@@ -84,10 +84,10 @@ runs will exist in isolation from other datasets.
 Viewing auto-labeling runs
 --------------------------
 
-If you have run auto-labeling on the current dataset, the VAL panel will
-display a list of all associated runs. If you have not yet used auto-labeling
-on the dataset, you can get started by clicking on the ``Auto Label`` button
-in the VAL panel. Learn more about
+If you or your team members have run auto-labeling on the current dataset, the
+VAL panel will display a list of all associated runs. If auto-labeling has not
+yet been used on the dataset, you can get started by clicking on the
+``Auto Label`` button in the VAL panel. Learn more about
 :ref:`configuring a run <verified-auto-labeling-run-config>`.
 
 TODO screenshot
@@ -147,12 +147,14 @@ TODO screenshot
 
 **All samples** - Auto-labeling will be run on each sample in the dataset.
 
-**Current view** - Auto-labeling will be run on samples in the current view.
-Leverage standard app functionality to filter samples to the desired subset.
+**Current view** - Auto-labeling will be run on samples in
+:ref:`the current view <using-views>`. Leverage standard app functionality to
+filter samples to the desired subset.
 
-**Current selection** - Auto-labeling will be run on currently-selected
-samples. Use this option to experiment with label generation on a small number
-of samples, or select in bulk using a set of sample IDs.
+**Current selection** - Auto-labeling will be run on
+:ref:`currently-selected samples <selecting-samples>`. Use this option to
+experiment with label generation on a small number of samples, or select in
+bulk using a set of sample IDs.
 
 .. _verified-auto-labeling-model-selection:
 
@@ -183,7 +185,7 @@ detection will include an instance segmentation mask.
     For **detection** and **instance segmentation** tasks, there is no upper
     bound on the number of detections which can be generated. We strongly
     recommend setting an appropriate threshold for the model confidence to
-    reduce the number of poor-quality labels. See
+    reduce the number of low-quality labels. See
     :ref:`run settings <verified-auto-labeling-run-settings>`
     for more information.
 
@@ -225,12 +227,12 @@ used for label generation.
 TODO screenshot
 
 **Zero-shot** - zero-shot models are trained on a broad range of data, and can
-be prompted to generate labels for arbitrary classes.
+be prompted with arbitrary classes to generate labels.
 
 **Fixed vocabulary** - fixed-vocabulary models are trained on a specific set of
 classes, most often from a specific dataset (such as COCO or ResNet). These
-models offer strong performance for known classes, but cannot be prompted with
-arbitrary classes.
+models offer strong performance for known classes available for selection, but
+cannot be prompted with arbitrary classes.
 
 .. _verified-auto-labeling-model:
 
@@ -258,8 +260,8 @@ additional details.
 The model metadata also includes approximate speed and performance metrics.
 These values (each a range from 1 to 3) indicate the model's speed
 (inference time) and performance (inference accuracy) relative to other
-comparable models. In both metrics, a higher value indicates better
-performance.
+comparable models. Higher values indicate faster inference and improved
+accuracy, respectively.
 
 .. _verified-auto-labeling-defining-classes:
 
@@ -440,11 +442,14 @@ view.
 .. note::
 
     If the current view contains a subset of the labels, the **Instances**
-    column will read ``#current of #total``. For example, if the **Instances**
+    column will read ``#current of #total``, where ``#current`` can be either
+    the entire subset or instances you’ve selected within that subset.
+
+    For example, if the **Instances**
     column reads ``21 of 100``, this means that there are 21 instances of the
-    class in the current view, and 100 total instances in the set of unpromoted
-    labels. Labels which have already been promoted are excluded from these
-    counts.
+    class selected in the current view, and 100 total instances in the set of
+    unpromoted labels. Labels which have already been promoted are excluded
+    from these counts.
 
 
 Promoting labels for approval
@@ -498,7 +503,7 @@ TODO screenshot
 .. note::
 
     You can return to the label review process at any time by clicking on the
-    :ref:`Analyze <verified-auto-labeling-analyze-tab>` tab.
+    :ref:`Analyze <verified-auto-labeling-approval-tab>` tab.
 
 .. _verified-auto-labeling-infrastructure:
 
@@ -506,8 +511,8 @@ Infrastructure Guidance
 _______________________
 
 Verified Auto-Labeling makes use of state-of-the-art models, which are
-optimized to run with GPU resources available. While most of the supported
-models can run without GPUs, **it is strongly recommended to provide GPU
+optimized to run with GPU resources available. While the provided models can
+run without GPUs, **it is strongly recommended to provide GPU
 resources** for the best experience. CPU-based workloads can be used for
 testing auto-labeling on a small number of samples.
 
@@ -591,7 +596,7 @@ directory for model storage. See FiftyOne's
 Models will be downloaded as needed, and will be reused if already present in
 the model zoo directory. The exact storage requirements will depend on the
 number and size of the models you select for auto-labeling, but 32-64GB of
-storage is sufficient to store all of the models supported for auto-labeling.
+storage is sufficient to store all of the models available for auto-labeling.
 
 .. note::
 
