@@ -947,19 +947,27 @@ def _add_label_tags(path, field, view):
 
 
 def _count_list_items(path, view):
-    function = (
-        "function(items) {"
-        "let counts = {};"
-        "items && items.forEach((i) => {"
-        "counts[i] = 1 + (counts[i] || 0);"
-        "});"
-        "return counts;"
-        "}"
-    )
-
-    return view.set_field(
-        path, F(path)._function(function), _allow_missing=True
-    )
+    expr = {
+        "$arrayToObject": {
+            "$map": {
+                "input": {"$setUnion": "$_label_tags"},
+                "as": "tag",
+                "in": {
+                    "k": "$$tag",
+                    "v": {
+                        "$size": {
+                            "$filter": {
+                                "input": "$_label_tags",
+                                "as": "t",
+                                "cond": {"$eq": ["$$t", "$$tag"]},
+                            }
+                        }
+                    },
+                },
+            }
+        }
+    }
+    return view.set_field(path, expr, _allow_missing=True)
 
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):
