@@ -42,6 +42,7 @@ class ExecutionStore(object):
         store_name: str,
         dataset_id: Optional[ObjectId] = None,
         default_policy: str = "persist",
+        collection_name: Optional[str] = None,
     ) -> "ExecutionStore":
         """Creates a new execution store.
 
@@ -59,7 +60,11 @@ class ExecutionStore(object):
         # Create store service with notification service
         store_service = ExecutionStoreService(
             dataset_id=dataset_id,
-            collection_name=MongoExecutionStoreRepo.COLLECTION_NAME,
+            collection_name=(
+                collection_name
+                if collection_name
+                else MongoExecutionStoreRepo.COLLECTION_NAME
+            ),
             notification_service=default_notification_service,
         )
 
