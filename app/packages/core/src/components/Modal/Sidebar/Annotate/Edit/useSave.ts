@@ -32,11 +32,20 @@ export default function useSave() {
     setSaving(true);
 
     try {
+      const fieldSchema = getFieldSchema(schema, label.path);
+      if (!fieldSchema) {
+        setSaving(false);
+        setNotification({
+          msg: `Unable to save label: field schema not found for path "${
+            label.path ?? "unknown"
+          }".`,
+          variant: "error",
+        });
+        return;
+      }
+
       await commandBus.execute(
-        new UpsertAnnotationCommand(
-          { ...label },
-          getFieldSchema(schema, label.path)!
-        )
+        new UpsertAnnotationCommand({ ...label }, fieldSchema)
       );
 
       setter();

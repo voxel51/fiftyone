@@ -54,7 +54,7 @@ export function registerDemoHandlers(bus: CommandDispatcher) {
     console.log(`Creating user: ${cmd.email} (${cmd.displayName})`);
     // Simulate creating user and returning ID
     await new Promise((resolve) => setTimeout(resolve, 100));
-    const id = `user-${Math.random().toString(36).substr(2, 9)}`;
+    const id = `user-${Math.random().toString(36).slice(2, 11)}`;
     return { id };
   });
 

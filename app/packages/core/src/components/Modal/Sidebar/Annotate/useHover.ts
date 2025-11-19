@@ -53,7 +53,7 @@ export default function useHover() {
     "annotation:notification:canvasOverlayUnhover",
     useCallback((payload) => {
       const store = getDefaultStore();
-      getDefaultStore().set(
+      store.set(
         hoveringLabelIds,
         store.get(hoveringLabelIds).filter((id) => id !== payload.id)
       );

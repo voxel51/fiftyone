@@ -35,22 +35,30 @@ export const useRegisterCommandHandler = <C extends Command<any>>(
   handler: CommandHandler<C>
 ): void => {
   const registeredTypeRef = useRef<CommandCtor<any> | null>(null);
+  const registeredHandlerRef = useRef<CommandHandler<any> | null>(null);
 
   useEffect(() => {
     const bus = getCommandBus();
     const previousType = registeredTypeRef.current;
+    const previousHandler = registeredHandlerRef.current;
 
-    // Unregister previous handler if type changed
-    if (previousType !== null && previousType !== type) {
+    if (
+      previousType !== null &&
+      (previousType !== type || previousHandler !== handler)
+    ) {
       bus.unregister(previousType);
       registeredTypeRef.current = null;
+      registeredHandlerRef.current = null;
     }
 
-    // Register new handler if not already registered
-    if (registeredTypeRef.current !== type) {
+    if (
+      registeredTypeRef.current !== type ||
+      registeredHandlerRef.current !== handler
+    ) {
       try {
         bus.register(type, handler);
         registeredTypeRef.current = type;
+        registeredHandlerRef.current = handler;
       } catch (error) {
         console.error(`Failed to register handler for ${type.name}:`, error);
       }
@@ -60,6 +68,7 @@ export const useRegisterCommandHandler = <C extends Command<any>>(
       if (registeredTypeRef.current === type) {
         bus.unregister(type);
         registeredTypeRef.current = null;
+        registeredHandlerRef.current = null;
       }
     };
   }, [type, handler]);

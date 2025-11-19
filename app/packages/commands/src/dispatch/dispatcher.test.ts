@@ -91,4 +91,19 @@ describe("CommandDispatcher", () => {
       "Handler error"
     );
   });
+
+  it("should unregister a handler and reject execution", async () => {
+    dispatcher.register(TestCommand, async (cmd) => {
+      return { value: cmd.input * 2 };
+    });
+
+    const result = await dispatcher.execute(new TestCommand(5));
+    expect(result).toEqual({ value: 10 });
+
+    dispatcher.unregister(TestCommand);
+
+    await expect(dispatcher.execute(new TestCommand(5))).rejects.toThrow(
+      "No handler registered for TestCommand"
+    );
+  });
 });

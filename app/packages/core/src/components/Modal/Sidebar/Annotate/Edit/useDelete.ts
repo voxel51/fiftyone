@@ -40,15 +40,25 @@ export default function useDelete() {
     setSaving(true);
 
     try {
-      await commandBus.execute(
-        new DeleteAnnotationCommand(label, getFieldSchema(schema, label?.path)!)
-      );
+      const fieldSchema = getFieldSchema(schema, label?.path);
+      if (!fieldSchema) {
+        setSaving(false);
+        setNotification({
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
+          variant: "error",
+        });
+        return;
+      }
+
+      await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
       removeOverlay(label.overlay.id);
       setter();
       setSaving(false);
       setNotification({
-        msg: `Label "${label.data.label ?? "Label"}" successfully deleted.`,
+        msg: `Label "${label.data.label}" successfully deleted.`,
         variant: "success",
       });
       exit();

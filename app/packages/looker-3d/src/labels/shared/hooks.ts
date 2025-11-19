@@ -60,7 +60,7 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
       }
 
       _onPointerOver();
-    }, [label, canAnnotate, annotationEventBus]),
+    }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
     onPointerOut: useCallback(() => {
       if (canAnnotate) {
         annotationEventBus.dispatch(
@@ -72,7 +72,7 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
       }
 
       _onPointerOut();
-    }, [label, canAnnotate, annotationEventBus]),
+    }, [label, canAnnotate, annotationEventBus, _onPointerOut]),
     restEventHandlers,
   };
 };

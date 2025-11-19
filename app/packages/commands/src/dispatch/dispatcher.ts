@@ -28,7 +28,7 @@ import { Command, CommandCtor, CommandHandler, CommandResult } from "../types";
  * ```
  */
 export class CommandDispatcher {
-  private handlers = new Map<Function, CommandHandler<any>>();
+  private handlers = new Map<CommandCtor<any>, CommandHandler<any>>();
 
   /**
    * Registers a handler for a command type.
@@ -86,7 +86,7 @@ export class CommandDispatcher {
    * ```
    */
   async execute<C extends Command<any>>(cmd: C): Promise<CommandResult<C>> {
-    const handler = this.handlers.get(cmd.constructor as Function);
+    const handler = this.handlers.get(cmd.constructor as CommandCtor<any>);
     if (!handler) {
       throw new Error(`No handler registered for ${cmd.constructor.name}`);
     }
