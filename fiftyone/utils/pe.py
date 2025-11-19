@@ -20,7 +20,7 @@ def download_pe_checkpoint(name: str, checkpoint_path: str):
     path = path[len("hf://") :]
     repo, file = path.split(":")
 
-    split = checkpoint_path.rsplit("/", 1)[0]
+    split = checkpoint_path.rsplit("/", 1)
     if len(split) == 1:
         local_dir = "."
     else:
