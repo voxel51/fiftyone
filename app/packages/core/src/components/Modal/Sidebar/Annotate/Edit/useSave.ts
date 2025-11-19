@@ -50,7 +50,7 @@ export default function useSave() {
       setSaving(false);
       exit();
       setNotification({
-        msg: `Label "${label.data.label ?? "Label"}" saved successfully.`,
+        msg: `Label "${label.data.label}" saved successfully.`,
         variant: "success",
       });
     } catch (error) {

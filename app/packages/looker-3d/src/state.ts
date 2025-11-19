@@ -18,7 +18,6 @@ import type {
 } from "./annotation/types";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
-import { OverlayLabel } from "./labels/loader";
 import type {
   Actions,
   AssetLoadingLog,
@@ -277,7 +276,7 @@ export const currentHoveredPointAtom = atom<Vector3 | null>({
 });
 
 // Hover state for labels in annotate mode
-export const hoveredLabelAtom = atom<OverlayLabel | null>({
+export const hoveredLabelAtom = atom<{ id: string } | null>({
   key: "fo3d-hoveredLabel",
   default: null,
 });
@@ -286,6 +285,12 @@ export const hoveredLabelAtom = atom<OverlayLabel | null>({
 // ANNOTATION RELATED
 // =============================================================================
 
+/**
+ * Vertical position of the annotation toolbar as a percentage from the top of the viewport.
+ * Value ranges from 0-100, where 0 is the top and 100 is the bottom.
+ * Default is 50 (centered vertically).
+ * Unit: percentage (%)
+ */
 export const annotationToolbarPositionAtom = atom<number>({
   key: "fo3d-annotationToolbarPosition",
   default: 50,

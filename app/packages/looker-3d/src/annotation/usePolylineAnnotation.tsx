@@ -274,7 +274,7 @@ export const usePolylineAnnotation = ({
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
-      setHoveredLabel(label);
+      setHoveredLabel({ id: label._id });
     }
   }, [isAnnotateMode, setHoveredLabel, label]);
 

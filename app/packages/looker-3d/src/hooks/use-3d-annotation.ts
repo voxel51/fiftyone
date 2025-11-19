@@ -66,10 +66,7 @@ export const use3dAnnotation = () => {
     "annotation:notification:sidebarValueUpdated",
     useCallback(
       (payload) => {
-        if (
-          payload.value?.["type"] !== "Polyline" ||
-          !Array.isArray(payload.value?.["points3d"])
-        ) {
+        if (!Array.isArray(payload.value["points3d"])) {
           return;
         }
 
@@ -111,10 +108,7 @@ export const use3dAnnotation = () => {
     "annotation:notification:sidebarLabelHover",
     useCallback((payload) => {
       setHoveredLabel({
-        _id: payload.id,
-        path: "",
-        selected: false,
-        _cls: "",
+        id: payload.id,
       });
     }, [])
   );

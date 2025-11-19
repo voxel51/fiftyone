@@ -150,13 +150,13 @@ const useHandleChanges = () => {
           if (schema?.ftype === FLOAT_FIELD) {
             if (!data.length) return null;
             const parsed = Number.parseFloat(data);
-            return Number.isNaN(parsed) ? null : parsed;
+            return Number.isFinite(parsed) ? null : parsed;
           }
 
           if (schema?.ftype === INT_FIELD) {
             if (!data.length) return null;
             const parsed = Number.parseInt(data);
-            return Number.isNaN(parsed) ? null : parsed;
+            return Number.isFinite(parsed) ? null : parsed;
           }
         }
 

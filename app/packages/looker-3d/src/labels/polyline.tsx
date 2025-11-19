@@ -52,7 +52,7 @@ export const Polyline = ({
     label
   );
 
-  const isHovered = hoveredLabel?._id === label._id;
+  const isHovered = hoveredLabel?.id === label._id;
 
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
@@ -276,7 +276,7 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={() => {
-            setHoveredLabel(label);
+            setHoveredLabel({ id: label._id });
             handleAnnotationPointerOver();
             onPointerOver();
           }}
