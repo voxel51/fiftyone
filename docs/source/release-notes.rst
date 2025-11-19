@@ -3,6 +3,21 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.13.1
+--------------------------
+*Released November 19, 2025*
+
+Plugins
+
+- Fixed a bug where, in some cases, an Operator input form would get stuck in
+  validation.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `h2`, `starlette`, `aiohttp`, and `brotli`.
+
+
 FiftyOne Enterprise 2.13.0
 --------------------------
 *Released October 31, 2025*
