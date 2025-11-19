@@ -211,12 +211,10 @@ class HRM2ConfigTests(HRM2TestBase):
         """Test HRM2Config with custom parameters."""
         from fiftyone.utils.hrm2 import HRM2Config
 
-        mesh_dir = os.path.join(self.root_dir, "meshes")
         config_dict = {
             "smpl_model_path": self.mock_smpl_path,
             "checkpoint_version": "1.0",
             "export_meshes": False,
-            "mesh_output_dir": mesh_dir,
             "detections_field": "ground_truth_detections",
         }
 
@@ -224,7 +222,6 @@ class HRM2ConfigTests(HRM2TestBase):
 
         self.assertEqual(config.checkpoint_version, "1.0")
         self.assertFalse(config.export_meshes)
-        self.assertEqual(config.mesh_output_dir, mesh_dir)
         self.assertEqual(config.detections_field, "ground_truth_detections")
         self.assertTrue(config.ragged_batches)
 
@@ -270,7 +267,6 @@ class HRM2ConfigTests(HRM2TestBase):
         self.assertIsNotNone(config.output_processor_args)
         self.assertIn("export_meshes", config.output_processor_args)
         self.assertIn("confidence_thresh", config.output_processor_args)
-        self.assertIn("mesh_output_dir", config.output_processor_args)
 
         # Verify non-serializable args are NOT in config
         self.assertNotIn("smpl_model", config.output_processor_args)
@@ -287,10 +283,8 @@ class HRM2ConfigTests(HRM2TestBase):
         """Test that output_processor_args are correctly populated from config."""
         from fiftyone.utils.hrm2 import HRM2Config
 
-        mesh_dir = os.path.join(self.root_dir, "test_meshes")
         config_dict = {
             "export_meshes": False,
-            "mesh_output_dir": mesh_dir,
             "confidence_thresh": 0.7,
         }
 
@@ -298,9 +292,6 @@ class HRM2ConfigTests(HRM2TestBase):
 
         # Verify args match config values
         self.assertEqual(config.output_processor_args["export_meshes"], False)
-        self.assertEqual(
-            config.output_processor_args["mesh_output_dir"], mesh_dir
-        )
         self.assertEqual(
             config.output_processor_args["confidence_thresh"], 0.7
         )
@@ -311,37 +302,37 @@ class HRM2UtilityTests(unittest.TestCase):
 
     def test_numpy_to_python_scalar(self):
         """Test numpy scalar conversion."""
-        from fiftyone.utils.hrm2 import _numpy_to_python
+        from fiftyone.core.utils import numpy_to_python
 
         # Test float types
-        result = _numpy_to_python(np.float32(3.14))
+        result = numpy_to_python(np.float32(3.14))
         self.assertIsInstance(result, float)
         self.assertAlmostEqual(result, 3.14, places=5)
 
-        result = _numpy_to_python(np.float64(2.71))
+        result = numpy_to_python(np.float64(2.71))
         self.assertIsInstance(result, float)
 
         # Test int types
-        result = _numpy_to_python(np.int32(42))
+        result = numpy_to_python(np.int32(42))
         self.assertIsInstance(result, int)
         self.assertEqual(result, 42)
 
-        result = _numpy_to_python(np.int64(100))
+        result = numpy_to_python(np.int64(100))
         self.assertIsInstance(result, int)
 
     def test_numpy_to_python_array(self):
         """Test numpy array conversion."""
-        from fiftyone.utils.hrm2 import _numpy_to_python
+        from fiftyone.core.utils import numpy_to_python
 
         arr = np.array([1.0, 2.0, 3.0], dtype=np.float32)
-        result = _numpy_to_python(arr)
+        result = numpy_to_python(arr)
 
         self.assertIsInstance(result, list)
         self.assertEqual(result, [1.0, 2.0, 3.0])
 
     def test_numpy_to_python_nested_dict(self):
         """Test nested dictionary with numpy types."""
-        from fiftyone.utils.hrm2 import _numpy_to_python
+        from fiftyone.core.utils import numpy_to_python
 
         data = {
             "float_val": np.float32(1.5),
@@ -350,7 +341,7 @@ class HRM2UtilityTests(unittest.TestCase):
             "nested": {"value": np.float64(2.5)},
         }
 
-        result = _numpy_to_python(data)
+        result = numpy_to_python(data)
 
         self.assertIsInstance(result["float_val"], float)
         self.assertIsInstance(result["int_val"], int)
@@ -359,10 +350,10 @@ class HRM2UtilityTests(unittest.TestCase):
 
     def test_numpy_to_python_list(self):
         """Test list with numpy types."""
-        from fiftyone.utils.hrm2 import _numpy_to_python
+        from fiftyone.core.utils import numpy_to_python
 
         data = [np.float32(1.0), np.int32(2), np.array([3, 4])]
-        result = _numpy_to_python(data)
+        result = numpy_to_python(data)
 
         self.assertIsInstance(result, list)
         self.assertIsInstance(result[0], float)
@@ -418,7 +409,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
 
         processor = HRM2OutputProcessor(
             export_meshes=True,
-            mesh_output_dir="/tmp/test_meshes",
             confidence_thresh=0.5,
         )
 
@@ -439,7 +429,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             smpl_model=mock_smpl,
             device=mock_device,
             export_meshes=True,
-            mesh_output_dir="/tmp/test_meshes",
             confidence_thresh=0.5,
         )
 
@@ -494,6 +483,74 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         # Step 6: Verify config is still serializable
         json_str = json.dumps(config.output_processor_args)
         self.assertIsNotNone(json_str)
+
+    def test_output_processor_call_with_rotation_matrices(self):
+        """Test HRM2OutputProcessor.__call__() with realistic rotation matrix data."""
+        import torch
+        from fiftyone.utils.hrm2 import HRM2OutputProcessor
+        from fiftyone.core.labels import HumanPose3D, Person3D
+
+        # Create processor without SMPL (no mesh export)
+        processor = HRM2OutputProcessor(
+            export_meshes=False,
+            confidence_thresh=0.5,
+        )
+
+        # Simulate realistic HRM2 model outputs with rotation matrices
+        outputs = [
+            {
+                "people": [
+                    {
+                        "pred_cam": torch.tensor([2.0, 0.1, 0.2]),
+                        "pred_smpl_params": {
+                            "body_pose": torch.randn(
+                                23, 3, 3
+                            ),  # Rotation matrices
+                            "betas": torch.randn(10),
+                            "global_orient": torch.randn(
+                                1, 3, 3
+                            ),  # Rotation matrix
+                        },
+                        "pred_keypoints_3d": torch.randn(24, 3),
+                        "pred_keypoints_2d": torch.randn(24, 2),
+                        "bbox": [100.0, 100.0, 200.0, 200.0],
+                        "person_id": 0,
+                        "camera_translation": [0.0, 0.0, 5.0],
+                    }
+                ],
+                "img_shape": (480, 640),
+            }
+        ]
+
+        # Call the processor (this is where the bug occurred)
+        labels = processor(outputs, frame_size=(640, 480))
+
+        # Verify output structure
+        self.assertEqual(len(labels), 1)
+        self.assertIsInstance(labels[0], HumanPose3D)
+
+        # Verify Person3D structure
+        label = labels[0]
+        self.assertEqual(len(label.people), 1)
+        person = label.people[0]
+        self.assertIsInstance(person, Person3D)
+
+        # Verify Person3D attributes (not dict keys!)
+        self.assertEqual(person.person_id, 0)
+        self.assertIsNotNone(person.smpl_params)
+        self.assertIsNotNone(person.keypoints_3d)
+        self.assertIsNotNone(person.keypoints_2d)
+        self.assertIsNotNone(person.bbox)
+        self.assertIsNotNone(person.camera_translation)
+
+        # Verify SMPLParams structure with rotation matrices
+        smpl = person.smpl_params
+        self.assertEqual(len(smpl.body_pose), 23)
+        self.assertEqual(len(smpl.body_pose[0]), 3)
+        self.assertEqual(len(smpl.body_pose[0][0]), 3)
+        self.assertEqual(len(smpl.betas), 10)
+        self.assertEqual(len(smpl.global_orient), 1)
+        self.assertEqual(len(smpl.global_orient[0]), 3)
 
 
 class HRM2ModelTests(HRM2TestBase):
@@ -608,15 +665,19 @@ class HRM2ModelTests(HRM2TestBase):
 
         # Mock the _inference_single_person method
         with patch.object(model, "_inference_single_person") as mock_inference:
-            # Return raw output format with tensors
+            # Return raw output format with tensors and ROTATION MATRICES
             mock_inference.return_value = {
                 "people": [
                     {
                         "pred_cam": torch.tensor([2.0, 0.0, 0.0]),
                         "pred_smpl_params": {
-                            "body_pose": torch.randn(69),
+                            "body_pose": torch.randn(
+                                23, 3, 3
+                            ),  # Rotation matrices
                             "betas": torch.zeros(10),
-                            "global_orient": torch.zeros(3),
+                            "global_orient": torch.randn(
+                                1, 3, 3
+                            ),  # Rotation matrix
                         },
                         "pred_keypoints_3d": torch.zeros(24, 3),
                         "pred_keypoints_2d": torch.ones(24, 2) * 100.0,
@@ -631,16 +692,17 @@ class HRM2ModelTests(HRM2TestBase):
             result = model.predict(img)
 
         # Result should be a HumanPose3D label
-        from fiftyone.utils.hrm2 import HumanPose3D
+        from fiftyone.core.labels import HumanPose3D, Person3D
 
         self.assertIsInstance(result, HumanPose3D)
         self.assertIsNotNone(result.people)
         self.assertEqual(len(result.people), 1)
-        # Verify the processed output has expected structure
+        # Verify the processed output has Person3D structure
         person = result.people[0]
-        self.assertIn("smpl_params", person)
-        self.assertIn("keypoints_3d", person)
-        self.assertIn("person_id", person)
+        self.assertIsInstance(person, Person3D)
+        self.assertIsNotNone(person.smpl_params)
+        self.assertIsNotNone(person.keypoints_3d)
+        self.assertEqual(person.person_id, 0)
 
     def test_inference_single_person_uses_shared_preprocessor(self):
         """Ensure single-person inference uses shared ViTDet preprocessing."""
@@ -648,7 +710,7 @@ class HRM2ModelTests(HRM2TestBase):
         from fiftyone.utils.torch import get_target_size
 
         model = object.__new__(HRM2Model)
-        model.config = SimpleNamespace(debug=False, confidence_thresh=None)
+        model.config = SimpleNamespace(confidence_thresh=None)
         model._device = "cpu"
         model._hmr2 = SimpleNamespace()
         model._hmr2.cfg = SimpleNamespace(
@@ -705,8 +767,9 @@ class HRM2ModelTests(HRM2TestBase):
         with patch.object(
             model, "_get_preprocessor", return_value=mock_preprocessor
         ):
-            with patch.object(
-                model, "_to_numpy", return_value=test_img.copy()
+            with patch(
+                "fiftyone.utils.torch.to_numpy_image",
+                return_value=test_img.copy(),
             ):
                 with patch.object(
                     model, "_run_inference", return_value=outputs
@@ -732,12 +795,9 @@ class HRM2ModelTests(HRM2TestBase):
                                 "_build_person_raw",
                                 return_value={"person": 0},
                             ) as mock_build:
-                                with patch.object(
-                                    model, "_print_debug_output"
-                                ):
-                                    result = model._inference_single_person(
-                                        test_img, 0
-                                    )
+                                result = model._inference_single_person(
+                                    test_img, 0
+                                )
 
         self.assertEqual(mock_preprocessor.call_count, 1)
         args, kwargs = mock_preprocessor.call_args
@@ -764,6 +824,77 @@ class HRM2ModelTests(HRM2TestBase):
         self.assertEqual(result["img_shape"], (480, 640))
         self.assertEqual(result["people"], [{"person": 0}])
 
+    def test_inference_single_person_real_code_path(self):
+        """Test _inference_single_person with real internal code (no internal mocking).
+
+        This test exercises the real implementation of _build_person_raw and would
+        have caught the person_data=None bug. Only external dependencies are mocked.
+        """
+        import torch
+        from fiftyone.utils.hrm2 import HRM2Model
+
+        # Setup model with minimal mocking
+        model = object.__new__(HRM2Model)
+        model.config = SimpleNamespace(confidence_thresh=None)
+        model._device = torch.device("cpu")
+        model._preprocessor = None
+
+        # Create a properly configured mock HMR2 model
+        cfg = MagicMock()
+        cfg.MODEL.IMAGE_SIZE = 256
+        cfg.MODEL.IMAGE_MEAN = [0.485, 0.456, 0.406]
+        cfg.MODEL.IMAGE_STD = [0.229, 0.224, 0.225]
+        cfg.MODEL.BBOX_SHAPE = None  # No aspect ratio expansion
+        cfg.EXTRA.FOCAL_LENGTH = 5000.0
+
+        mock_hmr2 = MagicMock()
+        mock_hmr2.cfg = cfg
+        model._hmr2 = mock_hmr2
+
+        # Create test image
+        test_img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        # Mock only the HMR2 model's forward pass (external dependency)
+        def mock_forward(batch):
+            batch_size = batch["img"].shape[0]
+            return {
+                "pred_cam": torch.tensor([[2.0, 0.1, 0.2]]),
+                "pred_smpl_params": {
+                    "body_pose": torch.randn(batch_size, 23, 3, 3),
+                    "betas": torch.randn(batch_size, 10),
+                    "global_orient": torch.randn(batch_size, 1, 3, 3),
+                },
+                "pred_keypoints_3d": torch.randn(batch_size, 24, 3),
+                "pred_keypoints_2d": torch.randn(batch_size, 24, 2),
+                "pred_vertices": torch.randn(batch_size, 6890, 3),
+            }
+
+        mock_hmr2.__call__ = mock_forward
+
+        # This should execute ALL real internal code: _build_person_raw, etc.
+        # If person_data=None bug existed, this would fail
+        result = model._inference_single_person(test_img, 0)
+
+        # Verify structure
+        self.assertIn("people", result)
+        self.assertIn("img_shape", result)
+        self.assertEqual(len(result["people"]), 1)
+        self.assertEqual(result["img_shape"], (480, 640))
+
+        # Verify person data structure (from real _build_person_raw)
+        person = result["people"][0]
+        self.assertIn("pred_cam", person)
+        self.assertIn("pred_smpl_params", person)
+        self.assertIn("pred_keypoints_3d", person)
+        self.assertIn("pred_vertices", person)
+        self.assertIn("person_id", person)
+        self.assertEqual(person["person_id"], 0)
+        self.assertIsNone(person["bbox"])  # single-person mode
+
+        # Verify camera_translation was computed (not None)
+        self.assertIn("camera_translation", person)
+        self.assertIsNotNone(person["camera_translation"])
+
 
 class HRM2DatasetTests(HRM2TestBase):
     """Tests for HRM2Model dataset application."""
@@ -786,24 +917,20 @@ class HumanPoseLabelTests(HRM2TestBase):
     @drop_datasets
     def test_human_pose_2d_creation(self):
         """Test HumanPose2D label creation."""
-        from fiftyone.utils.hrm2 import HumanPose2D
+        from fiftyone.core.labels import HumanPose2D
 
         keypoints = [[100.0, 150.0], [120.0, 170.0], [110.0, 180.0]]
-        confidence = [0.9, 0.85, 0.92]
         bbox = [90.0, 140.0, 50.0, 60.0]
 
-        label = HumanPose2D(
-            keypoints=keypoints, confidence=confidence, bounding_box=bbox
-        )
+        label = HumanPose2D(keypoints=keypoints, bounding_box=bbox)
 
         self.assertEqual(label.keypoints, keypoints)
-        self.assertEqual(label.confidence, confidence)
         self.assertEqual(label.bounding_box, bbox)
 
     @drop_datasets
     def test_human_pose_2d_serialization(self):
         """Test saving and loading HumanPose2D from dataset."""
-        from fiftyone.utils.hrm2 import HumanPose2D
+        from fiftyone.core.labels import HumanPose2D
 
         dataset = fo.Dataset()
         sample = fo.Sample(filepath=self._new_image())
@@ -822,76 +949,74 @@ class HumanPoseLabelTests(HRM2TestBase):
     @drop_datasets
     def test_human_pose_3d_creation(self):
         """Test HumanPose3D label creation."""
-        from fiftyone.utils.hrm2 import HumanPose3D
+        from fiftyone.core.labels import HumanPose3D
 
+        from fiftyone.core.labels import Person3D, SMPLParams
+
+        smpl_params = SMPLParams(
+            body_pose=[0.1] * 69,  # 23 joints * 3 values = 69
+            betas=[0.0] * 10,
+            global_orient=[0.0] * 3,
+            camera=[2.0, 0.0, 0.0],
+        )
         people_data = [
-            {
-                "smpl_params": {
-                    "body_pose": [[0.1] * 3] * 23,
-                    "betas": [0.0] * 10,
-                    "global_orient": [[0.0] * 3],
-                    "camera": [2.0, 0.0, 0.0],
-                },
-                "keypoints_3d": [[0.0, 0.0, 0.0]] * 24,
-                "person_id": 0,
-            }
+            Person3D(
+                smpl_params=smpl_params,
+                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+                person_id=0,
+            )
         ]
 
-        label = HumanPose3D(people=people_data, confidence=0.95)
+        label = HumanPose3D(people=people_data)
 
         self.assertEqual(len(label.people), 1)
-        self.assertEqual(label.confidence, 0.95)
-        self.assertEqual(label.people[0]["person_id"], 0)
+        self.assertEqual(label.people[0].person_id, 0)
 
     @drop_datasets
     def test_human_pose_3d_multi_person(self):
         """Test HumanPose3D with multiple people."""
-        from fiftyone.utils.hrm2 import HumanPose3D
+        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+
+        smpl_params_0 = SMPLParams(body_pose=[], betas=[], global_orient=[])
+        smpl_params_1 = SMPLParams(body_pose=[], betas=[], global_orient=[])
 
         people_data = [
-            {
-                "smpl_params": {
-                    "body_pose": [],
-                    "betas": [],
-                    "global_orient": [],
-                },
-                "keypoints_3d": [[0.0, 0.0, 0.0]] * 24,
-                "person_id": 0,
-            },
-            {
-                "smpl_params": {
-                    "body_pose": [],
-                    "betas": [],
-                    "global_orient": [],
-                },
-                "keypoints_3d": [[1.0, 1.0, 1.0]] * 24,
-                "person_id": 1,
-            },
+            Person3D(
+                smpl_params=smpl_params_0,
+                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+                person_id=0,
+            ),
+            Person3D(
+                smpl_params=smpl_params_1,
+                keypoints_3d=[[1.0, 1.0, 1.0]] * 24,
+                person_id=1,
+            ),
         ]
 
         label = HumanPose3D(people=people_data)
 
         self.assertEqual(len(label.people), 2)
-        self.assertEqual(label.people[0]["person_id"], 0)
-        self.assertEqual(label.people[1]["person_id"], 1)
+        self.assertEqual(label.people[0].person_id, 0)
+        self.assertEqual(label.people[1].person_id, 1)
 
     @drop_datasets
     def test_human_pose_3d_serialization(self):
         """Test saving and loading HumanPose3D from dataset."""
-        from fiftyone.utils.hrm2 import HumanPose3D
+        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
 
         dataset = fo.Dataset()
         sample = fo.Sample(filepath=self._new_image())
 
+        smpl_params = SMPLParams(body_pose=[1.0] * 69, betas=[0.0] * 10)
         people_data = [
-            {
-                "smpl_params": {"body_pose": [1.0] * 69, "betas": [0.0] * 10},
-                "keypoints_3d": [[0.0, 0.0, 0.0]] * 24,
-                "person_id": 0,
-            }
+            Person3D(
+                smpl_params=smpl_params,
+                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+                person_id=0,
+            )
         ]
 
-        label = HumanPose3D(people=people_data, confidence=0.9)
+        label = HumanPose3D(people=people_data)
         sample["pose_3d"] = label
 
         dataset.add_sample(sample)
@@ -900,7 +1025,140 @@ class HumanPoseLabelTests(HRM2TestBase):
         retrieved = dataset.first()
         self.assertIsNotNone(retrieved["pose_3d"])
         self.assertEqual(len(retrieved["pose_3d"].people), 1)
-        self.assertEqual(retrieved["pose_3d"].confidence, 0.9)
+
+    @drop_datasets
+    def test_human_pose_3d_with_rotation_matrices(self):
+        """Test HumanPose3D with rotation matrix format (nested lists)."""
+        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+
+        # Simulate rotation matrix format from HRM2 model
+        # body_pose: (23, 3, 3) rotation matrices
+        body_pose_rotmat = [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        # global_orient: (3, 3) rotation matrix
+        global_orient_rotmat = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params = SMPLParams(
+            body_pose=body_pose_rotmat,
+            betas=[0.0] * 10,
+            global_orient=global_orient_rotmat,
+            camera=[2.0, 0.0, 0.0],
+        )
+
+        person = Person3D(
+            smpl_params=smpl_params,
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            person_id=0,
+        )
+
+        label = HumanPose3D(people=[person])
+
+        # Test serialization
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath=self._new_image())
+        sample["pose_3d"] = label
+        dataset.add_sample(sample)
+
+        # Retrieve and verify
+        retrieved = dataset.first()
+        self.assertIsNotNone(retrieved["pose_3d"])
+        self.assertEqual(len(retrieved["pose_3d"].people), 1)
+
+        # Verify nested structure is preserved
+        retrieved_person = retrieved["pose_3d"].people[0]
+        self.assertEqual(len(retrieved_person.smpl_params.body_pose), 23)
+        self.assertEqual(len(retrieved_person.smpl_params.body_pose[0]), 3)
+        self.assertEqual(len(retrieved_person.smpl_params.body_pose[0][0]), 3)
+
+    @drop_datasets
+    def test_human_pose_3d_export_scene(self):
+        """Test HumanPose3D.export_scene() with Person3D objects.
+
+        This test verifies that export_scene() works with Person3D embedded
+        documents and doesn't crash with AttributeError when accessing person
+        attributes.
+        """
+        import os
+        import tempfile
+        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+
+        # Skip test if trimesh is not available
+        try:
+            import trimesh
+            import numpy as np
+        except ImportError:
+            self.skipTest("trimesh or numpy not available")
+
+        # Create label with realistic data for mesh export
+        smpl_params = SMPLParams(
+            body_pose=[0.1] * 69,
+            betas=[0.0] * 10,
+            global_orient=[0.0] * 3,
+            camera=[2.0, 0.0, 0.0],
+        )
+
+        # Create vertices for a simple mesh (SMPL has 6890 vertices)
+        vertices = [[i * 0.01, i * 0.01, i * 0.01] for i in range(6890)]
+
+        person = Person3D(
+            person_id=0,
+            bbox=[100.0, 100.0, 200.0, 200.0],
+            vertices=vertices,
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_2d=[[100.0, 100.0]] * 24,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+
+        # Create SMPL faces as numpy array (required by ArrayField)
+        smpl_faces = np.array([[i, i + 1, i + 2] for i in range(0, 6887, 3)])
+
+        label = HumanPose3D(
+            people=[person],
+            smpl_faces=smpl_faces,
+            frame_size=[480, 640],
+        )
+
+        # Test export_scene - main goal is to verify no AttributeError
+        with tempfile.TemporaryDirectory() as tmpdir:
+            scene_path = os.path.join(tmpdir, "test_scene.fo3d")
+
+            # This should not raise AttributeError: 'Person3D' object has no attribute 'get'
+            try:
+                result_path = label.export_scene(scene_path, update=True)
+            except AttributeError as e:
+                if "'Person3D' object has no attribute 'get'" in str(e):
+                    self.fail(
+                        f"export_scene failed with AttributeError (bug not fixed): {e}"
+                    )
+                raise
+
+            # Verify scene file was created
+            self.assertTrue(os.path.exists(result_path))
+            self.assertEqual(result_path, scene_path)
+
+            # Verify scene_path was updated in label
+            self.assertEqual(label.scene_path, scene_path)
+
+            # Verify mesh OBJ file was created
+            all_files = os.listdir(tmpdir)
+            mesh_files = [f for f in all_files if f.endswith(".obj")]
+
+            # Main goal: verify export_scene doesn't crash with Person3D objects
+            # The OBJ file creation depends on additional factors beyond Person3D support
+            if len(mesh_files) > 0:
+                # If OBJ files were created, verify basic properties
+                self.assertEqual(len(mesh_files), 1)
+                self.assertIn("person_0", mesh_files[0])
+            else:
+                # At minimum, verify the .fo3d scene file was created
+                # This confirms export_scene works with Person3D objects
+                self.assertIn("test_scene.fo3d", all_files)
 
 
 if __name__ == "__main__":

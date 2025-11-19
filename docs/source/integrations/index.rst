@@ -195,6 +195,13 @@ on the cards below to see how!
     :image: ../_images/brain-image-visualization.gif
     :tags: Model-Training,Model-Evaluation,Models
 
+.. customcarditem::
+    :header: HRM2.0 (4D-Humans)
+    :description: Reconstruct 3D human meshes from images and visualize them in the FiftyOne App using the HRM2.0 model.
+    :link: hrm2.html
+    :image: ../_images/app/app-new-3d-visualizer.gif
+    :tags: Model-Evaluation,Models,3D
+
 .. End of integrations cards
 
 .. raw:: html
@@ -236,3 +243,4 @@ on the cards below to see how!
     OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
+    HRM2.0 (4D-Humans) <hrm2.rst>
