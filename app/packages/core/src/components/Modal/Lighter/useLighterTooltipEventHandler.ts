@@ -2,7 +2,11 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { useLighterEventHandler, type Scene2D } from "@fiftyone/lighter";
+import {
+  useLighterEventHandler,
+  type LighterEventGroup,
+  type Scene2D,
+} from "@fiftyone/lighter";
 import type { Hoverable } from "@fiftyone/lighter/src/types";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
@@ -18,7 +22,10 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
   const tooltipEventHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       (
-        payload: { id: string; point: { x: number; y: number } },
+        payload:
+          | LighterEventGroup["lighter:overlay-hover"]
+          | LighterEventGroup["lighter:overlay-unhover"]
+          | LighterEventGroup["lighter:overlay-hover-move"],
         scene: Scene2D,
         isUnhover: boolean
       ) => {
