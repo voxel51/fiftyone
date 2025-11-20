@@ -2,10 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { getEventBus } from "@fiftyone/events";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
-import type { EventBus, LighterEventDetail } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
+import type { LighterEventGroup } from "../events";
 import {
   BoundingBoxOverlay,
   type MoveState,
@@ -180,14 +180,12 @@ export interface InteractionHandler {
   cleanup?(): void;
 }
 
-export type Handler = InteractionHandler | InteractiveDetectionHandler;
-
 /**
  * Manages all interaction events and coordinates with overlays.
  * Now knows about overlays and manages drag state internally.
  */
 export class InteractionManager {
-  private handlers: Handler[] = [];
+  private handlers: InteractionHandler[] = [];
   private hoveredHandler?: InteractionHandler;
   private clickStartTime = 0;
   private clickStartPoint?: Point;
@@ -204,10 +202,10 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
   private currentPixelCoordinates?: Point;
+  private readonly eventBus = getEventBus<LighterEventGroup>();
 
   constructor(
     private canvas: HTMLCanvasElement,
-    private eventBus: EventBus,
     private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D
@@ -243,7 +241,7 @@ export class InteractionManager {
     this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     document.addEventListener("keydown", this.handleKeyDown);
     document.addEventListener("keyup", this.handleKeyUp);
-    this.eventBus.on(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
+    this.eventBus.on("lighter:zoomed", this.handleZoomed);
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
@@ -259,30 +257,32 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
-      this.selectionManager.select(handler.id);
+      const overlay = interactiveHandler.getOverlay();
+      if (TypeGuards.isInteractionHandler(overlay)) {
+        handler = overlay;
+        this.selectionManager.select(handler.id);
+      }
     } else {
       handler = this.findHandlerAtPoint(point);
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+      const cursor = handler.getCursor?.(worldPoint, scale);
+      if (cursor) {
+        this.canvas.style.cursor = cursor;
+      }
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
         const type = handler.isDragging?.()
-          ? LIGHTER_EVENTS.OVERLAY_DRAG_START
-          : LIGHTER_EVENTS.OVERLAY_RESIZE_START;
+          ? "lighter:overlay-drag-start"
+          : "lighter:overlay-resize-start";
 
-        this.eventBus.emit({
-          type,
-          detail: {
-            id: handler.id,
-            startPosition: handler.getPosition(),
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
-          },
+        this.eventBus.dispatch(type, {
+          id: handler.id,
+          startPosition: handler.getPosition(),
+          absoluteBounds: handler.getAbsoluteBounds(),
+          relativeBounds: handler.getRelativeBounds(),
         });
       }
 
@@ -317,15 +317,14 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        handler = interactiveHandler.getOverlay();
-
-        handler.onMove?.(
+        interactiveHandler.onMove?.(
           point,
           worldPoint,
           event,
           scale,
           this.maintainAspectRatio
         );
+        handler = interactiveHandler;
       }
 
       if (handler.isMoving?.()) {
@@ -334,24 +333,23 @@ export class InteractionManager {
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()
-            ? LIGHTER_EVENTS.OVERLAY_DRAG_MOVE
-            : LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE;
+            ? "lighter:overlay-drag-move"
+            : "lighter:overlay-resize-move";
 
-          this.eventBus.emit({
-            type,
-            detail: {
-              id: handler.id,
-              absoluteBounds: handler.getAbsoluteBounds(),
-              relativeBounds: handler.getRelativeBounds(),
-            },
+          this.eventBus.dispatch(type, {
+            id: handler.id,
+            absoluteBounds: handler.getAbsoluteBounds(),
+            relativeBounds: handler.getRelativeBounds(),
           });
         }
 
         event.preventDefault();
       }
 
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+      // Update cursor
+      if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
+        this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+      }
     }
   };
 
@@ -366,36 +364,30 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler.getOverlay();
+      handler = interactiveHandler;
     } else {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
 
     if (handler?.isMoving?.()) {
       const moveState = handler.getMoveState?.();
-      const startBounds = handler.getMoveStartBounds()!;
-      const startPosition = handler.getMoveStartPosition()!;
+      const startBounds = handler.getMoveStartBounds?.();
+      const startPosition = handler.getMoveStartPosition?.();
 
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
 
-      if (interactiveHandler?.getOverlay() === handler) {
+      if (interactiveHandler && handler === interactiveHandler) {
+        // When interactive detection is complete, remove the interactive handler
+        // The overlay will be managed by its own handler
         this.removeHandler(interactiveHandler);
-        this.addHandler(handler);
       }
 
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       // Emit move end event with bounds information
-      if (TypeGuards.isSpatial(handler)) {
-        const type =
-          moveState === "SETTING"
-            ? LIGHTER_EVENTS.OVERLAY_ESTABLISH
-            : moveState === "DRAGGING"
-            ? LIGHTER_EVENTS.OVERLAY_DRAG_END
-            : LIGHTER_EVENTS.OVERLAY_RESIZE_END;
-
+      if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
           id: handler.id,
           startBounds,
@@ -405,19 +397,17 @@ export class InteractionManager {
           relativeBounds: handler.getRelativeBounds(),
         };
 
-        if (type === LIGHTER_EVENTS.OVERLAY_ESTABLISH) {
-          this.eventBus.emit({
-            type,
-            detail: {
-              ...detail,
-              overlay: interactiveHandler!,
-            },
+        if (moveState === "SETTING") {
+          this.eventBus.dispatch("lighter:overlay-establish", {
+            ...detail,
+            overlay: interactiveHandler!,
           });
         } else {
-          this.eventBus.emit({
-            type,
-            detail,
-          });
+          const type =
+            moveState === "DRAGGING"
+              ? "lighter:overlay-drag-end"
+              : "lighter:overlay-resize-end";
+          this.eventBus.dispatch(type, detail);
         }
       }
 
@@ -589,15 +579,12 @@ export class InteractionManager {
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
 
-        this.eventBus?.emit({
-          type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-          detail: { id: this.hoveredHandler.id, point },
+        this.eventBus.dispatch("lighter:overlay-unhover", {
+          id: this.hoveredHandler.id,
+          point,
         });
 
-        this.eventBus?.emit({
-          type: LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER,
-          detail: { point },
-        });
+        this.eventBus.dispatch("lighter:overlay-all-unhover", { point });
       }
 
       this.hoveredHandler = undefined;
@@ -609,9 +596,9 @@ export class InteractionManager {
     if (movingHandler) {
       if (this.hoveredHandler) {
         this.hoveredHandler.onHoverLeave?.(point, event);
-        this.eventBus?.emit({
-          type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-          detail: { id: this.hoveredHandler.id, point },
+        this.eventBus.dispatch("lighter:overlay-unhover", {
+          id: this.hoveredHandler.id,
+          point,
         });
         this.hoveredHandler = undefined;
       }
@@ -621,9 +608,9 @@ export class InteractionManager {
     // If we are hovering on a different overlay, unhover the previous one
     if (this.hoveredHandler && this.hoveredHandler !== handler) {
       this.hoveredHandler.onHoverLeave?.(point, event);
-      this.eventBus?.emit({
-        type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-        detail: { id: this.hoveredHandler.id, point },
+      this.eventBus.dispatch("lighter:overlay-unhover", {
+        id: this.hoveredHandler.id,
+        point,
       });
       this.hoveredHandler = undefined;
       return;
@@ -635,9 +622,9 @@ export class InteractionManager {
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
-      this.eventBus?.emit({
-        type: LIGHTER_EVENTS.OVERLAY_HOVER,
-        detail: { id: handler.id, point },
+      this.eventBus.dispatch("lighter:overlay-hover", {
+        id: handler.id,
+        point,
       });
     }
 
@@ -646,9 +633,9 @@ export class InteractionManager {
       this.canvas.style.cursor =
         handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
-      this.eventBus.emit({
-        type: LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
-        detail: { id: handler.id, point },
+      this.eventBus.dispatch("lighter:overlay-hover-move", {
+        id: handler.id,
+        point,
       });
     }
 
@@ -657,7 +644,7 @@ export class InteractionManager {
   }
 
   private handleZoomed = (
-    _event: CustomEvent<LighterEventDetail<"zoomed">>
+    _event: LighterEventGroup["lighter:zoomed"]
   ): void => {
     this.handlers?.forEach((handler) => handler.markDirty());
   };
@@ -719,7 +706,7 @@ export class InteractionManager {
       }
 
       if (handler.containsPoint(point)) {
-        candidates.push(handler as InteractionHandler);
+        candidates.push(handler);
       }
     }
 
@@ -746,8 +733,12 @@ export class InteractionManager {
     if (selectableCandidates.length > 0) {
       // Choose the selectable candidate with highest selection priority
       return selectableCandidates.reduce((best, current) => {
-        const bestPriority = (best as any).getSelectionPriority?.() || 0;
-        const currentPriority = (current as any).getSelectionPriority?.() || 0;
+        const bestPriority = TypeGuards.isSelectable(best)
+          ? best.getSelectionPriority()
+          : 0;
+        const currentPriority = TypeGuards.isSelectable(current)
+          ? current.getSelectionPriority()
+          : 0;
         return currentPriority > bestPriority ? current : best;
       });
     }
@@ -778,7 +769,7 @@ export class InteractionManager {
    * Removes an interaction handler.
    * @param handler - The handler to remove.
    */
-  removeHandler(handler: Handler): void {
+  removeHandler(handler: InteractionHandler): void {
     const index = this.handlers.indexOf(handler);
     if (index > -1) {
       const removedHandler = this.handlers.splice(index, 1);
@@ -821,7 +812,7 @@ export class InteractionManager {
     this.canvas.removeEventListener("wheel", this.handleWheel);
     document.removeEventListener("keydown", this.handleKeyDown);
     document.removeEventListener("keyup", this.handleKeyUp);
-    this.eventBus.off(LIGHTER_EVENTS.ZOOMED, this.handleZoomed);
+    this.eventBus.off("lighter:zoomed", this.handleZoomed);
     this.clearHandlers();
   }
 
@@ -839,7 +830,9 @@ export class InteractionManager {
    * @returns The handler if found, undefined otherwise.
    */
   findMovingHandler(): InteractionHandler | undefined {
-    return this.handlers.find((handler) => handler.isMoving?.());
+    return this.handlers.find(
+      (handler) => handler.isMoving && handler.isMoving()
+    );
   }
 
   /**

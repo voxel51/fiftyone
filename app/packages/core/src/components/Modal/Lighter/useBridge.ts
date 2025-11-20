@@ -3,7 +3,12 @@
  */
 
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
-import { LIGHTER_EVENTS, Scene2D, UpdateLabelCommand } from "@fiftyone/lighter";
+import {
+  UpdateLabelCommand,
+  useLighterEventBus,
+  useLighterEventHandler,
+  type Scene2D,
+} from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
@@ -21,6 +26,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
 
+  const eventBus = useLighterEventBus();
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
 
@@ -54,12 +60,12 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
-        scene.dispatchSafely({
-          type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-          detail: { id: payload.id, tooltip: payload.tooltip ?? false },
+        eventBus.dispatch("lighter:do-overlay-hover", {
+          id: payload.id,
+          tooltip: payload.tooltip ?? false,
         });
       },
-      [scene]
+      [scene, eventBus]
     )
   );
 
@@ -71,23 +77,18 @@ export const useBridge = (scene: Scene2D | null) => {
           return;
         }
 
-        scene.dispatchSafely({
-          type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-          detail: { id: payload.id },
+        eventBus.dispatch("lighter:do-overlay-unhover", {
+          id: payload.id,
         });
       },
-      [scene]
+      [scene, eventBus]
     )
   );
 
-  useEffect(() => {
-    if (!scene) {
-      return;
-    }
-
-    const handler = (event: any) => {
+  const handleCommandEvent = useCallback(
+    (payload: any) => {
       // Here, this would be true for `undo` or `redo`
-      if (!(event.detail?.command instanceof UpdateLabelCommand)) {
+      if (!(payload?.command instanceof UpdateLabelCommand)) {
         const label = overlay?.label;
 
         if (label) {
@@ -97,23 +98,18 @@ export const useBridge = (scene: Scene2D | null) => {
         return;
       }
 
-      const newLabel = coerceStringBooleans(event.detail.command.nextLabel);
+      const newLabel = coerceStringBooleans(payload.command.nextLabel);
 
       if (newLabel) {
         save(newLabel);
       }
-    };
+    },
+    [overlay, save]
+  );
 
-    scene.on(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
-    scene.on(LIGHTER_EVENTS.REDO, handler);
-    scene.on(LIGHTER_EVENTS.UNDO, handler);
-
-    return () => {
-      scene.off(LIGHTER_EVENTS.COMMAND_EXECUTED, handler);
-      scene.off(LIGHTER_EVENTS.REDO, handler);
-      scene.off(LIGHTER_EVENTS.UNDO, handler);
-    };
-  }, [scene, overlay, save]);
+  useLighterEventHandler("lighter:command-executed", handleCommandEvent);
+  useLighterEventHandler("lighter:redo", handleCommandEvent);
+  useLighterEventHandler("lighter:undo", handleCommandEvent);
 
   const context = useColorMappingContext();
 

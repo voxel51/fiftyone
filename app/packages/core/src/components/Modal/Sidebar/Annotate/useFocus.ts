@@ -1,6 +1,6 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
 import { current, currentOverlay, hasChanges, savedLabel } from "./Edit/state";
@@ -31,60 +31,58 @@ export default function useFocus() {
     selectId.current = null;
   }, [scene]);
 
-  useEffect(() => {
-    const handler = (event) => {
-      if (event.detail.ignoreSideEffects) {
-        return;
-      }
+  useLighterEventHandler(
+    "lighter:overlay-deselect",
+    useCallback(
+      (payload) => {
+        if (payload.ignoreSideEffects) {
+          return;
+        }
 
-      const current = STORE.get(currentOverlay)?.id;
+        const current = STORE.get(currentOverlay)?.id;
 
-      if (!current || !STORE.get(hasChanges)) {
-        // no unsaved changes, allow the exit
-        onExit();
+        if (!current || !STORE.get(hasChanges)) {
+          // no unsaved changes, allow the exit
+          onExit();
 
-        return;
-      }
+          return;
+        }
 
-      // there are unsaved changes, ask for confirmation
-      scene?.selectOverlay(event.detail.id, { ignoreSideEffects: true });
-      confirmExit(() => {
-        scene?.deselectOverlay(current, {
-          ignoreSideEffects: true,
+        // there are unsaved changes, ask for confirmation
+        scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
+        confirmExit(() => {
+          scene?.deselectOverlay(current, {
+            ignoreSideEffects: true,
+          });
+
+          select();
         });
+      },
+      [confirmExit, scene, onExit, select]
+    )
+  );
+
+  useLighterEventHandler(
+    "lighter:overlay-select",
+    useCallback(
+      (payload) => {
+        if (payload.ignoreSideEffects) {
+          return;
+        }
+        selectId.current = payload.id;
+
+        if (STORE.get(editing)) {
+          // skip for new labels
+          if (STORE.get(current)?.isNew) return;
+
+          // a label is already being edited, let the DESELECT event handle it
+          scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
+          return;
+        }
 
         select();
-      });
-    };
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DESELECT, handler);
-    };
-  }, [confirmExit, scene, onExit, select]);
-
-  useEffect(() => {
-    const handler = (event) => {
-      if (event.detail.ignoreSideEffects) {
-        return;
-      }
-      selectId.current = event.detail.id;
-
-      if (STORE.get(editing)) {
-        // skip for new labels
-        if (STORE.get(current)?.isNew) return;
-
-        // a label is already being edited, let the DESELECT event handle it
-        scene?.deselectOverlay(event.detail.id, { ignoreSideEffects: true });
-        return;
-      }
-
-      select();
-    };
-    scene?.on(LIGHTER_EVENTS.OVERLAY_SELECT, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_SELECT, handler);
-    };
-  }, [scene, select]);
+      },
+      [scene, select]
+    )
+  );
 }
