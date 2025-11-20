@@ -39,6 +39,11 @@ from fiftyone.server.events.execution_store import (
     ExecutionStorePollingStrategy,
 )
 from fiftyone.server.events.manager import get_default_notification_manager
+
+# from fiftyone.server.events.samples import (
+#     sample_message_builder,
+#     sample_initial_state_builder,
+# )
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
@@ -186,6 +191,21 @@ async def startup_event():
         polling_strategy=ExecutionStorePollingStrategy(),
         initial_state_builder=execution_store_initial_state_builder,
     )
+
+    # Example: How to watch a specific sample collection (e.g. samples.12345)
+    # This demonstrates that the system can watch arbitrary collections
+    #
+    # from fiftyone.server.events.samples import (
+    #     sample_message_builder,
+    #     sample_initial_state_builder,
+    # )
+    #
+    # manager.manage_collection(
+    #     collection_name="samples.12345",
+    #     message_builder=sample_message_builder,
+    #     remote_notifier=default_sse_notifier,
+    #     initial_state_builder=sample_initial_state_builder,
+    # )
 
     app.state.notification_manager = manager
 
