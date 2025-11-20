@@ -65,10 +65,20 @@ class PEVisionEncoderConfig(fout.TorchImageModelConfig):
         norm (True): whether to normalize the output embeddings.
         layer_idx (-1): the layer from which to extract features.
         strip_cls_token (False): whether to strip the class token from the output embeddings.
+
+        Note:
+            The argument ``as_feature_extractor`` is ignored for this model. It's always
+            treated as a feature extractor.
+            The argument ``layer_name`` is ignored for this model. Use ``layer_idx`` instead.
     """
 
     def __init__(self, d):
         super().__init__(d)
+
+        # override as_feature_extractor and layer_name
+        self.as_feature_extractor = True
+        self.layer_name = None
+
         # defaults
         # TODO: move to manifest
         if self.entrypoint_fcn is None:
@@ -105,21 +115,7 @@ class PEVisionEncoderConfig(fout.TorchImageModelConfig):
         self.strip_cls_token = self.parse_bool(d, "strip_cls_token", False)
 
 
-class PEVisionEncoderEmbeddingsMixin(fom.EmbeddingsMixin):
-    """Mixin for Perception Encoder Vision models that produce embeddings."""
-
-    @property
-    def has_embeddings(self) -> bool:
-        return True
-
-    def embed(self, arg):
-        return self.predict(arg)
-
-    def embed_all(self, args):
-        return self.predict_all(args)
-
-
-class PEVisionEncoder(PEVisionEncoderEmbeddingsMixin, fout.TorchImageModel):
+class PEVisionEncoder(fout.TorchImageModel):
     """Wrapper for Perception Encoder Vision models."""
 
     def _forward_pass(self, imgs):
