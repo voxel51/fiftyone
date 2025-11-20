@@ -101,7 +101,7 @@ pages on this site apply to Enterprise deployments as well.
 .. customcalloutitem::
     :header: Verified Auto-Labeling  __SUB_NEW__
     :description: Use FiftyOne Enterprise to annotate your data at a fraction of the cost.
-    :button_text: Connect your data lake
+    :button_text: Annotate your data at scale
     :button_link: verified_auto_labeling.html
 
 .. customcalloutitem::
