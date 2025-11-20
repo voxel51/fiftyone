@@ -153,7 +153,7 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
             fof.IntField,
         ),
     ):
-        schema = {"type": "input", "default": None, "ftype": field.db_field_type}
+        schema = {"type": "input", "default": None, "ftype": field.__class__.__name__.replace("Field", "").lower()}
         # Add multipleOf for float fields to set step increment
         if isinstance(field, fof.FloatField):
             schema["multipleOf"] = 0.01
