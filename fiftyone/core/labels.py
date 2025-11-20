@@ -2132,6 +2132,8 @@ class Person3D(EmbeddedDocument):
         keypoints_2d (None): 2D keypoint locations as Jx2 list of lists
         smpl_params (None): :class:`SMPLParams` instance with SMPL parameters
         camera_translation (None): camera translation [tx, ty, tz]
+        instance (None): an :class:`Instance` to link this 3D person to the
+            corresponding 2D detection in a grouped dataset
     """
 
     person_id = fof.IntField()
@@ -2141,28 +2143,52 @@ class Person3D(EmbeddedDocument):
     keypoints_2d = fof.ListField(fof.ListField(fof.FloatField()))
     smpl_params = fof.EmbeddedDocumentField(SMPLParams)
     camera_translation = fof.ListField(fof.FloatField())
+    instance = fof.EmbeddedDocumentField(Instance)
 
 
 class HumanPose2D(Label):
-    """2D human pose keypoints for image samples.
+    """2D human pose keypoints and detection for image samples.
+
+    This class wraps native FiftyOne label types (Keypoint and Detection) to
+    enable proper rendering in the FiftyOne App using the core overlay logic.
+    The detection's instance field can be used to link this 2D pose to the
+    corresponding 3D Person3D label in a grouped dataset.
 
     Args:
-        keypoints (None): list of 2D keypoint locations (Nx2) in pixel coordinates
-        bounding_box (None): bounding box around the detected person [x, y, w, h]
+        pose (None): a :class:`Keypoint` instance containing the 2D keypoints
+        detection (None): a :class:`Detection` instance for the person bounding box.
+            The detection.instance field can be set to link to Person3D labels.
     """
 
-    keypoints = fof.ListField()
-    bounding_box = fof.ListField()
+    pose = fof.EmbeddedDocumentField(Keypoint)
+    detection = fof.EmbeddedDocumentField(Detection)
 
     def __init__(
         self,
-        keypoints=None,
-        bounding_box=None,
+        pose=None,
+        detection=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.keypoints = keypoints
-        self.bounding_box = bounding_box
+        self.pose = pose
+        self.detection = detection
+
+
+class HumanPoses2D(_HasLabelList, Label):
+    """A list of 2D human poses in an image.
+
+    This wrapper class provides proper schema registration for lists of
+    HumanPose2D instances, enabling the FiftyOne App to automatically discover
+    and render the embedded Keypoint and Detection labels through recursive
+    traversal.
+
+    Args:
+        poses (None): a list of :class:`HumanPose2D` instances
+    """
+
+    _LABEL_LIST_FIELD = "poses"
+
+    poses = fof.ListField(fof.EmbeddedDocumentField(HumanPose2D))
 
 
 class HumanPose3D(Label):
