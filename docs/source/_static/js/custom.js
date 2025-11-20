@@ -527,7 +527,7 @@ const initKapaAI = () => {
     modalExampleQuestions:
       "How can I import my data?,How can I compute embeddings?, How can I create my own plugin?, How can I evaluate my model?",
     modalDisclaimer:
-      "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).",
+      "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).\n\nNeed team collaboration, cloud storage, flexible deployment, and advanced workflows for production? [Get Enterprise](https://link.voxel51.com/docs-search-sales)",
   });
 
   document.head.appendChild(script);
@@ -597,6 +597,38 @@ const initKapaAI = () => {
   });
 };
 
+/* Add Enterprise Message to DocSearch Modal */
+const addEnterpriseBanner = () => {
+  const observer = new MutationObserver(() => {
+    const modal = document.querySelector(".DocSearch-Modal");
+    if (!modal || modal.querySelector(".docsearch-enterprise-banner")) return;
+
+    const footer = modal.querySelector(".DocSearch-Footer");
+    if (!footer) return;
+
+    const banner = document.createElement("div");
+    banner.className = "docsearch-enterprise-banner";
+    banner.innerHTML = `
+      <div class="enterprise-banner-content">
+        <span class="enterprise-banner-text">Need team collaboration, cloud storage, flexible deployment, and advanced workflows for production?</span>
+        <a href="https://link.voxel51.com/docs-search-sales" target="_blank" rel="noopener" aria-label="Get enterprise features for team collaboration and production workflows" class="sd-btn sd-btn-primary book-a-demo" data-cta-dynamic="true">
+          <div class="arrow">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="size-3">
+              <path stroke="currentColor" stroke-width="1.5" d="M1.458 11.995h20.125M11.52 22.063 21.584 12 11.521 1.937" vector-effect="non-scaling-stroke"></path>
+            </svg>
+          </div>
+          <div class="text">Get Enterprise</div>
+        </a>
+      </div>
+    `;
+
+    footer.parentNode.insertBefore(banner, footer);
+    //window.dispatchEvent(new Event('resize'));
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+};
+
 /* Dynamic CTA shift for arrow/text */
 function initDynamicCTAs() {
   const ctas = document.querySelectorAll('[data-cta-dynamic="true"]');
@@ -658,6 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabsSlidingIndicator();
   initMobileNavDropdown();
   initKapaAI();
+  addEnterpriseBanner();
   initDynamicCTAs();
   initDirectAgentAccess();
 });
