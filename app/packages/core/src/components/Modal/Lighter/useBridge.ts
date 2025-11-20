@@ -7,6 +7,7 @@ import {
   UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
+  type LighterEventGroup,
   type Scene2D,
 } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -86,9 +87,17 @@ export const useBridge = (scene: Scene2D | null) => {
   );
 
   const handleCommandEvent = useCallback(
-    (payload: any) => {
+    (
+      payload:
+        | LighterEventGroup["lighter:command-executed"]
+        | LighterEventGroup["lighter:undo"]
+        | LighterEventGroup["lighter:redo"]
+    ) => {
       // Here, this would be true for `undo` or `redo`
-      if (!(payload?.command instanceof UpdateLabelCommand)) {
+      if (
+        !("command" in payload) ||
+        !(payload.command instanceof UpdateLabelCommand)
+      ) {
         const label = overlay?.label;
 
         if (label) {
@@ -98,7 +107,13 @@ export const useBridge = (scene: Scene2D | null) => {
         return;
       }
 
-      const newLabel = coerceStringBooleans(payload.command.nextLabel);
+      if (!payload.command.nextLabel) {
+        return;
+      }
+
+      const newLabel = coerceStringBooleans(
+        payload.command.nextLabel as Record<string, unknown>
+      );
 
       if (newLabel) {
         save(newLabel);
