@@ -623,7 +623,10 @@ const addEnterpriseBanner = () => {
     `;
 
     footer.parentNode.insertBefore(banner, footer);
-    //window.dispatchEvent(new Event('resize'));
+    requestAnimationFrame(() => {
+      window.dispatchEvent(new Event('resize'));
+    });
+    observer.disconnect();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
