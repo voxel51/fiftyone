@@ -10,8 +10,8 @@ from bson import ObjectId
 from typing import Any, Callable, Optional, TYPE_CHECKING
 
 from fiftyone.operators.store.models import StoreDocument, KeyDocument
-from fiftyone.operators.store.notification_service import (
-    ChangeStreamNotificationService,
+from fiftyone.server.events.service import (
+    MongoCollectionNotificationService,
 )
 
 if TYPE_CHECKING:
@@ -50,7 +50,9 @@ class ExecutionStoreService(object):
         repo: Optional["ExecutionStoreRepo"] = None,
         dataset_id: Optional[ObjectId] = None,
         collection_name: str = None,
-        notification_service: Optional[ChangeStreamNotificationService] = None,
+        notification_service: Optional[
+            MongoCollectionNotificationService
+        ] = None,
     ):
 
         from fiftyone.factory.repo_factory import (

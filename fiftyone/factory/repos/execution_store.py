@@ -7,6 +7,7 @@ Execution store repository interface and implementations.
 """
 
 import logging
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional
@@ -16,15 +17,23 @@ from bson import ObjectId
 from fiftyone.operators.store.models import (
     KeyDocument,
     StoreDocument,
-    KeyPolicy,
 )
-from fiftyone.operators.store.notification_service import (
-    ChangeStreamNotificationService,
-    default_notification_service,
-    is_notification_service_disabled,
+from fiftyone.server.events.service import (
+    MongoCollectionNotificationService,
 )
+from fiftyone.server.events.manager import get_default_notification_manager
 
 logger = logging.getLogger(__name__)
+
+
+def is_notification_service_disabled() -> bool:
+    """Check if the notification service is disabled."""
+    return (
+        os.getenv(
+            "FIFTYONE_EXECUTION_STORE_NOTIFICATION_SERVICE_DISABLED", "false"
+        ).lower()
+        == "true"
+    )
 
 
 class AbstractExecutionStoreRepo(ABC):
@@ -298,7 +307,9 @@ class ExecutionStoreRepo(AbstractExecutionStoreRepo):
     def __init__(
         self,
         dataset_id: Optional[ObjectId] = None,
-        notification_service: Optional[ChangeStreamNotificationService] = None,
+        notification_service: Optional[
+            MongoCollectionNotificationService
+        ] = None,
     ):
         """Initialize the execution store repository.
 
@@ -315,10 +326,16 @@ class ExecutionStoreRepo(AbstractExecutionStoreRepo):
 
         if not is_notification_service_disabled():
             if notification_service is None:
-                self._notification_service = default_notification_service
+                # Get the execution store service from the manager
+                self._notification_service = (
+                    get_default_notification_manager().get_service(
+                        "execution_store"
+                    )
+                )
             else:
                 self._notification_service = notification_service
         else:
+            self._notification_service = None
             logger.warning("Execution store notification service is disabled")
 
     def subscribe(
@@ -376,7 +393,9 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         self,
         collection,
         dataset_id: Optional[ObjectId] = None,
-        notification_service: Optional[ChangeStreamNotificationService] = None,
+        notification_service: Optional[
+            MongoCollectionNotificationService
+        ] = None,
     ):
         if dataset_id is not None and not isinstance(dataset_id, ObjectId):
             raise ValueError(
@@ -687,7 +706,9 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
     def __init__(
         self,
         dataset_id: Optional[ObjectId] = None,
-        notification_service: Optional[ChangeStreamNotificationService] = None,
+        notification_service: Optional[
+            MongoCollectionNotificationService
+        ] = None,
     ):
         super().__init__(dataset_id, notification_service)
         self._docs = {}

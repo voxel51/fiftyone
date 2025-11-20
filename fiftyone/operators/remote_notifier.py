@@ -24,12 +24,12 @@ logger = logging.getLogger(__name__)
 
 class RemoteNotifier(ABC):
     @abstractmethod
-    async def broadcast_to_store(self, store_name: str, message: str) -> None:
+    async def broadcast_to_channel(self, channel: str, message: str) -> None:
         """
-        Broadcast a message to all remote subscribers of the given store.
+        Broadcast a message to all remote subscribers of the given channel.
 
         Args:
-            store_name: The name of the store to which the message should be broadcast.
+            channel: The name of the channel to which the message should be broadcast.
             message: The message payload to send to the subscribers.
         """
         pass
@@ -42,21 +42,21 @@ class SseNotifier(RemoteNotifier):
     """
 
     def __init__(self) -> None:
-        # Maps store names to a set of tuples (queue, dataset_id)
-        self.store_queues: Dict[
+        # Maps channel names to a set of tuples (queue, dataset_id)
+        self.channel_queues: Dict[
             str, Set[Tuple[asyncio.Queue, Optional[str]]]
         ] = {}
 
-    async def broadcast_to_store(self, store_name: str, message: str) -> None:
+    async def broadcast_to_channel(self, channel: str, message: str) -> None:
         """
-        Broadcast a message to all connected SSE clients subscribed to the specified store.
+        Broadcast a message to all connected SSE clients subscribed to the specified channel.
         Handles disconnected clients gracefully without raising exceptions.
 
         Args:
-            store_name: The name of the store to broadcast to.
+            channel: The name of the channel to broadcast to.
             message: The message to broadcast.
         """
-        if store_name in self.store_queues:
+        if channel in self.channel_queues:
             # Try to extract dataset_id from message for filtering
             dataset_id = None
             try:
@@ -67,14 +67,14 @@ class SseNotifier(RemoteNotifier):
                 pass
 
             logger.debug(
-                "Broadcasting message to store '%s'%s: %s",
-                store_name,
+                "Broadcasting message to channel '%s'%s: %s",
+                channel,
                 f" for dataset {dataset_id}" if dataset_id else "",
                 message,
             )
 
             # Create a copy of the queues to avoid modification during iteration
-            queue_items = list(self.store_queues[store_name])
+            queue_items = list(self.channel_queues[channel])
             queues_to_remove = set()
 
             for queue, client_dataset_id in queue_items:
@@ -92,58 +92,62 @@ class SseNotifier(RemoteNotifier):
                     queue.put_nowait(message)
                 except asyncio.QueueFull:
                     logger.debug(
-                        f"Queue full for client in store '{store_name}', dropping message"
+                        f"Queue full for client in channel '{channel}', dropping message"
                     )
                 except Exception as e:
                     # If we encounter an error with this queue, mark it for removal
                     logger.debug(
-                        f"Error sending to client in store '{store_name}': {e}"
+                        f"Error sending to client in channel '{channel}': {e}"
                     )
                     queues_to_remove.add((queue, client_dataset_id))
 
             # Clean up any problematic queues
             for queue_item in queues_to_remove:
-                self._unregister_queue(
-                    store_name, queue_item[0], queue_item[1]
-                )
+                self._unregister_queue(channel, queue_item[0], queue_item[1])
         else:
             logger.debug(
-                "No subscribers found for store '%s'. Message not sent.",
-                store_name,
+                "No subscribers found for channel '%s'. Message not sent.",
+                channel,
             )
 
     async def get_event_source_response(
-        self, store_name: str, dataset_id: Optional[str] = None
+        self,
+        channel: str,
+        dataset_id: Optional[str] = None,
+        collection_name: str = "execution_store",
     ) -> EventSourceResponse:
         """
-        Creates an EventSourceResponse for a client subscribing to a specific store.
+        Creates an EventSourceResponse for a client subscribing to a specific channel.
         It registers a new queue for the client and produces an async generator to stream events.
 
         Args:
-            store_name: The name of the store to subscribe to.
+            channel: The name of the channel to subscribe to.
             dataset_id: Optional dataset ID to filter events by.
+            collection_name: The collection name to use for initial state sync.
 
         Returns:
             An EventSourceResponse for streaming events to the client.
         """
         queue: asyncio.Queue = asyncio.Queue()
 
-        if store_name not in self.store_queues:
-            self.store_queues[store_name] = set()
-        self.store_queues[store_name].add((queue, dataset_id))
+        if channel not in self.channel_queues:
+            self.channel_queues[channel] = set()
+        self.channel_queues[channel].add((queue, dataset_id))
 
         logger.debug(
-            "New SSE connection for store: %s%s",
-            store_name,
+            "New SSE connection for channel: %s%s",
+            channel,
             f" and dataset: {dataset_id}" if dataset_id else "",
         )
         logger.debug(
-            "Total SSE connections for store %s: %s",
-            store_name,
-            len(self.store_queues.get(store_name, set())),
+            "Total SSE connections for channel %s: %s",
+            channel,
+            len(self.channel_queues.get(channel, set())),
         )
 
-        await self.sync_current_state_for_client(queue, store_name, dataset_id)
+        await self.sync_current_state_for_client(
+            queue, channel, dataset_id, collection_name
+        )
 
         async def event_generator() -> AsyncGenerator[str, None]:
             try:
@@ -153,14 +157,14 @@ class SseNotifier(RemoteNotifier):
                     queue.task_done()
             except asyncio.CancelledError:
                 logger.debug(
-                    "SSE client disconnected from store: %s", store_name
+                    "SSE client disconnected from channel: %s", channel
                 )
             finally:
-                self._unregister_queue(store_name, queue, dataset_id)
+                self._unregister_queue(channel, queue, dataset_id)
                 logger.debug(
-                    "Total SSE connections for store %s: %s",
-                    store_name,
-                    len(self.store_queues.get(store_name, set())),
+                    "Total SSE connections for channel %s: %s",
+                    channel,
+                    len(self.channel_queues.get(channel, set())),
                 )
 
         return EventSourceResponse(event_generator())
@@ -168,20 +172,30 @@ class SseNotifier(RemoteNotifier):
     async def sync_current_state_for_client(
         self,
         queue: asyncio.Queue,
-        store_name: str,
+        channel: str,
         dataset_id: Optional[str] = None,
+        collection_name: str = "execution_store",
     ) -> None:
         """
-        Broadcast the current state of the store to all connected clients.
+        Broadcast the current state of the channel to the connected client.
         """
-        # note: unfortunate dependency on the notification service
-        from fiftyone.operators.store.notification_service import (
-            default_notification_service,
+        # Get the notification service from the manager
+        from fiftyone.server.events.manager import (
+            get_default_notification_manager,
         )
+
+        manager = get_default_notification_manager()
+        notification_service = manager.get_service(collection_name)
+
+        if not notification_service:
+            logger.warning(
+                f"Notification service for collection '{collection_name}' not found in manager"
+            )
+            return
 
         # wait until the notification service is started, with a timeout of 10 seconds
         start_time = time.time()
-        while not default_notification_service.is_running:
+        while not notification_service.is_running:
             if time.time() - start_time > 10:
                 raise TimeoutError(
                     "Notification service failed to start within 10 seconds"
@@ -189,35 +203,35 @@ class SseNotifier(RemoteNotifier):
             await asyncio.sleep(0.5)
 
         asyncio.run_coroutine_threadsafe(
-            default_notification_service._broadcast_current_state_for_store(
-                store_name,
+            notification_service._broadcast_current_state_for_channel(
+                channel,
                 dataset_id,
                 lambda msg: queue.put_nowait(msg.to_json()),
             ),
-            default_notification_service.dedicated_event_loop,
+            notification_service.dedicated_event_loop,
         )
 
     def _unregister_queue(
         self,
-        store_name: str,
+        channel: str,
         queue: asyncio.Queue,
         dataset_id: Optional[str] = None,
     ) -> None:
         """
-        Remove the client's queue from the store. Clean up if no queues remain.
+        Remove the client's queue from the channel. Clean up if no queues remain.
 
         Args:
-            store_name: The name of the store to unregister from.
+            channel: The name of the channel to unregister from.
             queue: The queue to unregister.
             dataset_id: Optional dataset ID associated with the queue.
         """
-        if store_name in self.store_queues:
-            self.store_queues[store_name].discard((queue, dataset_id))
-            if not self.store_queues[store_name]:
-                del self.store_queues[store_name]
+        if channel in self.channel_queues:
+            self.channel_queues[channel].discard((queue, dataset_id))
+            if not self.channel_queues[channel]:
+                del self.channel_queues[channel]
                 logger.debug(
-                    "No more subscribers for store: %s. Cleaned up.",
-                    store_name,
+                    "No more subscribers for channel: %s. Cleaned up.",
+                    channel,
                 )
 
 

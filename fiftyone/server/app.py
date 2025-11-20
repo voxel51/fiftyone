@@ -30,13 +30,15 @@ from starlette.types import Scope
 
 import fiftyone as fo
 import fiftyone.constants as foc
-from fiftyone.operators.store.notification_service import (
-    MongoChangeStreamNotificationServiceLifecycleManager,
-    default_notification_service,
-    is_notification_service_disabled,
-)
+from fiftyone.operators.remote_notifier import default_sse_notifier
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
+from fiftyone.server.events.execution_store import (
+    execution_store_message_builder,
+    execution_store_initial_state_builder,
+    ExecutionStorePollingStrategy,
+)
+from fiftyone.server.events.manager import get_default_notification_manager
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
@@ -156,34 +158,50 @@ app = Starlette(
 )
 
 
+def is_notification_service_disabled() -> bool:
+    """Check if the notification service is disabled."""
+    return (
+        os.getenv(
+            "FIFTYONE_EXECUTION_STORE_NOTIFICATION_SERVICE_DISABLED", "false"
+        ).lower()
+        == "true"
+    )
+
+
 @app.on_event("startup")
 async def startup_event():
     if is_notification_service_disabled():
         logger.info("Execution Store notification service is disabled")
         return
 
-    app.state.lifecycle_manager = (
-        MongoChangeStreamNotificationServiceLifecycleManager(
-            default_notification_service
-        )
+    manager = get_default_notification_manager()
+    manager.start()
+
+    # Register the default execution store watcher
+    # We do this here so that it's ready when the app starts
+    manager.manage_collection(
+        collection_name="execution_store",
+        message_builder=execution_store_message_builder,
+        remote_notifier=default_sse_notifier,
+        polling_strategy=ExecutionStorePollingStrategy(),
+        initial_state_builder=execution_store_initial_state_builder,
     )
-    app.state.lifecycle_manager.start_in_dedicated_thread()
+
+    app.state.notification_manager = manager
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    if hasattr(app.state, "lifecycle_manager") and app.state.lifecycle_manager:
-        logger.info("Shutting down notification service...")
+    if (
+        hasattr(app.state, "notification_manager")
+        and app.state.notification_manager
+    ):
+        logger.info("Shutting down notification manager...")
         try:
-            await asyncio.wait_for(
-                app.state.lifecycle_manager.stop(), timeout=5
-            )
-            logger.info("Notification service shutdown complete")
-        except asyncio.TimeoutError:
-            logger.warning(
-                "Notification service shutdown timed out after 5 seconds"
-            )
+            # Run in a thread because stop() is not async but manages loop
+            await asyncio.to_thread(app.state.notification_manager.stop)
+            logger.info("Notification manager shutdown complete")
         except Exception as e:
             logger.exception(
-                f"Error during notification service shutdown: {e}"
+                f"Error during notification manager shutdown: {e}"
             )

@@ -20,8 +20,8 @@ from fiftyone.factory.repos.execution_store import (
     ExecutionStoreRepo,
     MongoExecutionStoreRepo,
 )
-from fiftyone.operators.store.notification_service import (
-    ChangeStreamNotificationService,
+from fiftyone.server.events.service import (
+    MongoCollectionNotificationService,
 )
 
 _db: Database = None
@@ -59,7 +59,9 @@ class RepositoryFactory(object):
     def execution_store_repo(
         dataset_id: Optional[ObjectId] = None,
         collection_name: Optional[str] = None,
-        notification_service: Optional[ChangeStreamNotificationService] = None,
+        notification_service: Optional[
+            MongoCollectionNotificationService
+        ] = None,
     ) -> ExecutionStoreRepo:
         final_collection_name = (
             collection_name

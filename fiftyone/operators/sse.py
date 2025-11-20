@@ -57,6 +57,7 @@ class SseOperator(foo.Operator):
         dataset_id = ctx.request_params.get("dataset_id", None)
 
         return await default_sse_notifier.get_event_source_response(
-            self.subscription_config.store_name,
-            dataset_id,
+            channel=self.subscription_config.store_name,
+            dataset_id=dataset_id,
+            collection_name="execution_store",
         )
