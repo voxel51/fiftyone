@@ -390,6 +390,7 @@ export const DYNAMIC_GROUP_FIELDS = [
   STRING_FIELD,
 ];
 
+export const FIELDS_PATH = "fiftyone.core.fields";
 export const LABELS_PATH = "fiftyone.core.labels";
 
 export const PATCHES_FIELDS = withPath(LABELS_PATH, [

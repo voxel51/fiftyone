@@ -1,7 +1,7 @@
 /**
  * Copyright 2017-2025, Voxel51, Inc.
  */
-import type { COLOR_BY } from "@fiftyone/utilities";
+import type { COLOR_BY, Primitive } from "@fiftyone/utilities";
 import {
   BOOLEAN_FIELD,
   CLASSIFICATION,
@@ -24,6 +24,8 @@ import {
   formatDateTime,
   getColor,
   withPath,
+  FIELDS_PATH,
+  formatPrimitive,
 } from "@fiftyone/utilities";
 import { isEqual } from "lodash";
 import type {
@@ -350,6 +352,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ) {
             // Render the value of the embedded doc field
             results.push(String(v));
+          } else if (typeof v === "object" && v !== null) {
+            // Handle Date and DateTime primitives within the embedded doc
+            const ftype = withPath(FIELDS_PATH, v["_cls"] + "Field");
+            if (ftype) {
+              results.push(
+                formatPrimitive({ ftype, timeZone, value: v as Primitive })
+              );
+            }
           }
           continue;
         }
