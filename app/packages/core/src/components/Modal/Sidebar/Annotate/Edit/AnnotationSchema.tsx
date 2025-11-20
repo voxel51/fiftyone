@@ -186,8 +186,6 @@ const AnnotationSchema = () => {
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
 
-  const schemaKeys = Object.keys(schema.properties);
-
   useEffect(() => {
     const handler = (event) => {
       // Here, this would be true for `undo` or `redo`
@@ -237,12 +235,10 @@ const AnnotationSchema = () => {
         onChange={async (changes) => {
           const result = Object.fromEntries(
             await Promise.all(
-              Object.entries(changes)
-                .filter(([key]) => schemaKeys.includes(key))
-                .map(async ([key, value]) => [
-                  key,
-                  await handleChanges(field, key, value),
-                ])
+              Object.entries(changes).map(async ([key, value]) => [
+                key,
+                await handleChanges(field, key, value),
+              ])
             )
           );
 
