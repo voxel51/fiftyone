@@ -30,6 +30,7 @@ class NotificationManager:
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._thread: Optional[threading.Thread] = None
+        self._loop_ready = threading.Event()
 
     def start(self) -> None:
         """Start the notification manager in a dedicated thread."""
@@ -41,6 +42,7 @@ class NotificationManager:
         def run_loop():
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
+            self._loop_ready.set()
 
             # Keep the loop running
             self._loop.run_forever()
@@ -49,8 +51,7 @@ class NotificationManager:
         self._thread.start()
 
         # Wait for loop to be ready
-        while self._loop is None:
-            pass
+        self._loop_ready.wait()
 
         # Start existing services
         with self._lock:
@@ -66,8 +67,20 @@ class NotificationManager:
 
         # Stop all services
         with self._lock:
+            futures = []
             for service in self._services.values():
-                asyncio.run_coroutine_threadsafe(service.stop(), self._loop)
+                futures.append(
+                    asyncio.run_coroutine_threadsafe(
+                        service.stop(), self._loop
+                    )
+                )
+
+            # Wait for services to stop
+            for fut in futures:
+                try:
+                    fut.result(timeout=5)
+                except Exception:
+                    pass
 
         # Stop loop
         if self._loop.is_running():
@@ -77,6 +90,7 @@ class NotificationManager:
             self._thread.join(timeout=5)
             self._thread = None
             self._loop = None
+            self._loop_ready.clear()
 
     def manage_collection(
         self,

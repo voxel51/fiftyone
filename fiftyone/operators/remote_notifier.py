@@ -13,6 +13,7 @@ all connected SSE clients subscribed to that store will receive the message.
 import asyncio
 import json
 import logging
+import threading
 import time
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Dict, Optional, Set, Tuple
@@ -42,10 +43,14 @@ class SseNotifier(RemoteNotifier):
     """
 
     def __init__(self) -> None:
-        # Maps channel names to a set of tuples (queue, dataset_id)
+        # Maps channel names to a set of tuples (queue, dataset_id, loop)
         self.channel_queues: Dict[
-            str, Set[Tuple[asyncio.Queue, Optional[str]]]
+            str,
+            Set[
+                Tuple[asyncio.Queue, Optional[str], asyncio.AbstractEventLoop]
+            ],
         ] = {}
+        self._lock = threading.Lock()
 
     async def broadcast_to_channel(self, channel: str, message: str) -> None:
         """
@@ -56,59 +61,62 @@ class SseNotifier(RemoteNotifier):
             channel: The name of the channel to broadcast to.
             message: The message to broadcast.
         """
-        if channel in self.channel_queues:
-            # Try to extract dataset_id from message for filtering
-            dataset_id = None
-            try:
-                msg_data = json.loads(message)
-                dataset_id = msg_data.get("metadata", {}).get("dataset_id")
-            except Exception:
-                # If we can't parse the message, continue without dataset filtering
-                pass
-
-            logger.debug(
-                "Broadcasting message to channel '%s'%s: %s",
-                channel,
-                f" for dataset {dataset_id}" if dataset_id else "",
-                message,
-            )
+        # This method runs on the notification thread (background loop)
+        with self._lock:
+            if channel not in self.channel_queues:
+                logger.debug(
+                    "No subscribers found for channel '%s'. Message not sent.",
+                    channel,
+                )
+                return
 
             # Create a copy of the queues to avoid modification during iteration
             queue_items = list(self.channel_queues[channel])
-            queues_to_remove = set()
 
-            for queue, client_dataset_id in queue_items:
-                # Filter by dataset_id if both are specified
-                if (
-                    client_dataset_id is not None
-                    and dataset_id is not None
-                    and dataset_id != client_dataset_id
-                ):
-                    continue
+        # Try to extract dataset_id from message for filtering
+        dataset_id = None
+        try:
+            msg_data = json.loads(message)
+            dataset_id = msg_data.get("metadata", {}).get("dataset_id")
+        except Exception:
+            pass
 
-                try:
-                    # Use put_nowait to avoid blocking on full queues
-                    # This prevents one slow client from blocking others
-                    queue.put_nowait(message)
-                except asyncio.QueueFull:
-                    logger.debug(
-                        f"Queue full for client in channel '{channel}', dropping message"
+        logger.debug(
+            "Broadcasting message to channel '%s'%s: %s",
+            channel,
+            f" for dataset {dataset_id}" if dataset_id else "",
+            message,
+        )
+
+        queues_to_remove = set()
+
+        for queue, client_dataset_id, loop in queue_items:
+            # Filter by dataset_id if both are specified
+            if (
+                client_dataset_id is not None
+                and dataset_id is not None
+                and dataset_id != client_dataset_id
+            ):
+                continue
+
+            try:
+                # Use loop.call_soon_threadsafe because queue belongs to 'loop'
+                # but we are running on the notification service loop.
+                loop.call_soon_threadsafe(queue.put_nowait, message)
+            except Exception as e:
+                # If we encounter an error with this queue, mark it for removal
+                logger.debug(
+                    f"Error sending to client in channel '{channel}': {e}"
+                )
+                queues_to_remove.add((queue, client_dataset_id, loop))
+
+        # Clean up any problematic queues
+        if queues_to_remove:
+            with self._lock:
+                for queue_item in queues_to_remove:
+                    self._unregister_queue(
+                        channel, queue_item[0], queue_item[1], queue_item[2]
                     )
-                except Exception as e:
-                    # If we encounter an error with this queue, mark it for removal
-                    logger.debug(
-                        f"Error sending to client in channel '{channel}': {e}"
-                    )
-                    queues_to_remove.add((queue, client_dataset_id))
-
-            # Clean up any problematic queues
-            for queue_item in queues_to_remove:
-                self._unregister_queue(channel, queue_item[0], queue_item[1])
-        else:
-            logger.debug(
-                "No subscribers found for channel '%s'. Message not sent.",
-                channel,
-            )
 
     async def get_event_source_response(
         self,
@@ -128,25 +136,23 @@ class SseNotifier(RemoteNotifier):
         Returns:
             An EventSourceResponse for streaming events to the client.
         """
+        # Capture the current loop (Main Loop)
+        loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
 
-        if channel not in self.channel_queues:
-            self.channel_queues[channel] = set()
-        self.channel_queues[channel].add((queue, dataset_id))
+        with self._lock:
+            if channel not in self.channel_queues:
+                self.channel_queues[channel] = set()
+            self.channel_queues[channel].add((queue, dataset_id, loop))
 
         logger.debug(
             "New SSE connection for channel: %s%s",
             channel,
             f" and dataset: {dataset_id}" if dataset_id else "",
         )
-        logger.debug(
-            "Total SSE connections for channel %s: %s",
-            channel,
-            len(self.channel_queues.get(channel, set())),
-        )
 
         await self.sync_current_state_for_client(
-            queue, channel, dataset_id, collection_name
+            queue, channel, dataset_id, collection_name, loop
         )
 
         async def event_generator() -> AsyncGenerator[str, None]:
@@ -160,12 +166,13 @@ class SseNotifier(RemoteNotifier):
                     "SSE client disconnected from channel: %s", channel
                 )
             finally:
-                self._unregister_queue(channel, queue, dataset_id)
-                logger.debug(
-                    "Total SSE connections for channel %s: %s",
-                    channel,
-                    len(self.channel_queues.get(channel, set())),
-                )
+                with self._lock:
+                    self._unregister_queue(channel, queue, dataset_id, loop)
+                    logger.debug(
+                        "Total SSE connections for channel %s: %s",
+                        channel,
+                        len(self.channel_queues.get(channel, set())),
+                    )
 
         return EventSourceResponse(event_generator())
 
@@ -175,6 +182,7 @@ class SseNotifier(RemoteNotifier):
         channel: str,
         dataset_id: Optional[str] = None,
         collection_name: str = "execution_store",
+        loop: asyncio.AbstractEventLoop = None,
     ) -> None:
         """
         Broadcast the current state of the channel to the connected client.
@@ -183,6 +191,9 @@ class SseNotifier(RemoteNotifier):
         from fiftyone.server.events.manager import (
             get_default_notification_manager,
         )
+
+        if loop is None:
+            loop = asyncio.get_running_loop()
 
         manager = get_default_notification_manager()
         notification_service = manager.get_service(collection_name)
@@ -202,11 +213,14 @@ class SseNotifier(RemoteNotifier):
                 )
             await asyncio.sleep(0.5)
 
+        def _thread_safe_put(msg):
+            loop.call_soon_threadsafe(queue.put_nowait, msg.to_json())
+
         asyncio.run_coroutine_threadsafe(
             notification_service._broadcast_current_state_for_channel(
                 channel,
                 dataset_id,
-                lambda msg: queue.put_nowait(msg.to_json()),
+                _thread_safe_put,
             ),
             notification_service.dedicated_event_loop,
         )
@@ -216,17 +230,17 @@ class SseNotifier(RemoteNotifier):
         channel: str,
         queue: asyncio.Queue,
         dataset_id: Optional[str] = None,
+        loop: asyncio.AbstractEventLoop = None,
     ) -> None:
         """
         Remove the client's queue from the channel. Clean up if no queues remain.
-
-        Args:
-            channel: The name of the channel to unregister from.
-            queue: The queue to unregister.
-            dataset_id: Optional dataset ID associated with the queue.
+        Assumes caller holds the lock or calls from thread-safe context (e.g. broadcast clean up).
         """
         if channel in self.channel_queues:
-            self.channel_queues[channel].discard((queue, dataset_id))
+            # Handle potential missing loop in tuple if legacy (shouldn't happen with new code)
+            # Tuple is (queue, dataset_id, loop)
+            entry = (queue, dataset_id, loop)
+            self.channel_queues[channel].discard(entry)
             if not self.channel_queues[channel]:
                 del self.channel_queues[channel]
                 logger.debug(
