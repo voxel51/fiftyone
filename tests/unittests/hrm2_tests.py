@@ -727,13 +727,17 @@ class HRM2ModelTests(HRM2TestBase):
         mock_preprocessor = MagicMock()
         mock_img_tensor = MagicMock(name="img_tensor")
         box_center = np.array([320.0, 240.0], dtype=np.float32)
-        crop_size = 512.0
+        bbox_size = 512.0
         img_size = np.array([640.0, 480.0], dtype=np.float32)
+        mock_transform = np.eye(2, 3, dtype=np.float32)
+        crop_window = (256, 256)
         mock_preprocessor.return_value = (
             mock_img_tensor,
             box_center,
-            crop_size,
+            bbox_size,
             img_size,
+            mock_transform,
+            crop_window,
         )
 
         target_h, target_w = get_target_size(model._hmr2.cfg.MODEL.IMAGE_SIZE)
@@ -811,7 +815,7 @@ class HRM2ModelTests(HRM2TestBase):
         self.assertEqual(len(cam_args), 5)
         self.assertTrue(np.allclose(cam_args[0], pred_cam))
         self.assertTrue(np.allclose(cam_args[1], box_center))
-        self.assertAlmostEqual(cam_args[2], crop_size)
+        self.assertAlmostEqual(cam_args[2], bbox_size)
         self.assertTrue(np.allclose(cam_args[3], img_size))
         self.assertAlmostEqual(cam_args[4], expected_focal)
 
@@ -917,15 +921,17 @@ class HumanPoseLabelTests(HRM2TestBase):
     @drop_datasets
     def test_human_pose_2d_creation(self):
         """Test HumanPose2D label creation."""
-        from fiftyone.core.labels import HumanPose2D
+        from fiftyone.core.labels import HumanPose2D, Keypoint, Detection
 
         keypoints = [[100.0, 150.0], [120.0, 170.0], [110.0, 180.0]]
         bbox = [90.0, 140.0, 50.0, 60.0]
 
-        label = HumanPose2D(keypoints=keypoints, bounding_box=bbox)
+        pose = Keypoint(points=keypoints)
+        detection = Detection(bounding_box=bbox)
+        label = HumanPose2D(pose=pose, detection=detection)
 
-        self.assertEqual(label.keypoints, keypoints)
-        self.assertEqual(label.bounding_box, bbox)
+        self.assertEqual(label.pose.points, keypoints)
+        self.assertEqual(label.detection.bounding_box, bbox)
 
     @drop_datasets
     def test_human_pose_2d_serialization(self):
