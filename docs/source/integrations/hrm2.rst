@@ -165,10 +165,26 @@ The model creates a **grouped dataset** with two types of samples:
 1. Image Slice Samples
 ----------------------
 
-Each image sample contains a ``HumanPose2D`` label (default field: ``human_pose_2d``) with:
+Each image sample contains a ``HumanPoses2D`` label (default field: ``human_pose_2d``).
 
--   **keypoints**: List of 2D keypoint locations in pixel coordinates (Nx2)
--   **bounding_box**: Bounding box around the detected person [x, y, w, h]
+This is a list-like container where each element is a ``HumanPose2D`` instance
+corresponding to one detected person. Each ``HumanPose2D`` wraps native
+FiftyOne label types so that you can easily access both keypoints and the
+person box:
+
+-   ``pose``: a :class:`fiftyone.core.labels.Keypoint` instance
+
+    -   ``pose.points``: list of 2D keypoints in normalized coordinates
+        ``[0, 1] x [0, 1]`` (Nx2)
+    -   ``pose.confidence``: optional per-keypoint confidence scores (N,)
+
+-   ``detection``: a :class:`fiftyone.core.labels.Detection` instance
+
+    -   ``detection.bounding_box``: person box ``[x, y, w, h]`` in normalized
+        coordinates ``[0, 1]``
+    -   ``detection.instance``: shared :class:`fiftyone.core.labels.Instance`
+        used to link this 2D person to the corresponding 3D person in
+        ``HumanPose3D.people``
 
 2. 3D Scene Slice Samples
 -------------------------
@@ -185,24 +201,49 @@ Accessing Results
 .. code-block:: python
     :linenos:
 
-    # Get the image and 3D slices
+    import fiftyone as fo
+
+    #
+    # Get image/3D slices from the grouped dataset
+    #
     image_slice = dataset.select_group_slices("image")
     scene_slice = dataset.select_group_slices("3d")
 
-    # Access the 3D scene sample
-    # (Samples in the same group share the same group ID)
-    scene_sample = scene_slice.first()
+    #
+    # Access 2D poses on the image slice
+    #
+    img_sample = image_slice.match(fo.ViewField("human_pose_2d") != None).first()
+    pose_2d_list = img_sample.human_pose_2d  # HumanPoses2D
+
+    if pose_2d_list and pose_2d_list.poses:
+        first_person_2d = pose_2d_list.poses[0]  # HumanPose2D
+
+        # Keypoints (normalized [0, 1])
+        keypoints = first_person_2d.pose.points
+        confidences = first_person_2d.pose.confidence
+
+        # Person bounding box (normalized [0, 1])
+        bbox = first_person_2d.detection.bounding_box
+
+        print("First person keypoints:", keypoints)
+        print("First person bbox:", bbox)
+
+    #
+    # Access the 3D scene sample and SMPL data
+    # (samples in the same group share the same group ID)
+    #
+    scene_sample = scene_slice.match(fo.ViewField("human_pose_3d") != None).first()
     pose_3d = scene_sample.human_pose_3d
 
-    # Access SMPL parameters
     if pose_3d:
-        # Note: pose_3d.people is a list of detected people in the scene
+        # pose_3d.people is a list of Person3D instances
         for person in pose_3d.people:
-             print("Body pose:", person.smpl_params.body_pose)
-             print("Shape params:", person.smpl_params.betas)
-             print("3D keypoints:", person.keypoints_3d)
+            print("Body pose:", person.smpl_params.body_pose)
+            print("Shape params:", person.smpl_params.betas)
+            print("3D keypoints:", person.keypoints_3d)
+            print("Camera translation:", person.camera_translation)
 
-    # View the 3D scene file path
+    # View the 3D scene file path (.fo3d)
     print("Scene file:", scene_sample.filepath)
 
 .. _hrm2-3d-visualization:

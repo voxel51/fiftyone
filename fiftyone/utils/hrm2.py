@@ -18,7 +18,6 @@ from PIL import Image
 import eta.core.utils as etau
 
 import fiftyone as fo
-import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
@@ -33,14 +32,14 @@ from fiftyone.utils.torch import (
 import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
-import torch
+import torch  # pylint: disable=wrong-import-position,wrong-import-order
 
 try:
     from skimage.filters import (  # pylint: disable=no-name-in-module
-        gaussian as _skimage_gaussian,
+        gaussian as skimage_gaussian_filter,
     )
-except Exception:  # pragma: no cover - dependency optional
-    _skimage_gaussian = None
+except ImportError:  # pragma: no cover - dependency optional
+    skimage_gaussian_filter = None
 
 logger = logging.getLogger(__name__)
 
@@ -103,8 +102,85 @@ def cam_crop_to_full(
 
     if isinstance(pred_cam, torch.Tensor):
         return torch.stack([tx, ty, tz], dim=-1)
+    return np.array([tx, ty, tz])
+
+
+def keypoints_crop_to_full(
+    keypoints_crop: np.ndarray,
+    transform: np.ndarray,
+    crop_window: Tuple[int, int],
+    img_size: np.ndarray,
+) -> np.ndarray:
+    """Transform 2D keypoints from crop space to full image space.
+
+    This function applies the inverse affine transformation to convert keypoints
+    predicted on image crops back to absolute pixel coordinates in the full image.
+
+    Args:
+        keypoints_crop: predicted 2D keypoints in crop space, shape (N, 2) or (N, 3)
+            where N is the number of keypoints. If shape is (N, 3), the third
+            column is assumed to be confidence scores which are preserved.
+            Coordinates should be in pixel space of the crop (not normalized).
+        transform: 2x3 affine transformation matrix used to create the crop
+        crop_window: (crop_width, crop_height) of the crop patch
+        img_size: [width, height] of the original full image
+
+    Returns:
+        keypoints in full image space, shape (N, 2) or (N, 3) with coordinates
+        in absolute pixel space. If input had confidence scores (N, 3), they
+        are preserved in the output.
+    """
+    if keypoints_crop.shape[0] == 0:
+        return keypoints_crop
+
+    # Separate coordinates and confidence if present
+    has_confidence = keypoints_crop.shape[1] == 3
+    if has_confidence:
+        coords = keypoints_crop[:, :2].astype(np.float32)
+        confidence = keypoints_crop[:, 2:3]
     else:
-        return np.array([tx, ty, tz])
+        coords = keypoints_crop.astype(np.float32)
+
+    # Map bounding-box-relative coordinates to crop pixel space.
+    # From empirical inspection, HMR2 emits keypoints in approximately
+    # [-0.5, 0.5] around the box center. We shift this to [0, 1] and then
+    # scale by the crop size to obtain crop pixel coordinates.
+    crop_w, crop_h = crop_window
+    coords_norm = coords.copy()
+
+    if np.nanmin(coords_norm) < 0.0:
+        # [-0.5, 0.5] -> [0, 1]
+        coords_norm = coords_norm + 0.5
+
+    # Now in [0, 1] range: scale to crop pixels
+    coords_norm[:, 0] *= float(crop_w)
+    coords_norm[:, 1] *= float(crop_h)
+
+    # Get inverse affine transform
+    # The transform maps from image -> crop, so we need crop -> image
+    try:
+        transform_inv = cv2.invertAffineTransform(transform)
+    except cv2.error:
+        logger.warning(
+            "Failed to invert affine transform for keypoint reprojection. "
+            "Returning keypoints in crop space."
+        )
+        return keypoints_crop
+
+    # Transform keypoints from crop to full image space
+    # cv2.transform expects shape (N, 1, 2)
+    coords_homogeneous = coords_norm.reshape(-1, 1, 2).astype(np.float32)
+    coords_full = cv2.transform(coords_homogeneous, transform_inv)
+    coords_full = coords_full.reshape(-1, 2)
+
+    # Clip to image bounds
+    coords_full[:, 0] = np.clip(coords_full[:, 0], 0, img_size[0])
+    coords_full[:, 1] = np.clip(coords_full[:, 1], 0, img_size[1])
+
+    # Recombine with confidence if present
+    if has_confidence:
+        return np.concatenate([coords_full, confidence], axis=1)
+    return coords_full
 
 
 def _resolve_hrm2_config_path(version: Optional[str] = None) -> str:
@@ -260,11 +336,12 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
     serialization = getattr(torch, "serialization", None)
 
     try:
-        from omegaconf import DictConfig
-    except Exception:
-        DictConfig = None
+        from omegaconf import DictConfig  # pylint: disable=invalid-name
+    except ImportError:
+        DictConfig = None  # pylint: disable=invalid-name
 
     # Preferred path: use the safe_globals context manager introduced in torch 2.6
+    # pylint: disable=using-constant-test
     safe_globals_ctx = (
         getattr(serialization, "safe_globals", None) if serialization else None
     )
@@ -272,13 +349,14 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
         try:
             with safe_globals_ctx([DictConfig]):
                 return torch.load(checkpoint_path, **load_kwargs)
-        except Exception as e:
+        except (RuntimeError, TypeError, AttributeError) as e:
             logger.debug(
                 "torch.load with safe_globals failed: %s. Falling back to weights_only=False",
                 e,
             )
 
     # As a backup, register the class globally when supported
+    # pylint: disable=using-constant-test
     add_safe_globals = (
         getattr(serialization, "add_safe_globals", None)
         if serialization
@@ -287,7 +365,7 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
     if add_safe_globals and DictConfig is not None:
         try:
             add_safe_globals([DictConfig])
-        except Exception as e:
+        except (RuntimeError, TypeError, AttributeError) as e:
             logger.debug("torch.serialization.add_safe_globals failed: %s", e)
 
     # Final fallback: explicitly request full pickle loading (pre-2.6 behaviour)
@@ -464,8 +542,8 @@ def _apply_antialias(
     if sigma <= 0:
         return img
 
-    if _skimage_gaussian is not None:
-        return _skimage_gaussian(
+    if skimage_gaussian_filter is not None:
+        return skimage_gaussian_filter(
             img, sigma=sigma, channel_axis=2, preserve_range=True
         ).astype(img.dtype)
 
@@ -499,7 +577,29 @@ class _HRM2CropHelper:
 
     def __call__(
         self, img: np.ndarray, bbox: Optional[np.ndarray] = None
-    ) -> Tuple[torch.Tensor, np.ndarray, float, np.ndarray]:
+    ) -> Tuple[
+        torch.Tensor,
+        np.ndarray,
+        float,
+        np.ndarray,
+        np.ndarray,
+        Tuple[int, int],
+    ]:
+        """Preprocess image crop for HRM2 inference.
+
+        Args:
+            img: input image (HWC, RGB)
+            bbox: optional bounding box [x1, y1, x2, y2] in absolute coordinates
+
+        Returns:
+            tuple of:
+                - img_tensor: preprocessed image tensor (CHW, float, normalized)
+                - center: box center [cx, cy]
+                - bbox_size: size of the bounding box (scalar)
+                - img_size: original image size [width, height]
+                - transform: 2x3 affine transformation matrix used for cropping
+                - crop_size: (crop_width, crop_height) of the output patch
+        """
         if bbox is None:
             bbox = np.array(
                 [0.0, 0.0, float(img.shape[1]), float(img.shape[0])],
@@ -522,7 +622,7 @@ class _HRM2CropHelper:
         ) / 2.0
         img_cv2 = _apply_antialias(img_cv2, downsampling_factor)
 
-        patch, _ = _generate_image_patch_cv2(
+        patch, transform = _generate_image_patch_cv2(
             img_cv2,
             center[0],
             center[1],
@@ -545,7 +645,15 @@ class _HRM2CropHelper:
         img_size = np.array(
             [float(img.shape[1]), float(img.shape[0])], dtype=np.float32
         )
-        return img_tensor, center.astype(np.float32), bbox_size, img_size
+        crop_size = (self.patch_width, self.patch_height)
+        return (
+            img_tensor,
+            center.astype(np.float32),
+            bbox_size,
+            img_size,
+            transform,
+            crop_size,
+        )
 
 
 class HRM2OutputProcessor(fout.OutputProcessor):
@@ -624,7 +732,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         """
         labels = []
 
-        for idx, output in enumerate(outputs):
+        for output in outputs:
             people_data = []
 
             # Process each person's raw output
@@ -664,11 +772,14 @@ class HRM2OutputProcessor(fout.OutputProcessor):
 
         return labels
 
-    def _process_person(self, person_raw: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_person(
+        self, person_raw: Dict[str, Any]
+    ) -> Dict[str, Any]:  # pylint: disable=no-self-use
         """Convert a single person's raw tensors to Python types.
 
         All postprocessing is done on CPU - tensors are explicitly moved to CPU
-        before conversion to Python native types.
+        before conversion to Python native types. If crop metadata is present,
+        transforms 2D keypoints from crop space to full image coordinates.
 
         Args:
             person_raw: Dict with raw tensor outputs from model
@@ -686,6 +797,44 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 return x.tolist()
             return x
 
+        # Convert 2D keypoints from crop space to full image space if metadata available
+        keypoints_2d_full = None
+        if person_raw.get("pred_keypoints_2d") is not None:
+            # Extract crop metadata
+            crop_transform = person_raw.get("crop_transform")
+            crop_window = person_raw.get("crop_window")
+            img_size = person_raw.get("img_size")
+
+            if (
+                crop_transform is not None
+                and crop_window is not None
+                and img_size is not None
+            ):
+                # Convert to numpy for transformation
+                kpts_crop = person_raw["pred_keypoints_2d"]
+                if isinstance(kpts_crop, torch.Tensor):
+                    kpts_crop = kpts_crop.cpu().numpy()
+
+                # Transform keypoints to full image space
+                try:
+                    keypoints_2d_full = keypoints_crop_to_full(
+                        kpts_crop, crop_transform, crop_window, img_size
+                    )
+                except (cv2.error, ValueError, RuntimeError) as e:
+                    logger.warning(
+                        "Failed to transform keypoints to full image space: %s. "
+                        "Using crop-space keypoints.",
+                        e,
+                    )
+                    keypoints_2d_full = kpts_crop
+            else:
+                # No crop metadata, use crop-space keypoints as-is
+                kpts_crop = person_raw["pred_keypoints_2d"]
+                if isinstance(kpts_crop, torch.Tensor):
+                    keypoints_2d_full = kpts_crop.cpu().numpy()
+                else:
+                    keypoints_2d_full = kpts_crop
+
         person_dict = {
             "smpl_params": {
                 "body_pose": to_list(
@@ -698,7 +847,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 "camera": to_list(person_raw["pred_cam"]),
             },
             "keypoints_3d": to_list(person_raw["pred_keypoints_3d"]),
-            "keypoints_2d": to_list(person_raw.get("pred_keypoints_2d")),
+            "keypoints_2d": to_list(keypoints_2d_full),
             "vertices": to_list(person_raw.get("pred_vertices")),
             "bbox": person_raw.get("bbox"),
             "person_id": person_raw["person_id"],
@@ -790,7 +939,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
 
         return scene_data
 
-    def _build_person3d_objects(
+    def _build_person3d_objects(  # pylint: disable=no-self-use
         self, people_data: List[Dict[str, Any]]
     ) -> List[fol.Person3D]:
         """Build Person3D objects from processed person dictionaries.
@@ -895,7 +1044,7 @@ class HRM2GetItem(fout.GetItem):
         return keys
 
 
-def load_hrm2_model(
+def load_hrm2_model(  # pylint: disable=unused-argument
     checkpoint_version: str = "2.0b",
     checkpoint_path: Optional[str] = None,
     model_config_path: Optional[str] = None,
@@ -926,21 +1075,21 @@ def load_hrm2_model(
         raise ImportError(
             f"Failed to import HRM2 dependencies: {e}. "
             f"Please install 4D-Humans from https://github.com/shubham-goel/4D-Humans"
-        )
+        ) from e
 
     # Resolve model config path
     if model_config_path is None:
         model_config_path = _resolve_hrm2_config_path(checkpoint_version)
 
     model_cfg = get_config(model_config_path, update_cachedir=True)
-    logger.info(f"Using HRM2 model config at {model_config_path}")
+    logger.info("Using HRM2 model config at %s", model_config_path)
 
     # Validate critical SMPL resources referenced by the config
     try:
         smpl_model_dir = getattr(model_cfg.SMPL, "MODEL_PATH", None)
         smpl_mean_params = getattr(model_cfg.SMPL, "MEAN_PARAMS", None)
         smpl_joint_reg = getattr(model_cfg.SMPL, "JOINT_REGRESSOR_EXTRA", None)
-    except Exception:
+    except AttributeError:
         smpl_model_dir = smpl_mean_params = smpl_joint_reg = None
 
     missing = []
@@ -967,17 +1116,18 @@ def load_hrm2_model(
     if os.path.exists(checkpoint_path):
         checkpoint = _load_hrm2_checkpoint(checkpoint_path)
         model.load_state_dict(checkpoint["state_dict"])
-        logger.info(f"Loaded HRM2 checkpoint from {checkpoint_path}")
+        logger.info("Loaded HRM2 checkpoint from %s", checkpoint_path)
     else:
         logger.warning(
-            f"Checkpoint not found at {checkpoint_path}. "
-            f"Model will use random initialization."
+            "Checkpoint not found at %s. "
+            "Model will use random initialization.",
+            checkpoint_path,
         )
 
     return model
 
 
-def load_smpl_model(
+def load_smpl_model(  # pylint: disable=unused-argument
     smpl_model_path: str, device: str = "cpu", **kwargs: Any
 ) -> Any:
     """Entrypoint function for loading SMPL models.
@@ -996,7 +1146,7 @@ def load_smpl_model(
         raise ImportError(
             f"Failed to import SMPL dependencies: {e}. "
             f"Please install smplx: pip install smplx"
-        )
+        ) from e
 
     if not os.path.exists(smpl_model_path):
         raise ValueError(
@@ -1011,7 +1161,7 @@ def load_smpl_model(
         batch_size=1,
         create_transl=False,
     )
-    logger.info(f"Loaded SMPL model from {smpl_model_path}")
+    logger.info("Loaded SMPL model from %s", smpl_model_path)
 
     return model
 
@@ -1068,12 +1218,9 @@ def apply_hrm2_to_dataset_as_groups(
             "Dataset is already grouped. This will add new slices to "
             "existing groups."
         )
-        is_already_grouped = True
-    else:
-        is_already_grouped = False
 
     # Store original sample info before clearing
-    logger.info(f"Processing {len(dataset)} samples...")
+    logger.info("Processing %d samples...", len(dataset))
     original_data = []
     for sample in dataset.iter_samples():
         original_data.append(
@@ -1113,7 +1260,7 @@ def apply_hrm2_to_dataset_as_groups(
     # Create all new samples with groups
     all_new_samples = []
 
-    for idx, (orig_data, pred) in enumerate(zip(original_data, predictions)):
+    for orig_data, pred in zip(original_data, predictions):
         # Create group
         group = fo.Group()
 
@@ -1125,18 +1272,89 @@ def apply_hrm2_to_dataset_as_groups(
         for field_name, field_value in orig_data["fields"].items():
             image_sample[field_name] = field_value
 
-        # Add 2D keypoints if available
+        # Get image dimensions for coordinate conversion
+        img_metadata = fo.ImageMetadata.build_for(orig_data["filepath"])
+        img_width = img_metadata.width
+        img_height = img_metadata.height
+
+        # Create shared instances and 2D labels for each person
         if pred and pred.people:
             people_list = pred.people
-            # Store first person's 2D keypoints (if available)
+            pose_2d_labels = []
+            keypoints_list = []
+            detections_list = []
+
             for person in people_list:
+                # Create shared instance for linking 2D and 3D labels
+                person_instance = fol.Instance()
+
+                # Store instance on Person3D for later linking
+                person.instance = person_instance
+
+                # Create 2D labels if keypoints available
                 if person.keypoints_2d is not None:
-                    keypoints_2d_field = f"{label_field}_2d"
-                    image_sample[keypoints_2d_field] = fol.HumanPose2D(
-                        keypoints=person.keypoints_2d,
-                        bounding_box=person.bbox,
+                    # Convert keypoints from absolute pixels to relative [0,1] coordinates
+                    kpts_abs = np.array(person.keypoints_2d)
+                    kpts_rel = kpts_abs.copy()
+                    kpts_rel[:, 0] /= img_width
+                    kpts_rel[:, 1] /= img_height
+
+                    # Extract confidence if present (Nx3) or set to None
+                    confidence = None
+                    if kpts_abs.shape[1] == 3:
+                        confidence = kpts_rel[:, 2].tolist()
+                        kpts_rel = kpts_rel[:, :2]
+
+                    # Create Keypoint label
+                    keypoint_label = fol.Keypoint(
+                        label="person",
+                        points=kpts_rel.tolist(),
+                        confidence=confidence,
+                        instance=person_instance,
                     )
-                    break  # Only store first person for now
+                    keypoints_list.append(keypoint_label)
+
+                    # Create Detection label if bbox available
+                    detection_label = None
+                    if person.bbox is not None:
+                        # Convert bbox from absolute [x1,y1,x2,y2] to relative [x,y,w,h]
+                        x1, y1, x2, y2 = person.bbox
+                        bbox_rel = [
+                            x1 / img_width,
+                            y1 / img_height,
+                            (x2 - x1) / img_width,
+                            (y2 - y1) / img_height,
+                        ]
+                        detection_label = fol.Detection(
+                            label="person",
+                            bounding_box=bbox_rel,
+                            instance=person_instance,
+                        )
+                        detections_list.append(detection_label)
+
+                    # Create HumanPose2D wrapper
+                    pose_2d_labels.append(
+                        fol.HumanPose2D(
+                            pose=keypoint_label,
+                            detection=detection_label,
+                        )
+                    )
+
+            # Store native label types for App visualization
+            if keypoints_list:
+                image_sample[f"{label_field}_keypoints"] = fol.Keypoints(
+                    keypoints=keypoints_list
+                )
+            if detections_list:
+                image_sample[f"{label_field}_detections"] = fol.Detections(
+                    detections=detections_list
+                )
+
+            # Store HumanPose2D wrappers with proper schema registration
+            if pose_2d_labels:
+                image_sample[f"{label_field}_2d"] = fol.HumanPoses2D(
+                    poses=pose_2d_labels
+                )
 
         all_new_samples.append(image_sample)
 
@@ -1145,17 +1363,17 @@ def apply_hrm2_to_dataset_as_groups(
             scene_sample = fo.Sample(filepath=pred.scene_path)
             scene_sample["group"] = group.element(scene_slice_name)
 
-            # Store 3D pose data
+            # Store 3D pose data (Person3D objects now have instance field set)
             scene_sample[f"{label_field}_3d"] = pred
             all_new_samples.append(scene_sample)
 
     # Add all samples at once - FiftyOne will detect groups automatically
-    logger.info(f"Adding {len(all_new_samples)} samples to dataset...")
+    logger.info("Adding %d samples to dataset...", len(all_new_samples))
     dataset.add_samples(all_new_samples)
 
-    logger.info(f"Created grouped dataset with {len(predictions)} groups")
-    logger.info(f"Dataset media type is now: {dataset.media_type}")
-    logger.info(f"Dataset group slices: {dataset.group_slices}")
+    logger.info("Created grouped dataset with %d groups", len(predictions))
+    logger.info("Dataset media type is now: %s", dataset.media_type)
+    logger.info("Dataset group slices: %s", dataset.group_slices)
 
     return dataset
 
@@ -1498,7 +1716,7 @@ class HRM2Model(
         imgs: List[
             Union[Image.Image, np.ndarray, torch.Tensor, Dict[str, Any]]
         ],
-        samples: Optional[Any] = None,
+        samples: Optional[Any] = None,  # pylint: disable=unused-argument
     ) -> List[fol.HumanPose3D]:
         """Run HRM2 inference on a list of images or batch data.
 
@@ -1541,7 +1759,7 @@ class HRM2Model(
             self._preprocessor = _HRM2CropHelper(self._hmr2.cfg)
         return self._preprocessor
 
-    def _predict_all(
+    def _predict_all(  # pylint: disable=arguments-renamed
         self, batch_data: List[Dict[str, Any]]
     ) -> List[fol.HumanPose3D]:
         """Process batch and return labels via output processor.
@@ -1576,7 +1794,7 @@ class HRM2Model(
             confidence_thresh=self.config.confidence_thresh,
         )
 
-    def _forward_pass(
+    def _forward_pass(  # pylint: disable=arguments-renamed
         self, batch_data: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Run HRM2 inference and return raw outputs.
@@ -1629,7 +1847,7 @@ class HRM2Model(
         with torch.no_grad():
             return self._hmr2(batch)
 
-    def _extract_predictions(
+    def _extract_predictions(  # pylint: disable=no-self-use
         self, outputs: Dict[str, Any]
     ) -> Tuple[
         np.ndarray,
@@ -1673,7 +1891,7 @@ class HRM2Model(
             pred_keypoints_2d,
         )
 
-    def _build_person_raw(
+    def _build_person_raw(  # pylint: disable=no-self-use
         self,
         pred_cam: np.ndarray,
         pred_pose: np.ndarray,
@@ -1685,6 +1903,9 @@ class HRM2Model(
         person_id: int = 0,
         bbox: Optional[List[float]] = None,
         camera_translation: Optional[np.ndarray] = None,
+        crop_transform: Optional[np.ndarray] = None,
+        crop_window: Optional[Tuple[int, int]] = None,
+        img_size: Optional[np.ndarray] = None,
     ) -> Dict[str, Any]:
         """Build raw person detection dictionary with tensors on CPU.
 
@@ -1698,14 +1919,17 @@ class HRM2Model(
             pred_betas: SMPL shape parameters
             pred_global_orient: SMPL global orientation
             pred_keypoints_3d: 3D keypoint locations
-            pred_keypoints_2d: optional 2D keypoint locations
+            pred_keypoints_2d: optional 2D keypoint locations (in crop space)
             pred_vertices: 3D mesh vertices from HMR2
             person_id: person identifier
             bbox: optional bounding box [x1, y1, x2, y2]
             camera_translation: optional camera translation [tx, ty, tz]
+            crop_transform: optional 2x3 affine transformation matrix for crop
+            crop_window: optional (crop_width, crop_height) tuple
+            img_size: optional original image size [width, height]
 
         Returns:
-            person detection dictionary with raw tensors
+            person detection dictionary with raw tensors and crop metadata
         """
         # Convert numpy arrays to tensors (on CPU for consistency)
         person_dict = {
@@ -1744,6 +1968,14 @@ class HRM2Model(
                 else camera_translation
             )
 
+        # Store crop metadata for keypoint reprojection
+        if crop_transform is not None:
+            person_dict["crop_transform"] = crop_transform
+        if crop_window is not None:
+            person_dict["crop_window"] = crop_window
+        if img_size is not None:
+            person_dict["img_size"] = img_size
+
         return person_dict
 
     def _inference_with_detections(
@@ -1771,11 +2003,12 @@ class HRM2Model(
 
         if boxes is None or len(boxes) == 0:
             logger.warning(
-                f"No valid boxes for image {global_idx}, using single-person mode"
+                "No valid boxes for image %d, using single-person mode",
+                global_idx,
             )
             return self._inference_single_person(img, global_idx)
 
-        logger.info(f"Processing {len(boxes)} people in image {global_idx}")
+        logger.info("Processing %d people in image %d", len(boxes), global_idx)
 
         # Process each person - returns raw tensors
         people_data = [
@@ -1793,7 +2026,7 @@ class HRM2Model(
         img_np: np.ndarray,
         box: np.ndarray,
         person_idx: int,
-        global_idx: int,
+        global_idx: int,  # pylint: disable=unused-argument
     ) -> Dict[str, Any]:
         """Run inference on a single person crop from the image.
 
@@ -1809,9 +2042,14 @@ class HRM2Model(
         x1, y1, x2, y2 = box
 
         preprocessor = self._get_preprocessor()
-        img_crop_t, box_center, crop_size, img_size = preprocessor(
-            img_np, np.array([x1, y1, x2, y2], dtype=np.float32)
-        )
+        (
+            img_crop_t,
+            box_center,
+            crop_size,
+            img_size,
+            transform,
+            crop_window,
+        ) = preprocessor(img_np, np.array([x1, y1, x2, y2], dtype=np.float32))
 
         # Run inference
         outputs = self._run_inference(img_crop_t)
@@ -1842,6 +2080,7 @@ class HRM2Model(
         )
 
         # Build raw person data (tensors on CPU)
+        # Pass crop metadata for keypoint reprojection
         return self._build_person_raw(
             pred_cam,
             pred_pose,
@@ -1853,12 +2092,15 @@ class HRM2Model(
             person_id=person_idx,
             bbox=[float(x1), float(y1), float(x2), float(y2)],
             camera_translation=cam_t_full,
+            crop_transform=transform,
+            crop_window=crop_window,
+            img_size=img_size,
         )
 
     def _inference_single_person(
         self,
         img: Union[Image.Image, np.ndarray, torch.Tensor],
-        global_idx: int,
+        global_idx: int,  # pylint: disable=unused-argument
     ) -> Dict[str, Any]:
         """Run inference on full image in single-person mode.
 
@@ -1876,7 +2118,14 @@ class HRM2Model(
 
         # Use shared preprocessor to mirror ViTDet cropping pipeline
         preprocessor = self._get_preprocessor()
-        img_crop_t, box_center, crop_size, img_size = preprocessor(img_np)
+        (
+            img_crop_t,
+            box_center,
+            crop_size,
+            img_size,
+            transform,
+            crop_window,
+        ) = preprocessor(img_np)
 
         # Run inference
         outputs = self._run_inference(img_crop_t)
@@ -1906,6 +2155,7 @@ class HRM2Model(
         )
 
         # Build raw person data
+        # Pass crop metadata for keypoint reprojection
         person_data = self._build_person_raw(
             pred_cam,
             pred_pose,
@@ -1917,6 +2167,9 @@ class HRM2Model(
             person_id=0,
             bbox=None,
             camera_translation=cam_t_full,
+            crop_transform=transform,
+            crop_window=crop_window,
+            img_size=img_size,
         )
 
         return {"people": [person_data], "img_shape": img_shape}
