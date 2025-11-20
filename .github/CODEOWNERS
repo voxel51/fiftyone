@@ -9,6 +9,8 @@
 /app/                        @voxel51/frontend-devs
 /e2e-pw/                     @voxel51/frontend-devs
 /fiftyone/server/            @voxel51/frontend-devs
+
+# Plugins
 /plugins/panels/             @voxel51/plugin-pros
 /fiftyone/operators/         @voxel51/plugin-pros @voxel51/backend-squad
 
@@ -27,3 +29,6 @@ Dockerfile                   @voxel51/aloha-shirts
 setup.py                     @voxel51/aloha-shirts
 requirements.txt             @voxel51/aloha-shirts
 requirements/                @voxel51/aloha-shirts
+
+# Exclusions ('!' syntax not supported by github)
+/fiftyone/internal/features  @voxel51/developers
