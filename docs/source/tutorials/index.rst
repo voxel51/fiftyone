@@ -226,7 +226,7 @@ your datasets and turn your good models into *great models*.
    :hidden:
 
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
-   Exploring Kaputt Dataset <kaputt_dataset.ipynb>
+   Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
