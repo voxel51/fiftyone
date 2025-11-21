@@ -23,7 +23,7 @@ import {
   set,
   ThrottleSettings,
 } from "lodash";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { operatorToIOSchema } from "../../OperatorIO/utils";
 import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";
@@ -50,7 +50,21 @@ export default function ResolvablePropertyView(props) {
   const [resolvedParams, setResolvedParams] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [showError, setShowError] = useState(false);
-  const [resolveCount, setResolveCount] = useState(0);
+
+  // Request ID pattern to prevent race conditions
+  const requestIdRef = useRef(0);
+
+  // Track first resolution after dependencies change for validation
+  const firstResolutionRef = useRef(true);
+
+  // Stable refs for cleanup effect
+  const pathRef = useRef(path);
+  const onValidationErrorsRef = useRef(onValidationErrors);
+
+  useEffect(() => {
+    pathRef.current = path;
+    onValidationErrorsRef.current = onValidationErrors;
+  });
 
   const serializedObservedData = useMemo(() => {
     const hasDependencies = dependencies && dependencies.length > 0;
@@ -62,9 +76,15 @@ export default function ResolvablePropertyView(props) {
       : fullData;
     return JSON.stringify(observedData);
   }, [fullData, dependencies]);
+
   const serializedProvidedParams = useMemo(() => {
     return JSON.stringify(params || {});
   }, [params]);
+
+  // Reset first resolution flag when dependencies change
+  useEffect(() => {
+    firstResolutionRef.current = true;
+  }, [serializedObservedData, serializedProvidedParams]);
 
   const schemaResolver = useCallback(
     (
@@ -74,19 +94,36 @@ export default function ResolvablePropertyView(props) {
       path?: string,
       validate?: boolean
     ) => {
+      const requestId = ++requestIdRef.current;
+
       const computedParams = providedParams
         ? { ...params, ...providedParams }
         : params;
-      setResolveCount((count) => count + 1);
+
+      setResolvingParams(serializedObservedData);
+
       executeOperator(resolver, computedParams, {
         callback: (result) => {
+          // Discard stale results - only process latest request
+          if (requestId !== requestIdRef.current) {
+            return;
+          }
+
           const { result: schema, error } = result;
           setError(error);
+
           if (schema) {
             try {
               const property = types.Property.fromJSON(schema);
               setResolvedSchema(operatorToIOSchema(property));
-              if (validate && onValidationErrors && resolveCount <= 1) {
+
+              // Validate only on first resolution after dependencies change
+              if (
+                validate &&
+                onValidationErrors &&
+                firstResolutionRef.current
+              ) {
+                firstResolutionRef.current = false;
                 const basePath = path as string;
                 const value = get(computedParams, basePath);
                 const { errors } = validateProperty(value, property);
@@ -96,13 +133,21 @@ export default function ResolvablePropertyView(props) {
               setError((error as Error).toString());
             }
           }
+
           setResolvedParams(serializedObservedData);
-          setResolveCount((count) => Math.max(count - 1, 0));
         },
       });
     },
-    [resolver, onValidationErrors, resolveCount]
+    [resolver, onValidationErrors, path]
   );
+
+  // Ref that always holds the latest resolver fn to prevent wrapper recreation
+  const resolverRef = useRef(schemaResolver);
+
+  useEffect(() => {
+    resolverRef.current = schemaResolver;
+  });
+
   const manualRefresh = auto_update === false;
   const wrapper = useMemo(() => {
     let wrapperFn: WrapperType = lodashThrottle;
@@ -113,11 +158,30 @@ export default function ResolvablePropertyView(props) {
     }
     return wrapperFn;
   }, [throttle, debounce]);
+
   const waitTime = typeof wait === "number" ? wait : DEFAULT_WAIT;
+
+  // Stable wrapper that only recreates when configuration changes
   const resolveSchema = useMemo(() => {
     if (!wrapper) {
-      return schemaResolver;
+      // No throttle/debounce - invoke the resolver directly via ref
+      return (
+        params: Record<string, unknown>,
+        providedParams: Record<string, unknown> | undefined,
+        observed: string,
+        path?: string,
+        validate?: boolean
+      ) => {
+        return resolverRef.current(
+          params,
+          providedParams,
+          observed,
+          path,
+          validate
+        );
+      };
     }
+
     const wrapperOptions: DebounceSettings | ThrottleSettings = {};
     if (leading !== undefined) {
       wrapperOptions.leading = leading;
@@ -125,12 +189,36 @@ export default function ResolvablePropertyView(props) {
     if (trailing !== undefined) {
       wrapperOptions.trailing = trailing;
     }
-    return wrapper(schemaResolver, waitTime, wrapperOptions);
-  }, [schemaResolver, waitTime, leading, trailing, wrapper]);
+
+    // Create throttled/debounced function only when behavior spec changes
+    const wrapped = wrapper(
+      (
+        params: Record<string, unknown>,
+        providedParams: Record<string, unknown> | undefined,
+        observed: string,
+        path?: string,
+        validate?: boolean
+      ) => {
+        resolverRef.current(params, providedParams, observed, path, validate);
+      },
+      waitTime,
+      wrapperOptions
+    );
+
+    return wrapped;
+  }, [wrapper, waitTime, leading, trailing]);
+
+  // Cleanup debounce/throttle on unmount or when wrapper changes
+  useEffect(() => {
+    return () => {
+      if (resolveSchema.cancel) {
+        resolveSchema.cancel();
+      }
+    };
+  }, [resolveSchema]);
 
   const handleResolve = useCallback(() => {
     resolveSchema(fullData, params, serializedObservedData, path, validate);
-    setResolvingParams(serializedObservedData);
   }, [resolveSchema, fullData, params, serializedObservedData, path, validate]);
 
   const unboundedStateRef = useUnboundStateRef({
@@ -150,7 +238,8 @@ export default function ResolvablePropertyView(props) {
   const showSkeleton = !resolvedSchema && !error;
   const showRefresh =
     manualRefresh && resolvingParams !== serializedObservedData;
-  const resolving = resolvingParams !== resolvedParams || resolveCount > 0;
+  // Simplified resolving check - no longer needs resolveCount
+  const resolving = resolvingParams !== resolvedParams;
   const showResolving = resolving && !showRefresh && !error && !showSkeleton;
 
   useEffect(() => {
@@ -159,11 +248,12 @@ export default function ResolvablePropertyView(props) {
     }
   }, [resolving, showRefresh, validate, onValidationErrors, path]);
 
+  // Cleanup validation errors on unmount using stable refs
   useEffect(() => {
     return () => {
-      onValidationErrors?.(path, []);
+      onValidationErrorsRef.current?.(pathRef.current, []);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Box
@@ -212,13 +302,13 @@ export default function ResolvablePropertyView(props) {
             </MuiButton>
           }
           sx={{
-            alignItems: "top",
+            alignItems: "flex-start",
             ".MuiAlert-message": {
               maxWidth: "calc(100% - 110px)",
             },
           }}
         >
-          <Stack direction="row" alignItems="top" spacing={1}>
+          <Stack direction="row" alignItems="flex-start" spacing={1}>
             <AlertTitle>Failed to resolve property</AlertTitle>
             <KeyboardArrowDown
               color="error"
