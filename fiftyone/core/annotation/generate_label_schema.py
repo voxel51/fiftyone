@@ -1,5 +1,5 @@
 """
-Annotation runs framework.
+Annotation label schema generation
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -8,83 +8,9 @@ Annotation runs framework.
 
 import eta.core.utils as etau
 
+import fiftyone.core.annotation.constants as foac
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
-import fiftyone.core.media as fom
-import fiftyone.core.metadata as fomm
-from fiftyone.core.runs import (
-    BaseRun,
-    BaseRunConfig,
-    BaseRunInfo,
-    BaseRunResults,
-)
-from fiftyone.core.odm import patch_annotation_runs, DynamicEmbeddedDocument
-
-
-class AnnotationInfo(BaseRunInfo):
-    """Information about an annotation run on a dataset.
-
-    Args:
-        key: the annotation key
-        timestamp (None): the UTC ``datetime`` when the annotation run was
-            initiated
-        config (None): the :class:`AnnotationMethodConfig` for the run
-    """
-
-    @classmethod
-    def config_cls(cls):
-        return AnnotationMethodConfig
-
-
-class AnnotationMethodConfig(BaseRunConfig):
-    """Base class for configuring :class:`AnnotationMethod` instances.
-
-    Args:
-        **kwargs: any leftover keyword arguments after subclasses have done
-            their parsing
-    """
-
-    @property
-    def type(self):
-        return "annotation"
-
-    @property
-    def method(self):
-        return None
-
-
-class AnnotationMethod(BaseRun):
-    """Base class for annotation methods.
-
-    Args:
-        config: an :class:`AnnotationMethodConfig`
-    """
-
-    @classmethod
-    def run_info_cls(cls):
-        return AnnotationInfo
-
-    @classmethod
-    def _runs_field(cls):
-        return "annotation_runs"
-
-    @classmethod
-    def _run_str(cls):
-        return "annotation run"
-
-    @classmethod
-    def _results_cache_field(cls):
-        return "_annotation_cache"
-
-    @classmethod
-    def _patch_function(cls):
-        return patch_annotation_runs
-
-
-class AnnotationResults(BaseRunResults):
-    """Base class for annotation run results."""
-
-    pass
 
 
 def get_supported_app_annotation_fields(sample_collection):
@@ -124,9 +50,7 @@ def get_supported_app_annotation_fields(sample_collection):
         a list of supported fields
     """
     _ensure_collection_is_supported(sample_collection)
-    fields = _get_all_supported_fields(
-        sample_collection, app_annotation_support=True
-    )
+    fields = _get_all_supported_fields(sample_collection)
     return _flatten_fields(sample_collection, fields)
 
 
@@ -187,17 +111,18 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
     Supported ``list<bool>``, ``list<float>``, and ``list<int>`` components
     are:
-        -   ``checkboxes``
-        -   ``dropdown``
         -   ``text`` - the default
 
     Supported ``list<str>`` components are:
         -   ``checkboxes``: the default if ``<=5`` values are scanned
-        -   ``text``: the default if ``0`` values or ``>20`` values are
-            scanned, or ``scan_samples`` is ``False`. If ``>1000`` values are
-            scanned, the ``values`` setting is omitted
+        -   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+            scanned
+        -   ``text``: the default if ``0`` values or ``>1000`` values are
+            scanned, or ``scan_samples`` is ``False``
 
     Supported ``str`` type components are:
+        =   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+            scanned
         -   ``radio``: the default if ``<=5`` values are scanned
         -   ``text``: the default if ``0`` values or ``>1000`` values are
             scanned, or ``scan_samples`` is ``False``
@@ -267,7 +192,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
             component settings
 
     Raises:
-        ValueError: If the sample collection or the field is not supported, or
+        ValueError: if the sample collection or the field is not supported, or
         the field does not exist or is not supported
 
     Returns:
@@ -282,79 +207,81 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     fields = _flatten_fields(sample_collection, fields)
 
     schema = {}
-    for field in fields:
-        schema[field] = _generate_field_label_schema(
-            sample_collection, field, scan_samples
+    for field_name in fields:
+        schema[field_name] = _generate_field_label_schema(
+            sample_collection, field_name, scan_samples
         )
+
+    return schema
 
 
 def _flatten_fields(collection, fields):
     flattened_fields = []
     for field_name in fields:
-        field = collection.get_field(field)
+        field = collection.get_field(field_name)
 
         if field is None:
             raise ValueError(f"field '{field_name}' does not exist")
 
         if not isinstance(field, fof.EmbeddedDocumentField):
-            flattened_fields.append(field)
+            flattened_fields.append(field_name)
             continue
 
-        if field.document_type not in _SUPPORTED_DOC_TYPES:
-            continue
+        if issubclass(field.document_type, fol.Label):
+            flattened_fields.append(field_name)
 
         for subfield in field.fields:
             if not _is_supported_field(subfield, collection.media_type):
                 continue
 
-            flattened_fields.push(f"{field_name}.{subfield.name}")
+            flattened_fields.append(f"{field_name}.{subfield.name}")
 
-    return sorted(set(flattened_fields))
+    return sorted(list(set(flattened_fields)))
 
 
-def _get_all_supported_fields(collection, app_annotation_support=False):
+def _get_all_supported_fields(collection):
     fields = collection.get_field_schema()
     media_type = collection.media_type
 
     result = set()
     for field_name, field in fields.items():
 
-        if _is_supported_field(
-            field, media_type, app_annotation_support=app_annotation_support
+        if _is_supported_field(field, media_type):
+            result.add(field_name)
+            continue
+
+        if field.document_type in foac.SUPPORTED_DOC_TYPES:
+            result.add(field_name)
+            continue
+
+        if field.document_type in foac.SUPPORTED_LABEL_TYPES:
+            result.add(field_name)
+            continue
+
+        if (
+            field.document_type
+            in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
         ):
             result.add(field_name)
             continue
 
-        elif field.document_type in _SUPPORTED_DOC_TYPES:
-            result.add(field_name)
-
     return sorted(result)
 
 
-def _generate_field_label_schema(collection, field, scan_samples):
-    media_type = collection.media_type
-    if not _is_supported_field(field, media_type):
-        raise ValueError(
-            f"field '{field_name}' of type '{str(field)} is not supported"
-        )
-
+def _generate_field_label_schema(collection, field_name, scan_samples):
+    field = collection.get_field(field_name)
     read_only = field.read_only
 
     is_list = isinstance(field, fof.ListField)
     if is_list:
         field = field.field
 
-    default_type = (
-        _FIELD_TYPE_TO_TYPES[fof.ListField][type(field)]
-        if is_list
-        else _FIELD_TYPE_TO_TYPES[type(field)]
-    )
-
+    default_type = _get_default_field_type(field, is_list)
     settings = {
         "read_only": True,
         "type": default_type,
     }
-    component = _DEFAULT_COMPONENTS[_type]
+    component = foac.DEFAULT_COMPONENTS[default_type]
     if component:
         settings["component"] = component
 
@@ -362,13 +289,15 @@ def _generate_field_label_schema(collection, field, scan_samples):
         return settings
 
     if isinstance(field, fof.StringField):
-        _handle_str()
+        return _handle_str(
+            collection, field_name, is_list, settings, scan_samples
+        )
 
     if isinstance(field, fof.BooleanField):
-        _handle_bool()
+        return _handle_bool(settings)
 
     if isinstance(field, (fof.FloatField, fof.IntField)):
-        _handle_float_or_int()
+        return _handle_float_or_int(settings)
 
     if is_list:
         raise ValueError(f"todo")
@@ -386,58 +315,62 @@ def _generate_field_label_schema(collection, field, scan_samples):
         return {"type": "input", "default": None}
 
     if not isinstance(field, fof.EmbeddedDocumentField):
-        raise ValueError(f"unsupported annotation field {field}")
+        raise ValueError(f"unsupported field {field}")
 
     if issubclass(field.document_type, fol._HasLabelList):
         field_name = f"{field_name}.{field.document_type._LABEL_LIST_FIELD}"
         field = collection.get_field(field_name).field
 
-    attributes = {}
+    settings["attributes"] = {}
     classes = []
     for f in field.fields:
-        if _is_supported_field():
-            # todo
-            pass
-
-        if f.name == "id":
-            continue
-
-        if f.name == "label":
-            classes = (
-                collection.distinct(f"{field_name}.label")
-                if scan_samples
-                else []
-            )
-            continue
-
         if f.name == "bounding_box" and field.document_type == fol.Detection:
             # bounding_box is a list of floats field, but really a 4-tuple of
             # [0, 1] floats, omit for special handling by the App
             continue
 
         try:
-            attributes[f.name] = generate_label_schema(
-                sample_collection, f"{field_name}.{f.name}"
+            settings["attributes"][f.name] = _generate_field_label_schema(
+                collection, f"{field_name}.{f.name}", scan_samples
             )
         except:
             pass
 
-    return {
-        "attributes": attributes,
-        "classes": classes,
-    }
+    label = settings["attributes"].pop("label")
+    classes = label.pop("values")
+    return dict(
+        attributes=settings["attributes"],
+        classes=classes,
+        **label,
+        type=str(field.document_type).split(".")[1].lower(),
+    )
+
+
+def _get_default_field_type(field, is_list):
+    field_type = (
+        fol.Label
+        if isinstance(field, fof.EmbeddedDocumentField)
+        and issubclass(field.document_type, fol.Label)
+        else type(field)
+    )
+
+    return (
+        foac.FIELD_TYPE_TO_TYPES[fof.ListField][field_type]
+        if is_list
+        else foac.FIELD_TYPE_TO_TYPES[field_type]
+    )
 
 
 def _ensure_collection_is_supported(collection):
-    if collection.media_type in _SUPPORTED_MEDIA_TYPES:
+    if collection.media_type in foac.SUPPORTED_MEDIA_TYPES:
         raise ValueError(f"{collection.media_type} media is not supported yet")
 
 
-def _handle_bool():
+def _handle_bool(c):
     pass
 
 
-def _handle_float_or_int():
+def _handle_float_or_int(c):
     pass
 
 
@@ -448,10 +381,10 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
         else:
             values = None
 
-        if len(values) <= _CHECKBOXES_OR_RADIO_THRESHOLD:
+        if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
             settings["type"] = "checkboxes" if is_list else "radio"
 
-        if values > _VALUES_THRESHOLD:
+        if values > foac.VALUES_THRESHOLD:
             values = None
 
         if values:
@@ -472,12 +405,12 @@ def _is_supported_field(field, media_type, app_annotation_support=False):
 
     if app_annotation_support:
 
-        if field.document_type in _SUPPORTED_LABEL_TYPES:
+        if field.document_type in foac.SUPPORTED_LABEL_TYPES:
             return True
 
         if (
             field.document_type
-            in _SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
+            in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
         ):
             return True
 
@@ -485,7 +418,7 @@ def _is_supported_field(field, media_type, app_annotation_support=False):
 
     if (
         isinstance(field, fol.Label)
-        and type(field) not in _UNSUPPORTED_LABEL_TYPES
+        and type(field) not in foac.UNSUPPORTED_LABEL_TYPES
     ):
         return True
 
@@ -493,127 +426,11 @@ def _is_supported_field(field, media_type, app_annotation_support=False):
 
 
 def _is_supported_primitive(field):
-    if isinstance(field, _SUPPORTED_PRIMITIVES):
+    if isinstance(field, foac.SUPPORTED_PRIMITIVES):
         return True
 
     if isinstance(field, fof.ListField):
-        if isinstance(field.field, _SUPPORTED_LISTS_OF_PRIMITIVES):
+        if isinstance(field.field, foac.SUPPORTED_LISTS_OF_PRIMITIVES):
             return True
 
     return False
-
-
-### Compnents
-
-CHECKBOX = "checkbox"
-CHECKBOXES = "checkboxes"
-DATEPICKER = "datepicker"
-JSON = "json"
-RADIO = "radio"
-SLIDER = "slider"
-TEXT = "text"
-TOGGLE = "toggle"
-
-### Types
-
-BOOL = "bool"
-DATE = "date"
-DATETIME = "datetime"
-DICT = "dict"
-FLOAT = "float"
-ID = "id"
-INT = "int"
-LIST_BOOL = "list<bool>"
-LIST_FLOAT = "list<float>"
-LIST_INT = "list<int>"
-LIST_STR = "list<str>"
-STR = "str"
-
-
-_DEFAULT_COMPONENTS = {
-    BOOL: TOGGLE,
-    DATE: DATEPICKER,
-    DATEPICKER: DATEPICKER,
-    DICT: JSON,
-    FLOAT: TEXT,
-    ID: None,
-    INT: TEXT,
-    LIST_BOOL: TEXT,
-    LIST_FLOAT: TEXT,
-    LIST_INT: TEXT,
-    LIST_STR: TEXT,
-    STR: TEXT,
-}
-
-_FIELD_TYPE_TO_TYPES = {
-    fof.BooleanField: BOOL,
-    fof.DateField: DATE,
-    fof.DateTimeField: DATETIME,
-    fof.DictField: DICT,
-    fof.FloatField: FLOAT,
-    fof.IntField: INT,
-    fof.ObjectIdField: ID,
-    fof.StringField: STR,
-    fof.ListField: {
-        fof.BooleanField: LIST_BOOL,
-        fof.FloatField: LIST_FLOAT,
-        fof.IntField: LIST_INT,
-        fof.StringField: LIST_STR,
-    },
-    fof.UUIDField: ID,
-}
-
-
-_CHECKBOXES_OR_RADIO_THRESHOLD = 5
-_VALUES_THRESHOLD = 1000
-
-
-_SUPPORTED_MEDIA_TYPES = {fom.IMAGE, fom.THREE_D}
-
-
-_SUPPORTED_DOC_TYPES = {
-    DynamicEmbeddedDocument,
-    fomm.ImageMetadata,
-    fomm.SceneMetadata,
-}
-
-
-_SUPPORTED_LABEL_TYPES = {fol.Classification, fol.Classifications}
-
-
-_SUPPORTED_LISTS_OF_PRIMITIVES = {
-    fof.BooleanField,
-    fof.FloatField,
-    fof.IntField,
-    fof.StringField,
-}
-
-
-_SUPPORTED_PRIMITIVES = {
-    fof.BooleanField,
-    fof.DateField,
-    fof.DateTimeField,
-    fof.DictField,
-    fof.FloatField,
-    fof.FrameNumberField,
-    fof.IntField,
-    fof.ObjectIdField,
-    fof.StringField,
-    fof.UUIDField,
-}
-
-
-_SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
-    fom.IMAGE: {
-        fol.Detection,
-        fol.Detections,
-    },
-    fom.THREE_D: {fol.Polyline, fol.Polylines},
-}
-
-_UNSUPPORTED_LABEL_TYPES = {
-    fol.GeoLocation,
-    fol.GeoLocations,
-    fol.TemporalDetection,
-    fol.TemporalDetections,
-}
