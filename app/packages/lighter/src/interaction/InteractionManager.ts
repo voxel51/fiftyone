@@ -257,11 +257,8 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      const overlay = interactiveHandler.getOverlay();
-      if (TypeGuards.isInteractionHandler(overlay)) {
-        handler = overlay;
-        this.selectionManager.select(handler.id);
-      }
+      handler = interactiveHandler.getOverlay();
+      this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
     }
@@ -317,14 +314,15 @@ export class InteractionManager {
           this.maintainAspectRatio
         );
       } else {
-        interactiveHandler.onMove?.(
+        handler = interactiveHandler.getOverlay();
+
+        handler.onMove?.(
           point,
           worldPoint,
           event,
           scale,
           this.maintainAspectRatio
         );
-        handler = interactiveHandler;
       }
 
       if (handler.isMoving?.()) {
@@ -364,7 +362,7 @@ export class InteractionManager {
     const interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
-      handler = interactiveHandler;
+      handler = interactiveHandler.getOverlay();
     } else {
       handler = this.findMovingHandler() || this.findHandlerAtPoint(point);
     }
