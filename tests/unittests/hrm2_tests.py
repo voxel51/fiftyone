@@ -492,6 +492,9 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             SMPLHumanPoses,
             SMPLHumanPose,
             Person3D,
+            Keypoint,
+            Detection,
+            Camera,
         )
 
         # Create processor without SMPL (no mesh export)
@@ -543,13 +546,19 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         smpl_pose = smpl_human_poses.poses[0]
         self.assertIsInstance(smpl_pose, SMPLHumanPose)
 
-        # Verify simplified Person3D structure (no smpl_params, no camera_translation)
+        # Verify Person3D structure with embedded label types
         person = smpl_pose.person
         self.assertIsInstance(person, Person3D)
         self.assertEqual(person.person_id, 0)
+        # Person3D uses embedded Detection and Keypoint (for 2D)
+        # keypoints_3d stays as raw list to avoid schema inference issues
         self.assertIsNotNone(person.keypoints_3d)
+        self.assertIsInstance(person.keypoints_3d, list)
         self.assertIsNotNone(person.keypoints_2d)
-        self.assertIsNotNone(person.bbox)
+        self.assertIsInstance(person.keypoints_2d, Keypoint)
+        self.assertIsNotNone(person.detection)
+        self.assertIsInstance(person.detection, Detection)
+        self.assertIsNotNone(person.detection.bounding_box)
 
         # Verify SMPLParams are now in SMPLHumanPose, not Person3D
         smpl = smpl_pose.smpl_params
@@ -560,8 +569,10 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         self.assertEqual(len(smpl.global_orient), 1)
         self.assertEqual(len(smpl.global_orient[0]), 3)
 
-        # Verify camera_translation is now in SMPLHumanPose
-        self.assertIsNotNone(smpl_pose.camera_translation)
+        # Verify camera is now a Camera object in SMPLHumanPose
+        self.assertIsNotNone(smpl_pose.camera)
+        self.assertIsInstance(smpl_pose.camera, Camera)
+        self.assertIsNotNone(smpl_pose.camera.translation)
 
     def test_output_processor_with_mesh_export(self):
         """Test HRM2OutputProcessor with export_meshes=True to catch serialization bugs.
@@ -1086,6 +1097,7 @@ class HumanPoseLabelTests(HRM2TestBase):
             SMPLHumanPose,
             Person3D,
             SMPLParams,
+            Camera,
         )
 
         smpl_params = SMPLParams(
@@ -1095,13 +1107,16 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.0, 0.0, 0.0],
         )
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,  # Keep as raw list
             person_id=0,
+        )
+        camera = Camera(
+            translation=[0.0, 0.0, 5.0],
         )
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         label = SMPLHumanPoses(poses=[smpl_pose])
@@ -1117,29 +1132,33 @@ class HumanPoseLabelTests(HRM2TestBase):
             SMPLHumanPose,
             Person3D,
             SMPLParams,
+            Camera,
         )
 
         smpl_params_0 = SMPLParams(body_pose=[], betas=[], global_orient=[])
         smpl_params_1 = SMPLParams(body_pose=[], betas=[], global_orient=[])
 
         person3d_0 = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,  # Keep as raw list
             person_id=0,
         )
         person3d_1 = Person3D(
-            keypoints_3d=[[1.0, 1.0, 1.0]] * 24,
+            keypoints_3d=[[1.0, 1.0, 1.0]] * 24,  # Keep as raw list
             person_id=1,
         )
+
+        camera_0 = Camera(translation=[0.0, 0.0, 5.0])
+        camera_1 = Camera(translation=[0.0, 0.0, 5.0])
 
         smpl_pose_0 = SMPLHumanPose(
             person=person3d_0,
             smpl_params=smpl_params_0,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera_0,
         )
         smpl_pose_1 = SMPLHumanPose(
             person=person3d_1,
             smpl_params=smpl_params_1,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera_1,
         )
 
         label = SMPLHumanPoses(poses=[smpl_pose_0, smpl_pose_1])
@@ -1156,20 +1175,24 @@ class HumanPoseLabelTests(HRM2TestBase):
             SMPLHumanPose,
             Person3D,
             SMPLParams,
+            Keypoint3D,
+            Camera,
         )
 
         dataset = fo.Dataset()
         sample = fo.Sample(filepath=self._new_image())
 
         smpl_params = SMPLParams(body_pose=[1.0] * 69, betas=[0.0] * 10)
+        keypoints_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_3d=keypoints_3d,
             person_id=0,
         )
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         label = SMPLHumanPoses(poses=[smpl_pose])
@@ -1190,6 +1213,8 @@ class HumanPoseLabelTests(HRM2TestBase):
             SMPLHumanPose,
             Person3D,
             SMPLParams,
+            Keypoint3D,
+            Camera,
         )
 
         # Simulate rotation matrix format from HRM2 model
@@ -1211,15 +1236,17 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.0, 0.0, 0.0],
         )
 
+        keypoints_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_3d=keypoints_3d,
             person_id=0,
         )
 
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         label = SMPLHumanPoses(poses=[smpl_pose])
@@ -1264,6 +1291,8 @@ class HumanPoseLabelTests(HRM2TestBase):
         except ImportError:
             self.skipTest("trimesh or numpy not available")
 
+        from fiftyone.core.labels import Detection, Keypoint, Camera
+
         # Create label with realistic data for mesh export
         smpl_params = SMPLParams(
             body_pose=[0.1] * 69,
@@ -1275,18 +1304,28 @@ class HumanPoseLabelTests(HRM2TestBase):
         # Create vertices for a simple mesh (SMPL has 6890 vertices)
         vertices = [[i * 0.01, i * 0.01, i * 0.01] for i in range(6890)]
 
+        # Create embedded label types
+        detection = Detection(
+            label="person",
+            bounding_box=[0.1, 0.1, 0.2, 0.2],  # Relative coordinates
+            relative_coordinate=True,
+        )
+        keypoints_2d = Keypoint(points=[[0.5, 0.5]] * 24)
+        keypoints_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
+
         person3d = Person3D(
             person_id=0,
-            bbox=[0.1, 0.1, 0.2, 0.2],  # Relative coordinates
+            detection=detection,
             vertices=vertices,
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-            keypoints_2d=[[0.5, 0.5]] * 24,  # Relative coordinates
+            keypoints_3d=keypoints_3d,
+            keypoints_2d=keypoints_2d,
         )
 
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         # Create SMPL faces as numpy array (required by ArrayField)
@@ -1357,6 +1396,8 @@ class HumanPoseLabelTests(HRM2TestBase):
             [0.0, 0.0, 1.0],
         ]
 
+        from fiftyone.core.labels import Camera
+
         smpl_params = SMPLParams(
             body_pose=body_pose_rotmat,
             betas=[0.0] * 10,
@@ -1364,15 +1405,17 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.0, 0.0, 0.0],
         )
 
+        keypoints_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_3d=keypoints_3d,
             person_id=0,
         )
 
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         label = SMPLHumanPoses(poses=[smpl_pose])
@@ -1401,15 +1444,17 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.5, 0.1, 0.1],
         )
 
+        keypoints_3d2 = [[0.1, 0.1, 0.1]] * 24  # Keep as raw list
         person3d2 = Person3D(
-            keypoints_3d=[[0.1, 0.1, 0.1]] * 24,
+            keypoints_3d=keypoints_3d2,
             person_id=0,
         )
 
+        camera2 = Camera(translation=[0.0, 0.0, 5.5])
         smpl_pose2 = SMPLHumanPose(
             person=person3d2,
             smpl_params=smpl_params2,
-            camera_translation=[0.0, 0.0, 5.5],
+            camera=camera2,
         )
 
         label2 = SMPLHumanPoses(poses=[smpl_pose2])
@@ -1466,6 +1511,8 @@ class HumanPoseLabelTests(HRM2TestBase):
             [0.0, 0.0, 1.0],
         ]
 
+        from fiftyone.core.labels import Camera
+
         smpl_params = SMPLParams(
             body_pose=body_pose_rotmat,
             betas=[0.0] * 10,
@@ -1473,17 +1520,27 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.0, 0.0, 0.0],
         )
 
+        # Create embedded label types
+        detection_3d = Detection(
+            label="person",
+            bounding_box=[0.1, 0.1, 0.2, 0.2],
+            relative_coordinate=True,
+        )
+        keypoints_2d_3d = Keypoint(points=[[0.5, 0.5]] * 24)
+        keypoints_3d_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
+
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-            keypoints_2d=[[0.5, 0.5]] * 24,
-            bbox=[0.1, 0.1, 0.2, 0.2],
+            keypoints_3d=keypoints_3d_3d,
+            keypoints_2d=keypoints_2d_3d,
+            detection=detection_3d,
             person_id=0,
         )
 
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         # Create 2D pose labels as well (mimicking HRM2 output)
@@ -1522,17 +1579,27 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.5, 0.1, 0.1],
         )
 
+        # Create embedded label types for second person
+        detection_3d2 = Detection(
+            label="person",
+            bounding_box=[0.2, 0.2, 0.3, 0.3],
+            relative_coordinate=True,
+        )
+        keypoints_2d_3d2 = Keypoint(points=[[0.6, 0.6]] * 24)
+        keypoints_3d_3d2 = [[0.1, 0.1, 0.1]] * 24  # Keep as raw list
+
         person3d2 = Person3D(
-            keypoints_3d=[[0.1, 0.1, 0.1]] * 24,
-            keypoints_2d=[[0.6, 0.6]] * 24,
-            bbox=[0.2, 0.2, 0.3, 0.3],
+            keypoints_3d=keypoints_3d_3d2,
+            keypoints_2d=keypoints_2d_3d2,
+            detection=detection_3d2,
             person_id=0,
         )
 
+        camera2 = Camera(translation=[0.0, 0.0, 5.5])
         smpl_pose2 = SMPLHumanPose(
             person=person3d2,
             smpl_params=smpl_params2,
-            camera_translation=[0.0, 0.0, 5.5],
+            camera=camera2,
         )
 
         keypoint_2d2 = Keypoint(points=[[0.6, 0.6]] * 24)
@@ -1606,6 +1673,8 @@ class HumanPoseLabelTests(HRM2TestBase):
             [0.0, 0.0, 1.0],
         ]
 
+        from fiftyone.core.labels import Camera
+
         smpl_params = SMPLParams(
             body_pose=body_pose_rotmat,
             betas=[0.0] * 10,
@@ -1614,18 +1683,29 @@ class HumanPoseLabelTests(HRM2TestBase):
         )
 
         # No Instance object
+        # Create embedded label types
+        detection = Detection(
+            label="person",
+            bounding_box=[0.1, 0.1, 0.2, 0.2],
+            relative_coordinate=True,
+            # NO instance - this is the fix
+        )
+        keypoints_2d = Keypoint(points=[[0.5, 0.5]] * 24)
+        keypoints_3d = [[0.0, 0.0, 0.0]] * 24  # Keep as raw list
+
         person3d = Person3D(
-            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-            keypoints_2d=[[0.5, 0.5]] * 24,
-            bbox=[0.1, 0.1, 0.2, 0.2],
+            keypoints_3d=keypoints_3d,
+            keypoints_2d=keypoints_2d,
+            detection=detection,
             person_id=0,
             # NO instance - this is the fix
         )
 
+        camera = Camera(translation=[0.0, 0.0, 5.0])
         smpl_pose = SMPLHumanPose(
             person=person3d,
             smpl_params=smpl_params,
-            camera_translation=[0.0, 0.0, 5.0],
+            camera=camera,
         )
 
         # No Instance objects on 2D labels either
