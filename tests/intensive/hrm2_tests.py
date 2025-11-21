@@ -103,29 +103,36 @@ def test_hrm2_single_person_inference():
 
     # Run prediction
     from PIL import Image
-    from fiftyone.core.labels import HumanPose3D
+    from fiftyone.core.labels import SMPLHumanPoses
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
 
-    # Result is now a HumanPose3D label object
+    # Result is now a dict with label types
     print(f"✓ Prediction successful")
-    print(f"  Number of people detected: {len(result.people)}")
-    if result.people:
-        person = result.people[0]
+    pose_3d = result.get("poses_3d")
+    print(
+        f"  Number of people detected: {len(pose_3d.poses) if pose_3d else 0}"
+    )
+    if pose_3d and pose_3d.poses:
+        smpl_pose = pose_3d.poses[0]
         print(
-            f"  SMPL parameters shape: body_pose={len(person.smpl_params.body_pose)}, "
-            f"betas={len(person.smpl_params.betas)}"
+            f"  SMPL parameters shape: body_pose={len(smpl_pose.smpl_params.body_pose)}, "
+            f"betas={len(smpl_pose.smpl_params.betas)}"
         )
-        print(f"  3D keypoints shape: {len(person.keypoints_3d)}")
-        if person.keypoints_2d:
-            print(f"  2D keypoints shape: {len(person.keypoints_2d)}")
+        print(f"  3D keypoints shape: {len(smpl_pose.person.keypoints_3d)}")
+        if smpl_pose.person.keypoints_2d:
+            print(
+                f"  2D keypoints shape: {len(smpl_pose.person.keypoints_2d)}"
+            )
 
     # Verify output structure
-    assert isinstance(result, HumanPose3D)
-    assert len(result.people) > 0
-    assert person.smpl_params is not None
-    assert person.keypoints_3d is not None
+    assert isinstance(result, dict)
+    assert "poses_3d" in result
+    assert isinstance(pose_3d, SMPLHumanPoses)
+    assert len(pose_3d.poses) > 0
+    assert smpl_pose.smpl_params is not None
+    assert smpl_pose.person.keypoints_3d is not None
 
 
 def test_hrm2_multi_person_inference():
@@ -232,22 +239,24 @@ def test_hrm2_mesh_export():
     sample = dataset.first()
 
     from PIL import Image
-    from fiftyone.core.labels import HumanPose3D
+    from fiftyone.core.labels import SMPLHumanPoses
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
 
     print(f"✓ Mesh export successful")
-    assert isinstance(result, HumanPose3D)
+    assert isinstance(result, dict)
+    pose_3d = result.get("poses_3d")
+    assert isinstance(pose_3d, SMPLHumanPoses)
 
     # Check result structure
-    print(f"  Number of people: {len(result.people)}")
-    if result.people:
-        person = result.people[0]
-        if person.vertices:
-            print(f"  Vertices shape: {len(person.vertices)}")
-        if result.smpl_faces is not None:
-            print(f"  SMPL faces shape: {len(result.smpl_faces)}")
+    print(f"  Number of people: {len(pose_3d.poses)}")
+    if pose_3d.poses:
+        smpl_pose = pose_3d.poses[0]
+        if smpl_pose.person.vertices:
+            print(f"  Vertices shape: {len(smpl_pose.person.vertices)}")
+        if pose_3d.smpl_faces is not None:
+            print(f"  SMPL faces shape: {len(pose_3d.smpl_faces)}")
 
 
 def test_hrm2_full_pipeline():
@@ -352,12 +361,14 @@ def test_hrm2_batch_processing():
     print(f"✓ Batch processing complete")
     print(f"  Processed {len(results)} images")
 
-    # Results are now HumanPose3D labels
-    from fiftyone.core.labels import HumanPose3D
+    # Results are now dicts with label types
+    from fiftyone.core.labels import SMPLHumanPoses
 
     for i, result in enumerate(results):
-        assert isinstance(result, HumanPose3D)
-        num_people = len(result.people)
+        assert isinstance(result, dict)
+        pose_3d = result.get("poses_3d")
+        assert isinstance(pose_3d, SMPLHumanPoses)
+        num_people = len(pose_3d.poses) if pose_3d else 0
         print(f"  Image {i}: {num_people} person(s) detected")
 
     assert len(results) == len(images)

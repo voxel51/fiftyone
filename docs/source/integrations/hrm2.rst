@@ -184,16 +184,22 @@ person box:
         coordinates ``[0, 1]``
     -   ``detection.instance``: shared :class:`fiftyone.core.labels.Instance`
         used to link this 2D person to the corresponding 3D person in
-        ``HumanPose3D.people``
+        ``SMPLHumanPoses.poses``
 
 2. 3D Scene Slice Samples
 -------------------------
 
-Each 3D scene sample (``.fo3d`` file) contains a ``HumanPose3D`` label (default field: ``human_pose_3d``) with:
+Each 3D scene sample (``.fo3d`` file) contains a ``SMPLHumanPoses`` label (default field: ``human_pose_3d``) with:
 
--   **smpl_params**: Dictionary with SMPL body model parameters (body_pose, betas, etc.)
--   **keypoints_3d**: List of 3D joint locations (Nx3)
--   **mesh_path**: Path to the exported .obj mesh file (used internally by the scene viewer)
+-   **poses**: List of :class:`fiftyone.core.labels.SMPLHumanPose` instances, each containing:
+
+    -   ``person``: :class:`fiftyone.core.labels.Person3D` with geometric data (bbox, vertices, keypoints_3d, keypoints_2d)
+    -   ``smpl_params``: :class:`fiftyone.core.labels.SMPLParams` with SMPL body model parameters (body_pose, betas, etc.)
+    -   ``camera_translation``: Camera translation [tx, ty, tz] in 3D world coordinates
+
+-   **scene_path**: Path to the .fo3d scene file
+-   **smpl_faces**: SMPL mesh topology (shared across all people)
+-   **frame_size**: [height, width] of the input frame
 
 Accessing Results
 -----------------
@@ -233,15 +239,22 @@ Accessing Results
     # (samples in the same group share the same group ID)
     #
     scene_sample = scene_slice.match(fo.ViewField("human_pose_3d") != None).first()
-    pose_3d = scene_sample.human_pose_3d
+    pose_3d = scene_sample.human_pose_3d  # SMPLHumanPoses
 
-    if pose_3d:
-        # pose_3d.people is a list of Person3D instances
-        for person in pose_3d.people:
-            print("Body pose:", person.smpl_params.body_pose)
-            print("Shape params:", person.smpl_params.betas)
+    if pose_3d and pose_3d.poses:
+        # pose_3d.poses is a list of SMPLHumanPose instances
+        for smpl_pose in pose_3d.poses:
+            # Access SMPL parameters
+            print("Body pose:", smpl_pose.smpl_params.body_pose)
+            print("Shape params:", smpl_pose.smpl_params.betas)
+            print("Camera translation:", smpl_pose.camera_translation)
+
+            # Access geometric data from Person3D
+            person = smpl_pose.person
             print("3D keypoints:", person.keypoints_3d)
-            print("Camera translation:", person.camera_translation)
+            print("2D keypoints:", person.keypoints_2d)
+            print("Bbox:", person.bbox)
+            print("Vertices:", person.vertices)
 
     # View the 3D scene file path (.fo3d)
     print("Scene file:", scene_sample.filepath)
