@@ -4,7 +4,10 @@ import { useContext } from "react";
 import { Redo, Round, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 
-import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  isCuboidAnnotateActiveAtom,
+  isPolylineAnnotateActiveAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { useRecoilValue } from "recoil";
 import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
@@ -19,6 +22,7 @@ const Header = () => {
   const { onExit } = useContext(ConfirmationContext);
 
   const isAnnotatingPolyline = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const isAnnotatingCuboid = useRecoilValue(isCuboidAnnotateActiveAtom);
 
   return (
     <Row>
@@ -29,7 +33,7 @@ const Header = () => {
         <Icon fill={color} />
         <div>{type}</div>
       </ItemLeft>
-      {!isAnnotatingPolyline && (
+      {!isAnnotatingPolyline && !isAnnotatingCuboid && (
         <ItemRight>
           <Undo />
           <Redo />
