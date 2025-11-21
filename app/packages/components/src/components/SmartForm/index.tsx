@@ -11,7 +11,6 @@ import widgets from "./widgets";
 import templates from "./templates";
 
 export { isSchemaIOSchema, isJSONSchema } from "./translators";
-export type { SmartFormProps };
 
 import type { IChangeEvent } from "@rjsf/core";
 import type { ValidatorType, UiSchema } from "@rjsf/utils";

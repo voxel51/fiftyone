@@ -25,7 +25,6 @@ export default function Dropdown(props: WidgetProps) {
     label: enumNames[index] || val,
   }));
 
-  // Determine if this is multiple selection (array type)
   const multiple = schema.type === "array";
 
   // Build SchemaIO-compatible schema
@@ -44,7 +43,6 @@ export default function Dropdown(props: WidgetProps) {
     },
   };
 
-  // Adapt onChange to work with SchemaIO's path-based onChange
   const handleChange = (path: string, newValue: any) => {
     onChange(newValue);
   };

@@ -1,8 +1,7 @@
 /**
- * Custom ObjectFieldTemplate that ensures vertical stacking of form fields
+ * Custom ObjectFieldTemplate
  *
  * This overrides the default @rjsf/mui Grid layout to match SchemaIO's
- * vertical field layout style.
  */
 
 import { ObjectFieldTemplateProps } from "@rjsf/utils";

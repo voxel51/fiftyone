@@ -1,8 +1,5 @@
 /**
- * Minimal FieldTemplate - widgets are responsible for rendering their own labels
- *
- * This template only handles errors and help text, leaving label rendering
- * to individual widgets for maximum flexibility.
+ * Minimal FieldTemplate
  */
 
 import React from "react";

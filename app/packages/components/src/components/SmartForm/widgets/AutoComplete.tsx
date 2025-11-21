@@ -24,7 +24,6 @@ export default function AutoComplete(props: WidgetProps) {
     label: enumNames[index] || val,
   }));
 
-  // Determine if this is multiple selection (array type)
   const multiple = schema.type === "array";
 
   // Build SchemaIO-compatible schema
@@ -42,7 +41,6 @@ export default function AutoComplete(props: WidgetProps) {
     },
   };
 
-  // Adapt onChange to work with SchemaIO's path-based onChange
   const handleChange = (_path: string, newValue: unknown) => {
     onChange(newValue);
   };
