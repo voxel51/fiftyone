@@ -9,7 +9,7 @@
  */
 
 import { WidgetProps } from "@rjsf/utils";
-import DropdownView from "../../../../../core/src/plugins/SchemaIO/components/DropdownView";
+import DropdownView from "../../../../../../core/src/plugins/SchemaIO/components/DropdownView";
 
 export default function Dropdown(props: WidgetProps) {
   const { value, onChange, schema, uiSchema, id, disabled, readonly, label } =

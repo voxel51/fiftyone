@@ -1,16 +1,14 @@
 import { SchemaIOComponent as SchemaIO } from "./SchemaIOComponent";
 import SmartForm, {
-  isJSONSchema,
   type SmartFormProps,
 } from "../../../../components/src/components/SmartForm";
 import type { SchemaType } from "./utils/types";
-import type { RJSFSchema } from "@rjsf/utils";
 
 export interface SchemaIOComponentProps {
-  schema: SchemaType | RJSFSchema;
+  schema: SchemaType;
   data?: unknown;
   id?: string;
-  useJSONSchema?: boolean;
+  smartForm?: boolean;
   onChange?: (data: unknown, liteValues?: Record<string, unknown>) => void;
 
   // SchemaIO only
@@ -23,15 +21,15 @@ export interface SchemaIOComponentProps {
     liteValue?: unknown
   ) => void;
 
-  // RJSF only
+  // SmartForm only
   onSubmit?: (data: unknown) => void;
+  jsonSchema?: SmartFormProps["jsonSchema"];
   uiSchema?: SmartFormProps["uiSchema"];
-  validator?: SmartFormProps["validator"];
 }
 
 export function SchemaIOComponent(props: SchemaIOComponentProps) {
-  if (props.useJSONSchema || isJSONSchema(props.schema)) {
-    return <SmartForm {...props} schema={props.schema as SchemaType} />;
+  if (props.smartForm || props.jsonSchema) {
+    return <SmartForm {...props} />;
   } else {
     return <SchemaIO {...props} />;
   }

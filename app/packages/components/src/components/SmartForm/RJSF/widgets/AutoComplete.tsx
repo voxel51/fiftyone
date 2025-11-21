@@ -7,7 +7,7 @@
 
 import React from "react";
 import { WidgetProps } from "@rjsf/utils";
-import AutocompleteView from "../../../../../core/src/plugins/SchemaIO/components/AutocompleteView";
+import AutocompleteView from "../../../../../../core/src/plugins/SchemaIO/components/AutocompleteView";
 
 export default function AutoComplete(props: WidgetProps) {
   const { value, onChange, schema, uiSchema, id, disabled, readonly, label } =
