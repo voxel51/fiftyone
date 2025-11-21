@@ -1,10 +1,14 @@
 import { Tooltip } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
-import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  isCuboidAnnotateActiveAtom,
+  isPolylineAnnotateActiveAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import CuboidIcon from "@mui/icons-material/ViewInAr";
 import PolylineIcon from "@mui/icons-material/Timeline";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
 import useCreate from "./Edit/useCreate";
@@ -187,6 +191,9 @@ export const Redo = () => {
 export const ThreeDPolylines = () => {
   const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
     useRecoilState(isPolylineAnnotateActiveAtom);
+  const setIsCuboidAnnotateActive = useSetRecoilState(
+    isCuboidAnnotateActiveAtom
+  );
 
   return (
     <Tooltip
@@ -200,10 +207,47 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
+          if (!isPolylineAnnotateActive) {
+            // Turn off cuboid annotation when enabling polyline
+            setIsCuboidAnnotateActive(false);
+          }
           setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
         }}
       >
         <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
+      </Square>
+    </Tooltip>
+  );
+};
+
+export const ThreeDCuboids = () => {
+  const [isCuboidAnnotateActive, setIsCuboidAnnotateActive] = useRecoilState(
+    isCuboidAnnotateActiveAtom
+  );
+  const setIsPolylineAnnotateActive = useSetRecoilState(
+    isPolylineAnnotateActiveAtom
+  );
+
+  return (
+    <Tooltip
+      placement="top-center"
+      text={
+        isCuboidAnnotateActive
+          ? "Exit cuboid annotation mode"
+          : "Enter cuboid annotation mode"
+      }
+    >
+      <Square
+        $active={isCuboidAnnotateActive}
+        onClick={() => {
+          if (!isCuboidAnnotateActive) {
+            // Turn off polyline annotation when enabling cuboid
+            setIsPolylineAnnotateActive(false);
+          }
+          setIsCuboidAnnotateActive(!isCuboidAnnotateActive);
+        }}
+      >
+        <CuboidIcon />
       </Square>
     </Tooltip>
   );
@@ -223,7 +267,14 @@ const Actions = () => {
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
         <Classification />
-        {is3D ? <ThreeDPolylines /> : <Detection />}
+        {is3D ? (
+          <>
+            <ThreeDCuboids />
+            <ThreeDPolylines />
+          </>
+        ) : (
+          <Detection />
+        )}
       </ItemLeft>
 
       {canManage && <Schema />}

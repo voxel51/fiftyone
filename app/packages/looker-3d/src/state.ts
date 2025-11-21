@@ -380,6 +380,15 @@ export const editSegmentsModeAtom = atom<boolean>({
 });
 
 /**
+ * Whether the user is in create cuboid mode.
+ * When enabled, clicking in the 3D scene will create a new unit cuboid at that location.
+ */
+export const isCreatingCuboidAtom = atom<boolean>({
+  key: "fo3d-isCreatingCuboid",
+  default: false,
+});
+
+/**
  * Whether polyline annotation mode is currently active.
  * Persisted in session storage to maintain state across page reloads.
  */
@@ -388,6 +397,22 @@ export const isPolylineAnnotateActiveAtom = atom<boolean>({
   default: false,
   effects: [
     getBrowserStorageEffectForKey("fo3d-isPolylineAnnotateActive", {
+      valueClass: "boolean",
+      sessionStorage: true,
+      prependDatasetNameInKey: true,
+    }),
+  ],
+});
+
+/**
+ * Whether cuboid annotation mode is currently active.
+ * Persisted in session storage to maintain state across page reloads.
+ */
+export const isCuboidAnnotateActiveAtom = atom<boolean>({
+  key: "fo3d-isCuboidAnnotateActive",
+  default: false,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isCuboidAnnotateActive", {
       valueClass: "boolean",
       sessionStorage: true,
       prependDatasetNameInKey: true,
@@ -439,6 +464,25 @@ export const stagedPolylineTransformsAtom = atom<
   Record<string, PolylinePointTransformData>
 >({
   key: "fo3d-stagedPolylineTransforms",
+  default: {},
+});
+
+/**
+ * This atom stores temporary transform data for cuboids being edited.
+ * Changes accumulate here as users manipulate cuboids in the 3D canvas,
+ * and is cleared once user commits changes or exits edit mode.
+ */
+export const stagedCuboidTransformsAtom = atom<
+  Record<
+    string,
+    {
+      location?: THREE.Vector3Tuple;
+      dimensions?: THREE.Vector3Tuple;
+      rotation?: THREE.Vector3Tuple;
+    }
+  >
+>({
+  key: "fo3d-stagedCuboidTransforms",
   default: {},
 });
 

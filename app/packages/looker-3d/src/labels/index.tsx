@@ -27,11 +27,14 @@ import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
+  currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
+  isCuboidAnnotateActiveAtom,
   isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
+  stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
@@ -60,6 +63,10 @@ export const ThreeDLabels = ({
   const setIsPolylineAnnotateActive = useSetRecoilState(
     isPolylineAnnotateActiveAtom
   );
+  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
+  const setIsCuboidAnnotateActive = useSetRecoilState(
+    isCuboidAnnotateActiveAtom
+  );
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -74,7 +81,8 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
-  const polylinePointTransforms = useRecoilValue(stagedPolylineTransformsAtom);
+  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
+  const cuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -126,7 +134,7 @@ export const ThreeDLabels = ({
   );
 
   const selectLabelForAnnotation = useCallback(
-    (label: OverlayLabel) => {
+    (label: OverlayLabel, archetype: Archetype3d) => {
       setSelectedLabelForAnnotation(label);
 
       // We only support translate for polylines for now
@@ -136,8 +144,21 @@ export const ThreeDLabels = ({
       ) {
         setTransformMode("translate");
       }
+
+      // Set the appropriate annotation mode active based on archetype
+      if (archetype === "cuboid") {
+        setIsCuboidAnnotateActive(true);
+      } else if (archetype === "polyline") {
+        setIsPolylineAnnotateActive(true);
+      }
     },
-    [setSelectedLabelForAnnotation, transformMode, setTransformMode]
+    [
+      setSelectedLabelForAnnotation,
+      transformMode,
+      setTransformMode,
+      setIsCuboidAnnotateActive,
+      setIsPolylineAnnotateActive,
+    ]
   );
 
   const handleSelect = useCallback(
@@ -150,15 +171,15 @@ export const ThreeDLabels = ({
 
       if (mode === "annotate") {
         if (archetype === "cuboid") {
+          selectLabelForAnnotation(label, archetype);
+          setCurrentArchetypeSelectedForTransform(archetype);
           return;
         }
 
         if (archetype === "polyline") {
-          selectLabelForAnnotation(label);
+          selectLabelForAnnotation(label, archetype);
           setCurrentArchetypeSelectedForTransform(archetype);
-
           setEditingToExistingPolyline(label);
-          setIsPolylineAnnotateActive(true);
         }
 
         return;
@@ -270,6 +291,23 @@ export const ThreeDLabels = ({
         overlay.dimensions &&
         overlay.location
       ) {
+        const maybeExistingCuboidTransform = cuboidTransforms?.[overlay._id];
+
+        // Use staged transforms if they exist, otherwise use original values
+        const finalLocation =
+          maybeExistingCuboidTransform?.location ?? overlay.location;
+        const finalDimensions =
+          maybeExistingCuboidTransform?.dimensions ?? overlay.dimensions;
+        const finalRotation =
+          maybeExistingCuboidTransform?.rotation ?? overlay.rotation;
+
+        const cuboidCombined = {
+          ...overlay,
+          location: finalLocation,
+          dimensions: finalDimensions,
+          rotation: finalRotation,
+        };
+
         newCuboidOverlays.push(
           <Cuboid
             key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
@@ -277,9 +315,9 @@ export const ThreeDLabels = ({
             rotation={overlayRotation}
             itemRotation={itemRotation}
             opacity={labelAlpha}
-            {...(overlay as CuboidProps)}
+            {...(cuboidCombined as CuboidProps)}
             onClick={(e) => handleSelect(overlay, "cuboid", e)}
-            label={overlay}
+            label={cuboidCombined}
             tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
           />
@@ -289,7 +327,7 @@ export const ThreeDLabels = ({
         (overlay as PolyLineProps).points3d
       ) {
         const maybeExistingTransformData =
-          polylinePointTransforms?.[overlay._id];
+          stagedPolylineTransforms?.[overlay._id];
 
         // Overriden temp state takes precedence over the original points3d
         let finalPoints3d = maybeExistingTransformData?.segments
@@ -332,7 +370,7 @@ export const ThreeDLabels = ({
     );
 
     for (const [labelId, transformData] of Object.entries(
-      polylinePointTransforms ?? {}
+      stagedPolylineTransforms ?? {}
     )) {
       if (!transformData.segments || transformData.segments.length === 0)
         continue;
@@ -388,6 +426,65 @@ export const ThreeDLabels = ({
       }
     }
 
+    // Check for any label ids in stagedCuboidTransformsAtom that are not in newCuboidOverlays
+    // and create new cuboid overlays for them (e.g., newly created cuboids)
+    const existingCuboidIds = new Set(
+      rawOverlays
+        .filter((overlay) => overlay._cls === "Detection")
+        .map((overlay) => overlay._id)
+    );
+
+    for (const [labelId, transformData] of Object.entries(
+      cuboidTransforms ?? {}
+    )) {
+      if (!transformData.location || !transformData.dimensions) {
+        continue;
+      }
+
+      if (existingCuboidIds.has(labelId)) {
+        continue;
+      }
+
+      const overlayLabel = {
+        _id: labelId,
+        _cls: "Detection",
+        type: "Detection",
+        path: currentActiveField || "",
+        location: transformData.location,
+        dimensions: transformData.dimensions,
+        rotation: transformData.rotation ?? [0, 0, 0],
+        selected: false,
+        sampleId: currentSampleId,
+        tags: [],
+      };
+
+      newCuboidOverlays.push(
+        <Cuboid
+          key={`cuboid-new-${labelId}-${currentSampleId}`}
+          lineWidth={cuboidLineWidth}
+          rotation={overlayRotation}
+          itemRotation={transformData.rotation ?? [0, 0, 0]}
+          opacity={labelAlpha}
+          location={transformData.location}
+          dimensions={transformData.dimensions}
+          selected={false}
+          label={overlayLabel}
+          onClick={(e) => handleSelect(overlayLabel, "cuboid", e)}
+          tooltip={tooltip}
+          color={getLabelColor({
+            coloring,
+            path: currentActiveField || "",
+            isTagged: false,
+            labelTagColors,
+            customizeColorSetting,
+            label: overlayLabel,
+            embeddedDocType: overlayLabel._cls,
+          })}
+          useLegacyCoordinates={settings.useLegacyCoordinates}
+        />
+      );
+    }
+
     return [newCuboidOverlays, newPolylineOverlays];
   }, [
     rawOverlays,
@@ -398,9 +495,15 @@ export const ThreeDLabels = ({
     tooltip,
     settings,
     transformMode,
-    polylinePointTransforms,
+    stagedPolylineTransforms,
+    cuboidTransforms,
     polylineWidth,
+    cuboidLineWidth,
     currentSampleId,
+    currentActiveField,
+    coloring,
+    labelTagColors,
+    customizeColorSetting,
   ]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
