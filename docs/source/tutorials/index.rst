@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Google Gemini Vision in FiftyOne __SUB_NEW__
+    :description: Leverage Google Gemini Vision's multimodal AI to analyze datasets, detect biases, generate synthetic images, and improve data quality with FiftyOne.
+    :link: gemini_vision.html
+    :image: https://cdn.voxel51.com/tutorial_gemini_vision/editing_images.webp
+    :tags: Dataset-Evaluation,Dataset-Curation,Model-Evaluation,Brain,Plugins
+
+.. customcarditem::
     :header: Exploring Kaputt Dataset
     :description: Learn how to work with the Kaputt dataset in FiftyOne.
     :link: kaputt_dataset.html
@@ -218,6 +225,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
    Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
