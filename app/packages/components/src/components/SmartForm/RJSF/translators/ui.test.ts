@@ -148,7 +148,7 @@ describe("translateToUISchema", () => {
       expect(result["ui:options"]).toEqual({
         freeSolo: true,
         allowClear: true,
-        allowDuplicates: true,
+        allowDuplicates: false,
       });
     });
 

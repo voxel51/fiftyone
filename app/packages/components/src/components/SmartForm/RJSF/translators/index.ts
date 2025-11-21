@@ -32,21 +32,11 @@ export function translateSchema(
     strictMode: options.strictMode ?? false,
   };
 
-  const schema = translateToJSONSchema(schemaIO, context);
+  const schema = addChoicesToSchema(
+    translateToJSONSchema(schemaIO, context),
+    schemaIO
+  );
   const uiSchema = translateToUISchema(schemaIO, context);
 
   return { schema, uiSchema, warnings };
-}
-
-/**
- * Complete translation with choice processing and optional data conversion
- */
-export function translateSchemaComplete(
-  schemaIO: SchemaType,
-  options: TranslationOptions = {}
-): TranslationResult {
-  const result = translateSchema(schemaIO, options);
-  result.schema = addChoicesToSchema(result.schema, schemaIO);
-
-  return result;
 }

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
   translateSchema,
-  translateSchemaComplete,
   isSchemaIOSchema,
   isJSONSchema,
 } from "./index";
@@ -98,7 +97,7 @@ describe("translateSchema", () => {
   });
 });
 
-describe("translateSchemaComplete", () => {
+describe("translateSchema with choices", () => {
   it("should translate schema and add choices", () => {
     const schemaIO: SchemaType = {
       type: "string",
@@ -111,54 +110,11 @@ describe("translateSchemaComplete", () => {
       },
     };
 
-    const result = translateSchemaComplete(schemaIO);
+    const result = translateSchema(schemaIO);
 
     expect(result.schema.enum).toEqual(["a", "b"]);
     expect(result.schema.enumNames).toEqual(["Option A", "Option B"]);
     expect(result.uiSchema["ui:widget"]).toBe("Dropdown");
-  });
-
-  it("should convert data when provided", () => {
-    const schemaIO: SchemaType = {
-      type: "object",
-      view: { component: "ObjectView" },
-      properties: {
-        name: { type: "string", view: {} },
-        age: { type: "number", view: {} },
-      },
-    };
-    const data = { name: "John", age: 30 };
-
-    const result = translateSchemaComplete(schemaIO, data);
-
-    expect(result.formData).toEqual({ name: "John", age: 30 });
-  });
-
-  it("should handle null data conversion", () => {
-    const schemaIO: SchemaType = {
-      type: "object",
-      view: { component: "ObjectView" },
-      properties: {
-        name: { type: "string", view: {} },
-        age: { type: "number", view: {} },
-      },
-    };
-    const data = { name: "John", age: null };
-
-    const result = translateSchemaComplete(schemaIO, data);
-
-    expect(result.formData).toEqual({ name: "John", age: undefined });
-  });
-
-  it("should not convert data when not provided", () => {
-    const schemaIO: SchemaType = {
-      type: "string",
-      view: { component: "FieldView" },
-    };
-
-    const result = translateSchemaComplete(schemaIO);
-
-    expect(result.formData).toBeUndefined();
   });
 
   it("should handle array types with choices", () => {
@@ -173,7 +129,7 @@ describe("translateSchemaComplete", () => {
       },
     };
 
-    const result = translateSchemaComplete(schemaIO);
+    const result = translateSchema(schemaIO);
 
     expect(result.schema.type).toBe("array");
     expect(result.schema.items).toBeDefined();
@@ -187,7 +143,7 @@ describe("translateSchemaComplete", () => {
       view: { component: "AutocompleteView" },
     };
 
-    const result = translateSchemaComplete(schemaIO);
+    const result = translateSchema(schemaIO);
 
     expect(result.schema.type).toBe("array");
     expect(result.schema.items).toEqual({ type: "string" });
@@ -250,15 +206,7 @@ describe("end-to-end integration", () => {
       },
     };
 
-    const data = {
-      username: "john_doe",
-      email: "john@example.com",
-      role: "admin",
-      tags: ["dev"],
-      active: true,
-    };
-
-    const result = translateSchemaComplete(schemaIO, data);
+    const result = translateSchema(schemaIO);
 
     // Check schema
     expect(result.schema.type).toBe("object");
@@ -275,9 +223,6 @@ describe("end-to-end integration", () => {
     expect(result.uiSchema.role?.["ui:widget"]).toBe("Dropdown");
     expect(result.uiSchema.tags?.["ui:widget"]).toBe("AutoComplete");
     expect(result.uiSchema.active?.["ui:widget"]).toBe("checkbox");
-
-    // Check converted data
-    expect(result.formData).toEqual(data);
 
     // Check no warnings
     expect(result.warnings).toEqual([]);
@@ -319,17 +264,11 @@ describe("end-to-end integration", () => {
       },
     };
 
-    const data = {
-      person: { firstName: "John", lastName: "Doe" },
-      address: { street: "123 Main St", city: "Anytown" },
-    };
-
-    const result = translateSchemaComplete(schemaIO, data);
+    const result = translateSchema(schemaIO);
 
     expect(result.schema.type).toBe("object");
     expect(result.schema.properties?.person.type).toBe("object");
     expect(result.schema.properties?.address.type).toBe("object");
-    expect(result.formData).toEqual(data);
   });
 
   it("should handle arrays of objects", () => {
@@ -352,16 +291,10 @@ describe("end-to-end integration", () => {
       },
     };
 
-    const data = [
-      { name: "Item 1", value: 10 },
-      { name: "Item 2", value: 20 },
-    ];
-
-    const result = translateSchemaComplete(schemaIO, data);
+    const result = translateSchema(schemaIO);
 
     expect(result.schema.type).toBe("array");
     expect((result.schema.items as any).type).toBe("object");
-    expect(result.formData).toEqual(data);
   });
 });
 
@@ -393,7 +326,7 @@ describe("type guards integration", () => {
     };
 
     if (isSchemaIOSchema(schema)) {
-      const result = translateSchemaComplete(schema);
+      const result = translateSchema(schema);
       expect(result.schema.title).toBe("Name");
     } else {
       throw new Error("Should have been identified as SchemaIO");

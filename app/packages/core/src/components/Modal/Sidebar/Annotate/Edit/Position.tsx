@@ -98,7 +98,7 @@ export default function Position() {
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
-        useJSONSchema={true}
+        smartForm={true}
         schema={{
           type: "object",
           view: {

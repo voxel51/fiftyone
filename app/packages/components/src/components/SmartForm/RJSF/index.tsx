@@ -2,7 +2,7 @@ import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 
-import { translateSchemaComplete } from "./translators";
+import { translateSchema } from "./translators";
 
 import widgets from "./widgets";
 import templates from "./templates";
@@ -24,7 +24,7 @@ export interface RJSFProps {
 
 export default function RJSF(props: RJSFProps) {
   const { schema, uiSchema, warnings } = props.schema
-    ? translateSchemaComplete(props.schema)
+    ? translateSchema(props.schema)
     : {
         schema: props.jsonSchema,
         uiSchema: props.uiSchema,
