@@ -22,7 +22,6 @@
     },
     "devDependencies": {
         "@testing-library/react": "latest",
-        "@testing-library/react-hooks": "latest",
         "@types/colormap": "^2",
         "@types/react-plotly.js": "^2.6.3",
         "@typescript-eslint/eslint-plugin": "^5.44.0",
@@ -53,6 +52,10 @@
     ],
     "packageManager": "yarn@4.9.1+sha512.f95ce356460e05be48d66401c1ae64ef84d163dd689964962c6888a9810865e39097a5e9de748876c2e0bf89b232d583c33982773e9903ae7a76257270986538",
     "dependencies": {
+        "@rjsf/core": "^6.0.2",
+        "@rjsf/mui": "^6.0.2",
+        "@rjsf/utils": "^6.0.2",
+        "@rjsf/validator-ajv8": "^6.0.2",
         "colormap": "^2.3.2",
         "pixi-viewport": "^6.0.3",
         "react-player": "^2.16.0",
