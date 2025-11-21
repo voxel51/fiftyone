@@ -2,10 +2,7 @@ import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 
-import {
-  convertRJSFDataToSchemaIO,
-  translateSchemaComplete,
-} from "./translators";
+import { translateSchemaComplete } from "./translators";
 
 import widgets from "./widgets";
 import templates from "./templates";
@@ -30,8 +27,7 @@ export default function SmartForm(props: SmartFormProps) {
     schema: jsonSchema,
     uiSchema: generatedUiSchema,
     warnings,
-    formData,
-  } = translateSchemaComplete(props.schema, props.data);
+  } = translateSchemaComplete(props.schema);
 
   const mergedUiSchema = { ...generatedUiSchema, ...props.uiSchema };
 
@@ -41,23 +37,13 @@ export default function SmartForm(props: SmartFormProps) {
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (props.onChange) {
-      const schemaIOData = convertRJSFDataToSchemaIO(
-        event.formData,
-        props.schema
-      );
-
-      props.onChange(schemaIOData);
+      props.onChange(event.formData);
     }
   };
 
   const handleSubmit = (event: IChangeEvent, _nativeEvent: React.FormEvent) => {
     if (props.onSubmit) {
-      const schemaIOData = convertRJSFDataToSchemaIO(
-        event.formData,
-        props.schema
-      );
-
-      props.onSubmit(schemaIOData);
+      props.onSubmit(event.formData);
     }
   };
 
@@ -68,7 +54,7 @@ export default function SmartForm(props: SmartFormProps) {
       validator={props.validator || validator}
       widgets={widgets}
       templates={templates}
-      formData={formData}
+      formData={props.data}
       onChange={handleChange}
       onSubmit={handleSubmit}
     />
