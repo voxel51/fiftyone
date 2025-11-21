@@ -37,7 +37,7 @@ export default function AutoComplete(props: WidgetProps) {
       choices: choices,
       allow_user_input: uiSchema?.["ui:options"]?.freeSolo ?? true,
       allow_clearing: uiSchema?.["ui:options"]?.allowClear ?? true,
-      allow_duplicates: uiSchema?.["ui:options"]?.allowDuplicates ?? true,
+      allow_duplicates: uiSchema?.["ui:options"]?.allowDuplicates ?? false, // AutocompleteView creates a Material UI error if true
     },
   };
 

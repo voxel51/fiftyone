@@ -55,7 +55,7 @@ export function translateToUISchema(
       uiSchema["ui:options"] = {
         freeSolo: view.allow_user_input ?? true,
         allowClear: view.allow_clearing ?? true,
-        allowDuplicates: view.allow_duplicates ?? true,
+        allowDuplicates: view.allow_duplicates ?? false, // AutocompleteView creates a Material UI error if true
       };
       break;
 
