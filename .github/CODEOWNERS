@@ -31,4 +31,4 @@ requirements.txt             @voxel51/aloha-shirts
 requirements/                @voxel51/aloha-shirts
 
 # Exclusions ('!' syntax not supported by github)
-/fiftyone/internal/features  @voxel51/developers
+/fiftyone/internal/features/  @voxel51/developers
