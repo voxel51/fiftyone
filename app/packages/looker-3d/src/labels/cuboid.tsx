@@ -1,11 +1,22 @@
+import * as fos from "@fiftyone/state";
 import { extend } from "@react-three/fiber";
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
+import {
+  hoveredLabelAtom,
+  isCuboidAnnotateActiveAtom,
+  selectedLabelForAnnotationAtom,
+  tempLabelTransformsAtom,
+} from "../state";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { Transformable } from "./shared/TransformControls";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
@@ -30,33 +41,25 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
-  const geo = useMemo(
-    () => dimensions && new THREE.BoxGeometry(...dimensions),
-    [dimensions]
+  useHoverState();
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+
+  const isHovered = hoveredLabel?.id === label._id;
+
+  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isSelectedForAnnotation =
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+  const setIsCuboidAnnotateActive = useSetRecoilState(
+    isCuboidAnnotateActiveAtom
   );
 
-  // @todo: add comment to add more context on what legacy coordinates means
-  const loc = useMemo(() => {
-    const [x, y, z] = location;
-    return useLegacyCoordinates
-      ? new THREE.Vector3(x, y - 0.5 * dimensions[1], z)
-      : new THREE.Vector3(x, y, z);
-  }, [location, dimensions, useLegacyCoordinates]);
+  useEffect(() => {
+    if (isSelectedForAnnotation) {
+      setIsCuboidAnnotateActive(true);
+    }
+  }, [isSelectedForAnnotation, setIsCuboidAnnotateActive]);
 
-  const itemRotationVec = useMemo(
-    () => new THREE.Vector3(...itemRotation),
-    [itemRotation]
-  );
-  const resolvedRotation = useMemo(
-    () => new THREE.Vector3(...rotation),
-    [rotation]
-  );
-  const actualRotation = useMemo(
-    () => resolvedRotation.add(itemRotationVec).toArray(),
-    [resolvedRotation, itemRotationVec]
-  );
-
-  const { isHovered, setIsHovered } = useHoverState();
   const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
     tooltip,
     label
@@ -66,7 +69,55 @@ export const Cuboid = ({
     { selected, color },
     isHovered,
     label,
-    false
+    isSelectedForAnnotation
+  );
+
+  const {
+    centroid,
+    transformControlsRef,
+    contentRef,
+    effectiveLocation,
+    effectiveDimensions,
+    effectiveRotation,
+    handleTransformStart,
+    handleTransformChange,
+    handleTransformEnd,
+    handlePointerOver: handleAnnotationPointerOver,
+    handlePointerOut: handleAnnotationPointerOut,
+  } = useCuboidAnnotation({
+    label,
+    location,
+    dimensions,
+    itemRotation,
+    strokeAndFillColor,
+    isAnnotateMode,
+    isSelectedForAnnotation,
+  });
+
+  const geo = useMemo(
+    () => effectiveDimensions && new THREE.BoxGeometry(...effectiveDimensions),
+    [effectiveDimensions]
+  );
+
+  // @todo: add comment to add more context on what legacy coordinates means
+  const loc = useMemo(() => {
+    const [x, y, z] = effectiveLocation;
+    return useLegacyCoordinates
+      ? new THREE.Vector3(x, y - 0.5 * effectiveDimensions[1], z)
+      : new THREE.Vector3(x, y, z);
+  }, [effectiveLocation, effectiveDimensions, useLegacyCoordinates]);
+
+  const itemRotationVec = useMemo(
+    () => new THREE.Vector3(...effectiveRotation),
+    [effectiveRotation]
+  );
+  const resolvedRotation = useMemo(
+    () => new THREE.Vector3(...rotation),
+    [rotation]
+  );
+  const actualRotation = useMemo(
+    () => resolvedRotation.add(itemRotationVec).toArray(),
+    [resolvedRotation, itemRotationVec]
   );
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
@@ -108,6 +159,8 @@ export const Cuboid = ({
 
   if (!location || !dimensions) return null;
 
+  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+
   /**
    * note: it's important to not set event handlers on the group,
    * because raycasting for line2 is unstable.
@@ -116,7 +169,7 @@ export const Cuboid = ({
    * we're using line2 over core line because line2 allows configurable line width
    */
 
-  return (
+  const content = (
     <>
       {/* Outline */}
       {/* @ts-ignore */}
@@ -133,16 +186,18 @@ export const Cuboid = ({
         rotation={actualRotation}
         onClick={onClick}
         onPointerOver={() => {
-          setIsHovered(true);
+          setHoveredLabel({ id: label._id });
+          handleAnnotationPointerOver();
           onPointerOver();
         }}
         onPointerOut={() => {
-          setIsHovered(false);
+          setHoveredLabel(null);
+          handleAnnotationPointerOut();
           onPointerOut();
         }}
         {...restEventHandlers}
       >
-        <boxGeometry args={dimensions} />
+        <boxGeometry args={effectiveDimensions} />
         <meshBasicMaterial
           transparent={isSimilarLabelHovered ? false : true}
           opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
@@ -150,5 +205,26 @@ export const Cuboid = ({
         />
       </mesh>
     </>
+  );
+
+  return (
+    <Transformable
+      archetype="cuboid"
+      isSelectedForTransform={isSelectedForAnnotation}
+      transformControlsPosition={centroid as THREE.Vector3Tuple}
+      transformControlsRef={transformControlsRef}
+      onTransformStart={handleTransformStart}
+      onTransformEnd={handleTransformEnd}
+      onTransformChange={handleTransformChange}
+      explicitObjectRef={contentRef}
+    >
+      <group
+        ref={contentRef}
+        // position={tempTransforms?.position ?? [0, 0, 0]}
+        // quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
+      >
+        {content}
+      </group>
+    </Transformable>
   );
 };

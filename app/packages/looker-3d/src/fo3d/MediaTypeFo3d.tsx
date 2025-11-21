@@ -48,6 +48,7 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
+  isCuboidAnnotateActiveAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
   isPolylineAnnotateActiveAtom,
@@ -654,6 +655,7 @@ export const MediaTypeFo3dComponent = () => {
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
   const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
 
   const canAnnotate = useCanAnnotate();
 
@@ -745,7 +747,10 @@ export const MediaTypeFo3dComponent = () => {
           </StatusBarRootContainer>
         </MainContainer>
       )}
-      {mode === "annotate" && isPolylineAnnotateActive && <AnnotationToolbar />}
+      {mode === "annotate" &&
+        (isPolylineAnnotateActive || isCuboidAnnotateActive) && (
+          <AnnotationToolbar />
+        )}
     </Fo3dSceneContext.Provider>
   );
 };

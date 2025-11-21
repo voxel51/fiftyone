@@ -19,7 +19,12 @@ export const FieldSelection = () => {
     () =>
       Object.keys(activeSchema ?? {}).filter((field) => {
         const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
-        return thisFieldType === "polyline" || thisFieldType === "polylines";
+        return (
+          thisFieldType === "polyline" ||
+          thisFieldType === "polylines" ||
+          thisFieldType === "detection" ||
+          thisFieldType === "detections"
+        );
       }),
     [activeSchema, fieldTypesVal]
   );

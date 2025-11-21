@@ -2,6 +2,7 @@ import useConfirmExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
+import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
@@ -19,6 +20,10 @@ import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
+  isCreatingCuboidAtom,
+  isCuboidAnnotateActiveAtom,
+  isPolylineAnnotateActiveAtom,
+  stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
@@ -34,6 +39,7 @@ import type {
 } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
+  CuboidCoordinateInputs,
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
@@ -55,6 +61,10 @@ export const useAnnotationActions = () => {
     selectedPolylineVertexAtom
   );
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
+  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const [isCreatingCuboid, setIsCreatingCuboid] =
+    useRecoilState(isCreatingCuboidAtom);
   const [segmentState, setSegmentState] = useRecoilState(
     activeSegmentationStateAtom
   );
@@ -66,6 +76,9 @@ export const useAnnotationActions = () => {
     useRecoilState(editSegmentsModeAtom);
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
+  );
+  const setStagedCuboidTransforms = useSetRecoilState(
+    stagedCuboidTransformsAtom
   );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
@@ -248,13 +261,24 @@ export const useAnnotationActions = () => {
     }
   }, [editSegmentsMode, setEditSegmentsMode, setSegmentState]);
 
-  // Custom exit function that also clears polyline transforms
+  const handleToggleCreateCuboid = useCallback(() => {
+    setIsCreatingCuboid(!isCreatingCuboid);
+  }, [isCreatingCuboid, setIsCreatingCuboid]);
+
+  // Custom exit function that also clears polyline and cuboid transforms
   const customExit = useCallback(() => {
     setStagedPolylineTransforms({});
+    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     setEditing(null);
     setEditSegmentsMode(false);
-  }, []);
+  }, [
+    setStagedPolylineTransforms,
+    setStagedCuboidTransforms,
+    setSelectedLabelForAnnotation,
+    setEditing,
+    setEditSegmentsMode,
+  ]);
 
   // Use confirm exit hook with custom exit function
   const { confirmExit } = useConfirmExit(customExit);
@@ -297,6 +321,7 @@ export const useAnnotationActions = () => {
       {
         id: "polyline-actions",
         label: "Polyline",
+        isHidden: !isPolylineAnnotateActive,
         actions: [
           {
             id: "new-segment",
@@ -349,6 +374,23 @@ export const useAnnotationActions = () => {
               "When enabled, double-clicking closes the polyline. When disabled, double-clicking ends the annotation and commits the last placed vertex.",
             isActive: snapCloseAutomatically,
             onClick: () => setSnapCloseAutomatically(!snapCloseAutomatically),
+          },
+        ],
+      },
+      {
+        id: "cuboid-actions",
+        label: "Cuboid",
+        isHidden: !isCuboidAnnotateActive,
+        actions: [
+          {
+            id: "create-cuboid",
+            label: "Create Cuboid",
+            icon: <AddBoxIcon />,
+            tooltip: isCreatingCuboid
+              ? "Exit create mode"
+              : "Click in the 3D scene to create a unit cuboid",
+            isActive: isCreatingCuboid,
+            onClick: handleToggleCreateCuboid,
           },
         ],
       },
@@ -425,13 +467,14 @@ export const useAnnotationActions = () => {
 
     if (
       (selectedPoint && currentArchetypeSelectedForTransform === "point") ||
-      currentArchetypeSelectedForTransform === "annotation-plane"
+      currentArchetypeSelectedForTransform === "annotation-plane" ||
+      currentArchetypeSelectedForTransform === "cuboid"
     ) {
       const coordinateInputAction: AnnotationAction = {
         id: "coordinate-inputs-component",
         label: "Coordinates",
         icon: <Typography variant="caption">XYZ</Typography>,
-        tooltip: "Edit point coordinates",
+        tooltip: "Edit coordinates",
         isActive: false,
         isDisabled: false,
         isVisible: true,
@@ -440,6 +483,8 @@ export const useAnnotationActions = () => {
         customComponent:
           currentArchetypeSelectedForTransform === "annotation-plane" ? (
             <PlaneCoordinateInputs hideRotation={false} />
+          ) : currentArchetypeSelectedForTransform === "cuboid" ? (
+            <CuboidCoordinateInputs />
           ) : (
             <VertexCoordinateInputs />
           ),

@@ -26,6 +26,8 @@ const SUPPORTED_ANNOTATION_TYPES = {
   [THREE_D]: new Set([
     CLASSIFICATION_FIELD,
     CLASSIFICATIONS_FIELD,
+    DETECTION_FIELD,
+    DETECTIONS_FIELD,
     POLYLINE_FIELD,
     POLYLINES_FIELD,
   ]),
@@ -44,6 +46,7 @@ export default function useLoadSchemas() {
 
     const schemas = {};
     for (const path in get.result.schemas) {
+      debugger;
       if (!paths.includes(path)) continue;
 
       schemas[path] = get.result.schemas[path];
