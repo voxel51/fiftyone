@@ -20,7 +20,7 @@ export default function Dropdown(props: WidgetProps) {
   const enumNames = schema.enumNames || enumValues;
 
   // Build choices array in SchemaIO format
-  const choices = enumValues.map((val: any, index: number) => ({
+  const choices = enumValues.map((val: unknown, index: number) => ({
     value: val,
     label: enumNames[index] || val,
   }));

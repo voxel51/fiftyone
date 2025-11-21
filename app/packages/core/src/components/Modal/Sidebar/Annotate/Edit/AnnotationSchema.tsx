@@ -54,7 +54,7 @@ const createInput = (
     },
   };
 
-  if (multipleOf) {
+  if (typeof multipleOf === "number" && type === "number") {
     (schema as NumberSchemaType).multipleOf = multipleOf;
   }
 

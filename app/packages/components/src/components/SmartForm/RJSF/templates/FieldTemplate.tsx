@@ -10,7 +10,11 @@ export default function FieldTemplate(props: FieldTemplateProps) {
   const { classNames, style, errors, help, children, hidden } = props;
 
   if (hidden) {
-    return <div style={{ display: "none" }}>{children}</div>;
+    return (
+      <div className={classNames} style={{ display: "none" }}>
+        {children}
+      </div>
+    );
   }
 
   return (

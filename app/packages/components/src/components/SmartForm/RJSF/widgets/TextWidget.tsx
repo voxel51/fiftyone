@@ -5,6 +5,7 @@
 import React from "react";
 import { WidgetProps } from "@rjsf/utils";
 import { Box, TextField, Typography } from "@mui/material";
+import { useTheme } from "@fiftyone/components";
 
 export default function TextWidget(props: WidgetProps) {
   const {
@@ -22,6 +23,8 @@ export default function TextWidget(props: WidgetProps) {
     schema,
     rawErrors = [],
   } = props;
+
+  const theme = useTheme();
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
@@ -62,7 +65,9 @@ export default function TextWidget(props: WidgetProps) {
         >
           {label}
           {required && (
-            <span style={{ color: "error.main", marginLeft: "4px" }}>*</span>
+            <span style={{ color: theme.error.main, marginLeft: "4px" }}>
+              *
+            </span>
           )}
         </Typography>
       )}

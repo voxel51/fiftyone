@@ -19,9 +19,9 @@ export default function AutoComplete(props: WidgetProps) {
   const enumNames = uiSchema?.["ui:enumNames"] || enumValues;
 
   // Build choices array in SchemaIO format
-  const choices = enumValues.map((val: string, index: number) => ({
+  const choices = enumValues.map((val: unknown, index: number) => ({
     value: val,
-    label: enumNames[index] || val,
+    label: (enumNames[index] ?? val) as string,
   }));
 
   const multiple = schema.type === "array";

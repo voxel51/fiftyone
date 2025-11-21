@@ -3,7 +3,7 @@ import {
   LIGHTER_EVENTS,
   useLighter,
 } from "@fiftyone/lighter";
-import { TransformOverlayCommand } from "@fiftyone/lighter/src/commands/TransformOverlayCommand";
+import { TransformOverlayCommand } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
