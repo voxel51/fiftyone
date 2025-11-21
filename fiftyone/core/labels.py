@@ -7,6 +7,7 @@ Labels stored in dataset samples.
 """
 
 import itertools
+import logging
 import warnings
 from functools import partial
 
@@ -32,6 +33,14 @@ foui = fou.lazy_import("fiftyone.utils.image")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
 )
+trimesh = fou.lazy_import(
+    "trimesh", callback=lambda: fou.ensure_package("trimesh")
+)
+
+import fiftyone.core.storage as fos
+from fiftyone.core.threed import Scene, PerspectiveCamera, ObjMesh
+
+logger = logging.getLogger(__name__)
 
 
 class _NoDefault(object):
@@ -2122,7 +2131,7 @@ class SMPLParams(EmbeddedDocument):
 
 
 class Person3D(EmbeddedDocument):
-    """A 3D person detection.
+    """A 3D person detection with geometric data.
 
     Args:
         person_id (None): person identifier
@@ -2130,8 +2139,6 @@ class Person3D(EmbeddedDocument):
         vertices (None): 3D mesh vertices as Nx3 list of lists
         keypoints_3d (None): 3D keypoint locations as Jx3 list of lists
         keypoints_2d (None): 2D keypoint locations as Jx2 list of lists
-        smpl_params (None): :class:`SMPLParams` instance with SMPL parameters
-        camera_translation (None): camera translation [tx, ty, tz]
         instance (None): an :class:`Instance` to link this 3D person to the
             corresponding 2D detection in a grouped dataset
     """
@@ -2141,9 +2148,186 @@ class Person3D(EmbeddedDocument):
     vertices = fof.ListField(fof.ListField(fof.FloatField()))
     keypoints_3d = fof.ListField(fof.ListField(fof.FloatField()))
     keypoints_2d = fof.ListField(fof.ListField(fof.FloatField()))
+    instance = fof.EmbeddedDocumentField(Instance)
+
+
+class SMPLHumanPose(EmbeddedDocument):
+    """A single SMPL-based human pose with associated metadata.
+
+    Args:
+        person (None): :class:`Person3D` geometry
+        smpl_params (None): :class:`SMPLParams` instance with SMPL parameters
+        camera_translation (None): camera translation [tx, ty, tz]
+        scene_path (None): path to the exported .fo3d file containing this pose
+        smpl_faces (None): SMPL mesh topology (F x 3)
+        frame_size (None): [height, width] of the source frame
+    """
+
+    person = fof.EmbeddedDocumentField(Person3D)
     smpl_params = fof.EmbeddedDocumentField(SMPLParams)
     camera_translation = fof.ListField(fof.FloatField())
-    instance = fof.EmbeddedDocumentField(Instance)
+    scene_path = fof.StringField()
+    smpl_faces = fof.ArrayField()
+    frame_size = fof.ListField()
+
+
+class SMPLHumanPoses(_HasLabelList, Label):
+    """A list of :class:`SMPLHumanPose` instances."""
+
+    _LABEL_LIST_FIELD = "poses"
+
+    poses = fof.ListField(fof.EmbeddedDocumentField(SMPLHumanPose))
+
+    def __init__(self, poses=None, smpl_faces=None, frame_size=None, **kwargs):
+        super().__init__(**kwargs)
+        self._smpl_faces_cache = None
+        self._frame_size_cache = None
+        self.poses = poses
+        if smpl_faces is not None:
+            self.smpl_faces = smpl_faces
+        if frame_size is not None:
+            self.frame_size = frame_size
+
+    def _first_pose_attr(self, attr):
+        for pose in self.poses or []:
+            value = getattr(pose, attr, None)
+            if value is not None:
+                return value
+
+        if attr == "smpl_faces":
+            return self._smpl_faces_cache
+        if attr == "frame_size":
+            return self._frame_size_cache
+        return None
+
+    def _set_pose_attr(self, attr, value):
+        if attr == "smpl_faces":
+            self._smpl_faces_cache = value
+        elif attr == "frame_size":
+            self._frame_size_cache = value
+
+        for pose in self.poses or []:
+            setattr(pose, attr, value)
+
+    @property
+    def scene_path(self):
+        return self._first_pose_attr("scene_path")
+
+    @scene_path.setter
+    def scene_path(self, value):
+        self._set_pose_attr("scene_path", value)
+
+    @property
+    def smpl_faces(self):
+        return self._first_pose_attr("smpl_faces")
+
+    @smpl_faces.setter
+    def smpl_faces(self, value):
+        self._set_pose_attr("smpl_faces", value)
+
+    @property
+    def frame_size(self):
+        return self._first_pose_attr("frame_size")
+
+    @frame_size.setter
+    def frame_size(self, value):
+        self._set_pose_attr("frame_size", value)
+
+    def export_scene(self, scene_path, update=True):
+        """Export 3D scene and meshes to disk.
+
+        Args:
+            scene_path: output path for .fo3d scene file
+            update: if True, propagate scene_path to all poses
+
+        Returns:
+            str: path to exported .fo3d file
+        """
+        import hashlib
+        import os
+
+        if not self.poses:
+            raise ValueError("Cannot export scene: no pose data")
+
+        smpl_faces = self.smpl_faces
+        if smpl_faces is None:
+            raise ValueError(
+                "Cannot export scene: SMPL faces not stored. "
+                "Ensure the model was run with export_meshes=True"
+            )
+
+        fos.ensure_basedir(scene_path)
+
+        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
+        base_dir = os.path.dirname(scene_path)
+
+        mesh_objects = []
+        all_vertices = []
+
+        smpl_faces_arr = np.asarray(smpl_faces)
+        frame_size = self.frame_size or [512, 512]
+
+        for idx, pose in enumerate(self.poses):
+            person = pose.person
+            if person is None or person.vertices is None:
+                logger.warning(
+                    "Skipping SMPLHumanPose %d with no vertices", idx
+                )
+                continue
+
+            person_id = (
+                person.person_id if person.person_id is not None else idx
+            )
+            vertices = np.asarray(person.vertices)
+            all_vertices.append(vertices)
+
+            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
+            mesh_path = os.path.join(base_dir, mesh_filename)
+
+            mesh = trimesh.Trimesh(
+                vertices=vertices, faces=smpl_faces_arr, process=False
+            )
+            mesh.export(mesh_path)
+
+            mesh_objects.append(
+                ObjMesh(
+                    name=f"Person {person_id}",
+                    obj_path=mesh_path,
+                )
+            )
+
+        if not mesh_objects:
+            raise ValueError("Cannot export scene: no meshes were generated")
+
+        all_vertices = np.vstack(all_vertices)
+        center = all_vertices.mean(axis=0)
+        bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
+        camera_distance = bbox_size.max() * 1.5
+        camera_position = center + np.array([0, 0, camera_distance])
+
+        aspect = (
+            frame_size[1] / frame_size[0]
+            if frame_size and frame_size[0]
+            else 1.0
+        )
+
+        camera = PerspectiveCamera(
+            position=camera_position.tolist(),
+            look_at=center.tolist(),
+            up="Y",
+            aspect=aspect,
+        )
+
+        scene = Scene(camera=camera, lights=[])
+        for mesh_obj in mesh_objects:
+            scene.add(mesh_obj)
+
+        scene.write(scene_path)
+
+        if update:
+            self.scene_path = scene_path
+
+        return scene_path
 
 
 class HumanPose2D(Label):
@@ -2189,158 +2373,3 @@ class HumanPoses2D(_HasLabelList, Label):
     _LABEL_LIST_FIELD = "poses"
 
     poses = fof.ListField(fof.EmbeddedDocumentField(HumanPose2D))
-
-
-class HumanPose3D(Label):
-    """3D human pose and SMPL parameters for 3D scene samples.
-
-    Supports both single-person and multi-person scenarios.
-
-    Args:
-        people (None): list of :class:`Person3D` instances containing 3D pose data
-        scene_path (None): path to the .fo3d scene file containing the 3D meshes
-        smpl_faces (None): SMPL mesh topology as (F, 3) array of face indices.
-            Required for exporting meshes to OBJ format
-        frame_size (None): [height, width] of the input frame for camera setup
-    """
-
-    people = fof.ListField(fof.EmbeddedDocumentField(Person3D))
-    scene_path = fof.StringField()
-    smpl_faces = fof.ArrayField()
-    frame_size = fof.ListField()
-
-    def __init__(
-        self,
-        people=None,
-        scene_path=None,
-        smpl_faces=None,
-        frame_size=None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.people = people
-        self.scene_path = scene_path
-        self.smpl_faces = smpl_faces
-        self.frame_size = frame_size
-
-    def export_scene(self, scene_path, update=True):
-        """Export 3D scene and meshes to disk.
-
-        This method writes the .fo3d scene file and associated OBJ mesh files
-        for each person to the specified location. The scene can then be
-        visualized in FiftyOne's 3D viewer.
-
-        Args:
-            scene_path: output path for .fo3d scene file
-            update: if True, set scene_path field after export (default True)
-
-        Returns:
-            str: path to exported .fo3d file
-
-        Raises:
-            ValueError: if required metadata (smpl_faces, people) is missing
-            ImportError: if required dependencies (trimesh, numpy) are not available
-        """
-        import hashlib
-        import os
-
-        try:
-            import numpy as np
-        except ImportError:
-            raise ImportError(
-                "numpy is required for exporting HumanPose3D scenes. "
-                "Install it with: pip install numpy"
-            )
-
-        try:
-            import trimesh
-        except ImportError:
-            raise ImportError(
-                "trimesh is required for exporting HumanPose3D scenes. "
-                "Install it with: pip install trimesh"
-            )
-
-        import fiftyone.core.storage as fos
-        from fiftyone.core.threed import Scene, PerspectiveCamera, ObjMesh
-
-        # Validate required data
-        if not self.people or len(self.people) == 0:
-            raise ValueError("Cannot export scene: no people data")
-        if self.smpl_faces is None:
-            raise ValueError(
-                "Cannot export scene: SMPL faces not stored. "
-                "Ensure the model was run with export_meshes=True"
-            )
-
-        # Ensure output directory exists
-        fos.ensure_basedir(scene_path)
-
-        # Generate UID from scene path for consistent mesh naming
-        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
-        base_dir = os.path.dirname(scene_path)
-
-        # Process each person and export mesh
-        mesh_objects = []
-        all_vertices = []
-
-        for i, person in enumerate(self.people):
-            person_id = person.person_id if person.person_id is not None else i
-            vertices = np.array(person.vertices)  # Already in world coords
-
-            # Collect for camera positioning
-            all_vertices.append(vertices)
-
-            # Create mesh and export to OBJ
-            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
-            mesh_path = os.path.join(base_dir, mesh_filename)
-
-            mesh = trimesh.Trimesh(
-                vertices=vertices, faces=self.smpl_faces, process=False
-            )
-            mesh.export(mesh_path)
-
-            # Create FiftyOne mesh object
-            mesh_objects.append(
-                ObjMesh(
-                    name=f"Person {person_id}",
-                    obj_path=mesh_path,
-                )
-            )
-
-        # Compute optimal camera position from all vertices
-        all_vertices = np.vstack(all_vertices)
-        center = all_vertices.mean(axis=0)
-        bbox_max = all_vertices.max(axis=0)
-        bbox_min = all_vertices.min(axis=0)
-        bbox_size = bbox_max - bbox_min
-        max_dim = bbox_size.max()
-
-        # Position camera to view entire scene
-        camera_distance = max_dim * 1.5
-        camera_position = center + np.array([0, 0, camera_distance])
-
-        # Create scene with camera
-        frame_size = self.frame_size or [512, 512]
-        camera = PerspectiveCamera(
-            position=camera_position.tolist(),
-            look_at=center.tolist(),
-            up="Y",  # Y-up coordinate system
-            aspect=frame_size[1] / frame_size[0],
-        )
-
-        scene = Scene(
-            camera=camera,
-            lights=[],
-        )
-
-        for mesh_obj in mesh_objects:
-            scene.add(mesh_obj)
-
-        # Write .fo3d file
-        scene.write(scene_path)
-
-        # Update label if requested
-        if update:
-            self.scene_path = scene_path
-
-        return scene_path

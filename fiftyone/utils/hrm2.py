@@ -8,6 +8,7 @@ HRM2.0 (4D-Humans) model integration.
 
 import logging
 import os
+import pickle
 from pathlib import Path
 from typing import Optional, Dict, List, Tuple, Union, Any, Callable
 
@@ -337,19 +338,30 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
 
     try:
         from omegaconf import DictConfig  # pylint: disable=invalid-name
+        from omegaconf.base import (
+            ContainerMetadata,
+        )  # pylint: disable=invalid-name
+
+        omegaconf_classes = [DictConfig, ContainerMetadata]
     except ImportError:
         DictConfig = None  # pylint: disable=invalid-name
+        omegaconf_classes = None
 
     # Preferred path: use the safe_globals context manager introduced in torch 2.6
     # pylint: disable=using-constant-test
     safe_globals_ctx = (
         getattr(serialization, "safe_globals", None) if serialization else None
     )
-    if safe_globals_ctx and DictConfig is not None:
+    if safe_globals_ctx and omegaconf_classes is not None:
         try:
-            with safe_globals_ctx([DictConfig]):
+            with safe_globals_ctx(omegaconf_classes):
                 return torch.load(checkpoint_path, **load_kwargs)
-        except (RuntimeError, TypeError, AttributeError) as e:
+        except (
+            RuntimeError,
+            TypeError,
+            AttributeError,
+            pickle.UnpicklingError,
+        ) as e:
             logger.debug(
                 "torch.load with safe_globals failed: %s. Falling back to weights_only=False",
                 e,
@@ -362,9 +374,9 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
         if serialization
         else None
     )
-    if add_safe_globals and DictConfig is not None:
+    if add_safe_globals and omegaconf_classes is not None:
         try:
-            add_safe_globals([DictConfig])
+            add_safe_globals(omegaconf_classes)
         except (RuntimeError, TypeError, AttributeError) as e:
             logger.debug("torch.serialization.add_safe_globals failed: %s", e)
 
@@ -657,11 +669,11 @@ class _HRM2CropHelper:
 
 
 class HRM2OutputProcessor(fout.OutputProcessor):
-    """Converts HRM2 raw outputs to FiftyOne HumanPose3D labels.
+    """Converts HRM2 raw outputs to FiftyOne SMPLHumanPoses + 2D labels.
 
     This processor handles all postprocessing logic including tensor-to-Python
-    conversion and label creation. Scene export is deferred to the HumanPose3D
-    label's export_scene() method, following FiftyOne's standard pattern.
+    conversion and label creation. Scene export is deferred to the
+    SMPLHumanPoses label's export_scene() method.
 
     **Resource Requirements:**
     - If ``export_meshes=True``, requires ``smpl_model`` to prepare scene metadata
@@ -671,7 +683,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     **Postprocessing Pipeline:**
     1. Convert raw tensors to Python types (_process_person)
     2. Prepare scene metadata using SMPL model (_prepare_scene_data)
-    3. Return HumanPose3D labels with all data needed for later export
+    3. Return dicts containing SMPLHumanPoses + 2D overlays ready for storage
 
     Args:
         smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh metadata.
@@ -717,64 +729,53 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         outputs: List[Dict[str, Any]],
         frame_size: Tuple[int, int],
         confidence_thresh: Optional[float] = None,
-    ) -> List[fol.HumanPose3D]:
-        """Convert raw HRM2 outputs to HumanPose3D labels.
+    ) -> List[Dict[str, fol.Label]]:
+        """Convert raw HRM2 outputs to dicts of FiftyOne labels.
 
         Args:
             outputs: List of raw output dicts from _forward_pass, each containing:
                 - "people": List of person detection dicts with raw tensors
                 - "img_shape": (height, width) of the source image
             frame_size: (width, height) tuple (not used but required by interface)
-            confidence_thresh: optional confidence threshold
+            confidence_thresh: optional confidence threshold (unused, retained for
+                interface compatibility)
 
         Returns:
-            List of HumanPose3D labels, one per image
+            List of dicts per image containing SMPLHumanPoses + 2D overlays
         """
-        labels = []
+        results = []
 
         for output in outputs:
-            people_data = []
+            people_data = [
+                self._process_person(person_raw)
+                for person_raw in output["people"]
+            ]
 
-            # Process each person's raw output
-            for person_raw in output["people"]:
-                person_dict = self._process_person(person_raw)
-                people_data.append(person_dict)
+            img_shape = output.get("img_shape")
+            bundle_people = people_data
+            smpl_faces = None
+            bundle_frame_size = (
+                list(img_shape) if img_shape is not None else None
+            )
 
-            # Prepare scene data if enabled
-            scene_data = None
             if self._smpl is not None and self.export_meshes and people_data:
-                scene_data = self._prepare_scene_data(
-                    people_data, output.get("img_shape")
-                )
+                scene_data = self._prepare_scene_data(people_data, img_shape)
+                bundle_people = scene_data["people"]
+                smpl_faces = scene_data["smpl_faces"]
+                bundle_frame_size = scene_data["frame_size"]
 
-            # Create label with scene metadata (no scene_path yet - set during export)
-            if scene_data:
-                # Construct Person3D objects from scene data
-                person3d_list = self._build_person3d_objects(
-                    scene_data["people"]
-                )
-                label = fol.HumanPose3D(
-                    people=person3d_list,
-                    smpl_faces=scene_data["smpl_faces"],
-                    frame_size=scene_data["frame_size"],
-                    scene_path=None,  # Will be set during export
-                )
-            else:
-                # No scene export - construct Person3D objects from people data
-                person3d_list = self._build_person3d_objects(people_data)
-                label = fol.HumanPose3D(
-                    people=person3d_list,
-                    scene_path=None,
-                    smpl_faces=None,
-                    frame_size=None,
-                )
-            labels.append(label)
+            bundle = self._build_pose_outputs(
+                bundle_people,
+                img_shape,
+                smpl_faces,
+                bundle_frame_size,
+            )
+            results.append(bundle)
 
-        return labels
+        return results
 
-    def _process_person(
-        self, person_raw: Dict[str, Any]
-    ) -> Dict[str, Any]:  # pylint: disable=no-self-use
+    @staticmethod
+    def _process_person(person_raw: Dict[str, Any]) -> Dict[str, Any]:
         """Convert a single person's raw tensors to Python types.
 
         All postprocessing is done on CPU - tensors are explicitly moved to CPU
@@ -939,21 +940,101 @@ class HRM2OutputProcessor(fout.OutputProcessor):
 
         return scene_data
 
-    def _build_person3d_objects(  # pylint: disable=no-self-use
-        self, people_data: List[Dict[str, Any]]
-    ) -> List[fol.Person3D]:
-        """Build Person3D objects from processed person dictionaries.
+    @staticmethod
+    def _normalize_bbox(
+        bbox: Optional[List[float]],
+        width: Optional[float],
+        height: Optional[float],
+    ) -> Optional[List[float]]:
+        if bbox is None or width is None or height is None:
+            return None
 
-        Args:
-            people_data: list of person dictionaries with processed data
+        x1, y1, x2, y2 = bbox
+        return [
+            x1 / width,
+            y1 / height,
+            (x2 - x1) / width,
+            (y2 - y1) / height,
+        ]
 
-        Returns:
-            list of Person3D embedded document instances
-        """
-        person3d_list = []
+    @staticmethod
+    def _normalize_keypoints(
+        keypoints: Optional[List[List[float]]],
+        width: Optional[float],
+        height: Optional[float],
+    ) -> Tuple[Optional[List[List[float]]], Optional[List[float]]]:
+        if keypoints is None or width is None or height is None:
+            return None, None
+
+        points = np.asarray(keypoints, dtype=np.float32)
+        confidence = None
+
+        if points.shape[1] == 3:
+            confidence = points[:, 2].tolist()
+            points = points[:, :2]
+
+        points[:, 0] /= width
+        points[:, 1] /= height
+
+        return points.tolist(), confidence
+
+    def _build_pose_outputs(
+        self,
+        people_data: List[Dict[str, Any]],
+        img_shape: Optional[Tuple[int, int]],
+        smpl_faces: Optional[List[Any]],
+        frame_size: Optional[List[int]],
+    ) -> Dict[str, fol.Label]:
+        width = height = None
+        if img_shape is not None:
+            height, width = img_shape
+
+        pose_wrappers = []
+        keypoints_list = []
+        detections_list = []
+        smpl_pose_list = []
 
         for person_dict in people_data:
-            # Extract SMPL params and construct SMPLParams object
+            keypoints_rel = None
+            confidence = None
+            keypoints_abs = person_dict.get("keypoints_2d")
+            if keypoints_abs is not None:
+                keypoints_rel, confidence = self._normalize_keypoints(
+                    keypoints_abs, width, height
+                )
+
+            keypoint_label = None
+            if keypoints_rel is not None:
+                keypoint_kwargs = {
+                    "label": "person",
+                    "points": keypoints_rel,
+                }
+                if confidence is not None:
+                    keypoint_kwargs["confidence"] = confidence
+                keypoint_label = fol.Keypoint(**keypoint_kwargs)
+
+            detection_label = None
+            bbox_rel = self._normalize_bbox(
+                person_dict.get("bbox"), width, height
+            )
+            if bbox_rel is not None:
+                detection_label = fol.Detection(
+                    label="person",
+                    bounding_box=bbox_rel,
+                )
+
+            if keypoint_label:
+                keypoints_list.append(keypoint_label)
+            if detection_label:
+                detections_list.append(detection_label)
+            if keypoint_label or detection_label:
+                pose_wrappers.append(
+                    fol.HumanPose2D(
+                        pose=keypoint_label,
+                        detection=detection_label,
+                    )
+                )
+
             smpl_dict = person_dict.get("smpl_params", {})
             smpl_params = fol.SMPLParams(
                 body_pose=smpl_dict.get("body_pose"),
@@ -962,19 +1043,36 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 camera=smpl_dict.get("camera"),
             )
 
-            # Construct Person3D object
             person3d = fol.Person3D(
                 person_id=person_dict.get("person_id"),
                 bbox=person_dict.get("bbox"),
                 vertices=person_dict.get("vertices"),
                 keypoints_3d=person_dict.get("keypoints_3d"),
                 keypoints_2d=person_dict.get("keypoints_2d"),
+            )
+
+            smpl_pose = fol.SMPLHumanPose(
+                person=person3d,
                 smpl_params=smpl_params,
                 camera_translation=person_dict.get("camera_translation"),
             )
-            person3d_list.append(person3d)
+            smpl_pose_list.append(smpl_pose)
 
-        return person3d_list
+        bundle: Dict[str, fol.Label] = {}
+        if pose_wrappers:
+            bundle["poses_2d"] = fol.HumanPoses2D(poses=pose_wrappers)
+        if keypoints_list:
+            bundle["keypoints"] = fol.Keypoints(keypoints=keypoints_list)
+        if detections_list:
+            bundle["detections"] = fol.Detections(detections=detections_list)
+        if smpl_pose_list:
+            bundle["poses_3d"] = fol.SMPLHumanPoses(
+                poses=smpl_pose_list,
+                smpl_faces=smpl_faces,
+                frame_size=frame_size,
+            )
+
+        return bundle
 
 
 class HRM2GetItem(fout.GetItem):
@@ -1235,20 +1333,37 @@ def apply_hrm2_to_dataset_as_groups(
             }
         )
 
+    label_fields_map = {
+        "poses_3d": f"{label_field}_3d",
+        "poses_2d": f"{label_field}_2d",
+        "keypoints": f"{label_field}_keypoints",
+        "detections": f"{label_field}_detections",
+    }
+
     # Apply model to get predictions
     dataset.apply_model(
         model,
-        label_field=label_field,
+        label_field=label_fields_map,
         batch_size=batch_size,
         num_workers=num_workers,
         output_dir=output_dir,
     )
 
     # Collect predictions with scene paths
+    def _get_label(sample, field_name):
+        try:
+            return sample.get_field(field_name)
+        except KeyError:
+            return None
+
     predictions = []
     for sample in dataset.iter_samples():
-        pred = sample[label_field]
-        predictions.append(pred)
+        predictions.append(
+            {
+                key: _get_label(sample, field_name)
+                for key, field_name in label_fields_map.items()
+            }
+        )
 
     # Clear dataset to rebuild with groups
     logger.info("Creating grouped dataset structure...")
@@ -1272,99 +1387,27 @@ def apply_hrm2_to_dataset_as_groups(
         for field_name, field_value in orig_data["fields"].items():
             image_sample[field_name] = field_value
 
-        # Get image dimensions for coordinate conversion
-        img_metadata = fo.ImageMetadata.build_for(orig_data["filepath"])
-        img_width = img_metadata.width
-        img_height = img_metadata.height
+        pose_2d = pred.get("poses_2d")
+        keypoints = pred.get("keypoints")
+        detections = pred.get("detections")
+        pose_3d = pred.get("poses_3d")
 
-        # Create shared instances and 2D labels for each person
-        if pred and pred.people:
-            people_list = pred.people
-            pose_2d_labels = []
-            keypoints_list = []
-            detections_list = []
-
-            for person in people_list:
-                # Create shared instance for linking 2D and 3D labels
-                person_instance = fol.Instance()
-
-                # Store instance on Person3D for later linking
-                person.instance = person_instance
-
-                # Create 2D labels if keypoints available
-                if person.keypoints_2d is not None:
-                    # Convert keypoints from absolute pixels to relative [0,1] coordinates
-                    kpts_abs = np.array(person.keypoints_2d)
-                    kpts_rel = kpts_abs.copy()
-                    kpts_rel[:, 0] /= img_width
-                    kpts_rel[:, 1] /= img_height
-
-                    # Extract confidence if present (Nx3) or set to None
-                    confidence = None
-                    if kpts_abs.shape[1] == 3:
-                        confidence = kpts_rel[:, 2].tolist()
-                        kpts_rel = kpts_rel[:, :2]
-
-                    # Create Keypoint label
-                    keypoint_label = fol.Keypoint(
-                        label="person",
-                        points=kpts_rel.tolist(),
-                        confidence=confidence,
-                        instance=person_instance,
-                    )
-                    keypoints_list.append(keypoint_label)
-
-                    # Create Detection label if bbox available
-                    detection_label = None
-                    if person.bbox is not None:
-                        # Convert bbox from absolute [x1,y1,x2,y2] to relative [x,y,w,h]
-                        x1, y1, x2, y2 = person.bbox
-                        bbox_rel = [
-                            x1 / img_width,
-                            y1 / img_height,
-                            (x2 - x1) / img_width,
-                            (y2 - y1) / img_height,
-                        ]
-                        detection_label = fol.Detection(
-                            label="person",
-                            bounding_box=bbox_rel,
-                            instance=person_instance,
-                        )
-                        detections_list.append(detection_label)
-
-                    # Create HumanPose2D wrapper
-                    pose_2d_labels.append(
-                        fol.HumanPose2D(
-                            pose=keypoint_label,
-                            detection=detection_label,
-                        )
-                    )
-
-            # Store native label types for App visualization
-            if keypoints_list:
-                image_sample[f"{label_field}_keypoints"] = fol.Keypoints(
-                    keypoints=keypoints_list
-                )
-            if detections_list:
-                image_sample[f"{label_field}_detections"] = fol.Detections(
-                    detections=detections_list
-                )
-
-            # Store HumanPose2D wrappers with proper schema registration
-            if pose_2d_labels:
-                image_sample[f"{label_field}_2d"] = fol.HumanPoses2D(
-                    poses=pose_2d_labels
-                )
+        if pose_2d:
+            image_sample[label_fields_map["poses_2d"]] = pose_2d
+        if keypoints:
+            image_sample[label_fields_map["keypoints"]] = keypoints
+        if detections:
+            image_sample[label_fields_map["detections"]] = detections
 
         all_new_samples.append(image_sample)
 
         # Create 3D scene sample if mesh was generated
-        if pred and pred.scene_path is not None:
-            scene_sample = fo.Sample(filepath=pred.scene_path)
+        scene_path = pose_3d.scene_path if pose_3d is not None else None
+        if pose_3d and scene_path is not None:
+            scene_sample = fo.Sample(filepath=scene_path)
             scene_sample["group"] = group.element(scene_slice_name)
 
-            # Store 3D pose data (Person3D objects now have instance field set)
-            scene_sample[f"{label_field}_3d"] = pred
+            scene_sample[label_fields_map["poses_3d"]] = pose_3d
             all_new_samples.append(scene_sample)
 
     # Add all samples at once - FiftyOne will detect groups automatically
@@ -1387,7 +1430,7 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         checkpoint_version ("2.0b"): version of HRM2 checkpoint to use
         confidence_thresh (None): confidence threshold for keypoint filtering
         export_meshes (True): whether to prepare 3D mesh metadata for later export.
-            If True, HumanPose3D labels will contain all data needed for export.
+            If True, SMPLHumanPoses labels will contain all data needed for export.
             Actual files are written when output_dir is provided to apply_model()
         detections_field (None): optional field name containing person detections
             to use for multi-person processing. If provided, HRM2 will process
@@ -1695,8 +1738,8 @@ class HRM2Model(
 
     def predict(
         self, img: Union[Image.Image, np.ndarray, torch.Tensor]
-    ) -> fol.HumanPose3D:
-        """Run HRM2 inference on a single image.
+    ) -> Dict[str, fol.Label]:
+        """Run HRM2 inference on a single image and return a label bundle.
 
         This method performs single-person 3D human mesh reconstruction on the
         provided image. For multi-person scenarios or dataset-level inference,
@@ -1706,8 +1749,8 @@ class HRM2Model(
             img: input image as PIL.Image, numpy array (HWC), or torch.Tensor
 
         Returns:
-            HumanPose3D label containing SMPL parameters, 3D keypoints, and mesh
-            information for the detected person
+            Dict containing SMPLHumanPoses, HumanPoses2D, Keypoints, and/or
+            Detections labels, depending on model outputs
         """
         return self.predict_all([img])[0]
 
@@ -1717,7 +1760,7 @@ class HRM2Model(
             Union[Image.Image, np.ndarray, torch.Tensor, Dict[str, Any]]
         ],
         samples: Optional[Any] = None,  # pylint: disable=unused-argument
-    ) -> List[fol.HumanPose3D]:
+    ) -> List[Dict[str, fol.Label]]:
         """Run HRM2 inference on a list of images or batch data.
 
         This method performs single-person 3D human mesh reconstruction on each
@@ -1730,7 +1773,7 @@ class HRM2Model(
             samples: optional FiftyOne samples (not used for direct predict)
 
         Returns:
-            list of HumanPose3D labels, one per image
+            list of dicts containing HRM2 predictions, one per image
         """
         # Check if we're receiving dicts from GetItem (dataloader mode)
         # or raw images (direct predict mode)
@@ -1761,11 +1804,11 @@ class HRM2Model(
 
     def _predict_all(  # pylint: disable=arguments-renamed
         self, batch_data: List[Dict[str, Any]]
-    ) -> List[fol.HumanPose3D]:
-        """Process batch and return labels via output processor.
+    ) -> List[Dict[str, fol.Label]]:
+        """Process batch and return label bundles via output processor.
 
         This method receives data from the GetItem instance, performs inference
-        via _forward_pass(), and converts raw outputs to HumanPose3D labels
+        via _forward_pass(), and converts raw outputs to SMPLHumanPoses/2D labels
         using the output processor.
 
         Args:
@@ -1775,7 +1818,7 @@ class HRM2Model(
                 - 'filepath': path to the source image
 
         Returns:
-            list of HumanPose3D labels (if processor exists) or raw outputs
+            list of label dicts (if processor exists) or raw outputs
         """
         # Get raw outputs from forward pass
         raw_outputs = self._forward_pass(batch_data)

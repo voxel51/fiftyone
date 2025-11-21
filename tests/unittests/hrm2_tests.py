@@ -488,7 +488,11 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         """Test HRM2OutputProcessor.__call__() with realistic rotation matrix data."""
         import torch
         from fiftyone.utils.hrm2 import HRM2OutputProcessor
-        from fiftyone.core.labels import HumanPose3D, Person3D
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+        )
 
         # Create processor without SMPL (no mesh export)
         processor = HRM2OutputProcessor(
@@ -522,35 +526,148 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             }
         ]
 
-        # Call the processor (this is where the bug occurred)
+        # Call the processor (now returns a dict)
         labels = processor(outputs, frame_size=(640, 480))
 
-        # Verify output structure
+        # Verify output structure - now a dict
         self.assertEqual(len(labels), 1)
-        self.assertIsInstance(labels[0], HumanPose3D)
+        self.assertIsInstance(labels[0], dict)
+        self.assertIn("poses_2d", labels[0])
+        self.assertIn("poses_3d", labels[0])
 
-        # Verify Person3D structure
-        label = labels[0]
-        self.assertEqual(len(label.people), 1)
-        person = label.people[0]
+        # Verify SMPLHumanPoses structure
+        smpl_human_poses = labels[0]["poses_3d"]
+        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
+        self.assertEqual(len(smpl_human_poses.poses), 1)
+
+        smpl_pose = smpl_human_poses.poses[0]
+        self.assertIsInstance(smpl_pose, SMPLHumanPose)
+
+        # Verify simplified Person3D structure (no smpl_params, no camera_translation)
+        person = smpl_pose.person
         self.assertIsInstance(person, Person3D)
-
-        # Verify Person3D attributes (not dict keys!)
         self.assertEqual(person.person_id, 0)
-        self.assertIsNotNone(person.smpl_params)
         self.assertIsNotNone(person.keypoints_3d)
         self.assertIsNotNone(person.keypoints_2d)
         self.assertIsNotNone(person.bbox)
-        self.assertIsNotNone(person.camera_translation)
 
-        # Verify SMPLParams structure with rotation matrices
-        smpl = person.smpl_params
+        # Verify SMPLParams are now in SMPLHumanPose, not Person3D
+        smpl = smpl_pose.smpl_params
         self.assertEqual(len(smpl.body_pose), 23)
         self.assertEqual(len(smpl.body_pose[0]), 3)
         self.assertEqual(len(smpl.body_pose[0][0]), 3)
         self.assertEqual(len(smpl.betas), 10)
         self.assertEqual(len(smpl.global_orient), 1)
         self.assertEqual(len(smpl.global_orient[0]), 3)
+
+        # Verify camera_translation is now in SMPLHumanPose
+        self.assertIsNotNone(smpl_pose.camera_translation)
+
+    def test_output_processor_with_mesh_export(self):
+        """Test HRM2OutputProcessor with export_meshes=True to catch serialization bugs.
+
+        This test specifically validates:
+        1. smpl_faces remains a numpy array (not converted to list)
+        2. smpl_faces is set on SMPLHumanPoses collection, not individual poses
+        3. The full mesh export pipeline works end-to-end
+        """
+        import torch
+        import numpy as np
+        from fiftyone.utils.hrm2 import HRM2OutputProcessor
+        from fiftyone.core.labels import SMPLHumanPoses
+
+        # Create mock SMPL model with faces
+        mock_smpl = MockSMPL()
+        mock_device = torch.device("cpu")
+
+        # Create processor WITH mesh export enabled
+        processor = HRM2OutputProcessor(
+            smpl_model=mock_smpl,
+            device=mock_device,
+            export_meshes=True,
+            confidence_thresh=0.5,
+        )
+
+        # Verify mesh export is enabled
+        self.assertTrue(processor.export_meshes)
+
+        # Simulate HRM2 model outputs with vertices (needed for mesh export)
+        # Make sure vertices are proper numpy arrays/tensors that will convert correctly
+        vertices_data = torch.randn(6890, 3)
+
+        outputs = [
+            {
+                "people": [
+                    {
+                        "pred_cam": torch.tensor([2.0, 0.1, 0.2]),
+                        "pred_smpl_params": {
+                            "body_pose": torch.randn(23, 3, 3),
+                            "betas": torch.randn(10),
+                            "global_orient": torch.randn(1, 3, 3),
+                        },
+                        "pred_keypoints_3d": torch.randn(24, 3),
+                        "pred_keypoints_2d": torch.randn(24, 2),
+                        "pred_vertices": vertices_data,  # Include vertices as tensor
+                        "bbox": [100.0, 100.0, 200.0, 200.0],
+                        "person_id": 0,
+                        "camera_translation": torch.tensor([0.0, 0.0, 5.0]),
+                    }
+                ],
+                "img_shape": (480, 640),
+            }
+        ]
+
+        # Configure the globally mocked trimesh for coordinate transformations
+        import sys
+
+        mock_trimesh = sys.modules["trimesh"]
+        mock_rot_matrix = np.eye(4)
+        mock_trimesh.transformations.rotation_matrix.return_value = (
+            mock_rot_matrix
+        )
+
+        # Call the processor - this should trigger _prepare_scene_data
+        labels = processor(outputs, frame_size=(640, 480))
+
+        # Verify output structure
+        self.assertEqual(len(labels), 1)
+        self.assertIsInstance(labels[0], dict)
+        self.assertIn("poses_3d", labels[0])
+
+        # CRITICAL: Verify smpl_faces is a numpy array (not a list)
+        smpl_human_poses = labels[0]["poses_3d"]
+        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
+
+        # Get smpl_faces from the collection
+        smpl_faces = smpl_human_poses.smpl_faces
+        self.assertIsNotNone(
+            smpl_faces, "smpl_faces should not be None when export_meshes=True"
+        )
+        self.assertIsInstance(
+            smpl_faces,
+            np.ndarray,
+            f"smpl_faces should be numpy array, got {type(smpl_faces)}",
+        )
+
+        # Verify smpl_faces shape is correct (F x 3 for triangular faces)
+        self.assertEqual(
+            len(smpl_faces.shape), 2, "smpl_faces should be 2D array"
+        )
+        self.assertEqual(
+            smpl_faces.shape[1], 3, "Each face should have 3 vertices"
+        )
+
+        # Verify frame_size is also set correctly
+        frame_size = smpl_human_poses.frame_size
+        self.assertIsNotNone(frame_size)
+        self.assertEqual(frame_size, [480, 640])
+
+        # Verify individual poses don't have smpl_faces set directly
+        # (they should get it from the parent collection)
+        smpl_pose = smpl_human_poses.poses[0]
+        # The pose itself shouldn't have smpl_faces as a direct attribute
+        # It gets it through the parent's property
+        self.assertIsInstance(smpl_pose.smpl_faces, np.ndarray)
 
 
 class HRM2ModelTests(HRM2TestBase):
@@ -691,18 +808,27 @@ class HRM2ModelTests(HRM2TestBase):
 
             result = model.predict(img)
 
-        # Result should be a HumanPose3D label
-        from fiftyone.core.labels import HumanPose3D, Person3D
+        # Result should be a dict with label types
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+        )
 
-        self.assertIsInstance(result, HumanPose3D)
-        self.assertIsNotNone(result.people)
-        self.assertEqual(len(result.people), 1)
-        # Verify the processed output has Person3D structure
-        person = result.people[0]
-        self.assertIsInstance(person, Person3D)
-        self.assertIsNotNone(person.smpl_params)
-        self.assertIsNotNone(person.keypoints_3d)
-        self.assertEqual(person.person_id, 0)
+        self.assertIsInstance(result, dict)
+        self.assertIn("poses_3d", result)
+
+        smpl_human_poses = result["poses_3d"]
+        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
+        self.assertIsNotNone(smpl_human_poses.poses)
+        self.assertEqual(len(smpl_human_poses.poses), 1)
+
+        # Verify the processed output has SMPLHumanPose structure
+        smpl_pose = smpl_human_poses.poses[0]
+        self.assertIsInstance(smpl_pose, SMPLHumanPose)
+        self.assertIsNotNone(smpl_pose.smpl_params)
+        self.assertIsNotNone(smpl_pose.person.keypoints_3d)
+        self.assertEqual(smpl_pose.person.person_id, 0)
 
     def test_inference_single_person_uses_shared_preprocessor(self):
         """Ensure single-person inference uses shared ViTDet preprocessing."""
@@ -916,7 +1042,7 @@ class HRM2DatasetTests(HRM2TestBase):
 
 
 class HumanPoseLabelTests(HRM2TestBase):
-    """Tests for HumanPose2D and HumanPose3D label classes."""
+    """Tests for HumanPose2D and SMPLHumanPoses label classes."""
 
     @drop_datasets
     def test_human_pose_2d_creation(self):
@@ -954,10 +1080,13 @@ class HumanPoseLabelTests(HRM2TestBase):
 
     @drop_datasets
     def test_human_pose_3d_creation(self):
-        """Test HumanPose3D label creation."""
-        from fiftyone.core.labels import HumanPose3D
-
-        from fiftyone.core.labels import Person3D, SMPLParams
+        """Test SMPLHumanPoses label creation."""
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
 
         smpl_params = SMPLParams(
             body_pose=[0.1] * 69,  # 23 joints * 3 values = 69
@@ -965,64 +1094,85 @@ class HumanPoseLabelTests(HRM2TestBase):
             global_orient=[0.0] * 3,
             camera=[2.0, 0.0, 0.0],
         )
-        people_data = [
-            Person3D(
-                smpl_params=smpl_params,
-                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-                person_id=0,
-            )
-        ]
+        person3d = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            person_id=0,
+        )
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
 
-        label = HumanPose3D(people=people_data)
+        label = SMPLHumanPoses(poses=[smpl_pose])
 
-        self.assertEqual(len(label.people), 1)
-        self.assertEqual(label.people[0].person_id, 0)
+        self.assertEqual(len(label.poses), 1)
+        self.assertEqual(label.poses[0].person.person_id, 0)
 
     @drop_datasets
     def test_human_pose_3d_multi_person(self):
-        """Test HumanPose3D with multiple people."""
-        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+        """Test SMPLHumanPoses with multiple people."""
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
 
         smpl_params_0 = SMPLParams(body_pose=[], betas=[], global_orient=[])
         smpl_params_1 = SMPLParams(body_pose=[], betas=[], global_orient=[])
 
-        people_data = [
-            Person3D(
-                smpl_params=smpl_params_0,
-                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-                person_id=0,
-            ),
-            Person3D(
-                smpl_params=smpl_params_1,
-                keypoints_3d=[[1.0, 1.0, 1.0]] * 24,
-                person_id=1,
-            ),
-        ]
+        person3d_0 = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            person_id=0,
+        )
+        person3d_1 = Person3D(
+            keypoints_3d=[[1.0, 1.0, 1.0]] * 24,
+            person_id=1,
+        )
 
-        label = HumanPose3D(people=people_data)
+        smpl_pose_0 = SMPLHumanPose(
+            person=person3d_0,
+            smpl_params=smpl_params_0,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+        smpl_pose_1 = SMPLHumanPose(
+            person=person3d_1,
+            smpl_params=smpl_params_1,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
 
-        self.assertEqual(len(label.people), 2)
-        self.assertEqual(label.people[0].person_id, 0)
-        self.assertEqual(label.people[1].person_id, 1)
+        label = SMPLHumanPoses(poses=[smpl_pose_0, smpl_pose_1])
+
+        self.assertEqual(len(label.poses), 2)
+        self.assertEqual(label.poses[0].person.person_id, 0)
+        self.assertEqual(label.poses[1].person.person_id, 1)
 
     @drop_datasets
     def test_human_pose_3d_serialization(self):
-        """Test saving and loading HumanPose3D from dataset."""
-        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+        """Test saving and loading SMPLHumanPoses from dataset."""
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
 
         dataset = fo.Dataset()
         sample = fo.Sample(filepath=self._new_image())
 
         smpl_params = SMPLParams(body_pose=[1.0] * 69, betas=[0.0] * 10)
-        people_data = [
-            Person3D(
-                smpl_params=smpl_params,
-                keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-                person_id=0,
-            )
-        ]
+        person3d = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            person_id=0,
+        )
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
 
-        label = HumanPose3D(people=people_data)
+        label = SMPLHumanPoses(poses=[smpl_pose])
         sample["pose_3d"] = label
 
         dataset.add_sample(sample)
@@ -1030,12 +1180,17 @@ class HumanPoseLabelTests(HRM2TestBase):
         # Retrieve and verify
         retrieved = dataset.first()
         self.assertIsNotNone(retrieved["pose_3d"])
-        self.assertEqual(len(retrieved["pose_3d"].people), 1)
+        self.assertEqual(len(retrieved["pose_3d"].poses), 1)
 
     @drop_datasets
     def test_human_pose_3d_with_rotation_matrices(self):
-        """Test HumanPose3D with rotation matrix format (nested lists)."""
-        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+        """Test SMPLHumanPoses with rotation matrix format (nested lists)."""
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
 
         # Simulate rotation matrix format from HRM2 model
         # body_pose: (23, 3, 3) rotation matrices
@@ -1056,13 +1211,18 @@ class HumanPoseLabelTests(HRM2TestBase):
             camera=[2.0, 0.0, 0.0],
         )
 
-        person = Person3D(
-            smpl_params=smpl_params,
+        person3d = Person3D(
             keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
             person_id=0,
         )
 
-        label = HumanPose3D(people=[person])
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+
+        label = SMPLHumanPoses(poses=[smpl_pose])
 
         # Test serialization
         dataset = fo.Dataset()
@@ -1073,25 +1233,29 @@ class HumanPoseLabelTests(HRM2TestBase):
         # Retrieve and verify
         retrieved = dataset.first()
         self.assertIsNotNone(retrieved["pose_3d"])
-        self.assertEqual(len(retrieved["pose_3d"].people), 1)
+        self.assertEqual(len(retrieved["pose_3d"].poses), 1)
 
         # Verify nested structure is preserved
-        retrieved_person = retrieved["pose_3d"].people[0]
-        self.assertEqual(len(retrieved_person.smpl_params.body_pose), 23)
-        self.assertEqual(len(retrieved_person.smpl_params.body_pose[0]), 3)
-        self.assertEqual(len(retrieved_person.smpl_params.body_pose[0][0]), 3)
+        retrieved_pose = retrieved["pose_3d"].poses[0]
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose), 23)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0]), 3)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0][0]), 3)
 
     @drop_datasets
     def test_human_pose_3d_export_scene(self):
-        """Test HumanPose3D.export_scene() with Person3D objects.
+        """Test SMPLHumanPoses.export_scene() with SMPLHumanPose objects.
 
-        This test verifies that export_scene() works with Person3D embedded
-        documents and doesn't crash with AttributeError when accessing person
-        attributes.
+        This test verifies that export_scene() works with the new SMPLHumanPose
+        structure and doesn't crash when accessing person attributes.
         """
         import os
         import tempfile
-        from fiftyone.core.labels import HumanPose3D, Person3D, SMPLParams
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
 
         # Skip test if trimesh is not available
         try:
@@ -1111,12 +1275,16 @@ class HumanPoseLabelTests(HRM2TestBase):
         # Create vertices for a simple mesh (SMPL has 6890 vertices)
         vertices = [[i * 0.01, i * 0.01, i * 0.01] for i in range(6890)]
 
-        person = Person3D(
+        person3d = Person3D(
             person_id=0,
-            bbox=[100.0, 100.0, 200.0, 200.0],
+            bbox=[0.1, 0.1, 0.2, 0.2],  # Relative coordinates
             vertices=vertices,
             keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
-            keypoints_2d=[[100.0, 100.0]] * 24,
+            keypoints_2d=[[0.5, 0.5]] * 24,  # Relative coordinates
+        )
+
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
             smpl_params=smpl_params,
             camera_translation=[0.0, 0.0, 5.0],
         )
@@ -1124,8 +1292,8 @@ class HumanPoseLabelTests(HRM2TestBase):
         # Create SMPL faces as numpy array (required by ArrayField)
         smpl_faces = np.array([[i, i + 1, i + 2] for i in range(0, 6887, 3)])
 
-        label = HumanPose3D(
-            people=[person],
+        label = SMPLHumanPoses(
+            poses=[smpl_pose],
             smpl_faces=smpl_faces,
             frame_size=[480, 640],
         )
@@ -1134,15 +1302,11 @@ class HumanPoseLabelTests(HRM2TestBase):
         with tempfile.TemporaryDirectory() as tmpdir:
             scene_path = os.path.join(tmpdir, "test_scene.fo3d")
 
-            # This should not raise AttributeError: 'Person3D' object has no attribute 'get'
+            # This should not raise AttributeError
             try:
                 result_path = label.export_scene(scene_path, update=True)
             except AttributeError as e:
-                if "'Person3D' object has no attribute 'get'" in str(e):
-                    self.fail(
-                        f"export_scene failed with AttributeError (bug not fixed): {e}"
-                    )
-                raise
+                self.fail(f"export_scene failed with AttributeError: {e}")
 
             # Verify scene file was created
             self.assertTrue(os.path.exists(result_path))
@@ -1155,16 +1319,345 @@ class HumanPoseLabelTests(HRM2TestBase):
             all_files = os.listdir(tmpdir)
             mesh_files = [f for f in all_files if f.endswith(".obj")]
 
-            # Main goal: verify export_scene doesn't crash with Person3D objects
-            # The OBJ file creation depends on additional factors beyond Person3D support
+            # Main goal: verify export_scene doesn't crash with new structure
+            # The OBJ file creation depends on additional factors beyond structure support
             if len(mesh_files) > 0:
                 # If OBJ files were created, verify basic properties
                 self.assertEqual(len(mesh_files), 1)
                 self.assertIn("person_0", mesh_files[0])
             else:
                 # At minimum, verify the .fo3d scene file was created
-                # This confirms export_scene works with Person3D objects
+                # This confirms export_scene works with the new structure
                 self.assertIn("test_scene.fo3d", all_files)
+
+    @drop_datasets
+    def test_human_pose_3d_rotation_matrix_serialization(self):
+        """Test saving rotation matrix format to dataset (regression test for schema inference bug).
+
+        This test replicates the error: TypeError: list indices must be integers or slices, not str
+        that occurs when trying to save nested rotation matrices to the database.
+        """
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+        )
+
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath=self._new_image())
+
+        # Create rotation matrix format (23 joints x 3x3 matrices)
+        body_pose_rotmat = [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        global_orient_rotmat = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params = SMPLParams(
+            body_pose=body_pose_rotmat,
+            betas=[0.0] * 10,
+            global_orient=global_orient_rotmat,
+            camera=[2.0, 0.0, 0.0],
+        )
+
+        person3d = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            person_id=0,
+        )
+
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+
+        label = SMPLHumanPoses(poses=[smpl_pose])
+        sample["pose_3d"] = label
+
+        # This should not raise TypeError
+        dataset.add_sample(sample)
+
+        # Add a second sample with similar structure to trigger schema merging
+        sample2 = fo.Sample(filepath=self._new_image())
+
+        # Use different rotation matrices to ensure schema inference handles variation
+        body_pose_rotmat2 = [
+            [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        global_orient_rotmat2 = [
+            [0.9, 0.1, 0.0],
+            [0.1, 0.9, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params2 = SMPLParams(
+            body_pose=body_pose_rotmat2,
+            betas=[0.1] * 10,
+            global_orient=global_orient_rotmat2,
+            camera=[2.5, 0.1, 0.1],
+        )
+
+        person3d2 = Person3D(
+            keypoints_3d=[[0.1, 0.1, 0.1]] * 24,
+            person_id=0,
+        )
+
+        smpl_pose2 = SMPLHumanPose(
+            person=person3d2,
+            smpl_params=smpl_params2,
+            camera_translation=[0.0, 0.0, 5.5],
+        )
+
+        label2 = SMPLHumanPoses(poses=[smpl_pose2])
+        sample2["pose_3d"] = label2
+
+        # This should not raise TypeError during schema merging
+        dataset.add_sample(sample2)
+
+        # Verify both samples were saved correctly
+        self.assertEqual(len(dataset), 2)
+        retrieved = dataset.first()
+        self.assertIsNotNone(retrieved["pose_3d"])
+        self.assertEqual(len(retrieved["pose_3d"].poses), 1)
+
+        # Verify nested structure is preserved
+        retrieved_pose = retrieved["pose_3d"].poses[0]
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose), 23)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0]), 3)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0][0]), 3)
+
+    @drop_datasets
+    def test_human_pose_add_labels_with_rotation_matrices(self):
+        """Test add_labels() with rotation matrix format (replicates model application).
+
+        This test uses sample.add_labels() with a dict, which is how models apply
+        labels to samples. This can trigger different schema inference behavior than
+        direct field assignment.
+        """
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+            HumanPoses2D,
+            HumanPose2D,
+            Keypoint,
+            Detection,
+        )
+
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath=self._new_image())
+        dataset.add_sample(sample)
+
+        # Retrieve sample from dataset (to ensure it's tracked)
+        sample = dataset.first()
+
+        # Create labels with rotation matrix format
+        body_pose_rotmat = [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        global_orient_rotmat = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params = SMPLParams(
+            body_pose=body_pose_rotmat,
+            betas=[0.0] * 10,
+            global_orient=global_orient_rotmat,
+            camera=[2.0, 0.0, 0.0],
+        )
+
+        person3d = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_2d=[[0.5, 0.5]] * 24,
+            bbox=[0.1, 0.1, 0.2, 0.2],
+            person_id=0,
+        )
+
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+
+        # Create 2D pose labels as well (mimicking HRM2 output)
+        keypoint_2d = Keypoint(points=[[0.5, 0.5]] * 24)
+        detection_2d = Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
+        human_pose_2d = HumanPose2D(pose=keypoint_2d, detection=detection_2d)
+
+        # Use add_labels with a dict (like model application)
+        labels_dict = {
+            "human_pose_3d": SMPLHumanPoses(poses=[smpl_pose]),
+            "human_pose_2d": HumanPoses2D(poses=[human_pose_2d]),
+        }
+
+        # This should not raise TypeError
+        sample.add_labels(labels_dict)
+        sample.save()
+
+        # Add another sample with same structure
+        sample2 = fo.Sample(filepath=self._new_image())
+        dataset.add_sample(sample2)
+        sample2 = dataset.last()
+
+        body_pose_rotmat2 = [
+            [[0.9, 0.1, 0.0], [0.1, 0.9, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        global_orient_rotmat2 = [
+            [0.9, 0.1, 0.0],
+            [0.1, 0.9, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params2 = SMPLParams(
+            body_pose=body_pose_rotmat2,
+            betas=[0.1] * 10,
+            global_orient=global_orient_rotmat2,
+            camera=[2.5, 0.1, 0.1],
+        )
+
+        person3d2 = Person3D(
+            keypoints_3d=[[0.1, 0.1, 0.1]] * 24,
+            keypoints_2d=[[0.6, 0.6]] * 24,
+            bbox=[0.2, 0.2, 0.3, 0.3],
+            person_id=0,
+        )
+
+        smpl_pose2 = SMPLHumanPose(
+            person=person3d2,
+            smpl_params=smpl_params2,
+            camera_translation=[0.0, 0.0, 5.5],
+        )
+
+        keypoint_2d2 = Keypoint(points=[[0.6, 0.6]] * 24)
+        detection_2d2 = Detection(bounding_box=[0.2, 0.2, 0.3, 0.3])
+        human_pose_2d2 = HumanPose2D(
+            pose=keypoint_2d2, detection=detection_2d2
+        )
+
+        labels_dict2 = {
+            "human_pose_3d": SMPLHumanPoses(poses=[smpl_pose2]),
+            "human_pose_2d": HumanPoses2D(poses=[human_pose_2d2]),
+        }
+
+        # This should not raise TypeError during schema merging
+        sample2.add_labels(labels_dict2)
+        sample2.save()
+
+        # Verify both samples were saved correctly
+        self.assertEqual(len(dataset), 2)
+        retrieved = dataset.first()
+        self.assertIsNotNone(retrieved["human_pose_3d"])
+        self.assertEqual(len(retrieved["human_pose_3d"].poses), 1)
+
+        # Verify nested structure is preserved
+        retrieved_pose = retrieved["human_pose_3d"].poses[0]
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose), 23)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0]), 3)
+        self.assertEqual(len(retrieved_pose.smpl_params.body_pose[0][0]), 3)
+
+    @drop_datasets
+    def test_instance_object_schema_inference_bug(self):
+        """Test that HRM2 doesn't use Instance objects (regression test).
+
+        This test verifies that HRM2OutputProcessor DOES NOT use Instance objects,
+        which trigger a schema inference bug when combined with deeply nested
+        structures like rotation matrices. The bug manifests as:
+        TypeError: list indices must be integers or slices, not str
+        OR
+        AttributeError: 'list' object has no attribute 'values'
+
+        This is a regression test ensuring we don't use Instance objects.
+        """
+        from fiftyone.core.labels import (
+            SMPLHumanPoses,
+            SMPLHumanPose,
+            Person3D,
+            SMPLParams,
+            HumanPoses2D,
+            HumanPose2D,
+            Keypoint,
+            Detection,
+        )
+
+        dataset = fo.Dataset()
+        sample = fo.Sample(filepath=self._new_image())
+        dataset.add_sample(sample)
+
+        # Retrieve sample from dataset
+        sample = dataset.first()
+
+        # THE FIX: Don't use Instance objects at all
+        # (Instance objects trigger schema inference bugs with deep nesting)
+
+        # Create labels with rotation matrix format (deeply nested)
+        body_pose_rotmat = [
+            [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+        ] * 23
+        global_orient_rotmat = [
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+        ]
+
+        smpl_params = SMPLParams(
+            body_pose=body_pose_rotmat,
+            betas=[0.0] * 10,
+            global_orient=global_orient_rotmat,
+            camera=[2.0, 0.0, 0.0],
+        )
+
+        # No Instance object
+        person3d = Person3D(
+            keypoints_3d=[[0.0, 0.0, 0.0]] * 24,
+            keypoints_2d=[[0.5, 0.5]] * 24,
+            bbox=[0.1, 0.1, 0.2, 0.2],
+            person_id=0,
+            # NO instance - this is the fix
+        )
+
+        smpl_pose = SMPLHumanPose(
+            person=person3d,
+            smpl_params=smpl_params,
+            camera_translation=[0.0, 0.0, 5.0],
+        )
+
+        # No Instance objects on 2D labels either
+        keypoint_2d = Keypoint(
+            points=[[0.5, 0.5]]
+            * 24
+            # NO instance - this is the fix
+        )
+
+        detection_2d = Detection(
+            bounding_box=[0.1, 0.1, 0.2, 0.2],
+            # NO instance - this is the fix
+        )
+
+        human_pose_2d = HumanPose2D(pose=keypoint_2d, detection=detection_2d)
+
+        # Use add_labels with a dict (like model application)
+        # This should work without Instance objects
+        labels_dict = {
+            "human_pose_3d": SMPLHumanPoses(poses=[smpl_pose]),
+            "human_pose_2d": HumanPoses2D(poses=[human_pose_2d]),
+        }
+
+        # This should NOT raise TypeError without Instance objects
+        sample.add_labels(labels_dict)
+        sample.save()
+
+        # Verify it worked
+        self.assertEqual(len(dataset), 1)
+        retrieved = dataset.first()
+        self.assertIsNotNone(retrieved["human_pose_3d"])
+        self.assertIsNotNone(retrieved["human_pose_2d"])
 
 
 if __name__ == "__main__":
