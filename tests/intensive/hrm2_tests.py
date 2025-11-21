@@ -123,7 +123,7 @@ def test_hrm2_single_person_inference():
         print(f"  3D keypoints shape: {len(smpl_pose.person.keypoints_3d)}")
         if smpl_pose.person.keypoints_2d:
             print(
-                f"  2D keypoints shape: {len(smpl_pose.person.keypoints_2d)}"
+                f"  2D keypoints shape: {len(smpl_pose.person.keypoints_2d.points)}"
             )
 
     # Verify output structure
