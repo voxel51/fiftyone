@@ -193,9 +193,20 @@ Each 3D scene sample (``.fo3d`` file) contains a ``SMPLHumanPoses`` label (defau
 
 -   **poses**: List of :class:`fiftyone.core.labels.SMPLHumanPose` instances, each containing:
 
-    -   ``person``: :class:`fiftyone.core.labels.Person3D` with geometric data (bbox, vertices, keypoints_3d, keypoints_2d)
+    -   ``person``: :class:`fiftyone.core.labels.Person3D` with embedded label types:
+
+        -   ``detection``: :class:`fiftyone.core.labels.Detection` with bounding box (absolute pixel coordinates)
+        -   ``keypoints_2d``: :class:`fiftyone.core.labels.Keypoint` with 2D keypoint locations
+        -   ``keypoints_3d``: 3D keypoint locations as Nx3 list ``[[x, y, z], ...]``
+        -   ``vertices``: 3D mesh vertices (Nx3 list)
+
     -   ``smpl_params``: :class:`fiftyone.core.labels.SMPLParams` with SMPL body model parameters (body_pose, betas, etc.)
-    -   ``camera_translation``: Camera translation [tx, ty, tz] in 3D world coordinates
+    -   ``camera``: :class:`fiftyone.core.labels.Camera` with camera parameters:
+
+        -   ``weak_perspective``: [scale, tx, ty] in SMPL format
+        -   ``translation``: [tx, ty, tz] 3D camera translation vector
+        -   ``focal_length``: [fx, fy] focal length in pixels (optional)
+        -   ``principal_point``: [cx, cy] principal point in pixels (optional)
 
 -   **scene_path**: Path to the .fo3d scene file
 -   **smpl_faces**: SMPL mesh topology (shared across all people)
@@ -224,15 +235,15 @@ Accessing Results
     if pose_2d_list and pose_2d_list.poses:
         first_person_2d = pose_2d_list.poses[0]  # HumanPose2D
 
-        # Keypoints (normalized [0, 1])
-        keypoints = first_person_2d.pose.points
+        # 2D Keypoints (normalized [0, 1])
+        keypoints_2d = first_person_2d.pose.points
         confidences = first_person_2d.pose.confidence
 
         # Person bounding box (normalized [0, 1])
-        bbox = first_person_2d.detection.bounding_box
+        bbox_2d = first_person_2d.detection.bounding_box
 
-        print("First person keypoints:", keypoints)
-        print("First person bbox:", bbox)
+        print("First person 2D keypoints:", keypoints_2d)
+        print("First person 2D bbox:", bbox_2d)
 
     #
     # Access the 3D scene sample and SMPL data
@@ -247,13 +258,27 @@ Accessing Results
             # Access SMPL parameters
             print("Body pose:", smpl_pose.smpl_params.body_pose)
             print("Shape params:", smpl_pose.smpl_params.betas)
-            print("Camera translation:", smpl_pose.camera_translation)
 
-            # Access geometric data from Person3D
+            # Access camera parameters (Camera object)
+            print("Camera translation (3D):", smpl_pose.camera.translation)
+            print("Camera weak perspective:", smpl_pose.camera.weak_perspective)
+
+            # Access geometric data from Person3D (embedded label types)
             person = smpl_pose.person
-            print("3D keypoints:", person.keypoints_3d)
-            print("2D keypoints:", person.keypoints_2d)
-            print("Bbox:", person.bbox)
+
+            # Keypoint3D with 3D points
+            print("3D keypoints:", person.keypoints_3d.points)
+            print("3D keypoints confidence:", person.keypoints_3d.confidence)
+
+            # Keypoint with 2D points
+            print("2D keypoints:", person.keypoints_2d.points)
+            print("2D keypoints confidence:", person.keypoints_2d.confidence)
+
+            # Detection with bounding box (absolute pixel coordinates)
+            print("Bbox (absolute pixels):", person.detection.bounding_box)
+            print("Bbox uses relative coords:", person.detection.relative_coordinate)
+
+            # Mesh vertices
             print("Vertices:", person.vertices)
 
     # View the 3D scene file path (.fo3d)

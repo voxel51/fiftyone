@@ -995,6 +995,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         smpl_pose_list = []
 
         for person_dict in people_data:
+            # Create 2D keypoints for HumanPose2D wrapper (normalized)
             keypoints_rel = None
             confidence = None
             keypoints_abs = person_dict.get("keypoints_2d")
@@ -1013,6 +1014,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     keypoint_kwargs["confidence"] = confidence
                 keypoint_label = fol.Keypoint(**keypoint_kwargs)
 
+            # Create 2D detection for HumanPose2D wrapper (normalized)
             detection_label = None
             bbox_rel = self._normalize_bbox(
                 person_dict.get("bbox"), width, height
@@ -1021,6 +1023,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 detection_label = fol.Detection(
                     label="person",
                     bounding_box=bbox_rel,
+                    relative_coordinate=True,  # Normalized coords for 2D overlay
                 )
 
             if keypoint_label:
@@ -1035,6 +1038,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     )
                 )
 
+            # Create SMPL parameters
             smpl_dict = person_dict.get("smpl_params", {})
             smpl_params = fol.SMPLParams(
                 body_pose=smpl_dict.get("body_pose"),
@@ -1043,18 +1047,52 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 camera=smpl_dict.get("camera"),
             )
 
-            person3d = fol.Person3D(
-                person_id=person_dict.get("person_id"),
-                bbox=person_dict.get("bbox"),
-                vertices=person_dict.get("vertices"),
-                keypoints_3d=person_dict.get("keypoints_3d"),
-                keypoints_2d=person_dict.get("keypoints_2d"),
+            # Create Camera object from camera parameters
+            camera_translation = person_dict.get("camera_translation")
+            camera_weak_persp = smpl_dict.get("camera")
+            camera = fol.Camera(
+                weak_perspective=camera_weak_persp,
+                translation=camera_translation,
             )
 
+            # Create embedded labels for Person3D
+            # Detection with absolute coordinates for 3D geometry
+            person_detection = None
+            bbox_abs = person_dict.get("bbox")
+            if bbox_abs is not None:
+                person_detection = fol.Detection(
+                    label="person",
+                    bounding_box=bbox_abs,
+                    relative_coordinate=False,  # Absolute pixel coordinates
+                )
+
+            # 2D keypoints (normalized) for Person3D
+            person_keypoints_2d = None
+            if keypoints_rel is not None:
+                person_keypoints_2d = fol.Keypoint(
+                    label="person",
+                    points=keypoints_rel,
+                    confidence=confidence,
+                )
+
+            # 3D keypoints for Person3D (keep as raw list to avoid schema inference issues)
+            keypoints_3d_data = person_dict.get("keypoints_3d")
+
+            # Create Person3D with embedded label types (Detection and Keypoint work well)
+            # keypoints_3d stays as raw list to avoid deep nesting serialization issues
+            person3d = fol.Person3D(
+                person_id=person_dict.get("person_id"),
+                detection=person_detection,
+                keypoints_2d=person_keypoints_2d,
+                keypoints_3d=keypoints_3d_data,
+                vertices=person_dict.get("vertices"),
+            )
+
+            # Create SMPLHumanPose with new Camera object
             smpl_pose = fol.SMPLHumanPose(
                 person=person3d,
                 smpl_params=smpl_params,
-                camera_translation=person_dict.get("camera_translation"),
+                camera=camera,
             )
             smpl_pose_list.append(smpl_pose)
 

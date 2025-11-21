@@ -11,6 +11,7 @@ import inspect
 import json
 import numbers
 import sys
+from typing import Any, Dict, Iterable, List, Union
 
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
@@ -493,6 +494,11 @@ def _parse_embedded_doc_fields(doc, dynamic):
     return fields
 
 
+_FieldSpec = Dict[str, Any]
+_FieldMapping = Dict[str, _FieldSpec]
+_FieldContainer = Union[_FieldMapping, List[_FieldSpec]]
+
+
 def _parse_embedded_doc_list_fields(values, dynamic):
     if not values:
         return []
@@ -500,36 +506,100 @@ def _parse_embedded_doc_list_fields(values, dynamic):
     fields_dict = {}
     for value in values:
         fields = _parse_embedded_doc_fields(value, dynamic)
-        _merge_embedded_doc_fields(fields_dict, fields)
+        fields_dict = _merge_embedded_doc_fields(fields_dict, fields)
 
     return _finalize_embedded_doc_fields(fields_dict)
 
 
-def _merge_embedded_doc_fields(fields_dict, fields):
-    for field in fields:
+def _merge_embedded_doc_fields(
+    fields_dict: _FieldContainer,
+    fields: Union[List[_FieldSpec], _FieldMapping],
+) -> _FieldMapping:
+    """Merges embedded-document field specs into a normalized mapping.
+
+    Historically callers have passed both dictionaries and lists when merging
+    nested schemas. The function now defensively accepts either format,
+    normalizes it into the dict representation that the rest of the module
+    expects, and returns that mapping. Doing so avoids mutating list-based
+    inputs in-place, which previously caused ``TypeError`` when recursively
+    merging deeply nested embedded document fields, such as HRM2 labels that
+    emit subclasses of :class:`fiftyone.core.fields.EmbeddedDocumentField`.
+
+    Args:
+        fields_dict: the aggregated field mapping collected so far; may be a
+            dict (preferred) or a list from older code paths
+        fields: the next batch of field specifications to merge
+
+    Returns:
+        dict: the normalized mapping after merging ``fields`` into it
+    """
+
+    def _to_field_mapping(
+        specs: Union[_FieldContainer, None]
+    ) -> _FieldMapping:
+        """Ensures we always work with name -> spec mappings."""
+        if not specs:
+            return {}
+
+        if isinstance(specs, dict):
+            return specs
+
+        return {spec["name"]: spec for spec in specs if spec is not None}
+
+    def _iter_field_specs(
+        specs: Union[List[_FieldSpec], _FieldMapping]
+    ) -> Iterable[_FieldSpec]:
+        if isinstance(specs, dict):
+            return specs.values()
+
+        return specs
+
+    merged = _to_field_mapping(fields_dict)
+    incoming_fields = _iter_field_specs(fields)
+
+    for field in incoming_fields:
         name = field["name"]
         ftype = field["ftype"]
-        subfield = field.get("subfield", None)
+        subfield = field.get("subfield")
 
-        if name not in fields_dict:
-            if ftype == fof.EmbeddedDocumentField:
-                _init_embedded_doc_fields(field)
+        is_embedded_doc = inspect.isclass(ftype) and issubclass(
+            ftype, fof.EmbeddedDocumentField
+        )
 
-            fields_dict[name] = field
-        else:
-            efield = fields_dict[name]
-            etype = efield["ftype"]
-            if etype != ftype:
-                # @todo could provide an `add_mixed=True` option to declare
-                # mixed fields like this as a generic `Field`
-                fields_dict[name] = None
-            elif etype in (fof.ListField, fof.DictField):
-                if "subfield" in efield and efield["subfield"] != subfield:
-                    efield["subfield"] = None
-                elif subfield is not None:
-                    efield["subfield"] = subfield
-            elif ftype == fof.EmbeddedDocumentField:
-                _merge_embedded_doc_fields(efield["fields"], field["fields"])
+        if name not in merged or merged[name] is None:
+            merged[name] = field
+            if is_embedded_doc:
+                # Convert nested schemas to dicts once so recursive merges can
+                # be performed without repeatedly scanning lists.
+                field["fields"] = _to_field_mapping(field.get("fields", []))
+
+            continue
+
+        efield = merged[name]
+        etype = efield["ftype"]
+        etype_is_embedded = inspect.isclass(etype) and issubclass(
+            etype, fof.EmbeddedDocumentField
+        )
+
+        if etype != ftype:
+            # @todo could provide an `add_mixed=True` option to declare mixed
+            # fields like this as a generic `Field`
+            merged[name] = None
+        elif etype in (fof.ListField, fof.DictField):
+            if "subfield" in efield and efield["subfield"] != subfield:
+                efield["subfield"] = None
+            elif subfield is not None:
+                efield["subfield"] = subfield
+        elif is_embedded_doc and etype_is_embedded:
+            # Recursively merge nested embedded document schemas, ensuring the
+            # existing schema is normalized into mapping form before we write
+            # into it.
+            efield["fields"] = _merge_embedded_doc_fields(
+                _to_field_mapping(efield.get("fields")),
+                field.get("fields", []),
+            )
+
+    return merged
 
 
 def _init_embedded_doc_fields(field):
@@ -544,11 +614,32 @@ def _init_embedded_doc_fields(field):
 
 
 def _finalize_embedded_doc_fields(fields_dict):
+    """Converts merged embedded-document field specs into list form.
+
+    The intermediate aggregation step stores nested fields in dictionaries so
+    that repeated traversals can be merged efficiently. This helper normalizes
+    the structure back into the list-of-field-specs format expected by
+    `create_field`, recursively applying the same conversion to any nested
+    embedded-document entries.
+    """
+    if not fields_dict:
+        return []
+
+    if isinstance(fields_dict, list):
+        # Older callers may still provide a list that already filtered out
+        # missing entries. Normalize those into the dict-based structure the
+        # rest of this function expects before continuing.
+        fields_dict = {
+            field["name"]: field for field in fields_dict if field is not None
+        }
+
     fields = []
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
             if field["ftype"] == fof.EmbeddedDocumentField:
+                # Recursively finalize the child schema so downstream consumers
+                # get a fully materialized list of field specifications.
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )

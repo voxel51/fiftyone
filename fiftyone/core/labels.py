@@ -449,11 +449,22 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
 
     Args:
         label (None): the label string
-        bounding_box (None): a list of relative bounding box coordinates in
-            ``[0, 1]`` in the following format::
+        bounding_box (None): bounding box coordinates. The format depends on
+            the ``relative_coordinate`` field:
 
-            [<top-left-x>, <top-left-y>, <width>, <height>]
+            -   If ``relative_coordinate=True`` (default): a list of relative
+                bounding box coordinates in ``[0, 1]`` in the format::
 
+                    [<top-left-x>, <top-left-y>, <width>, <height>]
+
+            -   If ``relative_coordinate=False``: a list of absolute bounding
+                box coordinates in pixel space in the format::
+
+                    [<x1>, <y1>, <x2>, <y2>]
+
+        relative_coordinate (True): whether ``bounding_box`` uses relative
+            (True) or absolute (False) coordinates. Defaults to True for
+            backward compatibility with existing datasets
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
@@ -472,6 +483,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
 
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
+    relative_coordinate = fof.BooleanField(default=True)
     mask = fof.ArrayField()
     mask_path = fof.StringField()
     confidence = fof.FloatField()
@@ -1137,6 +1149,36 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
+class Keypoint3D(EmbeddedDocument):
+    """A list of 3D keypoints.
+
+    This class provides a structure for 3D coordinates ``(x, y, z)`` similar
+    to :class:`Keypoint` but as a simpler embedded document for use within
+    other label types like :class:`Person3D`.
+
+    Args:
+        label (None): a label for the keypoints
+        points (None): a list of ``(x, y, z)`` keypoints as nested lists
+        confidence (None): a list of confidences in ``[0, 1]`` for each point
+    """
+
+    label = fof.StringField()
+    points = fof.ListField(fof.ListField(fof.FloatField()))
+    confidence = fof.ListField(fof.FloatField(), null=True)
+
+
+class Keypoints3D(_HasLabelList, Label):
+    """A list of :class:`Keypoint3D` instances.
+
+    Args:
+        keypoints (None): a list of :class:`Keypoint3D` instances
+    """
+
+    _LABEL_LIST_FIELD = "keypoints"
+
+    keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint3D))
+
+
 class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
 
@@ -1572,10 +1614,52 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
+class Camera(_HasID, Label):
+    """Camera parameters for 3D reconstruction and rendering.
+
+    This class supports multiple camera parameterizations commonly used in
+    computer vision and 3D reconstruction:
+
+    -   **Weak perspective projection** (SMPL format): scale and 2D translation
+    -   **Full perspective projection**: intrinsics (focal length, principal
+        point) and extrinsics (rotation, translation)
+
+    Args:
+        weak_perspective (None): weak perspective camera parameters
+            ``[s, tx, ty]`` where ``s`` is the scale factor and ``tx``, ``ty``
+            are 2D translations in normalized coordinates
+        translation (None): 3D camera translation vector ``[tx, ty, tz]`` in
+            world coordinates
+        focal_length (None): camera focal lengths ``[fx, fy]`` in pixels
+        principal_point (None): camera principal point ``[cx, cy]`` in pixels
+        rotation_matrix (None): 3x3 camera rotation matrix as a nested list::
+
+                [[r11, r12, r13],
+                 [r21, r22, r23],
+                 [r31, r32, r33]]
+
+        intrinsic_matrix (None): 3x3 camera intrinsic matrix as a nested list
+            (alternative to specifying ``focal_length`` and
+            ``principal_point``)::
+
+                [[fx,  0, cx],
+                 [ 0, fy, cy],
+                 [ 0,  0,  1]]
+    """
+
+    weak_perspective = fof.ListField(fof.FloatField())
+    translation = fof.ListField(fof.FloatField())
+    focal_length = fof.ListField(fof.FloatField())
+    principal_point = fof.ListField(fof.FloatField())
+    rotation_matrix = fof.ListField()
+    intrinsic_matrix = fof.ListField()
+
+
 _LABEL_LIST_FIELDS = (
     Classifications,
     Detections,
     Keypoints,
+    Keypoints3D,
     Polylines,
     TemporalDetections,
 )
@@ -1594,6 +1678,7 @@ _INDEX_FIEDS = (
     Polylines,
     Keypoint,
     Keypoints,
+    Keypoints3D,
 )
 
 _INSTANCE_FIELDS = (Detection, Polyline, Keypoint)
@@ -2135,19 +2220,25 @@ class Person3D(EmbeddedDocument):
 
     Args:
         person_id (None): person identifier
-        bbox (None): bounding box [x1, y1, x2, y2] in absolute coordinates
-        vertices (None): 3D mesh vertices as Nx3 list of lists
-        keypoints_3d (None): 3D keypoint locations as Jx3 list of lists
-        keypoints_2d (None): 2D keypoint locations as Jx2 list of lists
+        detection (None): a :class:`Detection` instance containing the person
+            bounding box. When using absolute coordinates, set
+            ``detection.relative_coordinate=False`` and provide bounding box
+            as ``[x1, y1, x2, y2]`` in pixel space
+        keypoints_2d (None): a :class:`Keypoint` instance containing 2D
+            keypoint locations in normalized coordinates ``[0, 1] x [0, 1]``
+        keypoints_3d (None): 3D keypoint locations as Nx3 list of lists
+            ``[[x, y, z], ...]`` in world coordinates
+        vertices (None): 3D mesh vertices as Nx3 list of lists in world
+            coordinates
         instance (None): an :class:`Instance` to link this 3D person to the
             corresponding 2D detection in a grouped dataset
     """
 
     person_id = fof.IntField()
-    bbox = fof.ListField(fof.FloatField())
-    vertices = fof.ListField(fof.ListField(fof.FloatField()))
+    detection = fof.EmbeddedDocumentField(Detection)
+    keypoints_2d = fof.EmbeddedDocumentField(Keypoint)
     keypoints_3d = fof.ListField(fof.ListField(fof.FloatField()))
-    keypoints_2d = fof.ListField(fof.ListField(fof.FloatField()))
+    vertices = fof.ListField(fof.ListField(fof.FloatField()))
     instance = fof.EmbeddedDocumentField(Instance)
 
 
@@ -2155,17 +2246,21 @@ class SMPLHumanPose(EmbeddedDocument):
     """A single SMPL-based human pose with associated metadata.
 
     Args:
-        person (None): :class:`Person3D` geometry
-        smpl_params (None): :class:`SMPLParams` instance with SMPL parameters
-        camera_translation (None): camera translation [tx, ty, tz]
+        person (None): :class:`Person3D` geometry containing detection box,
+            keypoints, and mesh vertices
+        smpl_params (None): :class:`SMPLParams` instance with SMPL body model
+            parameters (body pose, shape parameters, global orientation)
+        camera (None): :class:`Camera` instance containing camera parameters.
+            For HRM2 models, this typically includes ``weak_perspective`` (from
+            SMPL) and ``translation`` (3D camera position)
         scene_path (None): path to the exported .fo3d file containing this pose
-        smpl_faces (None): SMPL mesh topology (F x 3)
+        smpl_faces (None): SMPL mesh topology (F x 3) as a numpy array
         frame_size (None): [height, width] of the source frame
     """
 
     person = fof.EmbeddedDocumentField(Person3D)
     smpl_params = fof.EmbeddedDocumentField(SMPLParams)
-    camera_translation = fof.ListField(fof.FloatField())
+    camera = fof.EmbeddedDocumentField(Camera)
     scene_path = fof.StringField()
     smpl_faces = fof.ArrayField()
     frame_size = fof.ListField()
