@@ -64,6 +64,18 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     return this._isDragging;
   }
 
+  private updateBounds(point: Point): boolean {
+    if (!this._isDragging || !this.startPoint) return false;
+
+    const x = Math.min(this.startPoint.x, point.x);
+    const y = Math.min(this.startPoint.y, point.y);
+    const width = Math.abs(point.x - this.startPoint.x);
+    const height = Math.abs(point.y - this.startPoint.y);
+
+    this.overlay.setBounds({ x, y, width, height });
+    return true;
+  }
+
   onMove(
     point: Point,
     _worldPoint: Point,
@@ -71,31 +83,11 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     _scale: number,
     _maintainAspectRatio?: boolean
   ): boolean {
-    if (!this._isDragging || !this.startPoint) return false;
-
-    // Calculate bounds from start point to current point
-    const x = Math.min(this.startPoint.x, point.x);
-    const y = Math.min(this.startPoint.y, point.y);
-    const width = Math.abs(point.x - this.startPoint.x);
-    const height = Math.abs(point.y - this.startPoint.y);
-
-    this.overlay.setBounds({ x, y, width, height });
-
-    return true;
+    return this.updateBounds(point);
   }
 
   onDrag(point: Point, _event: PointerEvent): boolean {
-    if (!this._isDragging || !this.startPoint) return false;
-
-    // Calculate bounds from start point to current point
-    const x = Math.min(this.startPoint.x, point.x);
-    const y = Math.min(this.startPoint.y, point.y);
-    const width = Math.abs(point.x - this.startPoint.x);
-    const height = Math.abs(point.y - this.startPoint.y);
-
-    this.overlay.setBounds({ x, y, width, height });
-
-    return true;
+    return this.updateBounds(point);
   }
 
   onPointerUp(_point: Point, _event: PointerEvent): boolean {
