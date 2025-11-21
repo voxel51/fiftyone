@@ -1,15 +1,18 @@
 # SmartForm Usage Examples
 
-SmartForm is a React JSON Schema Form (RJSF) wrapper that automatically translates SchemaIO schemas to JSON Schema format, providing a consistent form rendering experience.
+SmartForm is a React JSON Schema Form (RJSF) wrapper that automatically
+translates SchemaIO schemas to JSON Schema format, providing a consistent form
+rendering experience.
 
 ## Table of Contents
-- [Basic Usage](#basic-usage)
-- [Core Concepts](#core-concepts)
-- [Field Types](#field-types)
-- [Advanced Features](#advanced-features)
-- [Translation API](#translation-api)
-- [Custom Widgets](#custom-widgets)
-- [Type Safety](#type-safety)
+
+-   [Basic Usage](#basic-usage)
+-   [Core Concepts](#core-concepts)
+-   [Field Types](#field-types)
+-   [Advanced Features](#advanced-features)
+-   [Translation API](#translation-api)
+-   [Custom Widgets](#custom-widgets)
+-   [Type Safety](#type-safety)
 
 ---
 
@@ -18,37 +21,39 @@ SmartForm is a React JSON Schema Form (RJSF) wrapper that automatically translat
 ### Simple Form
 
 ```tsx
-import SmartForm, { type SmartFormProps } from "@fiftyone/components/SmartForm";
+import SmartForm, {
+    type SmartFormProps,
+} from "@fiftyone/components/SmartForm";
 
 const schema = {
-  type: "object",
-  view: { component: "ObjectView" },
-  properties: {
-    name: {
-      type: "string",
-      view: {
-        label: "Name",
-        placeholder: "Enter your name"
-      },
+    type: "object",
+    view: { component: "ObjectView" },
+    properties: {
+        name: {
+            type: "string",
+            view: {
+                label: "Name",
+                placeholder: "Enter your name",
+            },
+        },
+        age: {
+            type: "number",
+            view: {
+                label: "Age",
+                description: "Your age in years",
+            },
+        },
     },
-    age: {
-      type: "number",
-      view: {
-        label: "Age",
-        description: "Your age in years"
-      },
-    },
-  },
 };
 
 const data = { name: "John Doe", age: 30 };
 
 <SmartForm
-  schema={schema}
-  data={data}
-  onChange={(data) => console.log("Data changed:", data)}
-  onSubmit={(data) => console.log("Form submitted:", data)}
-/>
+    schema={schema}
+    data={data}
+    onChange={(data) => console.log("Data changed:", data)}
+    onSubmit={(data) => console.log("Form submitted:", data)}
+/>;
 ```
 
 ---
@@ -62,22 +67,22 @@ SmartForm automatically translates SchemaIO schemas to JSON Schema + UI Schema:
 ```tsx
 // Input: SchemaIO format
 const schemaIO = {
-  type: "string",
-  view: {
-    component: "DropdownView",
-    label: "Category",
-    choices: [
-      { value: "cat", label: "Cat" },
-      { value: "dog", label: "Dog" },
-    ],
-  },
+    type: "string",
+    view: {
+        component: "DropdownView",
+        label: "Category",
+        choices: [
+            { value: "cat", label: "Cat" },
+            { value: "dog", label: "Dog" },
+        ],
+    },
 };
 
 // SmartForm automatically translates to:
 // JSON Schema: { type: "string", title: "Category", enum: ["cat", "dog"] }
 // UI Schema: { "ui:widget": "Dropdown" }
 
-<SmartForm schema={schemaIO} />
+<SmartForm schema={schemaIO} />;
 ```
 
 ### Data Conversion
@@ -93,12 +98,12 @@ const schemaIOData = { name: "John", age: null };
 
 // onChange returns data in SchemaIO format
 <SmartForm
-  schema={schema}
-  data={schemaIOData}
-  onChange={(data) => {
-    // data is back in SchemaIO format: { name: "John", age: null }
-  }}
-/>
+    schema={schema}
+    data={schemaIOData}
+    onChange={(data) => {
+        // data is back in SchemaIO format: { name: "John", age: null }
+    }}
+/>;
 ```
 
 ---
@@ -119,9 +124,10 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Text input field
-- Placeholder text
-- Help text below field
+
+-   Text input field
+-   Placeholder text
+-   Help text below field
 
 ---
 
@@ -139,8 +145,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Number input with constraints
-- Min/max validation
+
+-   Number input with constraints
+-   Min/max validation
 
 ---
 
@@ -157,7 +164,8 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Material-UI checkbox
+
+-   Material-UI checkbox
 
 ---
 
@@ -179,8 +187,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Custom Dropdown widget (wraps SchemaIO DropdownView)
-- Single selection
+
+-   Custom Dropdown widget (wraps SchemaIO DropdownView)
+-   Single selection
 
 ---
 
@@ -202,8 +211,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Multi-select dropdown
-- Returns array of selected values
+
+-   Multi-select dropdown
+-   Returns array of selected values
 
 ---
 
@@ -225,9 +235,10 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Custom AutoComplete widget (wraps SchemaIO AutocompleteView)
-- Searchable dropdown
-- Optional free text input
+
+-   Custom AutoComplete widget (wraps SchemaIO AutocompleteView)
+-   Searchable dropdown
+-   Optional free text input
 
 ---
 
@@ -251,9 +262,10 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Multi-select autocomplete with chips
-- Add custom tags if `allow_user_input: true`
-- Prevent duplicates if `allow_duplicates: false`
+
+-   Multi-select autocomplete with chips
+-   Add custom tags if `allow_user_input: true`
+-   Prevent duplicates if `allow_duplicates: false`
 
 ---
 
@@ -275,8 +287,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Radio button group
-- Single selection
+
+-   Radio button group
+-   Single selection
 
 ---
 
@@ -293,8 +306,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Color picker widget
-- Returns hex color string
+
+-   Color picker widget
+-   Returns hex color string
 
 ---
 
@@ -312,8 +326,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Multi-line textarea (10 rows)
-- Warning: Consider custom widget for syntax highlighting
+
+-   Multi-line textarea (10 rows)
+-   Warning: Consider custom widget for syntax highlighting
 
 ---
 
@@ -330,8 +345,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- File input widget
-- Returns file path/data
+
+-   File input widget
+-   Returns file path/data
 
 ---
 
@@ -352,8 +368,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Add/remove buttons
-- List of text inputs
+
+-   Add/remove buttons
+-   List of text inputs
 
 ---
 
@@ -380,8 +397,9 @@ const schemaIOData = { name: "John", age: null };
 ```
 
 **Generated UI:**
-- Nested fieldset
-- Groups related fields
+
+-   Nested fieldset
+-   Groups related fields
 
 ---
 
@@ -393,36 +411,36 @@ Override generated UI schema for specific fields:
 
 ```tsx
 const schema = {
-  type: "object",
-  properties: {
-    name: {
-      type: "string",
-      view: { label: "Name" },
+    type: "object",
+    properties: {
+        name: {
+            type: "string",
+            view: { label: "Name" },
+        },
+        email: {
+            type: "string",
+            view: { label: "Email" },
+        },
     },
-    email: {
-      type: "string",
-      view: { label: "Email" },
-    },
-  },
 };
 
 const uiSchema = {
-  name: {
-    "ui:placeholder": "John Doe",
-    "ui:help": "Your display name",
-  },
-  email: {
-    "ui:widget": "email",
-    "ui:placeholder": "you@example.com",
-  },
+    name: {
+        "ui:placeholder": "John Doe",
+        "ui:help": "Your display name",
+    },
+    email: {
+        "ui:widget": "email",
+        "ui:placeholder": "you@example.com",
+    },
 };
 
 <SmartForm
-  schema={schema}
-  uiSchema={uiSchema}  // Overrides generated UI schema
-  data={data}
-  onChange={handleChange}
-/>
+    schema={schema}
+    uiSchema={uiSchema} // Overrides generated UI schema
+    data={data}
+    onChange={handleChange}
+/>;
 ```
 
 ---
@@ -448,8 +466,9 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Asterisk (*) next to label
-- Validation on submit
+
+-   Asterisk (\*) next to label
+-   Validation on submit
 
 ---
 
@@ -466,7 +485,8 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Disabled/non-editable field
+
+-   Disabled/non-editable field
 
 ---
 
@@ -481,7 +501,8 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Pre-populated with default value
+
+-   Pre-populated with default value
 
 ---
 
@@ -510,8 +531,9 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Client-side validation
-- Error messages
+
+-   Client-side validation
+-   Error messages
 
 ---
 
@@ -571,8 +593,9 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Add/remove address buttons
-- Each address has street/city/zip fields
+
+-   Add/remove address buttons
+-   Each address has street/city/zip fields
 
 ---
 
@@ -599,8 +622,9 @@ const uiSchema = {
 ```
 
 **Generated UI:**
-- Fixed number of fields (2)
-- No add/remove buttons
+
+-   Fixed number of fields (2)
+-   No add/remove buttons
 
 ---
 
@@ -614,27 +638,28 @@ Main translation function used by SmartForm:
 import { translateSchemaComplete } from "@fiftyone/components/SmartForm/translators";
 
 const schemaIO = {
-  type: "string",
-  view: {
-    component: "DropdownView",
-    choices: [
-      { value: "a", label: "Option A" },
-      { value: "b", label: "Option B" },
-    ],
-  },
+    type: "string",
+    view: {
+        component: "DropdownView",
+        choices: [
+            { value: "a", label: "Option A" },
+            { value: "b", label: "Option B" },
+        ],
+    },
 };
 
 const data = "a";
 
 const result = translateSchemaComplete(schemaIO, data);
 
-console.log(result.schema);    // JSON Schema
-console.log(result.uiSchema);  // UI Schema
-console.log(result.formData);  // Converted data
-console.log(result.warnings);  // Translation warnings
+console.log(result.schema); // JSON Schema
+console.log(result.uiSchema); // UI Schema
+console.log(result.formData); // Converted data
+console.log(result.warnings); // Translation warnings
 ```
 
 **Returns:**
+
 ```tsx
 {
   schema: {
@@ -666,59 +691,27 @@ const result = translateSchema(schemaIO, { strictMode: false });
 
 ---
 
-### Data Conversion Functions
-
-Manual data conversion:
-
-```tsx
-import {
-  convertSchemaIODataToRJSF,
-  convertRJSFDataToSchemaIO,
-} from "@fiftyone/components/SmartForm/translators";
-
-// SchemaIO → RJSF
-const rjsfData = convertSchemaIODataToRJSF(
-  { name: "John", age: null },
-  schema
-);
-// Result: { name: "John", age: undefined }
-
-// RJSF → SchemaIO
-const schemaIOData = convertRJSFDataToSchemaIO(
-  { name: "John", age: undefined },
-  schema
-);
-// Result: { name: "John", age: null }
-
-// With empty coercion
-const schemaIOData2 = convertRJSFDataToSchemaIO(
-  { name: "", tags: [] },
-  schema,
-  { coerceEmpty: true }
-);
-// Result: { name: null, tags: null }
-```
-
----
-
 ### Type Guards
 
 Check schema format:
 
 ```tsx
-import { isSchemaIOSchema, isJSONSchema } from "@fiftyone/components/SmartForm";
+import {
+    isSchemaIOSchema,
+    isJSONSchema,
+} from "@fiftyone/components/SmartForm";
 
 const schema1 = { type: "string", view: { component: "FieldView" } };
 const schema2 = { type: "string", title: "Name" };
 
 if (isSchemaIOSchema(schema1)) {
-  // schema1 is SchemaType
-  console.log(schema1.view.component);
+    // schema1 is SchemaType
+    console.log(schema1.view.component);
 }
 
 if (isJSONSchema(schema2)) {
-  // schema2 is RJSFSchema
-  console.log(schema2.title);
+    // schema2 is RJSFSchema
+    console.log(schema2.title);
 }
 ```
 
@@ -765,18 +758,20 @@ Widgets are automatically selected based on `view.component`:
 ### Component Props
 
 ```tsx
-import SmartForm, { type SmartFormProps } from "@fiftyone/components/SmartForm";
+import SmartForm, {
+    type SmartFormProps,
+} from "@fiftyone/components/SmartForm";
 
 const props: SmartFormProps = {
-  schema: schemaIO,                    // SchemaType (required)
-  data: initialData,                   // unknown (optional)
-  uiSchema: customUISchema,            // UiSchema (optional)
-  validator: customValidator,          // ValidatorType (optional)
-  onChange: (data: unknown) => {},     // Function (optional)
-  onSubmit: (data: unknown) => {},     // Function (optional)
+    schema: schemaIO, // SchemaType (required)
+    data: initialData, // unknown (optional)
+    uiSchema: customUISchema, // UiSchema (optional)
+    validator: customValidator, // ValidatorType (optional)
+    onChange: (data: unknown) => {}, // Function (optional)
+    onSubmit: (data: unknown) => {}, // Function (optional)
 };
 
-<SmartForm {...props} />
+<SmartForm {...props} />;
 ```
 
 ---
@@ -785,15 +780,19 @@ const props: SmartFormProps = {
 
 ```tsx
 import type {
-  TranslationResult,
-  TranslationOptions,
+    TranslationResult,
+    TranslationOptions,
 } from "@fiftyone/components/SmartForm/translators";
 
 const options: TranslationOptions = {
-  strictMode: true,  // Throw errors on unsupported features
+    strictMode: true, // Throw errors on unsupported features
 };
 
-const result: TranslationResult = translateSchemaComplete(schema, data, options);
+const result: TranslationResult = translateSchemaComplete(
+    schema,
+    data,
+    options
+);
 
 // result.schema: RJSFSchema
 // result.uiSchema: UiSchema
@@ -811,91 +810,91 @@ Complete example from the FiftyOne codebase:
 import SmartForm from "@fiftyone/components/SmartForm";
 
 const annotationSchema = {
-  type: "object",
-  view: { component: "ObjectView" },
-  properties: {
-    // Dropdown for label
-    label: {
-      type: "string",
-      view: {
-        component: "DropdownView",
-        label: "Label",
-        choices: [
-          { value: "cat", label: "Cat" },
-          { value: "dog", label: "Dog" },
-          { value: "bird", label: "Bird" },
-        ],
-      },
-    },
+    type: "object",
+    view: { component: "ObjectView" },
+    properties: {
+        // Dropdown for label
+        label: {
+            type: "string",
+            view: {
+                component: "DropdownView",
+                label: "Label",
+                choices: [
+                    { value: "cat", label: "Cat" },
+                    { value: "dog", label: "Dog" },
+                    { value: "bird", label: "Bird" },
+                ],
+            },
+        },
 
-    // Number input for confidence
-    confidence: {
-      type: "number",
-      view: {
-        label: "Confidence",
-        description: "Detection confidence (0-1)",
-      },
-      min: 0,
-      max: 1,
-    },
+        // Number input for confidence
+        confidence: {
+            type: "number",
+            view: {
+                label: "Confidence",
+                description: "Detection confidence (0-1)",
+            },
+            min: 0,
+            max: 1,
+        },
 
-    // Radio buttons for status
-    status: {
-      type: "string",
-      view: {
-        component: "RadioView",
-        label: "Status",
-        choices: [
-          { value: "active", label: "Active" },
-          { value: "inactive", label: "Inactive" },
-        ],
-      },
-    },
+        // Radio buttons for status
+        status: {
+            type: "string",
+            view: {
+                component: "RadioView",
+                label: "Status",
+                choices: [
+                    { value: "active", label: "Active" },
+                    { value: "inactive", label: "Inactive" },
+                ],
+            },
+        },
 
-    // Multi-select tags
-    tags: {
-      type: "array",
-      view: {
-        component: "AutocompleteView",
-        label: "Tags",
-        allow_user_input: false,
-        choices: [
-          { value: "indoor", label: "Indoor" },
-          { value: "outdoor", label: "Outdoor" },
-          { value: "daytime", label: "Daytime" },
-          { value: "nighttime", label: "Nighttime" },
-        ],
-      },
-      required: true,
+        // Multi-select tags
+        tags: {
+            type: "array",
+            view: {
+                component: "AutocompleteView",
+                label: "Tags",
+                allow_user_input: false,
+                choices: [
+                    { value: "indoor", label: "Indoor" },
+                    { value: "outdoor", label: "Outdoor" },
+                    { value: "daytime", label: "Daytime" },
+                    { value: "nighttime", label: "Nighttime" },
+                ],
+            },
+            required: true,
+        },
     },
-  },
 };
 
 const initialData = {
-  label: "cat",
-  confidence: 0.95,
-  status: "active",
-  tags: ["indoor", "daytime"],
+    label: "cat",
+    confidence: 0.95,
+    status: "active",
+    tags: ["indoor", "daytime"],
 };
 
 function AnnotationEditor() {
-  const [data, setData] = useState(initialData);
+    const [data, setData] = useState(initialData);
 
-  return (
-    <SmartForm
-      schema={annotationSchema}
-      data={data}
-      onChange={(newData) => {
-        setData(newData);
-        // Auto-save
-        saveAnnotation(newData);
-      }}
-      onSubmit={(finalData) => {
-        // Explicit save
-        console.log("Final data:", finalData);
-      }}
-    />
-  );
+    return (
+        <SmartForm
+            schema={annotationSchema}
+            data={data}
+            onChange={(newData) => {
+                setData(newData);
+                // Auto-save
+                saveAnnotation(newData);
+            }}
+            onSubmit={(finalData) => {
+                // Explicit save
+                console.log("Final data:", finalData);
+            }}
+        />
+    );
 }
 ```
 
@@ -908,7 +907,7 @@ function AnnotationEditor() {
 ```tsx
 const { warnings } = translateSchemaComplete(schema, data);
 if (warnings.length > 0) {
-  console.warn("Schema translation warnings:", warnings);
+    console.warn("Schema translation warnings:", warnings);
 }
 ```
 
@@ -916,21 +915,22 @@ if (warnings.length > 0) {
 
 ```tsx
 const uiSchema = {
-  name: {
-    "ui:placeholder": "Enter name",
-    "ui:help": "This will be displayed publicly",
-  },
-  email: {
-    "ui:widget": "email",
-  },
+    name: {
+        "ui:placeholder": "Enter name",
+        "ui:help": "This will be displayed publicly",
+    },
+    email: {
+        "ui:widget": "email",
+    },
 };
 ```
 
 ### 3. Handle Data Conversion
 
 SmartForm automatically converts between formats, but be aware:
-- SchemaIO uses `null` for empty values
-- RJSF uses `undefined`, `""`, or `[]` for empty values
+
+-   SchemaIO uses `null` for empty values
+-   RJSF uses `undefined`, `""`, or `[]` for empty values
 
 ### 4. Type Your Schemas
 
@@ -938,11 +938,11 @@ SmartForm automatically converts between formats, but be aware:
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 const schema: SchemaType = {
-  type: "object",
-  view: { component: "ObjectView" },
-  properties: {
-    // ...
-  },
+    type: "object",
+    view: { component: "ObjectView" },
+    properties: {
+        // ...
+    },
 };
 ```
 
@@ -950,8 +950,8 @@ const schema: SchemaType = {
 
 ```tsx
 if (isSchemaIOSchema(schema)) {
-  // Safe to use with SmartForm
-  <SmartForm schema={schema} />
+    // Safe to use with SmartForm
+    <SmartForm schema={schema} />;
 }
 ```
 
@@ -962,34 +962,37 @@ if (isSchemaIOSchema(schema)) {
 To migrate from SchemaIO's DynamicIO to SmartForm:
 
 **Before:**
+
 ```tsx
 import { SchemaIOComponent } from "@fiftyone/core/plugins/SchemaIO";
 
 <SchemaIOComponent
-  schema={schema}
-  data={data}
-  onChange={(data, liteValues) => handleChange(data)}
-/>
+    schema={schema}
+    data={data}
+    onChange={(data, liteValues) => handleChange(data)}
+/>;
 ```
 
 **After:**
+
 ```tsx
 import SmartForm from "@fiftyone/components/SmartForm";
 
 <SmartForm
-  schema={schema}
-  data={data}
-  onChange={(data) => handleChange(data)}
-/>
+    schema={schema}
+    data={data}
+    onChange={(data) => handleChange(data)}
+/>;
 ```
 
 Or use the unified component:
+
 ```tsx
 <SchemaIOComponent
-  useJSONSchema={true}  // ← Force SmartForm
-  schema={schema}
-  data={data}
-  onChange={(data) => handleChange(data)}
+    useJSONSchema={true} // ← Force SmartForm
+    schema={schema}
+    data={data}
+    onChange={(data) => handleChange(data)}
 />
 ```
 
@@ -999,15 +1002,18 @@ Or use the unified component:
 
 ### Issue: Unsupported Component Warning
 
-**Warning:** `Custom component "PlotlyView" requires custom widget implementation`
+**Warning:**
+`Custom component "PlotlyView" requires custom widget implementation`
 
 **Solution:** These components don't have RJSF equivalents. Either:
+
 1. Create a custom widget
 2. Use SchemaIO renderer: `<SchemaIOComponent useJSONSchema={false} />`
 
 ### Issue: Data Not Converting Correctly
 
 Check your schema types match your data:
+
 ```tsx
 // Wrong
 { type: "string", value: 123 }
@@ -1019,6 +1025,7 @@ Check your schema types match your data:
 ### Issue: Dropdown Not Showing Choices
 
 Ensure choices are properly formatted:
+
 ```tsx
 view: {
   component: "DropdownView",
