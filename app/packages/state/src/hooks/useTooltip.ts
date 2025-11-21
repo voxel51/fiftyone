@@ -3,6 +3,7 @@ import {
   LabelUnhoveredEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
+import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
@@ -22,7 +23,7 @@ export default function useTooltip() {
   // only relevant for looker-3d
   const getMeshProps = useRecoilCallback(
     ({ snapshot }) =>
-      (label) => {
+      (label: BaseLabel) => {
         return {
           onPointerOver: () => {
             setTooltipDetail(getDetailsFromLabel(label));
