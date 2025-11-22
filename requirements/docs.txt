@@ -12,6 +12,7 @@ jupyter-client==8.6.3
 
 # docs requirements
 autodocsumm==0.2.14
+pypandoc>=1.11
 # myst parser does not support docutils 0.22: https://github.com/executablebooks/MyST-Parser/pull/1045
 docutils==0.21.2
 huggingface_hub>=0.20.0
