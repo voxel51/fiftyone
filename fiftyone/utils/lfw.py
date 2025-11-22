@@ -61,9 +61,9 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         etau.delete_dir(scratch_dir)
 
 
-_VIDEOS_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
-_TEST_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTest.txt"
-_TRAIN_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTrain.txt"
+_VIDEOS_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976018"
+_TEST_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976009"
+_TRAIN_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976012"
 
 
 def _download_videos(scratch_dir):
