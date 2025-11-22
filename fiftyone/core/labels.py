@@ -7,6 +7,7 @@ Labels stored in dataset samples.
 """
 
 import itertools
+import logging
 import warnings
 from functools import partial
 
@@ -32,6 +33,14 @@ foui = fou.lazy_import("fiftyone.utils.image")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
 )
+trimesh = fou.lazy_import(
+    "trimesh", callback=lambda: fou.ensure_package("trimesh")
+)
+
+import fiftyone.core.storage as fos
+from fiftyone.core.threed import Scene, PerspectiveCamera, ObjMesh
+
+logger = logging.getLogger(__name__)
 
 
 class _NoDefault(object):
@@ -440,11 +449,22 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
 
     Args:
         label (None): the label string
-        bounding_box (None): a list of relative bounding box coordinates in
-            ``[0, 1]`` in the following format::
+        bounding_box (None): bounding box coordinates. The format depends on
+            the ``relative_coordinate`` field:
 
-            [<top-left-x>, <top-left-y>, <width>, <height>]
+            -   If ``relative_coordinate=True`` (default): a list of relative
+                bounding box coordinates in ``[0, 1]`` in the format::
 
+                    [<top-left-x>, <top-left-y>, <width>, <height>]
+
+            -   If ``relative_coordinate=False``: a list of absolute bounding
+                box coordinates in pixel space in the format::
+
+                    [<x1>, <y1>, <x2>, <y2>]
+
+        relative_coordinate (True): whether ``bounding_box`` uses relative
+            (True) or absolute (False) coordinates. Defaults to True for
+            backward compatibility with existing datasets
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
@@ -463,6 +483,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
 
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
+    relative_coordinate = fof.BooleanField(default=True)
     mask = fof.ArrayField()
     mask_path = fof.StringField()
     confidence = fof.FloatField()
@@ -1128,6 +1149,36 @@ class Keypoints(_HasLabelList, Label):
     keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint))
 
 
+class Keypoint3D(EmbeddedDocument):
+    """A list of 3D keypoints.
+
+    This class provides a structure for 3D coordinates ``(x, y, z)`` similar
+    to :class:`Keypoint` but as a simpler embedded document for use within
+    other label types like :class:`Person3D`.
+
+    Args:
+        label (None): a label for the keypoints
+        points (None): a list of ``(x, y, z)`` keypoints as nested lists
+        confidence (None): a list of confidences in ``[0, 1]`` for each point
+    """
+
+    label = fof.StringField()
+    points = fof.ListField(fof.ListField(fof.FloatField()))
+    confidence = fof.ListField(fof.FloatField(), null=True)
+
+
+class Keypoints3D(_HasLabelList, Label):
+    """A list of :class:`Keypoint3D` instances.
+
+    Args:
+        keypoints (None): a list of :class:`Keypoint3D` instances
+    """
+
+    _LABEL_LIST_FIELD = "keypoints"
+
+    keypoints = fof.ListField(fof.EmbeddedDocumentField(Keypoint3D))
+
+
 class Segmentation(_HasID, _HasMedia, Label):
     """A semantic segmentation for an image.
 
@@ -1563,13 +1614,46 @@ class GeoLocations(_HasID, Label):
         return cls(points=points, lines=lines, polygons=polygons)
 
 
-_LABEL_LIST_FIELDS = (
-    Classifications,
-    Detections,
-    Keypoints,
-    Polylines,
-    TemporalDetections,
-)
+class Camera(_HasID, Label):
+    """Camera parameters for 3D reconstruction and rendering.
+
+    This class supports multiple camera parameterizations commonly used in
+    computer vision and 3D reconstruction:
+
+    -   **Weak perspective projection** (SMPL format): scale and 2D translation
+    -   **Full perspective projection**: intrinsics (focal length, principal
+        point) and extrinsics (rotation, translation)
+
+    Args:
+        weak_perspective (None): weak perspective camera parameters
+            ``[s, tx, ty]`` where ``s`` is the scale factor and ``tx``, ``ty``
+            are 2D translations in normalized coordinates
+        translation (None): 3D camera translation vector ``[tx, ty, tz]`` in
+            world coordinates
+        focal_length (None): camera focal lengths ``[fx, fy]`` in pixels
+        principal_point (None): camera principal point ``[cx, cy]`` in pixels
+        rotation_matrix (None): 3x3 camera rotation matrix as a nested list::
+
+                [[r11, r12, r13],
+                 [r21, r22, r23],
+                 [r31, r32, r33]]
+
+        intrinsic_matrix (None): 3x3 camera intrinsic matrix as a nested list
+            (alternative to specifying ``focal_length`` and
+            ``principal_point``)::
+
+                [[fx,  0, cx],
+                 [ 0, fy, cy],
+                 [ 0,  0,  1]]
+    """
+
+    weak_perspective = fof.ListField(fof.FloatField())
+    translation = fof.ListField(fof.FloatField())
+    focal_length = fof.ListField(fof.FloatField())
+    principal_point = fof.ListField(fof.FloatField())
+    rotation_matrix = fof.ListField()
+    intrinsic_matrix = fof.ListField()
+
 
 _PATCHES_FIELDS = (
     Detection,
@@ -1585,6 +1669,7 @@ _INDEX_FIEDS = (
     Polylines,
     Keypoint,
     Keypoints,
+    Keypoints3D,
 )
 
 _INSTANCE_FIELDS = (Detection, Polyline, Keypoint)
@@ -2103,3 +2188,547 @@ def _from_geo_json(d):
         polygons = None
 
     return points, lines, polygons
+
+
+class SMPLParams(EmbeddedDocument):
+    """SMPL parameters for a person.
+
+    Args:
+        body_pose (None): SMPL body pose parameters (can be nested list for rotation matrices)
+        betas (None): SMPL shape parameters (flat list)
+        global_orient (None): SMPL global orientation (can be nested list for rotation matrix)
+        camera (None): camera parameters [s, tx, ty] (flat list)
+    """
+
+    body_pose = fof.ListField()
+    betas = fof.ListField(fof.FloatField())
+    global_orient = fof.ListField()
+    camera = fof.ListField(fof.FloatField())
+
+
+class Person3D(EmbeddedDocument):
+    """A 3D person detection with geometric data.
+
+    Args:
+        person_id (None): person identifier
+        detection (None): a :class:`Detection` instance containing the person
+            bounding box. When using absolute coordinates, set
+            ``detection.relative_coordinate=False`` and provide bounding box
+            as ``[x1, y1, x2, y2]`` in pixel space
+        keypoints_2d (None): a :class:`Keypoint` instance containing 2D
+            keypoint locations in normalized coordinates ``[0, 1] x [0, 1]``
+        keypoints_3d (None): 3D keypoint locations as Nx3 list of lists
+            ``[[x, y, z], ...]`` in world coordinates
+        vertices (None): 3D mesh vertices as Nx3 list of lists in world
+            coordinates
+        instance (None): an :class:`Instance` to link this 3D person to the
+            corresponding 2D detection in a grouped dataset
+    """
+
+    person_id = fof.IntField()
+    detection = fof.EmbeddedDocumentField(Detection)
+    keypoints_2d = fof.EmbeddedDocumentField(Keypoint)
+    keypoints_3d = fof.ListField(fof.ListField(fof.FloatField()))
+    vertices = fof.ListField(fof.ListField(fof.FloatField()))
+    instance = fof.EmbeddedDocumentField(Instance)
+
+
+class SMPLHumanPose(EmbeddedDocument):
+    """A single SMPL-based human pose with associated metadata.
+
+    Args:
+        person (None): :class:`Person3D` geometry containing detection box,
+            keypoints, and mesh vertices
+        smpl_params (None): :class:`SMPLParams` instance with SMPL body model
+            parameters (body pose, shape parameters, global orientation)
+        camera (None): :class:`Camera` instance containing camera parameters.
+            For HRM2 models, this typically includes ``weak_perspective`` (from
+            SMPL) and ``translation`` (3D camera position)
+        scene_path (None): path to the exported .fo3d file containing this pose
+        smpl_faces (None): SMPL mesh topology (F x 3) as a numpy array
+        frame_size (None): [height, width] of the source frame
+    """
+
+    person = fof.EmbeddedDocumentField(Person3D)
+    smpl_params = fof.EmbeddedDocumentField(SMPLParams)
+    camera = fof.EmbeddedDocumentField(Camera)
+    scene_path = fof.StringField()
+    smpl_faces = fof.ArrayField()
+    frame_size = fof.ListField()
+
+
+class SMPLHumanPoses(_HasLabelList, Label):
+    """A list of :class:`SMPLHumanPose` instances."""
+
+    _LABEL_LIST_FIELD = "poses"
+
+    poses = fof.ListField(fof.EmbeddedDocumentField(SMPLHumanPose))
+
+    def __init__(self, poses=None, smpl_faces=None, frame_size=None, **kwargs):
+        super().__init__(**kwargs)
+        self._smpl_faces_cache = None
+        self._frame_size_cache = None
+        self.poses = poses
+        if smpl_faces is not None:
+            self.smpl_faces = smpl_faces
+        if frame_size is not None:
+            self.frame_size = frame_size
+
+    def _first_pose_attr(self, attr):
+        for pose in self.poses or []:
+            value = getattr(pose, attr, None)
+            if value is not None:
+                return value
+
+        if attr == "smpl_faces":
+            return self._smpl_faces_cache
+        if attr == "frame_size":
+            return self._frame_size_cache
+        return None
+
+    def _set_pose_attr(self, attr, value):
+        if attr == "smpl_faces":
+            self._smpl_faces_cache = value
+        elif attr == "frame_size":
+            self._frame_size_cache = value
+
+        for pose in self.poses or []:
+            setattr(pose, attr, value)
+
+    @property
+    def scene_path(self):
+        return self._first_pose_attr("scene_path")
+
+    @scene_path.setter
+    def scene_path(self, value):
+        self._set_pose_attr("scene_path", value)
+
+    @property
+    def smpl_faces(self):
+        return self._first_pose_attr("smpl_faces")
+
+    @smpl_faces.setter
+    def smpl_faces(self, value):
+        self._set_pose_attr("smpl_faces", value)
+
+    @property
+    def frame_size(self):
+        return self._first_pose_attr("frame_size")
+
+    @frame_size.setter
+    def frame_size(self, value):
+        self._set_pose_attr("frame_size", value)
+
+    def export_scene(self, scene_path, update=True):
+        """Export 3D scene and meshes to disk.
+
+        Args:
+            scene_path: output path for .fo3d scene file
+            update: if True, propagate scene_path to all poses
+
+        Returns:
+            str: path to exported .fo3d file
+        """
+        import hashlib
+        import os
+
+        if not self.poses:
+            raise ValueError("Cannot export scene: no pose data")
+
+        smpl_faces = self.smpl_faces
+        if smpl_faces is None:
+            raise ValueError(
+                "Cannot export scene: SMPL faces not stored. "
+                "Ensure the model was run with export_meshes=True"
+            )
+
+        fos.ensure_basedir(scene_path)
+
+        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
+        base_dir = os.path.dirname(scene_path)
+
+        mesh_objects = []
+        all_vertices = []
+
+        smpl_faces_arr = np.asarray(smpl_faces)
+        frame_size = self.frame_size or [512, 512]
+
+        for idx, pose in enumerate(self.poses):
+            person = pose.person
+            if person is None or person.vertices is None:
+                logger.warning(
+                    "Skipping SMPLHumanPose %d with no vertices", idx
+                )
+                continue
+
+            person_id = (
+                person.person_id if person.person_id is not None else idx
+            )
+            vertices = np.asarray(person.vertices)
+            all_vertices.append(vertices)
+
+            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
+            mesh_path = os.path.join(base_dir, mesh_filename)
+
+            mesh = trimesh.Trimesh(
+                vertices=vertices, faces=smpl_faces_arr, process=False
+            )
+            mesh.export(mesh_path)
+
+            mesh_objects.append(
+                ObjMesh(
+                    name=f"Person {person_id}",
+                    obj_path=mesh_path,
+                )
+            )
+
+        if not mesh_objects:
+            raise ValueError("Cannot export scene: no meshes were generated")
+
+        all_vertices = np.vstack(all_vertices)
+        center = all_vertices.mean(axis=0)
+        bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
+        camera_distance = bbox_size.max() * 1.5
+        camera_position = center + np.array([0, 0, camera_distance])
+
+        aspect = (
+            frame_size[1] / frame_size[0]
+            if frame_size and frame_size[0]
+            else 1.0
+        )
+
+        camera = PerspectiveCamera(
+            position=camera_position.tolist(),
+            look_at=center.tolist(),
+            up="Y",
+            aspect=aspect,
+        )
+
+        scene = Scene(camera=camera, lights=[])
+        for mesh_obj in mesh_objects:
+            scene.add(mesh_obj)
+
+        scene.write(scene_path)
+
+        if update:
+            self.scene_path = scene_path
+
+        return scene_path
+
+
+class HumanPose2D(Label):
+    """2D human pose keypoints and detection for image samples.
+
+    This class wraps native FiftyOne label types (Keypoint and Detection) to
+    enable proper rendering in the FiftyOne App using the core overlay logic.
+    The detection's instance field can be used to link this 2D pose to the
+    corresponding 3D Person3D label in a grouped dataset.
+
+    Args:
+        pose (None): a :class:`Keypoint` instance containing the 2D keypoints
+        detection (None): a :class:`Detection` instance for the person bounding box.
+            The detection.instance field can be set to link to Person3D labels.
+    """
+
+    pose = fof.EmbeddedDocumentField(Keypoint)
+    detection = fof.EmbeddedDocumentField(Detection)
+
+    def __init__(
+        self,
+        pose=None,
+        detection=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.pose = pose
+        self.detection = detection
+
+
+class HumanPoses2D(_HasLabelList, Label):
+    """A list of 2D human poses in an image.
+
+    This wrapper class provides proper schema registration for lists of
+    HumanPose2D instances, enabling the FiftyOne App to automatically discover
+    and render the embedded Keypoint and Detection labels through recursive
+    traversal.
+
+    Args:
+        poses (None): a list of :class:`HumanPose2D` instances
+    """
+
+    _LABEL_LIST_FIELD = "poses"
+
+    poses = fof.ListField(fof.EmbeddedDocumentField(HumanPose2D))
+
+
+class Mesh3D(EmbeddedDocument):
+    """Model-agnostic 3D mesh geometry.
+
+    This class represents 3D mesh geometry in a model-agnostic way, supporting
+    both in-memory vertex/face data and external mesh asset files.
+
+    Args:
+        vertices (None): a list of [x, y, z] vertices (Nx3 list of lists)
+        faces (None): optional list of triangular faces, each a list of three
+            integer vertex indices (Fx3 list of lists)
+        vertex_colors (None): optional list of per-vertex colors; each color is
+            [r, g, b] in either [0, 1] or [0, 255], depending on the producing
+            model
+        normals (None): optional list of per-vertex normals [nx, ny, nz]
+        asset_path (None): optional path to an external mesh asset on disk
+            (e.g., OBJ, GLTF, or PLY). When this is set, vertices/faces may be
+            omitted and the asset can be loaded from disk instead
+    """
+
+    vertices = fof.ListField(fof.ListField(fof.FloatField()))
+    faces = fof.ListField(fof.ListField(fof.IntField()))
+    vertex_colors = fof.ListField(fof.ListField(fof.FloatField()))
+    normals = fof.ListField(fof.ListField(fof.FloatField()))
+    asset_path = fof.StringField()
+
+
+class MeshInstance3D(EmbeddedDocument):
+    """A generic 3D instance with geometry and optional pose.
+
+    This class represents a single 3D instance (human or generic object) in a
+    scene, with geometry, optional keypoints, and linkage to 2D annotations.
+    It is designed to be model-agnostic and can represent outputs from various
+    3D reconstruction models (HRM2, SAM3D, etc.).
+
+    Args:
+        instance_id (None): numeric identifier for the instance within a scene
+        label (None): optional semantic label for the instance, such as
+            "person", "chair", or "car"
+        detection (None): optional :class:`Detection` representing the 2D
+            detection for this instance in the originating image
+        mesh (None): a :class:`Mesh3D` instance containing the 3D geometry
+        keypoints_3d (None): optional :class:`Keypoints3D` instance describing
+            3D keypoints/joints for articulated instances (e.g., humans)
+        keypoints_2d (None): optional :class:`Keypoints` or :class:`Keypoint`
+            instance describing 2D keypoints in image space
+        camera (None): optional :class:`Camera` instance describing a camera
+            associated with this instance
+        instance (None): optional :class:`Instance` linking this 3D instance to
+            a 2D detection, segmentation, or other label in a grouped dataset
+        attributes (None): optional dictionary of free-form attributes such as
+            model scores, model names, or other metadata. Model-specific
+            parameters (e.g., SMPL body pose) should be stored here rather
+            than in dedicated fields.
+    """
+
+    instance_id = fof.IntField()
+    label = fof.StringField()
+
+    detection = fof.EmbeddedDocumentField(Detection)
+
+    mesh = fof.EmbeddedDocumentField(Mesh3D)
+    keypoints_3d = fof.EmbeddedDocumentField(Keypoints3D)
+    keypoints_2d = fof.EmbeddedDocumentField(Keypoint)
+
+    camera = fof.EmbeddedDocumentField(Camera)
+    instance = fof.EmbeddedDocumentField(Instance)
+
+    attributes = fof.DictField()
+
+
+class MeshInstances3D(_HasLabelList, Label):
+    """A list of 3D instances for a reconstructed scene.
+
+    This label type is a container for :class:`MeshInstance3D` instances associated with a single sample
+    or grouped sample. It also stores scene-level metadata such as a `.fo3d`
+    scene path and an optional scene-level camera.
+
+    Args:
+        instances (None): a list of :class:`MeshInstance3D` instances
+        scene_path (None): optional path to a `.fo3d` scene file that contains
+            the full 3D representation of the scene
+        frame_size (None): optional [height, width] of the originating frame
+        camera (None): optional :class:`Camera` describing a global
+            camera for the scene
+    """
+
+    _LABEL_LIST_FIELD = "instances"
+
+    instances = fof.ListField(fof.EmbeddedDocumentField(MeshInstance3D))
+    scene_path = fof.StringField()
+    frame_size = fof.ListField(fof.FloatField())
+    camera = fof.EmbeddedDocumentField(Camera)
+
+    def __init__(
+        self,
+        instances=None,
+        scene_path=None,
+        frame_size=None,
+        camera=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.instances = instances
+        self.scene_path = scene_path
+        self.frame_size = frame_size
+        self.camera = camera
+
+    def export_scene(self, scene_path, update=True):
+        """Exports the 3D scene and meshes to disk.
+
+        This method writes a `.fo3d` scene file and associated mesh assets for
+        each instance to the specified location. The resulting scene can be
+        visualized in FiftyOne's 3D viewer.
+
+        Args:
+            scene_path: the output path for the `.fo3d` scene file
+            update: whether to set the ``scene_path`` field to the exported
+                scene path (default True)
+
+        Returns:
+            the path to the exported `.fo3d` file
+
+        Raises:
+            ValueError: if no instances contain mesh geometry
+        """
+        import hashlib
+        import os
+
+        if not self.instances:
+            raise ValueError("Cannot export scene: no instance data")
+
+        # Collect instances with mesh geometry
+        instances_with_meshes = [
+            inst for inst in self.instances if inst.mesh is not None
+        ]
+
+        if not instances_with_meshes:
+            raise ValueError(
+                "Cannot export scene: no instances contain mesh geometry"
+            )
+
+        fos.ensure_basedir(scene_path)
+
+        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
+        base_dir = os.path.dirname(scene_path)
+
+        mesh_objects = []
+        all_vertices = []
+
+        frame_size = self.frame_size or [512, 512]
+
+        for inst in instances_with_meshes:
+            instance_id = (
+                inst.instance_id
+                if inst.instance_id is not None
+                else len(mesh_objects)
+            )
+            label = inst.label or "object"
+
+            mesh = inst.mesh
+
+            # Handle asset_path vs in-memory vertices/faces
+            if mesh.asset_path:
+                # Reuse existing mesh file
+                mesh_path = mesh.asset_path
+                if mesh.vertices:
+                    # If we have vertices, compute bounding box for camera
+                    vertices = np.asarray(mesh.vertices)
+                    all_vertices.append(vertices)
+            else:
+                # Export in-memory mesh to OBJ
+                if mesh.vertices is None:
+                    logger.warning(
+                        "Skipping instance %d with no mesh data", instance_id
+                    )
+                    continue
+
+                vertices = np.asarray(mesh.vertices)
+                all_vertices.append(vertices)
+
+                # Get faces or create default triangulation
+                if mesh.faces is not None:
+                    faces = np.asarray(mesh.faces)
+                else:
+                    # Create simple triangulation if no faces provided
+                    logger.warning(
+                        "Instance %d has no faces, creating default triangulation",
+                        instance_id,
+                    )
+                    n_verts = len(vertices)
+                    if n_verts < 3:
+                        logger.warning(
+                            "Instance %d has too few vertices (%d) to triangulate",
+                            instance_id,
+                            n_verts,
+                        )
+                        continue
+                    # Create simple fan triangulation from first vertex
+                    faces = []
+                    for i in range(1, n_verts - 1):
+                        faces.append([0, i, i + 1])
+                    faces = np.array(faces)
+
+                mesh_filename = f"mesh_{uid}_inst_{instance_id}.obj"
+                mesh_path = os.path.join(base_dir, mesh_filename)
+
+                # Export using trimesh
+                trimesh_obj = trimesh.Trimesh(
+                    vertices=vertices, faces=faces, process=False
+                )
+                trimesh_obj.export(mesh_path)
+
+            # Add to scene
+            mesh_objects.append(
+                ObjMesh(
+                    name=f"{label.capitalize()} {instance_id}",
+                    obj_path=mesh_path,
+                )
+            )
+
+        if not mesh_objects:
+            raise ValueError("Cannot export scene: no meshes were generated")
+
+        # Set up camera
+        if all_vertices:
+            all_vertices = np.vstack(all_vertices)
+            center = all_vertices.mean(axis=0)
+            bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
+            camera_distance = bbox_size.max() * 1.5
+            camera_position = center + np.array([0, 0, camera_distance])
+        else:
+            # Fallback if no vertex data available
+            center = np.array([0, 0, 0])
+            camera_position = np.array([0, 0, 3])
+
+        aspect = (
+            frame_size[1] / frame_size[0]
+            if frame_size and frame_size[0]
+            else 1.0
+        )
+
+        camera = PerspectiveCamera(
+            position=camera_position.tolist(),
+            look_at=center.tolist(),
+            up="Y",
+            aspect=aspect,
+        )
+
+        scene = Scene(camera=camera, lights=[])
+        for mesh_obj in mesh_objects:
+            scene.add(mesh_obj)
+
+        scene.write(scene_path)
+
+        if update:
+            self.scene_path = scene_path
+
+        return scene_path
+
+
+_LABEL_LIST_FIELDS = (
+    Classifications,
+    Detections,
+    Keypoints,
+    Keypoints3D,
+    Polylines,
+    TemporalDetections,
+    SMPLHumanPoses,
+    HumanPoses2D,
+    MeshInstances3D,
+)
