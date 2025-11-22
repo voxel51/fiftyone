@@ -1,6 +1,4 @@
-import { createUseEventHandler, useEventBus } from "@fiftyone/events";
 import { AnnotationLabel } from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 
 export const AnnotationChannelId = "default";
 

@@ -3,7 +3,6 @@
  */
 
 import { getSampleSrc } from "@fiftyone/state";
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
 import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
@@ -39,31 +38,22 @@ export class ImageOverlay
   private resizeObserver?: ResizeObserver;
   private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
 
+  private resizeUnregister: () => void;
+
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, "", null, options.field);
+    super(id, "", null);
+
+    this.resizeUnregister = this.eventBus.on("lighter:resize", (payload) => {
+      const { width, height } = payload;
+      this.handleResize(width, height);
+    });
   }
 
   getOverlayType(): string {
     return "ImageOverlay";
-  }
-
-  /**
-   * Attaches the event bus to this overlay.
-   * @param bus - The event bus to attach.
-   */
-  attachEventBus(bus: EventBus): void {
-    super.attachEventBus(bus);
-
-    // Listen for resize events from the event bus
-    if (this.eventBus) {
-      this.eventBus.on(LIGHTER_EVENTS.RESIZE, (event) => {
-        const { width, height } = event.detail;
-        this.handleResize(width, height);
-      });
-    }
   }
 
   /**
@@ -438,5 +428,6 @@ export class ImageOverlay
       this.resizeObserver = undefined;
     }
     this.boundsChangeCallbacks = [];
+    this.resizeUnregister();
   }
 }
