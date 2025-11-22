@@ -992,7 +992,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         pose_wrappers = []
         keypoints_list = []
         detections_list = []
-        smpl_pose_list = []
+        mesh_instances = []
 
         for person_dict in people_data:
             # Create 2D keypoints for HumanPose2D wrapper (normalized)
@@ -1038,14 +1038,18 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     )
                 )
 
-            # Create SMPL parameters
+            # Create model-agnostic 3D labels (MeshInstance3D)
+            # Store SMPL-specific parameters in attributes dict
             smpl_dict = person_dict.get("smpl_params", {})
-            smpl_params = fol.SMPLParams(
-                body_pose=smpl_dict.get("body_pose"),
-                betas=smpl_dict.get("betas"),
-                global_orient=smpl_dict.get("global_orient"),
-                camera=smpl_dict.get("camera"),
-            )
+            attributes = {
+                "source": "hrm2",
+                "smpl_params": {
+                    "body_pose": smpl_dict.get("body_pose"),
+                    "betas": smpl_dict.get("betas"),
+                    "global_orient": smpl_dict.get("global_orient"),
+                    "camera": smpl_dict.get("camera"),
+                },
+            }
 
             # Create Camera object from camera parameters
             camera_translation = person_dict.get("camera_translation")
@@ -1055,46 +1059,66 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 translation=camera_translation,
             )
 
-            # Create embedded labels for Person3D
-            # Detection with absolute coordinates for 3D geometry
-            person_detection = None
+            # Create Mesh3D from vertices and faces
+            mesh = None
+            vertices = person_dict.get("vertices")
+            if vertices is not None:
+                mesh = fol.Mesh3D(
+                    vertices=vertices,
+                    faces=smpl_faces.tolist()
+                    if smpl_faces is not None
+                    else None,
+                )
+
+            # Create Detection with absolute coordinates for 3D instance
+            instance_detection = None
             bbox_abs = person_dict.get("bbox")
             if bbox_abs is not None:
-                person_detection = fol.Detection(
+                instance_detection = fol.Detection(
                     label="person",
                     bounding_box=bbox_abs,
                     relative_coordinate=False,  # Absolute pixel coordinates
                 )
 
-            # 2D keypoints (normalized) for Person3D
-            person_keypoints_2d = None
+            # Create 2D keypoints (normalized) for MeshInstance3D
+            instance_keypoints_2d = None
             if keypoints_rel is not None:
-                person_keypoints_2d = fol.Keypoint(
+                instance_keypoints_2d = fol.Keypoint(
                     label="person",
                     points=keypoints_rel,
                     confidence=confidence,
                 )
 
-            # 3D keypoints for Person3D (keep as raw list to avoid schema inference issues)
+            # Create Keypoints3D from 3D keypoint data
+            instance_keypoints_3d = None
             keypoints_3d_data = person_dict.get("keypoints_3d")
+            if keypoints_3d_data is not None:
+                # Convert raw list to Keypoints3D label
+                # HRM2 outputs 3D keypoints as Nx3 list
+                keypoints_3d_list = []
+                for idx, point in enumerate(keypoints_3d_data):
+                    kpt = fol.Keypoint3D(
+                        label="joint",
+                        points=[point],  # Single point as list
+                    )
+                    keypoints_3d_list.append(kpt)
 
-            # Create Person3D with embedded label types (Detection and Keypoint work well)
-            # keypoints_3d stays as raw list to avoid deep nesting serialization issues
-            person3d = fol.Person3D(
-                person_id=person_dict.get("person_id"),
-                detection=person_detection,
-                keypoints_2d=person_keypoints_2d,
-                keypoints_3d=keypoints_3d_data,
-                vertices=person_dict.get("vertices"),
-            )
+                instance_keypoints_3d = fol.Keypoints3D(
+                    keypoints=keypoints_3d_list
+                )
 
-            # Create SMPLHumanPose with new Camera object
-            smpl_pose = fol.SMPLHumanPose(
-                person=person3d,
-                smpl_params=smpl_params,
+            # Create MeshInstance3D with all components
+            mesh_instance = fol.MeshInstance3D(
+                instance_id=person_dict.get("person_id"),
+                label="person",
+                detection=instance_detection,
+                mesh=mesh,
+                keypoints_3d=instance_keypoints_3d,
+                keypoints_2d=instance_keypoints_2d,
                 camera=camera,
+                attributes=attributes,
             )
-            smpl_pose_list.append(smpl_pose)
+            mesh_instances.append(mesh_instance)
 
         bundle: Dict[str, fol.Label] = {}
         if pose_wrappers:
@@ -1103,10 +1127,9 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             bundle["keypoints"] = fol.Keypoints(keypoints=keypoints_list)
         if detections_list:
             bundle["detections"] = fol.Detections(detections=detections_list)
-        if smpl_pose_list:
-            bundle["poses_3d"] = fol.SMPLHumanPoses(
-                poses=smpl_pose_list,
-                smpl_faces=smpl_faces,
+        if mesh_instances:
+            bundle["poses_3d"] = fol.MeshInstances3D(
+                instances=mesh_instances,
                 frame_size=frame_size,
             )
 
@@ -1348,6 +1371,11 @@ def apply_hrm2_to_dataset_as_groups(
     elif output_dir is False:
         output_dir = None  # Disable export
 
+    # Create output directory if it doesn't exist
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        logger.info("Scene files will be exported to: %s", output_dir)
+
     # Check if dataset is already grouped
     if dataset.media_type == "group":
         logger.warning(
@@ -1395,13 +1423,29 @@ def apply_hrm2_to_dataset_as_groups(
             return None
 
     predictions = []
-    for sample in dataset.iter_samples():
-        predictions.append(
-            {
-                key: _get_label(sample, field_name)
-                for key, field_name in label_fields_map.items()
-            }
-        )
+    for idx, sample in enumerate(dataset.iter_samples()):
+        pred = {
+            key: _get_label(sample, field_name)
+            for key, field_name in label_fields_map.items()
+        }
+
+        # Export scene if output_dir is provided and mesh exists
+        pose_3d = pred.get("poses_3d")
+        if output_dir and pose_3d and pose_3d.instances:
+            # Generate unique scene path
+            scene_filename = f"scene_{idx:06d}.fo3d"
+            scene_path = os.path.join(output_dir, scene_filename)
+
+            # Export scene and update pose_3d
+            try:
+                pose_3d.export_scene(scene_path, update=True)
+                logger.debug("Exported scene to %s", scene_path)
+            except Exception as e:
+                logger.warning(
+                    "Failed to export scene for sample %d: %s", idx, e
+                )
+
+        predictions.append(pred)
 
     # Clear dataset to rebuild with groups
     logger.info("Creating grouped dataset structure...")
