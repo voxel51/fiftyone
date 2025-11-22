@@ -1,10 +1,14 @@
 """
 Sphinx extension for generating llms.txt from documentation.
+Also generates markdown versions of pages for AI consumption.
 """
 
 import os
+import shutil
+from pathlib import Path
 from sphinx.application import Sphinx
 from sphinx.util import logging
+import pypandoc
 
 
 class LLMSTxtGenerator:
@@ -119,7 +123,7 @@ class LLMSTxtGenerator:
             url = (
                 path
                 if external
-                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/{path}.html"
+                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/_markdown/{path}.md"
             )
 
             if url in processed:
@@ -139,6 +143,60 @@ class LLMSTxtGenerator:
             processed.add(url)
 
         return sections
+
+    def convert_page_to_markdown(self, source_path, output_path):
+        """Convert RST/IPYNB/MD to Markdown using pandoc."""
+        FORMAT_MAP = {".rst": "rst", ".ipynb": "ipynb", ".md": "markdown"}
+        try:
+            suffix = Path(source_path).suffix
+            output = pypandoc.convert_file(
+                source_path,
+                "md",
+                format=FORMAT_MAP.get(suffix, "rst"),
+                extra_args=["--wrap=none", "--quiet"],
+            )
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(output, encoding="utf-8")
+            return True
+        except Exception as e:
+            self.logger.debug(f"Failed to convert {source_path}: {e}")
+            return False
+
+    def generate_markdown_files(self):
+        """Generate markdown versions of all documentation pages."""
+
+        md_dir = Path(self.app.outdir) / "_markdown"
+        md_dir.mkdir(exist_ok=True)
+
+        source_dir = Path(self.app.srcdir)
+        converted_count = 0
+
+        all_docs = [self.app.env.config.master_doc] + [
+            doc_path
+            for doc_path, _, external, _, _, _ in self.collected_pages
+            if not external
+        ]
+
+        for doc_path in all_docs:
+            output_md = md_dir / f"{doc_path}.md"
+
+            for ext in [".rst", ".ipynb"]:
+                source_file = source_dir / f"{doc_path}{ext}"
+                if source_file.exists():
+                    if self.convert_page_to_markdown(source_file, output_md):
+                        converted_count += 1
+                    break
+            else:
+                source_md = source_dir / f"{doc_path}.md"
+                if source_md.exists():
+                    output_md.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(source_md, output_md)
+                    converted_count += 1
+
+        if converted_count > 0:
+            self.logger.info(
+                f"Generated {converted_count} markdown files in _markdown/"
+            )
 
     def generate_llms_txt_file(self, app, exception):
         if exception:
@@ -168,6 +226,8 @@ class LLMSTxtGenerator:
             self.logger.info("llms.txt generated successfully")
         except Exception as e:
             self.logger.error("llms.txt generation failed: %s", str(e))
+
+        self.generate_markdown_files()
 
 
 def setup(app: Sphinx):
