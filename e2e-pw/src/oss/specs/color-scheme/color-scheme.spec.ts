@@ -36,10 +36,6 @@ const dummyDatasetColorByInstance = getUniqueDatasetNameWithPrefix(
   "dummy-color-by-instance"
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
   await fiftyoneLoader.loadZooDataset("quickstart", quickstartColorByField, {

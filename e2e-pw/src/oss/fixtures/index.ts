@@ -76,4 +76,8 @@ export const test = customFixtures.extend<CustomFixturesWithPage>({
   },
 });
 
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
 export { Browser, expect, Locator, Page } from "@playwright/test";
