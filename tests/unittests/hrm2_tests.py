@@ -489,9 +489,9 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         import torch
         from fiftyone.utils.hrm2 import HRM2OutputProcessor
         from fiftyone.core.labels import (
-            SMPLHumanPoses,
-            SMPLHumanPose,
-            Person3D,
+            MeshInstances3D,
+            MeshInstance3D,
+            Mesh3D,
             Keypoint,
             Detection,
             Camera,
@@ -538,54 +538,57 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         self.assertIn("poses_2d", labels[0])
         self.assertIn("poses_3d", labels[0])
 
-        # Verify SMPLHumanPoses structure
-        smpl_human_poses = labels[0]["poses_3d"]
-        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
-        self.assertEqual(len(smpl_human_poses.poses), 1)
+        # Verify MeshInstances3D structure
+        mesh_instances = labels[0]["poses_3d"]
+        self.assertIsInstance(mesh_instances, MeshInstances3D)
+        self.assertEqual(len(mesh_instances.instances), 1)
 
-        smpl_pose = smpl_human_poses.poses[0]
-        self.assertIsInstance(smpl_pose, SMPLHumanPose)
+        mesh_instance = mesh_instances.instances[0]
+        self.assertIsInstance(mesh_instance, MeshInstance3D)
 
-        # Verify Person3D structure with embedded label types
-        person = smpl_pose.person
-        self.assertIsInstance(person, Person3D)
-        self.assertEqual(person.person_id, 0)
-        # Person3D uses embedded Detection and Keypoint (for 2D)
-        # keypoints_3d stays as raw list to avoid schema inference issues
-        self.assertIsNotNone(person.keypoints_3d)
-        self.assertIsInstance(person.keypoints_3d, list)
-        self.assertIsNotNone(person.keypoints_2d)
-        self.assertIsInstance(person.keypoints_2d, Keypoint)
-        self.assertIsNotNone(person.detection)
-        self.assertIsInstance(person.detection, Detection)
-        self.assertIsNotNone(person.detection.bounding_box)
+        # Verify MeshInstance3D structure with embedded label types
+        self.assertEqual(mesh_instance.instance_id, 0)
+        self.assertEqual(mesh_instance.label, "person")
+        # MeshInstance3D uses embedded Detection and Keypoint (for 2D)
+        self.assertIsNotNone(mesh_instance.keypoints_3d)
+        # keypoints_3d is now wrapped in Keypoints3D label
+        from fiftyone.core.labels import Keypoints3D
 
-        # Verify SMPLParams are now in SMPLHumanPose, not Person3D
-        smpl = smpl_pose.smpl_params
-        self.assertEqual(len(smpl.body_pose), 23)
-        self.assertEqual(len(smpl.body_pose[0]), 3)
-        self.assertEqual(len(smpl.body_pose[0][0]), 3)
-        self.assertEqual(len(smpl.betas), 10)
-        self.assertEqual(len(smpl.global_orient), 1)
-        self.assertEqual(len(smpl.global_orient[0]), 3)
+        self.assertIsInstance(mesh_instance.keypoints_3d, Keypoints3D)
+        self.assertIsNotNone(mesh_instance.keypoints_2d)
+        self.assertIsInstance(mesh_instance.keypoints_2d, Keypoint)
+        self.assertIsNotNone(mesh_instance.detection)
+        self.assertIsInstance(mesh_instance.detection, Detection)
+        self.assertIsNotNone(mesh_instance.detection.bounding_box)
 
-        # Verify camera is now a Camera object in SMPLHumanPose
-        self.assertIsNotNone(smpl_pose.camera)
-        self.assertIsInstance(smpl_pose.camera, Camera)
-        self.assertIsNotNone(smpl_pose.camera.translation)
+        # Verify SMPL params are now in attributes dict
+        self.assertIsNotNone(mesh_instance.attributes)
+        self.assertIn("smpl_params", mesh_instance.attributes)
+        smpl_params = mesh_instance.attributes["smpl_params"]
+        self.assertEqual(len(smpl_params["body_pose"]), 23)
+        self.assertEqual(len(smpl_params["body_pose"][0]), 3)
+        self.assertEqual(len(smpl_params["body_pose"][0][0]), 3)
+        self.assertEqual(len(smpl_params["betas"]), 10)
+        self.assertEqual(len(smpl_params["global_orient"]), 1)
+        self.assertEqual(len(smpl_params["global_orient"][0]), 3)
+
+        # Verify camera is in MeshInstance3D
+        self.assertIsNotNone(mesh_instance.camera)
+        self.assertIsInstance(mesh_instance.camera, Camera)
+        self.assertIsNotNone(mesh_instance.camera.translation)
 
     def test_output_processor_with_mesh_export(self):
         """Test HRM2OutputProcessor with export_meshes=True to catch serialization bugs.
 
         This test specifically validates:
-        1. smpl_faces remains a numpy array (not converted to list)
-        2. smpl_faces is set on SMPLHumanPoses collection, not individual poses
+        1. Mesh data is properly wrapped in Mesh3D objects
+        2. faces are set in the Mesh3D object
         3. The full mesh export pipeline works end-to-end
         """
         import torch
         import numpy as np
         from fiftyone.utils.hrm2 import HRM2OutputProcessor
-        from fiftyone.core.labels import SMPLHumanPoses
+        from fiftyone.core.labels import MeshInstances3D
 
         # Create mock SMPL model with faces
         mock_smpl = MockSMPL()
@@ -645,40 +648,47 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         self.assertIsInstance(labels[0], dict)
         self.assertIn("poses_3d", labels[0])
 
-        # CRITICAL: Verify smpl_faces is a numpy array (not a list)
-        smpl_human_poses = labels[0]["poses_3d"]
-        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
+        # CRITICAL: Verify mesh data is properly wrapped in Mesh3D objects
+        mesh_instances = labels[0]["poses_3d"]
+        self.assertIsInstance(mesh_instances, MeshInstances3D)
 
-        # Get smpl_faces from the collection
-        smpl_faces = smpl_human_poses.smpl_faces
+        # Get first instance
+        self.assertEqual(len(mesh_instances.instances), 1)
+        mesh_instance = mesh_instances.instances[0]
+
+        # Verify mesh is a Mesh3D object
+        from fiftyone.core.labels import Mesh3D
+
         self.assertIsNotNone(
-            smpl_faces, "smpl_faces should not be None when export_meshes=True"
+            mesh_instance.mesh,
+            "mesh should not be None when export_meshes=True",
         )
         self.assertIsInstance(
-            smpl_faces,
-            np.ndarray,
-            f"smpl_faces should be numpy array, got {type(smpl_faces)}",
+            mesh_instance.mesh,
+            Mesh3D,
+            f"mesh should be Mesh3D object, got {type(mesh_instance.mesh)}",
         )
 
-        # Verify smpl_faces shape is correct (F x 3 for triangular faces)
-        self.assertEqual(
-            len(smpl_faces.shape), 2, "smpl_faces should be 2D array"
-        )
-        self.assertEqual(
-            smpl_faces.shape[1], 3, "Each face should have 3 vertices"
+        # Verify faces are in the Mesh3D object
+        mesh = mesh_instance.mesh
+        self.assertIsNotNone(mesh.faces, "mesh.faces should not be None")
+        self.assertIsInstance(mesh.faces, list, "mesh.faces should be a list")
+        # Each face should be a list of 3 vertex indices
+        if len(mesh.faces) > 0:
+            self.assertEqual(
+                len(mesh.faces[0]), 3, "Each face should have 3 vertices"
+            )
+
+        # Verify vertices are also present
+        self.assertIsNotNone(mesh.vertices, "mesh.vertices should not be None")
+        self.assertIsInstance(
+            mesh.vertices, list, "mesh.vertices should be a list"
         )
 
         # Verify frame_size is also set correctly
-        frame_size = smpl_human_poses.frame_size
+        frame_size = mesh_instances.frame_size
         self.assertIsNotNone(frame_size)
         self.assertEqual(frame_size, [480, 640])
-
-        # Verify individual poses don't have smpl_faces set directly
-        # (they should get it from the parent collection)
-        smpl_pose = smpl_human_poses.poses[0]
-        # The pose itself shouldn't have smpl_faces as a direct attribute
-        # It gets it through the parent's property
-        self.assertIsInstance(smpl_pose.smpl_faces, np.ndarray)
 
 
 class HRM2ModelTests(HRM2TestBase):
@@ -821,25 +831,25 @@ class HRM2ModelTests(HRM2TestBase):
 
         # Result should be a dict with label types
         from fiftyone.core.labels import (
-            SMPLHumanPoses,
-            SMPLHumanPose,
-            Person3D,
+            MeshInstances3D,
+            MeshInstance3D,
         )
 
         self.assertIsInstance(result, dict)
         self.assertIn("poses_3d", result)
 
-        smpl_human_poses = result["poses_3d"]
-        self.assertIsInstance(smpl_human_poses, SMPLHumanPoses)
-        self.assertIsNotNone(smpl_human_poses.poses)
-        self.assertEqual(len(smpl_human_poses.poses), 1)
+        mesh_instances = result["poses_3d"]
+        self.assertIsInstance(mesh_instances, MeshInstances3D)
+        self.assertIsNotNone(mesh_instances.instances)
+        self.assertEqual(len(mesh_instances.instances), 1)
 
-        # Verify the processed output has SMPLHumanPose structure
-        smpl_pose = smpl_human_poses.poses[0]
-        self.assertIsInstance(smpl_pose, SMPLHumanPose)
-        self.assertIsNotNone(smpl_pose.smpl_params)
-        self.assertIsNotNone(smpl_pose.person.keypoints_3d)
-        self.assertEqual(smpl_pose.person.person_id, 0)
+        # Verify the processed output has MeshInstance3D structure
+        mesh_instance = mesh_instances.instances[0]
+        self.assertIsInstance(mesh_instance, MeshInstance3D)
+        self.assertIsNotNone(mesh_instance.attributes)
+        self.assertIn("smpl_params", mesh_instance.attributes)
+        self.assertIsNotNone(mesh_instance.keypoints_3d)
+        self.assertEqual(mesh_instance.instance_id, 0)
 
     def test_inference_single_person_uses_shared_preprocessor(self):
         """Ensure single-person inference uses shared ViTDet preprocessing."""

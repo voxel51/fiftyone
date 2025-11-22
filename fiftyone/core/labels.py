@@ -1655,15 +1655,6 @@ class Camera(_HasID, Label):
     intrinsic_matrix = fof.ListField()
 
 
-_LABEL_LIST_FIELDS = (
-    Classifications,
-    Detections,
-    Keypoints,
-    Keypoints3D,
-    Polylines,
-    TemporalDetections,
-)
-
 _PATCHES_FIELDS = (
     Detection,
     Detections,
@@ -2468,3 +2459,276 @@ class HumanPoses2D(_HasLabelList, Label):
     _LABEL_LIST_FIELD = "poses"
 
     poses = fof.ListField(fof.EmbeddedDocumentField(HumanPose2D))
+
+
+class Mesh3D(EmbeddedDocument):
+    """Model-agnostic 3D mesh geometry.
+
+    This class represents 3D mesh geometry in a model-agnostic way, supporting
+    both in-memory vertex/face data and external mesh asset files.
+
+    Args:
+        vertices (None): a list of [x, y, z] vertices (Nx3 list of lists)
+        faces (None): optional list of triangular faces, each a list of three
+            integer vertex indices (Fx3 list of lists)
+        vertex_colors (None): optional list of per-vertex colors; each color is
+            [r, g, b] in either [0, 1] or [0, 255], depending on the producing
+            model
+        normals (None): optional list of per-vertex normals [nx, ny, nz]
+        asset_path (None): optional path to an external mesh asset on disk
+            (e.g., OBJ, GLTF, or PLY). When this is set, vertices/faces may be
+            omitted and the asset can be loaded from disk instead
+    """
+
+    vertices = fof.ListField(fof.ListField(fof.FloatField()))
+    faces = fof.ListField(fof.ListField(fof.IntField()))
+    vertex_colors = fof.ListField(fof.ListField(fof.FloatField()))
+    normals = fof.ListField(fof.ListField(fof.FloatField()))
+    asset_path = fof.StringField()
+
+
+class MeshInstance3D(EmbeddedDocument):
+    """A generic 3D instance with geometry and optional pose.
+
+    This class represents a single 3D instance (human or generic object) in a
+    scene, with geometry, optional keypoints, and linkage to 2D annotations.
+    It is designed to be model-agnostic and can represent outputs from various
+    3D reconstruction models (HRM2, SAM3D, etc.).
+
+    Args:
+        instance_id (None): numeric identifier for the instance within a scene
+        label (None): optional semantic label for the instance, such as
+            "person", "chair", or "car"
+        detection (None): optional :class:`Detection` representing the 2D
+            detection for this instance in the originating image
+        mesh (None): a :class:`Mesh3D` instance containing the 3D geometry
+        keypoints_3d (None): optional :class:`Keypoints3D` instance describing
+            3D keypoints/joints for articulated instances (e.g., humans)
+        keypoints_2d (None): optional :class:`Keypoints` or :class:`Keypoint`
+            instance describing 2D keypoints in image space
+        camera (None): optional :class:`Camera` instance describing a camera
+            associated with this instance
+        instance (None): optional :class:`Instance` linking this 3D instance to
+            a 2D detection, segmentation, or other label in a grouped dataset
+        attributes (None): optional dictionary of free-form attributes such as
+            model scores, model names, or other metadata. Model-specific
+            parameters (e.g., SMPL body pose) should be stored here rather
+            than in dedicated fields.
+    """
+
+    instance_id = fof.IntField()
+    label = fof.StringField()
+
+    detection = fof.EmbeddedDocumentField(Detection)
+
+    mesh = fof.EmbeddedDocumentField(Mesh3D)
+    keypoints_3d = fof.EmbeddedDocumentField(Keypoints3D)
+    keypoints_2d = fof.EmbeddedDocumentField(Keypoint)
+
+    camera = fof.EmbeddedDocumentField(Camera)
+    instance = fof.EmbeddedDocumentField(Instance)
+
+    attributes = fof.DictField()
+
+
+class MeshInstances3D(_HasLabelList, Label):
+    """A list of 3D instances for a reconstructed scene.
+
+    This label type is a container for :class:`MeshInstance3D` instances associated with a single sample
+    or grouped sample. It also stores scene-level metadata such as a `.fo3d`
+    scene path and an optional scene-level camera.
+
+    Args:
+        instances (None): a list of :class:`MeshInstance3D` instances
+        scene_path (None): optional path to a `.fo3d` scene file that contains
+            the full 3D representation of the scene
+        frame_size (None): optional [height, width] of the originating frame
+        camera (None): optional :class:`Camera` describing a global
+            camera for the scene
+    """
+
+    _LABEL_LIST_FIELD = "instances"
+
+    instances = fof.ListField(fof.EmbeddedDocumentField(MeshInstance3D))
+    scene_path = fof.StringField()
+    frame_size = fof.ListField(fof.FloatField())
+    camera = fof.EmbeddedDocumentField(Camera)
+
+    def __init__(
+        self,
+        instances=None,
+        scene_path=None,
+        frame_size=None,
+        camera=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.instances = instances
+        self.scene_path = scene_path
+        self.frame_size = frame_size
+        self.camera = camera
+
+    def export_scene(self, scene_path, update=True):
+        """Exports the 3D scene and meshes to disk.
+
+        This method writes a `.fo3d` scene file and associated mesh assets for
+        each instance to the specified location. The resulting scene can be
+        visualized in FiftyOne's 3D viewer.
+
+        Args:
+            scene_path: the output path for the `.fo3d` scene file
+            update: whether to set the ``scene_path`` field to the exported
+                scene path (default True)
+
+        Returns:
+            the path to the exported `.fo3d` file
+
+        Raises:
+            ValueError: if no instances contain mesh geometry
+        """
+        import hashlib
+        import os
+
+        if not self.instances:
+            raise ValueError("Cannot export scene: no instance data")
+
+        # Collect instances with mesh geometry
+        instances_with_meshes = [
+            inst for inst in self.instances if inst.mesh is not None
+        ]
+
+        if not instances_with_meshes:
+            raise ValueError(
+                "Cannot export scene: no instances contain mesh geometry"
+            )
+
+        fos.ensure_basedir(scene_path)
+
+        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
+        base_dir = os.path.dirname(scene_path)
+
+        mesh_objects = []
+        all_vertices = []
+
+        frame_size = self.frame_size or [512, 512]
+
+        for inst in instances_with_meshes:
+            instance_id = (
+                inst.instance_id
+                if inst.instance_id is not None
+                else len(mesh_objects)
+            )
+            label = inst.label or "object"
+
+            mesh = inst.mesh
+
+            # Handle asset_path vs in-memory vertices/faces
+            if mesh.asset_path:
+                # Reuse existing mesh file
+                mesh_path = mesh.asset_path
+                if mesh.vertices:
+                    # If we have vertices, compute bounding box for camera
+                    vertices = np.asarray(mesh.vertices)
+                    all_vertices.append(vertices)
+            else:
+                # Export in-memory mesh to OBJ
+                if mesh.vertices is None:
+                    logger.warning(
+                        "Skipping instance %d with no mesh data", instance_id
+                    )
+                    continue
+
+                vertices = np.asarray(mesh.vertices)
+                all_vertices.append(vertices)
+
+                # Get faces or create default triangulation
+                if mesh.faces is not None:
+                    faces = np.asarray(mesh.faces)
+                else:
+                    # Create simple triangulation if no faces provided
+                    logger.warning(
+                        "Instance %d has no faces, creating default triangulation",
+                        instance_id,
+                    )
+                    n_verts = len(vertices)
+                    if n_verts < 3:
+                        logger.warning(
+                            "Instance %d has too few vertices (%d) to triangulate",
+                            instance_id,
+                            n_verts,
+                        )
+                        continue
+                    # Create simple fan triangulation from first vertex
+                    faces = []
+                    for i in range(1, n_verts - 1):
+                        faces.append([0, i, i + 1])
+                    faces = np.array(faces)
+
+                mesh_filename = f"mesh_{uid}_inst_{instance_id}.obj"
+                mesh_path = os.path.join(base_dir, mesh_filename)
+
+                # Export using trimesh
+                trimesh_obj = trimesh.Trimesh(
+                    vertices=vertices, faces=faces, process=False
+                )
+                trimesh_obj.export(mesh_path)
+
+            # Add to scene
+            mesh_objects.append(
+                ObjMesh(
+                    name=f"{label.capitalize()} {instance_id}",
+                    obj_path=mesh_path,
+                )
+            )
+
+        if not mesh_objects:
+            raise ValueError("Cannot export scene: no meshes were generated")
+
+        # Set up camera
+        if all_vertices:
+            all_vertices = np.vstack(all_vertices)
+            center = all_vertices.mean(axis=0)
+            bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
+            camera_distance = bbox_size.max() * 1.5
+            camera_position = center + np.array([0, 0, camera_distance])
+        else:
+            # Fallback if no vertex data available
+            center = np.array([0, 0, 0])
+            camera_position = np.array([0, 0, 3])
+
+        aspect = (
+            frame_size[1] / frame_size[0]
+            if frame_size and frame_size[0]
+            else 1.0
+        )
+
+        camera = PerspectiveCamera(
+            position=camera_position.tolist(),
+            look_at=center.tolist(),
+            up="Y",
+            aspect=aspect,
+        )
+
+        scene = Scene(camera=camera, lights=[])
+        for mesh_obj in mesh_objects:
+            scene.add(mesh_obj)
+
+        scene.write(scene_path)
+
+        if update:
+            self.scene_path = scene_path
+
+        return scene_path
+
+
+_LABEL_LIST_FIELDS = (
+    Classifications,
+    Detections,
+    Keypoints,
+    Keypoints3D,
+    Polylines,
+    TemporalDetections,
+    SMPLHumanPoses,
+    HumanPoses2D,
+    MeshInstances3D,
+)
