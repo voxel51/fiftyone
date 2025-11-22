@@ -46,7 +46,8 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         for test_folder in pb(test_folders):
             indir = os.path.join(images_dir, test_folder)
             outdir = os.path.join(dataset_dir, "test", test_folder)
-            etau.move_dir(indir, outdir)
+            if os.path.exists(indir):
+                etau.move_dir(indir, outdir)
 
     # Train split
     logger.info("Creating train split...")
@@ -55,7 +56,8 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         for train_folder in pb(train_folders):
             indir = os.path.join(images_dir, train_folder)
             outdir = os.path.join(dataset_dir, "train", train_folder)
-            etau.move_dir(indir, outdir)
+            if os.path.exists(indir):
+                etau.move_dir(indir, outdir)
 
     if cleanup:
         etau.delete_dir(scratch_dir)
