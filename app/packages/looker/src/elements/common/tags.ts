@@ -352,13 +352,21 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           ) {
             // Render the value of the embedded doc field
             results.push(String(v));
-          } else if (typeof v === "object" && v !== null) {
+          } else if (
+            typeof v === "object" &&
+            v !== null &&
+            "_cls" in v &&
+            typeof v["_cls"] === "string"
+          ) {
             // Handle Date and DateTime primitives within the embedded doc
             const ftype = withPath(FIELDS_PATH, v["_cls"] + "Field");
-            if (ftype) {
-              results.push(
-                formatPrimitive({ ftype, timeZone, value: v as Primitive })
-              );
+            const formatted = formatPrimitive({
+              ftype,
+              timeZone,
+              value: v as Primitive,
+            });
+            if (formatted !== null) {
+              results.push(formatted);
             }
           }
           continue;
