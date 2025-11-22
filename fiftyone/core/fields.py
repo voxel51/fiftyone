@@ -2134,7 +2134,7 @@ class EmbeddedDocumentListField(
         # pylint: disable=no-member
         return "%s(%s)" % (
             etau.get_class_name(self),
-            etau.get_class_name(self.document_type),
+            etau.get_class_name(self.field.document_type),
         )
 
 

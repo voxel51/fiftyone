@@ -6966,6 +6966,46 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("tasks.labels.classifications.label", schema)
 
     @drop_datasets
+    def test_dynamic_embedded_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="dog", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="cat", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(person=fo.Detection(label="boy")),
+            ],
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    person=fo.Detection(label="girl", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(object=fo.Detection(label="chair")),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample1, dynamic=True)
+        dataset.add_sample(sample2, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("test.animal", schema)
+        self.assertIn("test.animal.instance", schema)
+        self.assertIn("test.animal.instance.id", schema)
+        self.assertIn("test.person", schema)
+        self.assertIn("test.person.instance", schema)
+        self.assertIn("test.person.instance.id", schema)
+        self.assertIn("test.object", schema)
+        self.assertNotIn("test.object.instance", schema)
+        self.assertNotIn("test.object.instance.id", schema)
+
+    @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):
         dataset1 = fo.Dataset()
         dataset1.media_type = "video"

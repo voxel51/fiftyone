@@ -511,9 +511,10 @@ def _merge_embedded_doc_fields(fields_dict, fields):
         subfield = field.get("subfield", None)
 
         if name not in fields_dict:
-            fields_dict[name] = field
             if ftype == fof.EmbeddedDocumentField:
-                field["fields"] = {f["name"]: f for f in field["fields"]}
+                _init_embedded_doc_fields(field)
+
+            fields_dict[name] = field
         else:
             efield = fields_dict[name]
             etype = efield["ftype"]
@@ -528,6 +529,17 @@ def _merge_embedded_doc_fields(fields_dict, fields):
                     efield["subfield"] = subfield
             elif ftype == fof.EmbeddedDocumentField:
                 _merge_embedded_doc_fields(efield["fields"], field["fields"])
+
+
+def _init_embedded_doc_fields(field):
+    fields_dict = {}
+    for _field in field["fields"]:
+        if _field["ftype"] == fof.EmbeddedDocumentField:
+            _init_embedded_doc_fields(_field)
+
+        fields_dict[_field["name"]] = _field
+
+    field["fields"] = fields_dict
 
 
 def _finalize_embedded_doc_fields(fields_dict):
