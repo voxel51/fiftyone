@@ -6,6 +6,7 @@ import { Field } from "./schema";
 export * from "./buffer-manager";
 export * from "./color";
 export * as constants from "./constants";
+export * from "./datetime";
 export * from "./errors";
 export * from "./fetch";
 export * from "./format";
