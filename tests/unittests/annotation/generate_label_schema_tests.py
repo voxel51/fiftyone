@@ -1,5 +1,5 @@
 """
-FiftyOne annotation schema unit tests.
+FiftyOne annotation unit tests.
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -7,24 +7,26 @@ FiftyOne annotation schema unit tests.
 """
 
 from datetime import date, datetime
-import fiftyone as fo
-from fiftyone.core.annotation import compute_annotation_schema
 import unittest
 
+import fiftyone as fo
+from fiftyone.core.annotation.generate_label_schema import (
+    generate_label_schema,
+)
 
 from decorators import drop_datasets
 
 
-class AnnotationSchemaTests(unittest.TestCase):
+class LabelSchemaValidationTests(unittest.TestCase):
     @drop_datasets
-    def test_date(self):
+    def test_validate_date_field_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("date_field", fo.DateField)
         dataset.add_sample(
             fo.Sample(filepath="image.png", date_field=date.today())
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "date_field"),
+            generate_label_schema(dataset, "date_field"),
             {
                 "default": None,
                 "type": "input",
@@ -38,7 +40,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", datetime_field=datetime.now())
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "datetime_field"),
+            generate_label_schema(dataset, "datetime_field"),
             {
                 "default": None,
                 "type": "input",
@@ -50,7 +52,7 @@ class AnnotationSchemaTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", float_field=0.0))
         self.assertEqual(
-            compute_annotation_schema(dataset, "float_field"),
+            generate_label_schema(dataset, "float_field"),
             {
                 "default": None,
                 "type": "input",
@@ -62,7 +64,7 @@ class AnnotationSchemaTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", int_field=0))
         self.assertEqual(
-            compute_annotation_schema(dataset, "int_field"),
+            generate_label_schema(dataset, "int_field"),
             {
                 "default": None,
                 "type": "input",
@@ -76,7 +78,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", string_field="test")
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "string_field"),
+            generate_label_schema(dataset, "string_field"),
             {"default": None, "type": "select", "values": ["test"]},
         )
 
@@ -87,7 +89,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", string_list_field=["test"])
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "string_list_field"),
+            generate_label_schema(dataset, "string_list_field"),
             {"default": [], "type": "tags", "values": ["test"]},
         )
 
@@ -101,7 +103,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "classification_field"),
+            generate_label_schema(dataset, "classification_field"),
             {
                 "classes": ["test"],
                 "attributes": {
@@ -126,7 +128,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "classifications_field"),
+            generate_label_schema(dataset, "classifications_field"),
             {
                 "classes": ["test"],
                 "attributes": {
@@ -149,7 +151,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "detection_field"),
+            generate_label_schema(dataset, "detection_field"),
             {
                 "classes": ["test"],
                 "attributes": {
@@ -174,7 +176,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            compute_annotation_schema(dataset, "detections_field"),
+            generate_label_schema(dataset, "detections_field"),
             {
                 "classes": ["test"],
                 "attributes": {
