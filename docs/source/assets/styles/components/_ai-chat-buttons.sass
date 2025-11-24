@@ -19,3 +19,10 @@
     &:hover
       background-color: var(--pst-color-surface)
       color: var(--pst-color-text-base)
+
+    &:focus
+      outline: 2px solid var(--pst-color-accent)
+      outline-offset: 2px
+
+    &:focus:not(:focus-visible)
+      outline: none
