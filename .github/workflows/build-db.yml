@@ -24,7 +24,7 @@ jobs:
           - windows-x86_64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Set up Python 3.9
         uses: actions/setup-python@v6
         with:
@@ -84,7 +84,7 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Download fiftyone-db
         uses: actions/download-artifact@v6
         with:
