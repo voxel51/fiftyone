@@ -123,7 +123,7 @@ class LLMSTxtGenerator:
             url = (
                 path
                 if external
-                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/_markdown/{path}.md"
+                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/{path}.md"
             )
 
             if url in processed:
@@ -163,12 +163,9 @@ class LLMSTxtGenerator:
             return False
 
     def generate_markdown_files(self):
-        """Generate markdown versions of all documentation pages."""
-
-        md_dir = Path(self.app.outdir) / "_markdown"
-        md_dir.mkdir(exist_ok=True)
-
+        """Generate markdown versions of all documentation pages as siblings."""
         source_dir = Path(self.app.srcdir)
+        output_dir = Path(self.app.outdir)
         converted_count = 0
 
         all_docs = [self.app.env.config.master_doc] + [
@@ -178,7 +175,7 @@ class LLMSTxtGenerator:
         ]
 
         for doc_path in all_docs:
-            output_md = md_dir / f"{doc_path}.md"
+            output_md = output_dir / f"{doc_path}.md"
 
             for ext in [".rst", ".ipynb"]:
                 source_file = source_dir / f"{doc_path}{ext}"
@@ -194,9 +191,7 @@ class LLMSTxtGenerator:
                     converted_count += 1
 
         if converted_count > 0:
-            self.logger.info(
-                f"Generated {converted_count} markdown files in _markdown/"
-            )
+            self.logger.info(f"Generated {converted_count} markdown files")
 
     def generate_llms_txt_file(self, app, exception):
         if exception:
