@@ -181,6 +181,14 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
             # [0, 1] floats, omit for special handling by the App
             continue
 
+        if (
+            f.name == "relative_coordinate"
+            and field.document_type == fol.Detection
+        ):
+            # relative_coordinate is an internal field that controls the
+            # interpretation of bounding_box; omit from annotation schema
+            continue
+
         try:
             attributes[f.name] = compute_annotation_schema(
                 collection, f"{field_name}.{f.name}"

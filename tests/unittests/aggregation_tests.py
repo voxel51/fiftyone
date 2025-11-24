@@ -386,6 +386,7 @@ class DatasetTests(unittest.TestCase):
             "foo": fof.StringField,
             "hello": [fof.BooleanField, fof.StringField],
             "bounding_box": fof.ListField,
+            "relative_coordinate": fof.BooleanField,
             "tags": fof.ListField,
             "label": fof.StringField,
         }

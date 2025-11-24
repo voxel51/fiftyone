@@ -1287,6 +1287,7 @@ class HumanPoseLabelTests(HRM2TestBase):
         """
         import os
         import tempfile
+        import eta.core.utils as etau
         from fiftyone.core.labels import (
             SMPLHumanPoses,
             SMPLHumanPose,
@@ -1294,7 +1295,7 @@ class HumanPoseLabelTests(HRM2TestBase):
             SMPLParams,
         )
 
-        # Skip test if trimesh is not available
+        # Skip test if trimesh is not available at import time
         try:
             import trimesh
             import numpy as np
@@ -1352,10 +1353,13 @@ class HumanPoseLabelTests(HRM2TestBase):
             scene_path = os.path.join(tmpdir, "test_scene.fo3d")
 
             # This should not raise AttributeError
+            # If trimesh is not available (lazy import), skip gracefully
             try:
                 result_path = label.export_scene(scene_path, update=True)
             except AttributeError as e:
                 self.fail(f"export_scene failed with AttributeError: {e}")
+            except etau.PackageError:
+                self.skipTest("trimesh not available (lazy import failed)")
 
             # Verify scene file was created
             self.assertTrue(os.path.exists(result_path))
