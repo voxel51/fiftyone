@@ -32,6 +32,12 @@ from plugins.utils.model_evaluation import (
     get_subsets_from_custom_code,
     set_scenarios,
 )
+from .utils import (
+    compress_and_serialize,
+    decompress_and_deserialize,
+    compress_and_serialize_scenario,
+    decompress_and_deserialize_scenario,
+)
 
 STORE_NAME = "model_evaluation_panel_builtin"
 STATUS_LABELS = {
@@ -46,7 +52,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v2.4.0"
+CACHE_VERSION = "v2.13.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -499,6 +505,8 @@ class EvaluationPanel(Panel):
         store_name=STORE_NAME,
         key_fn=get_evaluation_data_cache_key_fn,
         ttl=CACHE_TTL,
+        serialize=compress_and_serialize,
+        deserialize=decompress_and_deserialize,
     )
     def get_evaluation_data_cacheable(self, ctx):
         return self.get_evaluation_data(ctx)
@@ -993,7 +1001,13 @@ class EvaluationPanel(Panel):
             CACHE_VERSION,
         ]
 
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key,
+        serialize=compress_and_serialize_scenario,
+        deserialize=decompress_and_deserialize_scenario,
+        store_name=STORE_NAME,
+        ttl=CACHE_TTL,
+    )
     def get_scenario_data_cacheable(self, ctx, scenario):
         return self.get_scenario_data(ctx, scenario)
 
