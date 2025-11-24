@@ -1805,6 +1805,7 @@ class DatasetTests(unittest.TestCase):
                 "eggs.detections.attributes.value",
                 "eggs.detections.label",
                 "eggs.detections.bounding_box",
+                "eggs.detections.relative_coordinate",
                 "eggs.detections.mask",
                 "eggs.detections.mask_path",
                 "eggs.detections.confidence",
