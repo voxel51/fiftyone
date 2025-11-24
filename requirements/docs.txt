@@ -17,6 +17,7 @@ autodocsumm==0.2.14
 # Using latest compatible version from 0.21.x series
 docutils==0.21.2
 pypandoc>=1.11
+sphinx-markdown-builder==0.6.8
 huggingface_hub>=1.3.2
 requests>=2.32.5
 ipykernel==7.1.0
