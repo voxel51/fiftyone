@@ -8,6 +8,7 @@ import type { InteractiveItems, RenderEntry } from "./types";
 import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
+import useScrollToField from "./useScrollToField";
 import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
 
 const InteractiveSidebar = ({
@@ -194,6 +195,13 @@ const InteractiveSidebar = ({
     order,
     start,
     setEntries,
+  });
+
+  // Handle scroll-to-field requests
+  useScrollToField({
+    container,
+    entries,
+    items,
   });
 
   return (

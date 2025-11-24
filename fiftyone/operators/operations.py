@@ -716,6 +716,35 @@ class Operations(object):
 
         return self._ctx.trigger("browser_download", params=params)
 
+    def expand_field(self, field):
+        """Expand a field in the App's sidebar.
+
+        Args:
+            field: the field path to expand in the sidebar
+        """
+        return self._ctx.trigger("expand_field", params={"field": field})
+
+    def scroll_to_field(self, field):
+        """Scroll to a field in the App's sidebar.
+
+        Args:
+            field: the field path to scroll to in the sidebar
+        """
+        return self._ctx.trigger("scroll_to_field", params={"field": field})
+
+    def expand_and_scroll_to_field(self, field, maintain_position=False):
+        """Expand and scroll to a field in the App's sidebar.
+
+        Args:
+            field: the field path to expand and scroll to in the sidebar
+            maintain_position (False): whether to maintain the scroll position
+                for a few seconds to account for layout changes
+        """
+        return self._ctx.trigger(
+            "expand_and_scroll_to_field",
+            params={"field": field, "maintain_position": maintain_position},
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))

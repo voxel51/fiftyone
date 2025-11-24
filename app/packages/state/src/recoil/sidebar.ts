@@ -33,6 +33,7 @@ import {
   withPath,
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
+import { useCallback } from "react";
 import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
@@ -42,10 +43,12 @@ import {
   selectorFamily,
   useRecoilStateLoadable,
   useRecoilValueLoadable,
+  useSetRecoilState,
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as atoms from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { sidebarExpanded } from "./sidebarExpanded";
 import {
   active3dSlices,
   active3dSlicesToSampleMap,
@@ -1100,3 +1103,145 @@ export const pullSidebarValue = (
 
   return data;
 };
+
+/**
+ * Atom to request scrolling to a specific field path.
+ * When set to a non-null path, the sidebar will scroll to that field.
+ * Automatically resets to null after scrolling completes.
+ */
+const sidebarScrollTarget = atomFamily<
+  { path: string; timestamp: number; maintainPosition?: boolean } | null,
+  boolean
+>({
+  key: "sidebarScrollTarget",
+  default: null,
+});
+
+/**
+ * Selector to trigger a scroll to a specific field.
+ * Usage: set(scrollToField({ modal: false }), "predictions.detections")
+ */
+const scrollToField = selectorFamily<string | null, { modal: boolean }>({
+  key: "scrollToField",
+  get:
+    ({ modal }) =>
+    ({ get }) => {
+      const target = get(sidebarScrollTarget(modal));
+      return target?.path || null;
+    },
+  set:
+    ({ modal }) =>
+    ({ set }, path) => {
+      if (path === null || path instanceof DefaultValue) {
+        set(sidebarScrollTarget(modal), null);
+      } else {
+        // Use timestamp to allow scrolling to the same field multiple times
+        set(sidebarScrollTarget(modal), { path, timestamp: Date.now() });
+      }
+    },
+});
+
+/**
+ * Selector to expand a field (and its parent group).
+ * This expands the group containing the field and all parent fields in the path.
+ * Usage: set(expandField({ modal: false }), "predictions")
+ */
+const expandField = selectorFamily<string | null, { modal: boolean }>({
+  key: "expandField",
+  get:
+    ({ modal }) =>
+    ({ get }) => {
+      return null; // Not used for getting
+    },
+  set:
+    ({ modal }) =>
+    ({ get, set }, path) => {
+      if (!path || path instanceof DefaultValue) {
+        return;
+      }
+
+      const groups = get(sidebarGroups({ modal, loading: false }));
+
+      // Find which group contains this path
+      const targetGroup = groups.find(({ paths }) => paths.includes(path));
+
+      if (
+        targetGroup &&
+        !get(groupShown({ modal, group: targetGroup.name, loading: false }))
+      ) {
+        // Expand the group if it's collapsed
+        set(
+          groupShown({ modal, group: targetGroup.name, loading: false }),
+          true
+        );
+      }
+
+      // Expand the target field itself and all parent fields in the path
+      // For example, if path is "predictions", we expand "predictions" to show its children
+      // If path is "predictions.detections.label", we expand "predictions" and "predictions.detections"
+      // IMPORTANT: We need to use expandPath to get the correct expanded path for list fields
+      const pathParts = path.split(".");
+      for (let i = 0; i < pathParts.length; i++) {
+        const fieldPath = pathParts.slice(0, i + 1).join(".");
+        // Get the expanded path (e.g., "predictions" -> "predictions.detections")
+        const expandedFieldPath = get(expandPath(fieldPath));
+        // Check if this field is currently collapsed
+        if (!get(sidebarExpanded({ path: expandedFieldPath, modal }))) {
+          // Expand it
+          set(sidebarExpanded({ path: expandedFieldPath, modal }), true);
+        }
+      }
+    },
+});
+
+// ============================================================================
+// Domain Hooks - Public API for React components
+// ============================================================================
+
+/**
+ * Hook to scroll to a specific field in the sidebar.
+ *
+ * @example
+ * const scrollTo = useScrollToSidebarField();
+ * scrollTo("predictions.detections");
+ */
+export function useScrollToSidebarField() {
+  const setScroll = useSetRecoilState(scrollToField({ modal: false }));
+  return useCallback((field: string | null) => setScroll(field), [setScroll]);
+}
+
+/**
+ * Hook to expand a specific field in the sidebar.
+ * Expands the field's group and all parent fields in the path.
+ *
+ * @example
+ * const expand = useExpandSidebarField();
+ * expand("predictions");
+ */
+export function useExpandSidebarField() {
+  const setExpand = useSetRecoilState(expandField({ modal: false }));
+  return useCallback((field: string | null) => setExpand(field), [setExpand]);
+}
+
+// ============================================================================
+// Unsafe Exports - For operator bridge and internal implementation only
+// Do not use these directly in React components - use the hooks above instead
+// ============================================================================
+
+/**
+ * @internal - Use useScrollToSidebarField() hook instead
+ * Direct access to sidebarScrollTarget atom for operators and internal use
+ */
+export const __unsafeSidebarScrollTarget = sidebarScrollTarget;
+
+/**
+ * @internal - Use useScrollToSidebarField() hook instead
+ * Direct access to scrollToField selector for operators and internal use
+ */
+export const __unsafeScrollToField = scrollToField;
+
+/**
+ * @internal - Use useExpandSidebarField() hook instead
+ * Direct access to expandField selector for operators and internal use
+ */
+export const __unsafeExpandField = expandField;

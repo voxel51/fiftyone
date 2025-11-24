@@ -1606,6 +1606,116 @@ class BrowserDownload extends Operator {
   }
 }
 
+class ExpandField extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "expand_field",
+      label: "Expand field in sidebar",
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+
+    // Get all field paths from the schema
+    const schema = await ctx.state.snapshot.getPromise(
+      fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    );
+    const fieldPaths = Object.keys(schema).sort();
+
+    inputs.enum("field", fieldPaths, {
+      label: "Field",
+      required: true,
+      description: "Select a field to expand in the sidebar",
+    });
+
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      expandField: fos.useExpandSidebarField(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext): Promise<void> {
+    hooks.expandField(params.field);
+  }
+}
+
+class ScrollToField extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "scroll_to_field",
+      label: "Scroll to field in sidebar",
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+
+    // Get all field paths from the schema
+    const schema = await ctx.state.snapshot.getPromise(
+      fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    );
+    const fieldPaths = Object.keys(schema).sort();
+
+    inputs.enum("field", fieldPaths, {
+      label: "Field",
+      required: true,
+      description: "Select a field to scroll to in the sidebar",
+    });
+
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      scrollToField: fos.useScrollToSidebarField(),
+    };
+  }
+  async execute({ hooks, params }: ExecutionContext): Promise<void> {
+    hooks.scrollToField(params.field);
+  }
+}
+
+class ExpandAndScrollToField extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "expand_and_scroll_to_field",
+      label: "Expand and scroll to field in sidebar",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+
+    // Get all field paths from the schema
+    const schema = await ctx.state.snapshot.getPromise(
+      fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+    );
+    const fieldPaths = Object.keys(schema).sort();
+
+    inputs.enum("field", fieldPaths, {
+      label: "Field",
+      required: true,
+      description: "Select a field to expand and scroll to in the sidebar",
+    });
+
+    return new types.Property(inputs);
+  }
+  useHooks(): object {
+    return {
+      expandAndScrollToField: fos.useExpandAndScrollToSidebarField(),
+    };
+  }
+  async execute(ctx: ExecutionContext): Promise<void> {
+    // maintain_position can be passed from Python even though it's not in the UI
+    ctx.hooks.expandAndScrollToField(
+      ctx.params.field,
+      ctx.params.maintain_position ?? false
+    );
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1664,6 +1774,9 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ToggleSidebar);
     _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
+    _registerBuiltInOperator(ExpandField);
+    _registerBuiltInOperator(ScrollToField);
+    _registerBuiltInOperator(ExpandAndScrollToField);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
