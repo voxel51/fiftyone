@@ -4,16 +4,22 @@ import { Box, Stack, Typography } from "@mui/material";
 import { useMemo } from "react";
 import ColorSquare from "../../components/ColorSquare";
 import ConfusionMatrixConfig from "../../components/ConfusionMatrixConfig";
-import { COMPARE_KEY_COLOR, KEY_COLOR } from "../../constants";
-import { getClasses, getMatrix } from "../../utils";
+import {
+  COMPARE_KEY_COLOR,
+  DEFAULT_CONFUSION_MATRIX_CONFIG,
+  KEY_COLOR,
+} from "../../constants";
+import { getClasses, getConfusionMatrixPlotlyData } from "../../utils";
 import { PLOT_CONFIG_TYPE } from "./types";
-import { getConfigLabel } from "./utils";
 
 export default function ConfusionMatrices(props) {
   const { evaluation, compareEvaluation, name, compareKey, loadView, id } =
     props;
   const [confusionMatrixConfig, setConfusionMatrixConfig] =
-    usePanelStatePartial<PLOT_CONFIG_TYPE>(`${id}_cmc`, { log: true });
+    usePanelStatePartial<PLOT_CONFIG_TYPE>(
+      `${id}_cmc`,
+      DEFAULT_CONFUSION_MATRIX_CONFIG
+    );
 
   const evaluationMaskTargets = useMemo(() => {
     return evaluation?.mask_targets || {};
@@ -21,22 +27,47 @@ export default function ConfusionMatrices(props) {
   const compareEvaluationMaskTargets = useMemo(() => {
     return compareEvaluation?.mask_targets || {};
   }, [compareEvaluation]);
-  const confusionMatrix = useMemo(() => {
-    return getMatrix(
-      evaluation?.confusion_matrices,
-      confusionMatrixConfig,
-      evaluationMaskTargets
+  const confusionMatrixPlotlyData = useMemo(() => {
+    const {
+      matrix,
+      classes,
+      oranges_colorscale,
+      oranges_logarithmic_colorscale,
+    } = evaluation?.confusion_matrix || {};
+    return getConfusionMatrixPlotlyData(
+      {
+        classes,
+        matrix,
+        colorscales: {
+          default: oranges_colorscale,
+          logarithmic: oranges_logarithmic_colorscale,
+        },
+        maskTargets: { primary: evaluationMaskTargets },
+      },
+      confusionMatrixConfig
     );
   }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
-  const compareConfusionMatrix = useMemo(() => {
-    return getMatrix(
-      compareEvaluation?.confusion_matrices,
-      confusionMatrixConfig,
-      evaluationMaskTargets,
-      compareEvaluationMaskTargets,
-      undefined,
-      true
-    );
+  const compareConfusionMatrixPlotlyData = useMemo(() => {
+    const { matrix, classes, blues_colorscale, blues_logarithmic_colorscale } =
+      compareEvaluation?.confusion_matrix || {};
+    if (matrix && classes) {
+      return getConfusionMatrixPlotlyData(
+        {
+          classes,
+          matrix,
+          colorscales: {
+            default: blues_colorscale,
+            logarithmic: blues_logarithmic_colorscale,
+          },
+          maskTargets: {
+            primary: compareEvaluationMaskTargets,
+            secondary: evaluationMaskTargets,
+          },
+        },
+        confusionMatrixConfig
+      );
+    }
+    return [];
   }, [
     compareEvaluation,
     confusionMatrixConfig,
@@ -44,16 +75,13 @@ export default function ConfusionMatrices(props) {
     compareEvaluationMaskTargets,
   ]);
   const classes = getClasses(
-    evaluation?.confusion_matrices,
+    evaluation?.confusion_matrix,
     evaluationMaskTargets
   );
 
   return (
     <Box>
-      <Stack direction="row" sx={{ justifyContent: "space-between" }}>
-        <Typography color="secondary">
-          {getConfigLabel({ config: confusionMatrixConfig })}
-        </Typography>
+      <Stack direction="row" justifyContent="flex-end">
         <ConfusionMatrixConfig
           config={confusionMatrixConfig}
           onSave={setConfusionMatrixConfig}
@@ -71,25 +99,7 @@ export default function ConfusionMatrices(props) {
             <Typography>{name}</Typography>
           </Stack>
           <Plot
-            data={[
-              {
-                z: confusionMatrix?.matrix,
-                x: confusionMatrix?.labels,
-                y: confusionMatrix?.labels,
-                type: "heatmap",
-                colorscale: confusionMatrixConfig.log
-                  ? confusionMatrix?.colorscale || "viridis"
-                  : "viridis",
-                hovertemplate:
-                  [
-                    "<b>count: %{z:d}</b>",
-                    `${evaluation?.info?.config?.gt_field || "truth"}: %{y}`,
-                    `${
-                      evaluation?.info?.config?.pred_field || "predicted"
-                    }: %{x}`,
-                  ].join(" <br>") + "<extra></extra>",
-              },
-            ]}
+            data={confusionMatrixPlotlyData}
             onClick={({ points }) => {
               const firstPoint = points[0];
               loadView("matrix", {
@@ -122,25 +132,7 @@ export default function ConfusionMatrices(props) {
               <Typography>{compareKey}</Typography>
             </Stack>
             <Plot
-              data={[
-                {
-                  z: compareConfusionMatrix?.matrix,
-                  x: compareConfusionMatrix?.labels,
-                  y: compareConfusionMatrix?.labels,
-                  type: "heatmap",
-                  colorscale: confusionMatrixConfig.log
-                    ? compareConfusionMatrix?.colorscale || "viridis"
-                    : "viridis",
-                  hovertemplate:
-                    [
-                      "<b>count: %{z:d}</b>",
-                      `${evaluation?.info?.config?.gt_field || "truth"}: %{y}`,
-                      `${
-                        evaluation?.info?.config?.pred_field || "predicted"
-                      }: %{x}`,
-                    ].join(" <br>") + "<extra></extra>",
-                },
-              ]}
+              data={compareConfusionMatrixPlotlyData}
               onClick={({ points }) => {
                 const firstPoint = points[0];
                 loadView("matrix", {
