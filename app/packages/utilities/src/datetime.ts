@@ -60,7 +60,7 @@ export function formatDateTimePicker(timeZone: string, v: number): string {
   )}:${handleDigits(seconds)}`;
 }
 
-export function formatDatePicker(v: string): string {
+export function formatDatePicker(v: number): string {
   const date = new Date(v);
   const year = Intl.DateTimeFormat("en", {
     year: "numeric",

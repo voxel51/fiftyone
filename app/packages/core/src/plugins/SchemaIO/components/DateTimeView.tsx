@@ -32,7 +32,7 @@ export default function DateTimeView(props: ViewPropsType) {
   const formatDate = useMemo(() => {
     return dateOnly
       ? formatDatePicker
-      : (v: string) => formatDateTimePicker(timeZone, v);
+      : (v: number) => formatDateTimePicker(timeZone, v);
   }, [dateOnly, timeZone]);
 
   useEffect(() => {

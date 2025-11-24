@@ -64,7 +64,6 @@ export const DateTimeInput = styled.input`
   border: none;
   color: ${({ theme }) => theme.text.secondary};
   height: 2rem;
-  border: none;
   align-items: center;
   font-weight: bold;
   width: 100%;
