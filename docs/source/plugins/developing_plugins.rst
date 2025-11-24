@@ -3168,6 +3168,25 @@ avoid roadblocks along the way.
     plugin to see a collection of fully-functional panels that demonstrate
     the common patterns below.
 
+
+.. _panel-hybrid-python-js-panels:
+
+Hybrid panels (Python + JavaScript/React)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+FiftyOne supports building panels that combine Python and JavaScript/React
+code. This allows you to leverage the full power of React and the JS ecosystem
+while still taking advantage of the simplicity and expressiveness of Python for
+defining panel logic and state.
+
+.. note::
+
+    Check out the `Hybrid Panel Plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hybrid-panel>`_
+    for a complete example of building a hybrid panel. It demonstrates best
+    practices for structuring Python and JavaScript components, common design
+    patterns for state and data management, and important considerations for
+    performance, persistence, and interactivity in FiftyOne panels.
+
 .. _panel-callbacks:
 
 Callbacks
