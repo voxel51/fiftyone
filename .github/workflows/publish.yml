@@ -49,7 +49,7 @@ jobs:
           - "3.12"
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set Env Vars
         run: |

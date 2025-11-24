@@ -47,13 +47,13 @@ jobs:
     steps:
       - name: Clone fiftyone for tag builds
         if: github.ref_type == 'tag'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Fetch full history for rev-parse to work
           fetch-depth: 0
       - name: Clone fiftyone for branch builds
         if: github.ref_type == 'branch'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Get Branch Name
         id: get_branch
         run: |
@@ -91,7 +91,7 @@ jobs:
             esac
           fi
       - name: Checkout fiftyone-teams
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
