@@ -55,6 +55,8 @@ def auto_serialize(value):
         return value.tolist()
     elif isinstance(value, np.generic):
         return value.item()
+    elif isinstance(value, bytes):
+        return value
     raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
 
