@@ -949,15 +949,6 @@ class CVATImageDatasetExporter(
     def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-        if labels is None:
-            return  # unlabeled
-
-        if not isinstance(labels, dict):
-            labels = {"labels": labels}
-
-        if all(v is None for v in labels.values()):
-            return  # unlabeled
-
         if metadata is None:
             metadata = fomt.ImageMetadata.build_for(image_or_path)
 
@@ -966,9 +957,25 @@ class CVATImageDatasetExporter(
         else:
             name = uuid
 
-        cvat_image = CVATImage.from_labels(labels, metadata)
-        cvat_image.id = len(self._cvat_images)
-        cvat_image.name = name
+        if labels is not None and not isinstance(labels, dict):
+            labels = {"labels": labels}
+
+        has_labels = (
+            labels is not None
+            and labels
+            and not all(v is None for v in labels.values())
+        )
+
+        image_id = len(self._cvat_images)
+
+        if has_labels:
+            cvat_image = CVATImage.from_labels(labels, metadata)
+            cvat_image.id = image_id
+            cvat_image.name = name
+        else:
+            cvat_image = CVATImage(
+                image_id, name, metadata.width, metadata.height
+            )
 
         self._cvat_images.append(cvat_image)
 

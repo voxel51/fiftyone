@@ -334,26 +334,30 @@ class BDDDatasetExporter(
     def export_sample(self, image_or_path, labels, metadata=None):
         out_image_path, uuid = self._media_exporter.export(image_or_path)
 
-        if labels is None:
-            return  # unlabeled
-
-        if not isinstance(labels, dict):
-            labels = {"labels": labels}
-
-        if all(v is None for v in labels.values()):
-            return  # unlabeled
-
-        if metadata is None:
-            metadata = fom.ImageMetadata.build_for(image_or_path)
-
         if self.abs_paths:
             name = out_image_path
         else:
             name = uuid
 
-        annotation = _make_bdd_annotation(
-            labels, metadata, name, self.extra_attrs
+        if labels is not None and not isinstance(labels, dict):
+            labels = {"labels": labels}
+
+        has_labels = (
+            labels is not None
+            and labels
+            and not all(v is None for v in labels.values())
         )
+
+        if has_labels:
+            if metadata is None:
+                metadata = fom.ImageMetadata.build_for(image_or_path)
+
+            annotation = _make_bdd_annotation(
+                labels, metadata, name, self.extra_attrs
+            )
+        else:
+            annotation = {"name": name, "attributes": {}, "labels": []}
+
         self._annotations.append(annotation)
 
     def close(self, *args):
