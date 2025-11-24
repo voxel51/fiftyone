@@ -701,22 +701,18 @@ function initAIChatButtons() {
       const target = button.dataset.action || button.dataset.ai;
       if (!ALLOWED_TARGETS.has(target)) return;
 
-      const rawPath = window.location.pathname
-        .replace(/\.html$/, "")
-        .replace(/^\//, "");
-      const path =
-        !rawPath || rawPath.endsWith("/") ? rawPath + "index" : rawPath;
-      if (!/^[\w\-\/]*$/.test(path)) return;
-      const mdUrl = `${window.location.origin}/_markdown/${path}.md`;
+      const mdUrl = window.location.href
+        .replace(/\.html$/, ".md")
+        .replace(/\/$/, "/index.md");
       const prompt = encodeURIComponent(
         `Read from ${mdUrl} so I can ask questions about it.`
       );
 
       const urls = {
         markdown: mdUrl,
-        chatgpt: `https://chatgpt.com/?hints=search&prompt=${prompt}`,
+        chatgpt: `https://chatgpt.com/?hints=search&q=${prompt}`,
         claude: `https://claude.ai/new?q=${prompt}`,
-        huggingface: `https://huggingface.co/chat/?attachments=${encodeURIComponent(
+        huggingface: `https://huggingface.co/chat/?q=${prompt}&attachments=${encodeURIComponent(
           mdUrl
         )}`,
       };
