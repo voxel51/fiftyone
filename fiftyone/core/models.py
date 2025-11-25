@@ -732,7 +732,7 @@ def _do_export_array(label, input_path, filename_maker):
         scene_path = filename_maker.get_output_path(
             input_path, output_ext=".fo3d"
         )
-        label.export_scene(scene_path, update=True)
+        label.export_scene(scene_path)
     elif isinstance(label, fol.Detection):
         if label.mask is not None:
             mask_path = filename_maker.get_output_path(

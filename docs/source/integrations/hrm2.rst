@@ -207,8 +207,8 @@ Each 3D scene sample (``.fo3d`` file) contains a ``MeshInstances3D`` label
         -   ``"source"``: ``"hrm2"``
         -   ``"smpl_params"``: dict with body_pose, betas, global_orient, camera
 
--   **scene_path**: Path to .fo3d scene file
--   **frame_size**: [height, width]
+-   **frame_size**: [height, width] of the originating frame
+-   **camera**: Optional :class:`fiftyone.core.labels.Camera` for scene-level camera
 
 .. note::
 

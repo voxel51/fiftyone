@@ -1431,20 +1431,23 @@ def apply_hrm2_to_dataset_as_groups(
 
         # Export scene if output_dir is provided and mesh exists
         pose_3d = pred.get("poses_3d")
+        exported_scene_path = None
         if output_dir and pose_3d and pose_3d.instances:
             # Generate unique scene path
             scene_filename = f"scene_{idx:06d}.fo3d"
             scene_path = os.path.join(output_dir, scene_filename)
 
-            # Export scene and update pose_3d
+            # Export scene and capture the returned path
             try:
-                pose_3d.export_scene(scene_path, update=True)
-                logger.debug("Exported scene to %s", scene_path)
+                exported_scene_path = pose_3d.export_scene(scene_path)
+                logger.debug("Exported scene to %s", exported_scene_path)
             except Exception as e:
                 logger.warning(
                     "Failed to export scene for sample %d: %s", idx, e
                 )
 
+        # Store the exported scene path in the prediction dict
+        pred["exported_scene_path"] = exported_scene_path
         predictions.append(pred)
 
     # Clear dataset to rebuild with groups
@@ -1484,9 +1487,9 @@ def apply_hrm2_to_dataset_as_groups(
         all_new_samples.append(image_sample)
 
         # Create 3D scene sample if mesh was generated
-        scene_path = pose_3d.scene_path if pose_3d is not None else None
-        if pose_3d and scene_path is not None:
-            scene_sample = fo.Sample(filepath=scene_path)
+        exported_scene_path = pred.get("exported_scene_path")
+        if pose_3d and exported_scene_path is not None:
+            scene_sample = fo.Sample(filepath=exported_scene_path)
             scene_sample["group"] = group.element(scene_slice_name)
 
             scene_sample[label_fields_map["poses_3d"]] = pose_3d
