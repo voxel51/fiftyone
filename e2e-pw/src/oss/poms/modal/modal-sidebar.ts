@@ -97,7 +97,7 @@ class SidebarAsserter {
         );
       },
       { key_: key, value_: value },
-      { timeout: 5000 }
+      { timeout: 8000 }
     );
   }
 

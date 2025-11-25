@@ -86,12 +86,16 @@ def numpy_to_python(obj):
 
     Returns:
         converted object with Python native types
+
+    Note:
+        Tuples are converted to lists for JSON/BSON compatibility, as these
+        formats do not distinguish between tuples and lists.
     """
     if isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.floating, np.float32, np.float64)):
+    elif isinstance(obj, np.floating):
         return float(obj)
-    elif isinstance(obj, (np.integer, np.int32, np.int64)):
+    elif isinstance(obj, np.integer):
         return int(obj)
     elif isinstance(obj, dict):
         return {k: numpy_to_python(v) for k, v in obj.items()}

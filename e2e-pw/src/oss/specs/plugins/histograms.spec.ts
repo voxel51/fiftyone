@@ -65,6 +65,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "detections.detections.index",
     "detections.detections.label",
     "detections.detections.mask_path",
+    "detections.detections.relative_coordinate",
     "detections.detections.tags",
     "float",
     "int",
