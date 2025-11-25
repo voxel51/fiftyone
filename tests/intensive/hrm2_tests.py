@@ -103,7 +103,7 @@ def test_hrm2_single_person_inference():
 
     # Run prediction
     from PIL import Image
-    from fiftyone.core.labels import SMPLHumanPoses
+    import fiftyone.core.labels as fol
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
@@ -112,27 +112,37 @@ def test_hrm2_single_person_inference():
     print(f"✓ Prediction successful")
     pose_3d = result.get("poses_3d")
     print(
-        f"  Number of people detected: {len(pose_3d.poses) if pose_3d else 0}"
+        f"  Number of people detected: {len(pose_3d.instances) if pose_3d else 0}"
     )
-    if pose_3d and pose_3d.poses:
-        smpl_pose = pose_3d.poses[0]
-        print(
-            f"  SMPL parameters shape: body_pose={len(smpl_pose.smpl_params.body_pose)}, "
-            f"betas={len(smpl_pose.smpl_params.betas)}"
-        )
-        print(f"  3D keypoints shape: {len(smpl_pose.person.keypoints_3d)}")
-        if smpl_pose.person.keypoints_2d:
+    if pose_3d and pose_3d.instances:
+        mesh_instance = pose_3d.instances[0]
+        if (
+            mesh_instance.attributes
+            and "smpl_params" in mesh_instance.attributes
+        ):
+            smpl_params = mesh_instance.attributes["smpl_params"]
             print(
-                f"  2D keypoints shape: {len(smpl_pose.person.keypoints_2d.points)}"
+                f"  SMPL parameters shape: body_pose={len(smpl_params['body_pose'])}, "
+                f"betas={len(smpl_params['betas'])}"
+            )
+        if mesh_instance.keypoints_3d and mesh_instance.keypoints_3d.keypoints:
+            print(
+                f"  3D keypoints shape: {len(mesh_instance.keypoints_3d.keypoints)}"
+            )
+        if mesh_instance.keypoints_2d:
+            print(
+                f"  2D keypoints shape: {len(mesh_instance.keypoints_2d.points)}"
             )
 
     # Verify output structure
     assert isinstance(result, dict)
     assert "poses_3d" in result
-    assert isinstance(pose_3d, SMPLHumanPoses)
-    assert len(pose_3d.poses) > 0
-    assert smpl_pose.smpl_params is not None
-    assert smpl_pose.person.keypoints_3d is not None
+    assert isinstance(pose_3d, fol.MeshInstances3D)
+    assert len(pose_3d.instances) > 0
+    if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
+        assert mesh_instance.attributes["smpl_params"] is not None
+    if mesh_instance.keypoints_3d:
+        assert mesh_instance.keypoints_3d.keypoints is not None
 
 
 def test_hrm2_multi_person_inference():
@@ -239,7 +249,7 @@ def test_hrm2_mesh_export():
     sample = dataset.first()
 
     from PIL import Image
-    from fiftyone.core.labels import SMPLHumanPoses
+    import fiftyone.core.labels as fol
 
     img = Image.open(sample.filepath)
     result = model.predict(img)
@@ -247,16 +257,16 @@ def test_hrm2_mesh_export():
     print(f"✓ Mesh export successful")
     assert isinstance(result, dict)
     pose_3d = result.get("poses_3d")
-    assert isinstance(pose_3d, SMPLHumanPoses)
+    assert isinstance(pose_3d, fol.MeshInstances3D)
 
     # Check result structure
-    print(f"  Number of people: {len(pose_3d.poses)}")
-    if pose_3d.poses:
-        smpl_pose = pose_3d.poses[0]
-        if smpl_pose.person.vertices:
-            print(f"  Vertices shape: {len(smpl_pose.person.vertices)}")
-        if pose_3d.smpl_faces is not None:
-            print(f"  SMPL faces shape: {len(pose_3d.smpl_faces)}")
+    print(f"  Number of people: {len(pose_3d.instances)}")
+    if pose_3d.instances:
+        mesh_instance = pose_3d.instances[0]
+        if mesh_instance.mesh and mesh_instance.mesh.vertices:
+            print(f"  Vertices shape: {len(mesh_instance.mesh.vertices)}")
+        if mesh_instance.mesh and mesh_instance.mesh.faces:
+            print(f"  Mesh faces shape: {len(mesh_instance.mesh.faces)}")
 
 
 def test_hrm2_full_pipeline():
@@ -362,13 +372,13 @@ def test_hrm2_batch_processing():
     print(f"  Processed {len(results)} images")
 
     # Results are now dicts with label types
-    from fiftyone.core.labels import SMPLHumanPoses
+    import fiftyone.core.labels as fol
 
     for i, result in enumerate(results):
         assert isinstance(result, dict)
         pose_3d = result.get("poses_3d")
-        assert isinstance(pose_3d, SMPLHumanPoses)
-        num_people = len(pose_3d.poses) if pose_3d else 0
+        assert isinstance(pose_3d, fol.MeshInstances3D)
+        num_people = len(pose_3d.instances) if pose_3d else 0
         print(f"  Image {i}: {num_people} person(s) detected")
 
     assert len(results) == len(images)

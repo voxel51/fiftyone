@@ -1154,7 +1154,7 @@ class Keypoint3D(EmbeddedDocument):
 
     This class provides a structure for 3D coordinates ``(x, y, z)`` similar
     to :class:`Keypoint` but as a simpler embedded document for use within
-    other label types like :class:`Person3D`.
+    other label types like :class:`MeshInstance3D`.
 
     Args:
         label (None): a label for the keypoints
@@ -2190,244 +2190,18 @@ def _from_geo_json(d):
     return points, lines, polygons
 
 
-class SMPLParams(EmbeddedDocument):
-    """SMPL parameters for a person.
-
-    Args:
-        body_pose (None): SMPL body pose parameters (can be nested list for rotation matrices)
-        betas (None): SMPL shape parameters (flat list)
-        global_orient (None): SMPL global orientation (can be nested list for rotation matrix)
-        camera (None): camera parameters [s, tx, ty] (flat list)
-    """
-
-    body_pose = fof.ListField()
-    betas = fof.ListField(fof.FloatField())
-    global_orient = fof.ListField()
-    camera = fof.ListField(fof.FloatField())
-
-
-class Person3D(EmbeddedDocument):
-    """A 3D person detection with geometric data.
-
-    Args:
-        person_id (None): person identifier
-        detection (None): a :class:`Detection` instance containing the person
-            bounding box. When using absolute coordinates, set
-            ``detection.relative_coordinate=False`` and provide bounding box
-            as ``[x1, y1, x2, y2]`` in pixel space
-        keypoints_2d (None): a :class:`Keypoint` instance containing 2D
-            keypoint locations in normalized coordinates ``[0, 1] x [0, 1]``
-        keypoints_3d (None): 3D keypoint locations as Nx3 list of lists
-            ``[[x, y, z], ...]`` in world coordinates
-        vertices (None): 3D mesh vertices as Nx3 list of lists in world
-            coordinates
-        instance (None): an :class:`Instance` to link this 3D person to the
-            corresponding 2D detection in a grouped dataset
-    """
-
-    person_id = fof.IntField()
-    detection = fof.EmbeddedDocumentField(Detection)
-    keypoints_2d = fof.EmbeddedDocumentField(Keypoint)
-    keypoints_3d = fof.ListField(fof.ListField(fof.FloatField()))
-    vertices = fof.ListField(fof.ListField(fof.FloatField()))
-    instance = fof.EmbeddedDocumentField(Instance)
-
-
-class SMPLHumanPose(EmbeddedDocument):
-    """A single SMPL-based human pose with associated metadata.
-
-    Args:
-        person (None): :class:`Person3D` geometry containing detection box,
-            keypoints, and mesh vertices
-        smpl_params (None): :class:`SMPLParams` instance with SMPL body model
-            parameters (body pose, shape parameters, global orientation)
-        camera (None): :class:`Camera` instance containing camera parameters.
-            For HRM2 models, this typically includes ``weak_perspective`` (from
-            SMPL) and ``translation`` (3D camera position)
-        scene_path (None): path to the exported .fo3d file containing this pose
-        smpl_faces (None): SMPL mesh topology (F x 3) as a numpy array
-        frame_size (None): [height, width] of the source frame
-    """
-
-    person = fof.EmbeddedDocumentField(Person3D)
-    smpl_params = fof.EmbeddedDocumentField(SMPLParams)
-    camera = fof.EmbeddedDocumentField(Camera)
-    scene_path = fof.StringField()
-    smpl_faces = fof.ArrayField()
-    frame_size = fof.ListField()
-
-
-class SMPLHumanPoses(_HasLabelList, Label):
-    """A list of :class:`SMPLHumanPose` instances."""
-
-    _LABEL_LIST_FIELD = "poses"
-
-    poses = fof.ListField(fof.EmbeddedDocumentField(SMPLHumanPose))
-
-    def __init__(self, poses=None, smpl_faces=None, frame_size=None, **kwargs):
-        super().__init__(**kwargs)
-        self._smpl_faces_cache = None
-        self._frame_size_cache = None
-        self.poses = poses
-        if smpl_faces is not None:
-            self.smpl_faces = smpl_faces
-        if frame_size is not None:
-            self.frame_size = frame_size
-
-    def _first_pose_attr(self, attr):
-        for pose in self.poses or []:
-            value = getattr(pose, attr, None)
-            if value is not None:
-                return value
-
-        if attr == "smpl_faces":
-            return self._smpl_faces_cache
-        if attr == "frame_size":
-            return self._frame_size_cache
-        return None
-
-    def _set_pose_attr(self, attr, value):
-        if attr == "smpl_faces":
-            self._smpl_faces_cache = value
-        elif attr == "frame_size":
-            self._frame_size_cache = value
-
-        for pose in self.poses or []:
-            setattr(pose, attr, value)
-
-    @property
-    def scene_path(self):
-        return self._first_pose_attr("scene_path")
-
-    @scene_path.setter
-    def scene_path(self, value):
-        self._set_pose_attr("scene_path", value)
-
-    @property
-    def smpl_faces(self):
-        return self._first_pose_attr("smpl_faces")
-
-    @smpl_faces.setter
-    def smpl_faces(self, value):
-        self._set_pose_attr("smpl_faces", value)
-
-    @property
-    def frame_size(self):
-        return self._first_pose_attr("frame_size")
-
-    @frame_size.setter
-    def frame_size(self, value):
-        self._set_pose_attr("frame_size", value)
-
-    def export_scene(self, scene_path, update=True):
-        """Export 3D scene and meshes to disk.
-
-        Args:
-            scene_path: output path for .fo3d scene file
-            update: if True, propagate scene_path to all poses
-
-        Returns:
-            str: path to exported .fo3d file
-        """
-        import hashlib
-        import os
-
-        if not self.poses:
-            raise ValueError("Cannot export scene: no pose data")
-
-        smpl_faces = self.smpl_faces
-        if smpl_faces is None:
-            raise ValueError(
-                "Cannot export scene: SMPL faces not stored. "
-                "Ensure the model was run with export_meshes=True"
-            )
-
-        fos.ensure_basedir(scene_path)
-
-        uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
-        base_dir = os.path.dirname(scene_path)
-
-        mesh_objects = []
-        all_vertices = []
-
-        smpl_faces_arr = np.asarray(smpl_faces)
-        frame_size = self.frame_size or [512, 512]
-
-        for idx, pose in enumerate(self.poses):
-            person = pose.person
-            if person is None or person.vertices is None:
-                logger.warning(
-                    "Skipping SMPLHumanPose %d with no vertices", idx
-                )
-                continue
-
-            person_id = (
-                person.person_id if person.person_id is not None else idx
-            )
-            vertices = np.asarray(person.vertices)
-            all_vertices.append(vertices)
-
-            mesh_filename = f"human_mesh_{uid}_person_{person_id}.obj"
-            mesh_path = os.path.join(base_dir, mesh_filename)
-
-            mesh = trimesh.Trimesh(
-                vertices=vertices, faces=smpl_faces_arr, process=False
-            )
-            mesh.export(mesh_path)
-
-            mesh_objects.append(
-                ObjMesh(
-                    name=f"Person {person_id}",
-                    obj_path=mesh_path,
-                )
-            )
-
-        if not mesh_objects:
-            raise ValueError("Cannot export scene: no meshes were generated")
-
-        all_vertices = np.vstack(all_vertices)
-        center = all_vertices.mean(axis=0)
-        bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
-        camera_distance = bbox_size.max() * 1.5
-        camera_position = center + np.array([0, 0, camera_distance])
-
-        aspect = (
-            frame_size[1] / frame_size[0]
-            if frame_size and frame_size[0]
-            else 1.0
-        )
-
-        camera = PerspectiveCamera(
-            position=camera_position.tolist(),
-            look_at=center.tolist(),
-            up="Y",
-            aspect=aspect,
-        )
-
-        scene = Scene(camera=camera, lights=[])
-        for mesh_obj in mesh_objects:
-            scene.add(mesh_obj)
-
-        scene.write(scene_path)
-
-        if update:
-            self.scene_path = scene_path
-
-        return scene_path
-
-
 class HumanPose2D(Label):
     """2D human pose keypoints and detection for image samples.
 
     This class wraps native FiftyOne label types (Keypoint and Detection) to
     enable proper rendering in the FiftyOne App using the core overlay logic.
     The detection's instance field can be used to link this 2D pose to the
-    corresponding 3D Person3D label in a grouped dataset.
+    corresponding 3D MeshInstance3D label in a grouped dataset.
 
     Args:
         pose (None): a :class:`Keypoint` instance containing the 2D keypoints
         detection (None): a :class:`Detection` instance for the person bounding box.
-            The detection.instance field can be set to link to Person3D labels.
+            The detection.instance field can be set to link to MeshInstance3D labels.
     """
 
     pose = fof.EmbeddedDocumentField(Keypoint)
@@ -2728,7 +2502,6 @@ _LABEL_LIST_FIELDS = (
     Keypoints3D,
     Polylines,
     TemporalDetections,
-    SMPLHumanPoses,
     HumanPoses2D,
     MeshInstances3D,
 )

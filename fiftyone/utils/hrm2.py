@@ -669,11 +669,11 @@ class _HRM2CropHelper:
 
 
 class HRM2OutputProcessor(fout.OutputProcessor):
-    """Converts HRM2 raw outputs to FiftyOne SMPLHumanPoses + 2D labels.
+    """Converts HRM2 raw outputs to FiftyOne MeshInstances3D + 2D labels.
 
     This processor handles all postprocessing logic including tensor-to-Python
     conversion and label creation. Scene export is deferred to the
-    SMPLHumanPoses label's export_scene() method.
+    MeshInstances3D label's export_scene() method.
 
     **Resource Requirements:**
     - If ``export_meshes=True``, requires ``smpl_model`` to prepare scene metadata
@@ -683,7 +683,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     **Postprocessing Pipeline:**
     1. Convert raw tensors to Python types (_process_person)
     2. Prepare scene metadata using SMPL model (_prepare_scene_data)
-    3. Return dicts containing SMPLHumanPoses + 2D overlays ready for storage
+    3. Return dicts containing MeshInstances3D + 2D overlays ready for storage
 
     Args:
         smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh metadata.
@@ -741,7 +741,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 interface compatibility)
 
         Returns:
-            List of dicts per image containing SMPLHumanPoses + 2D overlays
+            List of dicts per image containing MeshInstances3D + 2D overlays
         """
         results = []
 
@@ -1512,7 +1512,7 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         checkpoint_version ("2.0b"): version of HRM2 checkpoint to use
         confidence_thresh (None): confidence threshold for keypoint filtering
         export_meshes (True): whether to prepare 3D mesh metadata for later export.
-            If True, SMPLHumanPoses labels will contain all data needed for export.
+            If True, MeshInstances3D labels will contain all data needed for export.
             Actual files are written when output_dir is provided to apply_model()
         detections_field (None): optional field name containing person detections
             to use for multi-person processing. If provided, HRM2 will process
@@ -1831,7 +1831,7 @@ class HRM2Model(
             img: input image as PIL.Image, numpy array (HWC), or torch.Tensor
 
         Returns:
-            Dict containing SMPLHumanPoses, HumanPoses2D, Keypoints, and/or
+            Dict containing MeshInstances3D, HumanPoses2D, Keypoints, and/or
             Detections labels, depending on model outputs
         """
         return self.predict_all([img])[0]
@@ -1890,7 +1890,7 @@ class HRM2Model(
         """Process batch and return label bundles via output processor.
 
         This method receives data from the GetItem instance, performs inference
-        via _forward_pass(), and converts raw outputs to SMPLHumanPoses/2D labels
+        via _forward_pass(), and converts raw outputs to MeshInstances3D/2D labels
         using the output processor.
 
         Args:
