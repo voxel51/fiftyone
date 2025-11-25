@@ -9,16 +9,14 @@ fou.ensure_package("huggingface_hub>=0.20.0")
 from huggingface_hub import hf_hub_download
 
 fou.ensure_package("perception_models")
-import perception_models.core.vision_encoder.pe as pe
-import perception_models.core.vision_encoder.transforms as pe_transforms
+import core.vision_encoder.pe as pe
+import core.vision_encoder.transforms as pe_transforms
 
 
 def download_pe_checkpoint(name: str, checkpoint_path: str):
-    path = f"hf://facebook/{name}:{name}.pt"
 
-    # Load from huggingface
-    path = path[len("hf://") :]
-    repo, file = path.split(":")
+    repo = f"facebook/{name}"
+    file = f"{name}.pt"
 
     split = checkpoint_path.rsplit("/", 1)
     if len(split) == 1:
