@@ -9,10 +9,8 @@ import itertools
 import logging
 import multiprocessing.dummy
 import os
-import subprocess
-import json
-
-import numpy as np
+import shutil
+import uuid
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -125,7 +123,7 @@ def download_youtube_videos(
     # Force single-threaded for yt-dlp thread-safety
     # yt-dlp has threading issues when downloads fail mid-batch
     use_threads = False
-    num_workers = 1 if num_workers is None else num_workers
+    num_workers = 1
     num_workers = _parse_num_workers(num_workers, use_threads=use_threads)
 
     if max_videos is None:
@@ -324,13 +322,12 @@ def _do_download(task):
             ext = os.path.splitext(video_path)[1]
 
         # Create a unique subdirectory for this download to avoid conflicts
-        import uuid
         download_tmp_dir = os.path.join(tmp_dir, str(uuid.uuid4()))
         os.makedirs(download_tmp_dir, exist_ok=True)
 
         # Build yt-dlp options
         ydl_opts = _build_yt_dlp_opts(
-            url, download_tmp_dir, ext, only_progressive, resolution, clip_segment
+            download_tmp_dir, ext, only_progressive, resolution, clip_segment
         )
 
         # Download with yt-dlp
@@ -369,11 +366,7 @@ def _do_download(task):
             etau.move_file(downloaded_file, video_path)
 
         # Cleanup temporary download directory
-        try:
-            import shutil
-            shutil.rmtree(download_tmp_dir, ignore_errors=True)
-        except:
-            pass
+        shutil.rmtree(download_tmp_dir, ignore_errors=True)
 
     except Exception as e:
         video_path = None
@@ -382,7 +375,7 @@ def _do_download(task):
     return idx, url, video_path, error, warnings
 
 
-def _build_yt_dlp_opts(url, tmp_dir, ext, only_progressive, resolution, clip_segment):
+def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment):
     """Build yt-dlp options dict"""
     opts = {
         'quiet': True,
@@ -405,7 +398,6 @@ def _build_yt_dlp_opts(url, tmp_dir, ext, only_progressive, resolution, clip_seg
             start_time = 0
 
         if end_time is not None:
-            duration = end_time - start_time
             opts['download_ranges'] = yt_dlp.utils.download_range_func(
                 None, [(start_time, end_time)]
             )
@@ -419,36 +411,19 @@ def _build_yt_dlp_opts(url, tmp_dir, ext, only_progressive, resolution, clip_seg
 
 def _build_format_selector(ext, only_progressive, resolution):
     """Build yt-dlp format selector string"""
-    parts = []
-
-    # Handle progressive requirement
     if only_progressive:
-        # Progressive means video+audio in single file
-        # In yt-dlp this is typically the lower quality formats
-        parts.append('bv*[vcodec^=avc]+ba[acodec^=mp4a]/b')
-    else:
-        # Allow separate video+audio streams
+        # Progressive means single file with both video and audio tracks
         if etau.is_numeric(resolution):
-            parts.append('bv[height<=%d]+ba/b' % resolution)
-        elif resolution == "highest":
-            parts.append('bv+ba/b')
+            return 'b[height<=%d][vcodec!=none][acodec!=none]/b' % resolution
         elif resolution == "lowest":
-            parts.append('wv+wa/w')
+            return 'w[vcodec!=none][acodec!=none]/b'
         else:
-            parts.append('bv+ba/b')
-
-    # Handle resolution preference
-    if etau.is_numeric(resolution):
-        res_filter = '[height<=%d]' % resolution
-        format_str = parts[0] if parts else 'bv+ba/b'
-        return format_str.replace('bv', 'bv' + res_filter)
-    elif resolution == "lowest":
-        return 'wv+wa/w'
-    elif resolution == "highest":
-        return 'bv+ba/b'
-
-    return parts[0] if parts else None
-
-
-def _find_nearest(array, target):
-    return np.argmin(np.abs(np.asarray(array) - target))
+            return 'b[vcodec!=none][acodec!=none]/b'
+    else:
+        # Allow separate video+audio streams that will be merged
+        if etau.is_numeric(resolution):
+            return 'bv[height<=%d]+ba/b' % resolution
+        elif resolution == "lowest":
+            return 'wv+wa/w'
+        else:
+            return 'bv+ba/b'
