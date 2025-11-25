@@ -9,8 +9,8 @@ fou.ensure_package("huggingface_hub>=0.20.0")
 from huggingface_hub import hf_hub_download
 
 fou.ensure_package("perception_models")
-import core.vision_encoder.pe as pe
-import core.vision_encoder.transforms as pe_transforms
+import perception_models.core.vision_encoder.pe as pe
+import perception_models.core.vision_encoder.transforms as pe_transforms
 
 DEFAULT_MODEL = "PE-Core-T16-384"
 
