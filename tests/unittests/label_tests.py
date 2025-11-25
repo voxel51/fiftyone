@@ -958,7 +958,8 @@ class Mesh3DLabelsTests(unittest.TestCase):
 
         self.assertEqual(len(mesh_instances.instances), 3)
         self.assertEqual(mesh_instances.frame_size, [1920, 1080])
-        self.assertIsNone(mesh_instances.scene_path)
+        # scene_path field no longer exists - removed as part of anti-pattern fix
+        self.assertFalse(hasattr(mesh_instances, "scene_path"))
 
     @drop_datasets
     def test_mesh_instances3d_serialization(self):
@@ -1084,10 +1085,11 @@ class Mesh3DLabelsTests(unittest.TestCase):
         # Add to MeshInstances3D
         mesh_instances = fo.MeshInstances3D(instances=[instance])
         mesh_instances.frame_size = [1920, 1080]
-        mesh_instances.scene_path = "/path/to/scene.fo3d"
+        # scene_path no longer stored in label - it should be in sample.filepath
 
         self.assertEqual(mesh_instances.frame_size, [1920, 1080])
-        self.assertEqual(mesh_instances.scene_path, "/path/to/scene.fo3d")
+        # Verify scene_path field doesn't exist
+        self.assertFalse(hasattr(mesh_instances, "scene_path"))
 
     @drop_datasets
     def test_mesh_instances3d_empty_instances(self):

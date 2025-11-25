@@ -2308,14 +2308,16 @@ class MeshInstance3D(EmbeddedDocument):
 class MeshInstances3D(_HasLabelList, Label):
     """A list of 3D instances for a reconstructed scene.
 
-    This label type is a container for :class:`MeshInstance3D` instances associated with a single sample
-    or grouped sample. It also stores scene-level metadata such as a `.fo3d`
-    scene path and an optional scene-level camera.
+    This label type is a container for :class:`MeshInstance3D` instances
+    associated with a single sample or grouped sample. It also stores
+    scene-level metadata such as frame size and an optional scene-level camera.
+
+    For grouped datasets, the `.fo3d` scene file path should be set as the
+    sample's ``filepath``, not stored in this label. Use ``export_scene()``
+    to generate the scene file, then create a 3D sample with that filepath.
 
     Args:
         instances (None): a list of :class:`MeshInstance3D` instances
-        scene_path (None): optional path to a `.fo3d` scene file that contains
-            the full 3D representation of the scene
         frame_size (None): optional [height, width] of the originating frame
         camera (None): optional :class:`Camera` describing a global
             camera for the scene
@@ -2324,25 +2326,22 @@ class MeshInstances3D(_HasLabelList, Label):
     _LABEL_LIST_FIELD = "instances"
 
     instances = fof.ListField(fof.EmbeddedDocumentField(MeshInstance3D))
-    scene_path = fof.StringField()
     frame_size = fof.ListField(fof.FloatField())
     camera = fof.EmbeddedDocumentField(Camera)
 
     def __init__(
         self,
         instances=None,
-        scene_path=None,
         frame_size=None,
         camera=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.instances = instances
-        self.scene_path = scene_path
         self.frame_size = frame_size
         self.camera = camera
 
-    def export_scene(self, scene_path, update=True):
+    def export_scene(self, scene_path):
         """Exports the 3D scene and meshes to disk.
 
         This method writes a `.fo3d` scene file and associated mesh assets for
@@ -2351,8 +2350,6 @@ class MeshInstances3D(_HasLabelList, Label):
 
         Args:
             scene_path: the output path for the `.fo3d` scene file
-            update: whether to set the ``scene_path`` field to the exported
-                scene path (default True)
 
         Returns:
             the path to the exported `.fo3d` file
@@ -2488,9 +2485,6 @@ class MeshInstances3D(_HasLabelList, Label):
             scene.add(mesh_obj)
 
         scene.write(scene_path)
-
-        if update:
-            self.scene_path = scene_path
 
         return scene_path
 
