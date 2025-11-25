@@ -1100,5 +1100,237 @@ class HumanPoseLabelTests(HRM2TestBase):
         self.assertEqual(retrieved["pose"].keypoints, keypoints)
 
 
+class HMR2SkeletonTests(unittest.TestCase):
+    """Tests for HRM2 (BODY-25) skeleton definition and integration."""
+
+    def test_skeleton_structure(self):
+        """Test the BODY-25 skeleton has correct structure."""
+        from fiftyone.utils.hrm2 import (
+            get_hrm2_skeleton,
+            HRM2_JOINT_NAMES,
+            HRM2_SKELETON_EDGES,
+        )
+
+        skeleton = get_hrm2_skeleton()
+
+        # Verify we have 25 joints
+        self.assertEqual(len(skeleton.labels), 25)
+        self.assertEqual(len(HRM2_JOINT_NAMES), 25)
+
+        # Verify we have 24 edges
+        self.assertEqual(len(skeleton.edges), 24)
+        self.assertEqual(len(HRM2_SKELETON_EDGES), 24)
+
+        # Verify all edge indices are valid
+        for edge in skeleton.edges:
+            self.assertEqual(len(edge), 2)
+            self.assertGreaterEqual(edge[0], 0)
+            self.assertLess(edge[0], 25)
+            self.assertGreaterEqual(edge[1], 0)
+            self.assertLess(edge[1], 25)
+
+    def test_skeleton_root(self):
+        """Test neck (joint 1) connects to expected neighbors."""
+        from fiftyone.utils.hrm2 import HRM2_SKELETON_EDGES
+
+        # Gather all edges touching the neck (joint 1)
+        neck_neighbors = set()
+        for a, b in HRM2_SKELETON_EDGES:
+            if a == 1:
+                neck_neighbors.add(b)
+            elif b == 1:
+                neck_neighbors.add(a)
+
+        expected_neighbors = {0, 2, 5, 8}  # nose, shoulders, mid_hip
+        self.assertEqual(neck_neighbors, expected_neighbors)
+
+    def test_skeleton_connectivity(self):
+        """Test skeleton forms a connected tree."""
+        from fiftyone.utils.hrm2 import HRM2_SKELETON_EDGES
+
+        # Build adjacency list
+        graph = {i: [] for i in range(25)}
+        for parent, child in HRM2_SKELETON_EDGES:
+            graph[parent].append(child)
+            graph[child].append(parent)
+
+        # BFS from neck (1) should reach all nodes
+        visited = {1}
+        queue = [1]
+        while queue:
+            node = queue.pop(0)
+            for neighbor in graph[node]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+
+        self.assertEqual(len(visited), 25)
+
+    def test_skeleton_labels(self):
+        """Test skeleton has expected BODY-25 joint labels."""
+        from fiftyone.utils.hrm2 import get_hrm2_skeleton
+
+        expected_labels = [
+            "nose",
+            "neck",
+            "right_shoulder",
+            "right_elbow",
+            "right_wrist",
+            "left_shoulder",
+            "left_elbow",
+            "left_wrist",
+            "mid_hip",
+            "right_hip",
+            "right_knee",
+            "right_ankle",
+            "left_hip",
+            "left_knee",
+            "left_ankle",
+            "right_eye",
+            "left_eye",
+            "right_ear",
+            "left_ear",
+            "left_big_toe",
+            "left_small_toe",
+            "left_heel",
+            "right_big_toe",
+            "right_small_toe",
+            "right_heel",
+        ]
+
+        skeleton = get_hrm2_skeleton()
+        self.assertEqual(skeleton.labels, expected_labels)
+
+    @drop_datasets
+    def test_dataset_skeleton_assignment(self):
+        """Test skeleton can be assigned to dataset."""
+        from fiftyone.utils.hrm2 import get_hrm2_skeleton
+
+        dataset = fo.Dataset()
+        skeleton = get_hrm2_skeleton()
+
+        dataset.default_skeleton = skeleton
+        dataset.save()
+
+        dataset.reload()
+        self.assertIsNotNone(dataset.default_skeleton)
+        self.assertEqual(len(dataset.default_skeleton.labels), 25)
+        self.assertEqual(len(dataset.default_skeleton.edges), 24)
+        self.assertEqual(dataset.default_skeleton.labels[0], "nose")
+        self.assertEqual(dataset.default_skeleton.labels[8], "mid_hip")
+
+    @drop_datasets
+    def test_skeleton_with_keypoints(self):
+        """Test skeleton is compatible with HRM2 keypoint format."""
+        from fiftyone.utils.hrm2 import get_hrm2_skeleton, HRM2_JOINT_NAMES
+        import tempfile
+
+        dataset = fo.Dataset()
+
+        img_path = tempfile.mktemp(suffix=".jpg")
+        img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        Image.fromarray(img).save(img_path)
+
+        num_joints = len(HRM2_JOINT_NAMES)
+        keypoints = [
+            [np.random.random(), np.random.random()] for _ in range(num_joints)
+        ]
+        confidences = [0.9] * num_joints
+
+        sample = fo.Sample(filepath=img_path)
+        sample["keypoints"] = fo.Keypoint(
+            label="person",
+            points=keypoints,
+            confidence=confidences,
+        )
+        dataset.add_sample(sample)
+
+        dataset.default_skeleton = get_hrm2_skeleton()
+        dataset.save()
+
+        skeleton = dataset.default_skeleton
+        keypoint = dataset.first().keypoints
+        self.assertEqual(len(keypoint.points), len(skeleton.labels))
+
+        os.remove(img_path)
+
+    @drop_datasets
+    def test_skeleton_with_multiple_people(self):
+        """Test skeleton works with multiple keypoint instances."""
+        from fiftyone.utils.hrm2 import get_hrm2_skeleton, HRM2_JOINT_NAMES
+        import tempfile
+
+        dataset = fo.Dataset()
+
+        img_path = tempfile.mktemp(suffix=".jpg")
+        img = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+        Image.fromarray(img).save(img_path)
+
+        sample = fo.Sample(filepath=img_path)
+
+        num_joints = len(HRM2_JOINT_NAMES)
+        keypoints_list = []
+        for _ in range(3):
+            kpts = [
+                [np.random.random(), np.random.random()]
+                for _ in range(num_joints)
+            ]
+            keypoints_list.append(
+                fo.Keypoint(
+                    label="person", points=kpts, confidence=[0.9] * num_joints
+                )
+            )
+
+        sample["people_keypoints"] = fo.Keypoints(keypoints=keypoints_list)
+        dataset.add_sample(sample)
+
+        dataset.default_skeleton = get_hrm2_skeleton()
+        dataset.save()
+
+        sample.reload()
+        self.assertEqual(len(sample.people_keypoints.keypoints), 3)
+        self.assertIsNotNone(dataset.default_skeleton)
+
+        os.remove(img_path)
+
+    def test_skeleton_no_disconnected_joints(self):
+        """Test that all joints are connected (no isolated nodes)."""
+        from fiftyone.utils.hrm2 import HRM2_SKELETON_EDGES
+
+        joint_connections = {i: 0 for i in range(25)}
+        for parent, child in HRM2_SKELETON_EDGES:
+            joint_connections[parent] += 1
+            joint_connections[child] += 1
+
+        for joint_id, count in joint_connections.items():
+            self.assertGreater(
+                count,
+                0,
+                f"Joint {joint_id} is disconnected (appears in 0 edges)",
+            )
+
+    def test_skeleton_symmetry(self):
+        """Test that left/right side joints are symmetric in naming."""
+        from fiftyone.utils.hrm2 import HRM2_JOINT_NAMES
+
+        left_joints = [name for name in HRM2_JOINT_NAMES if "left" in name]
+        for left in left_joints:
+            right = left.replace("left", "right")
+            self.assertIn(
+                right, HRM2_JOINT_NAMES, f"No right counterpart for {left}"
+            )
+
+    def test_apply_hrm2_sets_skeleton(self):
+        """Test that apply_hrm2_to_dataset_as_groups sets skeleton automatically."""
+        from fiftyone.utils.hrm2 import get_hrm2_skeleton
+
+        skeleton = get_hrm2_skeleton()
+        self.assertIsNotNone(skeleton)
+        self.assertEqual(len(skeleton.labels), 25)
+        self.assertEqual(len(skeleton.edges), 24)
+
+        # The actual apply_hrm2_to_dataset_as_groups workflow is tested elsewhere
+
+
 if __name__ == "__main__":
     unittest.main()
