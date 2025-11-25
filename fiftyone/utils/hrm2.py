@@ -1,6 +1,19 @@
 """
 HRM2.0 (4D-Humans) model integration.
 
+This module provides integration with the HRM2.0 model for 3D human pose and
+shape estimation from images. It includes:
+
+- Model loading and inference for single and multi-person scenarios
+- SMPL body model integration with 3D mesh reconstruction
+- 2D and 3D keypoint extraction (OpenPose BODY-25 joints)
+- Automatic skeleton configuration for keypoint visualization in the FiftyOne App
+- Dataset grouping for simultaneous 2D image and 3D scene viewing
+
+The BODY-25 skeleton is automatically configured when using
+:func:`apply_hrm2_to_dataset_as_groups`, enabling skeleton overlays in the
+FiftyOne App for both 2D and 3D keypoint visualization.
+
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -52,7 +65,95 @@ __all__ = [
     "HRM2ModelConfig",
     "HRM2Model",
     "HRM2GetItem",
+    "get_hrm2_skeleton",
+    "HRM2_JOINT_NAMES",
+    "HRM2_SKELETON_EDGES",
 ]
+
+
+# HMR2/4D-Humans exposes joints reordered to the OpenPose BODY-25 topology.
+# See https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/md_doc_05_output.html
+HRM2_JOINT_NAMES = [
+    "nose",  # 0
+    "neck",  # 1
+    "right_shoulder",  # 2
+    "right_elbow",  # 3
+    "right_wrist",  # 4
+    "left_shoulder",  # 5
+    "left_elbow",  # 6
+    "left_wrist",  # 7
+    "mid_hip",  # 8
+    "right_hip",  # 9
+    "right_knee",  # 10
+    "right_ankle",  # 11
+    "left_hip",  # 12
+    "left_knee",  # 13
+    "left_ankle",  # 14
+    "right_eye",  # 15
+    "left_eye",  # 16
+    "right_ear",  # 17
+    "left_ear",  # 18
+    "left_big_toe",  # 19
+    "left_small_toe",  # 20
+    "left_heel",  # 21
+    "right_big_toe",  # 22
+    "right_small_toe",  # 23
+    "right_heel",  # 24
+]
+
+HRM2_SKELETON_EDGES = [
+    # Torso and neck
+    [1, 8],  # neck -> mid_hip
+    [1, 2],  # neck -> right_shoulder
+    [1, 5],  # neck -> left_shoulder
+    # Right arm
+    [2, 3],  # right_shoulder -> right_elbow
+    [3, 4],  # right_elbow -> right_wrist
+    # Left arm
+    [5, 6],  # left_shoulder -> left_elbow
+    [6, 7],  # left_elbow -> left_wrist
+    # Right leg
+    [8, 9],  # mid_hip -> right_hip
+    [9, 10],  # right_hip -> right_knee
+    [10, 11],  # right_knee -> right_ankle
+    # Left leg
+    [8, 12],  # mid_hip -> left_hip
+    [12, 13],  # left_hip -> left_knee
+    [13, 14],  # left_knee -> left_ankle
+    # Head
+    [1, 0],  # neck -> nose
+    [0, 15],  # nose -> right_eye
+    [15, 17],  # right_eye -> right_ear
+    [0, 16],  # nose -> left_eye
+    [16, 18],  # left_eye -> left_ear
+    # Left foot
+    [14, 19],  # left_ankle -> left_big_toe
+    [19, 20],  # left_big_toe -> left_small_toe
+    [14, 21],  # left_ankle -> left_heel
+    # Right foot
+    [11, 22],  # right_ankle -> right_big_toe
+    [22, 23],  # right_big_toe -> right_small_toe
+    [11, 24],  # right_ankle -> right_heel
+]
+
+
+def get_hrm2_skeleton():
+    """Return the OpenPose BODY-25 skeleton used by HMR2 outputs.
+
+    HMR2/4D-Humans reorders SMPL joints to the OpenPose BODY-25 topology and
+    augments the set with additional facial and foot joints. This helper
+    returns a :class:`KeypointSkeleton` that matches that ordering so that
+    keypoints visualize correctly in the FiftyOne App.
+
+    Returns:
+        fiftyone.core.odm.dataset.KeypointSkeleton: BODY-25 skeleton.
+    """
+    from fiftyone.core.odm.dataset import KeypointSkeleton
+
+    return KeypointSkeleton(
+        labels=HRM2_JOINT_NAMES,
+        edges=HRM2_SKELETON_EDGES,
+    )
 
 
 def cam_crop_to_full(
@@ -1498,6 +1599,11 @@ def apply_hrm2_to_dataset_as_groups(
     # Add all samples at once - FiftyOne will detect groups automatically
     logger.info("Adding %d samples to dataset...", len(all_new_samples))
     dataset.add_samples(all_new_samples)
+
+    # Set BODY-25 skeleton for keypoint visualization in the App
+    dataset.default_skeleton = get_hrm2_skeleton()
+    dataset.save()
+    logger.info("Set HRM2 (BODY-25) skeleton for keypoint visualization")
 
     logger.info("Created grouped dataset with %d groups", len(predictions))
     logger.info("Dataset media type is now: %s", dataset.media_type)

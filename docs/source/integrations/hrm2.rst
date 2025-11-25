@@ -290,6 +290,151 @@ Accessing Results
     # View the 3D scene file path (.fo3d)
     print("Scene file:", scene_sample.filepath)
 
+.. _hrm2-skeleton-visualization:
+
+Skeleton Visualization
+______________________
+
+Although the meshes come from SMPL parameters, HMR2/4D-Humans **reorders the
+predicted joints to the OpenPose BODY-25 topology** (and adds additional facial
+and foot landmarks). The integration configures this BODY-25 skeleton
+automatically so the FiftyOne App can render clean overlays that match the
+ordering of the keypoints you receive from the model.
+
+BODY-25 Structure
+-----------------
+
+BODY-25 uses 25 keypoints with the neck/mid-hip chain as the torso root and
+additional joints for eyes, ears, and toes:
+
+.. code-block:: text
+
+                     17 (right_ear)   18 (left_ear)
+                           |               |
+                    15 (right_eye)   16 (left_eye)
+                             \         /
+                              0 (nose)
+                               |
+                             1 (neck)
+                         /     |      \\
+               2 (r_shoulder) |   5 (l_shoulder)
+                     |        |        |
+                3 (r_elbow)   |   6 (l_elbow)
+                     |        |        |
+                4 (r_wrist)   |   7 (l_wrist)
+                              |
+                           8 (mid_hip)
+                          /          \\
+                9 (r_hip)             12 (l_hip)
+                   |                      |
+               10 (r_knee)           13 (l_knee)
+                   |                      |
+               11 (r_ankle)          14 (l_ankle)
+                /   |   \\           /   |    \\
+      22 (r_big_toe) |  24(r_heel) 19(l_big_toe) | 21(l_heel)
+                     23 (r_small_toe)              20(l_small_toe)
+
+Key facts:
+
+-   **25 joints** (0-24) following the OpenPose/COCO convention
+-   **24 edges** that connect torso, limbs, and extra facial/foot landmarks
+-   Symmetric layout for left/right limbs for consistent visualization
+
+Automatic Configuration
+-----------------------
+
+When you use ``apply_hrm2_to_dataset_as_groups()``, the BODY-25 skeleton is
+automatically configured on the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.hrm2 as fouh
+
+    # Load model and apply to dataset
+    model = foz.load_zoo_model("hrm2-torch", smpl_model_path="/path/to/SMPL_NEUTRAL.pkl")
+    dataset = fouh.apply_hrm2_to_dataset_as_groups(model, dataset, label_field="human_pose")
+
+    # Skeleton is automatically set
+    print(f"Skeleton configured: {dataset.default_skeleton is not None}")  # True
+    print(f"Number of joints: {len(dataset.default_skeleton.labels)}")     # 25
+    print(f"Number of edges: {len(dataset.default_skeleton.edges)}")       # 24
+
+Manual Configuration
+--------------------
+
+You can also manually retrieve and configure the HRM2/BODY-25 skeleton:
+
+.. code-block:: python
+    :linenos:
+
+    from fiftyone.utils.hrm2 import get_hrm2_skeleton, HRM2_JOINT_NAMES
+
+    # Get the BODY-25 skeleton
+    skeleton = get_hrm2_skeleton()
+
+    # Inspect the structure
+    print("Joint names:", skeleton.labels)
+    print("Edges:", skeleton.edges)
+
+    # Set it on your dataset
+    dataset.default_skeleton = skeleton
+    dataset.save()
+
+App Visualization
+-----------------
+
+Once the skeleton is configured, the FiftyOne App will automatically render
+skeleton overlays when viewing keypoints:
+
+1. **Image slice**: The 2D keypoints (from ``human_pose_2d`` field) will display
+   with skeleton connections overlaid on the image
+2. **3D slice**: The 3D keypoints will show the skeleton structure in the 3D viewer
+
+The skeleton visualization helps validate:
+
+-   Correct joint detection and positioning
+-   Body pose and posture
+-   Multi-person tracking (each person maintains their own skeleton)
+-   Temporal consistency in video sequences
+
+Joint Names Reference
+---------------------
+
+``HRM2_JOINT_NAMES`` captures the BODY-25 ordering used by HMR2/4D-Humans:
+
+.. code-block:: python
+
+    HRM2_JOINT_NAMES = [
+        "nose",            # 0
+        "neck",            # 1
+        "right_shoulder",  # 2
+        "right_elbow",     # 3
+        "right_wrist",     # 4
+        "left_shoulder",   # 5
+        "left_elbow",      # 6
+        "left_wrist",      # 7
+        "mid_hip",         # 8
+        "right_hip",       # 9
+        "right_knee",      # 10
+        "right_ankle",     # 11
+        "left_hip",        # 12
+        "left_knee",       # 13
+        "left_ankle",      # 14
+        "right_eye",       # 15
+        "left_eye",        # 16
+        "right_ear",       # 17
+        "left_ear",        # 18
+        "left_big_toe",    # 19
+        "left_small_toe",  # 20
+        "left_heel",       # 21
+        "right_big_toe",   # 22
+        "right_small_toe", # 23
+        "right_heel",      # 24
+    ]
+
 .. _hrm2-3d-visualization:
 
 3D Visualization
