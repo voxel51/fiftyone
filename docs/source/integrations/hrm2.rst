@@ -184,33 +184,37 @@ person box:
         coordinates ``[0, 1]``
     -   ``detection.instance``: shared :class:`fiftyone.core.labels.Instance`
         used to link this 2D person to the corresponding 3D person in
-        ``SMPLHumanPoses.poses``
+        ``MeshInstances3D.instances``
 
 2. 3D Scene Slice Samples
 -------------------------
 
-Each 3D scene sample (``.fo3d`` file) contains a ``SMPLHumanPoses`` label (default field: ``human_pose_3d``) with:
+Each 3D scene sample (``.fo3d`` file) contains a ``MeshInstances3D`` label
+(default field: ``human_pose_3d``) with:
 
--   **poses**: List of :class:`fiftyone.core.labels.SMPLHumanPose` instances, each containing:
+-   **instances**: List of :class:`fiftyone.core.labels.MeshInstance3D` objects,
+    each representing one detected person with:
 
-    -   ``person``: :class:`fiftyone.core.labels.Person3D` with embedded label types:
+    -   ``instance_id``: numeric identifier
+    -   ``label``: semantic label (typically "person")
+    -   ``detection``: :class:`fiftyone.core.labels.Detection` (absolute pixel coordinates)
+    -   ``mesh``: :class:`fiftyone.core.labels.Mesh3D` with vertices and faces
+    -   ``keypoints_3d``: :class:`fiftyone.core.labels.Keypoints3D` label
+    -   ``keypoints_2d``: :class:`fiftyone.core.labels.Keypoint` (normalized [0, 1])
+    -   ``camera``: :class:`fiftyone.core.labels.Camera` (weak_perspective + translation)
+    -   ``attributes``: dict containing model-specific parameters:
 
-        -   ``detection``: :class:`fiftyone.core.labels.Detection` with bounding box (absolute pixel coordinates)
-        -   ``keypoints_2d``: :class:`fiftyone.core.labels.Keypoint` with 2D keypoint locations
-        -   ``keypoints_3d``: 3D keypoint locations as Nx3 list ``[[x, y, z], ...]``
-        -   ``vertices``: 3D mesh vertices (Nx3 list)
+        -   ``"source"``: ``"hrm2"``
+        -   ``"smpl_params"``: dict with body_pose, betas, global_orient, camera
 
-    -   ``smpl_params``: :class:`fiftyone.core.labels.SMPLParams` with SMPL body model parameters (body_pose, betas, etc.)
-    -   ``camera``: :class:`fiftyone.core.labels.Camera` with camera parameters:
+-   **scene_path**: Path to .fo3d scene file
+-   **frame_size**: [height, width]
 
-        -   ``weak_perspective``: [scale, tx, ty] in SMPL format
-        -   ``translation``: [tx, ty, tz] 3D camera translation vector
-        -   ``focal_length``: [fx, fy] focal length in pixels (optional)
-        -   ``principal_point``: [cx, cy] principal point in pixels (optional)
+.. note::
 
--   **scene_path**: Path to the .fo3d scene file
--   **smpl_faces**: SMPL mesh topology (shared across all people)
--   **frame_size**: [height, width] of the input frame
+    **SMPL Parameters**: SMPL-specific data is stored in
+    ``mesh_instance.attributes["smpl_params"]`` dictionary, making the structure
+    model-agnostic while preserving all SMPL information.
 
 Accessing Results
 -----------------
@@ -246,40 +250,42 @@ Accessing Results
         print("First person 2D bbox:", bbox_2d)
 
     #
-    # Access the 3D scene sample and SMPL data
-    # (samples in the same group share the same group ID)
+    # Access the 3D scene sample with MeshInstances3D
     #
     scene_sample = scene_slice.match(fo.ViewField("human_pose_3d") != None).first()
-    pose_3d = scene_sample.human_pose_3d  # SMPLHumanPoses
+    mesh_instances = scene_sample.human_pose_3d  # MeshInstances3D
 
-    if pose_3d and pose_3d.poses:
-        # pose_3d.poses is a list of SMPLHumanPose instances
-        for smpl_pose in pose_3d.poses:
-            # Access SMPL parameters
-            print("Body pose:", smpl_pose.smpl_params.body_pose)
-            print("Shape params:", smpl_pose.smpl_params.betas)
+    if mesh_instances and mesh_instances.instances:
+        # Iterate through detected people
+        for mesh_instance in mesh_instances.instances:
+            # Access SMPL parameters from attributes dict
+            if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
+                smpl_params = mesh_instance.attributes["smpl_params"]
+                print("Body pose:", len(smpl_params["body_pose"]))
+                print("Shape params:", len(smpl_params["betas"]))
 
-            # Access camera parameters (Camera object)
-            print("Camera translation (3D):", smpl_pose.camera.translation)
-            print("Camera weak perspective:", smpl_pose.camera.weak_perspective)
+            # Access mesh geometry
+            if mesh_instance.mesh:
+                print("Vertices:", len(mesh_instance.mesh.vertices))
+                print("Faces:", len(mesh_instance.mesh.faces))
 
-            # Access geometric data from Person3D (embedded label types)
-            person = smpl_pose.person
+            # Access 3D keypoints
+            if mesh_instance.keypoints_3d and mesh_instance.keypoints_3d.keypoints:
+                print("3D joints:", len(mesh_instance.keypoints_3d.keypoints))
 
-            # Keypoint3D with 3D points
-            print("3D keypoints:", person.keypoints_3d.points)
-            print("3D keypoints confidence:", person.keypoints_3d.confidence)
+            # Access 2D keypoints
+            if mesh_instance.keypoints_2d:
+                print("2D keypoints:", len(mesh_instance.keypoints_2d.points))
 
-            # Keypoint with 2D points
-            print("2D keypoints:", person.keypoints_2d.points)
-            print("2D keypoints confidence:", person.keypoints_2d.confidence)
+            # Access camera
+            if mesh_instance.camera:
+                print("Translation:", mesh_instance.camera.translation)
+                print("Weak perspective:", mesh_instance.camera.weak_perspective)
 
-            # Detection with bounding box (absolute pixel coordinates)
-            print("Bbox (absolute pixels):", person.detection.bounding_box)
-            print("Bbox uses relative coords:", person.detection.relative_coordinate)
-
-            # Mesh vertices
-            print("Vertices:", person.vertices)
+            # Access bounding box
+            if mesh_instance.detection:
+                print("Bbox:", mesh_instance.detection.bounding_box)
+                print("Relative coords:", mesh_instance.detection.relative_coordinate)
 
     # View the 3D scene file path (.fo3d)
     print("Scene file:", scene_sample.filepath)
@@ -325,6 +331,58 @@ controls where files are written. If not provided, files are stored in
         dataset,
         output_dir="/path/to/my/scenes"
     )
+
+.. _hrm2-migration:
+
+Migration from Previous Versions
+_________________________________
+
+If you're upgrading from an earlier version of the HRM2 integration, the API has
+changed to use model-agnostic label structures.
+
+Old API (No Longer Supported)
+------------------------------
+
+The previous integration used SMPL-specific classes:
+
+.. code-block:: python
+
+    # OLD - No longer available
+    smpl_poses = sample.human_pose_3d  # SMPLHumanPoses
+    for smpl_pose in smpl_poses.poses:  # List of SMPLHumanPose
+        body_pose = smpl_pose.smpl_params.body_pose
+        betas = smpl_pose.smpl_params.betas
+        vertices = smpl_pose.person_3d.vertices
+
+New API (Current)
+-----------------
+
+The current integration uses ``MeshInstances3D`` with SMPL parameters stored in
+the attributes dictionary:
+
+.. code-block:: python
+
+    # NEW - Current API
+    mesh_instances = scene_sample.human_pose_3d  # MeshInstances3D
+    for mesh_instance in mesh_instances.instances:  # List of MeshInstance3D
+        # Access SMPL params from attributes dict
+        if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
+            smpl_params = mesh_instance.attributes["smpl_params"]
+            body_pose = smpl_params["body_pose"]
+            betas = smpl_params["betas"]
+
+        # Access mesh geometry
+        if mesh_instance.mesh:
+            vertices = mesh_instance.mesh.vertices
+
+Key Changes
+-----------
+
+-   ``SMPLHumanPoses`` → ``MeshInstances3D``
+-   ``smpl_pose.smpl_params.body_pose`` → ``mesh_instance.attributes["smpl_params"]["body_pose"]``
+-   ``smpl_pose.person_3d.vertices`` → ``mesh_instance.mesh.vertices``
+-   ``smpl_pose.person_3d.keypoints_3d`` → ``mesh_instance.keypoints_3d``
+-   SMPL parameters are now in a dict for model-agnostic design
 
 Citation
 ________

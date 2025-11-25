@@ -116,10 +116,6 @@ from .core.labels import (
     Mesh3D,
     MeshInstance3D,
     MeshInstances3D,
-    SMPLParams,
-    Person3D,
-    SMPLHumanPose,
-    SMPLHumanPoses,
     HumanPose2D,
     HumanPoses2D,
 )
