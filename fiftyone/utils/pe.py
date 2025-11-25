@@ -12,6 +12,8 @@ fou.ensure_package("perception_models")
 import core.vision_encoder.pe as pe
 import core.vision_encoder.transforms as pe_transforms
 
+DEFAULT_MODEL = "PE-Core-T16-384"
+
 
 def download_pe_checkpoint(name: str, checkpoint_path: str):
 
@@ -84,7 +86,7 @@ class PEVisionEncoderConfig(fout.TorchImageModelConfig):
         if self.entrypoint_args is None:
             self.entrypoint_args = {}
         default_entrypoint_args = {
-            "name": "PE-Core-T16-384",
+            "name": DEFAULT_MODEL,
             "pretrained": True,
         }
         self.entrypoint_args = {
