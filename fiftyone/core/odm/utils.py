@@ -603,6 +603,16 @@ def _merge_embedded_doc_fields(
 
 
 def _init_embedded_doc_fields(field):
+    """Converts a field's nested fields from list to dictionary format.
+
+    This helper recursively transforms the "fields" list of an embedded document
+    field specification into a dictionary keyed by field name, enabling efficient
+    merging during schema aggregation. It modifies the field spec in place.
+
+    Args:
+        field: a field specification dict with a "fields" key containing a list
+            of nested field specs
+    """
     fields_dict = {}
     for _field in field["fields"]:
         if _field["ftype"] == fof.EmbeddedDocumentField:

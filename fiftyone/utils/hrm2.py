@@ -34,6 +34,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 from fiftyone.utils.torch import (
@@ -70,9 +71,16 @@ __all__ = [
     "HRM2_SKELETON_EDGES",
 ]
 
+# Processing constants
+_DEFAULT_IMAGE_SIZE = 256
+_ANTIALIAS_DOWNSAMPLE_THRESHOLD = 1.1
+_SIGMA_CALCULATION_FACTOR = 2.0
+_CENTER_OFFSET = 0.5
+
 
 # HMR2/4D-Humans exposes joints reordered to the OpenPose BODY-25 topology.
-# See https://cmu-perceptual-computing-lab.github.io/openpose/web/html/doc/md_doc_05_output.html
+# See https://cmu-perceptual-computing-lab.github.io/openpose/web/html/
+# doc/md_doc_05_output.html
 HRM2_JOINT_NAMES = [
     "nose",  # 0
     "neck",  # 1
@@ -464,7 +472,8 @@ def _load_hrm2_checkpoint(checkpoint_path: str) -> Dict[str, Any]:
             pickle.UnpicklingError,
         ) as e:
             logger.debug(
-                "torch.load with safe_globals failed: %s. Falling back to weights_only=False",
+                "torch.load with safe_globals failed: %s. "
+                "Falling back to weights_only=False",
                 e,
             )
 
@@ -547,18 +556,19 @@ def _gen_trans_from_patch_cv(
     sn, cs = np.sin(rot_rad), np.cos(rot_rad)
 
     src_center = np.array([c_x, c_y], dtype=np.float32)
-    src_down = np.array([0, src_h * 0.5], dtype=np.float32)
-    src_right = np.array([src_w * 0.5, 0], dtype=np.float32)
+    src_down = np.array([0, src_h * _CENTER_OFFSET], dtype=np.float32)
+    src_right = np.array([src_w * _CENTER_OFFSET, 0], dtype=np.float32)
 
     rot_mat = np.array([[cs, -sn], [sn, cs]], dtype=np.float32)
     src_downdir = rot_mat @ src_down
     src_rightdir = rot_mat @ src_right
 
     dst_center = np.array(
-        [dst_width * 0.5, dst_height * 0.5], dtype=np.float32
+        [dst_width * _CENTER_OFFSET, dst_height * _CENTER_OFFSET],
+        dtype=np.float32,
     )
-    dst_downdir = np.array([0, dst_height * 0.5], dtype=np.float32)
-    dst_rightdir = np.array([dst_width * 0.5, 0], dtype=np.float32)
+    dst_downdir = np.array([0, dst_height * _CENTER_OFFSET], dtype=np.float32)
+    dst_rightdir = np.array([dst_width * _CENTER_OFFSET, 0], dtype=np.float32)
 
     src = np.stack(
         [src_center, src_center + src_downdir, src_center + src_rightdir]
@@ -646,12 +656,13 @@ def _apply_antialias(
         downsampling_factor: ratio of input size to output size
 
     Returns:
-        blurred image if downsampling factor > 1.1, else original image
+        blurred image if downsampling factor > _ANTIALIAS_DOWNSAMPLE_THRESHOLD,
+        else original image
     """
-    if downsampling_factor <= 1.1:
+    if downsampling_factor <= _ANTIALIAS_DOWNSAMPLE_THRESHOLD:
         return img
 
-    sigma = max((downsampling_factor - 1.0) / 2.0, 0.0)
+    sigma = max((downsampling_factor - 1.0) / _SIGMA_CALCULATION_FACTOR, 0.0)
     if sigma <= 0:
         return img
 
@@ -680,7 +691,7 @@ class _HRM2CropHelper:
     """
 
     def __init__(self, cfg: Any) -> None:
-        image_size = getattr(cfg.MODEL, "IMAGE_SIZE", 256)
+        image_size = getattr(cfg.MODEL, "IMAGE_SIZE", _DEFAULT_IMAGE_SIZE)
         target_h, target_w = get_target_size(image_size)
         self.patch_height = target_h
         self.patch_width = target_w
@@ -753,7 +764,8 @@ class _HRM2CropHelper:
         for c in range(min(img_tensor.shape[0], len(self.mean))):
             img_tensor[c] = (img_tensor[c] - self.mean[c]) / self.std[c]
 
-        # All preprocessing is done on CPU - tensor created from numpy is on CPU by default
+        # All preprocessing is done on CPU - tensor created from numpy
+        # is on CPU by default
         img_tensor = torch.from_numpy(img_tensor).float()
         img_size = np.array(
             [float(img.shape[1]), float(img.shape[0])], dtype=np.float32
@@ -1008,8 +1020,9 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     "Camera translation not found for person %s", person_id
                 )
 
-            # **CRITICAL: Apply 180° rotation around X-axis to fix coordinate system**
-            # This converts from SMPL coordinates (Y-up) to rendering coordinates (Y-down)
+            # **CRITICAL: Apply 180° rotation around X-axis to fix
+            # coordinate system**
+            # This converts from SMPL (Y-up) to rendering (Y-down)
             rot_matrix = trimesh.transformations.rotation_matrix(
                 np.radians(180), [1, 0, 0]
             )
@@ -1466,8 +1479,6 @@ def apply_hrm2_to_dataset_as_groups(
     # Set default output_dir if not specified
     if output_dir is None:
         output_dir = os.path.join(fo.config.model_zoo_dir, "hrm2")
-        import fiftyone.core.storage as fos
-
         output_dir = fos.normalize_path(output_dir)
     elif output_dir is False:
         output_dir = None  # Disable export
@@ -1850,8 +1861,10 @@ class HRM2Model(
         if config.output_processor_cls is None:
             return None
 
-        # Start with config's output_processor_args (already set in HRM2Config.__init__)
-        # These are serializable parameters: export_meshes, mesh_output_dir, confidence_thresh
+        # Start with config's output_processor_args
+        # (already set in HRM2Config.__init__)
+        # These are serializable parameters: export_meshes,
+        # mesh_output_dir, confidence_thresh
         if not config.output_processor_args:
             config.output_processor_args = {}
 
