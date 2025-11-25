@@ -387,7 +387,7 @@ def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment)
     }
 
     # Build format selector
-    format_selector = _build_format_selector(ext, only_progressive, resolution)
+    format_selector = _build_format_selector(only_progressive, resolution)
     if format_selector:
         opts['format'] = format_selector
 
@@ -397,11 +397,11 @@ def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment)
         if start_time is None:
             start_time = 0
 
-        if end_time is not None:
-            opts['download_ranges'] = yt_dlp.utils.download_range_func(
-                None, [(start_time, end_time)]
-            )
-            opts['force_keyframes_at_cuts'] = True
+        # Set download range (end_time can be None for open-ended clips)
+        opts['download_ranges'] = yt_dlp.utils.download_range_func(
+            None, [(start_time, end_time)]
+        )
+        opts['force_keyframes_at_cuts'] = True
 
     # Prefer merging to single file
     opts['merge_output_format'] = ext[1:] if ext else 'mp4'
@@ -409,7 +409,7 @@ def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment)
     return opts
 
 
-def _build_format_selector(ext, only_progressive, resolution):
+def _build_format_selector(only_progressive, resolution):
     """Build yt-dlp format selector string"""
     if only_progressive:
         # Progressive means single file with both video and audio tracks
