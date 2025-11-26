@@ -624,7 +624,7 @@ const addEnterpriseBanner = () => {
 
     footer.parentNode.insertBefore(banner, footer);
     requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event("resize"));
     });
     observer.disconnect();
   });
@@ -685,6 +685,41 @@ function initDirectAgentAccess() {
   }
 }
 
+function initAIChatButtons() {
+  const ALLOWED_TARGETS = new Set([
+    "markdown",
+    "chatgpt",
+    "claude",
+    "huggingface",
+  ]);
+
+  document.querySelectorAll(".ai-icon-button").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      const target = button.dataset.action || button.dataset.ai;
+      if (!ALLOWED_TARGETS.has(target)) return;
+
+      const mdUrl = window.location.href
+        .replace(/\.html$/, ".md")
+        .replace(/\/$/, "/index.md");
+      const prompt = encodeURIComponent(
+        `Read from ${mdUrl} so I can ask questions about it.`
+      );
+
+      const urls = {
+        markdown: mdUrl,
+        chatgpt: `https://chatgpt.com/?hints=search&q=${prompt}`,
+        claude: `https://claude.ai/new?q=${prompt}`,
+        huggingface: `https://huggingface.co/chat/?q=${prompt}&attachments=${encodeURIComponent(
+          mdUrl
+        )}`,
+      };
+
+      window.open(urls[target], "_blank", "noopener,noreferrer");
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -696,4 +731,5 @@ document.addEventListener("DOMContentLoaded", () => {
   addEnterpriseBanner();
   initDynamicCTAs();
   initDirectAgentAccess();
+  initAIChatButtons();
 });
