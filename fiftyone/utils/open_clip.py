@@ -15,6 +15,8 @@ import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torch
+from PIL import Image
+import numpy as np
 
 open_clip = fou.lazy_import(
     "open_clip", callback=lambda: fou.ensure_package("open_clip_torch")
@@ -58,7 +60,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def __init__(self, config):
         super().__init__(config)
         self._text_features = None
-        self.preprocess = self._preprocess_aux
+        self.preprocess = self._preprocess_shim
 
     @property
     def can_embed_prompts(self):
@@ -86,6 +88,11 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         """
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
+    def _preprocess_shim(self, x):
+        if isinstance(x, np.ndarray):
+            x = Image.fromarray(x)
+        return self._preprocess_aux(x)
+
     def _load_model(self, config):
         (
             self._model,
@@ -96,6 +103,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             pretrained=config.pretrained,
             device=self.device,
         )
+
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         self._model.eval()
         return self._model
@@ -135,6 +143,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         return logits_per_image, logits_per_text
 
     def _predict_all(self, imgs):
+
         if self._preprocess:
             imgs = [self._preprocess(img) for img in imgs]
 
