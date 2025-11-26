@@ -8437,6 +8437,44 @@
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
             "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-L14-336-Vision-Encoder",
+            "base_filename": "PE-Core-L14-336.pt",
+            "version": null,
+            "description": "The ViT from the large variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 2684747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-L14-336"
+                    },
+                    "transforms_args": {
+                        "image_size": 532
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-11-19 12:00:00"
         }
     ]
 }
