@@ -24,6 +24,36 @@ super_gradients = fou.lazy_import(
 logger = logging.getLogger(__name__)
 
 
+def _patch_super_gradients_urls():
+    """Patches super-gradients pretrained model URLs to use the current hosting location.
+
+    SuperGradients model weights were originally hosted at https://sghub.deci.ai
+    but have been migrated to https://sg-hub-nv.s3.amazonaws.com. This function
+    updates the URLs in the pretrained models registry to point to the new location.
+
+    See: https://github.com/Deci-AI/super-gradients/issues/2064
+    """
+    try:
+        import super_gradients.training.pretrained_models as pretrained_models
+
+        if hasattr(pretrained_models, "PRETRAINED_NUM_CLASSES"):
+            old_domain = "https://sghub.deci.ai"
+            new_domain = "https://sg-hub-nv.s3.amazonaws.com"
+            patched_count = 0
+
+            for key, value in pretrained_models.PRETRAINED_NUM_CLASSES.items():
+                if isinstance(value, str) and value.startswith(old_domain):
+                    new_url = value.replace(old_domain, new_domain)
+                    pretrained_models.PRETRAINED_NUM_CLASSES[key] = new_url
+                    patched_count += 1
+                    logger.debug(f"Patched URL for {key}: {value} -> {new_url}")
+
+            if patched_count > 0:
+                logger.info(f"Patched {patched_count} super-gradients model URLs to use AWS S3")
+    except Exception as e:
+        logger.warning(f"Failed to patch super-gradients URLs: {e}")
+
+
 def convert_super_gradients_model(model):
     """Converts the given SuperGradients model into a FiftyOne model.
 
@@ -88,6 +118,8 @@ class TorchYoloNasModel(fout.TorchImageModel):
     """
 
     def _load_model(self, config):
+        _patch_super_gradients_urls()
+
         if config.model is not None:
             model = config.model
         else:
