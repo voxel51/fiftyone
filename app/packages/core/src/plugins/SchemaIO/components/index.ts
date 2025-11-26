@@ -8,6 +8,7 @@ export { default as CheckboxView } from "./CheckboxView";
 export { default as CodeView } from "./CodeView";
 export { default as ColorView } from "./ColorView";
 export { default as DashboardView } from "./DashboardView";
+export { default as DateTimeView } from "./DateTimeView";
 export { default as DropdownView } from "./DropdownView";
 export { default as DynamicIO } from "./DynamicIO";
 export { default as EmptyState } from "./EmptyState";
