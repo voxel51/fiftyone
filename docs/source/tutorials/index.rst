@@ -34,6 +34,13 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: Integrating Cosmos-Transfer with FiftyOne __SUB_NEW__
+    :description: Learn how to integrate NVIDIA Cosmos-Transfer 2.5, a world foundation model for Physical AI, with FiftyOne to curate, visualize, and process multimodal datasets for robotics and autonomous systems.
+    :link: cosmos-transfer-integration.html
+    :image: https://cdn.voxel51.com/cosmos.webp
+    :tags: Dataset-Curation,Visualization,Model-Evaluation
+
+.. customcarditem::
     :header: Google Gemini Vision in FiftyOne __SUB_NEW__
     :description: Leverage Google Gemini Vision's multimodal AI to analyze datasets, detect biases, generate synthetic images, and improve data quality with FiftyOne.
     :link: gemini_vision.html
@@ -41,7 +48,7 @@ your datasets and turn your good models into *great models*.
     :tags: Dataset-Evaluation,Dataset-Curation,Model-Evaluation,Brain,Plugins
 
 .. customcarditem::
-    :header: Exploring Kaputt Dataset
+    :header: Exploring Kaputt Dataset __SUB_NEW__
     :description: Learn how to work with the Kaputt dataset in FiftyOne.
     :link: kaputt_dataset.html
     :image: https://cdn.voxel51.com/kaputt_overview.webp
@@ -225,6 +232,7 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
    Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
    Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
