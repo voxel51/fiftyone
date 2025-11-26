@@ -26,8 +26,7 @@ export function getClasses(
   maskTargets?: MaskTargets["primary"]
 ) {
   if (!matrixData) return [];
-  const classes = matrixData[`classes`];
-  return classes.map((c) => {
+  return matrixData.classes.map((c) => {
     return maskTargets?.[c] || c;
   });
 }
@@ -169,16 +168,22 @@ export function getConfusionMatrix(
 
   const sortedClassesWithCount = classesWithCount.sort(
     (a: ClassWithCount, b: ClassWithCount) => {
+      // Ensure (none) class is always at the end
       if (a.class === NONE_CLASS) {
         return 1;
       }
       if (b.class === NONE_CLASS) {
         return -1;
       }
+      // sort alphabetically by a class (az: a to z, za: z to a)
       if (sortBy === "az") return a.class.localeCompare(b.class);
       if (sortBy === "za") return b.class.localeCompare(a.class);
+      // sort by number of occurrence of both predicted and actual being same
+      //  (mc: most common, lc: least common)
       if (sortBy === "mc") return b.count - a.count;
       if (sortBy === "lc") return a.count - b.count;
+
+      // default to no sorting
       return 0;
     }
   );
@@ -250,8 +255,8 @@ export function getConfusionMatrixPlotlyData(
       hovertemplate:
         [
           "<b>count: %{z:d}</b>",
-          `${config?.gt_field || "truth"}: %{y}`,
-          `${config?.pred_field || "predicted"}: %{x}`,
+          `${config?.gtField || "truth"}: %{y}`,
+          `${config?.predField || "predicted"}: %{x}`,
         ].join(" <br>") + "<extra></extra>",
     },
   ];
@@ -276,8 +281,8 @@ type MatrixOptions = {
 
 type MatrixPlotDataConfig = MatrixOptions & {
   log?: boolean;
-  gt_field?: string;
-  pred_field?: string;
+  gtField?: string;
+  predField?: string;
 };
 
 type ClassWithCount = {
