@@ -7,7 +7,7 @@ from fiftyone.operators.cache.serialization import (
 )
 
 
-def compress_matrix(matrix: np.ndarray, use_zlib=True):
+def compress_confusion_matrix(matrix: np.ndarray, use_zlib=True):
     non_zero_indices = np.nonzero(matrix)
     non_zero_matrix = [
         {"i": int(i), "j": int(j), "v": int(matrix[i, j])}
@@ -25,7 +25,7 @@ def compress_matrix(matrix: np.ndarray, use_zlib=True):
     )
 
 
-def decompress_matrix(matrix, use_zlib=True):
+def decompress_confusion_matrix(matrix, use_zlib=True):
     compressed_matrix_binary = zlib.decompress(matrix) if use_zlib else matrix
     compressed_matrix = json.loads(compressed_matrix_binary)
     shape = compressed_matrix["shape"]
@@ -40,7 +40,7 @@ def compress_and_serialize(value):
     computed_value = value
     matrix = computed_value.get("confusion_matrix", {}).get("matrix", None)
     if matrix is not None:
-        compressed_matrix = compress_matrix(matrix, use_zlib=True)
+        compressed_matrix = compress_confusion_matrix(matrix, use_zlib=True)
         computed_value = computed_value.copy()
         computed_value["confusion_matrix"] = computed_value[
             "confusion_matrix"
@@ -53,19 +53,24 @@ def decompress_and_deserialize(value):
     deserialized = auto_deserialize(value)
     matrix = deserialized.get("confusion_matrix", {}).get("matrix", None)
     if matrix is not None:
-        decompressed_matrix = decompress_matrix(matrix, use_zlib=True)
+        decompressed_matrix = decompress_confusion_matrix(
+            matrix, use_zlib=True
+        )
         deserialized["confusion_matrix"]["matrix"] = decompressed_matrix
     return deserialized
 
 
 def compress_and_serialize_scenario(value):
-    subsets_data = value.get("subsets_data", {}).copy()
+    computed_value = value.copy()
+    subsets_data = computed_value.get("subsets_data", {}).copy()
 
     for subset in subsets_data:
         confusion_matrix = subsets_data[subset].get("confusion_matrix", None)
         matrix = confusion_matrix.get("matrix", None)
         if matrix is not None:
-            compressed_matrix = compress_matrix(matrix, use_zlib=True)
+            compressed_matrix = compress_confusion_matrix(
+                matrix, use_zlib=True
+            )
             subsets_data[subset] = subsets_data[subset].copy()
             subsets_data[subset]["confusion_matrix"] = subsets_data[subset][
                 "confusion_matrix"
@@ -74,19 +79,26 @@ def compress_and_serialize_scenario(value):
                 "matrix"
             ] = compressed_matrix
 
-    return auto_serialize(subsets_data)
+    computed_value["subsets_data"] = subsets_data
+
+    return auto_serialize(computed_value)
 
 
 def decompress_and_deserialize_scenario(value):
-    subsets_data = auto_deserialize(value)
+    deserialized = auto_deserialize(value)
+    subsets_data = deserialized.get("subsets_data", {})
 
     for subset in subsets_data:
         confusion_matrix = subsets_data[subset].get("confusion_matrix", None)
         matrix = confusion_matrix.get("matrix", None)
         if matrix is not None:
-            decompressed_matrix = decompress_matrix(matrix, use_zlib=True)
-            subsets_data[subset]["confusion_matrix"][
+            decompressed_matrix = decompress_confusion_matrix(
+                matrix, use_zlib=True
+            )
+            deserialized["subsets_data"][subset]["confusion_matrix"][
                 "matrix"
             ] = decompressed_matrix
 
-    return subsets_data
+    deserialized["subsets_data"] = subsets_data
+
+    return deserialized

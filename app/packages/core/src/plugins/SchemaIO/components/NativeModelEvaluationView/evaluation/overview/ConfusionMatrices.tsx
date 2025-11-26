@@ -31,32 +31,38 @@ export default function ConfusionMatrices(props) {
     const {
       matrix,
       classes,
-      oranges_colorscale,
+      primary_colorscale,
       oranges_logarithmic_colorscale,
     } = evaluation?.confusion_matrix || {};
+    const { gt_field, pred_field } = evaluation?.info?.config || {};
     return getConfusionMatrixPlotlyData(
       {
         classes,
         matrix,
         colorscales: {
-          default: oranges_colorscale,
+          default: primary_colorscale,
           logarithmic: oranges_logarithmic_colorscale,
         },
         maskTargets: { primary: evaluationMaskTargets },
       },
-      confusionMatrixConfig
+      { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field }
     );
   }, [evaluation, confusionMatrixConfig, evaluationMaskTargets]);
   const compareConfusionMatrixPlotlyData = useMemo(() => {
-    const { matrix, classes, blues_colorscale, blues_logarithmic_colorscale } =
-      compareEvaluation?.confusion_matrix || {};
+    const {
+      matrix,
+      classes,
+      secondary_colorscale,
+      blues_logarithmic_colorscale,
+    } = compareEvaluation?.confusion_matrix || {};
+    const { gt_field, pred_field } = compareEvaluation?.info?.config || {};
     if (matrix && classes) {
       return getConfusionMatrixPlotlyData(
         {
           classes,
           matrix,
           colorscales: {
-            default: blues_colorscale,
+            default: secondary_colorscale,
             logarithmic: blues_logarithmic_colorscale,
           },
           maskTargets: {
@@ -64,7 +70,7 @@ export default function ConfusionMatrices(props) {
             secondary: evaluationMaskTargets,
           },
         },
-        confusionMatrixConfig
+        { ...confusionMatrixConfig, gtField: gt_field, predField: pred_field }
       );
     }
     return [];

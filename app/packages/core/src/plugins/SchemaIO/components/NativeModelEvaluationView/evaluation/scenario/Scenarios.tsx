@@ -1382,7 +1382,7 @@ function ConfusionMatrixChart(props) {
       classes: matrixData?.classes,
       matrix: matrixData?.matrix,
       colorscales: {
-        default: matrixData?.oranges_colorscale,
+        default: matrixData?.primary_colorscale,
         logarithmic: matrixData?.oranges_logarithmic_colorscale,
       },
       maskTargets: { primary: evaluationMaskTargets },
@@ -1396,7 +1396,7 @@ function ConfusionMatrixChart(props) {
           classes: compareMatrixData?.classes,
           matrix: compareMatrixData?.matrix,
           colorscales: {
-            default: compareMatrixData?.oranges_colorscale,
+            default: compareMatrixData?.primary_colorscale,
             logarithmic: compareMatrixData?.oranges_logarithmic_colorscale,
           },
           maskTargets: {

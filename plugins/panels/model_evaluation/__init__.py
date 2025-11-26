@@ -9,17 +9,16 @@ Model evaluation panel.
 import os
 import traceback
 
-import fiftyone.utils.eval as foue
 import numpy as np
-import fiftyone.operators.types as types
-import fiftyone.core.view as fov
 
-from bson import ObjectId
-from collections import defaultdict
 import fiftyone.core.view as fov
 import fiftyone.operators.types as types
 import fiftyone.server.utils as fosu
 import fiftyone.utils.eval as foue
+
+from collections import defaultdict
+from bson import ObjectId
+
 from fiftyone import ViewField as F
 from fiftyone.core.plots.plotly import _get_colorscale, _to_log_colorscale
 from fiftyone.operators.cache import execution_cache
@@ -52,7 +51,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v2.13.0"
+CACHE_VERSION = "v3.0.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -392,7 +391,7 @@ class EvaluationPanel(Panel):
         return per_class_metrics
 
     def get_confusion_matrix_colorscale(
-        self, matrix, colorscale_name, logarithmic=False
+        self, matrix, colorscale_name, *, logarithmic=False
     ):
         maxval = matrix.max()
         colorscale = (
@@ -408,13 +407,13 @@ class EvaluationPanel(Panel):
             include_missing=True,
             tabulate_ids=False,
         )
-        oranges_colorscale = self.get_confusion_matrix_colorscale(
+        primary_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix, "oranges"
         )
         oranges_logarithmic_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix, "oranges", logarithmic=True
         )
-        blues_colorscale = self.get_confusion_matrix_colorscale(
+        secondary_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix, "blues"
         )
         blues_logarithmic_colorscale = self.get_confusion_matrix_colorscale(
@@ -424,9 +423,9 @@ class EvaluationPanel(Panel):
         return {
             "matrix": default_matrix,
             "classes": default_classes,
-            "oranges_colorscale": oranges_colorscale,
+            "primary_colorscale": primary_colorscale,
             "oranges_logarithmic_colorscale": oranges_logarithmic_colorscale,
-            "blues_colorscale": blues_colorscale,
+            "secondary_colorscale": secondary_colorscale,
             "blues_logarithmic_colorscale": blues_logarithmic_colorscale,
         }
 
