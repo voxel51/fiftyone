@@ -8562,12 +8562,12 @@
         {
             "base_name": "hrm2-torch",
             "base_filename": null,
-            "version": "2.0b",
+            "version": "null",
             "description": "Reconstructs 3D human body meshes from images using the SMPL body model with state-of-the-art accuracy",
             "source": "https://github.com/shubham-goel/4D-Humans",
             "author": "Shubham Goel, et al.",
-            "license": "BSD 3-Clause",
-            "size_bytes": null,
+            "license": "MIT",
+            "size_bytes": 2709521501,
             "manager": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.hrm2.HRM2Model",

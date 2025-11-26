@@ -1128,17 +1128,27 @@ class ToPILImage(object):
 def to_numpy_image(
     img: Union[Image.Image, np.ndarray, torch.Tensor]
 ) -> np.ndarray:
-    """Convert image to numpy array in HWC uint8 format.
+    """Convert image to numpy array in HWC format.
 
     Handles PIL.Image, torch.Tensor, and numpy array inputs.
     Automatically handles CHW→HWC conversion for tensors and
-    normalized [0,1] → uint8 [0,255] scaling.
+    normalized [0,1] → uint8 [0,255] scaling for tensors.
+
+    **Important dtype/range assumptions:**
+    - PIL.Image: Always converted to HWC numpy array (typically uint8)
+    - torch.Tensor: Assumed to be in [0, 1] range if max value <= 1.0,
+      scaled to [0, 255] and converted to uint8. Tensors with max > 1.0
+      are returned as-is (dtype preserved).
+    - np.ndarray: Returned as-is without any dtype or range conversion.
+      If you need guaranteed uint8 output, check dtype after calling.
 
     Args:
         img: image as PIL.Image, numpy array, or torch.Tensor
 
     Returns:
-        numpy array in HWC uint8 format (height, width, channels)
+        numpy array in HWC format. For PIL and normalized tensors, returns
+        uint8 [0, 255]. For numpy arrays and non-normalized tensors, returns
+        original dtype.
 
     Example::
 
@@ -1147,17 +1157,17 @@ def to_numpy_image(
         import torch
         import fiftyone.utils.torch as fout
 
-        # From PIL Image
+        # From PIL Image (returns uint8)
         pil_img = Image.open("image.jpg")
         np_img = fout.to_numpy_image(pil_img)
 
-        # From torch tensor (CHW format, normalized [0,1])
+        # From torch tensor (CHW format, normalized [0,1]) (returns uint8)
         tensor_img = torch.rand(3, 256, 256)
         np_img = fout.to_numpy_image(tensor_img)
 
-        # From numpy array (passthrough if already correct format)
+        # From numpy array (passthrough - dtype/scale NOT enforced)
         np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
-        result = fout.to_numpy_image(np_img)
+        result = fout.to_numpy_image(np_img)  # Unchanged
     """
     if isinstance(img, Image.Image):
         return np.array(img)
@@ -1220,9 +1230,17 @@ def convert_to_tensor_chw(
     Handles PIL Images, numpy arrays (HWC/CHW), and torch tensors.
     Automatically converts grayscale to RGB and strips alpha channels.
 
+    **Important dtype/range assumptions:**
+    - PIL.Image: Converted to numpy, then treated as uint8 [0, 255]
+    - np.ndarray: **Assumed to be uint8 in [0, 255] range**. Divided by 255
+      to normalize to [0, 1]. Passing float images already in [0, 1] will
+      silently rescale to [0, ~0.004].
+    - torch.Tensor: Assumed to already be in [0, 1] range, returned as-is
+      (after channel/dimension adjustments)
+
     Args:
         img: input image in various formats (PIL.Image, np.ndarray, or
-            torch.Tensor)
+            torch.Tensor). For np.ndarray, must be uint8 [0, 255].
 
     Returns:
         torch.Tensor in CHW format, float, range [0, 1], 3 channels
@@ -1239,10 +1257,13 @@ def convert_to_tensor_chw(
         tensor = fout.convert_to_tensor_chw(pil_img)
         print(tensor.shape)  # torch.Size([3, H, W])
 
-        # From numpy array (HWC uint8)
+        # From numpy array (HWC uint8 [0, 255] - REQUIRED)
         np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
         tensor = fout.convert_to_tensor_chw(np_img)
         print(tensor.shape)  # torch.Size([3, 256, 256])
+
+        # WARNING: Do NOT pass float arrays already in [0, 1]
+        # float_img = np.random.rand(256, 256, 3)  # WRONG - will rescale!
     """
     # Convert PIL to numpy first
     if isinstance(img, Image.Image):
@@ -1345,8 +1366,8 @@ def normalize_tensor(
         std = [0.229, 0.224, 0.225]
         normalized = fout.normalize_tensor(img, mean, std)
     """
-    mean_t = torch.tensor(mean, dtype=img_t.dtype)
-    std_t = torch.tensor(std, dtype=img_t.dtype)
+    mean_t = torch.tensor(mean, dtype=img_t.dtype, device=img_t.device)
+    std_t = torch.tensor(std, dtype=img_t.dtype, device=img_t.device)
     return (img_t - mean_t.view(3, 1, 1)) / std_t.view(3, 1, 1)
 
 

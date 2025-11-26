@@ -48,7 +48,11 @@ def test_hrm2_download_and_load():
         from hmr2.models import download_models
 
         download_models()
-    except Exception as e:
+    except ImportError as e:
+        # Missing 4D-Humans installation
+        pytest.skip(f"4D-Humans package not installed: {e}")
+    except (OSError, RuntimeError) as e:
+        # Network/download failures are expected in CI/offline environments
         pytest.skip(f"Failed to download HRM2 models: {e}")
 
     # Create config
@@ -195,8 +199,31 @@ def test_hrm2_multi_person_inference():
     # In multi-person mode, use apply_model on a dataset (not direct predict)
     # Direct predict() only works for single-person mode
     print(f"✓ Multi-person mode configured with detections_field")
-    print(f"  Use dataset.apply_model(model, ...) for multi-person inference")
     print(f"  Mock detections added: {len(mock_detections.detections)} people")
+
+    # Run inference on the sample with detections
+    view = dataset.limit(1)
+    view.apply_model(model, label_field="human_pose", max_samples=1)
+
+    # Verify outputs were generated
+    sample.reload()
+    assert (
+        "human_pose_keypoints" in sample
+    ), "Keypoints field should be created"
+    assert (
+        "human_pose_people" in sample
+    ), "People metadata field should be created"
+
+    # Verify we got results for multiple people
+    hrm2_people = sample["human_pose_people"]
+    assert hrm2_people is not None, "HRM2 people data should be populated"
+    assert (
+        len(hrm2_people) >= 1
+    ), f"Expected at least 1 person, got {len(hrm2_people)}"
+
+    print(
+        f"✓ Multi-person inference successful: {len(hrm2_people)} people detected"
+    )
 
 
 def test_hrm2_vitdet_vs_regnety():

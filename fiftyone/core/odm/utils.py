@@ -522,8 +522,7 @@ def _merge_embedded_doc_fields(
     normalizes it into the dict representation that the rest of the module
     expects, and returns that mapping. Doing so avoids mutating list-based
     inputs in-place, which previously caused ``TypeError`` when recursively
-    merging deeply nested embedded document fields, such as HRM2 labels that
-    emit subclasses of :class:`fiftyone.core.fields.EmbeddedDocumentField`.
+    merging deeply nested embedded document fields.
 
     Args:
         fields_dict: the aggregated field mapping collected so far; may be a
@@ -600,27 +599,6 @@ def _merge_embedded_doc_fields(
             )
 
     return merged
-
-
-def _init_embedded_doc_fields(field):
-    """Converts a field's nested fields from list to dictionary format.
-
-    This helper recursively transforms the "fields" list of an embedded document
-    field specification into a dictionary keyed by field name, enabling efficient
-    merging during schema aggregation. It modifies the field spec in place.
-
-    Args:
-        field: a field specification dict with a "fields" key containing a list
-            of nested field specs
-    """
-    fields_dict = {}
-    for _field in field["fields"]:
-        if _field["ftype"] == fof.EmbeddedDocumentField:
-            _init_embedded_doc_fields(_field)
-
-        fields_dict[_field["name"]] = _field
-
-    field["fields"] = fields_dict
 
 
 def _finalize_embedded_doc_fields(fields_dict):
