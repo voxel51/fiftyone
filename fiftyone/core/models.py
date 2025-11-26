@@ -727,12 +727,6 @@ def _do_export_array(label, input_path, filename_maker):
             input_path, output_ext=".png"
         )
         label.export_map(map_path, update=True)
-    elif isinstance(label, fol.MeshInstances3D):
-        # Generate stable .fo3d path (meshes will be in same dir)
-        scene_path = filename_maker.get_output_path(
-            input_path, output_ext=".fo3d"
-        )
-        label.export_scene(scene_path)
     elif isinstance(label, fol.Detection):
         if label.mask is not None:
             mask_path = filename_maker.get_output_path(

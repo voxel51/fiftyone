@@ -103,8 +103,6 @@ from .core.labels import (
     Polylines,
     Keypoint,
     Keypoints,
-    Keypoint3D,
-    Keypoints3D,
     Segmentation,
     Heatmap,
     TemporalDetection,
@@ -112,12 +110,6 @@ from .core.labels import (
     GeoLocation,
     GeoLocations,
     Instance,
-    Camera,
-    Mesh3D,
-    MeshInstance3D,
-    MeshInstances3D,
-    HumanPose2D,
-    HumanPoses2D,
 )
 from .core.logging import (
     get_logging_level,

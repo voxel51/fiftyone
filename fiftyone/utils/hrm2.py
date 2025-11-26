@@ -62,10 +62,13 @@ __all__ = [
     "load_hrm2_model",
     "load_smpl_model",
     "apply_hrm2_to_dataset_as_groups",
+    "export_hrm2_scene",
     "HRM2Config",
     "HRM2ModelConfig",
     "HRM2Model",
     "HRM2GetItem",
+    "SMPLParams",
+    "HRM2Person",
     "get_hrm2_skeleton",
     "HRM2_JOINT_NAMES",
     "HRM2_SKELETON_EDGES",
@@ -162,6 +165,175 @@ def get_hrm2_skeleton():
         labels=HRM2_JOINT_NAMES,
         edges=HRM2_SKELETON_EDGES,
     )
+
+
+# ---------------------------------------------------------------------------
+# Dynamic Embedded Documents for HRM2 Metadata
+# ---------------------------------------------------------------------------
+# These use FiftyOne's DynamicEmbeddedDocument for structured storage
+# without modifying labels.py. See:
+# https://docs.voxel51.com/user_guide/using_datasets.html#defining-custom-documents-on-the-fly
+
+
+class SMPLParams(fo.DynamicEmbeddedDocument):
+    """SMPL body model parameters for a detected person.
+
+    This document stores the parametric representation of a human body
+    from the SMPL model.
+
+    Attributes:
+        body_pose: body pose parameters (23 joints × 3 axis-angle), shape (69,)
+        betas: shape parameters (typically 10 values)
+        global_orient: global body orientation (3 axis-angle values)
+    """
+
+    pass
+
+
+class HRM2Person(fo.DynamicEmbeddedDocument):
+    """Per-person HRM2 prediction metadata.
+
+    This stores all HRM2 output data for a single detected person,
+    including SMPL parameters, camera, and 3D keypoints. This is a
+    dynamic document that can hold any additional attributes.
+
+    Standard attributes set by HRM2:
+        person_id: unique identifier for this person in the frame
+        smpl_params: SMPLParams document with body model parameters
+        camera_weak_perspective: [scale, tx, ty] weak perspective camera
+        camera_translation: [tx, ty, tz] full camera translation
+        keypoints_3d: list of 3D keypoint coordinates (25 × 3 for BODY-25)
+        vertices: list of mesh vertex coordinates (6890 × 3 for SMPL)
+        bbox: bounding box [x, y, width, height] in absolute pixels
+    """
+
+    pass
+
+
+def export_hrm2_scene(
+    hrm2_people: List["HRM2Person"],
+    smpl_faces: Union[np.ndarray, List],
+    frame_size: Optional[List[int]],
+    scene_path: str,
+) -> str:
+    """Export HRM2 meshes to a .fo3d scene file.
+
+    This function exports reconstructed 3D human meshes to a FiftyOne 3D scene
+    file that can be visualized in the FiftyOne App. Uses existing
+    fiftyone.core.threed infrastructure.
+
+    Args:
+        hrm2_people: list of HRM2Person documents containing mesh vertices
+        smpl_faces: SMPL face indices array, shape (F, 3)
+        frame_size: [height, width] of the originating frame, or None
+        scene_path: output path for the .fo3d scene file
+
+    Returns:
+        the path to the exported .fo3d file
+
+    Raises:
+        ValueError: if no people contain mesh geometry
+    """
+    import hashlib
+
+    from fiftyone.core.threed import Scene, ObjMesh, PerspectiveCamera
+
+    try:
+        import trimesh
+    except ImportError:
+        raise ImportError(
+            "trimesh is required for mesh export. Install it with: "
+            "pip install trimesh"
+        )
+
+    if not hrm2_people:
+        raise ValueError("Cannot export scene: no person data")
+
+    # Collect people with mesh geometry
+    people_with_meshes = [
+        p for p in hrm2_people if getattr(p, "vertices", None) is not None
+    ]
+
+    if not people_with_meshes:
+        raise ValueError(
+            "Cannot export scene: no people contain mesh geometry"
+        )
+
+    fos.ensure_basedir(scene_path)
+
+    uid = hashlib.sha1(scene_path.encode("utf-8")).hexdigest()[:10]
+    base_dir = os.path.dirname(scene_path)
+
+    # Convert faces to numpy if needed
+    if smpl_faces is not None and not isinstance(smpl_faces, np.ndarray):
+        smpl_faces = np.asarray(smpl_faces)
+
+    mesh_objects = []
+    all_vertices = []
+
+    frame_size = frame_size or [512, 512]
+
+    for person in people_with_meshes:
+        person_id = getattr(person, "person_id", len(mesh_objects))
+        vertices = np.asarray(person.vertices)
+        all_vertices.append(vertices)
+
+        if smpl_faces is None:
+            logger.warning(
+                "Person %s has no face data, skipping mesh export", person_id
+            )
+            continue
+
+        # Export mesh to OBJ
+        mesh_filename = f"mesh_{uid}_person_{person_id}.obj"
+        mesh_path = os.path.join(base_dir, mesh_filename)
+
+        trimesh_obj = trimesh.Trimesh(
+            vertices=vertices, faces=smpl_faces, process=False
+        )
+        trimesh_obj.export(mesh_path)
+
+        # Add to scene
+        mesh_objects.append(
+            ObjMesh(
+                name=f"Person {person_id}",
+                obj_path=mesh_path,
+            )
+        )
+
+    if not mesh_objects:
+        raise ValueError("Cannot export scene: no meshes were generated")
+
+    # Set up camera based on mesh bounds
+    if all_vertices:
+        all_vertices = np.vstack(all_vertices)
+        center = all_vertices.mean(axis=0)
+        bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
+        camera_distance = bbox_size.max() * 1.5
+        camera_position = center + np.array([0, 0, camera_distance])
+    else:
+        # Fallback if no vertex data available
+        center = np.array([0, 0, 0])
+        camera_position = np.array([0, 0, 3])
+
+    aspect = (
+        frame_size[1] / frame_size[0] if frame_size and frame_size[0] else 1.0
+    )
+
+    camera = PerspectiveCamera(
+        position=camera_position.tolist(),
+        look_at=center.tolist(),
+        up="Y",
+        aspect=aspect,
+    )
+
+    scene = Scene(camera=camera, lights=[])
+    for mesh_obj in mesh_objects:
+        scene.add(mesh_obj)
+
+    scene.write(scene_path)
+
+    return scene_path
 
 
 def cam_crop_to_full(
@@ -782,26 +954,28 @@ class _HRM2CropHelper:
 
 
 class HRM2OutputProcessor(fout.OutputProcessor):
-    """Converts HRM2 raw outputs to FiftyOne MeshInstances3D + 2D labels.
+    """Converts HRM2 raw outputs to FiftyOne labels and metadata.
 
     This processor handles all postprocessing logic including tensor-to-Python
-    conversion and label creation. Scene export is deferred to the
-    MeshInstances3D label's export_scene() method.
+    conversion and label creation. Scene export is handled separately via
+    ``export_hrm2_scene()``.
+
+    **Output Structure:**
+    - ``keypoints``: fol.Keypoints for 2D visualization
+    - ``detections``: fol.Detections for 2D visualization
+    - ``hrm2_people``: list of HRM2Person documents with SMPL metadata
+    - ``smpl_faces``: face indices for 3D export
+    - ``frame_size``: frame dimensions for 3D export
 
     **Resource Requirements:**
-    - If ``export_meshes=True``, requires ``smpl_model`` to prepare scene metadata
+    - If ``export_meshes=True``, requires ``smpl_model`` to prepare mesh data
     - These resources are injected at runtime by HRM2Model._build_output_processor()
     - Config parameter export_meshes is set in HRM2Config
 
-    **Postprocessing Pipeline:**
-    1. Convert raw tensors to Python types (_process_person)
-    2. Prepare scene metadata using SMPL model (_prepare_scene_data)
-    3. Return dicts containing MeshInstances3D + 2D overlays ready for storage
-
     Args:
-        smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh metadata.
+        smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh data.
             Required if export_meshes=True
-        export_meshes (True): whether to prepare mesh metadata for later export.
+        export_meshes (True): whether to prepare mesh data for later export.
             If True, requires smpl_model
         confidence_thresh (None): minimum confidence threshold for filtering
         device (None): torch.device for SMPL model operations. Required if
@@ -843,7 +1017,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         frame_size: Tuple[int, int],
         confidence_thresh: Optional[float] = None,
     ) -> List[Dict[str, fol.Label]]:
-        """Convert raw HRM2 outputs to dicts of FiftyOne labels.
+        """Convert raw HRM2 outputs to dicts of FiftyOne labels and metadata.
 
         Args:
             outputs: List of raw output dicts from _forward_pass, each containing:
@@ -854,7 +1028,8 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 interface compatibility)
 
         Returns:
-            List of dicts per image containing MeshInstances3D + 2D overlays
+            List of dicts per image containing Keypoints, Detections, HRM2Person
+            documents, and export data (smpl_faces, frame_size)
         """
         results = []
 
@@ -1096,20 +1271,43 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         self,
         people_data: List[Dict[str, Any]],
         img_shape: Optional[Tuple[int, int]],
-        smpl_faces: Optional[List[Any]],
+        smpl_faces: Optional[np.ndarray],
         frame_size: Optional[List[int]],
-    ) -> Dict[str, fol.Label]:
+    ) -> Dict[str, Any]:
+        """Build outputs using existing labels + DynamicEmbeddedDocuments.
+
+        This method creates:
+        - Keypoints/Detections: existing FiftyOne labels for 2D visualization
+        - HRM2Person documents: structured metadata for SMPL params, 3D data
+
+        The 3D scene export is handled separately via export_hrm2_scene().
+
+        Args:
+            people_data: list of per-person prediction dicts
+            img_shape: (height, width) of source image
+            smpl_faces: SMPL face indices, shape (F, 3)
+            frame_size: [height, width] for scene export
+
+        Returns:
+            dict with keys:
+                - "keypoints": fol.Keypoints for 2D visualization
+                - "detections": fol.Detections for 2D visualization
+                - "hrm2_people": list of HRM2Person documents
+                - "smpl_faces": face indices for export
+                - "frame_size": frame dimensions for export
+        """
         width = height = None
         if img_shape is not None:
             height, width = img_shape
 
-        pose_wrappers = []
         keypoints_list = []
         detections_list = []
-        mesh_instances = []
+        hrm2_people = []
 
         for person_dict in people_data:
-            # Create 2D keypoints for HumanPose2D wrapper (normalized)
+            # ----------------------------------------------------------
+            # 1. Create 2D Keypoint (existing label - for App visualization)
+            # ----------------------------------------------------------
             keypoints_rel = None
             confidence = None
             keypoints_abs = person_dict.get("keypoints_2d")
@@ -1118,7 +1316,6 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     keypoints_abs, width, height
                 )
 
-            keypoint_label = None
             if keypoints_rel is not None:
                 keypoint_kwargs = {
                     "label": "person",
@@ -1126,126 +1323,59 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                 }
                 if confidence is not None:
                     keypoint_kwargs["confidence"] = confidence
-                keypoint_label = fol.Keypoint(**keypoint_kwargs)
+                keypoints_list.append(fol.Keypoint(**keypoint_kwargs))
 
-            # Create 2D detection for HumanPose2D wrapper (normalized)
-            detection_label = None
+            # ----------------------------------------------------------
+            # 2. Create 2D Detection (existing label - for App visualization)
+            # ----------------------------------------------------------
             bbox_rel = self._normalize_bbox(
                 person_dict.get("bbox"), width, height
             )
             if bbox_rel is not None:
-                detection_label = fol.Detection(
-                    label="person",
-                    bounding_box=bbox_rel,
-                    relative_coordinate=True,  # Normalized coords for 2D overlay
-                )
-
-            if keypoint_label:
-                keypoints_list.append(keypoint_label)
-            if detection_label:
-                detections_list.append(detection_label)
-            if keypoint_label or detection_label:
-                pose_wrappers.append(
-                    fol.HumanPose2D(
-                        pose=keypoint_label,
-                        detection=detection_label,
+                detections_list.append(
+                    fol.Detection(
+                        label="person",
+                        bounding_box=bbox_rel,
                     )
                 )
 
-            # Create model-agnostic 3D labels (MeshInstance3D)
-            # Store SMPL-specific parameters in attributes dict
+            # ----------------------------------------------------------
+            # 3. Create HRM2Person metadata (DynamicEmbeddedDocument)
+            # ----------------------------------------------------------
             smpl_dict = person_dict.get("smpl_params", {})
-            attributes = {
-                "source": "hrm2",
-                "smpl_params": {
-                    "body_pose": smpl_dict.get("body_pose"),
-                    "betas": smpl_dict.get("betas"),
-                    "global_orient": smpl_dict.get("global_orient"),
-                    "camera": smpl_dict.get("camera"),
-                },
-            }
 
-            # Create Camera object from camera parameters
-            camera_translation = person_dict.get("camera_translation")
-            camera_weak_persp = smpl_dict.get("camera")
-            camera = fol.Camera(
-                weak_perspective=camera_weak_persp,
-                translation=camera_translation,
+            # Create SMPLParams embedded document
+            smpl_params_doc = SMPLParams(
+                body_pose=smpl_dict.get("body_pose"),
+                betas=smpl_dict.get("betas"),
+                global_orient=smpl_dict.get("global_orient"),
             )
 
-            # Create Mesh3D from vertices and faces
-            mesh = None
-            vertices = person_dict.get("vertices")
-            if vertices is not None:
-                mesh = fol.Mesh3D(
-                    vertices=vertices,
-                    faces=smpl_faces.tolist()
-                    if smpl_faces is not None
-                    else None,
-                )
-
-            # Create Detection with absolute coordinates for 3D instance
-            instance_detection = None
-            bbox_abs = person_dict.get("bbox")
-            if bbox_abs is not None:
-                instance_detection = fol.Detection(
-                    label="person",
-                    bounding_box=bbox_abs,
-                    relative_coordinate=False,  # Absolute pixel coordinates
-                )
-
-            # Create 2D keypoints (normalized) for MeshInstance3D
-            instance_keypoints_2d = None
-            if keypoints_rel is not None:
-                instance_keypoints_2d = fol.Keypoint(
-                    label="person",
-                    points=keypoints_rel,
-                    confidence=confidence,
-                )
-
-            # Create Keypoints3D from 3D keypoint data
-            instance_keypoints_3d = None
-            keypoints_3d_data = person_dict.get("keypoints_3d")
-            if keypoints_3d_data is not None:
-                # Convert raw list to Keypoints3D label
-                # HRM2 outputs 3D keypoints as Nx3 list
-                keypoints_3d_list = []
-                for idx, point in enumerate(keypoints_3d_data):
-                    kpt = fol.Keypoint3D(
-                        label="joint",
-                        points=[point],  # Single point as list
-                    )
-                    keypoints_3d_list.append(kpt)
-
-                instance_keypoints_3d = fol.Keypoints3D(
-                    keypoints=keypoints_3d_list
-                )
-
-            # Create MeshInstance3D with all components
-            mesh_instance = fol.MeshInstance3D(
-                instance_id=person_dict.get("person_id"),
-                label="person",
-                detection=instance_detection,
-                mesh=mesh,
-                keypoints_3d=instance_keypoints_3d,
-                keypoints_2d=instance_keypoints_2d,
-                camera=camera,
-                attributes=attributes,
+            # Create HRM2Person with all data
+            person_meta = HRM2Person(
+                person_id=person_dict.get("person_id"),
+                smpl_params=smpl_params_doc,
+                camera_weak_perspective=smpl_dict.get("camera"),
+                camera_translation=person_dict.get("camera_translation"),
+                keypoints_3d=person_dict.get("keypoints_3d"),
+                keypoints_2d_normalized=keypoints_rel,
+                vertices=person_dict.get("vertices"),
+                bbox=person_dict.get("bbox"),
             )
-            mesh_instances.append(mesh_instance)
+            hrm2_people.append(person_meta)
 
-        bundle: Dict[str, fol.Label] = {}
-        if pose_wrappers:
-            bundle["poses_2d"] = fol.HumanPoses2D(poses=pose_wrappers)
+        # Build output bundle
+        bundle: Dict[str, Any] = {}
         if keypoints_list:
             bundle["keypoints"] = fol.Keypoints(keypoints=keypoints_list)
         if detections_list:
             bundle["detections"] = fol.Detections(detections=detections_list)
-        if mesh_instances:
-            bundle["poses_3d"] = fol.MeshInstances3D(
-                instances=mesh_instances,
-                frame_size=frame_size,
-            )
+        if hrm2_people:
+            bundle["hrm2_people"] = hrm2_people
+
+        # Include data needed for 3D export
+        bundle["smpl_faces"] = smpl_faces
+        bundle["frame_size"] = frame_size
 
         return bundle
 
@@ -1442,7 +1572,7 @@ def load_smpl_model(  # pylint: disable=unused-argument
 def apply_hrm2_to_dataset_as_groups(
     model: "HRM2Model",
     dataset: "fo.Dataset",
-    label_field: str = "human_pose",
+    label_field: str = "hrm2",
     batch_size: int = 1,
     num_workers: int = 4,
     image_slice_name: str = "image",
@@ -1453,18 +1583,23 @@ def apply_hrm2_to_dataset_as_groups(
 
     This function converts an image dataset into a grouped dataset where each
     group contains:
-    - An image slice with the original image and 2D keypoints
-    - A 3D slice with the reconstructed mesh scene and 3D data
+    - An image slice with the original image, 2D keypoints, and HRM2 metadata
+    - A 3D slice with the reconstructed mesh scene (.fo3d file)
 
     This is the standard FiftyOne pattern for linking 2D images with 3D
     reconstructions and enables 3D visualization in the FiftyOne App.
 
+    Output fields on image samples:
+        - ``{label_field}_keypoints``: Keypoints label for 2D visualization
+        - ``{label_field}_detections``: Detections label for 2D visualization
+        - ``{label_field}_people``: list of HRM2Person documents with metadata
+
+    The 3D scene sample has only a filepath pointing to the .fo3d file.
+
     Args:
         model: an HRM2Model instance
         dataset: the FiftyOne dataset to process
-        label_field (str): base name for label fields (will create
-            "{label_field}_2d" on image samples and "{label_field}_3d" on
-            scene samples)
+        label_field (str): base name for label fields
         batch_size (int): batch size for inference
         num_workers (int): number of workers for data loading
         image_slice_name (str): name for the image slice in groups
@@ -1511,11 +1646,13 @@ def apply_hrm2_to_dataset_as_groups(
             }
         )
 
+    # Field mapping for model outputs
     label_fields_map = {
-        "poses_3d": f"{label_field}_3d",
-        "poses_2d": f"{label_field}_2d",
         "keypoints": f"{label_field}_keypoints",
         "detections": f"{label_field}_detections",
+        "hrm2_people": f"{label_field}_people",
+        "smpl_faces": f"{label_field}_smpl_faces",
+        "frame_size": f"{label_field}_frame_size",
     }
 
     # Apply model to get predictions
@@ -1528,7 +1665,7 @@ def apply_hrm2_to_dataset_as_groups(
     )
 
     # Collect predictions with scene paths
-    def _get_label(sample, field_name):
+    def _get_field(sample, field_name):
         try:
             return sample.get_field(field_name)
         except KeyError:
@@ -1537,26 +1674,39 @@ def apply_hrm2_to_dataset_as_groups(
     predictions = []
     for idx, sample in enumerate(dataset.iter_samples()):
         pred = {
-            key: _get_label(sample, field_name)
+            key: _get_field(sample, field_name)
             for key, field_name in label_fields_map.items()
         }
 
-        # Export scene if output_dir is provided and mesh exists
-        pose_3d = pred.get("poses_3d")
+        # Export scene if output_dir is provided and people data exists
+        hrm2_people = pred.get("hrm2_people")
+        smpl_faces = pred.get("smpl_faces")
+        frame_size = pred.get("frame_size")
         exported_scene_path = None
-        if output_dir and pose_3d and pose_3d.instances:
-            # Generate unique scene path
-            scene_filename = f"scene_{idx:06d}.fo3d"
-            scene_path = os.path.join(output_dir, scene_filename)
 
-            # Export scene and capture the returned path
-            try:
-                exported_scene_path = pose_3d.export_scene(scene_path)
-                logger.debug("Exported scene to %s", exported_scene_path)
-            except Exception as e:
-                logger.warning(
-                    "Failed to export scene for sample %d: %s", idx, e
-                )
+        if output_dir and hrm2_people:
+            # Check if any person has mesh vertices
+            has_meshes = any(
+                getattr(p, "vertices", None) is not None for p in hrm2_people
+            )
+            if has_meshes and smpl_faces is not None:
+                # Generate unique scene path
+                scene_filename = f"scene_{idx:06d}.fo3d"
+                scene_path = os.path.join(output_dir, scene_filename)
+
+                # Export scene using standalone function
+                try:
+                    exported_scene_path = export_hrm2_scene(
+                        hrm2_people=hrm2_people,
+                        smpl_faces=smpl_faces,
+                        frame_size=frame_size,
+                        scene_path=scene_path,
+                    )
+                    logger.debug("Exported scene to %s", exported_scene_path)
+                except Exception as e:
+                    logger.warning(
+                        "Failed to export scene for sample %d: %s", idx, e
+                    )
 
         # Store the exported scene path in the prediction dict
         pred["exported_scene_path"] = exported_scene_path
@@ -1584,27 +1734,26 @@ def apply_hrm2_to_dataset_as_groups(
         for field_name, field_value in orig_data["fields"].items():
             image_sample[field_name] = field_value
 
-        pose_2d = pred.get("poses_2d")
+        # Add HRM2 predictions
         keypoints = pred.get("keypoints")
         detections = pred.get("detections")
-        pose_3d = pred.get("poses_3d")
+        hrm2_people = pred.get("hrm2_people")
 
-        if pose_2d:
-            image_sample[label_fields_map["poses_2d"]] = pose_2d
         if keypoints:
             image_sample[label_fields_map["keypoints"]] = keypoints
         if detections:
             image_sample[label_fields_map["detections"]] = detections
+        if hrm2_people:
+            image_sample[label_fields_map["hrm2_people"]] = hrm2_people
 
         all_new_samples.append(image_sample)
 
-        # Create 3D scene sample if mesh was generated
+        # Create 3D scene sample if mesh was exported
         exported_scene_path = pred.get("exported_scene_path")
-        if pose_3d and exported_scene_path is not None:
+        if exported_scene_path is not None:
+            # 3D scene sample - just the filepath, no labels needed
             scene_sample = fo.Sample(filepath=exported_scene_path)
             scene_sample["group"] = group.element(scene_slice_name)
-
-            scene_sample[label_fields_map["poses_3d"]] = pose_3d
             all_new_samples.append(scene_sample)
 
     # Add all samples at once - FiftyOne will detect groups automatically
@@ -1631,8 +1780,8 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
             register at https://smpl.is.tue.mpg.de/ to obtain this file
         checkpoint_version ("2.0b"): version of HRM2 checkpoint to use
         confidence_thresh (None): confidence threshold for keypoint filtering
-        export_meshes (True): whether to prepare 3D mesh metadata for later export.
-            If True, MeshInstances3D labels will contain all data needed for export.
+        export_meshes (True): whether to prepare 3D mesh data for later export.
+            If True, HRM2Person documents will contain vertex data for export.
             Actual files are written when output_dir is provided to apply_model()
         detections_field (None): optional field name containing person detections
             to use for multi-person processing. If provided, HRM2 will process
@@ -1953,8 +2102,8 @@ class HRM2Model(
             img: input image as PIL.Image, numpy array (HWC), or torch.Tensor
 
         Returns:
-            Dict containing MeshInstances3D, HumanPoses2D, Keypoints, and/or
-            Detections labels, depending on model outputs
+            Dict containing Keypoints, Detections, HRM2Person documents,
+            and export data (smpl_faces, frame_size)
         """
         return self.predict_all([img])[0]
 
@@ -2012,8 +2161,8 @@ class HRM2Model(
         """Process batch and return label bundles via output processor.
 
         This method receives data from the GetItem instance, performs inference
-        via _forward_pass(), and converts raw outputs to MeshInstances3D/2D labels
-        using the output processor.
+        via _forward_pass(), and converts raw outputs to FiftyOne labels and
+        HRM2Person metadata using the output processor.
 
         Args:
             batch_data: list of dicts from GetItem, each containing:
