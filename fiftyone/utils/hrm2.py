@@ -54,6 +54,8 @@ try:
 except ImportError:  # pragma: no cover - dependency optional
     skimage_gaussian_filter = None
 
+smplx = fou.lazy_import("smplx", callback=lambda: fou.ensure_import("smplx"))
+
 logger = logging.getLogger(__name__)
 
 __all__ = [
@@ -1012,8 +1014,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     def __call__(
         self,
         outputs: List[Dict[str, Any]],
-        _frame_size: Tuple[int, int],
-        _confidence_thresh: Optional[float] = None,
+        **kwargs: Any,
     ) -> List[Dict[str, fol.Label]]:
         """Convert raw HRM2 outputs to dicts of FiftyOne labels and metadata.
 
@@ -1021,10 +1022,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             outputs: List of raw output dicts from _forward_pass, each containing:
                 - "people": List of person detection dicts with raw tensors
                 - "img_shape": (height, width) of the source image
-            _frame_size: (width, height) tuple. Not used by HRM2 (we use img_shape
-                from outputs) but required by OutputProcessor interface
-            _confidence_thresh: optional confidence threshold. Not used by HRM2
-                (filtering happens at detection stage) but required by interface
+            **kwargs: additional arguments from OutputProcessor interface (unused)
 
         Returns:
             List of dicts per image containing Keypoints, Detections, HRM2Person
@@ -1552,14 +1550,6 @@ def load_smpl_model(smpl_model_path: str) -> Any:
         FileNotFoundError: if SMPL model file doesn't exist
         ImportError: if smplx package is not installed
     """
-    try:
-        from smplx import SMPL
-    except ImportError as e:
-        raise ImportError(
-            f"Failed to import SMPL dependencies: {e}. "
-            f"Please install smplx: pip install smplx"
-        ) from e
-
     if not os.path.exists(smpl_model_path):
         raise FileNotFoundError(
             f"SMPL model not found at {smpl_model_path}. "
@@ -1567,7 +1557,7 @@ def load_smpl_model(smpl_model_path: str) -> Any:
             f"obtain the SMPL_NEUTRAL.pkl file."
         )
 
-    model = SMPL(
+    model = smplx.SMPL(
         model_path=os.path.dirname(smpl_model_path),
         gender="neutral",
         batch_size=1,
@@ -1579,8 +1569,8 @@ def load_smpl_model(smpl_model_path: str) -> Any:
 
 
 def apply_hrm2_to_dataset_as_groups(
+    sample_collection: "fo.SampleCollection",
     model: "HRM2Model",
-    dataset: "fo.Dataset",
     label_field: str = "hrm2",
     batch_size: int = 1,
     num_workers: int = 4,
@@ -1606,8 +1596,8 @@ def apply_hrm2_to_dataset_as_groups(
     The 3D scene sample has only a filepath pointing to the .fo3d file.
 
     Args:
+        sample_collection: the FiftyOne dataset or view to process
         model: an HRM2Model instance
-        dataset: the FiftyOne dataset to process
         label_field (str): base name for label fields
         batch_size (int): batch size for inference
         num_workers (int): number of workers for data loading
@@ -1620,6 +1610,16 @@ def apply_hrm2_to_dataset_as_groups(
     Returns:
         the grouped dataset
     """
+    # Reject grouped datasets upfront
+    if sample_collection.media_type == "group":
+        raise ValueError(
+            "apply_hrm2_to_dataset_as_groups() expects a non-grouped dataset. "
+            "The input dataset has media_type='group'."
+        )
+
+    # Get the underlying dataset (may be a view)
+    dataset = sample_collection._dataset
+
     # Set default output_dir if not specified
     if output_dir is None:
         output_dir = os.path.join(fo.config.model_zoo_dir, "hrm2")
@@ -1632,28 +1632,9 @@ def apply_hrm2_to_dataset_as_groups(
         os.makedirs(output_dir, exist_ok=True)
         logger.info("Scene files will be exported to: %s", output_dir)
 
-    # Check if dataset is already grouped
-    if dataset.media_type == "group":
-        logger.warning(
-            "Dataset is already grouped. This will add new slices to "
-            "existing groups."
-        )
-
-    # Store original sample info before clearing
-    logger.info("Processing %d samples...", len(dataset))
-    original_data = []
-    for sample in dataset.iter_samples():
-        original_data.append(
-            {
-                "filepath": sample.filepath,
-                "id": sample.id,
-                "fields": {
-                    k: sample[k]
-                    for k in sample.field_names
-                    if k not in ["id", "filepath", "metadata", "_media_type"]
-                },
-            }
-        )
+    # Apply model directly to the sample collection (adds prediction fields)
+    logger.info("Processing %d samples...", len(sample_collection))
+    sample_collection = sample_collection.clone()
 
     # Field mapping for model outputs
     label_fields_map = {
@@ -1664,8 +1645,8 @@ def apply_hrm2_to_dataset_as_groups(
         "frame_size": f"{label_field}_frame_size",
     }
 
-    # Apply model to get predictions
-    dataset.apply_model(
+    # Apply model to get predictions (adds fields to sample_collection)
+    sample_collection.apply_model(
         model,
         label_field=label_fields_map,
         batch_size=batch_size,
@@ -1673,26 +1654,23 @@ def apply_hrm2_to_dataset_as_groups(
         output_dir=output_dir,
     )
 
-    # Collect predictions with scene paths
+    # Collect scene export metadata
     def _get_field(sample, field_name):
         try:
             return sample.get_field(field_name)
         except KeyError:
             return None
 
-    predictions = []
-    for idx, sample in enumerate(dataset.iter_samples()):
-        pred = {
-            key: _get_field(sample, field_name)
-            for key, field_name in label_fields_map.items()
-        }
+    # Export scenes and collect filepaths mapped to sample filepaths
+    scene_paths_map = {}  # Maps image filepath -> scene filepath
+    logger.info("Exporting 3D scenes...")
+    for idx, sample in enumerate(sample_collection.iter_samples()):
+        # Get prediction data
+        hrm2_people = _get_field(sample, label_fields_map["hrm2_people"])
+        smpl_faces = _get_field(sample, label_fields_map["smpl_faces"])
+        frame_size = _get_field(sample, label_fields_map["frame_size"])
 
         # Export scene if output_dir is provided and people data exists
-        hrm2_people = pred.get("hrm2_people")
-        smpl_faces = pred.get("smpl_faces")
-        frame_size = pred.get("frame_size")
-        exported_scene_path = None
-
         if output_dir and hrm2_people:
             # Check if any person has mesh vertices
             has_meshes = any(
@@ -1711,54 +1689,47 @@ def apply_hrm2_to_dataset_as_groups(
                         frame_size=frame_size,
                         scene_path=scene_path,
                     )
+                    scene_paths_map[sample.filepath] = exported_scene_path
                     logger.debug("Exported scene to %s", exported_scene_path)
                 except Exception as e:
                     logger.warning(
                         "Failed to export scene for sample %d: %s", idx, e
                     )
 
-        # Store the exported scene path in the prediction dict
-        pred["exported_scene_path"] = exported_scene_path
-        predictions.append(pred)
-
-    # Clear dataset to rebuild with groups
+    # Create new grouped dataset
     logger.info("Creating grouped dataset structure...")
-    dataset.clear()
+    grouped_dataset = fo.Dataset()
+    grouped_dataset.add_group_field("group", default=image_slice_name)
 
-    # Set up the dataset for groups
-    dataset.add_group_field("group", default=image_slice_name)
-
-    # Create all new samples with groups
+    # Create grouped samples with predictions and 3D scenes
     all_new_samples = []
-
-    for orig_data, pred in zip(original_data, predictions):
+    for sample in sample_collection.iter_samples():
         # Create group
         group = fo.Group()
 
-        # Create image sample with group and 2D data
-        image_sample = fo.Sample(filepath=orig_data["filepath"])
+        # Create image sample with group and all original fields
+        image_sample = fo.Sample(filepath=sample.filepath)
         image_sample["group"] = group.element(image_slice_name)
 
-        # Restore original fields
-        for field_name, field_value in orig_data["fields"].items():
-            image_sample[field_name] = field_value
-
-        # Add HRM2 predictions
-        keypoints = pred.get("keypoints")
-        detections = pred.get("detections")
-        hrm2_people = pred.get("hrm2_people")
-
-        if keypoints:
-            image_sample[label_fields_map["keypoints"]] = keypoints
-        if detections:
-            image_sample[label_fields_map["detections"]] = detections
-        if hrm2_people:
-            image_sample[label_fields_map["hrm2_people"]] = hrm2_people
+        # Copy all fields from original sample (including predictions)
+        for field_name in sample.field_names:
+            # Skip system fields that shouldn't be copied
+            if field_name in [
+                "id",
+                "filepath",
+                "metadata",
+                "_media_type",
+                "group",
+            ]:
+                continue
+            value = _get_field(sample, field_name)
+            if value is not None:
+                image_sample[field_name] = value
 
         all_new_samples.append(image_sample)
 
         # Create 3D scene sample if mesh was exported
-        exported_scene_path = pred.get("exported_scene_path")
+        exported_scene_path = scene_paths_map.get(sample.filepath)
         if exported_scene_path is not None:
             # 3D scene sample - just the filepath, no labels needed
             scene_sample = fo.Sample(filepath=exported_scene_path)
@@ -1766,19 +1737,24 @@ def apply_hrm2_to_dataset_as_groups(
             all_new_samples.append(scene_sample)
 
     # Add all samples at once - FiftyOne will detect groups automatically
-    logger.info("Adding %d samples to dataset...", len(all_new_samples))
-    dataset.add_samples(all_new_samples)
+    logger.info(
+        "Adding %d samples to grouped dataset...", len(all_new_samples)
+    )
+    grouped_dataset.add_samples(all_new_samples)
 
     # Set BODY-25 skeleton for keypoint visualization in the App
-    dataset.default_skeleton = get_hrm2_skeleton()
-    dataset.save()
+    grouped_dataset.default_skeleton = get_hrm2_skeleton()
+    grouped_dataset.save()
     logger.info("Set HRM2 (BODY-25) skeleton for keypoint visualization")
 
-    logger.info("Created grouped dataset with %d groups", len(predictions))
-    logger.info("Dataset media type is now: %s", dataset.media_type)
-    logger.info("Dataset group slices: %s", dataset.group_slices)
+    num_groups = (
+        len(scene_paths_map) if scene_paths_map else len(sample_collection)
+    )
+    logger.info("Created grouped dataset with %d groups", num_groups)
+    logger.info("Dataset media type is now: %s", grouped_dataset.media_type)
+    logger.info("Dataset group slices: %s", grouped_dataset.group_slices)
 
-    return dataset
+    return grouped_dataset
 
 
 class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
@@ -2192,14 +2168,7 @@ class HRM2Model(
             return raw_outputs
 
         # Process through output processor
-        # Note: _frame_size not used by HRM2 but required by interface
-        frame_size = (256, 256)  # placeholder
-
-        return self._output_processor(
-            raw_outputs,
-            frame_size,
-            _confidence_thresh=self.config.confidence_thresh,
-        )
+        return self._output_processor(raw_outputs)
 
     def _forward_pass(  # pylint: disable=arguments-renamed
         self, batch_data: List[Dict[str, Any]]
