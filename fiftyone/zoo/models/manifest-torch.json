@@ -3371,7 +3371,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "transformers",
+                "official",
+                "embeddings"
+            ],
             "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -7864,7 +7870,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7901,7 +7913,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7938,7 +7956,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7975,7 +7999,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8012,7 +8042,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8049,7 +8085,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8127,7 +8169,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["classification", "torch", "official", "medical", "embeddings"],
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "MONET (dermatology image–text corpus)",
@@ -8475,6 +8523,49 @@
                 }
             ],
             "date_added": "2025-11-19 12:00:00"
+        },
+        {
+            "base_name": "hrm2-torch",
+            "base_filename": null,
+            "version": "null",
+            "description": "Reconstructs 3D human body meshes from images using the SMPL body model with state-of-the-art accuracy",
+            "source": "https://github.com/shubham-goel/4D-Humans",
+            "author": "Shubham Goel, et al.",
+            "license": "MIT",
+            "size_bytes": 2709521501,
+            "manager": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.hrm2.HRM2Model",
+                "config": {
+                    "checkpoint_version": "2.0b",
+                    "export_meshes": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "trimesh", "smplx"],
+                "cpu": {
+                    "support": false
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "3d-reconstruction",
+                "human-mesh",
+                "smpl",
+                "keypoints",
+                "pose-estimation",
+                "torch",
+                "hrm2"
+            ],
+            "training_data": [
+                {
+                    "name": "Multiple datasets",
+                    "url": "https://github.com/shubham-goel/4D-Humans"
+                }
+            ],
+            "date_added": "2025-11-04 00:00:00"
         }
     ]
 }
