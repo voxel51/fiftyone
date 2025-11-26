@@ -108,41 +108,36 @@ def test_hrm2_single_person_inference():
     img = Image.open(sample.filepath)
     result = model.predict(img)
 
-    # Result is now a dict with label types
+    # Result is now a dict with new label structure
+    from fiftyone.utils.hrm2 import HRM2Person, SMPLParams
+
     print(f"✓ Prediction successful")
-    pose_3d = result.get("poses_3d")
-    print(
-        f"  Number of people detected: {len(pose_3d.instances) if pose_3d else 0}"
-    )
-    if pose_3d and pose_3d.instances:
-        mesh_instance = pose_3d.instances[0]
-        if (
-            mesh_instance.attributes
-            and "smpl_params" in mesh_instance.attributes
-        ):
-            smpl_params = mesh_instance.attributes["smpl_params"]
+    hrm2_people = result.get("hrm2_people", [])
+    print(f"  Number of people detected: {len(hrm2_people)}")
+
+    if hrm2_people:
+        person = hrm2_people[0]
+        if person.smpl_params:
             print(
-                f"  SMPL parameters shape: body_pose={len(smpl_params['body_pose'])}, "
-                f"betas={len(smpl_params['betas'])}"
+                f"  SMPL parameters: body_pose={len(person.smpl_params.body_pose) if person.smpl_params.body_pose else 0}, "
+                f"betas={len(person.smpl_params.betas) if person.smpl_params.betas else 0}"
             )
-        if mesh_instance.keypoints_3d and mesh_instance.keypoints_3d.keypoints:
-            print(
-                f"  3D keypoints shape: {len(mesh_instance.keypoints_3d.keypoints)}"
-            )
-        if mesh_instance.keypoints_2d:
-            print(
-                f"  2D keypoints shape: {len(mesh_instance.keypoints_2d.points)}"
-            )
+        if person.keypoints_3d:
+            print(f"  3D keypoints shape: {len(person.keypoints_3d)}")
+        if person.vertices:
+            print(f"  Mesh vertices: {len(person.vertices)}")
 
     # Verify output structure
     assert isinstance(result, dict)
-    assert "poses_3d" in result
-    assert isinstance(pose_3d, fol.MeshInstances3D)
-    assert len(pose_3d.instances) > 0
-    if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
-        assert mesh_instance.attributes["smpl_params"] is not None
-    if mesh_instance.keypoints_3d:
-        assert mesh_instance.keypoints_3d.keypoints is not None
+    assert "keypoints" in result
+    assert "hrm2_people" in result
+    assert isinstance(hrm2_people, list)
+    assert len(hrm2_people) > 0
+
+    person = hrm2_people[0]
+    assert isinstance(person, HRM2Person)
+    assert person.smpl_params is not None
+    assert person.keypoints_3d is not None
 
 
 def test_hrm2_multi_person_inference():
@@ -254,19 +249,26 @@ def test_hrm2_mesh_export():
     img = Image.open(sample.filepath)
     result = model.predict(img)
 
+    from fiftyone.utils.hrm2 import HRM2Person
+
     print(f"✓ Mesh export successful")
     assert isinstance(result, dict)
-    pose_3d = result.get("poses_3d")
-    assert isinstance(pose_3d, fol.MeshInstances3D)
+    assert "hrm2_people" in result
+    assert "smpl_faces" in result
+
+    hrm2_people = result.get("hrm2_people", [])
 
     # Check result structure
-    print(f"  Number of people: {len(pose_3d.instances)}")
-    if pose_3d.instances:
-        mesh_instance = pose_3d.instances[0]
-        if mesh_instance.mesh and mesh_instance.mesh.vertices:
-            print(f"  Vertices shape: {len(mesh_instance.mesh.vertices)}")
-        if mesh_instance.mesh and mesh_instance.mesh.faces:
-            print(f"  Mesh faces shape: {len(mesh_instance.mesh.faces)}")
+    print(f"  Number of people: {len(hrm2_people)}")
+    if hrm2_people:
+        person = hrm2_people[0]
+        assert isinstance(person, HRM2Person)
+        if person.vertices:
+            print(f"  Vertices shape: {len(person.vertices)}")
+
+    smpl_faces = result.get("smpl_faces")
+    if smpl_faces is not None:
+        print(f"  SMPL faces shape: {len(smpl_faces)}")
 
 
 def test_hrm2_full_pipeline():
@@ -310,7 +312,7 @@ def test_hrm2_full_pipeline():
     result_dataset = apply_hrm2_to_dataset_as_groups(
         model,
         test_dataset,
-        label_field="human_pose",
+        label_field="hrm2",
         batch_size=1,
     )
 
@@ -324,9 +326,11 @@ def test_hrm2_full_pipeline():
         sample = result_dataset.first()
         print(f"  Group slices: {result_dataset.group_slices}")
 
-        # Check for 2D pose labels on image slice
-        if "human_pose_2d" in sample:
-            print(f"  ✓ Found 2D pose labels")
+        # Check for keypoints and people labels on image slice
+        if "hrm2_keypoints" in sample:
+            print(f"  ✓ Found 2D keypoints labels")
+        if "hrm2_people" in sample:
+            print(f"  ✓ Found HRM2 people metadata")
 
     # Cleanup
     test_dataset.delete()
@@ -371,15 +375,18 @@ def test_hrm2_batch_processing():
     print(f"✓ Batch processing complete")
     print(f"  Processed {len(results)} images")
 
-    # Results are now dicts with label types
-    import fiftyone.core.labels as fol
+    # Results are now dicts with new label structure
+    from fiftyone.utils.hrm2 import HRM2Person
 
     for i, result in enumerate(results):
         assert isinstance(result, dict)
-        pose_3d = result.get("poses_3d")
-        assert isinstance(pose_3d, fol.MeshInstances3D)
-        num_people = len(pose_3d.instances) if pose_3d else 0
+        assert "hrm2_people" in result
+        hrm2_people = result.get("hrm2_people", [])
+        assert isinstance(hrm2_people, list)
+        num_people = len(hrm2_people)
         print(f"  Image {i}: {num_people} person(s) detected")
+        if hrm2_people:
+            assert isinstance(hrm2_people[0], HRM2Person)
 
     assert len(results) == len(images)
 

@@ -75,12 +75,12 @@ process the primary person in the center of the image.
 
     # Apply the model to your dataset and create grouped samples
     # This converts your image dataset into a grouped dataset with:
-    # - "image" slice: original images with 2D keypoints
-    # - "3d" slice: 3D scene files with meshes and SMPL parameters
+    # - "image" slice: original images with 2D keypoints, detections, and HRM2 metadata
+    # - "3d" slice: 3D scene files (.fo3d) containing meshes and SMPL parameters
     dataset = fouh.apply_hrm2_to_dataset_as_groups(
         model,
         dataset,
-        label_field="human_pose",  # Creates "human_pose_2d" and "human_pose_3d" fields
+        label_field="hrm2",  # Creates "hrm2_keypoints", "hrm2_detections", "hrm2_people" fields
         batch_size=1,
         num_workers=4,
         image_slice_name="image",
@@ -125,7 +125,7 @@ detections (e.g., using YOLOv8) and pass the field name to the model.
     dataset = fouh.apply_hrm2_to_dataset_as_groups(
         model,
         dataset,
-        label_field="human_pose",
+        label_field="hrm2",
     )
 
     session = fo.launch_app(dataset)
@@ -147,8 +147,7 @@ Method 2: UI Operator
 2. Click on the "Apply HRM2.0 Model" button in the samples grid actions
 3. Fill in the required parameters:
     - **SMPL Model Path**: Path to your ``SMPL_NEUTRAL.pkl`` file
-    - **Output Field Base Name**: Base name for label fields (default:
-      ``human_pose``)
+    - **Output Field Base Name**: Base name for label fields (default: ``hrm2``)
     - **Export 3D Meshes**: Whether to generate mesh files
     - **Detections Field**: (Optional) Field containing person boxes for multi-person processing
 4. Click "Execute" to run the model
@@ -165,56 +164,52 @@ The model creates a **grouped dataset** with two types of samples:
 1. Image Slice Samples
 ----------------------
 
-Each image sample contains a ``HumanPoses2D`` label (default field: ``human_pose_2d``).
+Each image sample contains standard FiftyOne labels and HRM2 metadata (using
+``label_field`` as the base name, default is ``"hrm2"``):
 
-This is a list-like container where each element is a ``HumanPose2D`` instance
-corresponding to one detected person. Each ``HumanPose2D`` wraps native
-FiftyOne label types so that you can easily access both keypoints and the
-person box:
+-   ``{label_field}_keypoints``: :class:`fiftyone.core.labels.Keypoints`
 
--   ``pose``: a :class:`fiftyone.core.labels.Keypoint` instance
+    -   2D keypoints for visualization in the App
+    -   Each keypoint has normalized coordinates ``[0, 1] x [0, 1]``
+    -   Includes per-keypoint confidence scores
 
-    -   ``pose.points``: list of 2D keypoints in normalized coordinates
-        ``[0, 1] x [0, 1]`` (Nx2)
-    -   ``pose.confidence``: optional per-keypoint confidence scores (N,)
+-   ``{label_field}_detections``: :class:`fiftyone.core.labels.Detections`
 
--   ``detection``: a :class:`fiftyone.core.labels.Detection` instance
+    -   Person bounding boxes in normalized coordinates ``[x, y, w, h]``
+    -   Each detection corresponds to one detected person
 
-    -   ``detection.bounding_box``: person box ``[x, y, w, h]`` in normalized
-        coordinates ``[0, 1]``
-    -   ``detection.instance``: shared :class:`fiftyone.core.labels.Instance`
-        used to link this 2D person to the corresponding 3D person in
-        ``MeshInstances3D.instances``
+-   ``{label_field}_people``: List of ``HRM2Person`` documents
+
+    -   Per-person metadata stored as :class:`fiftyone.DynamicEmbeddedDocument`
+    -   Each ``HRM2Person`` contains:
+
+        -   ``smpl_params``: ``SMPLParams`` document with ``body_pose``, ``betas``, ``global_orient``
+        -   ``camera``: dict with camera parameters (translation, weak_perspective)
+        -   ``keypoints_3d``: list of 3D joint positions
+        -   ``vertices``: list of 3D mesh vertices (if ``export_meshes=True``)
+        -   ``bbox``: person bounding box in normalized coordinates
+        -   ``confidence``: overall detection confidence
 
 2. 3D Scene Slice Samples
 -------------------------
 
-Each 3D scene sample (``.fo3d`` file) contains a ``MeshInstances3D`` label
-(default field: ``human_pose_3d``) with:
+Each 3D scene sample contains only a filepath to a ``.fo3d`` scene file. The
+scene file itself contains:
 
--   **instances**: List of :class:`fiftyone.core.labels.MeshInstance3D` objects,
-    each representing one detected person with:
+-   **3D meshes**: One mesh per detected person with SMPL body geometry
+-   **Cameras**: Perspective camera for each person
+-   **Metadata**: Frame size and scene information
 
-    -   ``instance_id``: numeric identifier
-    -   ``label``: semantic label (typically "person")
-    -   ``detection``: :class:`fiftyone.core.labels.Detection` (absolute pixel coordinates)
-    -   ``mesh``: :class:`fiftyone.core.labels.Mesh3D` with vertices and faces
-    -   ``keypoints_3d``: :class:`fiftyone.core.labels.Keypoints3D` label
-    -   ``keypoints_2d``: :class:`fiftyone.core.labels.Keypoint` (normalized [0, 1])
-    -   ``camera``: :class:`fiftyone.core.labels.Camera` (weak_perspective + translation)
-    -   ``attributes``: dict containing model-specific parameters:
-
-        -   ``"source"``: ``"hrm2"``
-        -   ``"smpl_params"``: dict with body_pose, betas, global_orient, camera
-
--   **frame_size**: [height, width] of the originating frame
--   **camera**: Optional :class:`fiftyone.core.labels.Camera` for scene-level camera
+To access the 3D data programmatically, you can parse the ``.fo3d`` file (JSON
+format) or use the ``export_hrm2_scene()`` function to create custom exports.
 
 .. note::
 
-    **SMPL Parameters**: SMPL-specific data is stored in
-    ``mesh_instance.attributes["smpl_params"]`` dictionary, making the structure
-    model-agnostic while preserving all SMPL information.
+    **SMPL Parameters**: SMPL body model parameters (body_pose, betas,
+    global_orient) are stored in the ``{label_field}_people`` field on image
+    samples as ``HRM2Person`` documents. This uses FiftyOne's
+    ``DynamicEmbeddedDocument`` pattern, keeping the integration modular without
+    requiring changes to core label types.
 
 Accessing Results
 -----------------
@@ -223,6 +218,7 @@ Accessing Results
     :linenos:
 
     import fiftyone as fo
+    from fiftyone.utils.hrm2 import HRM2Person, SMPLParams
 
     #
     # Get image/3D slices from the grouped dataset
@@ -231,64 +227,56 @@ Accessing Results
     scene_slice = dataset.select_group_slices("3d")
 
     #
-    # Access 2D poses on the image slice
+    # Access HRM2 results on the image slice
     #
-    img_sample = image_slice.match(fo.ViewField("human_pose_2d") != None).first()
-    pose_2d_list = img_sample.human_pose_2d  # HumanPoses2D
+    img_sample = image_slice.match(fo.ViewField("hrm2_people") != None).first()
 
-    if pose_2d_list and pose_2d_list.poses:
-        first_person_2d = pose_2d_list.poses[0]  # HumanPose2D
+    # Access 2D keypoints for visualization
+    keypoints = img_sample.hrm2_keypoints  # fol.Keypoints
+    if keypoints and keypoints.keypoints:
+        first_kp = keypoints.keypoints[0]  # First person
+        print("2D keypoints:", first_kp.points)
+        print("Confidences:", first_kp.confidence)
 
-        # 2D Keypoints (normalized [0, 1])
-        keypoints_2d = first_person_2d.pose.points
-        confidences = first_person_2d.pose.confidence
+    # Access person detections
+    detections = img_sample.hrm2_detections  # fol.Detections
+    if detections and detections.detections:
+        first_det = detections.detections[0]
+        print("Person bbox:", first_det.bounding_box)
 
-        # Person bounding box (normalized [0, 1])
-        bbox_2d = first_person_2d.detection.bounding_box
+    # Access HRM2-specific metadata
+    hrm2_people = img_sample.hrm2_people  # List[HRM2Person]
+    if hrm2_people:
+        first_person = hrm2_people[0]  # HRM2Person document
 
-        print("First person 2D keypoints:", keypoints_2d)
-        print("First person 2D bbox:", bbox_2d)
+        # Access SMPL parameters
+        if first_person.smpl_params:
+            smpl = first_person.smpl_params  # SMPLParams document
+            print("Body pose shape:", len(smpl.body_pose))  # 69 params
+            print("Betas shape:", len(smpl.betas))  # 10 params
+            print("Global orient shape:", len(smpl.global_orient))  # 3 params
+
+        # Access camera parameters
+        if first_person.camera:
+            print("Camera translation:", first_person.camera.get("translation"))
+            print("Weak perspective:", first_person.camera.get("weak_perspective"))
+
+        # Access 3D keypoints
+        if first_person.keypoints_3d:
+            print("3D joints:", len(first_person.keypoints_3d))  # 25 joints
+
+        # Access mesh vertices (if export_meshes=True)
+        if first_person.vertices:
+            print("Mesh vertices:", len(first_person.vertices))  # 6890 vertices
 
     #
-    # Access the 3D scene sample with MeshInstances3D
+    # Access the 3D scene file
     #
-    scene_sample = scene_slice.match(fo.ViewField("human_pose_3d") != None).first()
-    mesh_instances = scene_sample.human_pose_3d  # MeshInstances3D
+    scene_sample = scene_slice.first()
+    print("Scene file:", scene_sample.filepath)  # Path to .fo3d file
 
-    if mesh_instances and mesh_instances.instances:
-        # Iterate through detected people
-        for mesh_instance in mesh_instances.instances:
-            # Access SMPL parameters from attributes dict
-            if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
-                smpl_params = mesh_instance.attributes["smpl_params"]
-                print("Body pose:", len(smpl_params["body_pose"]))
-                print("Shape params:", len(smpl_params["betas"]))
-
-            # Access mesh geometry
-            if mesh_instance.mesh:
-                print("Vertices:", len(mesh_instance.mesh.vertices))
-                print("Faces:", len(mesh_instance.mesh.faces))
-
-            # Access 3D keypoints
-            if mesh_instance.keypoints_3d and mesh_instance.keypoints_3d.keypoints:
-                print("3D joints:", len(mesh_instance.keypoints_3d.keypoints))
-
-            # Access 2D keypoints
-            if mesh_instance.keypoints_2d:
-                print("2D keypoints:", len(mesh_instance.keypoints_2d.points))
-
-            # Access camera
-            if mesh_instance.camera:
-                print("Translation:", mesh_instance.camera.translation)
-                print("Weak perspective:", mesh_instance.camera.weak_perspective)
-
-            # Access bounding box
-            if mesh_instance.detection:
-                print("Bbox:", mesh_instance.detection.bounding_box)
-                print("Relative coords:", mesh_instance.detection.relative_coordinate)
-
-    # View the 3D scene file path (.fo3d)
-    print("Scene file:", scene_sample.filepath)
+    # The .fo3d file is a JSON scene that can be viewed in the FiftyOne App
+    # or parsed programmatically for custom visualization
 
 .. _hrm2-skeleton-visualization:
 
@@ -355,7 +343,7 @@ automatically configured on the dataset:
 
     # Load model and apply to dataset
     model = foz.load_zoo_model("hrm2-torch", smpl_model_path="/path/to/SMPL_NEUTRAL.pkl")
-    dataset = fouh.apply_hrm2_to_dataset_as_groups(model, dataset, label_field="human_pose")
+    dataset = fouh.apply_hrm2_to_dataset_as_groups(model, dataset, label_field="hrm2")
 
     # Skeleton is automatically set
     print(f"Skeleton configured: {dataset.default_skeleton is not None}")  # True
@@ -389,9 +377,9 @@ App Visualization
 Once the skeleton is configured, the FiftyOne App will automatically render
 skeleton overlays when viewing keypoints:
 
-1. **Image slice**: The 2D keypoints (from ``human_pose_2d`` field) will display
+1. **Image slice**: The 2D keypoints (from ``hrm2_keypoints`` field) will display
    with skeleton connections overlaid on the image
-2. **3D slice**: The 3D keypoints will show the skeleton structure in the 3D viewer
+2. **3D slice**: The 3D meshes and keypoints will show in the 3D viewer
 
 The skeleton visualization helps validate:
 
@@ -483,51 +471,87 @@ Migration from Previous Versions
 _________________________________
 
 If you're upgrading from an earlier version of the HRM2 integration, the API has
-changed to use model-agnostic label structures.
+changed significantly to use standard FiftyOne labels and DynamicEmbeddedDocuments.
 
-Old API (No Longer Supported)
-------------------------------
+Old API (v1 - No Longer Supported)
+-----------------------------------
 
-The previous integration used SMPL-specific classes:
+The earliest integration used SMPL-specific classes:
 
 .. code-block:: python
 
-    # OLD - No longer available
+    # OLD v1 - No longer available
     smpl_poses = sample.human_pose_3d  # SMPLHumanPoses
-    for smpl_pose in smpl_poses.poses:  # List of SMPLHumanPose
+    for smpl_pose in smpl_poses.poses:
         body_pose = smpl_pose.smpl_params.body_pose
         betas = smpl_pose.smpl_params.betas
         vertices = smpl_pose.person_3d.vertices
 
+Mid-term API (v2 - No Longer Supported)
+----------------------------------------
+
+The intermediate version used ``MeshInstances3D``:
+
+.. code-block:: python
+
+    # OLD v2 - No longer available
+    mesh_instances = scene_sample.human_pose_3d  # MeshInstances3D
+    for mesh_instance in mesh_instances.instances:
+        smpl_params = mesh_instance.attributes["smpl_params"]
+        body_pose = smpl_params["body_pose"]
+        vertices = mesh_instance.mesh.vertices
+
 New API (Current)
 -----------------
 
-The current integration uses ``MeshInstances3D`` with SMPL parameters stored in
-the attributes dictionary:
+The current integration uses standard labels on image slices and separate 3D scene files:
 
 .. code-block:: python
 
     # NEW - Current API
-    mesh_instances = scene_sample.human_pose_3d  # MeshInstances3D
-    for mesh_instance in mesh_instances.instances:  # List of MeshInstance3D
-        # Access SMPL params from attributes dict
-        if mesh_instance.attributes and "smpl_params" in mesh_instance.attributes:
-            smpl_params = mesh_instance.attributes["smpl_params"]
-            body_pose = smpl_params["body_pose"]
-            betas = smpl_params["betas"]
+    # Access data on the image slice
+    img_sample = dataset.select_group_slices("image").first()
 
-        # Access mesh geometry
-        if mesh_instance.mesh:
-            vertices = mesh_instance.mesh.vertices
+    # Standard FiftyOne labels for visualization
+    keypoints = img_sample.hrm2_keypoints  # fol.Keypoints
+    detections = img_sample.hrm2_detections  # fol.Detections
+
+    # HRM2-specific metadata (DynamicEmbeddedDocuments)
+    hrm2_people = img_sample.hrm2_people  # List[HRM2Person]
+    for person in hrm2_people:
+        # SMPL parameters
+        body_pose = person.smpl_params.body_pose
+        betas = person.smpl_params.betas
+        global_orient = person.smpl_params.global_orient
+
+        # Mesh vertices (if export_meshes=True)
+        vertices = person.vertices
+
+        # 3D keypoints
+        keypoints_3d = person.keypoints_3d
+
+        # Camera parameters
+        camera = person.camera
+
+    # 3D scene files are separate samples with only filepath
+    scene_sample = dataset.select_group_slices("3d").first()
+    scene_path = scene_sample.filepath  # .fo3d file
 
 Key Changes
 -----------
 
--   ``SMPLHumanPoses`` → ``MeshInstances3D``
--   ``smpl_pose.smpl_params.body_pose`` → ``mesh_instance.attributes["smpl_params"]["body_pose"]``
--   ``smpl_pose.person_3d.vertices`` → ``mesh_instance.mesh.vertices``
--   ``smpl_pose.person_3d.keypoints_3d`` → ``mesh_instance.keypoints_3d``
--   SMPL parameters are now in a dict for model-agnostic design
+-   **Field names**: ``human_pose`` → ``hrm2`` (configurable via ``label_field``)
+-   **Image slice fields**:
+
+    -   ``human_pose_2d`` (HumanPoses2D) → ``hrm2_keypoints`` (fol.Keypoints), ``hrm2_detections`` (fol.Detections), ``hrm2_people`` (List[HRM2Person])
+
+-   **3D slice fields**:
+
+    -   ``human_pose_3d`` (MeshInstances3D) → No labels, only filepath to ``.fo3d`` scene
+
+-   **SMPL parameters**: Now in ``HRM2Person.smpl_params`` (SMPLParams document) on image slice
+-   **Mesh data**: Stored in ``HRM2Person.vertices`` on image slice or in ``.fo3d`` file
+-   **Architecture**: Uses DynamicEmbeddedDocument pattern instead of custom label types
 
 Citation
 ________
