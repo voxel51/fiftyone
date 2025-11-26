@@ -57,25 +57,31 @@ class MockHMR2Model:
         self.cfg.SMPL.JOINT_REGRESSOR_EXTRA = "/tmp/J_regressor_extra.npy"
 
     def __call__(self, batch):
+        import torch
+
         batch_size = batch["img"].shape[0]
-        # Return mock predictions
+        # Return mock predictions as torch tensors
         return {
-            "pred_cam": np.random.randn(batch_size, 3).astype(np.float32),
+            "pred_cam": torch.from_numpy(
+                np.random.randn(batch_size, 3).astype(np.float32)
+            ).to(torch.float32),
             "pred_smpl_params": {
-                "body_pose": np.random.randn(batch_size, 23, 3, 3).astype(
-                    np.float32
-                ),
-                "betas": np.random.randn(batch_size, 10).astype(np.float32),
-                "global_orient": np.random.randn(batch_size, 1, 3, 3).astype(
-                    np.float32
-                ),
+                "body_pose": torch.from_numpy(
+                    np.random.randn(batch_size, 23, 3, 3).astype(np.float32)
+                ).to(torch.float32),
+                "betas": torch.from_numpy(
+                    np.random.randn(batch_size, 10).astype(np.float32)
+                ).to(torch.float32),
+                "global_orient": torch.from_numpy(
+                    np.random.randn(batch_size, 1, 3, 3).astype(np.float32)
+                ).to(torch.float32),
             },
-            "pred_keypoints_3d": np.random.randn(batch_size, 24, 3).astype(
-                np.float32
-            ),
-            "pred_keypoints_2d": np.random.randn(batch_size, 24, 2).astype(
-                np.float32
-            ),
+            "pred_keypoints_3d": torch.from_numpy(
+                np.random.randn(batch_size, 24, 3).astype(np.float32)
+            ).to(torch.float32),
+            "pred_keypoints_2d": torch.from_numpy(
+                np.random.randn(batch_size, 24, 2).astype(np.float32)
+            ).to(torch.float32),
         }
 
     def to(self, device):
@@ -526,7 +532,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         ]
 
         # Call the processor (now returns a dict)
-        labels = processor(outputs, _frame_size=(640, 480))
+        labels = processor(outputs)
 
         # Verify output structure - now a dict with new format
         self.assertEqual(len(labels), 1)
@@ -631,7 +637,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         )
 
         # Call the processor - this should trigger _prepare_scene_data
-        labels = processor(outputs, _frame_size=(640, 480))
+        labels = processor(outputs)
 
         # Verify output structure
         self.assertEqual(len(labels), 1)
