@@ -9,7 +9,6 @@ import os
 import random
 import string
 import sys
-import tempfile
 import unittest
 from unittest.mock import MagicMock, Mock, patch, PropertyMock
 from types import SimpleNamespace
@@ -276,7 +275,7 @@ class HRM2ConfigTests(HRM2TestBase):
         try:
             json_str = json.dumps(config.output_processor_args)
             self.assertIsNotNone(json_str)
-        except Exception as e:
+        except TypeError as e:
             self.fail(f"Config args should be JSON-serializable: {e}")
 
     def test_hrm2_config_output_processor_args_values(self):
@@ -527,7 +526,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         ]
 
         # Call the processor (now returns a dict)
-        labels = processor(outputs, frame_size=(640, 480))
+        labels = processor(outputs, _frame_size=(640, 480))
 
         # Verify output structure - now a dict with new format
         self.assertEqual(len(labels), 1)
@@ -632,7 +631,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         )
 
         # Call the processor - this should trigger _prepare_scene_data
-        labels = processor(outputs, frame_size=(640, 480))
+        labels = processor(outputs, _frame_size=(640, 480))
 
         # Verify output structure
         self.assertEqual(len(labels), 1)
@@ -706,10 +705,10 @@ class HRM2ModelTests(HRM2TestBase):
         self,
         mock_get_config,
         mock_hmr2_class,
-        mock_load,
-        mock_exists,
-        mock_resolve_config,
-        mock_get_checkpoint,
+        _mock_load,
+        _mock_exists,
+        _mock_resolve_config,
+        _mock_get_checkpoint,
     ):
         """Test HRM2Model initialization with mocked dependencies."""
         import fiftyone.utils.hrm2 as hrm2_module
@@ -749,7 +748,11 @@ class HRM2ModelTests(HRM2TestBase):
     @patch("os.path.exists", return_value=True)
     @patch("torch.load", return_value={"state_dict": {}})
     def test_hrm2_model_predict_single_person(
-        self, mock_load, mock_exists, mock_resolve_config, mock_get_checkpoint
+        self,
+        _mock_load,
+        _mock_exists,
+        _mock_resolve_config,
+        _mock_get_checkpoint,
     ):
         """Test HRM2Model prediction in single-person mode."""
         from fiftyone.utils.hrm2 import HRM2Model
@@ -842,7 +845,10 @@ class HRM2ModelTests(HRM2TestBase):
         from fiftyone.utils.torch import get_target_size
 
         model = object.__new__(HRM2Model)
-        model.config = SimpleNamespace(confidence_thresh=None)
+        model.config = SimpleNamespace(
+            confidence_thresh=None,
+            use_half_precision=False,
+        )
         model._device = "cpu"
         model._hmr2 = SimpleNamespace()
         model._hmr2.cfg = SimpleNamespace(
@@ -932,7 +938,7 @@ class HRM2ModelTests(HRM2TestBase):
                                 return_value={"person": 0},
                             ) as mock_build:
                                 result = model._inference_single_person(
-                                    test_img, 0
+                                    test_img
                                 )
 
         self.assertEqual(mock_preprocessor.call_count, 1)
@@ -971,7 +977,10 @@ class HRM2ModelTests(HRM2TestBase):
 
         # Setup model with minimal mocking
         model = object.__new__(HRM2Model)
-        model.config = SimpleNamespace(confidence_thresh=None)
+        model.config = SimpleNamespace(
+            confidence_thresh=None,
+            use_half_precision=False,
+        )
         model._device = torch.device("cpu")
         model._preprocessor = None
 
@@ -1009,7 +1018,7 @@ class HRM2ModelTests(HRM2TestBase):
 
         # This should execute ALL real internal code: _build_person_raw, etc.
         # If person_data=None bug existed, this would fail
-        result = model._inference_single_person(test_img, 0)
+        result = model._inference_single_person(test_img)
 
         # Verify structure
         self.assertIn("people", result)

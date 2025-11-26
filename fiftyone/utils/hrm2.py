@@ -39,8 +39,6 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 from fiftyone.utils.torch import (
     ensure_rgb_numpy,
-    resize_tensor,
-    normalize_tensor,
     get_target_size,
     detections_to_boxes,
 )
@@ -1014,8 +1012,8 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     def __call__(
         self,
         outputs: List[Dict[str, Any]],
-        frame_size: Tuple[int, int],
-        confidence_thresh: Optional[float] = None,
+        _frame_size: Tuple[int, int],
+        _confidence_thresh: Optional[float] = None,
     ) -> List[Dict[str, fol.Label]]:
         """Convert raw HRM2 outputs to dicts of FiftyOne labels and metadata.
 
@@ -1023,9 +1021,10 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             outputs: List of raw output dicts from _forward_pass, each containing:
                 - "people": List of person detection dicts with raw tensors
                 - "img_shape": (height, width) of the source image
-            frame_size: (width, height) tuple (not used but required by interface)
-            confidence_thresh: optional confidence threshold (unused, retained for
-                interface compatibility)
+            _frame_size: (width, height) tuple. Not used by HRM2 (we use img_shape
+                from outputs) but required by OutputProcessor interface
+            _confidence_thresh: optional confidence threshold. Not used by HRM2
+                (filtering happens at detection stage) but required by interface
 
         Returns:
             List of dicts per image containing Keypoints, Detections, HRM2Person
@@ -1221,9 +1220,16 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         # Prepare scene metadata
         frame_size = list(img_shape) if img_shape is not None else [512, 512]
 
+        # Convert SMPL faces from torch.Tensor to NumPy array (int64)
+        # FiftyOne's ArrayField requires NumPy arrays, not tensors
+        if isinstance(self._smpl.faces, torch.Tensor):
+            smpl_faces = self._smpl.faces.cpu().numpy().astype(np.int64)
+        else:
+            smpl_faces = np.asarray(self._smpl.faces, dtype=np.int64)
+
         scene_data = {
             "people": processed_people,
-            "smpl_faces": self._smpl.faces.copy(),  # Copy for storage in label
+            "smpl_faces": smpl_faces,  # NumPy array for FiftyOne compatibility
             "frame_size": frame_size,
         }
 
@@ -1530,18 +1536,21 @@ def load_hrm2_model(  # pylint: disable=unused-argument
     return model
 
 
-def load_smpl_model(  # pylint: disable=unused-argument
-    smpl_model_path: str, device: str = "cpu", **kwargs: Any
-) -> Any:
+def load_smpl_model(smpl_model_path: str) -> Any:
     """Entrypoint function for loading SMPL models.
+
+    The returned model is always on CPU. The caller (HRM2Model._load_model)
+    is responsible for moving it to the appropriate device.
 
     Args:
         smpl_model_path: path to SMPL_NEUTRAL.pkl file
-        device: device to load model on
-        **kwargs: additional arguments
 
     Returns:
-        loaded SMPL model
+        loaded SMPL model (on CPU)
+
+    Raises:
+        FileNotFoundError: if SMPL model file doesn't exist
+        ImportError: if smplx package is not installed
     """
     try:
         from smplx import SMPL
@@ -1552,7 +1561,7 @@ def load_smpl_model(  # pylint: disable=unused-argument
         ) from e
 
     if not os.path.exists(smpl_model_path):
-        raise ValueError(
+        raise FileNotFoundError(
             f"SMPL model not found at {smpl_model_path}. "
             f"Please register at https://smpl.is.tue.mpg.de/ to "
             f"obtain the SMPL_NEUTRAL.pkl file."
@@ -1884,7 +1893,7 @@ class HRM2Model(
     processing with PyTorch DataLoaders and the FiftyOne apply_model() framework.
 
     **Processing Pipeline:**
-    - **Preprocessing**: All done on CPU (_HRM2CropHelper, _preprocess_image)
+    - **Preprocessing**: All done on CPU (_HRM2CropHelper)
     - **Inference**: Tensors moved to device for forward pass only
     - **Postprocessing**: All done on CPU (_extract_predictions, _process_person)
 
@@ -1962,8 +1971,7 @@ class HRM2Model(
         # This is a runtime resource that will be injected into the output processor
         if config.smpl_model_path:
             self._smpl = load_smpl_model(
-                smpl_model_path=config.smpl_model_path,
-                device=str(self._device),
+                smpl_model_path=config.smpl_model_path
             )
 
             # Apply device and precision settings to SMPL
@@ -2063,17 +2071,20 @@ class HRM2Model(
         Returns:
             an :class:`HRM2GetItem` instance
         """
-        # Ensure field_mapping is a dict
+        # Copy field_mapping to avoid mutating caller's dict
         if field_mapping is None:
             field_mapping = {}
+        else:
+            field_mapping = dict(field_mapping)
 
         # Auto-add prompt_field if we have a detections field
+        # Check field_mapping first (pop to avoid validation errors), then config
         if "prompt_field" not in field_mapping:
-            # Check for "detections_field" in kwargs (legacy/config alias)
-            if "detections_field" in field_mapping:
-                prompt_field = field_mapping["detections_field"]
-            else:
-                # Fall back to config
+            # Pop detections_field alias if present to avoid unknown-key errors
+            prompt_field = field_mapping.pop("detections_field", None)
+
+            # Fall back to config if not in field_mapping
+            if prompt_field is None:
                 prompt_field = getattr(self.config, "detections_field", None)
 
             if prompt_field:
@@ -2181,13 +2192,13 @@ class HRM2Model(
             return raw_outputs
 
         # Process through output processor
-        # Note: frame_size not used by HRM2 but required by interface
+        # Note: _frame_size not used by HRM2 but required by interface
         frame_size = (256, 256)  # placeholder
 
         return self._output_processor(
             raw_outputs,
             frame_size,
-            confidence_thresh=self.config.confidence_thresh,
+            _confidence_thresh=self.config.confidence_thresh,
         )
 
     def _forward_pass(  # pylint: disable=arguments-renamed
@@ -2214,9 +2225,9 @@ class HRM2Model(
 
             # Process based on detection mode
             if detections is not None and len(detections.detections) > 0:
-                output = self._inference_with_detections(img, detections, idx)
+                output = self._inference_with_detections(img, detections)
             else:
-                output = self._inference_single_person(img, idx)
+                output = self._inference_single_person(img)
 
             # Carry filepath through for UID generation in output processor
             output["filepath"] = data.get("filepath")
@@ -2238,8 +2249,14 @@ class HRM2Model(
         Returns:
             dict with HMR2 model outputs including SMPL parameters and keypoints
         """
-        # Move preprocessed CPU tensor to device only for inference
-        batch = {"img": img_t.unsqueeze(0).to(self._device)}
+        # Move preprocessed CPU tensor to device for inference
+        batch_t = img_t.unsqueeze(0).to(self._device)
+
+        # Convert to half precision if configured
+        if self.config.use_half_precision:
+            batch_t = batch_t.half()
+
+        batch = {"img": batch_t}
         with torch.no_grad():
             return self._hmr2(batch)
 
@@ -2378,14 +2395,12 @@ class HRM2Model(
         self,
         img: Union[Image.Image, np.ndarray, torch.Tensor],
         detections: fol.Detections,
-        global_idx: int,
     ) -> Dict[str, Any]:
         """Run inference using provided detections (multi-person mode).
 
         Args:
             img: image from GetItem (PIL/numpy/tensor)
             detections: fol.Detections object with bounding boxes
-            global_idx: image index for logging
 
         Returns:
             raw output dict with 'people' list (raw tensors) and 'img_shape'
@@ -2399,16 +2414,15 @@ class HRM2Model(
 
         if boxes is None or len(boxes) == 0:
             logger.warning(
-                "No valid boxes for image %d, using single-person mode",
-                global_idx,
+                "No valid boxes for image, using single-person mode"
             )
-            return self._inference_single_person(img, global_idx)
+            return self._inference_single_person(img)
 
-        logger.info("Processing %d people in image %d", len(boxes), global_idx)
+        logger.debug("Processing %d people in image", len(boxes))
 
         # Process each person - returns raw tensors
         people_data = [
-            self._inference_person_crop(img_np, box, person_idx, global_idx)
+            self._inference_person_crop(img_np, box, person_idx)
             for person_idx, box in enumerate(boxes)
         ]
 
@@ -2422,7 +2436,6 @@ class HRM2Model(
         img_np: np.ndarray,
         box: np.ndarray,
         person_idx: int,
-        global_idx: int,  # pylint: disable=unused-argument
     ) -> Dict[str, Any]:
         """Run inference on a single person crop from the image.
 
@@ -2430,7 +2443,6 @@ class HRM2Model(
             img_np: image as numpy array (HWC uint8)
             box: bounding box [x1, y1, x2, y2] in absolute coordinates
             person_idx: person index within the image
-            global_idx: global image index for logging
 
         Returns:
             person detection dict with raw tensors
@@ -2496,13 +2508,11 @@ class HRM2Model(
     def _inference_single_person(
         self,
         img: Union[Image.Image, np.ndarray, torch.Tensor],
-        global_idx: int,  # pylint: disable=unused-argument
     ) -> Dict[str, Any]:
         """Run inference on full image in single-person mode.
 
         Args:
             img: image from GetItem (PIL/numpy/tensor)
-            global_idx: image index for logging
 
         Returns:
             raw output dict with single person in 'people' list and 'img_shape'
@@ -2569,28 +2579,3 @@ class HRM2Model(
         )
 
         return {"people": [person_data], "img_shape": img_shape}
-
-    def _preprocess_image(self, img: np.ndarray) -> torch.Tensor:
-        """Preprocess a single image for HMR2.
-
-        Args:
-            img: numpy array (HWC, uint8)
-
-        Returns:
-            torch.Tensor: torch tensor (CHW, float, normalized) on CPU
-        """
-        # All preprocessing is done on CPU
-        # Convert to tensor (from_numpy creates CPU tensor)
-        img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
-
-        # Resize
-        target_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
-        target_h, target_w = get_target_size(target_size)
-        img_t = resize_tensor(img_t, target_h, target_w)
-
-        # Normalize
-        mean = self._hmr2.cfg.MODEL.IMAGE_MEAN
-        std = self._hmr2.cfg.MODEL.IMAGE_STD
-        img_t = normalize_tensor(img_t, mean, std)
-
-        return img_t
