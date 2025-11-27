@@ -15,8 +15,7 @@ dataset permissions *are enforced*.
 
 .. note::
 
-   **API connections are currently in beta.** The recommended stable solution
-   is to use your Enterprise deployment's
+   The recommended stable solution is to use your Enterprise deployment's
    :ref:`MongoDB connection <configuring-mongodb-connection>`.
 
 .. _configuring-an-api-connection:
