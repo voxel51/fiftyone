@@ -2,8 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { EventBus } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
+import { getEventBus } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import type { Selectable } from "./Selectable";
 
 /**
@@ -29,8 +29,7 @@ export class SelectionManager {
 
   private selectedOverlays = new Set<string>();
   private selectableOverlays = new Map<string, Selectable>();
-
-  constructor(public eventBus: EventBus) {}
+  private readonly eventBus = getEventBus<LighterEventGroup>();
 
   /**
    * Registers a selectable overlay with the selection manager.
@@ -77,15 +76,12 @@ export class SelectionManager {
     this.selectedOverlays.add(id);
     overlay.setSelected(true);
 
-    this.eventBus.emit({
-      type: LIGHTER_EVENTS.OVERLAY_SELECT,
-      detail: {
-        id,
-        // point not relevant yet
-        point: { x: 0, y: 0 },
-        ignoreSideEffects,
-        isShiftPressed: event?.shiftKey || false,
-      },
+    this.eventBus.dispatch("lighter:overlay-select", {
+      id,
+      // point not relevant yet
+      point: { x: 0, y: 0 },
+      ignoreSideEffects,
+      isShiftPressed: event?.shiftKey || false,
     });
 
     this.emitSelectionChanged([id], []);
@@ -107,9 +103,9 @@ export class SelectionManager {
     this.selectedOverlays.delete(id);
     overlay.setSelected(false);
 
-    this.eventBus.emit({
-      type: LIGHTER_EVENTS.OVERLAY_DESELECT,
-      detail: { id, ignoreSideEffects },
+    this.eventBus.dispatch("lighter:overlay-deselect", {
+      id,
+      ignoreSideEffects,
     });
 
     this.emitSelectionChanged([], [id]);
@@ -151,12 +147,9 @@ export class SelectionManager {
 
     this.selectedOverlays.clear();
 
-    this.eventBus.emit({
-      type: LIGHTER_EVENTS.SELECTION_CLEARED,
-      detail: {
-        ignoreSideEffects,
-        previouslySelectedIds: previouslySelected,
-      },
+    this.eventBus.dispatch("lighter:selection-cleared", {
+      ignoreSideEffects,
+      previouslySelectedIds: previouslySelected,
     });
 
     this.emitSelectionChanged([], previouslySelected);
@@ -203,9 +196,9 @@ export class SelectionManager {
   ): void {
     if (selectedIds.length === 0 && deselectedIds.length === 0) return;
 
-    this.eventBus.emit({
-      type: LIGHTER_EVENTS.SELECTION_CHANGED,
-      detail: { selectedIds, deselectedIds },
+    this.eventBus.dispatch("lighter:selection-changed", {
+      selectedIds,
+      deselectedIds,
     });
   }
 

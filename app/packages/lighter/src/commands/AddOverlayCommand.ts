@@ -18,8 +18,8 @@ export class AddOverlayCommand implements Command {
   constructor(
     private scene: Scene2D,
     private overlay: BaseOverlay | InteractiveDetectionHandler,
-    private absoluteBounds: Rect,
-    private relativeBounds: Rect
+    private absoluteBounds?: Rect,
+    private relativeBounds?: Rect
   ) {
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Add overlay ${overlay.id}`;
@@ -30,8 +30,12 @@ export class AddOverlayCommand implements Command {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();
 
-      handler.setAbsoluteBounds(this.absoluteBounds);
-      handler.setRelativeBounds(this.relativeBounds);
+      if (this.absoluteBounds) {
+        handler.setAbsoluteBounds(this.absoluteBounds);
+      }
+      if (this.relativeBounds) {
+        handler.setRelativeBounds(this.relativeBounds);
+      }
       interactionManager.removeHandler(this.overlay);
       interactionManager.addHandler(handler);
     } else {

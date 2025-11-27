@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
+import { getEventBus } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import { SelectionManager } from "./SelectionManager";
 
 class Selectable {
@@ -21,11 +22,11 @@ class Selectable {
 
 describe("SelectionManager", () => {
   it("emits correct select and deselect events", async () => {
-    const bus = new EventBus();
-    const manager = new SelectionManager(bus);
+    const bus = getEventBus<LighterEventGroup>();
+    const manager = new SelectionManager();
     manager.addSelectable(new Selectable());
     const selectDetail = await new Promise((resolve) => {
-      bus.on(LIGHTER_EVENTS.OVERLAY_SELECT, (event) => resolve(event.detail));
+      bus.on("lighter:overlay-select", (payload) => resolve(payload));
 
       manager.select("id", { ignoreSideEffects: true });
     });
@@ -38,7 +39,7 @@ describe("SelectionManager", () => {
     });
 
     const deselectDetail = await new Promise((resolve) => {
-      bus.on(LIGHTER_EVENTS.OVERLAY_DESELECT, (event) => resolve(event.detail));
+      bus.on("lighter:overlay-deselect", (payload) => resolve(payload));
       manager.deselect("id", { ignoreSideEffects: true });
     });
 
