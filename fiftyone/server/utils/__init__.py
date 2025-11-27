@@ -14,7 +14,9 @@ from dacite.core import T
 from dacite.data import Data
 
 import fiftyone.core.dataset as fod
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.media as fom
 from fiftyone.server.utils import http, json
 
 
@@ -150,6 +152,36 @@ def meets_type(field: fof.Field, type_or_types):
         isinstance(field, fof.ListField)
         and isinstance(field.field, type_or_types)
     )
+
+
+def attach_frame_if_necessary(view, frame_number, modal, group_slice=None):
+    """Attaches a frame to view when applicable
+
+    Args:
+        view: the dataset view
+        frame_number: a frame number
+        modal: whether this is an App modal request
+        group_slice (None): the group slice
+
+    Returns:
+        a new view and whether the attachment is true
+    """
+    is_video = view.media_type == fom.VIDEO
+    if view.media_type == fom.MIXED:
+        is_video = view._dataset.group_media_types[group_slice] == fom.VIDEO
+
+    if is_video and frame_number is not None:
+        default_filter = F("frame_number") == 1
+        current_filter = F("frame_number").is_in([frame_number, 1])
+        filter_frames = lambda f: F("frames").filter(f)
+        expr = F.if_else(
+            F("_id").to_string() == modal,
+            filter_frames(current_filter),
+            filter_frames(default_filter),
+        )
+        view = view.set_field("frames", expr)
+
+    return view, is_video
 
 
 def _parse_changes(changes):
