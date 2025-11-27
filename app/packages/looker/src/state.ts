@@ -215,6 +215,7 @@ export type Dimensions = [number, number];
 export interface BaseConfig {
   mediaField: string;
   thumbnail: boolean;
+  disableControls?: boolean;
   src: string;
   sources: { [path: string]: string };
   sampleId: string;

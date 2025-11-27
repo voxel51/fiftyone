@@ -12,14 +12,16 @@ const CLOSE = "close";
 
 function useLooker<L extends fos.Lookers>({
   sample,
+  ghost,
 }: {
   sample: fos.ModalSample;
+  ghost?: boolean;
 }) {
   const [id] = useState(() => uuid());
   const initialRef = useRef<boolean>(true);
   const ref = useRef<HTMLDivElement>(null);
   const [reset, setReset] = useState(false);
-  const lookerOptions = fos.useLookerOptions(true);
+  const lookerOptions = fos.useLookerOptions(true, ghost);
   const createLooker = fos.useCreateLooker(
     true,
     false,
