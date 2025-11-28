@@ -25,60 +25,106 @@ Here's a high-level overview of the capabilities that FiftyOne Enterprise brings
     </table><table class="table">
     <thead>
     <tr class="row-odd"><th class="head stub"></th>
-    <th class="head"><p>FiftyOne Enterprise</p></th>
-    <th class="head"><p>FiftyOne Open Source</p></th>
+    <th class="head"><p>Open Source</p></th>
+    <th class="head"><p>Enterprise</p></th>
     </tr>
     </thead>
     <tbody>
-    <tr class="row-even"><th class="stub"><p>Curate Datasets</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <tr class="row-even"><th class="stub"><p>Users</p></th>
+    <td><p>Single</p></td>
+    <td><p>Multi-user</p></td>
     </tr>
-    <tr class="row-odd"><th class="stub"><p>Evaluate Models</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <tr class="row-odd"><th class="stub"><p>Deployment</p></th>
+    <td><p>Local machine</p></td>
+    <td><p>On-prem<br>Cloud (private or public)<br>Hybrid<br>Air-gapped<br>Multiple environments</p></td>
     </tr>
-    <tr class="row-even"><th class="stub"><p>Find Mistakes</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <tr class="row-even"><th class="stub"><p>Storage</p></th>
+    <td><p>Local filesystem</p></td>
+    <td><p>Cloud or on-prem media storage<br>Data lake integrations<br>(e.g., Databricks, PostgreSQL)</p></td>
     </tr>
-    <tr class="row-odd"><th class="stub"><p>Visualize Embeddings</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    </tr>
-    <tr class="row-even"><th class="stub"><p>Deployment</p></th>
-    <td><p>Multi-user, on-premise,<br>private/public cloud</p></td>
-    <td><p>Local, Single user</p></td>
-    </tr>
-    <tr class="row-odd"><th class="stub"><p>Dataset Management</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <tr class="row-odd"><th class="stub"><p>Cloud Integration</p></th>
     <td></td>
+    <td><p>Native integration with<br>all major cloud providers<br>(AWS/Govcloud, GCP, Azure)</p></td>
     </tr>
-    <tr class="row-even"><th class="stub"><p>User Permissions</p></th>
+    <tr class="row-even"><th class="stub"><p>Data Scalability</p></th>
+    <td><p>Limited</p></td>
+    <td><p>Scalable to 1B+ samples<br>with Data Lens</p></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Data Modalities</p></th>
     <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Manual Labeling</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Auto-labeling</p></th>
     <td></td>
+    <td><p>Verified auto-labeling and<br>active learning using foundational models<br>QA &amp; confidence scoring</p></td>
     </tr>
-    <tr class="row-odd"><th class="stub"><p>Dataset Permissions</p></th>
+    <tr class="row-even"><th class="stub"><p>Data Exploration</p></th>
     <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Data Visualization</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Vector Search</p></th>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Data Retrieval</p></th>
     <td></td>
+    <td><p>Scenario search and retrieval<br>at billion+ scale from data lakes</p></td>
     </tr>
-    <tr class="row-even"><th class="stub"><p>Dataset Versioning</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <tr class="row-even"><th class="stub"><p>Data Quality</p></th>
     <td></td>
+    <td><p>Automated quality scoring<br>+ workflows for poor/redundant samples</p></td>
     </tr>
-    <tr class="row-odd"><th class="stub"><p>SSO</p></th>
+    <tr class="row-odd"><th class="stub"><p>Model Analysis</p></th>
     <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Eval Execution</p></th>
+    <td><p>Manual</p></td>
+    <td><p>Built-in</p></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Data Encryption</p></th>
+    <td><p>Users build their own<br>security practices</p></td>
+    <td><p>Built-in support for encrypting<br>sensitive data at rest and in transit</p></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Authentication</p></th>
     <td></td>
+    <td><p>SSO integration with<br>OIDC, OAuth2, SAML</p></td>
     </tr>
-    <tr class="row-even"><th class="stub"><p>Enterprise Support</p></th>
-    <td><div class="check-icon"><img alt="check" src="/_static/images/icons/checkmark.svg" /></div></td>
-    <td><p>Discord Community</p></td>
+    <tr class="row-odd"><th class="stub"><p>Access Controls</p></th>
+    <td></td>
+    <td><p>User and role-based<br>permissions</p></td>
     </tr>
-    <tr class="row-odd"><th class="stub"><p>Licensing</p></th>
-    <td><p>Unlimited data, flexible<br>user-based licensing</p></td>
-    </div>
-    </td>
+    <tr class="row-even"><th class="stub"><p>Dataset Versioning<br>Audit Logging</p></th>
+    <td></td>
+    <td><p>Version datasets<br>Track, browse, and restore<br>snapshots for compliance</p></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Collaboration</p></th>
+    <td></td>
+    <td><p>Collaborate on datasets, views,<br>samples, and model performance</p></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Workflow Automation</p></th>
+    <td><p>User implemented</p></td>
+    <td><p>Built-in scheduler<br>+ orchestration integration</p></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>Extensibility</p></th>
+    <td><p>Python SDK and plugins</p></td>
+    <td><p>Plugin and panel framework<br>with custom workflows</p></td>
+    </tr>
+    <tr class="row-even"><th class="stub"><p>Support</p></th>
+    <td><p>Community support</p></td>
+    <td><p>Dedicated comms + syncs<br>Onboarding, training,<br>maintenance</p></td>
+    </tr>
+    <tr class="row-odd"><th class="stub"><p>License</p></th>
     <td><p>Apache 2.0</p></td>
+    <td><p>Commercial license<br>with enterprise terms</p></td>
     </tr>
     </tbody>
     </table>
