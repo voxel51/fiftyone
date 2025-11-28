@@ -15,6 +15,7 @@ import bson
 import numpy as np
 
 import eta.core.utils as etau
+import pymongo
 
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.utils as fou
@@ -2723,33 +2724,20 @@ class ViewExpression(object):
         Returns:
             a :class:`ViewExpression`
         """
+        sort_order = pymongo.DESCENDING if reverse else pymongo.ASCENDING
+
         if key is not None:
-            if numeric:
-                comp = "(a, b) => a.{key} - b.{key}"
-            else:
-                comp = "(a, b) => ('' + a.{key}).localeCompare(b.{key})"
-
-            comp = comp.format(key=key)
-        elif numeric:
-            comp = "(a, b) => a - b"
+            sort_by = {key: sort_order}
         else:
-            comp = ""
+            sort_by = sort_order
 
-        if reverse:
-            rev = ".reverse()"
-        else:
-            rev = ""
-
-        sort_fcn = """
-        function(array) {{
-            array.sort({comp}){rev};
-            return array;
-        }}
-        """.format(
-            comp=comp, rev=rev
-        )
-
-        return self._function(sort_fcn)
+        sort_stage = {
+            "$sortArray": {
+                "input": self,
+                "sortBy": sort_by,
+            }
+        }
+        return ViewExpression(sort_stage)
 
     def filter(self, expr):
         """Applies the given filter to the elements of this expression, which
