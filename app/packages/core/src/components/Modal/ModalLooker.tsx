@@ -47,7 +47,6 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       ref={ref}
       id={id}
       data-cy="modal-looker-container"
-      data-gavin="mcdonald"
       style={{
         width: props.ghost ? 0 : "100%",
         height: props.ghost ? 0 : "100%",
