@@ -15,8 +15,6 @@ import logging
 import traceback
 from typing import Optional
 
-from numpy import error_message
-
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
