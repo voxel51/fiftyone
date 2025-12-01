@@ -10,7 +10,10 @@ export default function useHover() {
     "lighter:overlay-hover",
     useCallback((payload) => {
       const store = getDefaultStore();
-      store.set(hoveringLabelIds, [...store.get(hoveringLabelIds), payload.id]);
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
     }, [])
   );
 
@@ -27,7 +30,7 @@ export default function useHover() {
 
   useLighterEventHandler(
     "lighter:overlay-all-unhover",
-    useCallback(() => {
+    useCallback((_payload) => {
       const store = getDefaultStore();
       store.set(hoveringLabelIds, []);
     }, [])
@@ -37,7 +40,10 @@ export default function useHover() {
     "annotation:notification:canvasOverlayHover",
     useCallback((payload) => {
       const store = getDefaultStore();
-      store.set(hoveringLabelIds, [...store.get(hoveringLabelIds), payload.id]);
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
     }, [])
   );
 
