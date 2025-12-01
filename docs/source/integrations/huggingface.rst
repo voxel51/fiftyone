@@ -1268,7 +1268,7 @@ To load a dataset from the Hugging Face Hub, you can use the
 
     This version includes a fix for redundant API calls that caused rate
     limiting. For more details, see the
-    `Hugging Face Hub API rate limits <https://huggingface.co/docs/hub/api#rate-limits>`_
+    `Hugging Face Hub rate limits <https://huggingface.co/docs/hub/rate-limits>`_
     and `release notes <https://github.com/huggingface/huggingface_hub/releases/tag/v1.1.3>`_.
 
 This function supports loading datasets in any of the 
