@@ -5,8 +5,9 @@ FiftyOne operation execution tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import copy
 import unittest
+from unittest import mock
 
 import bson
 import pytest
@@ -16,7 +17,7 @@ import fiftyone as fo
 from fiftyone.operators import constants
 import fiftyone.operators.types as types
 from fiftyone.operators.delegated import DelegatedOperationService
-from fiftyone.operators.operator import Operator
+from fiftyone.operators.operator import Operator, PipelineOperator
 from fiftyone.operators.executor import (
     execute_or_delegate_operator,
     ExecutionResult,
@@ -192,3 +193,207 @@ async def test_delegate_operator(list_operators):
     dos = DelegatedOperationService()
     assert dos.get(result.result["id"]) is not None
     dos.delete_operation(result.result["id"])
+
+
+@patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
+class TestPipeline:
+    PREFIX = "@voxel51/operators/"
+    calls = []
+
+    def record_request_params(self, *args, **kwargs):
+        self.calls.append(copy.deepcopy(args[0].request_params))
+
+    @pytest.fixture(name="setup_operators", autouse=True)
+    def fixture_setup_operators(self):
+        self.calls = []
+        operators = []
+        for i in range(3):
+            cfg = mock.MagicMock()
+            cfg.name = f"op{i}"
+            operator = type(
+                f"Operator{i}",
+                (Operator,),
+                {
+                    "config": cfg,
+                    "execute": mock.MagicMock(
+                        side_effect=self.record_request_params
+                    ),
+                },
+            )(_builtin=True)
+            operators.append(operator)
+
+        cfg = mock.MagicMock()
+        cfg.name = "pipeline"
+        pipeline_operator = type(
+            "PipelineOperator",
+            (PipelineOperator,),
+            {
+                "config": cfg,
+                "resolve_pipeline": mock.MagicMock(),
+            },
+        )(_builtin=True)
+        return pipeline_operator, operators
+
+    @pytest.mark.asyncio
+    async def test_execute_pipeline(self, list_operators, setup_operators):
+        pipeline = types.Pipeline()
+        pipeline.stage(
+            self.PREFIX + "op0",
+            name="stage1",
+            params={"message": "Hello from pipeline!"},
+        )
+        pipeline.stage(self.PREFIX + "op1", name="stage2", params={})
+
+        pipeline_operator, operators = setup_operators
+        list_operators.return_value = [pipeline_operator] + operators
+        pipeline_operator.resolve_pipeline.return_value = pipeline
+
+        #####
+        result = await execute_or_delegate_operator(
+            operator_uri=self.PREFIX + "pipeline",
+            request_params={
+                "dataset_name": "test_dataset",
+            },
+        )
+        #####
+
+        pipeline_operator.resolve_pipeline.assert_called_once()
+        operators[0].execute.assert_called_once()
+        params = self.calls[0]
+        assert params["dataset_name"] == "test_dataset"
+        assert params["params"] == {"message": "Hello from pipeline!"}
+
+        operators[1].execute.assert_called_once()
+        params = self.calls[1]
+        assert params["dataset_name"] == "test_dataset"
+        assert params["params"] == {}
+
+        assert isinstance(result, ExecutionResult)
+        assert result.error is None
+
+    @pytest.mark.asyncio
+    async def test_execute_pipeline_fail(
+        self, list_operators, setup_operators
+    ):
+        pipeline = types.Pipeline()
+        pipeline.stage(
+            self.PREFIX + "op0",
+            name="stage1",
+            params={"message": "Hello from pipeline!"},
+        )
+        pipeline.stage(self.PREFIX + "op1", name="stage2", params={})
+
+        pipeline_operator, operators = setup_operators
+        list_operators.return_value = [pipeline_operator] + operators
+        pipeline_operator.resolve_pipeline.return_value = pipeline
+        the_error = ValueError("Operator failed")
+        operators[0].execute.side_effect = the_error
+
+        #####
+        result = await execute_or_delegate_operator(
+            operator_uri=self.PREFIX + "pipeline",
+            request_params={
+                "dataset_name": "test_dataset",
+            },
+        )
+        #####
+
+        pipeline_operator.resolve_pipeline.assert_called_once()
+        operators[0].execute.assert_called_once()
+
+        operators[1].execute.assert_not_called()
+
+        assert isinstance(result, ExecutionResult)
+        assert result.error is not None
+        assert result.error_message.startswith(
+            "Failed to execute pipeline stage[0]:"
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_pipeline_operator_no_exist(
+        self, list_operators, setup_operators
+    ):
+        pipeline = types.Pipeline()
+        pipeline.stage(
+            self.PREFIX + "op0",
+            name="stage1",
+            params={"message": "Hello from pipeline!"},
+        )
+        pipeline.stage(
+            self.PREFIX + "op51", name="stage-doesnt-exist", params={}
+        )
+
+        pipeline_operator, operators = setup_operators
+        list_operators.return_value = [pipeline_operator] + operators
+        pipeline_operator.resolve_pipeline.return_value = pipeline
+
+        #####
+        result = await execute_or_delegate_operator(
+            operator_uri=self.PREFIX + "pipeline",
+            request_params={
+                "dataset_name": "test_dataset",
+            },
+        )
+        #####
+
+        pipeline_operator.resolve_pipeline.assert_called_once()
+        operators[0].execute.assert_called_once()
+
+        operators[1].execute.assert_not_called()
+
+        assert isinstance(result, ExecutionResult)
+        assert result.error is not None
+        assert (
+            f"Pipeline stage[1] operator '{self.PREFIX}op51' does not exist"
+            in result.error_message
+        )
+
+    @pytest.mark.asyncio
+    async def test_execute_pipeline_operator_fail_always_run(
+        self, list_operators, setup_operators
+    ):
+        pipeline = types.Pipeline()
+        pipeline.stage(
+            self.PREFIX + "op0",
+            name="stage1",
+            params={"message": "Hello from pipeline!"},
+        )
+        pipeline.stage(self.PREFIX + "op11", name="stage2", params={})
+        pipeline.stage(
+            self.PREFIX + "op2",
+            name="stage3",
+            params={"should_always_run": True},
+            always_run=True,
+        )
+
+        pipeline_operator, operators = setup_operators
+        list_operators.return_value = [pipeline_operator] + operators
+        pipeline_operator.resolve_pipeline.return_value = pipeline
+        operators[0].execute.side_effect = ValueError("Operator failed")
+
+        #####
+        result = await execute_or_delegate_operator(
+            operator_uri=self.PREFIX + "pipeline",
+            request_params={
+                "dataset_name": "test_dataset",
+            },
+        )
+        #####
+
+        pipeline_operator.resolve_pipeline.assert_called_once()
+        operators[0].execute.assert_called_once()
+
+        # Skips second operator but runs the third due to always_run=True
+        operators[1].execute.assert_not_called()
+
+        operators[2].execute.assert_called_once()
+        params = self.calls[-1]
+        assert params["dataset_name"] == "test_dataset"
+        assert params["params"] == {"should_always_run": True}
+
+        assert isinstance(result, ExecutionResult)
+        assert result.error is not None
+        assert (
+            result.error_message
+            == "Failed to execute pipeline stage[0]: Operator failed"
+        )

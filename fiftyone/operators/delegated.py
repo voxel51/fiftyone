@@ -23,6 +23,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     PipelineExecutionContext,
     do_execute_operator,
+    do_execute_pipeline,
     prepare_operator_executor,
     resolve_type_with_context,
 )
@@ -97,6 +98,7 @@ def _execute_operator_in_child_process(
                 )
 
             result = asyncio.run(service._execute_operator(operation))
+            result.raise_exceptions()
 
             service.set_completed(doc_id=operation.id, result=result)
             if log:
@@ -676,6 +678,7 @@ class DelegatedOperationService(object):
         """Executes an operation synchronously in the current process."""
         try:
             result = asyncio.run(self._execute_operator(operation))
+            result.raise_exceptions()
             self.set_completed(doc_id=operation.id, result=result)
             if log:
                 logger.info("Operation %s complete", operation.id)
@@ -900,7 +903,16 @@ class DelegatedOperationService(object):
 
             operator, _, ctx, __ = prepared
 
-            result = await do_execute_operator(operator, ctx, exhaust=True)
+            if doc.pipeline:
+                result = await do_execute_pipeline(doc.pipeline, ctx)
+                if result:
+                    error, error_message = result
+                    return ExecutionResult(
+                        error=error, error_message=error_message
+                    )
+                result = None
+            else:
+                result = await do_execute_operator(operator, ctx, exhaust=True)
 
             outputs_schema = None
             try:
@@ -917,8 +929,6 @@ class DelegatedOperationService(object):
                     exc_info=True,
                 )
 
-            execution_result = ExecutionResult(
+            return ExecutionResult(
                 result=result, outputs_schema=outputs_schema
             )
-
-            return execution_result
