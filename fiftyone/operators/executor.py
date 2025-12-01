@@ -483,13 +483,6 @@ async def do_execute_pipeline(pipeline, ctx):
                 # Either the pipeline is still going, or it has failures but
                 #   this stage is marked to always run
                 if active or stage.always_run:
-                    print(
-                        "*** executing stage",
-                        idx,
-                        stage.operator_uri,
-                        active,
-                        stage.always_run,
-                    )
                     ctx.pipeline.curr_stage_index = idx
                     operator_uri = stage.operator_uri
                     params = stage.params or {}
@@ -505,7 +498,6 @@ async def do_execute_pipeline(pipeline, ctx):
             # Catch exceptions from single stage execution separately to mark
             #   pipeline as failed. Keep going if always_run is set though
             except Exception as e:
-                print("*** stage failed", idx, stage.operator_uri, str(e))
                 active = False
                 # Just store the first error message seen
                 if not error_message:
