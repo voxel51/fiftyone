@@ -5,12 +5,12 @@ Step 4: Assess Labels with Embeddings
 
 .. default-role:: code
 
-The sample grid is useful for visually identifying true and false positives. However, identifying false positives in bulk and false negatives at all can be difficult. Using FiftyOne's patch embeddings can assist in identifying collections of outlying samples that can be tagged for relabeling, or removed from consideration altogether.  
+The sample grid is useful for visually identifying true and false positives. However, identifying false positives in bulk can be challenging, and false negatives are even harder to spot. Using FiftyOne's patch embeddings can assist in identifying collections of outlying samples that can be tagged for relabeling, or removed from consideration altogether.  
 
 Compute Patch Embeddings
 -------------------------
 
-In the previous step, you generated patch views that showed one detection label per image. You can similarly compute and visualize patch embeddings directly within the FiftyOne App.
+In the previous step, you generated patch views that showed one detection label per sample. You can similarly compute and visualize patch embeddings directly within the FiftyOne App.
 
 In the toolbar above the sample grid, select **Browse operations > Compute visualization**.
 
@@ -24,7 +24,7 @@ Leave all other settings as they are. You can refer to the `image embeddings doc
    :align: center
    :width: 90%
 
-To run the embeddings computation, you can delegate as a background orchestration similar to the auto labeling run. Click the dropdown arrow next to **Execute** and select one of your delegated operators. Then click **Schedule**.
+To run the embeddings computation, you can delegate it as a background operation similar to the auto labeling run. Click the dropdown arrow next to **Execute** and select one of your delegated operators. Then click **Schedule**.
 
 You can then navigate to the dataset's **Runs** tab to view the task's progress (same again as the auto labeling run).
    
@@ -71,6 +71,17 @@ After tagging at least a few incorrect samples, a good next step is to mark them
    :alt: VAL review interface
    :align: center
    :width: 50%
+
+Return to Auto Labeling for Iterative Approval
+----------------------------------------------
+
+After tagging samples in the embeddings view, you can filter your dataset by these tags and return to the Auto Labeling panel to continue the approval workflow. For example, to focus on samples that passed your embeddings-based QA:
+
+1. In the left sidebar, filter by tags to exclude samples tagged as `needs-review`
+2. Return to the **Auto Labeling** panel
+3. Continue selecting and approving labels from your filtered view
+
+This iterative process—exploring via embeddings, tagging outliers, then returning to batch approve verified samples—helps you efficiently work through large datasets while maintaining label quality.
 
 Next Steps
 ----------

@@ -20,7 +20,7 @@ Start by clicking into your FiftyOne dataset. Above the sample grid, select **Ne
 .. tip::
   Click the "Split horizontally" button (looks like two vertical bars) in the toolbar to put the auto labeling configuration side by side with your dataset.
 
-In the Auto Labeling panel, click **Auto Label**. This enters you into the main configuration pane to where you can select your target sample set, foundation model used for labeling, classes to label, and minimum confidence threshold.
+In the Auto Labeling panel, click **Auto Label**. This opens the main configuration pane where you can select your target sample set, foundation model used for labeling, classes to label, and minimum confidence threshold.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_panel_intro.webp
    :alt: VAL Panel intro
@@ -43,12 +43,7 @@ For the model **Size**, choose **Medium** to balance speed and performance.
    :align: center
    :width: 75%
 
-Next, expand the **Define zero-shot classes** dropdown. Enter the following comma-separated classes:
-    - car
-    - bus
-    - person
-    - bicycle
-    - traffic sign
+Next, expand the **Define zero-shot classes** dropdown. Enter the following comma-separated classes: `car, bus, person, bicycle, traffic sign`
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_define_classes.webp
    :alt: VAL run define classes
@@ -56,9 +51,10 @@ Next, expand the **Define zero-shot classes** dropdown. Enter the following comm
    :width: 75%
 
 Finally, expand the **Settings** dropdown.
-    - For **Label field**, type **yolow_detections**.
-    - For **Minimum confidence in results**, type **0.3**. 
-    - For **Run name**, type **yolow_detections_run**.
+
+- For **Label field**, type **yolow_detections**.
+- For **Minimum confidence in results**, type **0.3**. 
+- For **Run name**, type **yolow_detections_run**.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_settings.webp
    :alt: VAL run settings

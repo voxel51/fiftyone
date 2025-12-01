@@ -5,12 +5,12 @@ Step 3: Analyze and Approve Predictions
 
 .. default-role:: code
 
-Your VAL run has completed, and label predictions are ready for review. You will now systematically assess auto-generated labels using FiftyOne's exploration tools.
+Your VAL run has completed, and label predictions are ready for review. You will now evaluate and verify auto-generated labels using FiftyOne's exploration tools.
 
 Review Interface
 ----------------
 
-When your run status changes to **In Review**, the Auto Labeling panel displays an interface with two tabs: **Review** and **Approval**. Here you can batch select labels for approval.
+When your run status changes to **In Review**, the Auto Labeling panel displays an interface with two tabs: **Review** and **Approval**. Think of this like a shopping cart workflow: you browse labels in the Review tab, adding ones you want to keep to your approval queue. Labels you approve become part of your ground truth dataset, while labels you reject are deleted from the dataset entirely.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook3/val_review_ui.webp
    :alt: VAL review interface
