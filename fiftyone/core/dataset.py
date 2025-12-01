@@ -9,7 +9,7 @@ FiftyOne datasets.
 from collections import defaultdict
 from functools import partial
 import contextlib
-from datetime import datetime
+from datetime import datetime # temp
 import fnmatch
 import itertools
 import logging
