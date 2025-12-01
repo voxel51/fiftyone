@@ -311,7 +311,9 @@ def export_hrm2_scene(
         all_vertices = np.vstack(all_vertices)
         center = all_vertices.mean(axis=0)
         bbox_size = all_vertices.max(axis=0) - all_vertices.min(axis=0)
-        camera_distance = bbox_size.max() * 1.5
+        max_dim = bbox_size.max()
+        # Clamp to minimum distance to avoid degenerate camera setups
+        camera_distance = max(max_dim * 1.5, 1.0)
         camera_position = center + np.array([0, 0, camera_distance])
     else:
         # Fallback if no vertex data available
@@ -979,7 +981,6 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             Required if export_meshes=True
         export_meshes (True): whether to prepare mesh data for later export.
             If True, requires smpl_model
-        confidence_thresh (None): minimum confidence threshold for filtering
         device (None): torch.device for SMPL model operations. Required if
             export_meshes=True
     """
@@ -988,14 +989,12 @@ class HRM2OutputProcessor(fout.OutputProcessor):
         self,
         smpl_model=None,
         export_meshes=True,
-        confidence_thresh=None,
         device=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self._smpl = smpl_model
         self.export_meshes = export_meshes
-        self.confidence_thresh = confidence_thresh
         self._device = device
 
         # Validate resource requirements
@@ -1625,9 +1624,6 @@ def apply_hrm2_to_dataset_as_groups(
             "The input dataset has media_type='group'."
         )
 
-    # Get the underlying dataset (may be a view)
-    dataset = sample_collection._dataset
-
     # Set default output_dir if not specified
     if output_dir is None:
         output_dir = os.path.join(fo.config.model_zoo_dir, "hrm2")
@@ -1706,7 +1702,7 @@ def apply_hrm2_to_dataset_as_groups(
                         logger.debug(
                             "Exported scene to %s", exported_scene_path
                         )
-                    except Exception as e:
+                    except (OSError, IOError, ValueError, ImportError) as e:
                         logger.warning(
                             "Failed to export scene for sample %d: %s", idx, e
                         )
@@ -1790,7 +1786,6 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         smpl_model_path (None): path to the SMPL_NEUTRAL.pkl file. Users must
             register at https://smpl.is.tue.mpg.de/ to obtain this file
         checkpoint_version ("2.0b"): version of HRM2 checkpoint to use
-        confidence_thresh (None): confidence threshold for keypoint filtering
         export_meshes (True): whether to prepare 3D mesh data for later export.
             If True, HRM2Person documents will contain vertex data for export.
             Actual files are written when output_dir is provided to apply_model()
@@ -1857,7 +1852,6 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
         d["output_processor_args"].update(
             {
                 "export_meshes": self.export_meshes,
-                "confidence_thresh": d.get("confidence_thresh"),
             }
         )
 
@@ -2022,8 +2016,7 @@ class HRM2Model(
 
         # Start with config's output_processor_args
         # (already set in HRM2Config.__init__)
-        # These are serializable parameters: export_meshes,
-        # mesh_output_dir, confidence_thresh
+        # These are serializable parameters: export_meshes
         if not config.output_processor_args:
             config.output_processor_args = {}
 
@@ -2214,7 +2207,7 @@ class HRM2Model(
         """
         raw_outputs = []
 
-        for idx, data in enumerate(batch_data):
+        for data in batch_data:
             img = data["image"]
             detections = data.get("detections")
 
