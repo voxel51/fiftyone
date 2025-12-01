@@ -23,7 +23,7 @@ import logging
 import os
 import pickle
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple, Union, Any, Callable
+from typing import Optional, Dict, List, Tuple, Union, Any, Callable, Generator
 
 import cv2
 import numpy as np
@@ -1570,6 +1570,74 @@ def load_smpl_model(smpl_model_path: str) -> Any:
     return model
 
 
+def _generate_grouped_hrm2_samples(
+    source_dataset: "fo.Dataset",
+    scene_paths_map: Dict[str, str],
+    group_field: str,
+    image_slice_name: str,
+    scene_slice_name: str,
+) -> Generator["fo.Sample", None, None]:
+    """Generator that yields grouped image and scene samples.
+
+    This generator function follows the FiftyOne pattern for memory-efficient
+    processing of large grouped datasets, as demonstrated in
+    fiftyone/utils/data/importers.py. By yielding samples one at a time rather
+    than accumulating them in a list, it ensures constant memory usage
+    regardless of dataset size.
+
+    Args:
+        source_dataset: the source dataset containing processed samples
+        scene_paths_map: dict mapping image filepaths to exported scene paths
+        group_field: name of the group field
+        image_slice_name: name for the image slice in the group
+        scene_slice_name: name for the 3D scene slice in the group
+
+    Yields:
+        :class:`fiftyone.core.sample.Sample` instances with group field set
+    """
+
+    def _get_field(sample: "fo.Sample", field_name: str) -> Any:
+        """Helper to safely get field values."""
+        try:
+            return sample.get_field(field_name)
+        except KeyError:
+            return None
+
+    for sample in source_dataset.iter_samples():
+        # Create a new group for this pair of samples
+        group = fo.Group()
+
+        # Create image sample with group and all fields from source
+        image_sample = fo.Sample(filepath=sample.filepath)
+        image_sample[group_field] = group.element(image_slice_name)
+
+        # Copy all fields from original sample (including predictions)
+        for field_name in sample.field_names:
+            # Skip system fields that shouldn't be copied
+            if field_name in (
+                "id",
+                "filepath",
+                "metadata",
+                "_media_type",
+                group_field,
+            ):
+                continue
+
+            value = _get_field(sample, field_name)
+            if value is not None:
+                image_sample[field_name] = value
+
+        yield image_sample
+
+        # Create 3D scene sample if mesh was exported for this image
+        exported_scene_path = scene_paths_map.get(sample.filepath)
+        if exported_scene_path is not None:
+            # 3D scene sample - just the filepath, no labels needed
+            scene_sample = fo.Sample(filepath=exported_scene_path)
+            scene_sample[group_field] = group.element(scene_slice_name)
+            yield scene_sample
+
+
 def apply_hrm2_to_dataset_as_groups(
     sample_collection: "fo.SampleCollection",
     model: "HRM2Model",
@@ -1712,46 +1780,21 @@ def apply_hrm2_to_dataset_as_groups(
         grouped_dataset = fo.Dataset()
         grouped_dataset.add_group_field("group", default=image_slice_name)
 
-        # Create grouped samples with predictions and 3D scenes
-        all_new_samples = []
-        for sample in temp_dataset.iter_samples():
-            # Create group
-            group = fo.Group()
-
-            # Create image sample with group and all original fields
-            image_sample = fo.Sample(filepath=sample.filepath)
-            image_sample["group"] = group.element(image_slice_name)
-
-            # Copy all fields from original sample (including predictions)
-            for field_name in sample.field_names:
-                # Skip system fields that shouldn't be copied
-                if field_name in [
-                    "id",
-                    "filepath",
-                    "metadata",
-                    "_media_type",
-                    "group",
-                ]:
-                    continue
-                value = _get_field(sample, field_name)
-                if value is not None:
-                    image_sample[field_name] = value
-
-            all_new_samples.append(image_sample)
-
-            # Create 3D scene sample if mesh was exported
-            exported_scene_path = scene_paths_map.get(sample.filepath)
-            if exported_scene_path is not None:
-                # 3D scene sample - just the filepath, no labels needed
-                scene_sample = fo.Sample(filepath=exported_scene_path)
-                scene_sample["group"] = group.element(scene_slice_name)
-                all_new_samples.append(scene_sample)
-
-        # Add all samples at once - FiftyOne will detect groups automatically
-        logger.info(
-            "Adding %d samples to grouped dataset...", len(all_new_samples)
+        # Generate grouped samples using memory-efficient generator pattern.
+        # This follows the canonical FiftyOne pattern from
+        # fiftyone/utils/data/importers.py for handling large grouped datasets.
+        # By using a generator, only one batch of samples is held in memory at
+        # a time, making this approach suitable for arbitrarily large datasets.
+        samples_generator = _generate_grouped_hrm2_samples(
+            temp_dataset,
+            scene_paths_map,
+            "group",
+            image_slice_name,
+            scene_slice_name,
         )
-        grouped_dataset.add_samples(all_new_samples)
+
+        logger.info("Adding grouped samples to dataset...")
+        grouped_dataset.add_samples(samples_generator, progress=True)
 
         # Set BODY-25 skeleton for keypoint visualization in the App
         grouped_dataset.default_skeleton = get_hrm2_skeleton()
