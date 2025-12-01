@@ -204,7 +204,9 @@ class HRM2Person(fo.DynamicEmbeddedDocument):
         camera_translation: [tx, ty, tz] full camera translation
         keypoints_3d: list of 3D keypoint coordinates (25 × 3 for BODY-25)
         vertices: list of mesh vertex coordinates (6890 × 3 for SMPL)
-        bbox: bounding box [x, y, width, height] in absolute pixels
+        bbox: bounding box [x1, y1, x2, y2] in absolute pixel coordinates,
+            where (x1, y1) is the top-left corner and (x2, y2) is the
+            bottom-right corner. This format is expected by _normalize_bbox().
     """
 
     pass
@@ -1212,6 +1214,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
                     "smpl_params": person.get("smpl_params"),
                     "keypoints_3d": person.get("keypoints_3d"),
                     "keypoints_2d": person.get("keypoints_2d"),
+                    "camera_translation": person.get("camera_translation"),
                 }
             )
 
@@ -1595,6 +1598,11 @@ def apply_hrm2_to_dataset_as_groups(
 
     The 3D scene sample has only a filepath pointing to the .fo3d file.
 
+    **Implementation Note**: This function creates a temporary dataset clone to
+    run inference (required by apply_model), then transfers the results to a new
+    grouped dataset. The temporary dataset is automatically deleted after use to
+    prevent database clutter.
+
     Args:
         sample_collection: the FiftyOne dataset or view to process
         model: an HRM2Model instance
@@ -1632,9 +1640,11 @@ def apply_hrm2_to_dataset_as_groups(
         os.makedirs(output_dir, exist_ok=True)
         logger.info("Scene files will be exported to: %s", output_dir)
 
-    # Apply model directly to the sample collection (adds prediction fields)
+    # Create temporary dataset for inference
+    # Note: apply_model requires a persistent dataset, so we clone to create one
     logger.info("Processing %d samples...", len(sample_collection))
-    sample_collection = sample_collection.clone()
+    temp_dataset = sample_collection.clone()
+    temp_dataset_name = temp_dataset.name
 
     # Field mapping for model outputs
     label_fields_map = {
@@ -1645,116 +1655,132 @@ def apply_hrm2_to_dataset_as_groups(
         "frame_size": f"{label_field}_frame_size",
     }
 
-    # Apply model to get predictions (adds fields to sample_collection)
-    sample_collection.apply_model(
-        model,
-        label_field=label_fields_map,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        output_dir=output_dir,
-    )
+    # Wrap processing in try/finally to ensure cleanup
+    try:
+        # Apply model to get predictions (adds fields to temp_dataset)
+        temp_dataset.apply_model(
+            model,
+            label_field=label_fields_map,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            output_dir=output_dir,
+        )
 
-    # Collect scene export metadata
-    def _get_field(sample, field_name):
-        try:
-            return sample.get_field(field_name)
-        except KeyError:
-            return None
+        # Collect scene export metadata
+        def _get_field(sample, field_name):
+            try:
+                return sample.get_field(field_name)
+            except KeyError:
+                return None
 
-    # Export scenes and collect filepaths mapped to sample filepaths
-    scene_paths_map = {}  # Maps image filepath -> scene filepath
-    logger.info("Exporting 3D scenes...")
-    for idx, sample in enumerate(sample_collection.iter_samples()):
-        # Get prediction data
-        hrm2_people = _get_field(sample, label_fields_map["hrm2_people"])
-        smpl_faces = _get_field(sample, label_fields_map["smpl_faces"])
-        frame_size = _get_field(sample, label_fields_map["frame_size"])
+        # Export scenes and collect filepaths mapped to sample filepaths
+        scene_paths_map = {}  # Maps image filepath -> scene filepath
+        logger.info("Exporting 3D scenes...")
+        for idx, sample in enumerate(temp_dataset.iter_samples()):
+            # Get prediction data
+            hrm2_people = _get_field(sample, label_fields_map["hrm2_people"])
+            smpl_faces = _get_field(sample, label_fields_map["smpl_faces"])
+            frame_size = _get_field(sample, label_fields_map["frame_size"])
 
-        # Export scene if output_dir is provided and people data exists
-        if output_dir and hrm2_people:
-            # Check if any person has mesh vertices
-            has_meshes = any(
-                getattr(p, "vertices", None) is not None for p in hrm2_people
+            # Export scene if output_dir is provided and people data exists
+            if output_dir and hrm2_people:
+                # Check if any person has mesh vertices
+                has_meshes = any(
+                    getattr(p, "vertices", None) is not None
+                    for p in hrm2_people
+                )
+                if has_meshes and smpl_faces is not None:
+                    # Generate unique scene path
+                    scene_filename = f"scene_{idx:06d}.fo3d"
+                    scene_path = os.path.join(output_dir, scene_filename)
+
+                    # Export scene using standalone function
+                    try:
+                        exported_scene_path = export_hrm2_scene(
+                            hrm2_people=hrm2_people,
+                            smpl_faces=smpl_faces,
+                            frame_size=frame_size,
+                            scene_path=scene_path,
+                        )
+                        scene_paths_map[sample.filepath] = exported_scene_path
+                        logger.debug(
+                            "Exported scene to %s", exported_scene_path
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Failed to export scene for sample %d: %s", idx, e
+                        )
+
+        # Create new grouped dataset
+        logger.info("Creating grouped dataset structure...")
+        grouped_dataset = fo.Dataset()
+        grouped_dataset.add_group_field("group", default=image_slice_name)
+
+        # Create grouped samples with predictions and 3D scenes
+        all_new_samples = []
+        for sample in temp_dataset.iter_samples():
+            # Create group
+            group = fo.Group()
+
+            # Create image sample with group and all original fields
+            image_sample = fo.Sample(filepath=sample.filepath)
+            image_sample["group"] = group.element(image_slice_name)
+
+            # Copy all fields from original sample (including predictions)
+            for field_name in sample.field_names:
+                # Skip system fields that shouldn't be copied
+                if field_name in [
+                    "id",
+                    "filepath",
+                    "metadata",
+                    "_media_type",
+                    "group",
+                ]:
+                    continue
+                value = _get_field(sample, field_name)
+                if value is not None:
+                    image_sample[field_name] = value
+
+            all_new_samples.append(image_sample)
+
+            # Create 3D scene sample if mesh was exported
+            exported_scene_path = scene_paths_map.get(sample.filepath)
+            if exported_scene_path is not None:
+                # 3D scene sample - just the filepath, no labels needed
+                scene_sample = fo.Sample(filepath=exported_scene_path)
+                scene_sample["group"] = group.element(scene_slice_name)
+                all_new_samples.append(scene_sample)
+
+        # Add all samples at once - FiftyOne will detect groups automatically
+        logger.info(
+            "Adding %d samples to grouped dataset...", len(all_new_samples)
+        )
+        grouped_dataset.add_samples(all_new_samples)
+
+        # Set BODY-25 skeleton for keypoint visualization in the App
+        grouped_dataset.default_skeleton = get_hrm2_skeleton()
+        grouped_dataset.save()
+        logger.info("Set HRM2 (BODY-25) skeleton for keypoint visualization")
+
+        num_groups = (
+            len(scene_paths_map) if scene_paths_map else len(temp_dataset)
+        )
+        logger.info("Created grouped dataset with %d groups", num_groups)
+        logger.info(
+            "Dataset media type is now: %s", grouped_dataset.media_type
+        )
+        logger.info("Dataset group slices: %s", grouped_dataset.group_slices)
+
+        return grouped_dataset
+
+    finally:
+        # Clean up temporary dataset to prevent database clutter
+        if temp_dataset_name in fo.list_datasets():
+            logger.debug(
+                "Deleting temporary dataset '%s' used for inference",
+                temp_dataset_name,
             )
-            if has_meshes and smpl_faces is not None:
-                # Generate unique scene path
-                scene_filename = f"scene_{idx:06d}.fo3d"
-                scene_path = os.path.join(output_dir, scene_filename)
-
-                # Export scene using standalone function
-                try:
-                    exported_scene_path = export_hrm2_scene(
-                        hrm2_people=hrm2_people,
-                        smpl_faces=smpl_faces,
-                        frame_size=frame_size,
-                        scene_path=scene_path,
-                    )
-                    scene_paths_map[sample.filepath] = exported_scene_path
-                    logger.debug("Exported scene to %s", exported_scene_path)
-                except Exception as e:
-                    logger.warning(
-                        "Failed to export scene for sample %d: %s", idx, e
-                    )
-
-    # Create new grouped dataset
-    logger.info("Creating grouped dataset structure...")
-    grouped_dataset = fo.Dataset()
-    grouped_dataset.add_group_field("group", default=image_slice_name)
-
-    # Create grouped samples with predictions and 3D scenes
-    all_new_samples = []
-    for sample in sample_collection.iter_samples():
-        # Create group
-        group = fo.Group()
-
-        # Create image sample with group and all original fields
-        image_sample = fo.Sample(filepath=sample.filepath)
-        image_sample["group"] = group.element(image_slice_name)
-
-        # Copy all fields from original sample (including predictions)
-        for field_name in sample.field_names:
-            # Skip system fields that shouldn't be copied
-            if field_name in [
-                "id",
-                "filepath",
-                "metadata",
-                "_media_type",
-                "group",
-            ]:
-                continue
-            value = _get_field(sample, field_name)
-            if value is not None:
-                image_sample[field_name] = value
-
-        all_new_samples.append(image_sample)
-
-        # Create 3D scene sample if mesh was exported
-        exported_scene_path = scene_paths_map.get(sample.filepath)
-        if exported_scene_path is not None:
-            # 3D scene sample - just the filepath, no labels needed
-            scene_sample = fo.Sample(filepath=exported_scene_path)
-            scene_sample["group"] = group.element(scene_slice_name)
-            all_new_samples.append(scene_sample)
-
-    # Add all samples at once - FiftyOne will detect groups automatically
-    logger.info(
-        "Adding %d samples to grouped dataset...", len(all_new_samples)
-    )
-    grouped_dataset.add_samples(all_new_samples)
-
-    # Set BODY-25 skeleton for keypoint visualization in the App
-    grouped_dataset.default_skeleton = get_hrm2_skeleton()
-    grouped_dataset.save()
-    logger.info("Set HRM2 (BODY-25) skeleton for keypoint visualization")
-
-    num_groups = (
-        len(scene_paths_map) if scene_paths_map else len(sample_collection)
-    )
-    logger.info("Created grouped dataset with %d groups", num_groups)
-    logger.info("Dataset media type is now: %s", grouped_dataset.media_type)
-    logger.info("Dataset group slices: %s", grouped_dataset.group_slices)
-
-    return grouped_dataset
+            fo.delete_dataset(temp_dataset_name)
 
 
 class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
