@@ -41,6 +41,15 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  // Clear modal mode state to ensure tests start in explore mode
+  await page.evaluate(() => {
+    const keys = Object.keys(localStorage);
+    keys.forEach((key) => {
+      if (key.includes("modalMode")) {
+        localStorage.removeItem(key);
+      }
+    });
+  });
 });
 
 test.describe.serial("tag", () => {
