@@ -263,7 +263,6 @@ class HRM2ConfigTests(HRM2TestBase):
         config_dict = {
             "checkpoint_version": "2.0b",
             "export_meshes": True,
-            "confidence_thresh": 0.5,
         }
 
         config = HRM2Config(config_dict)
@@ -271,7 +270,6 @@ class HRM2ConfigTests(HRM2TestBase):
         # Check that output_processor_args are set correctly
         self.assertIsNotNone(config.output_processor_args)
         self.assertIn("export_meshes", config.output_processor_args)
-        self.assertIn("confidence_thresh", config.output_processor_args)
 
         # Verify non-serializable args are NOT in config
         self.assertNotIn("smpl_model", config.output_processor_args)
@@ -290,16 +288,12 @@ class HRM2ConfigTests(HRM2TestBase):
 
         config_dict = {
             "export_meshes": False,
-            "confidence_thresh": 0.7,
         }
 
         config = HRM2Config(config_dict)
 
         # Verify args match config values
         self.assertEqual(config.output_processor_args["export_meshes"], False)
-        self.assertEqual(
-            config.output_processor_args["confidence_thresh"], 0.7
-        )
 
 
 class HRM2UtilityTests(unittest.TestCase):
@@ -414,7 +408,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
 
         processor = HRM2OutputProcessor(
             export_meshes=True,
-            confidence_thresh=0.5,
         )
 
         # Should warn and disable mesh export
@@ -434,7 +427,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             smpl_model=mock_smpl,
             device=mock_device,
             export_meshes=True,
-            confidence_thresh=0.5,
         )
 
         # Should keep mesh export enabled
@@ -452,14 +444,12 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         config_dict = {
             "checkpoint_version": "2.0b",
             "export_meshes": True,
-            "confidence_thresh": 0.5,
         }
 
         config = HRM2Config(config_dict)
 
         # Step 2: Verify config args are serializable
         self.assertIn("export_meshes", config.output_processor_args)
-        self.assertIn("confidence_thresh", config.output_processor_args)
         self.assertNotIn("smpl_model", config.output_processor_args)
         self.assertNotIn("device", config.output_processor_args)
 
@@ -502,7 +492,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         # Create processor without SMPL (no mesh export)
         processor = HRM2OutputProcessor(
             export_meshes=False,
-            confidence_thresh=0.5,
         )
 
         # Simulate realistic HRM2 model outputs with rotation matrices
@@ -595,7 +584,6 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             smpl_model=mock_smpl,
             device=mock_device,
             export_meshes=True,
-            confidence_thresh=0.5,
         )
 
         # Verify mesh export is enabled
