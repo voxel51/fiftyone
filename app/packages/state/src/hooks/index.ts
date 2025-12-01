@@ -47,7 +47,10 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
-export { default as useUnboundState } from "./useUnboundState";
+export {
+  default as useUnboundState,
+  useUnboundStateRef,
+} from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
 export { default as useMutation } from "./useMutation";
