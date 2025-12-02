@@ -8203,7 +8203,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     validate=False,
                 )
 
-            # pylint: disable=possibly-used-before-assignment
             if not dynamic and field_name in schema:
                 continue
 
@@ -8241,7 +8240,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
-                # pylint: disable=possibly-used-before-assignment
                 if not dynamic and field_name in schema:
                     continue
 
@@ -8263,13 +8261,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def _sample_dict_to_doc(self, d):
+    def _sample_dict_to_doc(self, d, _reload_backing_docs=True):
         try:
             return self._sample_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading sample with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._sample_doc_cls.from_dict(d)
 
@@ -8277,13 +8283,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._frame_dict_to_doc(d)
         return fofr.Frame.from_doc(doc, dataset=self)
 
-    def _frame_dict_to_doc(self, d):
+    def _frame_dict_to_doc(self, d, _reload_backing_docs=True):
         try:
             return self._frame_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading frame with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 

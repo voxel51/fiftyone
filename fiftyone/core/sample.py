@@ -540,7 +540,10 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         d = self._dataset._sample_collection.find_one({"_id": self._id})
         if d:
-            self._doc = self._dataset._sample_dict_to_doc(d)
+            # Disable reloading of backing docs to prevent infinite recursion
+            self._doc = self._dataset._sample_dict_to_doc(
+                d, _reload_backing_docs=False
+            )
         else:
             # Sample has an 'id' but not found during reload.
             # This can occur if the sample was deleted externally
