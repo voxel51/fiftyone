@@ -271,7 +271,7 @@ export class InteractionManager {
 
       // If this is a movable overlay, track move state
       if (TypeGuards.isMovable(handler) && TypeGuards.isSpatial(handler)) {
-        const type = handler.isDragging?.()
+        const type: keyof LighterEventGroup = handler.isDragging?.()
           ? "lighter:overlay-drag-start"
           : "lighter:overlay-resize-start";
 
@@ -375,7 +375,7 @@ export class InteractionManager {
       // Handle drag end
       handler.onPointerUp?.(point, event, scale);
 
-      if (interactiveHandler && handler === interactiveHandler) {
+      if (interactiveHandler) {
         // When interactive detection is complete, remove the interactive handler
         // The overlay will be managed by its own handler
         this.removeHandler(interactiveHandler);
@@ -396,9 +396,15 @@ export class InteractionManager {
         };
 
         if (moveState === "SETTING") {
+          if (!interactiveHandler) {
+            throw new Error(
+              "Invariant violation: moveState is SETTING but interactiveHandler is undefined"
+            );
+          }
+
           this.eventBus.dispatch("lighter:overlay-establish", {
             ...detail,
-            overlay: interactiveHandler!,
+            overlay: interactiveHandler,
           });
         } else {
           const type =

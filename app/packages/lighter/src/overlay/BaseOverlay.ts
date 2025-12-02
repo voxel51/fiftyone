@@ -153,9 +153,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Emits an overlay-loaded event.
    */
   protected emitLoaded(): void {
-    if (this.eventBus) {
-      this.eventBus.dispatch("lighter:overlay-loaded", { id: this.id });
-    }
+    this.eventBus.dispatch("lighter:overlay-loaded", { id: this.id });
   }
 
   /**
@@ -163,9 +161,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param error - The error that occurred.
    */
   protected emitError(error: Error): void {
-    if (this.eventBus) {
-      this.eventBus.dispatch("lighter:overlay-error", { id: this.id, error });
-    }
+    this.eventBus.dispatch("lighter:overlay-error", { id: this.id, error });
   }
 
   /**

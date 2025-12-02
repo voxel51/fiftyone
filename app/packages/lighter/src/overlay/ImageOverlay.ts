@@ -38,7 +38,7 @@ export class ImageOverlay
   private resizeObserver?: ResizeObserver;
   private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
 
-  private resizeUnregister: () => void;
+  private resizeUnregister: (() => void) | null = null;
 
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random()
@@ -428,6 +428,9 @@ export class ImageOverlay
       this.resizeObserver = undefined;
     }
     this.boundsChangeCallbacks = [];
-    this.resizeUnregister();
+    if (this.resizeUnregister) {
+      this.resizeUnregister();
+      this.resizeUnregister = null;
+    }
   }
 }

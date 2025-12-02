@@ -44,8 +44,8 @@ export class SelectionManager {
    * @param id - The ID of the overlay to unregister.
    */
   removeSelectable(id: string): void {
-    this.selectableOverlays.delete(id);
     this.deselect(id);
+    this.selectableOverlays.delete(id);
   }
 
   /**
@@ -137,15 +137,11 @@ export class SelectionManager {
     const previouslySelected = Array.from(this.selectedOverlays);
     if (previouslySelected.length === 0) return;
 
-    // Deselect all overlays
+    // Deselect all overlays - this will remove them from selectedOverlays
+    // and emit individual deselect events
     for (const id of previouslySelected) {
-      const overlay = this.selectableOverlays.get(id);
-      if (overlay) {
-        overlay.setSelected(false);
-      }
+      this.deselect(id, options);
     }
-
-    this.selectedOverlays.clear();
 
     this.eventBus.dispatch("lighter:selection-cleared", {
       ignoreSideEffects,

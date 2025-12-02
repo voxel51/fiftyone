@@ -297,10 +297,8 @@ export class Scene2D {
     event: K,
     handler: EventHandler<LighterEventGroup[K]>
   ): void {
-    this.eventBus.on(event, handler);
-    this.abortController.signal.addEventListener("abort", () => {
-      this.eventBus.off(event, handler);
-    });
+    const offHandler = this.eventBus.on(event, handler);
+    this.abortController.signal.addEventListener("abort", offHandler);
   }
 
   /**

@@ -48,4 +48,42 @@ describe("SelectionManager", () => {
       ignoreSideEffects: true,
     });
   });
+
+  it("removes selected overlay and emits deselect events", async () => {
+    const bus = getEventBus<LighterEventGroup>();
+    const manager = new SelectionManager();
+    const selectable = new Selectable();
+    manager.addSelectable(selectable);
+
+    manager.select("id", { ignoreSideEffects: true });
+    expect(manager.getSelectedIds()).toContain("id");
+    expect(manager.isSelected("id")).toBe(true);
+
+    const deselectPromise = new Promise((resolve) => {
+      bus.on("lighter:overlay-deselect", (payload) => resolve(payload));
+    });
+
+    const selectionChangedPromise = new Promise((resolve) => {
+      bus.on("lighter:selection-changed", (payload) => resolve(payload));
+    });
+
+    manager.removeSelectable("id");
+
+    const deselectDetail = await deselectPromise;
+    const selectionChangedDetail = await selectionChangedPromise;
+
+    expect(deselectDetail).toStrictEqual({
+      id: "id",
+      ignoreSideEffects: false,
+    });
+
+    expect(selectionChangedDetail).toStrictEqual({
+      selectedIds: [],
+      deselectedIds: ["id"],
+    });
+
+    expect(manager.getSelectedIds()).not.toContain("id");
+    expect(manager.isSelected("id")).toBe(false);
+    expect(manager.getSelectionCount()).toBe(0);
+  });
 });

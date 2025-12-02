@@ -33,8 +33,8 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
           .getLoadable(fos.isTooltipLocked)
           .getValue();
 
-        const id = payload?.id;
-        const point = payload?.point;
+        const id = payload.id;
+        const point = payload.point;
         const overlay = scene?.getOverlay?.(id);
 
         if (!isUnhover) {

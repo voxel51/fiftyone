@@ -2,9 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { Command } from "../commands/Command";
-import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
-import { BaseOverlay } from "../overlay/BaseOverlay";
+import type { Command } from "../commands/Command";
+import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
+import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { Point, Rect } from "../types";
 
 /**
