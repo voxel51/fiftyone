@@ -2,7 +2,6 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { EventBus } from "../event/EventBus";
 import type {
   Dimensions2D,
   DrawStyle,
@@ -62,9 +61,6 @@ export interface ResourceOptions {
  * 2D renderer interface.
  */
 export interface Renderer2D {
-  // Infrastructure
-  eventBus?: EventBus;
-
   // Tick loop
   addTickHandler(onFrame: () => void): void;
   resetTickHandler(): void;

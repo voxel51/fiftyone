@@ -71,6 +71,98 @@ describe("EventDispatcher", () => {
       expect(handler).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledWith(null);
     });
+
+    test("should return an unregister function", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.on("test:eventA", handler);
+
+      expect(typeof unregister).toBe("function");
+    });
+
+    test("should unregister handler when returned function is called", () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+
+      const unregister1 = dispatcher.on("test:eventA", handler1);
+      dispatcher.on("test:eventA", handler2);
+
+      // First dispatch - both handlers should be called
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+
+      // Unregister handler1
+      unregister1();
+
+      // Second dispatch - only handler2 should be called
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler1).toHaveBeenCalledTimes(1); // Still 1
+      expect(handler2).toHaveBeenCalledTimes(2); // Now 2
+    });
+
+    test("should allow unregistering multiple handlers independently", () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+      const handler3 = vi.fn();
+
+      const unregister1 = dispatcher.on("test:eventA", handler1);
+      const unregister2 = dispatcher.on("test:eventA", handler2);
+      const unregister3 = dispatcher.on("test:eventA", handler3);
+
+      // First dispatch - all handlers should be called
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+      expect(handler3).toHaveBeenCalledTimes(1);
+
+      // Unregister handler2
+      unregister2();
+
+      // Second dispatch - handler1 and handler3 should be called
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler1).toHaveBeenCalledTimes(2);
+      expect(handler2).toHaveBeenCalledTimes(1); // Still 1
+      expect(handler3).toHaveBeenCalledTimes(2);
+
+      // Unregister handler1
+      unregister1();
+
+      // Third dispatch - only handler3 should be called
+      dispatcher.dispatch("test:eventA", { id: "3", name: "test3" });
+      expect(handler1).toHaveBeenCalledTimes(2); // Still 2
+      expect(handler2).toHaveBeenCalledTimes(1); // Still 1
+      expect(handler3).toHaveBeenCalledTimes(3);
+    });
+
+    test("should be safe to call unregister function multiple times", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.on("test:eventA", handler);
+
+      dispatcher.dispatch("test:eventA", { id: "1", name: "test" });
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      // Call unregister multiple times
+      unregister();
+      unregister();
+      unregister();
+
+      // Handler should still only be unregistered once
+      dispatcher.dispatch("test:eventA", { id: "2", name: "test2" });
+      expect(handler).toHaveBeenCalledTimes(1); // Still 1
+    });
+
+    test("should work with events that have no payload", () => {
+      const handler = vi.fn();
+      const unregister = dispatcher.on("test:eventC", handler);
+
+      dispatcher.dispatch("test:eventC");
+      expect(handler).toHaveBeenCalledTimes(1);
+
+      unregister();
+
+      dispatcher.dispatch("test:eventC");
+      expect(handler).toHaveBeenCalledTimes(1); // Still 1
+    });
   });
 
   describe("off", () => {

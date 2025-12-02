@@ -2,6 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
@@ -16,8 +17,7 @@ import {
   SELECTED_ALPHA,
   SELECTED_COLOR,
 } from "../constants";
-import type { EventBus } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
+import type { LighterEventGroup } from "../events";
 import type {
   Dimensions2D,
   DrawStyle,
@@ -39,7 +39,7 @@ export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
   private tickHandler?: () => void;
   private isRunning = false;
-  public eventBus?: EventBus;
+  private eventBus = getEventBus<LighterEventGroup>();
 
   private viewport?: Viewport;
 
@@ -52,9 +52,7 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  constructor(private canvas: HTMLCanvasElement, eventBus?: EventBus) {
-    this.eventBus = eventBus;
-  }
+  constructor(private canvas: HTMLCanvasElement) {}
 
   public async initializePixiJS(): Promise<void> {
     this.app = await sharedPixiApp.initialize(this.canvas);
@@ -70,12 +68,7 @@ export class PixiRenderer2D implements Renderer2D {
             this.app.renderer.render(this.app.stage);
           }
 
-          if (this.eventBus) {
-            this.eventBus.emit({
-              type: LIGHTER_EVENTS.RESIZE,
-              detail: { width, height },
-            });
-          }
+          this.eventBus.dispatch("lighter:resize", { width, height });
         }
       }
     });
@@ -97,10 +90,9 @@ export class PixiRenderer2D implements Renderer2D {
     // to re-render the scene with updated scaling
     // TODO: throttle?
     this.viewport.on("zoomed", (_data) => {
-      if (this.viewport && this.eventBus) {
-        this.eventBus.emit({
-          type: LIGHTER_EVENTS.ZOOMED,
-          detail: { scale: this.viewport.scaled },
+      if (this.viewport) {
+        this.eventBus.dispatch("lighter:zoomed", {
+          scale: this.viewport.scaled,
         });
       }
     });

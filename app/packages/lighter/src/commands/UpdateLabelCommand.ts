@@ -13,13 +13,16 @@ export class UpdateLabelCommand implements Command {
   readonly id: string;
   readonly description: string;
 
+  readonly nextLabel: RawLookerLabel;
+
   constructor(
     private overlay: BaseOverlay,
     private currentLabel: RawLookerLabel,
-    private nextLabel: RawLookerLabel
+    nextLabel: RawLookerLabel
   ) {
     this.id = `update-label-${overlay.id}-${Date.now()}`;
     this.description = `Update label ${overlay.id}`;
+    this.nextLabel = nextLabel;
   }
 
   execute(): void {
