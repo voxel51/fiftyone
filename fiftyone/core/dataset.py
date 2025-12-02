@@ -8261,7 +8261,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def _sample_dict_to_doc(self, d, _reload_backing_docs=True):
+    def _sample_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._sample_doc_cls.from_dict(d)
         except Exception as e:
@@ -8283,7 +8283,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._frame_dict_to_doc(d)
         return fofr.Frame.from_doc(doc, dataset=self)
 
-    def _frame_dict_to_doc(self, d, _reload_backing_docs=True):
+    def _frame_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._frame_doc_cls.from_dict(d)
         except Exception as e:
