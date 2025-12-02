@@ -75,13 +75,23 @@ After tagging at least a few incorrect samples, a good next step is to mark them
 Return to Auto Labeling for Iterative Approval
 ----------------------------------------------
 
-After tagging samples in the embeddings view, you can filter your dataset by these tags and return to the Auto Labeling panel to continue the approval workflow. For example, to focus on samples that passed your embeddings-based QA:
+After tagging samples in the embeddings view, you can filter your dataset to exclude flagged samples and return to the Auto Labeling panel. This lets you continue approving labels from a curated set.
 
-1. In the left sidebar, filter by tags to exclude samples tagged as `needs-review`
-2. Return to the **Auto Labeling** panel
-3. Continue selecting and approving labels from your filtered view
+You can filter out tagged samples using the sidebar or programmatically:
 
-This iterative process—exploring via embeddings, tagging outliers, then returning to batch approve verified samples—helps you efficiently work through large datasets while maintaining label quality.
+.. code-block:: python
+
+    # Exclude samples tagged as needs-review
+    view = dataset.match_tags(needs-review, bool=False)
+
+See :ref:`querying samples <querying-samples>` for more on filtering by tags.
+
+From your filtered view:
+
+1. Return to the **Auto Labeling** panel
+2. Continue selecting and approving labels
+
+This iterative workflow helps you efficiently work through large datasets while maintaining label quality.
 
 Next Steps
 ----------
