@@ -368,9 +368,12 @@ class ActivityNetDetectionResults(DetectionResults):
         self.thresholds = (
             np.asarray(thresholds) if thresholds is not None else None
         )
-        self.classwise_AP = np.array(classwise_AP)
-
-        self._classwise_AP = self.classwise_AP.mean(0)
+        self.classwise_AP = (
+            np.array(classwise_AP) if classwise_AP is not None else None
+        )
+        self._classwise_AP = (
+            self.classwise_AP.mean(0) if classwise_AP is not None else None
+        )
 
     def plot_pr_curves(
         self, classes=None, iou_thresh=None, backend="plotly", **kwargs
@@ -400,7 +403,9 @@ class ActivityNetDetectionResults(DetectionResults):
                 used
             -   a plotly or matplotlib figure, otherwise
         """
-        if classes is None:
+        if classes is None and self._classwise_AP is None:
+            classes = self.classes
+        elif classes is None:
             inds = np.argsort(self._classwise_AP)[::-1][:3]
             classes = self.classes[inds]
 
@@ -443,6 +448,9 @@ class ActivityNetDetectionResults(DetectionResults):
         Returns:
             the mAP in ``[0, 1]``
         """
+        if self._classwise_AP is None:
+            return None
+
         if classes is not None:
             class_inds = np.array([self._get_class_index(c) for c in classes])
             classwise_AP = self._classwise_AP[class_inds]
