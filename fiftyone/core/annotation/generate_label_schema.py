@@ -9,6 +9,9 @@ Annotation label schema generation
 import eta.core.utils as etau
 
 import fiftyone.core.annotation.constants as foac
+from fiftyone.core.annotation.validate_label_schema import (
+    validate_field_label_schema,
+)
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
@@ -109,8 +112,9 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     ``id`` only supports the ``text`` component where ``read_only`` must be
     ``True`` with no other settings.
 
-    Supported ``list<bool>``, ``list<float>``, and ``list<int>`` components
-    are:
+    Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
+        -   ``checkboxes``
+        -   ``dropdown``
         -   ``text`` - the default
 
     Supported ``list<str>`` components are:
@@ -127,11 +131,11 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         -   ``text``: the default if ``0`` values or ``>1000`` values are
             scanned, or ``scan_samples`` is ``False``
 
-    ``float`` supports a ``precision`` setting for the number of digits to
-    allow after the decimal.
+    ``float`` types support a ``precision`` setting when a ``text`` component
+    is configured  for the number of digits to allow after the decimal.
 
-    All components support a ``default`` value setting and ``read_only``
-    flag.
+    All types support a ``default`` value setting except ``id``, as well as a
+    ``read_only`` flag.
 
     All components support ``values`` except ``json``, ``slider``, and
     ``toggle` excepting ``id`` restrictions.
@@ -157,7 +161,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
 
     If a field is ``read_only`` in the field schema, then the ``read_only``
-    label schema setting can must be ``True``, e.g. ``created_at`` and
+    label schema setting must be ``True``, e.g. ``created_at`` and
     ``last_modified_at`` must be read only.
 
     Embedded documents::
@@ -192,8 +196,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
             component settings
 
     Raises:
-        ValueError: if the sample collection or the field is not supported, or
-        the field does not exist or is not supported
+        ValueError: if the sample collection or field is not supported
 
     Returns:
         a label schema ``dict``
@@ -208,9 +211,16 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
     schema = {}
     for field_name in fields:
-        schema[field_name] = _generate_field_label_schema(
+        label_schema = _generate_field_label_schema(
             sample_collection, field_name, scan_samples
         )
+        import fiftyone as fo
+
+        fo.pprint(label_schema)
+        validate_field_label_schema(
+            sample_collection, field_name, label_schema
+        )
+        schema[field_name] = label_schema
 
     return schema
 
@@ -276,77 +286,89 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     if is_list:
         field = field.field
 
-    default_type = _get_default_field_type(field, is_list)
-    settings = {
-        "read_only": True,
-        "type": default_type,
-    }
-    component = foac.DEFAULT_COMPONENTS[default_type]
-    if component:
-        settings["component"] = component
+    _type = _get_type(field, is_list)
 
-    if read_only:
+    settings = {
+        foac.TYPE: _type,
+    }
+
+    component = foac.DEFAULT_COMPONENTS[_type]
+    if component:
+        settings[foac.COMPONENT] = component
+
+    if read_only or _type == foac.ID:
+        settings[foac.READ_ONLY] = True
         return settings
 
-    if isinstance(field, fof.StringField):
-        return _handle_str(
-            collection, field_name, is_list, settings, scan_samples
-        )
+    fn = None
 
     if isinstance(field, fof.BooleanField):
-        return _handle_bool(settings)
+        fn = _handle_bool
+    elif isinstance(field, (fof.FloatField, fof.IntField)):
+        fn = _handle_float_or_int
+    elif isinstance(field, fof.StringField):
+        fn = _handle_str
 
-    if isinstance(field, (fof.FloatField, fof.IntField)):
-        return _handle_float_or_int(settings)
+    if fn:
+        return fn(collection, field_name, is_list, settings, scan_samples)
 
     if is_list:
-        raise ValueError(f"todo")
+        raise ValueError(f"unsupport field {field_name}: {field}")
 
     if isinstance(
         field,
         (
             fof.DateField,
             fof.DateTimeField,
+            fof.DictField,
             fof.ObjectIdField,
-            fof.FloatField,
-            fof.IntField,
         ),
     ):
-        return {"type": "input", "default": None}
+        return settings
 
     if not isinstance(field, fof.EmbeddedDocumentField):
-        raise ValueError(f"unsupported field {field}")
+        raise ValueError(f"unsupported field {field_name}: {field}")
 
+    _type = field.document_type.__name__.lower()
     if issubclass(field.document_type, fol._HasLabelList):
         field_name = f"{field_name}.{field.document_type._LABEL_LIST_FIELD}"
         field = collection.get_field(field_name).field
 
-    settings["attributes"] = {}
+    attributes = {}
     classes = []
     for f in field.fields:
-        if f.name == "bounding_box" and field.document_type == fol.Detection:
+        if (
+            f.name == foac.BOUNDING_BOX
+            and field.document_type == fol.Detection
+        ):
             # bounding_box is a list of floats field, but really a 4-tuple of
             # [0, 1] floats, omit for special handling by the App
             continue
 
         try:
-            settings["attributes"][f.name] = _generate_field_label_schema(
+            attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples
             )
         except:
             pass
 
-    label = settings["attributes"].pop("label")
-    classes = label.pop("values")
-    return dict(
-        attributes=settings["attributes"],
-        classes=classes,
+    label = attributes.pop(foac.LABEL)
+    label.pop(foac.TYPE)
+    classes = label.pop(foac.VALUES, None)
+
+    result = dict(
+        attributes=attributes,
         **label,
-        type=str(field.document_type).split(".")[1].lower(),
+        type=_type,
     )
 
+    if classes:
+        result[foac.CLASSES] = classes
 
-def _get_default_field_type(field, is_list):
+    return result
+
+
+def _get_type(field, is_list):
     field_type = (
         fol.Label
         if isinstance(field, fof.EmbeddedDocumentField)
@@ -366,12 +388,14 @@ def _ensure_collection_is_supported(collection):
         raise ValueError(f"{collection.media_type} media is not supported yet")
 
 
-def _handle_bool(c):
-    pass
+def _handle_bool(collection, field_name, is_list, settings, scan_samples):
+    return settings
 
 
-def _handle_float_or_int(c):
-    pass
+def _handle_float_or_int(
+    collection, field_name, is_list, settings, scan_samples
+):
+    return settings
 
 
 def _handle_str(collection, field_name, is_list, settings, scan_samples):
@@ -381,19 +405,22 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
         else:
             values = None
 
-        if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-            settings["type"] = "checkboxes" if is_list else "radio"
-
-        if values > foac.VALUES_THRESHOLD:
-            values = None
-
         if values:
-            settings["values"] = values
+            if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+                settings[foac.COMPONENT] = (
+                    foac.CHECKBOXES if is_list else foac.RADIO
+                )
 
-        return settings
+            elif len(values) <= foac.VALUES_THRESHOLD:
+                settings[foac.COMPONENT] = foac.DROPDOWN
+
+            if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
+                settings[foac.VALUES] = values
     except:
         # too many distinct values
-        return settings
+        pass
+
+    return settings
 
 
 def _is_supported_field(field, media_type, app_annotation_support=False):

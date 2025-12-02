@@ -3523,32 +3523,148 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def compute_annotation_schema(self, field_name, scan_samples=True):
-        """Compute the annotation schema for a collection's field
+    def generate_label_schema(self, field_name=None, scan_samples=True):
+        """Generates a label schema for the
+        :class:`fiftyone.core.collections.SampleCollection`.
 
-        An annotation schema is defined by a type. A field type and an annotation
-        type informs the annotation form type and allowed values
+        A label schema is defined by a ``type`` and ``component``. Further
+        settings depend on the ``type`` and ``component`` combination as outined
+        below.
 
-        Annotation types are:
-            - checkbox
-            - input
-            - select
-            - radio
-            - text
-            - tags
+        The ``type`` value for a field is inferred from the collection's field
+        schema. See
+        :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
+
+        Currently supported  media types for the collection are ``image`` and
+        ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
+
+        Primitives and components::
+
+        Supported primitive types are:
+            -   ``bool``: :class:`fiftyone.core.fields.BooleanField`
+            -   ``date``: :class:`fiftyone.core.fields.DateField`
+            -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
+            -   ``dict``: :class:`fiftyone.core.fields.DictField`
+            -   ``float``: :class:`fiftyone.core.fields.FloatField`
+            -   ``id``: : :class:`fiftyone.core.fields.ObjectIdField` or
+                :class:`fiftyone.core.fields.UUIDField`
+            -   ``int``: :class:`fiftyone.core.fields.IntField` or
+                :class:`fiftyone.core.fields.FrameNumberField`
+            -   ``list<bool>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.BooleanField`
+            -   ``list<int>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.IntField`
+            -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.FloatField`
+            -   ``list<str>``: : :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.StringField`
+            -   ``str``: :class:`fiftyone.core.fields.StringField`
+
+        Supported ``bool`` components are:
+            -   ``checkbox``
+            -   ``toggle`` - the default
+
+        ``date`` and ``datetime`` only support the ``datepicker`` component.
+
+        ``dict`` only supports the ``json`` component.
+
+        Supported ``float`` and ``int`` components are:
+            -   ``dropdown``
+            -   ``radio``
+            -   ``slider``: the default when ``scan_samples`` is ``True`` and
+                finite values are found that define the ``range``
+            -   ``text``: the default when ``scan_samples`` is ``False``
+
+        ``id`` only supports the ``text`` component where ``read_only`` must be
+        ``True`` with no other settings.
+
+        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
+            -   ``checkboxes``
+            -   ``dropdown``
+            -   ``text`` - the default
+
+        Supported ``list<str>`` components are:
+            -   ``checkboxes``: the default if ``<=5`` values are scanned
+            -   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+                scanned
+            -   ``text``: the default if ``0`` values or ``>1000`` values are
+                scanned, or ``scan_samples`` is ``False``
+
+        Supported ``str`` type components are:
+            =   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+                scanned
+            -   ``radio``: the default if ``<=5`` values are scanned
+            -   ``text``: the default if ``0`` values or ``>1000`` values are
+                scanned, or ``scan_samples`` is ``False``
+
+        ``float`` types support a ``precision`` setting when a ``text`` component
+        is configured  for the number of digits to allow after the decimal.
+
+        All types support a ``default`` value setting except ``id``, as well as a
+        ``read_only`` flag.
+
+        All components support ``values`` except ``json``, ``slider``, and
+        ``toggle` excepting ``id`` restrictions.
+
+        ``checkboxes`` and ``dropdown`` require the ``values`` setting.
+
+        ``slider`` requires the ``range: [min, max]`` setting.
+
+        Labels::
+
+        The ``label`` subfield of all label types are configured via ``classes``
+        and support the same settings as a ``str`` type. See the example output
+        below for ``detections`` fields in the quickstart dataset. If the label
+        tyoe has a visual representation, that field is handled by the App's
+        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
+        attributes of label types are configured via the ``attributes`` setting.
+
+        All :class:`fiftyone.core.labels.Label`` types are resolved by this method
+        except :class:`fiftyone.core.labels.GeoLocation`,
+        :class:`fiftyone.core.labels.GeoLocations`,
+        :class:`fiftyone.core.labels.TemporalDetection`, and
+        :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
+        by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
+
+        If a field is ``read_only`` in the field schema, then the ``read_only``
+        label schema setting must be ``True``, e.g. ``created_at`` and
+        ``last_modified_at`` must be read only.
+
+        Embedded documents::
+
+        One level of nesting is supported via ``dot.notation`` for
+        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the default
+        ``metadata`` field and the
+        :class:`fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument``
+        document type. All label and primitive types are supported. See
+        :ref:`here <dynamic-attributes>` for more details on adding dynamic
+        attributes.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
+
+            # todo: add output here
 
         Args:
-            collection: a :class:`fiftyone.core.collections.SampleCollection`
-            field_name: a field name or ``embedded.field.name`` to process
+            field (None): a field name, ``embedded.field.name`` or iterable of such
+                values
+            scan_samples (False): whether to scan the collection to populate
+                component settings
 
         Raises:
-            ValueError: if the field does not exists or annotation for its
-            field type is not supported
+            ValueError: if the sample collection or field is not supported
 
         Returns:
-            an annotation schema dictionary
+            a label schema ``dict``
         """
-        return foan.compute_annotation_schema(
+        return foan.generate_label_schema(
             self, field_name, scan_samples=scan_samples
         )
 
