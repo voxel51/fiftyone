@@ -20,7 +20,7 @@ import { getEntryKey } from "./utils";
  * This should be called in InteractiveSidebar.
  */
 export const useRegisterSidebarCommandHandlers = (
-  container: React.RefObject<HTMLDivElement>,
+  container: React.RefObject<HTMLDivElement | null>,
   entries: fos.SidebarEntry[],
   items: React.MutableRefObject<InteractiveItems>
 ) => {
@@ -72,7 +72,7 @@ export const useRegisterSidebarCommandHandlers = (
 
   // Handler: Scroll to field
   const handleScrollToField = useCallback(
-    async (path: string, eventId?: string) => {
+    async (path: string) => {
       if (!container.current) {
         return;
       }
@@ -107,7 +107,7 @@ export const useRegisterSidebarCommandHandlers = (
     ScrollToFieldCommand,
     useCallback(
       async (cmd) => {
-        await handleScrollToField(cmd.path, cmd.eventId);
+        await handleScrollToField(cmd.path);
       },
       [handleScrollToField]
     )

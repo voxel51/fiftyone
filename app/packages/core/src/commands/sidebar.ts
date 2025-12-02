@@ -17,7 +17,7 @@ export class ExpandFieldCommand extends Command<void> {
  * Command to scroll to a field in the sidebar.
  */
 export class ScrollToFieldCommand extends Command<void> {
-  constructor(public readonly path: string, public readonly eventId?: string) {
+  constructor(public readonly path: string) {
     super();
   }
 }
@@ -59,9 +59,9 @@ export const requestExpandField = (path: string) => {
  * Request to scroll to a field in the sidebar.
  * Dispatches ScrollToFieldCommand via the command bus.
  */
-export const requestScrollToField = (path: string, eventId?: string) => {
+export const requestScrollToField = (path: string) => {
   const bus = getCommandBus();
-  return bus.execute(new ScrollToFieldCommand(path, eventId));
+  return bus.execute(new ScrollToFieldCommand(path));
 };
 
 /**
