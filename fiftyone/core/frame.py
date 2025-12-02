@@ -1118,11 +1118,10 @@ class Frame(Document, metaclass=FrameSingleton):
         if d:
             self._doc = self._dataset._frame_dict_to_doc(d)
         else:
-            # Sample has an 'id' but not found during reload.
-            # This can occur if the sample was deleted externally
+            # Frame doc has an 'id' but not found during reload.
+            # This can occur if the frame was deleted externally
             logger.warning(
-                f"Frame number {self.frame_number} of sample with ID {self._id} marked as in database "
-                f"but not found during reload"
+                f"Frame number {self.frame_number} of sample with ID {self._id} has been deleted"
             )
 
 

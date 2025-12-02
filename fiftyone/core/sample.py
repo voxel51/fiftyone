@@ -544,10 +544,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         else:
             # Sample has an 'id' but not found during reload.
             # This can occur if the sample was deleted externally
-            logger.warning(
-                f"Sample with ID {self._id} marked as in database "
-                f"but not found during reload"
-            )
+            logger.warning(f"Sample with ID {self._id} has been deleted")
 
     def reload(self, hard=False, include_frames=True):
         """Reloads the sample from the database.
