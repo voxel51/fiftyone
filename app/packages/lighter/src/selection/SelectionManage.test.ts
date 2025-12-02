@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
+import { getEventBus } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import { SelectionManager } from "./SelectionManager";
 
 class Selectable {
@@ -21,11 +22,11 @@ class Selectable {
 
 describe("SelectionManager", () => {
   it("emits correct select and deselect events", async () => {
-    const bus = new EventBus();
-    const manager = new SelectionManager(bus);
+    const bus = getEventBus<LighterEventGroup>();
+    const manager = new SelectionManager();
     manager.addSelectable(new Selectable());
     const selectDetail = await new Promise((resolve) => {
-      bus.on(LIGHTER_EVENTS.OVERLAY_SELECT, (event) => resolve(event.detail));
+      bus.on("lighter:overlay-select", (payload) => resolve(payload));
 
       manager.select("id", { ignoreSideEffects: true });
     });
@@ -38,7 +39,7 @@ describe("SelectionManager", () => {
     });
 
     const deselectDetail = await new Promise((resolve) => {
-      bus.on(LIGHTER_EVENTS.OVERLAY_DESELECT, (event) => resolve(event.detail));
+      bus.on("lighter:overlay-deselect", (payload) => resolve(payload));
       manager.deselect("id", { ignoreSideEffects: true });
     });
 
@@ -46,5 +47,43 @@ describe("SelectionManager", () => {
       id: "id",
       ignoreSideEffects: true,
     });
+  });
+
+  it("removes selected overlay and emits deselect events", async () => {
+    const bus = getEventBus<LighterEventGroup>();
+    const manager = new SelectionManager();
+    const selectable = new Selectable();
+    manager.addSelectable(selectable);
+
+    manager.select("id", { ignoreSideEffects: true });
+    expect(manager.getSelectedIds()).toContain("id");
+    expect(manager.isSelected("id")).toBe(true);
+
+    const deselectPromise = new Promise((resolve) => {
+      bus.on("lighter:overlay-deselect", (payload) => resolve(payload));
+    });
+
+    const selectionChangedPromise = new Promise((resolve) => {
+      bus.on("lighter:selection-changed", (payload) => resolve(payload));
+    });
+
+    manager.removeSelectable("id");
+
+    const deselectDetail = await deselectPromise;
+    const selectionChangedDetail = await selectionChangedPromise;
+
+    expect(deselectDetail).toStrictEqual({
+      id: "id",
+      ignoreSideEffects: false,
+    });
+
+    expect(selectionChangedDetail).toStrictEqual({
+      selectedIds: [],
+      deselectedIds: ["id"],
+    });
+
+    expect(manager.getSelectedIds()).not.toContain("id");
+    expect(manager.isSelected("id")).toBe(false);
+    expect(manager.getSelectionCount()).toBe(0);
   });
 });

@@ -2,9 +2,9 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { getEventBus, type EventDispatcher } from "@fiftyone/events";
 import { CONTAINS } from "../core/Scene2D";
-import type { EventBus } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
+import type { LighterEventGroup } from "../events";
 import { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
@@ -28,9 +28,11 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   protected isDirty = false;
 
   protected renderer?: Renderer2D;
-  protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+
+  protected eventBus: EventDispatcher<LighterEventGroup> =
+    getEventBus<LighterEventGroup>();
 
   constructor(id: string, field: string, label: Label) {
     this.id = id;
@@ -71,14 +73,6 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   setRenderer(renderer: Renderer2D): void {
     this.renderer = renderer;
-  }
-
-  /**
-   * Attaches the event bus to this overlay.
-   * @param bus - The event bus to attach.
-   */
-  attachEventBus(bus: EventBus): void {
-    this.eventBus = bus;
   }
 
   /**
@@ -159,12 +153,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Emits an overlay-loaded event.
    */
   protected emitLoaded(): void {
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: LIGHTER_EVENTS.OVERLAY_LOADED,
-        detail: { id: this.id },
-      });
-    }
+    this.eventBus.dispatch("lighter:overlay-loaded", { id: this.id });
   }
 
   /**
@@ -172,12 +161,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param error - The error that occurred.
    */
   protected emitError(error: Error): void {
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: LIGHTER_EVENTS.OVERLAY_ERROR,
-        detail: { id: this.id, error },
-      });
-    }
+    this.eventBus.dispatch("lighter:overlay-error", { id: this.id, error });
   }
 
   /**
