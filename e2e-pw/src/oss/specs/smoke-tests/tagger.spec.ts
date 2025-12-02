@@ -40,16 +40,6 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  // Clear modal mode state to ensure tests start in explore mode
-  await page.evaluate(() => {
-    const keys = Object.keys(localStorage);
-    keys.forEach((key) => {
-      if (key.includes("modalMode")) {
-        localStorage.removeItem(key);
-      }
-    });
-  });
-
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
