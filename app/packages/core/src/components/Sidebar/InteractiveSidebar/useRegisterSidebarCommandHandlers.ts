@@ -121,13 +121,25 @@ export const useRegisterSidebarCommandHandlers = (
         const expandedPath = await snapshot.getPromise(fos.expandPath(path));
         await handleExpandField(expandedPath);
 
-        // Wait for next frame to allow DOM to update
-        await new Promise((resolve) => requestAnimationFrame(resolve));
+        // Wait for animation to complete
+        await new Promise<void>((resolve) => {
+          const onAnimationRest = () => {
+            container.current?.removeEventListener(
+              "animation-onRest",
+              onAnimationRest
+            );
+            resolve();
+          };
+          container.current?.addEventListener(
+            "animation-onRest",
+            onAnimationRest
+          );
+        });
 
         // Scroll to the label field (e.g., "yolo11")
         await handleScrollToField(path);
       },
-    [handleExpandField, handleScrollToField]
+    [handleExpandField, handleScrollToField, container]
   );
 
   useRegisterCommandHandler(
