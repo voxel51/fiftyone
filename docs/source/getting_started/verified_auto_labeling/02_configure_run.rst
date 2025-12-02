@@ -27,14 +27,21 @@ In the Auto Labeling panel, click **Auto Label**. This opens the main configurat
    :align: center
    :width: 75%
 
-Now expand the **Target** dropdown. We are going to assign labels to every sample in the dataset, so additionally select the **All samples** radio button.
+Now expand the **Target** dropdown. Since we want to generate labels for the entire dataset, select the **All samples** radio button. You can also choose to label only a filtered subset if you want to test on a smaller batch first.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_target.webp
    :alt: VAL choose target
    :align: center
    :width: 75%
 
-Expand the **Detection** dropdown. Select the **Detection** tile to perform object detection. Then under model type, choose **Zero-shot**. We also have the option of choosing a fixed vocabulary model with predefined classes. Open the zero-shot model dropdown, and select **YOLO World** as the chosen detection model.
+Expand the **Detection** dropdown and select the **Detection** tile.
+
+Next, choose your model type. FiftyOne offers two options:
+
+- **Zero-shot models** let you define custom classes using plain language. This is useful when your target objects do not match the predefined categories of a fixed model.
+- **Fixed-vocabulary models** are trained on specific class sets like COCO or Open Images. They can be faster and more accurate for those classes, but lack flexibility.
+
+For the BDD100K driving dataset, we want to detect common road objects like cars, buses, and pedestrians. A zero-shot model is a good fit here because it allows us to specify exactly the classes we care about. Select **Zero-shot**, then choose **YOLO World** from the model dropdown. YOLO World combines strong detection accuracy with efficient inference speed.
 
 For the model **Size**, choose **Medium** to balance speed and performance.
 
@@ -43,7 +50,9 @@ For the model **Size**, choose **Medium** to balance speed and performance.
    :align: center
    :width: 75%
 
-Next, expand the **Define zero-shot classes** dropdown. Enter the following comma-separated classes: `car, bus, person, bicycle, traffic sign`
+Expand the **Define zero-shot classes** dropdown. Enter: `car, bus, person, bicycle, traffic sign`
+
+These classes represent the key objects for autonomous driving perception. You can adjust this list based on your annotation goals.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_define_classes.webp
    :alt: VAL run define classes
