@@ -75,7 +75,7 @@ Now click **Auto Label**, then click **Schedule** for one of your delegated oper
 Monitor the VAL run
 -------------------
 
-FiftyOne has now begun running the VAL operation as a background job. To view the job's progress, you can click **View Status** from the Auto Labeling panel, or the **Runs** tab and then click into your running job where you'll see the job's progress as well as your configuration parameters as inputs. In the job run, also note the ability to view and download the job log, re-run the job, and if necessarily terminate/cancel any stuck jobs.
+FiftyOne has now begun running the VAL operation as a background job. To view the job's progress, you can click **View Status** from the Auto Labeling panel, or the **Runs** tab and then click into your running job where you'll see the job's progress as well as your configuration parameters as inputs. In the job run, also note the ability to view and download the job log, re-run the job, and if necessary terminate/cancel any stuck jobs.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_log.webp
    :alt: VAL run log
