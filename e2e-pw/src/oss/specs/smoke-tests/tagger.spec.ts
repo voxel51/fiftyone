@@ -40,7 +40,6 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   // Clear modal mode state to ensure tests start in explore mode
   await page.evaluate(() => {
     const keys = Object.keys(localStorage);
@@ -50,6 +49,8 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
       }
     });
   });
+
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test.describe.serial("tag", () => {
