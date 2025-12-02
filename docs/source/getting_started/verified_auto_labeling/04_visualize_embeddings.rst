@@ -24,7 +24,7 @@ Leave all other settings as they are. You can refer to the `image embeddings doc
    :align: center
    :width: 90%
 
-To run the embeddings computation, you can delegate it as a background operation similar to the auto labeling run. Click the dropdown arrow next to **Execute** and select one of your delegated operators. Then click **Schedule**.
+To run the embeddings computation, you can delegate it as a background operation similar to the auto labeling run. Click the dropdown arrow next to **Execute** and select one of your compute clusters. Then click **Schedule**.
 
 You can then navigate to the dataset's **Runs** tab to view the task's progress (same again as the auto labeling run).
    
