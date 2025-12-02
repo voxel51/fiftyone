@@ -8,6 +8,7 @@ import type { InteractiveItems, RenderEntry } from "./types";
 import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
+import { useRegisterSidebarCommandHandlers } from "./useRegisterSidebarCommandHandlers";
 import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
 
 const InteractiveSidebar = ({
@@ -38,6 +39,9 @@ const InteractiveSidebar = ({
   if (entries instanceof Error) {
     throw entries;
   }
+
+  // Register command handlers for expand/scroll field operations
+  useRegisterSidebarCommandHandlers(container, entries, items);
 
   let group: string;
   order.current = [...entries].map((entry) => getEntryKey(entry));
