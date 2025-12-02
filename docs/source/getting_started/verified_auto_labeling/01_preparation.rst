@@ -39,7 +39,7 @@ Verified Auto-Labeling currently supports the following 3 annotation tasks.
 - **Object detection:** Bounding box labels drawn around objects of interest (e.g., `dog`, `cat`, `bigfoot`)
 - **Instance segmentation**: Pixel-level masks delineating exact object boundaries (e.g., individual `cars` on a crowded road)
 
-In this guide, we will choose **object detection**. 
+In this guide, we will choose **object detection**. Object detection is ideal when you need to locate and classify multiple objects within each image. For the BDD100K driving dataset, this means identifying vehicles, pedestrians, traffic signs, and other road objects. These labels are essential for training perception models used in autonomous driving systems. The bounding box format also makes it easy to verify label accuracy at a glance. 
 
 You will also want an idea of the **classes**, or object categories, you will be annotating in the dataset. Based on the annotation task chosen, FiftyOne will let you choose from a list of models that can be used for labeling. Some models are **zero-shot** and support arbitrary, plain-language class descriptions. Others are **fixed-vocabulary** and require choosing from a fixed list of classes that model was trained on.
 
