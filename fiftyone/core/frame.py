@@ -1116,7 +1116,9 @@ class Frame(Document, metaclass=FrameSingleton):
         )
 
         if d:
-            self._doc = self._dataset._frame_dict_to_doc(d)
+            self._doc = self._dataset._frame_dict_to_doc(
+                d, _reload_backing_docs=False
+            )
         else:
             # Frame doc has an 'id' but not found during reload.
             # This can occur if the frame was deleted externally
