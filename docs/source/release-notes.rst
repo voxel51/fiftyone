@@ -254,7 +254,7 @@ Core
   use the default defined in the config, or `False` to disable batching for the
   request. `#6400 <https://github.com/voxel51/fiftyone/pull/6400>`_
 - Increased maximum resource (dataset, view, snapshot) name size from 100 to
-  1.    `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
+  1551.    `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
 
 App
 
