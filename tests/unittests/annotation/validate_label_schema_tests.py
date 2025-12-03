@@ -651,9 +651,9 @@ class LabelSchemaValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_field_label_schema(
                 dataset,
-                "str_field",
+                "str_list_field",
                 {
-                    "type": "str",
+                    "type": "list<str>",
                     "component": "checkboxes",
                 },
             )
@@ -662,9 +662,9 @@ class LabelSchemaValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_field_label_schema(
                 dataset,
-                "str_field",
+                "str_list_field",
                 {
-                    "type": "str",
+                    "type": "list<str>",
                     "component": "checkboxes",
                     "values": ["value"],
                     "default": ["value", "value"],

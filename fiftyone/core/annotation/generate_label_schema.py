@@ -62,7 +62,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     :class:`fiftyone.core.collections.SampleCollection`.
 
     A label schema is defined by a ``type`` and ``component``. Further
-    settings depend on the ``type`` and ``component`` combination as outined
+    settings depend on the ``type`` and ``component`` combination as outlined
     below.
 
     The ``type`` value for a field is inferred from the collection's field
@@ -139,7 +139,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     ``read_only`` flag.
 
     All components support ``values`` except ``json``, ``slider``, and
-    ``toggle` excepting ``id`` restrictions.
+    ``toggle`` excepting ``id`` restrictions.
 
     ``checkboxes`` and ``dropdown`` require the ``values`` setting.
 
@@ -150,11 +150,11 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     The ``label`` subfield of all label types are configured via ``classes``
     and support the same settings as a ``str`` type. See the example output
     below for ``detections`` fields in the quickstart dataset. If the label
-    tyoe has a visual representation, that field is handled by the App's
+    type has a visual representation, that field is handled by the App's
     builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
     attributes of label types are configured via the ``attributes`` setting.
 
-    All :class:`fiftyone.core.labels.Label`` types are resolved by this method
+    All :class:`fiftyone.core.labels.Label` types are resolved by this method
     except :class:`fiftyone.core.labels.GeoLocation`,
     :class:`fiftyone.core.labels.GeoLocations`,
     :class:`fiftyone.core.labels.TemporalDetection`, and
@@ -227,12 +227,12 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         #    'predictions': {
         #        'attributes': {
         #            'attributes': {'type': 'dict', 'component': 'json'},
-        $            'confidence': {
-        $                'type': 'float',
-        $                'component': 'slider',
-        $                'range': [0.05003104358911514, 0.9999035596847534],
-        $                'default': 0.05003104358911514,
-        $            },
+        #            'confidence': {
+        #                'type': 'float',
+        #                'component': 'slider',
+        #                'range': [0.05003104358911514, 0.9999035596847534],
+        #                'default': 0.05003104358911514,
+        #            },
         #            'id': {
         #                'type': 'id',
         #                'component': 'text',
@@ -267,10 +267,10 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         sample_collection: the
             :class:`fiftyone.core.collections.SampleCollection` to generate the
             schema with
-        field (None): a field name, ``embedded.field.name`` or iterable of such
-            values
+        fields (None): a field name, ``embedded.field.name`` or iterable of
+            such values
         scan_samples (False): whether to scan the collection to populate
-            component settings
+            component settings (ranges, values, defaults, etc.)
 
     Raises:
         ValueError: if the sample collection or field is not supported
@@ -430,7 +430,8 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples
             )
-        except:
+        except ValueError:
+            # Field type not supported for schema generation
             pass
 
     label = attributes.pop(foac.LABEL)
@@ -457,15 +458,20 @@ def _get_type(field, is_list):
         else type(field)
     )
 
-    return (
-        foac.FIELD_TYPE_TO_TYPES[fof.ListField][field_type]
+    _types = (
+        foac.FIELD_TYPE_TO_TYPES[fof.ListField]
         if is_list
-        else foac.FIELD_TYPE_TO_TYPES[field_type]
+        else foac.FIELD_TYPE_TO_TYPES
     )
+
+    if field_type not in _types:
+        raise ValueError(f"field {field} is not supported")
+
+    return _types[field_type]
 
 
 def _ensure_collection_is_supported(collection):
-    if collection.media_type in foac.SUPPORTED_MEDIA_TYPES:
+    if collection.media_type not in foac.SUPPORTED_MEDIA_TYPES:
         raise ValueError(f"{collection.media_type} media is not supported yet")
 
 

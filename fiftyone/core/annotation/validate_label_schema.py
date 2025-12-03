@@ -511,6 +511,11 @@ def _validate_default_list(field_name, value, _type, values=None):
             f"{foac.VALUES_THRESHOLD} values"
         )
 
+    if len(value) > len(set(value)):
+        raise ValueError(
+            f"'default' setting for field '{field_name}' has duplicates"
+        )
+
     for v in value:
         if not isinstance(v, _type) or (
             values is not None and value not in values
@@ -568,7 +573,7 @@ def _validate_values_setting(field_name, value, _type):
 
     if len(value) > len(set(value)):
         raise ValueError(
-            f"'valaues' setting for field '{field_name}' has duplicates"
+            f"'values' setting for field '{field_name}' has duplicates"
         )
 
     for v in value:

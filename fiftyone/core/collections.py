@@ -3523,20 +3523,21 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def generate_label_schema(self, field_name=None, scan_samples=True):
+    def generate_label_schema(self, fields=None, scan_samples=True):
         """Generates a label schema for the
         :class:`fiftyone.core.collections.SampleCollection`.
 
         A label schema is defined by a ``type`` and ``component``. Further
-        settings depend on the ``type`` and ``component`` combination as outined
-        below.
+        settings depend on the ``type`` and ``component`` combination as
+        outlined below.
 
         The ``type`` value for a field is inferred from the collection's field
         schema. See
         :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
         Currently supported  media types for the collection are ``image`` and
-        ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
+        ``3d``. See
+        :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
         Primitives and components::
 
@@ -3578,7 +3579,8 @@ class SampleCollection(object):
         ``id`` only supports the ``text`` component where ``read_only`` must be
         ``True`` with no other settings.
 
-        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
+        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components
+        are:
             -   ``checkboxes``
             -   ``dropdown``
             -   ``text`` - the default
@@ -3597,11 +3599,12 @@ class SampleCollection(object):
             -   ``text``: the default if ``0`` values or ``>1000`` values are
                 scanned, or ``scan_samples`` is ``False``
 
-        ``float`` types support a ``precision`` setting when a ``text`` component
-        is configured  for the number of digits to allow after the decimal.
+        ``float`` types support a ``precision`` setting when a ``text``
+        component is configured  for the number of digits to allow after the
+        decimal.
 
-        All types support a ``default`` value setting except ``id``, as well as a
-        ``read_only`` flag.
+        All types support a ``default`` value setting except ``id``, as well as
+        a ``read_only`` flag.
 
         All components support ``values`` except ``json``, ``slider``, and
         ``toggle` excepting ``id`` restrictions.
@@ -3615,16 +3618,18 @@ class SampleCollection(object):
         The ``label`` subfield of all label types are configured via ``classes``
         and support the same settings as a ``str`` type. See the example output
         below for ``detections`` fields in the quickstart dataset. If the label
-        tyoe has a visual representation, that field is handled by the App's
-        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
-        attributes of label types are configured via the ``attributes`` setting.
+        type has a visual representation, that field is handled by the App's
+        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
+        Primitive attributes of label types are configured via the
+        ``attributes`` setting.
 
-        All :class:`fiftyone.core.labels.Label`` types are resolved by this method
-        except :class:`fiftyone.core.labels.GeoLocation`,
+        All :class:`fiftyone.core.labels.Label`` types are resolved by this
+        method except :class:`fiftyone.core.labels.GeoLocation`,
         :class:`fiftyone.core.labels.GeoLocations`,
         :class:`fiftyone.core.labels.TemporalDetection`, and
-        :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
-        by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
+        :class:`fiftyone.core.labels.TemporalDetections`. For label types
+        supported by the App for annotation, see
+        :meth:`get_supported_app_annotation_fields`.
 
         If a field is ``read_only`` in the field schema, then the ``read_only``
         label schema setting must be ``True``, e.g. ``created_at`` and
@@ -3633,8 +3638,8 @@ class SampleCollection(object):
         Embedded documents::
 
         One level of nesting is supported via ``dot.notation`` for
-        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the default
-        ``metadata`` field and the
+        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the
+        default ``metadata`` field and the
         :class:`fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument``
         document type. All label and primitive types are supported. See
         :ref:`here <dynamic-attributes>` for more details on adding dynamic
@@ -3646,7 +3651,6 @@ class SampleCollection(object):
             import fiftyone.zoo as foz
 
             dataset = foz.load_zoo_dataset("quickstart")
-            dataset.compute_metadata()
 
             fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
 
@@ -3692,12 +3696,12 @@ class SampleCollection(object):
             #    'predictions': {
             #        'attributes': {
             #            'attributes': {'type': 'dict', 'component': 'json'},
-            $            'confidence': {
-            $                'type': 'float',
-            $                'component': 'slider',
-            $                'range': [0.05003104358911514, 0.9999035596847534],
-            $                'default': 0.05003104358911514,
-            $            },
+            #            'confidence': {
+            #                'type': 'float',
+            #                'component': 'slider',
+            #                'range': [0.05003104358911514, 0.9999035596847534],
+            #                'default': 0.05003104358911514,
+            #            },
             #            'id': {
             #                'type': 'id',
             #                'component': 'text',
@@ -3729,10 +3733,10 @@ class SampleCollection(object):
             #}
 
         Args:
-            field (None): a field name, ``embedded.field.name`` or iterable of
+            fields (None): a field name, ``embedded.field.name`` or iterable of
                 such values
             scan_samples (False): whether to scan the collection to populate
-                component settings
+                component settings (ranges, values, defaults, etc.)
 
         Raises:
             ValueError: if the sample collection or field is not supported
@@ -3741,7 +3745,7 @@ class SampleCollection(object):
             a label schema ``dict``
         """
         return foan.generate_label_schema(
-            self, field_name, scan_samples=scan_samples
+            self, fields=fields, scan_samples=scan_samples
         )
 
     def apply_model(
