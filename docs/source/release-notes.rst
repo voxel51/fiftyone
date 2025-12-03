@@ -100,8 +100,8 @@ Core
 - Update error message for failed run loading to make it more clear that the
   error only might be due to a version mismatch and to more clearly expose the
   underlying error. `#6573 <https://github.com/voxel51/fiftyone/pull/6573>`_
-- Fixed a bug in `foo.get_implied_field_kwargs()` when parsing embedded
-  documents with >=2 levels of nesting 
+- Fixed a bug in :func:`fiftyone.core.odm.get_implied_field_kwargs` when
+  parsing embedded documents with >=2 levels of nesting 
   `#6609 <https://github.com/voxel51/fiftyone/pull/6609>`_
 - Fixed a bug with LFW download URLs, and now handle overlapping splits. 
   `#6611 <https://github.com/voxel51/fiftyone/pull/6611>`_
@@ -129,7 +129,7 @@ App
 - Fixed ability to select dynamic embedded doc fields in the sidebar. 
   `#6580 <https://github.com/voxel51/fiftyone/pull/6580>`_
 - Fixed a bug where an :ref:`Operator <using-operators>` prompt would sometimes
-  getting stuck in the loading state. 
+  get stuck in the loading state. 
   `#6572 <https://github.com/voxel51/fiftyone/pull/6572>`_
 - Fixed :ref:`sorting by similarity <app-similarity>` for group datasets in
   the App `#6562 <https://github.com/voxel51/fiftyone/pull/6562>`_
