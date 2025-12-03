@@ -99,7 +99,7 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: app.html
 
 .. customcalloutitem::
-    :header: Verified Auto-Labeling  __SUB_NEW__
+    :header: Auto-Labeling  __SUB_NEW__
     :description: Use FiftyOne Enterprise to annotate your data at a fraction of the cost.
     :button_text: Annotate your data at scale
     :button_link: verified_auto_labeling.html
@@ -179,7 +179,7 @@ pages on this site apply to Enterprise deployments as well.
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
     App <app>
-    Verified Auto Labeling __SUB_NEW__ <verified_auto_labeling>
+    Auto-Labeling __SUB_NEW__ <verified_auto_labeling>
     Data Lens __SUB_NEW__ <data_lens>
     Data Quality __SUB_NEW__ <data_quality>
     Query Performance __SUB_NEW__ <query_performance>
