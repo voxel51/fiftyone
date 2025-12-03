@@ -3,8 +3,6 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-=======
-
 FiftyOne Enterprise 2.14.0
 --------------------------
 *Released December 4, 2025*
@@ -50,7 +48,7 @@ App
 - Fixed a bug on the dataset list page: "All" | "Mine" radio button state
   wasn't resetting when navigating back to dataset listing page.
 - Increased the 10mb upload limit to 100mb.
-- Improved cache invalidation when groups are updated
+- Improved cache invalidation when groups are updated.
 
 Docs
 
@@ -70,7 +68,7 @@ Security
 .. _release-notes-v1.11.0:
 
 FiftyOne 1.11.0
---------------
+---------------
 *Released December 4, 2025*
 
 Core
@@ -256,7 +254,7 @@ Core
   use the default defined in the config, or `False` to disable batching for the
   request. `#6400 <https://github.com/voxel51/fiftyone/pull/6400>`_
 - Increased maximum resource (dataset, view, snapshot) name size from 100 to
-  1551. `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
+  1.    `#6458 <https://github.com/voxel51/fiftyone/pull/6458>`_
 
 App
 
