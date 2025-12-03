@@ -14,7 +14,7 @@ labels for your samples using state-of-the-art models.
 
 Auto-Labeling is powered by
 :ref:`delegated operations <enterprise-delegated-operations>`,
-enabling you to perform auto-labeling in the background using your existing GPU
+enabling you to perform Auto-Labeling in the background using your existing GPU
 infrastructure.
 
 .. _verified-auto-labeling-how-it-works:
@@ -22,19 +22,19 @@ infrastructure.
 How it works
 ____________
 
-1. **Configure auto-labeling**
+1. **Configure Auto-Labeling**
     Tailor the run configuration to the specific needs of your dataset and
     task. Choose your models, define your classes of interest, and provide
     optional model configuration.
 
 2. **Generate labels**
-    Run auto-labeling using a configured
-    :ref:`orchestrator <enterprise-delegated-orchestrator>`. Your auto-labeling
-    configuration will be executed in the background, and the auto-labeling
+    Run Auto-Labeling using a configured
+    :ref:`orchestrator <enterprise-delegated-orchestrator>`. Your Auto-Labeling
+    configuration will be executed in the background, and the Auto-Labeling
     panel will automatically update as label generation progresses.
 
 3. **Review generated labels**
-    Use the auto-labeling panel alongside the samples grid to interactively
+    Use the Auto-Labeling panel alongside the samples grid to interactively
     review the generated labels. Leverage standard sample and label filters,
     model confidence thresholds, and tools like the
     :ref:`embeddings visualizer <brain-embeddings-visualization>`
@@ -46,12 +46,12 @@ ____________
 The science behind the labels
 --------------------------
 
-Our auto-labeling process produces results comparable to human-provided
+Our Auto-Labeling process produces results comparable to human-provided
 annotation. Continued model and process improvements contribute to enhanced
 generation and validation capabilities.
 
-For more information on auto-labeling performance, review the
-`auto-labeling whitepaper <https://voxel51.com/whitepapers/auto-labeling-data-for-object-detection>`_.
+For more information on Auto-Labeling performance, review the
+`Auto-Labeling whitepaper <https://voxel51.com/whitepapers/auto-labeling-data-for-object-detection>`_.
 
 .. _verified-auto-labeling-user-guide:
 
@@ -69,24 +69,24 @@ selecting Auto Labeling from the new panel menu above the sample grid.
 .. note::
 
     Auto-Labeling currently supports image and 3D datasets. For other
-    media types, the auto-labeling panel will be disabled for the dataset.
+    media types, the Auto-Labeling panel will be disabled for the dataset.
 
 .. note::
 
     Since Auto-Labeling modifies samples in the dataset, the panel
     is only available to users with edit permissions on the dataset.
 
-The auto-labeling experience is specific to each dataset, meaning your
-auto-labeling runs will exist in isolation from other datasets.
+The Auto-Labeling experience is specific to each dataset, meaning your
+Auto-Labeling runs will exist in isolation from other datasets.
 
 .. _verified-auto-labeling-run-list:
 
-Viewing auto-labeling runs
+Viewing Auto-Labeling runs
 --------------------------
 
-If you or your team members have run auto-labeling on the current dataset,
-the auto-labeling panel will display a list of all associated runs. If
-auto-labeling has not yet been used on the dataset, you can get started by
+If you or your team members have run Auto-Labeling on the current dataset,
+the Auto-Labeling panel will display a list of all associated runs. If
+Auto-Labeling has not yet been used on the dataset, you can get started by
 clicking on the **Auto Label** button in the panel. Learn more about
 :ref:`configuring a run <verified-auto-labeling-run-config>`.
 
@@ -96,11 +96,11 @@ clicking on the **Auto Label** button in the panel. Learn more about
 
 .. _verified-auto-labeling-run-config:
 
-Configuring an auto-labeling run
+Configuring an Auto-Labeling run
 --------------------------------
 
-The auto-labeling panel provides several configuration options to tailor the
-auto-labeling experience to your specific needs. Choose the samples you want
+The Auto-Labeling panel provides several configuration options to tailor the
+Auto-Labeling experience to your specific needs. Choose the samples you want
 to label, select appropriate models for the task, and provide optional model
 configuration.
 
@@ -248,7 +248,7 @@ accuracy, respectively.
 Defining classes
 ^^^^^^^^^^^^^^^^
 
-To tailor the auto-labeling process to your dataset, you can provide a specific
+To tailor the Auto-Labeling process to your dataset, you can provide a specific
 set of classes for the models to consider.
 
 .. image:: /images/enterprise/val_classes_fixed_vocabulary.png
@@ -290,24 +290,24 @@ browse all of FiftyOne's configured filesystems, including any cloud storage.
 Segmentation masks will be written to this location, and a reference to the
 mask will be stored in the `mask_path` label attribute.
 
-**Run name** - (optional) a human-friendly name for the auto-labeling run.
-This name will be shown throughout the auto-labeling panel, and can be changed
+**Run name** - (optional) a human-friendly name for the Auto-Labeling run.
+This name will be shown throughout the Auto-Labeling panel, and can be changed
 at any time. If not provided, a unique identifier will be generated by the
 system.
 
-**Speed-up processing** - auto-labeling provides support for concurrent
+**Speed-up processing** - Auto-Labeling provides support for concurrent
 execution across multiple workers. Increasing this value will allow for
-auto-labeling to generate labels in parallel up to your maximum allowable
+Auto-Labeling to generate labels in parallel up to your maximum allowable
 concurrency.
 
 .. _verified-auto-labeling-tracking-progress:
 
-Tracking auto-labeling progress
+Tracking Auto-Labeling progress
 -------------------------------
 
 While the associated delegated operation runs in the background, the
-auto-labeling panel will automatically update auto-labeling runs with new data
-as it becomes available. While an auto-labeling run has the **Generating**
+Auto-Labeling panel will automatically update Auto-Labeling runs with new data
+as it becomes available. While an Auto-Labeling run has the **Generating**
 status, clicking on the run card will display metadata about the run and will
 include a link to view the delegated operation.
 
@@ -322,7 +322,7 @@ including an estimated completion percentage.
     :alt: verified-auto-labeling-pipeline-in-progress
     :align: center
 
-Once the delegated operation completes, the auto-labeling run will transition
+Once the delegated operation completes, the Auto-Labeling run will transition
 to the **In Review** status, at which point the generated labels can be
 reviewed and approved.
 
@@ -333,7 +333,7 @@ Analyzing existing labels
 
 Auto-Labeling can also be used to review the quality of existing
 labels in your dataset. To import existing labels, navigate to the
-:ref:`auto-labeling home screen <verified-auto-labeling-run-list>` and click
+:ref:`Auto-Labeling home screen <verified-auto-labeling-run-list>` and click
 **Analyze existing labels** at the top of the panel.
 
 .. image:: /images/enterprise/val_analyze_existing_labels.png
@@ -345,8 +345,8 @@ labels in your dataset. To import existing labels, navigate to the
 Importing labels
 ^^^^^^^^^^^^^^^^
 
-To import labels into the auto-labeling panel, simply select your label field
-from the dropdown menu. auto-labeling supports
+To import labels into the Auto-Labeling panel, simply select your label field
+from the dropdown menu. Auto-Labeling supports
 :ref:`classification <classification>`,
 :ref:`detection, and instance segmentation <object-detection>` fields.
 
@@ -358,12 +358,12 @@ from the dropdown menu. auto-labeling supports
 
 Once you have selected the source field, click the **Analyze labels** button
 to start the import process. Once the import is complete, you can leverage the
-:ref:`auto-labeling label review process <verified-auto-labeling-label-review>`
+:ref:`Auto-Labeling label review process <verified-auto-labeling-label-review>`
 to improve your annotation quality.
 
 .. _verified-auto-labeling-run-anatomy:
 
-Anatomy of an auto-labeling run
+Anatomy of an Auto-Labeling run
 -------------------------------
 
 .. image:: /images/enterprise/val_run_card.png
@@ -372,39 +372,39 @@ Anatomy of an auto-labeling run
 
 **Run Status**
 
-An auto-labeling run can have one of the following statuses:
+An Auto-Labeling run can have one of the following statuses:
 
 * **Generating**
     The run has been scheduled for execution, or label generation is in
     progress. Read more about
-    :ref:`tracking auto-labeling progress <verified-auto-labeling-tracking-progress>`.
+    :ref:`tracking Auto-Labeling progress <verified-auto-labeling-tracking-progress>`.
 * **In Review**
     Label generation has completed, and the labels are ready for review. As
     long as the run is **In Review**, labels can be promoted for approval.
     Read more about
     :ref:`reviewing generated labels <verified-auto-labeling-label-review>`.
 * **Approved**
-    The auto-labeling run has gone through the label review process, and
+    The Auto-Labeling run has gone through the label review process, and
     selected labels were added to the samples. This is a terminal state for an
-    auto-labeling run; to generate and review additional labels,
+    Auto-Labeling run; to generate and review additional labels,
     :ref:`configure a new run <verified-auto-labeling-run-config>`.
 * **Error**
-    The auto-labeling run encountered an error during label generation. Review
+    The Auto-Labeling run encountered an error during label generation. Review
     the error message to determine next steps.
 
-**classes** - the number of unique classes generated by auto-labeling.
+**classes** - the number of unique classes generated by Auto-Labeling.
 
-**labels** - the total number of labels generated by auto-labeling.
+**labels** - the total number of labels generated by Auto-Labeling.
 
 .. _verified-auto-labeling-resume-run:
 
-Resuming a failed auto-labeling run
+Resuming a failed Auto-Labeling run
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-In the event that an auto-labeling run fails or samples are not processed
-correctly, the auto-labeling panel offers the option to resume the run. After
-selecting this option, the auto-labeling panel will schedule a new delegated
-operation in which the auto-labeling process will continue from where it left
+In the event that an Auto-Labeling run fails or samples are not processed
+correctly, the Auto-Labeling panel offers the option to resume the run. After
+selecting this option, the Auto-Labeling panel will schedule a new delegated
+operation in which the Auto-Labeling process will continue from where it left
 off. Any samples for which labels have already been generated will be skipped,
 and the remaining samples will have labels generated.
 
@@ -420,7 +420,7 @@ If you don't want to resume the run, you can dismiss the option by clicking
 Reviewing generated labels
 --------------------------
 
-Once your auto-labeling run is complete, it will enter the **In Review**
+Once your Auto-Labeling run is complete, it will enter the **In Review**
 status. Clicking on the run card will bring you to the label review screen.
 
 .. image:: /images/enterprise/val_label_review.png
@@ -428,7 +428,7 @@ status. Clicking on the run card will bring you to the label review screen.
     :align: center
 
 While using this screen, you can continue to interact with the samples grid
-as you normally would. The auto-labeling system may apply additional filtering
+as you normally would. The Auto-Labeling system may apply additional filtering
 during the review process.
 
 .. note::
@@ -444,8 +444,8 @@ Review tab
 
 The review tab displays labels which have been generated, but not yet
 promoted for approval. In this view, you can use all of the standard app
-functionality to filter and analyze the labels produced by auto-labeling.
-Beyond the common app features, the auto-labeling panel provides additional
+functionality to filter and analyze the labels produced by Auto-Labeling.
+Beyond the common app features, the Auto-Labeling panel provides additional
 controls to assist in your review.
 
 .. _verified-auto-labeling-confidence-threshold:
@@ -454,7 +454,7 @@ Confidence threshold
 """"""""""""""""""""
 
 Each generated label includes a confidence score as produced by the underlying
-model during inference. The auto-labeling panel provides a slider (as well as
+model during inference. The Auto-Labeling panel provides a slider (as well as
 numeric inputs) which allow you to filter labels by setting a minimum and
 maximum confidence threshold.
 
@@ -464,7 +464,7 @@ maximum confidence threshold.
 
 .. note::
 
-    Setting the minimum or maximum confidence in the auto-labeling panel is
+    Setting the minimum or maximum confidence in the Auto-Labeling panel is
     equivalent to setting the same confidence thresholds using the sidebar
     filters.
 
@@ -476,7 +476,7 @@ high-quality labels in bulk.
 Label analysis table
 """"""""""""""""""""
 
-The auto-labeling panel includes a table which lists aggregate statistics for
+The Auto-Labeling panel includes a table which lists aggregate statistics for
 each label class.
 
 .. image:: /images/enterprise/val_label_review_table.png
@@ -516,7 +516,7 @@ Promoting labels for approval
 
 As you explore the generated labels and identify high-quality instances, you
 can promote labels for approval by clicking the **Add # labels for approval**
-button at the bottom of the auto-labeling panel. This will designate the labels
+button at the bottom of the Auto-Labeling panel. This will designate the labels
 as ready for approval, and they will be removed from the review tab. Once they
 have been promoted, you can continue to select and promote additional labels
 in the same manner.
@@ -548,7 +548,7 @@ the review tab. This is the simplest way to "reset" the review process.
 return all promoted labels **for that class** back to the review tab.
 
 **Approve # labels** - clicking this button is a terminal operation for the
-auto-labeling experience. The following actions will occur:
+Auto-Labeling experience. The following actions will occur:
 
 1. All labels which have not been promoted will be deleted.
 2. All labels which have been promoted will be added to the sample.
@@ -561,8 +561,8 @@ auto-labeling experience. The following actions will occur:
 .. warning::
 
     Clicking the **Approve # labels** will effectively "close" the
-    auto-labeling run. This action cannot be undone, and further label review
-    will require a new auto-labeling run. Ensure that your review process is
+    Auto-Labeling run. This action cannot be undone, and further label review
+    will require a new Auto-Labeling run. Ensure that your review process is
     complete before taking this action.
 
 .. note::
@@ -580,7 +580,7 @@ Auto-Labeling makes use of state-of-the-art models, which are
 optimized to run with GPU resources available. While the provided models can
 run without GPUs, **it is strongly recommended to provide GPU
 resources** for the best experience. CPU-based workloads can be used for
-testing auto-labeling on a small number of samples.
+testing Auto-Labeling on a small number of samples.
 
 Due to the compute requirements for model inference, Auto-Labeling is
 expected to run as a
@@ -664,8 +664,8 @@ directory for model storage. See FiftyOne's
 
 Models will be downloaded as needed, and will be reused if already present in
 the model zoo directory. The exact storage requirements will depend on the
-number and size of the models you select for auto-labeling, but 32-64GB of
-storage is sufficient to store all of the models available for auto-labeling.
+number and size of the models you select for Auto-Labeling, but 32-64GB of
+storage is sufficient to store all of the models available for Auto-Labeling.
 
 .. note::
 
@@ -682,7 +682,7 @@ ___
 **Can I use my own model to generate labels?**
 
 Not yet. We currently offer a selection of models which are well-suited to
-auto-labeling. See
+Auto-Labeling. See
 :ref:`model reference <verified-auto-labeling-model-reference>`
 for more information.
 
@@ -705,7 +705,7 @@ _______________
 
 Auto-Labeling supports a subset of models sourced from the
 :ref:`FiftyOne model zoo <model-zoo>`. These models have been selected for
-their strong performance in auto-labeling.
+their strong performance in Auto-Labeling.
 
 .. _verified-auto-labeling-classification-models:
 
