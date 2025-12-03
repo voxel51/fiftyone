@@ -131,7 +131,7 @@ App
 - Fixed a bug where an :ref:`Operator <using-operators>` prompt would sometimes
   getting stuck in the loading state. 
   `#6572 <https://github.com/voxel51/fiftyone/pull/6572>`_
-- Fixed  :ref:`sorting by similarity <app-similarity>` for group datasets in
+- Fixed :ref:`sorting by similarity <app-similarity>` for group datasets in
   the App `#6562 <https://github.com/voxel51/fiftyone/pull/6562>`_
 - Fixed a bug where disabling preview when creating scenarios would sometimes
   block user from creating a scenario. 
