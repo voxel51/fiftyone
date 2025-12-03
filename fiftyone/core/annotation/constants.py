@@ -13,7 +13,7 @@ import fiftyone.core.metadata as fomm
 from fiftyone.core.odm import DynamicEmbeddedDocument
 
 
-### Compnents
+### Components
 
 
 CHECKBOX = "checkbox"

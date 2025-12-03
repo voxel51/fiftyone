@@ -316,7 +316,7 @@ def _validate_str_list_field_label_schema(
     collection, field_name, label_schema
 ):
     field = collection.get_field(field_name)
-    settings = foac.STR_SETTINGS
+    settings = foac.STR_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
     if component in foac.VALUES_COMPONENTS:
@@ -330,7 +330,7 @@ def _validate_str_list_field_label_schema(
         if key == foac.COMPONENT and value not in foac.STR_LIST_COMPONENTS:
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
-            _validate_default_list(field_name, value, str)
+            _validate_default_list(field_name, value, str, values=values)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE and value != foac.STR_LIST:

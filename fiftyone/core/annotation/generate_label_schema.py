@@ -33,15 +33,15 @@ def get_supported_app_annotation_fields(sample_collection):
         -   ``classification``:
             :class:`fiftyone.core.labels.Classification`
         -   ``classifications``:
-            :class:`fiftyone.core.labels.Classification`
+            :class:`fiftyone.core.labels.Classifications`
         -   ``detection``: :class:`fiftyone.core.labels.Detection`
         -   ``detections``: :class:`fiftyone.core.labels.Detections`
 
     Supported ``3d`` label types are:
         -   ``classification``:
-            :class:`fiftyone.core.labels.ClassificationField`
+            :class:`fiftyone.core.labels.Classification`
         -   ``classifications``:
-            :class:`fiftyone.core.labels.ClassificationField`
+            :class:`fiftyone.core.labels.Classifications`
         -   ``polyline``: :class:`fiftyone.core.labels.Polyline`
         -   ``polylines``: :class:`fiftyone.core.labels.Polylines`
 
@@ -120,13 +120,13 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
     Supported ``list<str>`` components are:
         -   ``checkboxes``: the default if ``<=5`` values are scanned
-        -   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+        -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
             scanned
         -   ``text``: the default if ``0`` values or ``>1000`` values are
             scanned, or ``scan_samples`` is ``False``
 
     Supported ``str`` type components are:
-        =   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+        -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
             scanned
         -   ``radio``: the default if ``<=5`` values are scanned
         -   ``text``: the default if ``0`` values or ``>1000`` values are
@@ -325,7 +325,7 @@ def _flatten_fields(collection, fields):
 
             flattened_fields.append(f"{field_name}.{subfield.name}")
 
-    return sorted(list(set(flattened_fields)))
+    return sorted(set(flattened_fields))
 
 
 def _get_all_supported_fields(collection):
@@ -550,8 +550,8 @@ def _is_supported_field(field, media_type, app_annotation_support=False):
         return False
 
     if (
-        isinstance(field, fol.Label)
-        and type(field) not in foac.UNSUPPORTED_LABEL_TYPES
+        issubclass(field.document_type, fol.Label)
+        and field.document_type not in foac.UNSUPPORTED_LABEL_TYPES
     ):
         return True
 
