@@ -104,6 +104,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
+        _register_command(subparsers, "labs", LabsCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -4192,6 +4193,57 @@ class PluginsDeleteCommand(Command):
 
         for name in names:
             fop.delete_plugin(name)
+
+
+class LabsCommand(Command):
+    """Tools for working with FiftyOne Labs."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "install", LabsInstallCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class LabsInstallCommand(Command):
+    """Install fiftyone labs features from the web.
+
+    You can install all labs features (plugins) from GitHub with the following::
+        fiftyone labs install
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--labs_repo",
+            default="https://github.com/voxel51/labs",
+            help="link to FiftyOne Labs repo or branch",
+        )
+        parser.add_argument(
+            "-n",
+            "--feature_names",
+            nargs="*",
+            default=None,
+            metavar="FEATURE_NAMES",
+            help="a labs feature name or list of feature names to download",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        fop.download_plugin(
+            args.labs_repo,
+            plugin_names=args.feature_names,
+            overwrite=args.overwrite,
+        )
 
 
 class MigrateCommand(Command):
