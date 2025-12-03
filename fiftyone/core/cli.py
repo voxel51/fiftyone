@@ -4202,6 +4202,7 @@ class LabsCommand(Command):
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "install", LabsInstallCommand)
+        _register_command(subparsers, "uninstall", LabsUninstallCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -4209,22 +4210,22 @@ class LabsCommand(Command):
 
 
 class LabsInstallCommand(Command):
-    """Install fiftyone labs features from the web.
+    """Install FiftyOne Labs features from the web.
 
-    You can install all labs features (plugins) from GitHub with the following::
+    You can install labs features (plugins) from GitHub with the following command:
         fiftyone labs install
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "--labs_repo",
+            "--labs-repo",
             default="https://github.com/voxel51/labs",
             help="link to FiftyOne Labs repo or branch",
         )
         parser.add_argument(
             "-n",
-            "--feature_names",
+            "--feature-names",
             nargs="*",
             default=None,
             metavar="FEATURE_NAMES",
@@ -4244,6 +4245,48 @@ class LabsInstallCommand(Command):
             plugin_names=args.feature_names,
             overwrite=args.overwrite,
         )
+
+
+class LabsUninstallCommand(Command):
+    """Uninstall FiftyOne Labs from your local machine.
+
+    Examples::
+
+        # Uninstall a labs feature from local disk
+        fiftyone labs uninstall <name>
+
+        # Uninstall multiple labs feature from local disk
+        fiftyone labs uninstall <name1> <name2> ...
+
+        # Uninstall all labs feature from local disk
+        fiftyone labs uninstall --all
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the labs feature name(s)",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to delete all labs features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.all:
+            names = fop.list_downloaded_plugins()
+        else:
+            names = args.name
+
+        for name in names:
+            if name.startswith("@51labs"):
+                fop.delete_plugin(name)
 
 
 class MigrateCommand(Command):
