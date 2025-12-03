@@ -17,9 +17,9 @@ from fiftyone.core.annotation.generate_label_schema import (
 from decorators import drop_datasets
 
 
-class LabelSchemaValidationTests(unittest.TestCase):
+class GenerateLabelSchemaTests(unittest.TestCase):
     @drop_datasets
-    def test_validate_date_field_schema(self):
+    def test_generate_date_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("date_field", fo.DateField)
         dataset.add_sample(
@@ -28,13 +28,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schema(dataset, "date_field"),
             {
-                "default": None,
-                "type": "input",
+                "component": "datepicker",
+                "type": "date",
             },
         )
 
     @drop_datasets
-    def test_datetime(self):
+    def test_generate_datetime_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
             fo.Sample(filepath="image.png", datetime_field=datetime.now())
@@ -42,107 +42,88 @@ class LabelSchemaValidationTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schema(dataset, "datetime_field"),
             {
-                "default": None,
-                "type": "input",
+                "component": "datepicker",
+                "type": "datetime",
             },
         )
 
     @drop_datasets
-    def test_float(self):
+    def test_generate_float_float_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", float_field=0.0))
         self.assertEqual(
             generate_label_schema(dataset, "float_field"),
             {
-                "default": None,
-                "type": "input",
+                "component": "text",
+                "type": "float",
+            },
+        )
+
+        dataset.add_sample(fo.Sample(filepath="image.png", float_field=1.0))
+        self.assertEqual(
+            generate_label_schema(dataset, "float_field"),
+            {
+                "component": "slider",
+                "default": 0.0,
+                "range": [0.0, 1.0],
+                "type": "float",
             },
         )
 
     @drop_datasets
-    def test_int(self):
+    def test_generate_int_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", int_field=0))
         self.assertEqual(
             generate_label_schema(dataset, "int_field"),
             {
-                "default": None,
-                "type": "input",
+                "component": "text",
+                "type": "int",
             },
         )
 
-    @drop_datasets
-    def test_string(self):
-        dataset = fo.Dataset()
-        dataset.add_sample(
-            fo.Sample(filepath="image.png", string_field="test")
-        )
+        dataset.add_sample(fo.Sample(filepath="image.png", int_field=1))
         self.assertEqual(
-            generate_label_schema(dataset, "string_field"),
-            {"default": None, "type": "select", "values": ["test"]},
-        )
-
-    @drop_datasets
-    def test_string_list(self):
-        dataset = fo.Dataset()
-        dataset.add_sample(
-            fo.Sample(filepath="image.png", string_list_field=["test"])
-        )
-        self.assertEqual(
-            generate_label_schema(dataset, "string_list_field"),
-            {"default": [], "type": "tags", "values": ["test"]},
-        )
-
-    @drop_datasets
-    def test_classification(self):
-        dataset = fo.Dataset()
-        dataset.add_sample(
-            fo.Sample(
-                filepath="image.png",
-                classification_field=fo.Classification(label="test"),
-            )
-        )
-        self.assertEqual(
-            generate_label_schema(dataset, "classification_field"),
+            generate_label_schema(dataset, "int_field"),
             {
-                "classes": ["test"],
-                "attributes": {
-                    "tags": {
-                        "default": [],
-                        "type": "tags",
-                        "values": [],
-                    },
-                },
+                "component": "slider",
+                "default": 0,
+                "range": [0, 1],
+                "type": "int",
             },
         )
 
     @drop_datasets
-    def test_classifications(self):
+    def test_generate_str_field_label_schema(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(fo.Sample(filepath="image.png", str_field="test"))
+        self.assertEqual(
+            generate_label_schema(dataset, "str_field"),
+            {
+                "component": "radio",
+                "default": "test",
+                "type": "str",
+                "values": ["test"],
+            },
+        )
+
+    @drop_datasets
+    def test_generate_str_list_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
-            fo.Sample(
-                filepath="image.png",
-                classifications_field=fo.Classifications(
-                    classifications=[fo.Classification(label="test")]
-                ),
-            )
+            fo.Sample(filepath="image.png", str_list_field=["test"])
         )
         self.assertEqual(
-            generate_label_schema(dataset, "classifications_field"),
+            generate_label_schema(dataset, "str_list_field"),
             {
-                "classes": ["test"],
-                "attributes": {
-                    "tags": {
-                        "default": [],
-                        "type": "tags",
-                        "values": [],
-                    },
-                },
+                "component": "checkboxes",
+                "type": "list<str>",
+                "values": ["test"],
             },
         )
 
     @drop_datasets
-    def test_detection(self):
+    def test_generate_detection_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
             fo.Sample(
@@ -150,22 +131,27 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 detection_field=fo.Detection(label="test"),
             )
         )
+
         self.assertEqual(
             generate_label_schema(dataset, "detection_field"),
             {
-                "classes": ["test"],
                 "attributes": {
-                    "tags": {
-                        "default": [],
-                        "type": "tags",
-                        "values": [],
+                    "id": {
+                        "type": "id",
+                        "component": "text",
+                        "read_only": True,
                     },
+                    "tags": {"type": "list<str>", "component": "text"},
                 },
+                "classes": ["test"],
+                "component": "radio",
+                "default": "test",
+                "type": "detection",
             },
         )
 
     @drop_datasets
-    def test_detections(self):
+    def test_generate_detections_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
             fo.Sample(
@@ -178,13 +164,17 @@ class LabelSchemaValidationTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schema(dataset, "detections_field"),
             {
-                "classes": ["test"],
                 "attributes": {
-                    "tags": {
-                        "default": [],
-                        "type": "tags",
-                        "values": [],
+                    "id": {
+                        "type": "id",
+                        "component": "text",
+                        "read_only": True,
                     },
+                    "tags": {"type": "list<str>", "component": "text"},
                 },
+                "classes": ["test"],
+                "component": "radio",
+                "default": "test",
+                "type": "detections",
             },
         )

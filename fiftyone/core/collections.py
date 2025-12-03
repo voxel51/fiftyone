@@ -3650,11 +3650,87 @@ class SampleCollection(object):
 
             fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
 
-            # todo: add output here
+            #{
+            #    'created_at': {
+            #        'type': 'datetime',
+            #        'component': 'datepicker',
+            #        'read_only': True,
+            #    },
+            #    'filepath': {'type': 'str', 'component': 'text'},
+            #    'ground_truth': {
+            #        'attributes': {
+            #            'attributes': {'type': 'dict', 'component': 'json'},
+            #            'confidence': {'type': 'float', 'component': 'text'},
+            #            'id': {
+            #                'type': 'id',
+            #                'component': 'text',
+            #                'read_only': True
+            #            },
+            #            'index': {'type': 'int', 'component': 'text'},
+            #            'mask_path': {'type': 'str', 'component': 'text'},
+            #            'tags': {'type': 'list<str>', 'component': 'text'},
+            #        },
+            #        'classes': [
+            #            'airplane',
+            #            '...',
+            #            'zebra',
+            #        ],
+            #        'component': 'dropdown',
+            #        'type': 'detections',
+            #    },
+            #    'id': {'type': 'id', 'component': 'text', 'read_only': True},
+            #    'last_modified_at': {
+            #        'type': 'datetime',
+            #        'component': 'datepicker',
+            #        'read_only': True,
+            #    },
+            #    'metadata.height': {'type': 'int', 'component': 'text'},
+            #    'metadata.mime_type': {'type': 'str', 'component': 'text'},
+            #    'metadata.num_channels': {'type': 'int', 'component': 'text'},
+            #    'metadata.size_bytes': {'type': 'int', 'component': 'text'},
+            #    'metadata.width': {'type': 'int', 'component': 'text'},
+            #    'predictions': {
+            #        'attributes': {
+            #            'attributes': {'type': 'dict', 'component': 'json'},
+            $            'confidence': {
+            $                'type': 'float',
+            $                'component': 'slider',
+            $                'range': [0.05003104358911514, 0.9999035596847534],
+            $                'default': 0.05003104358911514,
+            $            },
+            #            'id': {
+            #                'type': 'id',
+            #                'component': 'text',
+            #                'read_only': True
+            #            },
+            #            'index': {'type': 'int', 'component': 'text'},
+            #            'mask_path': {'type': 'str', 'component': 'text'},
+            #            'tags': {'type': 'list<str>', 'component': 'text'},
+            #        },
+            #        'classes': [
+            #            'airplane',
+            #            '...',
+            #            'zebra',
+            #        ],
+            #        'component': 'dropdown',
+            #        'type': 'detections',
+            #    },
+            #    'tags': {
+            #        'type': 'list<str>',
+            #        'component': 'checkboxes',
+            #        'values': ['validation'],
+            #    },
+            #    'uniqueness': {
+            #        'type': 'float',
+            #        'component': 'slider',
+            #        'range': [0.15001302256126986, 1.0],
+            #        'default': 0.15001302256126986,
+            #    },
+            #}
 
         Args:
-            field (None): a field name, ``embedded.field.name`` or iterable of such
-                values
+            field (None): a field name, ``embedded.field.name`` or iterable of
+                such values
             scan_samples (False): whether to scan the collection to populate
                 component settings
 

@@ -114,6 +114,7 @@ DEFAULT_COMPONENTS = {
 
 
 BOUNDING_BOX = "bounding_box"
+FILEPATH = "filepath"
 LABEL = "label"
 POINTS = "points"
 

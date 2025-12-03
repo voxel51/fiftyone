@@ -106,8 +106,9 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         -   ``dropdown``
         -   ``radio``
         -   ``slider``: the default when ``scan_samples`` is ``True`` and
-            finite values are found that define the ``range``
-        -   ``text``: the default when ``scan_samples`` is ``False``
+            distinct finite bounds are found that define a ``range``
+        -   ``text``: the default when ``scan_samples`` is ``False`` or
+            distinct finite bounds are not found
 
     ``id`` only supports the ``text`` component where ``read_only`` must be
     ``True`` with no other settings.
@@ -184,7 +185,83 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
         fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
 
-        # todo: add output here
+        #{
+        #    'created_at': {
+        #        'type': 'datetime',
+        #        'component': 'datepicker',
+        #        'read_only': True,
+        #    },
+        #    'filepath': {'type': 'str', 'component': 'text'},
+        #    'ground_truth': {
+        #        'attributes': {
+        #            'attributes': {'type': 'dict', 'component': 'json'},
+        #            'confidence': {'type': 'float', 'component': 'text'},
+        #            'id': {
+        #                'type': 'id',
+        #                'component': 'text',
+        #                'read_only': True
+        #            },
+        #            'index': {'type': 'int', 'component': 'text'},
+        #            'mask_path': {'type': 'str', 'component': 'text'},
+        #            'tags': {'type': 'list<str>', 'component': 'text'},
+        #        },
+        #        'classes': [
+        #            'airplane',
+        #            '...',
+        #            'zebra',
+        #        ],
+        #        'component': 'dropdown',
+        #        'type': 'detections',
+        #    },
+        #    'id': {'type': 'id', 'component': 'text', 'read_only': True},
+        #    'last_modified_at': {
+        #        'type': 'datetime',
+        #        'component': 'datepicker',
+        #        'read_only': True,
+        #    },
+        #    'metadata.height': {'type': 'int', 'component': 'text'},
+        #    'metadata.mime_type': {'type': 'str', 'component': 'text'},
+        #    'metadata.num_channels': {'type': 'int', 'component': 'text'},
+        #    'metadata.size_bytes': {'type': 'int', 'component': 'text'},
+        #    'metadata.width': {'type': 'int', 'component': 'text'},
+        #    'predictions': {
+        #        'attributes': {
+        #            'attributes': {'type': 'dict', 'component': 'json'},
+        $            'confidence': {
+        $                'type': 'float',
+        $                'component': 'slider',
+        $                'range': [0.05003104358911514, 0.9999035596847534],
+        $                'default': 0.05003104358911514,
+        $            },
+        #            'id': {
+        #                'type': 'id',
+        #                'component': 'text',
+        #                'read_only': True
+        #            },
+        #            'index': {'type': 'int', 'component': 'text'},
+        #            'mask_path': {'type': 'str', 'component': 'text'},
+        #            'tags': {'type': 'list<str>', 'component': 'text'},
+        #        },
+        #        'classes': [
+        #            'airplane',
+        #            '...',
+        #            'zebra',
+        #        ],
+        #        'component': 'dropdown',
+        #        'type': 'detections',
+        #    },
+        #    'tags': {
+        #        'type': 'list<str>',
+        #        'component': 'checkboxes',
+        #        'values': ['validation'],
+        #    },
+        #    'uniqueness': {
+        #        'type': 'float',
+        #        'component': 'slider',
+        #        'range': [0.15001302256126986, 1.0],
+        #        'default': 0.15001302256126986,
+        #    },
+        #}
 
     Args:
         sample_collection: the
@@ -201,7 +278,8 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     Returns:
         a label schema ``dict``
     """
-    if etau.is_str(fields):
+    is_scalar = etau.is_str(fields)
+    if is_scalar:
         fields = [fields]
     elif fields is None:
         fields = _get_all_supported_fields(sample_collection)
@@ -214,13 +292,14 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         label_schema = _generate_field_label_schema(
             sample_collection, field_name, scan_samples
         )
-        import fiftyone as fo
 
-        fo.pprint(label_schema)
         validate_field_label_schema(
             sample_collection, field_name, label_schema
         )
         schema[field_name] = label_schema
+
+    if is_scalar:
+        return next(iter(schema.values()))
 
     return schema
 
@@ -269,7 +348,8 @@ def _get_all_supported_fields(collection):
             continue
 
         if (
-            field.document_type
+            media_type in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE
+            and field.document_type
             in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
         ):
             result.add(field_name)
@@ -322,6 +402,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             fof.DateTimeField,
             fof.DictField,
             fof.ObjectIdField,
+            fof.UUIDField,
         ),
     ):
         return settings
@@ -357,7 +438,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     classes = label.pop(foac.VALUES, None)
 
     result = dict(
-        attributes=attributes,
+        attributes={k: attributes[k] for k in sorted(attributes)},
         **label,
         type=_type,
     )
@@ -365,7 +446,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     if classes:
         result[foac.CLASSES] = classes
 
-    return result
+    return {k: result[k] for k in sorted(result)}
 
 
 def _get_type(field, is_list):
@@ -389,18 +470,33 @@ def _ensure_collection_is_supported(collection):
 
 
 def _handle_bool(collection, field_name, is_list, settings, scan_samples):
+    if is_list:
+        settings[foac.COMPONENT] = foac.TEXT
+    else:
+        settings[foac.COMPONENT] = foac.TOGGLE
+
     return settings
 
 
 def _handle_float_or_int(
     collection, field_name, is_list, settings, scan_samples
 ):
+    settings[foac.COMPONENT] = foac.TEXT
+    if is_list or not scan_samples:
+        return settings
+
+    mn, mx = collection.bounds(field_name, safe=True)
+    if mn != mx and mn is not None:
+        settings[foac.COMPONENT] = foac.SLIDER
+        settings[foac.RANGE] = [mn, mx]
+        settings[foac.DEFAULT] = mn
+
     return settings
 
 
 def _handle_str(collection, field_name, is_list, settings, scan_samples):
     try:
-        if scan_samples:
+        if scan_samples and field_name != foac.FILEPATH:
             values = collection.distinct(field_name)
         else:
             values = None
@@ -416,6 +512,10 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
 
             if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
                 settings[foac.VALUES] = values
+
+            if settings[foac.COMPONENT] == foac.RADIO:
+                settings[foac.DEFAULT] = values[0]
+
     except:
         # too many distinct values
         pass
