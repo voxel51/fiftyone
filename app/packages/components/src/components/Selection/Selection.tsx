@@ -112,7 +112,7 @@ export default function Selection(props: SelectionProps) {
               paddingY: 0,
               zIndex: 999,
               maxHeight: "400px",
-              width: hideActions ? "100%" : "270px",
+              minWidth: "100%",
               overflowY: "auto",
               background: theme.background.level2,
             },
