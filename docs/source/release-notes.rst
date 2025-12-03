@@ -24,7 +24,7 @@ Plugins and Orchestrators
 
 - Introducing a built-in
   `Kubernetes Orchestrator <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/orchestrators/configuring-kubernetes-orchestrator.md>`_!
-  Delegated :ref:`Operators <using-operators>`. can now be scheduled on an
+  Delegated :ref:`Operators <using-operators>` can now be scheduled on an
   on-demand Kubernetes cluster, supporting both CPU and GPU configurations.
   This feature is fully available, but considered Beta for self-hosted
   deployments.
