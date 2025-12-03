@@ -518,7 +518,7 @@ def _validate_default_list(field_name, value, _type, values=None):
 
     for v in value:
         if not isinstance(v, _type) or (
-            values is not None and value not in values
+            values is not None and v not in values
         ):
             raise ValueError(
                 f"invalid value '{v}' in 'default' setting for field "
