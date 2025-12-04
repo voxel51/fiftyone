@@ -362,6 +362,14 @@ export const isSegmentingPointerDownAtom = atom<boolean>({
 });
 
 /**
+ * Tracks whether the pointer is currently down during cuboid creation.
+ */
+export const isCreatingCuboidPointerDownAtom = atom<boolean>({
+  key: "fo3d-isCreatingCuboidPointerDownAtom",
+  default: false,
+});
+
+/**
  * Whether to automatically snap and close polyline active segment.
  * When enabled, the active segment will automatically close when the user double clicks.
  */
@@ -381,11 +389,29 @@ export const editSegmentsModeAtom = atom<boolean>({
 
 /**
  * Whether the user is in create cuboid mode.
- * When enabled, clicking in the 3D scene will create a new unit cuboid at that location.
+ * When enabled, dragging in the 3D scene will create a new cuboid.
  */
 export const isCreatingCuboidAtom = atom<boolean>({
   key: "fo3d-isCreatingCuboid",
   default: false,
+});
+
+/**
+ * State for tracking cuboid creation drag interaction.
+ */
+export interface CuboidCreationDragState {
+  isDragging: boolean;
+  startPosition: [number, number, number] | null;
+  currentPosition: [number, number, number] | null;
+}
+
+export const cuboidCreationDragStateAtom = atom<CuboidCreationDragState>({
+  key: "fo3d-cuboidCreationDragState",
+  default: {
+    isDragging: false,
+    startPosition: null,
+    currentPosition: null,
+  },
 });
 
 /**

@@ -220,8 +220,8 @@ export const Cuboid = ({
     >
       <group
         ref={contentRef}
-        // position={tempTransforms?.position ?? [0, 0, 0]}
-        // quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
+        position={tempTransforms?.position ?? [0, 0, 0]}
+        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         {content}
       </group>
