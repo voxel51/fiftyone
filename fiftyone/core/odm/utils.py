@@ -547,7 +547,13 @@ def _finalize_embedded_doc_fields(fields_dict):
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
-            if field["ftype"] == fof.EmbeddedDocumentField:
+            ftype = field["ftype"]
+            is_embedded_doc = inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            )
+            if is_embedded_doc:
+                # Recursively finalize the child schema so downstream consumers
+                # get a fully materialized list of field specifications.
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )
