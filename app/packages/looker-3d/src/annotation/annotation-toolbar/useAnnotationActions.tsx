@@ -347,26 +347,6 @@ export const useAnnotationActions = () => {
             onClick: handleToggleEditSegmentsMode,
           },
           {
-            id: "contextual-delete",
-            label: "Delete",
-            icon: <Delete />,
-            shortcut: "Delete",
-            tooltip: "Delete selected polyline point",
-            isActive: false,
-            isVisible:
-              currentArchetypeSelectedForTransform === "point" &&
-              selectedPoint !== null,
-            onClick: handleContextualDelete,
-          },
-          {
-            id: "toggle-annotation-plane",
-            label: "Annotation Plane",
-            icon: <RectangleIcon />,
-            tooltip: <AnnotationPlaneTooltip />,
-            isActive: annotationPlane.enabled,
-            onClick: handleToggleAnnotationPlane,
-          },
-          {
             id: "snap-close-automatically",
             label: "Snap Close Automatically",
             icon: <RestartAltIcon />,
@@ -391,6 +371,32 @@ export const useAnnotationActions = () => {
               : "Click in the 3D scene to create a unit cuboid",
             isActive: isCreatingCuboid,
             onClick: handleToggleCreateCuboid,
+          },
+        ],
+      },
+      {
+        id: "general-actions",
+        label: "",
+        actions: [
+          {
+            id: "contextual-delete",
+            label: "Delete",
+            icon: <Delete />,
+            shortcut: "Delete",
+            tooltip: "Delete selected polyline point",
+            isActive: false,
+            isVisible:
+              currentArchetypeSelectedForTransform === "point" &&
+              selectedPoint !== null,
+            onClick: handleContextualDelete,
+          },
+          {
+            id: "toggle-annotation-plane",
+            label: "Annotation Plane",
+            icon: <RectangleIcon />,
+            tooltip: <AnnotationPlaneTooltip />,
+            isActive: annotationPlane.enabled,
+            onClick: handleToggleAnnotationPlane,
           },
         ],
       },

@@ -48,6 +48,7 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
+  isCreatingCuboidPointerDownAtom,
   isCuboidAnnotateActiveAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
@@ -193,6 +194,9 @@ export const MediaTypeFo3dComponent = () => {
   const datasetName = useRecoilValue(fos.datasetName);
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
+  const isCreatingCuboidPointerDown = useRecoilValue(
+    isCreatingCuboidPointerDownAtom
+  );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
   const keyState = useRef({
@@ -205,8 +209,12 @@ export const MediaTypeFo3dComponent = () => {
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
-    // Disable camera controls when transforming
-    if (isSegmentingPointerDown || isCurrentlyTransforming) {
+    // Disable camera controls when transforming or creating annotations
+    if (
+      isSegmentingPointerDown ||
+      isCreatingCuboidPointerDown ||
+      isCurrentlyTransforming
+    ) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -224,7 +232,12 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState, isCurrentlyTransforming, isSegmentingPointerDown]);
+  }, [
+    keyState,
+    isCurrentlyTransforming,
+    isSegmentingPointerDown,
+    isCreatingCuboidPointerDown,
+  ]);
 
   /**
    * This effect updates the camera controls config when the transforming state changes
