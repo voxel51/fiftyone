@@ -337,8 +337,8 @@ def test_hrm2_full_pipeline():
 
     # Apply model and create grouped dataset using module-level function
     result_dataset = apply_hrm2_to_dataset_as_groups(
-        model,
         test_dataset,
+        model,
         label_field="hrm2",
         batch_size=1,
     )
