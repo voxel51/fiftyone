@@ -94,18 +94,23 @@ export const Cuboid = ({
     isSelectedForAnnotation,
   });
 
+  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+
+  // Use transient dimensions during scaling, otherwise use effective dimensions
+  const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
+
   const geo = useMemo(
-    () => effectiveDimensions && new THREE.BoxGeometry(...effectiveDimensions),
-    [effectiveDimensions]
+    () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
+    [displayDimensions]
   );
 
   // @todo: add comment to add more context on what legacy coordinates means
   const loc = useMemo(() => {
     const [x, y, z] = effectiveLocation;
     return useLegacyCoordinates
-      ? new THREE.Vector3(x, y - 0.5 * effectiveDimensions[1], z)
+      ? new THREE.Vector3(x, y - 0.5 * displayDimensions[1], z)
       : new THREE.Vector3(x, y, z);
-  }, [effectiveLocation, effectiveDimensions, useLegacyCoordinates]);
+  }, [effectiveLocation, displayDimensions, useLegacyCoordinates]);
 
   const itemRotationVec = useMemo(
     () => new THREE.Vector3(...effectiveRotation),
@@ -159,8 +164,6 @@ export const Cuboid = ({
 
   if (!location || !dimensions) return null;
 
-  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
-
   /**
    * note: it's important to not set event handlers on the group,
    * because raycasting for line2 is unstable.
@@ -197,7 +200,7 @@ export const Cuboid = ({
         }}
         {...restEventHandlers}
       >
-        <boxGeometry args={effectiveDimensions} />
+        <boxGeometry args={displayDimensions} />
         <meshBasicMaterial
           transparent={isSimilarLabelHovered ? false : true}
           opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
