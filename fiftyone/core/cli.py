@@ -4292,6 +4292,11 @@ class LabsUninstallCommand(Command):
         for name in names:
             if name.startswith("@51labs"):
                 fop.delete_plugin(name)
+            elif not args.all:
+                print(
+                    f"Skipping non-FiftyOne Labs feature '{name}'. "
+                    "Use `fiftyone plugins delete` for non-labs plugins."
+                )
 
 
 class MigrateCommand(Command):
