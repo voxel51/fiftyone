@@ -36,15 +36,15 @@ def _patch_super_gradients_urls():
     try:
         import super_gradients.training.pretrained_models as pretrained_models
 
-        if hasattr(pretrained_models, "PRETRAINED_NUM_CLASSES"):
+        if hasattr(pretrained_models, "MODEL_URLS"):
             old_domain = "https://sghub.deci.ai"
             new_domain = "https://sg-hub-nv.s3.amazonaws.com"
             patched_count = 0
 
-            for key, value in pretrained_models.PRETRAINED_NUM_CLASSES.items():
+            for key, value in pretrained_models.MODEL_URLS.items():
                 if isinstance(value, str) and value.startswith(old_domain):
                     new_url = value.replace(old_domain, new_domain)
-                    pretrained_models.PRETRAINED_NUM_CLASSES[key] = new_url
+                    pretrained_models.MODEL_URLS[key] = new_url
                     patched_count += 1
                     logger.debug(f"Patched URL for {key}: {value} -> {new_url}")
 
