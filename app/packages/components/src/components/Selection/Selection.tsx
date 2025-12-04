@@ -123,7 +123,6 @@ export default function Selection(props: SelectionProps) {
               zIndex: 999,
               maxHeight: "400px",
               width: "100%",
-              maxWidth: "50vw",
               overflowY: "auto",
               background: theme.background.level2,
             },
