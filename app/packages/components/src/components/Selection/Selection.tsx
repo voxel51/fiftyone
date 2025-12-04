@@ -4,7 +4,7 @@ import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
 import { debounce } from "lodash";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
@@ -71,6 +71,7 @@ export default function Selection(props: SelectionProps) {
 
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     placeholder: searchPlaceholder,
@@ -99,12 +100,21 @@ export default function Selection(props: SelectionProps) {
   const itemsWithSelected = isSelectedInItems ? items : [selected, ...items];
 
   return (
-    <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
+    <div
+      ref={containerRef}
+      style={{ width: "100%" }}
+      data-cy={`${id}-selection-container`}
+    >
       <Select
         MenuProps={{
           sx: {
             // default dialog z-index is 1300
             zIndex: insideModal ? 2400 : undefined,
+          },
+          PaperProps: {
+            sx: {
+              width: containerRef.current?.clientWidth,
+            },
           },
           MenuListProps: {
             "data-cy": `${id}-selection-view`,
