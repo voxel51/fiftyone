@@ -4253,17 +4253,17 @@ class LabsInstallCommand(Command):
 
 
 class LabsUninstallCommand(Command):
-    """Uninstall FiftyOne Labs from your local machine.
+    """Uninstall FiftyOne Labs features from your local machine.
 
     Examples::
 
         # Uninstall a labs feature from local disk
         fiftyone labs uninstall <name>
 
-        # Uninstall multiple labs feature from local disk
+        # Uninstall multiple labs features from local disk
         fiftyone labs uninstall <name1> <name2> ...
 
-        # Uninstall all labs feature from local disk
+        # Uninstall all labs features from local disk
         fiftyone labs uninstall --all
     """
 

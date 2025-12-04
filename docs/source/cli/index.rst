@@ -1631,12 +1631,12 @@ Install features from FiftyOne Labs repository.
     # Install specific labs feature from FiftyOne Labs repo
     fiftyone labs install --feature-names <name1> <name2>
 
-.. _cli-fiftyone-labs-install:
+.. _cli-fiftyone-labs-uninstall:
 
 Uninstall Labs features
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Uninstall FiftyOne Labs from your local machine.
+Uninstall FiftyOne Labs features from your local machine.
 
 .. code-block:: text
 
@@ -1662,12 +1662,12 @@ Uninstall FiftyOne Labs from your local machine.
 
 .. code-block:: shell
 
-    # Uninstall multiple labs feature from local disk
+    # Uninstall multiple labs features from local disk
     fiftyone labs uninstall <name1> <name2> ...
 
 .. code-block:: shell
 
-    # Uninstall all labs feature from local disk
+    # Uninstall all labs features from local disk
     fiftyone labs uninstall --all
 
 .. _cli-fiftyone-utils:
