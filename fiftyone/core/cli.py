@@ -4210,7 +4210,7 @@ class LabsCommand(Command):
 
 
 class LabsInstallCommand(Command):
-    """Install FiftyOne Labs features from the web.
+    """Install features from FiftyOne Labs repository.
 
     Examples::
 
