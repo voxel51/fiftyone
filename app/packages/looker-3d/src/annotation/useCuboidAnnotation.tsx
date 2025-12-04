@@ -137,9 +137,13 @@ export const useCuboidAnnotation = ({
     const newTransform = { ...currentStagedTransform };
 
     if (mode === "translate") {
-      // Commit position change
-      const position = contentRef.current.position;
-      newTransform.location = position.toArray() as Vector3Tuple;
+      // Commit position change - add the delta (group position) to effectiveLocation
+      const delta = contentRef.current.position;
+      newTransform.location = [
+        effectiveLocation[0] + delta.x,
+        effectiveLocation[1] + delta.y,
+        effectiveLocation[2] + delta.z,
+      ] as Vector3Tuple;
     } else if (mode === "rotate") {
       // Commit rotation change
       const euler = contentRef.current.rotation;
@@ -163,12 +167,20 @@ export const useCuboidAnnotation = ({
       [label._id]: newTransform,
     }));
 
+    // Reset group position to prevent double-application
+    // This is important because transform controls are applied to the group
+    // whereas we render the cuboid using effectiveLocation
+    if (contentRef.current) {
+      contentRef.current.position.set(0, 0, 0);
+    }
+
     // Clear temp transforms
     setTempCuboidTransforms(null);
     setStartMatrix(null);
   }, [
     currentStagedTransform,
     dimensions,
+    effectiveLocation,
     label._id,
     setStagedCuboidTransforms,
     setTempCuboidTransforms,
