@@ -4212,8 +4212,13 @@ class LabsCommand(Command):
 class LabsInstallCommand(Command):
     """Install FiftyOne Labs features from the web.
 
-    You can install labs features (plugins) from GitHub with the following command:
+    Examples::
+
+        # Install labs features from FiftyOne Labs repo
         fiftyone labs install
+
+        # Install specific labs feature from FiftyOne Labs repo
+        fiftyone labs install --feature-names <name1> <name2>
     """
 
     @staticmethod

@@ -64,7 +64,7 @@ The FiftyOne command-line interface.
 .. code-block:: text
 
     fiftyone [-h] [-v] [--all-help]
-             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
              ...
 
 **Arguments**
@@ -77,7 +77,7 @@ The FiftyOne command-line interface.
       --all-help            show help recursively and exit
 
     available commands:
-      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
         brain               Tools for working with the FiftyOne Brain.
@@ -93,6 +93,7 @@ The FiftyOne command-line interface.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
+        labs                Tools for working with FiftyOne Labs.
 
 .. _cli-fiftyone-quickstart:
 
@@ -1569,6 +1570,105 @@ Delete plugins from your local machine.
 
     # Delete all plugins from local disk
     fiftyone plugins delete --all
+
+.. _cli-fiftyone-labs:
+
+FiftyOne Labs
+-------------
+
+Tools for working with FiftyOne Labs.
+
+.. code-block:: text
+
+    fiftyone labs [-h] [--all-help] {install,uninstall} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {install,uninstall}
+        install             Install FiftyOne Labs features from the web.
+        uninstall           Uninstall FiftyOne Labs features from your local machine.
+
+.. _cli-fiftyone-labs-install:
+
+Install Labs features
+~~~~~~~~~~~~~~~~~~~~~
+
+Install features from FiftyOne Labs repository.
+
+.. code-block:: text
+
+    fiftyone labs install [-h] [--labs-repo LABS_REPO] [-n [FEATURE_NAMES ...]] [-o]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --labs-repo LABS_REPO
+                            link to FiftyOne Labs repo or branch
+      -n [FEATURE_NAMES ...], --feature-names [FEATURE_NAMES ...]
+                            a labs feature name or list of feature names to download
+      -o, --overwrite       whether to overwrite existing features
+
+
+**Examples**
+
+.. code-block:: shell
+
+    # Install labs features from FiftyOne Labs repo
+    fiftyone labs install
+
+.. code-block:: shell
+
+    # Install specific labs feature from FiftyOne Labs repo
+    fiftyone labs install --feature-names <name1> <name2>
+
+.. _cli-fiftyone-labs-install:
+
+Uninstall Labs features
+~~~~~~~~~~~~~~~~~~~~~
+
+Uninstall FiftyOne Labs from your local machine.
+
+.. code-block:: text
+
+    fiftyone labs uninstall [-h] [-a] [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the labs feature name(s)
+
+    optional arguments:
+      -h, --help  show this help message and exit
+      -a, --all   whether to delete all labs features
+
+**Examples**
+
+.. code-block:: shell
+
+    # Uninstall a labs feature from local disk
+    fiftyone labs uninstall <name>
+
+.. code-block:: shell
+
+    # Uninstall multiple labs feature from local disk
+    fiftyone labs uninstall <name1> <name2> ...
+
+.. code-block:: shell
+
+    # Uninstall all labs feature from local disk
+    fiftyone labs uninstall --all
 
 .. _cli-fiftyone-utils:
 
