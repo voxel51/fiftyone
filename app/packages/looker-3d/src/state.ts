@@ -8,6 +8,7 @@ import {
 } from "@fiftyone/state";
 import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
+import type { Vector3Tuple } from "three";
 import type {
   AnnotationPlaneState,
   PolylinePointTransformData,
@@ -502,9 +503,9 @@ export const stagedCuboidTransformsAtom = atom<
   Record<
     string,
     {
-      location?: THREE.Vector3Tuple;
-      dimensions?: THREE.Vector3Tuple;
-      rotation?: THREE.Vector3Tuple;
+      location?: Vector3Tuple;
+      dimensions?: Vector3Tuple;
+      rotation?: Vector3Tuple;
     }
   >
 >({
@@ -557,6 +558,8 @@ export const tempLabelTransformsAtom = atomFamily<
   {
     position: [number, number, number];
     quaternion: [number, number, number, number];
+    /** Optional dimensions for cuboid scale transforms */
+    dimensions?: [number, number, number];
   } | null,
   string
 >({

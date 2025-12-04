@@ -95,7 +95,6 @@ export const useCuboidAnnotation = ({
       });
     } else if (mode === "rotate") {
       // Update rotation
-      const rotation = contentRef.current.rotation;
       setTempCuboidTransforms({
         position: contentRef.current.position.toArray() as [
           number,
@@ -110,8 +109,14 @@ export const useCuboidAnnotation = ({
         ],
       });
     } else if (mode === "scale") {
-      // Update dimensions
+      // Update dimensions - compute transient dimensions from scale
       const scale = contentRef.current.scale;
+      const originalDims = currentStagedTransform?.dimensions ?? dimensions;
+      const transientDimensions: [number, number, number] = [
+        originalDims[0] * scale.x,
+        originalDims[1] * scale.y,
+        originalDims[2] * scale.z,
+      ];
       setTempCuboidTransforms({
         position: contentRef.current.position.toArray() as [
           number,
@@ -124,9 +129,10 @@ export const useCuboidAnnotation = ({
           number,
           number
         ],
+        dimensions: transientDimensions,
       });
     }
-  }, [setTempCuboidTransforms]);
+  }, [setTempCuboidTransforms, currentStagedTransform?.dimensions, dimensions]);
 
   const handleTransformEnd = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
