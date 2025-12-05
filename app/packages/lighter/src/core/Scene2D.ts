@@ -2,7 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventDispatcher, EventHandler, getEventBus } from "@fiftyone/events";
+import {
+  clearChannel,
+  EventDispatcher,
+  EventHandler,
+  getEventBus,
+} from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
 import {
@@ -1271,6 +1276,9 @@ export class Scene2D {
 
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
+
+    // Clear all event handlers for this scene's channel and remove from registry
+    clearChannel(this.sceneId);
 
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();

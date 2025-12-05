@@ -52,6 +52,39 @@ export function getEventBus<T extends EventGroup>(
 }
 
 /**
+ * Clears all event handlers for a given channel and optionally removes it from the registry.
+ *
+ * This function should be called during cleanup (e.g., when destroying a scene) to ensure
+ * all event handlers are properly removed, preventing memory leaks and stale handler invocations.
+ *
+ * @param channelId - The channel ID to clear. Defaults to the default channel.
+ * @param removeFromRegistry - If true, removes the dispatcher from the registry entirely.
+ *                             If false, only clears all handlers but keeps the dispatcher.
+ *                             Defaults to true.
+ *
+ * @example
+ * ```typescript
+ * // Clear all handlers and remove from registry (typical cleanup)
+ * clearChannel("my-scene-id");
+ *
+ * // Clear all handlers but keep the dispatcher for reuse
+ * clearChannel("my-scene-id", false);
+ * ```
+ */
+export function clearChannel(
+  channelId = DEFAULT_CHANNEL_ID,
+  removeFromRegistry = true
+): void {
+  const dispatcher = dispatcherRegistry.get(channelId);
+  if (dispatcher) {
+    dispatcher.clearAll();
+    if (removeFromRegistry) {
+      dispatcherRegistry.delete(channelId);
+    }
+  }
+}
+
+/**
  * Exports the registry for testing purposes.
  */
 export const __test__ = {
