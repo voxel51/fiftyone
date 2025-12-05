@@ -612,14 +612,6 @@ def _finalize_embedded_doc_fields(fields_dict):
     if not fields_dict:
         return []
 
-    if isinstance(fields_dict, list):
-        # Older callers may still provide a list that already filtered out
-        # missing entries. Normalize those into the dict-based structure the
-        # rest of this function expects before continuing.
-        fields_dict = {
-            field["name"]: field for field in fields_dict if field is not None
-        }
-
     fields = []
     for field in fields_dict.values():
         if field is not None:
