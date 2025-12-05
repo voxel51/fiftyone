@@ -250,7 +250,7 @@ export class BoundingBoxOverlay
       }
 
       // Draw text and store the dimensions for accurate header detection
-      const textDimensions = renderer.drawText(
+      this.textBounds = renderer.drawText(
         textToDraw,
         labelPosition,
         {
@@ -259,13 +259,6 @@ export class BoundingBoxOverlay
         },
         this.containerId
       );
-
-      this.textBounds = {
-        x: labelPosition.x,
-        y: labelPosition.y,
-        width: textDimensions.width,
-        height: textDimensions.height,
-      };
     }
 
     this.emitLoaded();

@@ -18,15 +18,7 @@ import {
   SELECTED_COLOR,
 } from "../constants";
 import type { LighterEventGroup } from "../events";
-import type {
-  Anchor,
-  Dimensions2D,
-  DrawStyle,
-  Offset,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
@@ -329,9 +321,9 @@ export class PixiRenderer2D implements Renderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D {
+  ): Rect {
     if (text?.length === 0) {
-      return { width: 0, height: 0 };
+      return { x: 0, y: 0, width: 0, height: 0 };
     }
 
     const textStyle = new PIXI.TextStyle({
@@ -377,7 +369,7 @@ export class PixiRenderer2D implements Renderer2D {
 
     this.addToContainer(pixiText, containerId);
 
-    return { width: finalWidth, height: finalHeight };
+    return bg;
   }
 
   drawLine(

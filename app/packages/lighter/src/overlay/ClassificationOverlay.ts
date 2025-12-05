@@ -9,7 +9,7 @@ import {
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
-import { RawLookerLabel, RenderMeta } from "../types";
+import { RawLookerLabel, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -26,6 +26,7 @@ export interface ClassificationOptions {
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
+  private textBounds?: Rect;
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
@@ -56,7 +57,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
           : "";
       const textToDraw = `${this.label?.label} ${confidence}`.trim();
 
-      const textDimensions = renderer.drawText(
+      this.textBounds = renderer.drawText(
         textToDraw,
         labelPosition,
         {
@@ -67,13 +68,6 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
         },
         this.containerId
       );
-
-      this.textBounds = {
-        x: labelPosition.x,
-        y: labelPosition.y,
-        width: textDimensions.width,
-        height: textDimensions.height,
-      };
     }
 
     this.emitLoaded();
