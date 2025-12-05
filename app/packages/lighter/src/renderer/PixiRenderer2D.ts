@@ -19,6 +19,7 @@ import {
 } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type {
+  Anchor,
   Dimensions2D,
   DrawStyle,
   Point,
@@ -260,6 +261,12 @@ export class PixiRenderer2D implements Renderer2D {
       return { width: 0, height: 0 };
     }
 
+    const anchor: Anchor = {
+      vertical: "bottom",
+      horizontal: "left",
+      ...options?.anchor,
+    };
+
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
@@ -274,8 +281,8 @@ export class PixiRenderer2D implements Renderer2D {
     });
 
     const pixiText = new PIXI.Text({ text, style: textStyle });
-    pixiText.x = position.x + padding;
-    pixiText.y = position.y - padding;
+    pixiText.x = position.x;
+    pixiText.y = position.y;
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
@@ -284,19 +291,47 @@ export class PixiRenderer2D implements Renderer2D {
       (options?.height || textBounds.height) / this.getScale();
     const finalWidth = textBounds.width / this.getScale();
 
-    pixiText.y -= finalHeight;
+    const bgRect = {
+      ...position,
+      width: finalWidth + padding * 2,
+      height: finalHeight + padding * 2,
+    };
+
+    switch (anchor.vertical) {
+      case "top":
+        pixiText.y += padding;
+        break;
+      case "center":
+        pixiText.y -= finalHeight / 2;
+        bgRect.y -= finalHeight / 2 + padding;
+        break;
+      case "bottom":
+        pixiText.y -= finalHeight + padding;
+        bgRect.y -= finalHeight + padding * 2;
+        break;
+    }
+
+    switch (anchor.horizontal) {
+      case "left":
+        pixiText.x += padding;
+        break;
+      case "center":
+        pixiText.x -= finalWidth / 2;
+        bgRect.x -= finalWidth / 2 + padding;
+        break;
+      case "right":
+        pixiText.x -= finalWidth + padding;
+        bgRect.x -= finalWidth + padding * 2;
+        break;
+    }
 
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
 
       background
-        .rect(
-          position.x,
-          position.y - finalHeight - padding * 2,
-          finalWidth + padding * 2,
-          finalHeight + padding * 2
-        )
+        .rect(bgRect.x, bgRect.y, bgRect.width, bgRect.height)
         .fill(options.backgroundColor);
+
       this.addToContainer(background, containerId);
     }
     this.addToContainer(pixiText, containerId);
