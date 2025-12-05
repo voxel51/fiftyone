@@ -244,6 +244,10 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
+  /**
+   * Calculates text and background positions based on anchor and offset options.
+   * Offset values are multiplied by (height + padding*3) to provide spacing for stacked labels.
+   */
   private calculatePosition(
     position: Point,
     finalHeight: number,
@@ -252,6 +256,9 @@ export class PixiRenderer2D implements Renderer2D {
   ): { txt: Point; bg: Rect } {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+
+    // text height + top padding + bottom padding + gap
+    const verticalOffset = finalHeight + padding * 3;
 
     const anchor = {
       vertical: "bottom",
@@ -301,13 +308,13 @@ export class PixiRenderer2D implements Renderer2D {
     }
 
     if (offset.top) {
-      txt.y -= (finalHeight + padding * 3) * offset.top;
-      bg.y -= (finalHeight + padding * 3) * offset.top;
+      txt.y -= verticalOffset * offset.top;
+      bg.y -= verticalOffset * offset.top;
     }
 
     if (offset.bottom) {
-      txt.y += (finalHeight + padding * 3) * offset.bottom;
-      bg.y += (finalHeight + padding * 3) * offset.bottom;
+      txt.y += verticalOffset * offset.bottom;
+      bg.y += verticalOffset * offset.bottom;
     }
 
     return {

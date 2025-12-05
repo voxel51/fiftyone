@@ -1510,18 +1510,15 @@ export class Scene2D {
       }
     }
 
-    const overlayIndexes = {};
+    const overlayIndexes: Record<string, number> = {};
 
     for (const overlayId of this.overlayOrder) {
       const overlayType = this.overlays.get(overlayId)!.getOverlayType();
+      const currentIndex = overlayIndexes[overlayType] ?? -1;
+      const overlayIndex = currentIndex + 1;
+      overlayIndexes[overlayType] = overlayIndex;
 
-      if (overlayIndexes.hasOwnProperty(overlayType)) {
-        overlayIndexes[overlayType]++;
-      } else {
-        overlayIndexes[overlayType] = 0;
-      }
-
-      this.renderOverlay(overlayId, overlayIndexes[overlayType]);
+      this.renderOverlay(overlayId, overlayIndex);
     }
 
     // Execute after-render callbacks
