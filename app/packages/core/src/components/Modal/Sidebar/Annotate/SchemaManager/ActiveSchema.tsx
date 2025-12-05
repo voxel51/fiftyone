@@ -1,11 +1,10 @@
 import { useTheme } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { snackbarMessage } from "@fiftyone/state";
+import { useNotification } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
 import { RoundButtonWhite } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 import { activePaths, removeFromActiveSchemas } from "../state";
@@ -18,7 +17,7 @@ const useDeactivate = () => {
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedFields);
   const activateFields = useOperatorExecutor("deactivate_annotation_schemas");
-  const setMessage = useSetRecoilState(snackbarMessage);
+  const setMessage = useNotification();
 
   return useCallback(
     (path?: string) => {
@@ -26,7 +25,10 @@ const useDeactivate = () => {
       activateFields.execute({ paths: path ? [path] : Array.from(selected) });
       setSelected(new Set());
       const size = path ? 1 : selected.size;
-      setMessage(`${size} schema${size > 1 ? "s" : ""} deactivated`);
+      setMessage({
+        msg: `${size} schema${size > 1 ? "s" : ""} deactivated`,
+        variant: "success",
+      });
     },
     [activateFields, removeFromActiveSchema, selected, setSelected, setMessage]
   );
@@ -85,7 +87,10 @@ const Rows = () => {
             key={path}
             path={path}
             isSelected={isSelected(path)}
-            onDelete={() => deactivate(path)}
+            onDelete={{
+              callback: () => deactivate(path),
+              tooltip: "Deactivate annotation schema",
+            }}
           />
         ))}
       </Container>

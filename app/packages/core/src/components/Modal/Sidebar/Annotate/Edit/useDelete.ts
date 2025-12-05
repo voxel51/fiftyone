@@ -1,14 +1,16 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/commands";
+import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import { getFieldSchema } from "../../../Lighter/deltas";
 import { current, deleteValue } from "./state";
 import useExit from "./useExit";
-import { isSaving } from "./useSave";
+import { isSavingAtom } from "./useSave";
 
 export default function useDelete() {
+  const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
   const setter = useSetAtom(deleteValue);
@@ -17,36 +19,68 @@ export default function useDelete() {
   );
 
   const exit = useExit(false);
-  const setSaving = useSetAtom(isSaving);
+  const [isSaving, setSaving] = useAtom(isSavingAtom);
+  const setNotification = fos.useNotification();
 
-  return useCallback(() => {
-    if (!label) {
+  return useCallback(async () => {
+    if (!label || isSaving) {
       return;
     }
 
     if (label.isNew) {
-      scene?.exitInteractiveMode();
-      removeOverlay(label?.data._id);
+      if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+        scene?.exitInteractiveMode();
+        removeOverlay(label?.data._id);
+      }
+
       exit();
       return;
     }
 
     setSaving(true);
-    scene?.dispatchSafely({
-      type: LIGHTER_EVENTS.DO_REMOVE_OVERLAY,
-      detail: {
-        label,
-        schema: getFieldSchema(schema, label?.path)!,
-        onSuccess: () => {
-          removeOverlay(label?.overlay.id);
-          setter();
-          setSaving(false);
-          exit();
-        },
-        onError: () => {
-          setSaving(false);
-        },
-      },
-    });
-  }, [exit, label, scene, setter, removeOverlay, schema, setSaving]);
+
+    try {
+      const fieldSchema = getFieldSchema(schema, label?.path);
+      if (!fieldSchema) {
+        setSaving(false);
+        setNotification({
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
+          variant: "error",
+        });
+        return;
+      }
+
+      await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
+
+      removeOverlay(label.overlay.id);
+      setter();
+      setSaving(false);
+      setNotification({
+        msg: `Label "${label.data.label}" successfully deleted.`,
+        variant: "success",
+      });
+      exit();
+    } catch (error) {
+      setSaving(false);
+      setNotification({
+        msg: `Label "${
+          label.data.label ?? "Label"
+        }" not successfully deleted. Try again.`,
+        variant: "error",
+      });
+    }
+  }, [
+    commandBus,
+    label,
+    isSaving,
+    scene,
+    schema,
+    exit,
+    removeOverlay,
+    setter,
+    setSaving,
+    setNotification,
+  ]);
 }

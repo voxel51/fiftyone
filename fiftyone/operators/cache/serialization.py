@@ -5,24 +5,26 @@ Execution cache serialization.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import numpy as np
-from datetime import datetime, date
 
+import base64
+
+import numpy as np
 import eta.core.serial as etas
 
 import fiftyone as fo
 import fiftyone.operators.cache.utils as focu
 
+from datetime import datetime, date
+
 
 def auto_serialize(value):
-    """
-    Serializes a value for storage in the execution cache.
+    """Serializes a value for storage in the execution cache.
 
     Args:
         value: the value to serialize
 
     Returns:
-        The serialized value.
+        the serialized value
     """
     if isinstance(value, fo.Sample):
         return focu._make_sample_dict(value)
@@ -56,18 +58,22 @@ def auto_serialize(value):
         return value.tolist()
     elif isinstance(value, np.generic):
         return value.item()
+    elif isinstance(value, bytes):
+        return {
+            "_cls": "bytes",
+            "value": base64.b64encode(value).decode("ascii"),
+        }
     raise TypeError(f"Cannot serialize value of type {type(value)}: {value}")
 
 
 def auto_deserialize(value):
-    """
-    Deserializes a value from the execution cache.
+    """Deserializes a value from the execution cache.
 
     Args:
         value: the value to deserialize
 
     Returns:
-        The deserialized value.
+        the deserialized value
     """
     if focu._is_sample_dict(value):
         value = {k: v for k, v in value.items() if k != "_cls"}
@@ -82,6 +88,8 @@ def auto_deserialize(value):
             return datetime.fromisoformat(value["value"]).date()
         elif cls == "datetime":
             return datetime.fromisoformat(value["value"])
+        elif cls == "bytes":
+            return base64.b64decode(value["value"].encode("ascii"))
         raise TypeError(f"Cannot deserialize value of type {cls}: {value}")
     elif isinstance(value, str):
         return value

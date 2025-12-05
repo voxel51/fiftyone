@@ -14,6 +14,7 @@ export const ACTION_VIEW_HELP = "help";
 
 export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
+export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 
 export const SHADE_BY_INTENSITY = "intensity";
 export const SHADE_BY_HEIGHT = "height";

@@ -10,7 +10,17 @@ FiftyOne Deprecation Notices
    Deprecation notices below are ordered in reverse chronological order
    (most recent at the top).
 
-.. _deprecation-kubernetes-1.30:
+.. _deprecation-python-3.9:
+
+Python 3.9
+-----------
+*Support ending June 1, 2026*
+
+`Python 3.9 <https://devguide.python.org/versions/>`_
+transitioned to `end-of-life` effective October of 2025. FiftyOne releases after
+June 1, 2026 might no longer be compatible with Python 3.9.
+
+.. _deprecation-mongodb-6.0:
 
 MongoDB 6.0
 -----------
@@ -20,6 +30,8 @@ MongoDB 6.0
 transitioned to `end-of-life` effective July of 2025. FiftyOne
 releases after December 1, 2025 might no longer be compatible with
 MongoDB 6.0 and older.
+
+.. _deprecation-kubernetes-1.30:
 
 Kubernetes 1.30
 ---------------

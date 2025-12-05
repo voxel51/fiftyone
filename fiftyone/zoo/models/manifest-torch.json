@@ -3371,7 +3371,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers", "official"],
+            "tags": ["segmentation", "torch", "transformers", "official", "embeddings"],
             "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3507,7 +3507,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3603,7 +3602,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3641,7 +3639,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3679,7 +3676,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -6839,7 +6835,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -6883,7 +6880,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -6927,7 +6925,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -6970,7 +6969,8 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7014,7 +7014,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7062,7 +7063,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7106,7 +7108,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7150,7 +7153,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7194,7 +7198,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7238,7 +7243,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7282,7 +7288,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7326,7 +7333,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7370,7 +7378,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7413,7 +7422,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7456,7 +7466,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7499,7 +7510,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7542,7 +7554,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7579,7 +7592,14 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "rtdetr"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "rtdetr"
+            ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -7615,6 +7635,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "rtdetr",
@@ -7652,6 +7673,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7689,6 +7711,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7726,6 +7749,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7763,6 +7787,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7800,6 +7825,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7838,7 +7864,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7875,7 +7901,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7912,7 +7938,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7949,7 +7975,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7986,7 +8012,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8023,7 +8049,7 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8069,7 +8095,8 @@
                 "torch",
                 "official",
                 "medical",
-                "zero-shot"
+                "zero-shot",
+                "embeddings"
             ],
             "training_data": [],
             "date_added": "2025-09-03 15:09:00"
@@ -8100,7 +8127,7 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["classification", "torch", "official", "medical"],
+            "tags": ["classification", "torch", "official", "medical", "embeddings"],
             "training_data": [
                 {
                     "name": "MONET (dermatology image–text corpus)",
@@ -8136,7 +8163,8 @@
                 "torch",
                 "official",
                 "medical",
-                "zero-shot"
+                "zero-shot",
+                "embeddings"
             ],
             "training_data": [
                 {

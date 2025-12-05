@@ -1,3 +1,4 @@
+import { useRegisterAnnotationCommandHandlers } from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -51,16 +52,33 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
+const ModalCommandHandlersRegistration = () => {
+  useRegisterAnnotationCommandHandlers();
+  return null;
+};
+
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const pointerDownTargetRef = useRef<EventTarget | null>(null);
 
   const clearModal = fos.useClearModal();
 
+  const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
+    // Track where the pointer down started
+    pointerDownTargetRef.current = e.target;
+  }, []);
+
   const onClickModalWrapper = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === wrapperRef.current) {
+      // Only close if both pointer down and pointer up happened on the wrapper
+      if (
+        e.target === wrapperRef.current &&
+        pointerDownTargetRef.current === wrapperRef.current
+      ) {
         clearModal();
       }
+      // Reset the tracked target
+      pointerDownTargetRef.current = null;
     },
     [clearModal]
   );
@@ -107,18 +125,14 @@ const Modal = () => {
     ({ snapshot, set }) =>
       async (e: KeyboardEvent) => {
         const active = document.activeElement;
+
+        // Prevent shortcuts when interacting with any form field
         if (
+          active?.tagName === "INPUT" ||
           active?.tagName === "TEXTAREA" ||
-          active instanceof HTMLTextAreaElement
+          active?.tagName === "SELECT"
         ) {
           return;
-        }
-
-        if (active?.tagName === "INPUT" || active instanceof HTMLInputElement) {
-          const inputElement = active as HTMLInputElement;
-          if (inputElement.type === "text") {
-            return;
-          }
         }
 
         if (e.repeat) {
@@ -229,10 +243,12 @@ const Modal = () => {
     >
       <ModalWrapper
         ref={wrapperRef}
+        onPointerDown={onPointerDownModalWrapper}
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
         <Actions />
+        <ModalCommandHandlersRegistration />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

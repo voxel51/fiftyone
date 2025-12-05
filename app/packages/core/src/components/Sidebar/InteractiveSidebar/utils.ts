@@ -8,7 +8,7 @@ export enum Direction {
   DOWN = "DOWN",
 }
 
-export const fn = (
+export const calculateItemLayout = (
   items: InteractiveItems,
   currentOrder: string[],
   newOrder: string[],
@@ -53,7 +53,10 @@ export const fn = (
   if (activeKey) {
     const w = items[activeKey].el?.parentElement?.getBoundingClientRect()
       .width as number;
-    scale = (w - 12) / (w - 16);
+
+    if (w && w > 16) {
+      scale = (w - 12) / (w - 16);
+    }
   }
 
   const results = {};
@@ -107,9 +110,10 @@ export const fn = (
     }
 
     if (shown) {
-      y +=
-        (el?.getBoundingClientRect().height ?? 0) / springs.scale.get() +
-        MARGIN;
+      const springsScale = springs.scale.get();
+      const elHeight = el?.getBoundingClientRect().height ?? 0;
+
+      y += (springsScale ? elHeight / springsScale : elHeight) + MARGIN;
     }
 
     if (activeKey) {
@@ -272,7 +276,8 @@ const measureEntries = (
 
     if (key === activeKey) activeHeight = height;
 
-    height /= items[key].controller.springs.scale.get();
+    const currentScale = items[key].controller.springs.scale.get();
+    height = currentScale ? height / currentScale : height;
 
     const top = previous.top + previous.height + MARGIN;
     data.push({ key, height, top });
@@ -317,8 +322,8 @@ const measureGroups = (
       activeHeight += MARGIN + height;
     }
 
-    current.height +=
-      height / items[key].controller.springs.scale.get() + MARGIN;
+    const currentScale = items[key].controller.springs.scale.get();
+    current.height += (currentScale ? height / currentScale : height) + MARGIN;
   }
 
   data.push(current);

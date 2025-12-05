@@ -55,15 +55,10 @@ test.describe.serial("field visibility", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("correct tooltip when hovering over feature icon", async ({
-    fieldVisibility,
-  }) => {
-    await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
-  });
-
   test("deselect all fields works - deselects enabled fields", async ({
     fieldVisibility,
   }) => {
+    await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.toggleAllSelection();
     await fieldVisibility.asserter.assertEnabledFieldsAreUnselected();
@@ -73,10 +68,7 @@ test.describe.serial("field visibility", () => {
     await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.toggleShowNestedFields();
     await fieldVisibility.asserter.assertNestedFieldsVisible();
-  });
 
-  test("show metadata works", async ({ fieldVisibility }) => {
-    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.asserter.assertMetadataInVisible();
     await fieldVisibility.toggleShowMetadata();
     await fieldVisibility.asserter.assertMetadataVisible();

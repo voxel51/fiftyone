@@ -6592,6 +6592,42 @@ class DynamicFieldTests(unittest.TestCase):
         dynamic_schema = dataset.get_dynamic_frame_field_schema()
         self.assertIn("ground_truth.detections.area", dynamic_schema)
 
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        # Declare dynamic fields via dict syntax
+
+        dataset2 = dataset.clone()
+
+        dynamic_schema = dataset2.get_dynamic_field_schema()
+        dataset2.add_dynamic_sample_fields(dynamic_schema)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dynamic_schema = dataset2.get_dynamic_frame_field_schema()
+        dataset2.add_dynamic_frame_fields(dynamic_schema)
+
+        schema = dataset2.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
         # Declare all dynamic fields
 
         dataset.add_dynamic_sample_fields()
@@ -6928,6 +6964,46 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("tasks.annotator", schema)
         self.assertIn("tasks.labels", schema)
         self.assertIn("tasks.labels.classifications.label", schema)
+
+    @drop_datasets
+    def test_dynamic_embedded_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="dog", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="cat", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(person=fo.Detection(label="boy")),
+            ],
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    person=fo.Detection(label="girl", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(object=fo.Detection(label="chair")),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample1, dynamic=True)
+        dataset.add_sample(sample2, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("test.animal", schema)
+        self.assertIn("test.animal.instance", schema)
+        self.assertIn("test.animal.instance.id", schema)
+        self.assertIn("test.person", schema)
+        self.assertIn("test.person.instance", schema)
+        self.assertIn("test.person.instance.id", schema)
+        self.assertIn("test.object", schema)
+        self.assertNotIn("test.object.instance", schema)
+        self.assertNotIn("test.object.instance.id", schema)
 
     @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):

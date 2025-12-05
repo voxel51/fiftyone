@@ -43,3 +43,10 @@ class ViewTarget:
 
     SELECTED_SAMPLES = "SELECTED_SAMPLES"
     """Selected samples in the app view, if any."""
+
+    CUSTOM_VIEW_TARGET = "CUSTOM_VIEW_TARGET"
+    """Custom view target specified by the caller.
+
+    When using this option, specify 'custom_view_target' in the
+    operator parameters with a list of JSON-serialized view stages to apply.
+    """
