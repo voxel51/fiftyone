@@ -7,10 +7,14 @@ import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
 import {
-  CollapseFieldCommand,
-  ExpandAndScrollToFieldCommand,
-  ExpandFieldCommand,
-  ScrollToFieldCommand,
+  CollapseFieldInGridCommand,
+  CollapseFieldInModalCommand,
+  ExpandAndScrollToFieldInGridCommand,
+  ExpandAndScrollToFieldInModalCommand,
+  ExpandFieldInGridCommand,
+  ExpandFieldInModalCommand,
+  ScrollToFieldInGridCommand,
+  ScrollToFieldInModalCommand,
 } from "../../../commands";
 import { InteractiveItems } from "./types";
 import { getEntryKey } from "./utils";
@@ -18,22 +22,28 @@ import { getEntryKey } from "./utils";
 /**
  * Hook that registers command handlers for sidebar field operations.
  * This should be called in InteractiveSidebar.
+ *
+ * @param container - Ref to the sidebar container element
+ * @param entries - Current sidebar entries
+ * @param items - Ref to interactive items
+ * @param modal - Whether this is the modal sidebar (true) or grid sidebar (false)
  */
 export const useRegisterSidebarCommandHandlers = (
   container: React.RefObject<HTMLDivElement | null>,
   entries: fos.SidebarEntry[],
-  items: React.MutableRefObject<InteractiveItems>
+  items: React.MutableRefObject<InteractiveItems>,
+  modal: boolean
 ) => {
   const handleExpandField = useRecoilCallback(
     ({ set }) =>
-      async (path: string, modal: boolean = false) => {
+      async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), true);
       },
-    []
+    [modal]
   );
 
   useRegisterCommandHandler(
-    ExpandFieldCommand,
+    modal ? ExpandFieldInModalCommand : ExpandFieldInGridCommand,
     useCallback(
       async (cmd) => {
         await handleExpandField(cmd.path);
@@ -44,10 +54,10 @@ export const useRegisterSidebarCommandHandlers = (
 
   const handleCollapseField = useRecoilCallback(
     ({ set }) =>
-      async (path: string, modal: boolean = false) => {
+      async (path: string) => {
         set(fos.sidebarExpanded({ path, modal }), false);
       },
-    []
+    [modal]
   );
 
   const handleCollapseFieldWithExpandedPath = useRecoilCallback(
@@ -61,7 +71,7 @@ export const useRegisterSidebarCommandHandlers = (
   );
 
   useRegisterCommandHandler(
-    CollapseFieldCommand,
+    modal ? CollapseFieldInModalCommand : CollapseFieldInGridCommand,
     useCallback(
       async (cmd) => {
         await handleCollapseFieldWithExpandedPath(cmd.path);
@@ -104,7 +114,7 @@ export const useRegisterSidebarCommandHandlers = (
   );
 
   useRegisterCommandHandler(
-    ScrollToFieldCommand,
+    modal ? ScrollToFieldInModalCommand : ScrollToFieldInGridCommand,
     useCallback(
       async (cmd) => {
         await handleScrollToField(cmd.path);
@@ -145,7 +155,9 @@ export const useRegisterSidebarCommandHandlers = (
   );
 
   useRegisterCommandHandler(
-    ExpandAndScrollToFieldCommand,
+    modal
+      ? ExpandAndScrollToFieldInModalCommand
+      : ExpandAndScrollToFieldInGridCommand,
     useCallback(
       async (cmd) => {
         await handleExpandAndScrollToField(cmd.path);
