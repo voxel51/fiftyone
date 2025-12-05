@@ -40,7 +40,7 @@ export const useLighterSetupWithPixi = (
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
 
-    const renderer = new PixiRenderer2D(stableCanvas);
+    const renderer = new PixiRenderer2D(stableCanvas, sceneId);
     rendererRef.current = renderer;
 
     // Extract only the options we need for Scene2D

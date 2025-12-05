@@ -149,9 +149,9 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
-  private readonly sceneId: string | undefined;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
+  private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   private _isDestroyed = false;
@@ -161,12 +161,13 @@ export class Scene2D {
     this.sceneId = config.sceneId;
 
     this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager();
+    this.selectionManager = new SelectionManager(this.sceneId);
     this.interactionManager = new InteractionManager(
       config.canvas,
       this.undoRedo,
       this.selectionManager,
-      config.renderer
+      config.renderer,
+      this.sceneId
     );
 
     this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
@@ -959,9 +960,10 @@ export class Scene2D {
     }
 
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
-    // Inject renderer into overlay
+    // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
+    overlay.setSceneId(this.sceneId);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
