@@ -8,7 +8,6 @@ import {
   currentArchetypeSelectedForTransformAtom,
   isCurrentlyTransformingAtom,
   transformModeAtom,
-  transformSpaceAtom,
 } from "../../state";
 import type { Archetype3d, TransformProps } from "../../types";
 
@@ -51,7 +50,6 @@ export const Transformable = ({
 
   const modalMode = useAtomValue(fos.modalMode);
   const transformMode = useRecoilValue(transformModeAtom);
-  const transformSpace = useRecoilValue(transformSpaceAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
     currentArchetypeSelectedForTransformAtom
   );
@@ -102,7 +100,7 @@ export const Transformable = ({
               ref={transformControlsRef}
               object={explicitObjectRef?.current || groupRef.current}
               mode={transformMode}
-              space={transformSpace}
+              space="world"
               onMouseDown={onTransformStartDecorated}
               onMouseUp={onTransformEndDecorated}
               onObjectChange={onObjectChangeDecorated}

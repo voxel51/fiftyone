@@ -29,13 +29,11 @@ import {
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
   transformModeAtom,
-  transformSpaceAtom,
 } from "../../state";
 import type {
   AnnotationAction,
   AnnotationActionGroup,
   TransformMode,
-  TransformSpace,
 } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
@@ -55,8 +53,6 @@ export const useAnnotationActions = () => {
     setCurrentArchetypeSelectedForTransform,
   ] = useRecoilState(currentArchetypeSelectedForTransformAtom);
   const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
-  const [transformSpace, setTransformSpace] =
-    useRecoilState(transformSpaceAtom);
   const [selectedPoint, setSelectedPoint] = useRecoilState(
     selectedPolylineVertexAtom
   );
@@ -89,13 +85,6 @@ export const useAnnotationActions = () => {
       setTransformMode(mode);
     },
     [setTransformMode]
-  );
-
-  const handleTransformSpaceChange = useCallback(
-    (space: TransformSpace) => {
-      setTransformSpace(space);
-    },
-    [setTransformSpace]
   );
 
   const handleStartSegmentPolyline = useCallback(() => {
@@ -422,8 +411,7 @@ export const useAnnotationActions = () => {
             icon: <ThreeSixtyIcon />,
             tooltip: "Rotate object",
             isVisible:
-              currentArchetypeSelectedForTransform === "annotation-plane" ||
-              currentArchetypeSelectedForTransform === "cuboid",
+              currentArchetypeSelectedForTransform === "annotation-plane",
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),
           },
@@ -435,37 +423,6 @@ export const useAnnotationActions = () => {
             isActive: transformMode === "scale",
             isVisible: currentArchetypeSelectedForTransform === "cuboid",
             onClick: () => handleTransformModeChange("scale"),
-          },
-        ],
-      },
-      {
-        id: "space-actions",
-        label: "Space",
-        isHidden:
-          currentArchetypeSelectedForTransform !== "cuboid" ||
-          (transformMode !== "translate" && transformMode !== "rotate"),
-        actions: [
-          {
-            id: "world-space",
-            label: "World Space",
-            icon: <Typography variant="caption">W</Typography>,
-            tooltip: "Transform in world space",
-            isActive: transformSpace === "world",
-            isVisible:
-              currentArchetypeSelectedForTransform === "cuboid" ||
-              currentArchetypeSelectedForTransform === "annotation-plane",
-            onClick: () => handleTransformSpaceChange("world"),
-          },
-          {
-            id: "local-space",
-            label: "Local Space",
-            icon: <Typography variant="caption">L</Typography>,
-            tooltip: "Transform in local space",
-            isActive: transformSpace === "local",
-            isVisible:
-              currentArchetypeSelectedForTransform === "cuboid" ||
-              currentArchetypeSelectedForTransform === "annotation-plane",
-            onClick: () => handleTransformSpaceChange("local"),
           },
         ],
       },
@@ -507,9 +464,7 @@ export const useAnnotationActions = () => {
     transformMode,
     currentArchetypeSelectedForTransform,
     handleTransformModeChange,
-    transformSpace,
     handleContextualDelete,
-    handleTransformSpaceChange,
     selectedLabelForAnnotation,
     selectedPoint,
     segmentState,
@@ -527,6 +482,5 @@ export const useAnnotationActions = () => {
   return {
     actions,
     transformMode,
-    transformSpace,
   };
 };

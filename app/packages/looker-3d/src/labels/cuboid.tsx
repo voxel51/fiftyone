@@ -112,18 +112,12 @@ export const Cuboid = ({
       : new THREE.Vector3(x, y, z);
   }, [effectiveLocation, displayDimensions, useLegacyCoordinates]);
 
-  const itemRotationVec = useMemo(
-    () => new THREE.Vector3(...effectiveRotation),
-    [effectiveRotation]
-  );
-  const resolvedRotation = useMemo(
-    () => new THREE.Vector3(...rotation),
-    [rotation]
-  );
-  const actualRotation = useMemo(
-    () => resolvedRotation.add(itemRotationVec).toArray(),
-    [resolvedRotation, itemRotationVec]
-  );
+  // Combine scene rotation with item rotation
+  const actualRotation = useMemo(() => {
+    const itemRotationVec = new THREE.Vector3(...effectiveRotation);
+    const resolvedRotation = new THREE.Vector3(...rotation);
+    return resolvedRotation.clone().add(itemRotationVec).toArray();
+  }, [effectiveRotation, rotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -220,12 +214,9 @@ export const Cuboid = ({
       onTransformEnd={handleTransformEnd}
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
+      // explicitObjectRef={null}
     >
-      <group
-        ref={contentRef}
-        position={tempTransforms?.position ?? [0, 0, 0]}
-        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
-      >
+      <group ref={contentRef} position={tempTransforms?.position ?? [0, 0, 0]}>
         {content}
       </group>
     </Transformable>

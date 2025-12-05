@@ -15,7 +15,6 @@ import type {
   SegmentState,
   SelectedPoint,
   TransformMode,
-  TransformSpace,
 } from "./annotation/types";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
@@ -505,7 +504,6 @@ export const stagedCuboidTransformsAtom = atom<
     {
       location?: Vector3Tuple;
       dimensions?: Vector3Tuple;
-      rotation?: Vector3Tuple;
     }
   >
 >({
@@ -520,15 +518,6 @@ export const stagedCuboidTransformsAtom = atom<
 export const transformModeAtom = atom<TransformMode>({
   key: "fo3d-transformMode",
   default: "translate",
-});
-
-/**
- * The current transform space (world, local).
- * Determines whether transformations are applied in world or local coordinates.
- */
-export const transformSpaceAtom = atom<TransformSpace>({
-  key: "fo3d-transformSpace",
-  default: "world",
 });
 
 /**
@@ -557,7 +546,6 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
 export const tempLabelTransformsAtom = atomFamily<
   {
     position: [number, number, number];
-    quaternion: [number, number, number, number];
     /** Optional dimensions for cuboid scale transforms */
     dimensions?: [number, number, number];
   } | null,
@@ -638,7 +626,6 @@ export const clearTransformStateSelector = selector({
   get: () => null,
   set: ({ set }) => {
     set(transformModeAtom, "translate");
-    set(transformSpaceAtom, "world");
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);

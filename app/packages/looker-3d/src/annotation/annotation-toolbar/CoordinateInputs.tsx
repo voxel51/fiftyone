@@ -10,12 +10,15 @@ import {
   stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
+  tempLabelTransformsAtom,
 } from "../../state";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {
   getVertexPosition,
   updateVertexPosition,
 } from "../utils/polyline-utils";
+
+// Note: eulerToQuaternion and quaternionToEuler are still used by PlaneCoordinateInputs
 
 interface CoordinateInputsProps {
   className?: string;
@@ -388,6 +391,11 @@ export const CuboidCoordinateInputs = ({
     stagedCuboidTransformsAtom
   );
 
+  // Read temp transforms for transient display during active transforms
+  const tempTransforms = useRecoilValue(
+    tempLabelTransformsAtom(selectedLabel?._id ?? "")
+  );
+
   const currentTransform = useMemo(() => {
     if (!selectedLabel) return null;
     return stagedCuboidTransforms[selectedLabel._id];
@@ -403,32 +411,27 @@ export const CuboidCoordinateInputs = ({
   const [height, setHeight] = useState<string>("0");
   const [depth, setDepth] = useState<string>("0");
 
-  // Rotation state
-  const [rx, setRx] = useState<string>("0");
-  const [ry, setRy] = useState<string>("0");
-  const [rz, setRz] = useState<string>("0");
-
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   useEffect(() => {
-    if (currentTransform && !isEditing) {
-      if (currentTransform.location) {
-        setX(currentTransform.location[0].toFixed(3));
-        setY(currentTransform.location[1].toFixed(3));
-        setZ(currentTransform.location[2].toFixed(3));
+    if (!isEditing) {
+      // Use temp transforms (transient) if available, otherwise use staged transforms
+      const location = currentTransform?.location;
+      const dimensions =
+        tempTransforms?.dimensions ?? currentTransform?.dimensions;
+
+      if (location) {
+        setX(location[0].toFixed(3));
+        setY(location[1].toFixed(3));
+        setZ(location[2].toFixed(3));
       }
-      if (currentTransform.dimensions) {
-        setWidth(currentTransform.dimensions[0].toFixed(3));
-        setHeight(currentTransform.dimensions[1].toFixed(3));
-        setDepth(currentTransform.dimensions[2].toFixed(3));
-      }
-      if (currentTransform.rotation) {
-        setRx(currentTransform.rotation[0].toFixed(1));
-        setRy(currentTransform.rotation[1].toFixed(1));
-        setRz(currentTransform.rotation[2].toFixed(1));
+      if (dimensions) {
+        setWidth(dimensions[0].toFixed(3));
+        setHeight(dimensions[1].toFixed(3));
+        setDepth(dimensions[2].toFixed(3));
       }
     }
-  }, [currentTransform, isEditing]);
+  }, [currentTransform, tempTransforms, isEditing]);
 
   const handlePositionChange = useCallback(
     (axis: "x" | "y" | "z", value: string) => {
@@ -483,36 +486,6 @@ export const CuboidCoordinateInputs = ({
           [selectedLabel._id]: {
             ...current,
             dimensions: newDimensions,
-          },
-        };
-      });
-    },
-    [selectedLabel, setStagedCuboidTransforms]
-  );
-
-  const handleRotationChange = useCallback(
-    (axis: "x" | "y" | "z", value: string) => {
-      if (axis === "x") setRx(value);
-      else if (axis === "y") setRy(value);
-      else if (axis === "z") setRz(value);
-
-      const numValue = parseFloat(value);
-      if (isNaN(numValue) || !selectedLabel) return;
-
-      setStagedCuboidTransforms((prev) => {
-        const current = prev[selectedLabel._id] || {};
-        const newRotation: [number, number, number] = [
-          ...(current.rotation || [0, 0, 0]),
-        ];
-        if (axis === "x") newRotation[0] = numValue;
-        else if (axis === "y") newRotation[1] = numValue;
-        else if (axis === "z") newRotation[2] = numValue;
-
-        return {
-          ...prev,
-          [selectedLabel._id]: {
-            ...current,
-            rotation: newRotation,
           },
         };
       });
@@ -586,28 +559,6 @@ export const CuboidCoordinateInputs = ({
           label="D"
           value={depth}
           onChange={(value) => handleDimensionChange("depth", value)}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-        />
-        {/* Rotation */}
-        <CoordinateField
-          label="RX"
-          value={rx}
-          onChange={(value) => handleRotationChange("x", value)}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-        />
-        <CoordinateField
-          label="RY"
-          value={ry}
-          onChange={(value) => handleRotationChange("y", value)}
-          onFocus={() => setIsEditing(true)}
-          onBlur={() => setIsEditing(false)}
-        />
-        <CoordinateField
-          label="RZ"
-          value={rz}
-          onChange={(value) => handleRotationChange("z", value)}
           onFocus={() => setIsEditing(true)}
           onBlur={() => setIsEditing(false)}
         />

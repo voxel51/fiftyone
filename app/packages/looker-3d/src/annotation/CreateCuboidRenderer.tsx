@@ -106,16 +106,15 @@ export const CreateCuboidRenderer = ({
     // Offset center by half depth along the plane normal (so cuboid sits on the plane)
     center.add(planeAxes.normal.clone().multiplyScalar(defaultDepth / 2));
 
-    // Get rotation from annotation plane quaternion as Euler angles
-    const euler = new THREE.Euler().setFromQuaternion(
-      new THREE.Quaternion(...annotationPlane.quaternion),
-      "XYZ"
-    );
-
     return {
       location: center.toArray() as THREE.Vector3Tuple,
       dimensions: [finalWidth, finalHeight, defaultDepth] as THREE.Vector3Tuple,
-      rotation: [euler.x, euler.y, euler.z] as THREE.Vector3Tuple,
+      quaternion: annotationPlane.quaternion as [
+        number,
+        number,
+        number,
+        number
+      ],
     };
   }, [dragState, planeAxes, defaultDepth, annotationPlane.quaternion]);
 
@@ -184,10 +183,11 @@ export const CreateCuboidRenderer = ({
           Number(previewCuboid.dimensions[2].toFixed(7)),
         ];
 
-        const rotation: THREE.Vector3Tuple = [
-          Number(previewCuboid.rotation[0].toFixed(7)),
-          Number(previewCuboid.rotation[1].toFixed(7)),
-          Number(previewCuboid.rotation[2].toFixed(7)),
+        const quaternion: [number, number, number, number] = [
+          Number(previewCuboid.quaternion[0].toFixed(7)),
+          Number(previewCuboid.quaternion[1].toFixed(7)),
+          Number(previewCuboid.quaternion[2].toFixed(7)),
+          Number(previewCuboid.quaternion[3].toFixed(7)),
         ];
 
         // Add to staged transforms
@@ -196,7 +196,7 @@ export const CreateCuboidRenderer = ({
           [labelId]: {
             location,
             dimensions,
-            rotation,
+            quaternion,
           },
         }));
 
@@ -206,7 +206,7 @@ export const CreateCuboidRenderer = ({
           _cls: "Detection",
           location,
           dimensions,
-          rotation,
+          quaternion,
         } as any);
 
         // Exit create mode after creating one cuboid
@@ -269,10 +269,10 @@ export const CreateCuboidRenderer = ({
     return null;
   }
 
-  const { location, dimensions, rotation } = previewCuboid;
+  const { location, dimensions, quaternion } = previewCuboid;
 
   return (
-    <group position={location} rotation={rotation}>
+    <group position={location} quaternion={quaternion}>
       {/* Wireframe preview */}
       <mesh>
         <boxGeometry args={dimensions} />
