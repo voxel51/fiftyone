@@ -3371,7 +3371,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "transformers",
+                "official",
+                "embeddings"
+            ],
             "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -7864,7 +7870,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7901,7 +7913,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7938,7 +7956,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7975,7 +7999,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8012,7 +8042,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8049,7 +8085,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official", "embeddings"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8127,7 +8169,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["classification", "torch", "official", "medical", "embeddings"],
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "MONET (dermatology image–text corpus)",
@@ -8475,6 +8523,41 @@
                 }
             ],
             "date_added": "2025-11-19 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-B16-224-Vision-Encoder",
+            "base_filename": "PE-Core-B16-224.pt",
+            "version": null,
+            "description": "The ViT from the base variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 2684747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-B16-224"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-12-05 12:00:00"
         }
     ]
 }
