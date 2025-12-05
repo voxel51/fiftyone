@@ -1016,6 +1016,9 @@ export class Scene2D {
       // Dispose the renderer container to actually remove it from the renderer
       this.config.renderer.dispose(id);
 
+      // Destroy the overlay to clean up event handlers and other resources
+      overlay.destroy();
+
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
@@ -1258,16 +1261,23 @@ export class Scene2D {
 
     this.isRenderLoopActive = false;
 
+    // Clean up canonical media subscription BEFORE clearing overlays
+    // This ensures we properly unsubscribe from boundsChangeCallbacks
+    // before the ImageOverlay's boundsChangeCallbacks array is replaced
+    if (this.unsubscribeCanonicalMedia) {
+      this.unsubscribeCanonicalMedia();
+      this.unsubscribeCanonicalMedia = undefined;
+    }
+
+    // Clear canonical media references
+    this.canonicalMedia = undefined;
+    this.canonicalMediaId = undefined;
+
     // Clear all overlays
     this.clear();
 
     // Clear render callbacks
     this.clearRenderCallbacks();
-
-    // Clean up canonical media subscription
-    if (this.unsubscribeCanonicalMedia) {
-      this.unsubscribeCanonicalMedia();
-    }
 
     // Destroy managers
     this.interactionManager.destroy();

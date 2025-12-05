@@ -38,18 +38,11 @@ export class ImageOverlay
   private resizeObserver?: ResizeObserver;
   private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
 
-  private resizeUnregister: (() => void) | null = null;
-
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
     super(id, "", null);
-
-    this.resizeUnregister = this.eventBus.on("lighter:resize", (payload) => {
-      const { width, height } = payload;
-      this.handleResize(width, height);
-    });
   }
 
   getOverlayType(): string {
@@ -74,6 +67,23 @@ export class ImageOverlay
    */
   setRenderer(renderer: Renderer2D): void {
     super.setRenderer(renderer);
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
+
+    const canvas = renderer.getCanvas();
+    const parentElement = canvas.parentElement;
+    if (parentElement) {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          this.handleResize(width, height);
+        }
+      });
+      this.resizeObserver.observe(parentElement);
+    }
   }
 
   /**
@@ -428,9 +438,5 @@ export class ImageOverlay
       this.resizeObserver = undefined;
     }
     this.boundsChangeCallbacks = [];
-    if (this.resizeUnregister) {
-      this.resizeUnregister();
-      this.resizeUnregister = null;
-    }
   }
 }
