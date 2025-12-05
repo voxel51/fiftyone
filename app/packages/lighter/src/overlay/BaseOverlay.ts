@@ -8,7 +8,13 @@ import type { LighterEventGroup } from "../events";
 import { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  RawLookerLabel,
+  Rect,
+  RenderMeta,
+} from "../types";
 
 /**
  * Base abstract class for all overlays.
@@ -87,27 +93,27 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Renders the overlay using the provided renderer and style.
    * @param renderer - The renderer to use for drawing.
    * @param style - The drawing style to apply.
-   * @param canonicalMediaBounds - The location and dimensions of the canonical media within the scene
+   * @param meta - Rendering metadata containing canonical media bounds and overlay index.
    */
   render(
     renderer: Renderer2D,
     style: DrawStyle | null,
-    canonicalMediaBounds: Rect
+    meta: RenderMeta
   ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
 
-    this.renderImpl(renderer, canonicalMediaBounds);
+    this.renderImpl(renderer, meta);
   }
 
   /**
    * Abstract method for subclasses to implement their specific rendering logic.
    * @param renderer - The renderer to use for drawing.
-   * @param canonicalMediaBounds - The location and dimensions of the canonical media within the scene
+   * @param meta - Rendering metadata containing canonical media bounds and overlay index.
    */
   protected abstract renderImpl(
     renderer: Renderer2D,
-    canonicalMediaBounds: Rect
+    meta: RenderMeta
   ): void | Promise<void>;
 
   /**

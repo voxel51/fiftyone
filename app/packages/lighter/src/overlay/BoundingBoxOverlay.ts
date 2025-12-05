@@ -21,6 +21,7 @@ import type {
   Point,
   RawLookerLabel,
   Rect,
+  RenderMeta,
   Spatial,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
@@ -147,10 +148,7 @@ export class BoundingBoxOverlay
     return this.id;
   }
 
-  protected renderImpl(
-    renderer: Renderer2D,
-    _canonicalMediaBounds: Rect
-  ): void {
+  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 

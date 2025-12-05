@@ -9,7 +9,7 @@ import {
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
-import { RawLookerLabel } from "../types";
+import { RawLookerLabel, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -39,7 +39,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return this.id;
   }
 
-  protected renderImpl(renderer: Renderer2D, canonicalMediaBounds: Rect): void {
+  protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
@@ -47,7 +47,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     if (!style) return;
 
     if (this.label && this.label?.label) {
-      const { x, y } = canonicalMediaBounds;
+      const { x, y } = renderMeta.canonicalMediaBounds;
       const labelPosition = { x, y };
 
       const confidence =
@@ -63,6 +63,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
           fontColor: "#ffffff",
           backgroundColor: style.fillStyle || style.strokeStyle || "#000",
           anchor: { vertical: "top" },
+          offset: { bottom: renderMeta.overlayIndex },
         },
         this.containerId
       );

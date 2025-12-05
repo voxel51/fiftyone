@@ -10,6 +10,7 @@ import type {
   CanonicalMedia,
   Dimensions,
   Rect,
+  RenderMeta,
 } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
@@ -158,7 +159,7 @@ export class ImageOverlay
 
   protected async renderImpl(
     renderer: Renderer2D,
-    _canonicalMediaBounds: Rect
+    _renderMeta: RenderMeta
   ): Promise<void> {
     // Only dispose if we don't have a texture yet or if the texture source changed
     const needsDispose = !this.texture || this.texture.type !== "texture";

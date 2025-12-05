@@ -22,6 +22,7 @@ import type {
   Anchor,
   Dimensions2D,
   DrawStyle,
+  Offset,
   Point,
   Rect,
   TextOptions,
@@ -251,6 +252,78 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
+  private calculatePosition(
+    position: Point,
+    finalHeight: number,
+    finalWidth: number,
+    options: TextOptions | undefined
+  ): { txt: Point; bg: Rect } {
+    const padding =
+      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+
+    const anchor = {
+      vertical: "bottom",
+      horizontal: "left",
+      ...options?.anchor,
+    };
+
+    const offset = {
+      top: 0,
+      bottom: 0,
+      ...options?.offset,
+    };
+
+    const txt: Point = { ...position };
+    const bg: Rect = {
+      ...position,
+      width: finalWidth + padding * 2,
+      height: finalHeight + padding * 2,
+    };
+
+    switch (anchor.vertical) {
+      case "top":
+        txt.y += padding;
+        break;
+      case "center":
+        txt.y -= finalHeight / 2;
+        bg.y -= finalHeight / 2 + padding;
+        break;
+      case "bottom":
+        txt.y -= finalHeight + padding;
+        bg.y -= finalHeight + padding * 2;
+        break;
+    }
+
+    switch (anchor.horizontal) {
+      case "left":
+        txt.x += padding;
+        break;
+      case "center":
+        txt.x -= finalWidth / 2;
+        bg.x -= finalWidth / 2 + padding;
+        break;
+      case "right":
+        txt.x -= finalWidth + padding;
+        bg.x -= finalWidth + padding * 2;
+        break;
+    }
+
+    if (offset.top) {
+      txt.y -= (finalHeight + padding * 3) * offset.top;
+      bg.y -= (finalHeight + padding * 3) * offset.top;
+    }
+
+    if (offset.bottom) {
+      txt.y += (finalHeight + padding * 3) * offset.bottom;
+      bg.y += (finalHeight + padding * 3) * offset.bottom;
+    }
+
+    return {
+      txt,
+      bg,
+    };
+  }
+
   drawText(
     text: string,
     position: Point,
@@ -260,15 +333,6 @@ export class PixiRenderer2D implements Renderer2D {
     if (text?.length === 0) {
       return { width: 0, height: 0 };
     }
-
-    const anchor: Anchor = {
-      vertical: "bottom",
-      horizontal: "left",
-      ...options?.anchor,
-    };
-
-    const padding =
-      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || FONT_FAMILY,
@@ -291,49 +355,26 @@ export class PixiRenderer2D implements Renderer2D {
       (options?.height || textBounds.height) / this.getScale();
     const finalWidth = textBounds.width / this.getScale();
 
-    const bgRect = {
-      ...position,
-      width: finalWidth + padding * 2,
-      height: finalHeight + padding * 2,
-    };
+    const { txt, bg } = this.calculatePosition(
+      position,
+      finalHeight,
+      finalWidth,
+      options
+    );
 
-    switch (anchor.vertical) {
-      case "top":
-        pixiText.y += padding;
-        break;
-      case "center":
-        pixiText.y -= finalHeight / 2;
-        bgRect.y -= finalHeight / 2 + padding;
-        break;
-      case "bottom":
-        pixiText.y -= finalHeight + padding;
-        bgRect.y -= finalHeight + padding * 2;
-        break;
-    }
-
-    switch (anchor.horizontal) {
-      case "left":
-        pixiText.x += padding;
-        break;
-      case "center":
-        pixiText.x -= finalWidth / 2;
-        bgRect.x -= finalWidth / 2 + padding;
-        break;
-      case "right":
-        pixiText.x -= finalWidth + padding;
-        bgRect.x -= finalWidth + padding * 2;
-        break;
-    }
+    pixiText.x = txt.x;
+    pixiText.y = txt.y;
 
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
 
       background
-        .rect(bgRect.x, bgRect.y, bgRect.width, bgRect.height)
+        .rect(bg.x, bg.y, bg.width, bg.height)
         .fill(options.backgroundColor);
 
       this.addToContainer(background, containerId);
     }
+
     this.addToContainer(pixiText, containerId);
 
     return { width: finalWidth, height: finalHeight };
