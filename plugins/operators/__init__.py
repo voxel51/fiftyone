@@ -18,11 +18,24 @@ import fiftyone.core.media as fom
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+from fiftyone.operators import execution_cache
 import fiftyone.utils.data as foud
 from fiftyone.core.odm.workspace import default_workspace_factory
 
 from .group_by import GroupBy
-from .model_evaluation import ConfigureScenario
+from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
+from .annotation import (
+    ActivateAnnotationSchemas,
+    AddBoundingBox,
+    RemoveBoundingBox,
+    ComputeAnnotationSchema,
+    DeactivateAnnotationSchemas,
+    DeleteAnnotationSchema,
+    GetAnnotationSchemas,
+    SaveAnnotationSchema,
+)
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
@@ -1315,6 +1328,462 @@ def _delete_frame_field_inputs(ctx, inputs):
                 f"Frame field '{field_name}' is read-only"
             )
             return
+
+
+class AddDynamicSampleFields(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="add_dynamic_sample_fields",
+            label="Add dynamic sample fields",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _add_dynamic_sample_fields_inputs(ctx, inputs)
+
+        return types.Property(
+            inputs, view=types.View(label="Add dynamic sample fields")
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", None) or []
+        dynamic_fields = ctx.params.get("dynamic_fields", None) or []
+
+        dynamic_schema = ctx.dataset.get_dynamic_field_schema(fields=fields)
+        dynamic_schema = {
+            k: v for k, v in dynamic_schema.items() if k in dynamic_fields
+        }
+
+        if dynamic_schema:
+            ctx.dataset.add_dynamic_sample_fields(fields=dynamic_schema)
+            ctx.trigger("reload_dataset")
+
+
+def _add_dynamic_sample_fields_inputs(ctx, inputs):
+    readme = """
+You can use this operator to detect undeclared
+[dynamic attributes](https://docs.voxel51.com/user_guide/using_datasets.html#dynamic-attributes)
+on the sample fields of your dataset and then choose whether to add them to
+your dataset's schema. Declaring dynamic attributes allows you to enforce type
+constraints, filter by these custom attributes in the App, and more.
+
+Note that for large datasets, it may take some time to scan for dynamic
+attributes, so be patient after selecting a sample field in the first dropdown.
+    """
+
+    inputs.view("readme", types.Notice(label=readme.strip()))
+
+    schema = ctx.dataset.get_field_schema(
+        ftype=(fo.EmbeddedDocumentField, fo.ListField),
+        subfield=fo.EmbeddedDocumentField,
+        flat=True,
+    )
+
+    fields = ctx.params.get("fields", None) or []
+
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in fields):
+            field_choices.add_choice(key, label=key)
+
+    inputs.list(
+        "fields",
+        types.String(),
+        label="Sample field",
+        description="The sample field(s) to search for dynamic fields",
+        required=True,
+        view=field_choices,
+    )
+
+    if not fields:
+        return
+
+    # @todo can we show a loading state while this computes?
+    dynamic_schema = {}
+    for field in fields:
+        dynamic_schema.update(_get_dynamic_sample_field_schema(ctx, field))
+
+    if not dynamic_schema:
+        if len(fields) > 1:
+            fstr = ", ".join(f"`{f}`" for f in fields)
+            label = f"The {fstr} fields have no undeclared dynamic fields"
+        else:
+            label = f"The `{fields[0]}` field has no undeclared dynamic fields"
+
+        prop = inputs.view("message", types.Notice(label=label))
+        prop.invalid = True
+
+        return
+
+    num_mixed_fields = 0
+
+    dynamic_field_choices = types.AutocompleteView(allow_duplicates=False)
+    for path, field in dynamic_schema.items():
+        if not isinstance(field, fo.Field):
+            num_mixed_fields += 1
+            continue
+
+        label = f"{path} ({_get_field_str(field)})"
+        dynamic_field_choices.add_choice(path, label=label)
+
+    if num_mixed_fields > 0:
+        inputs.view(
+            "mixed_fields",
+            types.Notice(
+                label=(
+                    f"Ignoring {num_mixed_fields} dynamic attributes that contain mixed value types"
+                )
+            ),
+        )
+
+    prop = inputs.list(
+        "dynamic_fields",
+        types.String(),
+        label="Dynamic fields",
+        description="The dynamic field(s) to declare",
+        required=True,
+        default=list(dynamic_schema.keys()),
+        view=dynamic_field_choices,
+    )
+
+    dynamic_fields = ctx.params.get("dynamic_fields", None)
+
+    if dynamic_fields:
+        if len(dynamic_fields) > 1:
+            label = f"You are about to declare {len(dynamic_fields)} dynamic fields"
+        else:
+            label = f"You are about to declare 1 dynamic field"
+
+        inputs.view("message", types.Notice(label=label))
+    else:
+        prop.invalid = True
+
+
+@execution_cache(prompt_scoped=True, residency="ephemeral")
+def _get_dynamic_sample_field_schema(ctx, field):
+    return ctx.dataset.get_dynamic_field_schema(fields=field)
+
+
+def _get_field_str(field):
+    field_str = str(field)
+    if isinstance(field, fo.EmbeddedDocumentField):
+        doc_str = field_str.split("(")[-1][:-1]
+        return doc_str.split(".")[-1]
+    elif isinstance(field, fo.ListField) and field.field is not None:
+        field_str = field_str.split("(")[-1][:-1]
+        field_str = field_str.split(".")[-1]
+        return f"ListField<{field_str}>"
+    else:
+        return field_str.split(".")[-1]
+
+
+class AddDynamicFrameFields(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="add_dynamic_frame_fields",
+            label="Add dynamic frame fields",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _add_dynamic_frame_fields_inputs(ctx, inputs)
+
+        return types.Property(
+            inputs, view=types.View(label="Add dynamic frame fields")
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", None) or []
+        dynamic_fields = ctx.params.get("dynamic_fields", None) or []
+
+        dynamic_schema = ctx.dataset.get_dynamic_frame_field_schema(
+            fields=fields
+        )
+        dynamic_schema = {
+            k: v for k, v in dynamic_schema.items() if k in dynamic_fields
+        }
+
+        if dynamic_schema:
+            ctx.dataset.add_dynamic_frame_fields(fields=dynamic_schema)
+            ctx.trigger("reload_dataset")
+
+
+def _add_dynamic_frame_fields_inputs(ctx, inputs):
+    if not ctx.dataset._has_frame_fields():
+        prop = inputs.str(
+            "msg",
+            label="This dataset does not have frame fields",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    readme = """
+You can use this operator to detect undeclared
+[dynamic attributes](https://docs.voxel51.com/user_guide/using_datasets.html#dynamic-attributes)
+on the frame fields of your dataset and then choose whether to add them to your
+dataset's schema. Declaring dynamic attributes allows you to enforce type
+constraints, filter by these custom attributes in the App, and more.
+
+Note that for large datasets, it may take some time to scan for dynamic
+attributes, so be patient after selecting a frame field in the first dropdown.
+    """
+
+    inputs.view("readme", types.Notice(label=readme.strip()))
+
+    schema = ctx.dataset.get_frame_field_schema(
+        ftype=(fo.EmbeddedDocumentField, fo.ListField),
+        subfield=fo.EmbeddedDocumentField,
+        flat=True,
+    )
+
+    fields = ctx.params.get("fields", None) or []
+
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in schema.keys():
+        if not any(key.startswith(f + ".") for f in fields):
+            field_choices.add_choice(key, label=key)
+
+    inputs.list(
+        "fields",
+        types.String(),
+        label="Frame field",
+        description="The frame field(s) to search for dynamic fields",
+        required=True,
+        view=field_choices,
+    )
+
+    if not fields:
+        return
+
+    # @todo can we show a loading state while this computes?
+    dynamic_schema = {}
+    for field in fields:
+        dynamic_schema.update(_get_dynamic_frame_field_schema(ctx, field))
+
+    if not dynamic_schema:
+        if len(fields) > 1:
+            fstr = ", ".join(f"`{f}`" for f in fields)
+            label = f"The {fstr} fields have no undeclared dynamic fields"
+        else:
+            label = f"The `{fields[0]}` field has no undeclared dynamic fields"
+
+        prop = inputs.view("message", types.Notice(label=label))
+        prop.invalid = True
+
+        return
+
+    num_mixed_fields = 0
+
+    dynamic_field_choices = types.AutocompleteView(allow_duplicates=False)
+    for path, field in dynamic_schema.items():
+        if not isinstance(field, fo.Field):
+            num_mixed_fields += 1
+            continue
+
+        label = f"{path} ({_get_field_str(field)})"
+        dynamic_field_choices.add_choice(path, label=label)
+
+    if num_mixed_fields > 0:
+        inputs.view(
+            "mixed_fields",
+            types.Notice(
+                label=(
+                    f"Ignoring {num_mixed_fields} dynamic attributes that contain mixed value types"
+                )
+            ),
+        )
+
+    prop = inputs.list(
+        "dynamic_fields",
+        types.String(),
+        label="Dynamic fields",
+        description="The dynamic frame field(s) to declare",
+        required=True,
+        default=list(dynamic_schema.keys()),
+        view=dynamic_field_choices,
+    )
+
+    dynamic_fields = ctx.params.get("dynamic_fields", None)
+
+    if dynamic_fields:
+        if len(dynamic_fields) > 1:
+            label = f"You are about to declare {len(dynamic_fields)} dynamic fields"
+        else:
+            label = f"You are about to declare 1 dynamic field"
+
+        inputs.view("message", types.Notice(label=label))
+    else:
+        prop.invalid = True
+
+
+@execution_cache(prompt_scoped=True, residency="ephemeral")
+def _get_dynamic_frame_field_schema(ctx, field):
+    return ctx.dataset.get_dynamic_frame_field_schema(fields=field)
+
+
+class RemoveDynamicSampleFields(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="remove_dynamic_sample_fields",
+            label="Remove dynamic sample fields",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _remove_dynamic_sample_fields_inputs(ctx, inputs)
+
+        return types.Property(
+            inputs, view=types.View(label="Remove dynamic sample fields")
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", None)
+
+        if fields:
+            ctx.dataset.remove_dynamic_sample_fields(fields)
+            ctx.trigger("reload_dataset")
+
+
+def _remove_dynamic_sample_fields_inputs(ctx, inputs):
+    readme = """
+You can use this operator to remove
+[dynamic attributes](https://docs.voxel51.com/user_guide/using_datasets.html#dynamic-attributes)
+from your dataset's schema. Declaring dynamic attributes allows you to enforce
+type constraints, filter by these custom attributes in the App, but removing
+some attributes may be desirable to reduce clutter in the App sidebar.
+
+Note that removing a dynamic attribute from your dataset's schema does **NOT**
+delete the underlying data from your samples.
+    """
+
+    inputs.view("readme", types.Notice(label=readme.strip()))
+
+    schema = ctx.dataset.get_field_schema(flat=True)
+
+    dymamic_fields = [
+        path
+        for path in schema.keys()
+        if "." in path and not ctx.dataset._is_default_field(path)
+    ]
+
+    if not dymamic_fields:
+        label = "This dataset has no dynamic sample fields"
+        prop = inputs.view("message", types.Notice(label=label))
+        prop.invalid = True
+        return
+
+    fields = ctx.params.get("fields", None) or []
+
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in dymamic_fields:
+        if not any(key.startswith(f + ".") for f in fields):
+            field_choices.add_choice(key, label=key)
+
+    inputs.list(
+        "fields",
+        types.String(),
+        label="Dynamic fields",
+        description=(
+            "The dynamic sample field(s) to remove from the dataset's schema"
+        ),
+        required=True,
+        view=field_choices,
+    )
+
+
+class RemoveDynamicFrameFields(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="remove_dynamic_frame_fields",
+            label="Remove dynamic frame fields",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        _remove_dynamic_frame_fields_inputs(ctx, inputs)
+
+        return types.Property(
+            inputs, view=types.View(label="Remove dynamic frame fields")
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", None)
+
+        if fields:
+            ctx.dataset.remove_dynamic_frame_fields(fields)
+            ctx.trigger("reload_dataset")
+
+
+def _remove_dynamic_frame_fields_inputs(ctx, inputs):
+    if not ctx.dataset._has_frame_fields():
+        prop = inputs.str(
+            "msg",
+            label="This dataset does not have frame fields",
+            view=types.Warning(),
+        )
+        prop.invalid = True
+        return
+
+    readme = """
+You can use this operator to remove
+[dynamic attributes](https://docs.voxel51.com/user_guide/using_datasets.html#dynamic-attributes)
+from your dataset's frame schema. Declaring dynamic attributes allows you to
+enforce type constraints and filter by these custom attributes in the App, but
+removing some attributes may be desirable to reduce clutter in the App sidebar.
+
+Note that removing a dynamic attribute from your dataset's schema does **NOT**
+delete the underlying data from your frames.
+    """
+
+    inputs.view("readme", types.Notice(label=readme.strip()))
+
+    schema = ctx.dataset.get_frame_field_schema(flat=True)
+
+    dymamic_fields = [
+        path
+        for path in schema.keys()
+        if "." in path
+        and not ctx.dataset._is_default_field(
+            ctx.dataset._FRAMES_PREFIX + path
+        )
+    ]
+
+    if not dymamic_fields:
+        label = "This dataset has no dynamic frame fields"
+        prop = inputs.view("message", types.Notice(label=label))
+        prop.invalid = True
+        return
+
+    fields = ctx.params.get("fields", None) or []
+
+    field_choices = types.AutocompleteView(allow_duplicates=False)
+    for key in dymamic_fields:
+        if not any(key.startswith(f + ".") for f in fields):
+            field_choices.add_choice(key, label=key)
+
+    inputs.list(
+        "fields",
+        types.String(),
+        label="Dynamic fields",
+        description=(
+            "The dynamic frame field(s) to remove from the dataset's schema"
+        ),
+        required=True,
+        view=field_choices,
+    )
 
 
 class CreateIndex(foo.Operator):
@@ -2926,6 +3395,10 @@ def register(p):
     p.register(DeleteSelectedLabels)
     p.register(DeleteSampleField)
     p.register(DeleteFrameField)
+    p.register(AddDynamicSampleFields)
+    p.register(AddDynamicFrameFields)
+    p.register(RemoveDynamicSampleFields)
+    p.register(RemoveDynamicFrameFields)
     p.register(CreateIndex)
     p.register(DropIndex)
     p.register(CreateSummaryField)
@@ -2949,6 +3422,17 @@ def register(p):
     p.register(ListFiles)
     p.register(DownloadFileOperator)
     p.register(ConfigureScenario)
+    p.register(ConfigureScenarioPlotResolver)
 
     # view stages
     p.register(GroupBy)
+
+    # annotation
+    p.register(ActivateAnnotationSchemas)
+    p.register(AddBoundingBox)
+    p.register(RemoveBoundingBox)
+    p.register(ComputeAnnotationSchema)
+    p.register(DeactivateAnnotationSchemas)
+    p.register(DeleteAnnotationSchema)
+    p.register(GetAnnotationSchemas)
+    p.register(SaveAnnotationSchema)

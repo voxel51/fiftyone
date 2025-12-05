@@ -352,6 +352,18 @@ class BatcherTests(unittest.TestCase):
             for batch in batcher:
                 self.assertEqual(len(batch), n // 2)
 
+        samples_with_none = [None] + samples
+        count = 0
+        batcher = fou.ContentSizeBatcher(
+            iter(samples_with_none), target_size=1
+        )
+        with batcher:
+            for batch in batcher:
+                if count == 0:
+                    self.assertIsNone(batch[0])
+                count += len(batch)
+        self.assertEqual(count, len(samples_with_none))
+
     def test_static_batcher_perfect_boundary(self):
         iterable = list(range(200))
         batcher = fou.StaticBatcher(iterable, batch_size=100, progress=False)
@@ -491,7 +503,7 @@ class CoreUtilsTests(unittest.TestCase):
             fou.to_slug("------")  # too short
 
         with self.assertRaises(ValueError):
-            fou.to_slug("a" * 101)  # too long
+            fou.to_slug("a" * 1552)  # too long
 
     def test_get_module_name(self):
         if sys.platform.startswith("win"):

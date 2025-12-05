@@ -16,7 +16,7 @@ jobs:
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:

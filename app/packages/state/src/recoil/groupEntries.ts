@@ -111,5 +111,3 @@ export const numGroupFieldsActive = selectorFamily<
       return active.filter((p) => p.includes(f) && paths.has(p)).length;
     },
 });
-
-export const replace = {};

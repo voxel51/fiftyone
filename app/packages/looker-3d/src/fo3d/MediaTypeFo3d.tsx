@@ -1,17 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
+import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { useBrowserStorage } from "@fiftyone/state";
-import {
-  AdaptiveDpr,
-  AdaptiveEvents,
-  Bvh,
-  CameraControls,
-  OrbitControls,
-  PerspectiveCamera as PerspectiveCameraDrei,
-} from "@react-three/drei";
+import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
+import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
+import { useAtomValue } from "jotai";
 import {
   useCallback,
   useEffect,
@@ -20,105 +16,73 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
-import { CAMERA_POSITION_KEY } from "../Environment";
-import { SpinningCube } from "../SpinningCube";
-import { StatusBar, StatusTunnel } from "../StatusBar";
+import { StatusBar } from "../StatusBar";
+import { MultiPanelView } from "../annotation/MultiPanelView";
+import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
+  DEFAULT_BOUNDING_BOX,
   DEFAULT_CAMERA_POSITION,
-  RAY_CASTING_SENSITIVITY,
   SET_EGO_VIEW_EVENT,
   SET_TOP_VIEW_EVENT,
+  SET_ZOOM_TO_SELECTED_EVENT,
 } from "../constants";
 import { StatusBarRootContainer } from "../containers";
-import { useFo3d, useHotkey, useTrackStatus } from "../hooks";
+import {
+  useFo3d,
+  useHotkey,
+  useTrackStatus,
+  useZoomToSelected,
+} from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
-import { ThreeDLabels } from "../labels";
+import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
   activeNodeAtom,
+  annotationPlaneAtom,
   cameraPositionAtom,
+  clearTransformStateSelector,
   currentHoveredPointAtom,
+  isActivelySegmentingSelector,
+  isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
+  isPolylineAnnotateActiveAtom,
+  isSegmentingPointerDownAtom,
+  selectedPolylineVertexAtom,
 } from "../state";
 import { HoverMetadata } from "../types";
-import { FoSceneComponent } from "./FoScene";
-import { Gizmos } from "./Gizmos";
+import { calculateCameraPositionForUpVector } from "../utils";
+import { Annotation3d } from "./Annotation3d";
+import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
 import { Fo3dSceneContext } from "./context";
-import { SceneControls } from "./scene-controls/SceneControls";
 import {
+  getCameraPositionKey,
   getFo3dRoot,
   getMediaPathForFo3dSample,
   getOrthonormalAxis,
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+const SCENE_BOUNDS_COMPUTE_TIMEOUT_MS = 15000;
 
-const calculateCameraPositionForUpVector = (
-  center: Vector3,
-  size: Vector3,
-  upVector: Vector3,
-  distanceMultiplier: number = 2.5,
-  viewType: "top" | "pov" = "pov"
-): Vector3 => {
-  const maxSize = Math.max(size.x, size.y, size.z);
-  const distance = maxSize * distanceMultiplier;
-
-  const upDir = upVector.clone().normalize();
-
-  if (viewType === "top") {
-    // camera positioned directly above/below along the up vector
-    return center.clone().add(upDir.multiplyScalar(distance));
-  }
-
-  // pov view - camera positioned at a ~5-degree angle for more natural perspective
-  const angle = Math.PI / 32;
-
-  // division by arbitrary numbers to make the camera position more natural for "automotive-centered" ego view
-  // note: this is not a perfect solution as it doesn't account for non-automotive scenes
-  // but "ego" view is a special case more natural to automotive scenes
-  // ideally we want three views, ego, top, and pov...
-  // for now we have only ego/pov + top
-  const verticalDist = Math.abs(Math.sin(angle) * distance) / 6;
-  const horizontalDist = Math.abs(Math.cos(angle) * distance) / 15;
-
-  // 1. choose a world-forward direction (Y up ideally, else X)
-  let worldForward = new Vector3(0, 1, 0);
-  if (Math.abs(upDir.dot(worldForward)) > 0.999) {
-    worldForward.set(1, 0, 0);
-  }
-  // If Z is up, use -Y as world forward to ensure +X is on the right
-  if (upDir.equals(new Vector3(0, 0, 1))) {
-    worldForward.set(0, -1, 0);
-  }
-  // If Y is up, use Z as world forward to ensure +X is on the right
-  else if (upDir.equals(new Vector3(0, 1, 0))) {
-    worldForward.set(0, 0, 1);
-  }
-  // If X is up, use Y as world forward to ensure +Z is on the right (this is arbitrary)
-  else if (upDir.equals(new Vector3(1, 0, 0))) {
-    worldForward.set(0, 1, 0);
-  }
-
-  // 2. project that forward into the horizontal plane (perp. to upDir)
-  const proj = worldForward
-    .clone()
-    .sub(upDir.clone().multiplyScalar(worldForward.dot(upDir)))
-    .normalize();
-
-  // 3. build camera position: center + up‐offset + horizontal‐offset
-  return new Vector3(0, 0, 0)
-    .add(upDir.multiplyScalar(verticalDist))
-    .add(proj.multiplyScalar(horizontalDist));
-};
+const MainContainer = styled.main`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+`;
 
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
+  const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
+  const isGroup = useRecoilValue(fos.isGroup);
+  const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
 
   const settings = usePluginSettings<Looker3dSettings>("3d");
 
@@ -126,6 +90,8 @@ export const MediaTypeFo3dComponent = () => {
     () => getMediaPathForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
+
+  const mode = useAtomValue(fos.modalMode);
 
   const mediaUrl = useMemo(() => fos.getSampleSrc(mediaPath), [mediaPath]);
 
@@ -209,6 +175,9 @@ export const MediaTypeFo3dComponent = () => {
     }
   );
 
+  // todo: reconcile with lookAt from foScene, too
+  const [lookAt, setLookAt] = useState<Vector3 | null>(null);
+
   useEffect(() => {
     if (!foScene || upVector) {
       return;
@@ -217,8 +186,13 @@ export const MediaTypeFo3dComponent = () => {
     setUpVectorVal(getDefaultUpVector());
   }, [foScene, upVector, getDefaultUpVector]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const cameraControlsRef = useRef<CameraControls>();
+  const datasetName = useRecoilValue(fos.datasetName);
+  const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
+  const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
+  const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
   const keyState = useRef({
     shiftRight: false,
@@ -228,6 +202,17 @@ export const MediaTypeFo3dComponent = () => {
   });
 
   const updateCameraControlsConfig = useCallback(() => {
+    if (!cameraControlsRef.current) return;
+
+    // Disable camera controls when transforming
+    if (isSegmentingPointerDown || isCurrentlyTransforming) {
+      cameraControlsRef.current.enabled = false;
+      return;
+    }
+
+    // Re-enable camera controls when not transforming
+    cameraControlsRef.current.enabled = true;
+
     if (keyState.current.shiftRight || keyState.current.shiftLeft) {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.TRUCK;
@@ -238,7 +223,14 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState]);
+  }, [keyState, isCurrentlyTransforming, isSegmentingPointerDown]);
+
+  /**
+   * This effect updates the camera controls config when the transforming state changes
+   */
+  useEffect(() => {
+    updateCameraControlsConfig();
+  }, [updateCameraControlsConfig]);
 
   fos.useEventHandler(document, "keydown", (e: KeyboardEvent) => {
     if (e.code === "ShiftRight") keyState.current.shiftRight = true;
@@ -257,18 +249,67 @@ export const MediaTypeFo3dComponent = () => {
   });
 
   const assetsGroupRef = useRef<THREE.Group>();
-  const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
+
+  const loadingStatus = useLoadingStatus();
+
+  const isLoadingStatusFinal =
+    loadingStatus.isSuccess ||
+    loadingStatus.isFailed ||
+    loadingStatus.isAborted;
+
+  // keep the current value in a ref so the predicate always sees fresh state
+  const isFinalRef = useRef(isLoadingStatusFinal);
+  isFinalRef.current = isLoadingStatusFinal;
+
+  const canComputeBoundsPredicateRef = useRef(
+    predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
+      true,
+      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
+    )
+  );
+
+  useEffect(() => {
+    canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
+      () => isFinalRef.current,
+      true,
+      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
+    );
+    // here, fo3dRoot plays the role of the key that indicates a fresh load
+  }, [fo3dRoot]);
+
+  const canComputeBounds = useCallback(
+    () => canComputeBoundsPredicateRef.current(),
+    []
+  );
+
+  const {
+    boundingBox: sceneBoundingBox,
+    recomputeBounds,
+    isComputing: isComputingSceneBoundingBox,
+  } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
+    hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+  });
+
+  const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
+
+  useEffect(() => {
+    if (effectiveSceneBoundingBox && !lookAt) {
+      const center = effectiveSceneBoundingBox.getCenter(new Vector3());
+      setLookAt(center);
+    }
+  }, [lookAt, effectiveSceneBoundingBox]);
 
   const topCameraPosition = useMemo(() => {
     if (
-      !sceneBoundingBox ||
-      Math.abs(sceneBoundingBox.max.x) === Number.POSITIVE_INFINITY
+      Math.abs(effectiveSceneBoundingBox.max.x) === Number.POSITIVE_INFINITY ||
+      !upVector
     ) {
       return DEFAULT_CAMERA_POSITION();
     }
 
-    const center = sceneBoundingBox.getCenter(new Vector3());
-    const size = sceneBoundingBox.getSize(new Vector3());
+    const center = effectiveSceneBoundingBox.getCenter(new Vector3());
+    const size = effectiveSceneBoundingBox.getSize(new Vector3());
 
     return calculateCameraPositionForUpVector(
       center,
@@ -277,16 +318,17 @@ export const MediaTypeFo3dComponent = () => {
       2.5,
       "top"
     );
-  }, [sceneBoundingBox, upVector]);
+  }, [upVector, effectiveSceneBoundingBox]);
 
   const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
 
   const lastSavedCameraPosition = useMemo(() => {
-    const lastSavedCameraPosition =
-      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+    const lastSavedCameraPosition = window?.localStorage.getItem(
+      getCameraPositionKey(datasetName)
+    );
 
     return lastSavedCameraPosition ? JSON.parse(lastSavedCameraPosition) : null;
-  }, []);
+  }, [datasetName]);
 
   const getDefaultCameraPosition = useCallback(
     (ignoreLastSavedCameraPosition = false) => {
@@ -343,10 +385,11 @@ export const MediaTypeFo3dComponent = () => {
       }
 
       if (
-        sceneBoundingBox &&
-        Math.abs(sceneBoundingBox.max.x) !== Number.POSITIVE_INFINITY
+        Math.abs(effectiveSceneBoundingBox.max.x) !==
+          Number.POSITIVE_INFINITY &&
+        upVector
       ) {
-        const size = sceneBoundingBox.getSize(new Vector3());
+        const size = effectiveSceneBoundingBox.getSize(new Vector3());
 
         return calculateCameraPositionForUpVector(
           new Vector3(0, 0, 0),
@@ -364,7 +407,7 @@ export const MediaTypeFo3dComponent = () => {
       overriddenCameraPosition,
       isParsingFo3d,
       foScene,
-      sceneBoundingBox,
+      effectiveSceneBoundingBox,
       upVector,
       lastSavedCameraPosition,
     ]
@@ -377,12 +420,24 @@ export const MediaTypeFo3dComponent = () => {
 
   const resetActiveNode = useRecoilCallback(
     ({ set }) =>
-      () => {
+      (event: MouseEvent | null) => {
+        // Don't handle right click since that might mean we're panning the camera
+        if (event?.type === "contextmenu") {
+          return;
+        }
+
+        if (isActivelySegmenting) {
+          return;
+        }
+
         set(activeNodeAtom, null);
         set(currentHoveredPointAtom, null);
+        set(clearTransformStateSelector, null);
+        set(selectedPolylineVertexAtom, null);
+        set(isCurrentlyTransformingAtom, false);
         setAutoRotate(false);
       },
-    []
+    [isActivelySegmenting]
   );
 
   useLayoutEffect(() => {
@@ -394,7 +449,7 @@ export const MediaTypeFo3dComponent = () => {
   }, [isSceneInitialized]);
 
   useEffect(() => {
-    resetActiveNode();
+    resetActiveNode(null);
   }, [isSceneInitialized, resetActiveNode]);
 
   const onChangeView = useCallback(
@@ -410,11 +465,7 @@ export const MediaTypeFo3dComponent = () => {
         isFirstTime?: boolean;
       } = {}
     ) => {
-      if (
-        !sceneBoundingBox ||
-        !cameraRef.current ||
-        !cameraControlsRef.current
-      ) {
+      if (!cameraRef.current || !cameraControlsRef.current) {
         return;
       }
 
@@ -441,7 +492,7 @@ export const MediaTypeFo3dComponent = () => {
         ];
 
         // for top view, we have look at at center of bounding box
-        const center = sceneBoundingBox.getCenter(new Vector3());
+        const center = effectiveSceneBoundingBox.getCenter(new Vector3());
 
         newLookAt = [center.x, center.y, center.z] as const;
       }
@@ -457,7 +508,7 @@ export const MediaTypeFo3dComponent = () => {
       }
     },
     [
-      sceneBoundingBox,
+      effectiveSceneBoundingBox,
       topCameraPosition,
       getDefaultCameraPosition,
       setSceneInitialized,
@@ -465,159 +516,66 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   fos.useEventHandler(window, SET_TOP_VIEW_EVENT, () => {
-    onChangeView("top", {
-      useAnimation: true,
-      ignoreLastSavedCameraPosition: true,
-    });
-  });
-
-  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
-    onChangeView("pov", {
-      useAnimation: true,
-      ignoreLastSavedCameraPosition: true,
-    });
-  });
-
-  useHotkey(
-    "KeyT",
-    ({}) => {
+    const execute = () => {
       onChangeView("top", {
         useAnimation: true,
         ignoreLastSavedCameraPosition: true,
       });
-    },
-    [onChangeView]
-  );
+    };
 
-  useHotkey(
-    "KeyE",
-    ({}) => {
+    // Sometimes the bbox isn't computed yet, especially on scene load or error
+    // for big assets, or because of timeout, or three.js loading manager issues,
+    // so we lazily recompute it and try again shortly after.
+    if (!sceneBoundingBox) {
+      recomputeBounds();
+      setTimeout(execute, 50);
+    } else {
+      execute();
+    }
+  });
+
+  fos.useEventHandler(window, SET_EGO_VIEW_EVENT, () => {
+    const execute = () => {
       onChangeView("pov", {
         useAnimation: true,
         ignoreLastSavedCameraPosition: true,
       });
-    },
-    [onChangeView]
-  );
+    };
 
-  // zoom to selected labels and use them as the new lookAt
-  useHotkey(
-    "KeyZ",
-    async ({ snapshot }) => {
-      const currentSelectedLabels = await snapshot.getPromise(
-        fos.selectedLabels
-      );
-
-      if (currentSelectedLabels.length === 0) {
-        return;
-      }
-
-      const labelBoundingBoxes: THREE.Box3[] = [];
-
-      for (const selectedLabel of currentSelectedLabels) {
-        const field = selectedLabel.field;
-        const labelId = selectedLabel.labelId;
-
-        const labelFieldData = sample.sample[field];
-
-        let thisLabel = null;
-
-        if (Array.isArray(labelFieldData)) {
-          // if the field data is an array of labels
-          thisLabel = labelFieldData.find(
-            (l) => l._id === labelId || l.id === labelId
-          );
-        } else if (
-          labelFieldData &&
-          labelFieldData.detections &&
-          Array.isArray(labelFieldData.detections)
-        ) {
-          // if the field data contains detections
-          thisLabel = labelFieldData.detections.find(
-            (l) => l._id === labelId || l.id === labelId
-          );
-        } else {
-          // single label
-          thisLabel = labelFieldData;
-        }
-
-        if (!thisLabel) {
-          continue;
-        }
-
-        const thisLabelDimension = thisLabel.dimensions as [
-          number,
-          number,
-          number
-        ];
-        const thisLabelLocation = thisLabel.location as [
-          number,
-          number,
-          number
-        ];
-
-        const thisLabelBoundingBox = new THREE.Box3();
-        thisLabelBoundingBox.setFromCenterAndSize(
-          new THREE.Vector3(...thisLabelLocation),
-          new THREE.Vector3(...thisLabelDimension)
-        );
-
-        labelBoundingBoxes.push(thisLabelBoundingBox);
-      }
-
-      const unionBoundingBox: THREE.Box3 = labelBoundingBoxes[0].clone();
-
-      for (let i = 1; i < labelBoundingBoxes.length; i++) {
-        unionBoundingBox.union(labelBoundingBoxes[i]);
-      }
-
-      // center = (min + max) / 2
-      let unionBoundingBoxCenter = new Vector3();
-      unionBoundingBoxCenter = unionBoundingBoxCenter
-        .addVectors(unionBoundingBox.min, unionBoundingBox.max)
-        .multiplyScalar(0.5);
-
-      // size = max - min
-      let unionBoundingBoxSize = new Vector3();
-      unionBoundingBoxSize = unionBoundingBoxSize.subVectors(
-        unionBoundingBox.max,
-        unionBoundingBox.min
-      );
-
-      const newCameraPosition = calculateCameraPositionForUpVector(
-        unionBoundingBoxCenter,
-        unionBoundingBoxSize,
-        upVector,
-        2,
-        "top"
-      );
-
-      await cameraControlsRef.current.setLookAt(
-        newCameraPosition.x,
-        newCameraPosition.y,
-        newCameraPosition.z,
-        unionBoundingBoxCenter.x,
-        unionBoundingBoxCenter.y,
-        unionBoundingBoxCenter.z,
-        true
-      );
-    },
-    [sample, upVector],
-    {
-      useTransaction: false,
+    // Same lazy pattern is used here as above
+    if (!sceneBoundingBox) {
+      recomputeBounds();
+      setTimeout(execute, 50);
+    } else {
+      execute();
     }
-  );
+  });
 
-  // this effect runs after the scene is initialized
-  // and sets the appropriate lookAt and camera position
+  // Zoom to selected labels and use them as the new lookAt
+  const handleZoomToSelected = useZoomToSelected({
+    sample,
+    upVector,
+    mode,
+    cameraControlsRef,
+  });
+
+  fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
+
+  // this effect sets the appropriate lookAt and camera position
+  // and marks the scene as initialized
   useEffect(() => {
-    if (!cameraControlsRef.current || !cameraRef.current) {
+    if (
+      !cameraControlsRef.current ||
+      !cameraRef.current ||
+      isComputingSceneBoundingBox
+    ) {
       return;
     }
 
     // restore camera position and target from localStorage if it exists
-    const lastSavedCameraState =
-      window?.localStorage.getItem(CAMERA_POSITION_KEY);
+    const lastSavedCameraState = window?.localStorage.getItem(
+      getCameraPositionKey(datasetName)
+    );
     let restored = false;
     if (lastSavedCameraState) {
       try {
@@ -655,14 +613,21 @@ export const MediaTypeFo3dComponent = () => {
         setSceneInitialized(true);
         return;
       } else {
-        onChangeView("pov", {
+        onChangeView("top", {
           useAnimation: false,
           ignoreLastSavedCameraPosition: false,
           isFirstTime: true,
         });
+        setSceneInitialized(true);
       }
     }
-  }, [foScene, onChangeView, cameraControlsRef, cameraRef]);
+  }, [
+    foScene,
+    onChangeView,
+    cameraControlsRef,
+    cameraRef,
+    isComputingSceneBoundingBox,
+  ]);
 
   useTrackStatus();
 
@@ -676,16 +641,40 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const [pointCloudSettings, setPointCloudSettings] = useBrowserStorage(
-    "fo3dPointCloudSettings",
+    "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "medium",
+      rayCastingSensitivity: "high",
     }
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
     null
   );
+
+  const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
+  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+
+  const canAnnotate = useCanAnnotate();
+
+  const shouldRenderMultiPanelView = useMemo(
+    () =>
+      mode === "annotate" &&
+      canAnnotate &&
+      !(isGroup && is2DSampleViewerVisible) &&
+      isSceneInitialized,
+    [mode, isGroup, is2DSampleViewerVisible, isSceneInitialized, canAnnotate]
+  );
+
+  useEffect(() => {
+    if (shouldRenderMultiPanelView) {
+      recomputeBounds();
+    }
+  }, [shouldRenderMultiPanelView, isAnnotationPlaneEnabled, recomputeBounds]);
+
+  useEffect(() => {
+    setIsInMultiPanelView(shouldRenderMultiPanelView);
+  }, [shouldRenderMultiPanelView]);
 
   if (isParsingFo3d) {
     return <LoadingDots />;
@@ -698,8 +687,11 @@ export const MediaTypeFo3dComponent = () => {
         numPrimaryAssets,
         upVector,
         setUpVector,
+        isComputingSceneBoundingBox,
         fo3dRoot,
-        sceneBoundingBox,
+        sceneBoundingBox: effectiveSceneBoundingBox,
+        lookAt,
+        setLookAt,
         autoRotate,
         setAutoRotate,
         pointCloudSettings,
@@ -709,55 +701,51 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
-      <HoverMetadataHUD />
-      <PcdColorMapTunnel.Out />
-      <Canvas
-        id={CANVAS_WRAPPER_ID}
-        onPointerMissed={resetActiveNode}
-        key={upVector ? upVector.toArray().join(",") : null}
-        raycaster={{
-          params: {
-            Points: {
-              threshold:
-                RAY_CASTING_SENSITIVITY[
-                  pointCloudSettings.rayCastingSensitivity
-                ],
-            },
-          },
-        }}
-      >
-        <StatusTunnel.Out />
-        <PerspectiveCameraDrei
-          makeDefault
-          ref={cameraRef}
-          position={defaultCameraPositionComputed}
-          up={upVector ?? [0, 1, 0]}
-          fov={foScene?.cameraProps.fov ?? 50}
-          near={foScene?.cameraProps.near ?? 0.1}
-          far={foScene?.cameraProps.far ?? 2500}
-          aspect={foScene?.cameraProps.aspect ?? 1}
-          onUpdate={(cam) => cam.updateProjectionMatrix()}
+      {canAnnotate && <Annotation3d />}
+      {shouldRenderMultiPanelView ? (
+        <MultiPanelView
+          key={upVector ? upVector.toArray().join(",") : null}
+          assetsGroupRef={assetsGroupRef}
+          foScene={foScene}
+          sample={sample}
+          cameraRef={cameraRef}
+          cameraControlsRef={cameraControlsRef}
+          defaultCameraPosition={defaultCameraPositionComputed}
         />
-        <AdaptiveDpr pixelated />
-        <AdaptiveEvents />
-        {!autoRotate && <CameraControls ref={cameraControlsRef} />}
-        {autoRotate && <OrbitControls autoRotate={autoRotate} makeDefault />}
-        <SceneControls scene={foScene} cameraControlsRef={cameraControlsRef} />
-        <Gizmos />
-
-        {!isSceneInitialized && <SpinningCube />}
-
-        <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-          <group ref={assetsGroupRef} visible={isSceneInitialized}>
-            <FoSceneComponent scene={foScene} />
-          </group>
-        </Bvh>
-
-        {isSceneInitialized && <ThreeDLabels sampleMap={{ fo3d: sample }} />}
-      </Canvas>
-      <StatusBarRootContainer>
-        <StatusBar cameraRef={cameraRef} />
-      </StatusBarRootContainer>
+      ) : (
+        <MainContainer ref={containerRef}>
+          <HoverMetadataHUD />
+          <PcdColorMapTunnel.Out />
+          <Canvas
+            id={CANVAS_WRAPPER_ID}
+            eventSource={containerRef}
+            onPointerMissed={resetActiveNode}
+            key={upVector ? upVector.toArray().join(",") : null}
+          >
+            <Fo3dSceneContent
+              cameraPosition={defaultCameraPositionComputed}
+              upVector={upVector}
+              fov={foScene?.cameraProps.fov ?? 50}
+              isGizmoHelperVisible={true}
+              near={foScene?.cameraProps.near ?? 0.1}
+              far={foScene?.cameraProps.far ?? 2500}
+              aspect={foScene?.cameraProps.aspect ?? 1}
+              autoRotate={autoRotate}
+              cameraControlsRef={cameraControlsRef}
+              foScene={foScene}
+              isSceneInitialized={isSceneInitialized}
+              sample={sample}
+              pointCloudSettings={pointCloudSettings}
+              assetsGroupRef={assetsGroupRef}
+              cameraRef={cameraRef}
+            />
+          </Canvas>
+          <StatusBarRootContainer>
+            <StatusBar cameraRef={cameraRef} />
+          </StatusBarRootContainer>
+        </MainContainer>
+      )}
+      {mode === "annotate" && isPolylineAnnotateActive && <AnnotationToolbar />}
     </Fo3dSceneContext.Provider>
   );
 };

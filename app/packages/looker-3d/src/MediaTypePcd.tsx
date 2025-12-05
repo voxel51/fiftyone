@@ -1,6 +1,7 @@
 import { useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { isPointCloud } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import type { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -32,7 +33,6 @@ import {
   shadeByAtom,
 } from "./state";
 import { toEulerFromDegreesArray } from "./utils";
-import { isPointCloud } from "@fiftyone/utilities";
 
 type View = "pov" | "top";
 

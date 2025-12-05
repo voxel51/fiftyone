@@ -24,7 +24,7 @@ jobs:
           - windows-x86_64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Set up Python 3.9
         uses: actions/setup-python@v6
         with:
@@ -65,14 +65,14 @@ jobs:
           cd package/db
           python -Im build --sdist
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: ${{ matrix.platform == 'sdist' }}
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.tar.gz
       - name: Upload wheel
         if: ${{ matrix.platform != 'sdist' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.whl
@@ -84,9 +84,9 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Download fiftyone-db
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: dist-sdist
           path: downloads
@@ -115,7 +115,7 @@ jobs:
       id-token: write
     steps:
       - name: Download
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           pattern: dist-*
           merge-multiple: true

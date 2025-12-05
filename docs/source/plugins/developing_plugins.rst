@@ -1001,6 +1001,8 @@ contains the following properties:
     instance that you can use to read and write the :ref:`state <panel-state>`
     and :ref:`data <panel-data>` of the current panel, if the operator was
     invoked from a panel
+-   `ctx.pipeline` - information about execution state of the pipeline, if
+    applicable. See :ref:`this section <execution-context-for-stages>`
 -   `ctx.delegated` - whether the operation was delegated
 -   `ctx.requesting_delegated_execution` - whether delegated execution was
     requested for the operation
@@ -1115,12 +1117,72 @@ the property will automatically be marked as `invalid=True`. The operator's
     As the example above shows, you can manually set a property to invalid by
     setting its `invalid` property.
 
+.. _operator-caching-expensive-inputs:
+
+Caching expensive inputs
+------------------------
+
+Some operators may need to perform expensive computations in
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+to collect user inputs. In such cases, the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator
+can be used to optimize the operator's runtime by caching these expensive
+computations so that they are not re-computed unnecessarily. Input caching can
+be particularly important for operators that declare `dynamic=True`, as their
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+is called after each user interaction in the prompt modal.
+
+To use the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator,
+simply isolate any expensive computations in a dedicated method and configure
+the caching strategy according to your needs:
+
+.. code-block:: python
+    :linenos:
+
+    from operator import itemgetter
+    import fiftyone.operators as foo
+
+    class ExpensiveInputsOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="expensive_inputs_operator",
+                label="Example view operator",
+                dynamic=True,
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+
+            inputs.str("path", ...)
+            path = ctx.params["path"]
+
+            # An expensive computation that we don't want to repeat unnecessarily
+            counts = count_values(ctx, path)
+
+            choices = types.DropdownView()
+            for value, count in sorted(counts.items(), key=itemgetter(1), reverse=True):
+                choices.add_choice(value, label=f"{value} ({count})")
+
+            ...
+
+    # Option 1
+    # Cache for all dataset users for 90 seconds
+    @execution_cache(ttl=90)
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Option 2
+    # Cache in-memory and only for the life of the current prompt modal
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
 .. note::
 
-    Avoid expensive computations in
-    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
-    or else the form may take too long to render, especially for dynamic inputs
-    where the method is called after every user input.
+    Refer to :ref:`this section <panel-execution-cache>` for more information
+    about using the execution cache.
 
 .. _operator-target-view:
 
@@ -1148,6 +1210,7 @@ Here's a simple example of an operator that uses the target view pattern to
 give the user the choice of target view to process:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.operators as foo
 
@@ -1689,9 +1752,8 @@ Any necessary batching is automatically handled by FiftyOne's scheduling engine.
 
     Since distributed operators are executed multiple times, each on a subset
     of the data, in any order, the operator cannot perform any pre or post
-    processing outside of the current batch. That is, the operator must
-    represent an
-    `embarrassingly parallel task <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
+    processing outside of the current batch. To do this you must use an
+    :ref:`operator pipeline<writing-operator-pipelines>`.
 
 Supporting target views
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -1718,6 +1780,249 @@ the current batch. However, if the user opts for non-distributed execution,
 then :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
 must be used as the user may have chosen a target view other than the current
 ``ctx.view``.
+
+.. _writing-operator-pipelines:
+
+Operator pipelines __SUB_NEW__
+------------------------------
+
+.. versionadded:: 1.10.0
+
+In addition to developing individual operators,
+:ref:`FiftyOne Enterprise <fiftyone-enterprise>` allows you to define a linear
+composition of regular operators into a single **operator pipeline**. An
+operator pipeline acts as a single, higher-level operation composed of
+multiple discrete **stages**, where each stage is a call to another operator.
+
+.. note::
+
+    Currently, **Operator Pipelines** are only supported for **delegated**
+    **execution** within FiftyOne Enterprise. Immediate execution or use
+    in FiftyOne Open Source is not supported for this feature.
+
+.. _pipeline-operator-interface:
+
+Defining a pipeline operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To define an operator that executes a pipeline, you must subclass
+:class:`PipelineOperator <fiftyone.operators.PipelineOperator>` instead of the
+typical base :class:`Operator <fiftyone.operators.Operator>`.
+
+A `PipelineOperator` is structured similarly to a regular operator, but
+replaces the standard :meth:`execute() <fiftyone.operators.Operator.execute>`
+method with a required method in which you define the pipeline's stages:
+:meth:`resolve_pipeline() <fiftyone.operators.PipelineOperator.resolve_pipeline>`.
+
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` can also be
+implemented to define user inputs for the pipeline operator. In this case, any
+inputs defined will be available to the `resolve_pipeline()` method via
+`ctx.params`, for configuring the pipeline's stages.
+
+Additionally, any stage can be a
+:ref:`distributed operator <writing-distributed-operators>` to provide fan-out
+capability to the pipeline.
+
+This diagram shows an example of an operator pipeline with three stages:
+
+1. Initialization
+2. Distributed processing of data
+3. Finalization/cleanup
+
+Note that if Stage 1 or Stage 2 fails, Stage 3 will still run because it is
+marked with `always_run=True`.
+
+.. image:: /images/plugins/operators/pipeline-operator.png
+    :align: center
+
+.. _pipeline-components:
+
+Pipeline components
+~~~~~~~~~~~~~~~~~~~
+
+The pipeline is constructed using core classes from
+:mod:`fiftyone.operators.types`.
+
+:class:`fiftyone.operators.types.Pipeline`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The top-level container for the stages, which `resolve_pipeline()` must return.
+The two ways to create a pipeline are:
+
+1. Instantiate an empty pipeline and add stages via
+   :meth:`stage() <fiftyone.operators.types.Pipeline.stage>`
+2. Instantiate a pipeline with an initial list of stages via the
+   :class:`Pipeline <fiftyone.operators.types.Pipeline>` constructor
+
+
+:class:`fiftyone.operators.types.PipelineStage`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represents a single step in the pipeline, which is an invocation of a regular
+operator.
+
+.. _pipeline-operator-examples:
+
+Example pipeline operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example code shows how to define the pipeline operator
+:ref:`shown and described above.<pipeline-operator-interface>`
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class PipelineOp(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="my_pipeline_op",
+                label="My Example Pipeline",
+                # Must allow delegation, immediate is not supported for pipelines
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
+            )
+
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.str(name="a_str", label="A string input", default="default")
+            return types.Property(inputs)
+
+        def resolve_pipeline(self, ctx):
+            """
+            Required method that defines the pipeline's stages.
+            Returns:
+                a `types.Pipeline` instance.
+            """
+            pipeline = types.Pipeline([
+                # Stage 1: Initialization
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage1",
+                    name="Initialization",
+                    params=ctx.params,  # pass top-level inputs straight through
+                )
+
+                # Stage 2: Distributed work, leveraging ctx.num_distributed_tasks
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage2_distr",
+                    name="Process Data",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params={"some_param": "some_value"}, # custom params for stage 2
+                )
+
+                # Stage 3: Finalization/Cleanup
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage3_cleanup",
+                    name="Finalization",
+                    always_run=True, # Runs even if Stage 1 or 2 fails
+                    # no params passed
+                )
+            ])
+
+            return pipeline
+
+We can even dynamically configure the pipeline's stages based on user inputs
+or other aspects of the execution context. For example, this is a pipeline
+approximating the functionality of
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`. It
+also showcases the alternative pipeline creation syntax.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ComputeVisualizationPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="compute_viz_pipeline",
+                label="Compute Visualization Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
+            )
+
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.bool(
+                name="force_compute_embeddings",
+                label="Force compute embeddings?",
+                default=False
+            )
+
+            ... # other inputs
+
+            return types.Property(inputs)
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+            view = ctx.target_view()
+
+            # Compute embeddings first if the view doesn't have them or
+            #   user told us to force it
+            if ctx.params.get(
+                "force_compute_embeddings", False
+            ) or not has_embeddings(view):
+                pipeline.stage(
+                    operator_uri="@my-plugin/compute_embeddings",
+                    name="Compute Embeddings",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params=_get_compute_embeddings_params(ctx.params),
+                )
+
+            # Perform dimensionality reduction on embeddings
+            pipeline.stage(
+                operator_uri="@my-plugin/dimensionality_reduction",
+                name="Reduce to 2 Dimensions",
+                num_distributed_tasks=ctx.num_distributed_tasks,
+                params=_get_dimensionality_reduction_params(ctx.params),
+            )
+
+            # Create a plot from the viz field and upload to a cloud bucket
+            pipeline.stage(
+                operator_uri="@my-plugin/generate_plot",
+                name="Generate Plot and Upload",
+                params={
+                    "visualization_field": ctx.params.get("visualization_field"),
+                    "cloud_path": ctx.params.get("cloud_path"),
+                },
+            )
+
+            return pipeline
+
+.. _execution-context-for-stages:
+
+Execution context for stages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a standard operator is executed as a stage within a pipeline, its
+:ref:`execution context <operator-execution-context>` is augmented with the
+**`ctx.pipeline`** property.
+
+This field is an instance of
+:class:`PipelineExecutionContext <fiftyone.operators.executor.PipelineExecutionContext>`
+which provides information about the overall pipeline execution to the current
+stage operator.
+
+The stage operator can use this context for conditional logic, such as
+performing a cleanup action:
+
+.. code-block:: python
+
+    def execute(self, ctx):
+        if not ctx.pipeline.active:
+            # This stage is running because an earlier stage failed
+            print(f"Running cleanup after failure: {ctx.pipeline.error or 'unknown error'}")
+
+        # ... normal stage logic
 
 .. _operator-secrets:
 
@@ -2705,30 +3010,37 @@ for avoiding repeated computations in dynamic operators or persisting
 long-lived values across panel instances and App sessions.
 
 Cached entries are stored in a dataset-scoped or global
-:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`, and can be
-customized with TTLs, user scoping, operator scoping, and more.
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` and can be
+customized with TTLs, user scoping, operator prompt modal scoping, and more.
 
-To cache a function's result scoped to the current ``ctx.dataset``, use the
-:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator:
+Use the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+decorator to cache a function's result:
 
 .. code-block:: python
     :linenos:
 
-    from fiftyone.operators.cache import execution_cache
+    from fiftyone.operators import execution_cache
 
-    # Default usage: cache is scoped to the dataset
+    # Default behavior: cache for the life of a dataset
     @execution_cache
     def expensive_query(ctx, path):
         return ctx.dataset.count_values(path)
 
-    # Method with custom TTL and store name
+    # Cache in-memory, and only while the current operator prompt modal is open
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def expensive_query(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Cache with a custom TTL and store name
     class Processor:
         @execution_cache(ttl=60, store_name="processor_cache")
         def expensive_query(self, ctx, path):
             return ctx.dataset.count_values(path)
 
-    # Using a custom key function with user-level scoping
-    # NOTE: must return a tuple or list
+    #
+    # Cache at the user-level
+    #
+
     def custom_key_fn(ctx, path):
         return path, ctx.user_id
 
@@ -2736,10 +3048,9 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     def user_specific_query(ctx, path):
         return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
 
-    @execution_cache(residency="ephemeral")
-    def example_custom_residency(ctx, path):
-        # this value will only be cached in memory
-        return ctx.dataset.count_values(path)
+    #
+    # You can manually bypass/modify the cache if necessary
+    #
 
     # Bypass the cache
     result = expensive_query.uncached(ctx, path)
@@ -2752,37 +3063,34 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
 
     # Clear all cache entries for the function
     expensive_query.clear_all_caches()
-
-    # NOTE: dataset_id is required if link_to_dataset=True
     expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
 
 .. note::
 
-    When ``link_to_dataset=True`` (the default), cached entries are associated
-    with the current dataset and will be automatically deleted when the dataset
-    is deleted.
+    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+    documentation for more information about customizing the caching behavior.
+
+The function being cached must:
+
+-   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>` as the
+    first parameter
+-   be idempotent, i.e., same inputs produce the same outputs
+-   have serializable function arguments and return values
+-   have no side effects
+
+By default, cached entries are associated with the current dataset and will be
+automatically deleted when the dataset is deleted, but you can customize this
+behavior, including setting an explicit time-to-live in seconds for cached
+entries, by passing optional keyword arguments like ``ttl`` to
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>`.
 
 .. warning::
 
-    Cached values must be JSON-serializable. Use the ``serialize`` and
-    ``deserialize`` arguments to handle custom types like NumPy arrays or
-    FiftyOne Samples.
-
-Advanced options for scoping and serialization are supported through arguments
-to the decorator:
-
-- ``ttl``: time-to-live (in seconds) for the cached entry
-- ``key_fn``: custom function to generate the cache key
-- ``link_to_dataset``: when ``True``, the cache is dropped when the dataset is
-  deleted (default is ``True``)
-- ``store_name``: custom store name (default is based on function name)
-- ``version``: optional version tag to isolate changes in function behavior
-- ``operator_scoped``: cache is tied to the current operator URI
-- ``user_scoped``: cache is tied to the current user
-- ``prompt_scoped``: cache is tied to the current prompt ID
-- ``jwt_scoped``: cache is tied to the current user's JWT
-- ``serialize`` / ``deserialize``: custom (de)serialization functions
-- ``residency``: cache residency policy (default is ``hybrid``)
+    When ``residency != "ephemeral"``, cached values must be coerced to
+    JSON safe types in order to be stored. By default, a default JSON
+    converter is used that can handle many common types, but you can
+    override this behavior if necessary by providing custom ``serialize``
+    and ``deserialize`` functions.
 
 Here's an example of caching a sample using custom serialization:
 
@@ -2790,6 +3098,7 @@ Here's an example of caching a sample using custom serialization:
     :linenos:
 
     import fiftyone as fo
+    from fiftyone.operators import execution_cache
 
     def serialize_sample(sample):
         return sample.to_dict()
@@ -2804,11 +3113,6 @@ Here's an example of caching a sample using custom serialization:
     )
     def get_first_sample(ctx):
         return ctx.dataset.first()
-
-.. note::
-
-    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
-    documentation for more details.
 
 .. _panel-saved-workspaces:
 

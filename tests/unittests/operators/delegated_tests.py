@@ -5,6 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import copy
 import time
 import unittest
@@ -22,11 +23,14 @@ from fiftyone.factory import (
     SortDirection,
     SortByField,
 )
+from fiftyone.operators.types import PipelineRunInfo
+from fiftyone.operators import delegated
 from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    PipelineExecutionContext,
 )
 from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
@@ -1203,6 +1207,77 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         finally:
             dataset.delete()
 
+    @patch.object(delegated, "do_execute_operator")
+    @patch.object(delegated, "prepare_operator_executor")
+    def test_execute_with_pipeline_context(
+        self, prepare_operator_mock, do_execute_mock, mock_get_operator
+    ):
+        with patch.object(self.svc, "get") as do_get_mock:
+            parent_run_info = PipelineRunInfo(
+                active=False,
+                expected_children=[1, 1, 5],
+                stage_index=2,
+                child_errors={"child1": "error1", "child2": "error2"},
+            )
+            parent_id = ObjectId()
+            pipeline = Pipeline(
+                [
+                    PipelineStage(operator_uri="@test/op1", name="one"),
+                    PipelineStage(name="two", operator_uri="@test/op2"),
+                    PipelineStage(
+                        name="three",
+                        operator_uri="@test/op3",
+                        num_distributed_tasks=5,
+                    ),
+                ]
+            )
+
+            parent_do = DelegatedOperationDocument()
+            parent_do.id = parent_id
+            parent_do.pipeline = pipeline
+            parent_do.pipeline_run_info = parent_run_info
+            do_get_mock.return_value = parent_do
+
+            child_do = DelegatedOperationDocument()
+            child_do.id = bson.ObjectId()
+            child_do.operator = "@test/op3"
+            child_do.parent_id = parent_id
+            ctx = ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": "dataset"},
+            )
+            child_do.context = ctx
+            prepare_operator_mock.return_value = (
+                mock_get_operator.return_value,
+                None,
+                ctx,
+                None,
+            )
+
+            #####
+            asyncio.run(self.svc._execute_operator(child_do))
+            #####
+
+            do_get_mock.assert_called_once_with(parent_id)
+            pipeline_ctx = PipelineExecutionContext(
+                parent_run_info.active,
+                parent_run_info.stage_index,
+                total_stages=len(pipeline.stages),
+                num_distributed_tasks=pipeline.stages[
+                    parent_run_info.stage_index
+                ].num_distributed_tasks,
+                pipeline_errors=parent_run_info.child_errors,
+            )
+            prepare_operator_mock.assert_called_once_with(
+                operator_uri=child_do.operator,
+                request_params=ctx.request_params,
+                delegated_operation_id=child_do.id,
+                set_progress=mock.ANY,
+                pipeline_ctx=pipeline_ctx,
+            )
+            do_execute_mock.assert_called_once_with(
+                mock_get_operator.return_value, ctx, exhaust=True
+            )
+
     def test_paging_sorting(self, mock_get_operator):
         dataset_name = f"test_dataset_{ObjectId()}"
         dataset = Dataset(dataset_name, _create=True, persistent=True)
@@ -1677,3 +1752,58 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_failed_exec_adds_child_error_to_parent(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(operator_uri="@test/op1", name="one"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(name="three", operator_uri="@test/op3"),
+            ]
+        )
+        parent_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+        self.docs_to_delete.append(parent_doc)
+
+        #####
+        child_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(child_doc)
+        child_doc.parent_id = parent_doc.id
+        self.svc.execute_operation(child_doc)
+        #####
+
+        updated_parent_do = self.svc.get(parent_doc.id)
+        self.assertIn(
+            str(child_doc.id), updated_parent_do.pipeline_run_info.child_errors
+        )
+        self.assertIn(
+            "MockOperator failed",
+            updated_parent_do.pipeline_run_info.child_errors[
+                str(child_doc.id)
+            ],
+        )

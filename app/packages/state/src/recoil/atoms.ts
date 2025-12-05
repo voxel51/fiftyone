@@ -12,7 +12,7 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { setContains3d, StrictField } from "@fiftyone/utilities";
+import { StrictField, setContains3d } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { GRID_SPACES_DEFAULT, sessionAtom } from "../session";
@@ -110,8 +110,13 @@ export const snackbarErrors = atom<string[]>({
   default: [],
 });
 
-export const snackbarLink = atom<{ link: string; message: string } | null>({
+export const snackbarLink = atom<{ link?: string; message: string } | null>({
   key: "snackbarLink",
+  default: null,
+});
+
+export const snackbarMessage = atom<string | null>({
+  key: "snackbarMessage",
   default: null,
 });
 
@@ -400,5 +405,10 @@ export const escapeKeyHandlerIdsAtom = atom<Set<string>>({
 
 export const editingFieldAtom = atom<boolean>({
   key: "editingFieldAtom",
+  default: false,
+});
+
+export const isInMultiPanelViewAtom = atom<boolean>({
+  key: "isInMultiPanelViewAtom",
   default: false,
 });

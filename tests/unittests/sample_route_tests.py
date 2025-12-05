@@ -21,6 +21,27 @@ import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
 
 
+def _create_dummy_instance(cls_type: type) -> dict:
+    return json.loads(cls_type().to_json())
+
+
+class CustomEmbeddedDoc(fo.EmbeddedDocument):
+    classification = fo.EmbeddedDocumentField(document_type=fo.Classification)
+    classifications = fo.EmbeddedDocumentField(
+        document_type=fo.Classifications
+    )
+    detection = fo.EmbeddedDocumentField(document_type=fo.Detection)
+    detections = fo.EmbeddedDocumentField(document_type=fo.Detections)
+    polyline = fo.EmbeddedDocumentField(document_type=fo.Polyline)
+    polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
+
+
+class CustomNestedDoc(fo.EmbeddedDocument):
+    custom_documents = fo.EmbeddedDocumentListField(
+        document_type=CustomEmbeddedDoc
+    )
+
+
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     """Creates a persistent dataset for testing."""
@@ -41,9 +62,12 @@ def fixture_dataset_id(dataset):
     return dataset._doc.id
 
 
-@pytest.fixture(name="if_match", params=[None, "etag", "isodate", "timestamp"])
+_if_match_values = ["etag", "isodate", "timestamp"]
+
+
+@pytest.fixture(name="if_match", params=_if_match_values)
 def fixture_if_match(request, sample):
-    """Provides different database connections."""
+    """Provides parameterized If-Match header values."""
     if_match_type = request.param
 
     if if_match_type is None:
@@ -88,6 +112,63 @@ class TestSampleRoutes:
         sample["primitive_field"] = "initial_value"
 
         dataset.add_sample(sample)
+
+        # uninitialized fields that the dataset is aware of
+        dataset.add_sample_field(
+            "empty_classification",
+            fo.EmbeddedDocumentField,
+            fol.Classification,
+        )
+        dataset.add_sample_field(
+            "empty_classifications",
+            fo.EmbeddedDocumentField,
+            fol.Classifications,
+        )
+        dataset.add_sample_field(
+            "empty_detection", fo.EmbeddedDocumentField, fol.Detection
+        )
+        dataset.add_sample_field(
+            "empty_detections", fo.EmbeddedDocumentField, fol.Detections
+        )
+        dataset.add_sample_field(
+            "empty_polyline", fo.EmbeddedDocumentField, fol.Polyline
+        )
+        dataset.add_sample_field(
+            "empty_polylines", fo.EmbeddedDocumentField, fol.Polylines
+        )
+
+        dataset.add_sample_field(
+            "empty_primitive",
+            fo.StringField,
+        )
+
+        dataset.add_sample_field(
+            "empty_custom_doc",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=CustomEmbeddedDoc,
+        )
+
+        # custom embedded documents
+        dataset.add_sample_field(
+            "nested_doc",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=CustomNestedDoc,
+        )
+
+        sample["nested_doc"] = CustomNestedDoc(
+            custom_documents=[
+                CustomEmbeddedDoc(
+                    classification=fol.Classification(),
+                    detections=fol.Detections(),
+                    polylines=fol.Polylines(),
+                ),
+                # empty doc which will (expectedly) fail initialization
+                CustomEmbeddedDoc(),
+            ]
+        )
+
+        # embedded doc containing uninitialized fields will be auto-initialized
+        sample["custom_doc"] = CustomEmbeddedDoc()
 
         return sample
 
@@ -372,6 +453,153 @@ class TestSampleRoutes:
         assert sample.ground_truth.detections[0].id == str(
             self.INITIAL_DETECTION_ID
         )
+
+    @pytest.mark.asyncio
+    async def test_patch_init_fields(self, mutator, mock_request, sample):
+        new_classification = _create_dummy_instance(fol.Classification)
+        new_detection = _create_dummy_instance(fol.Detection)
+        new_polyline = _create_dummy_instance(fol.Polyline)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/empty_classification",
+                "value": new_classification,
+            },
+            {
+                "op": "add",
+                "path": "/empty_classifications/classifications/0",
+                "value": new_classification,
+            },
+            {
+                "op": "add",
+                "path": "/empty_detections/detections/0",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
+                "path": "/empty_detection",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
+                "path": "/empty_polylines/polylines/0",
+                "value": new_polyline,
+            },
+            {
+                "op": "add",
+                "path": "/empty_polyline",
+                "value": new_polyline,
+            },
+            {
+                "op": "add",
+                "path": "/empty_primitive",
+                "value": "new primitive",
+            },
+            {
+                "op": "add",
+                "path": "/custom_doc/detections/detections/0",
+                "value": new_detection,
+            },
+            {
+                "op": "add",
+                "path": "/empty_custom_doc/detections/detections/0",
+                "value": new_detection,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+        response_dict = json.loads(response.body)
+
+        assert response_dict["empty_classification"] == new_classification
+        assert (
+            response_dict["empty_classifications"]["classifications"][0]
+            == new_classification
+        )
+        assert response_dict["empty_detection"] == new_detection
+        assert (
+            response_dict["empty_detections"]["detections"][0] == new_detection
+        )
+        assert response_dict["empty_polyline"] == new_polyline
+        assert response_dict["empty_polylines"]["polylines"][0] == new_polyline
+        assert response_dict["empty_primitive"] == "new primitive"
+        assert (
+            response_dict["custom_doc"]["detections"]["detections"][0]
+            == new_detection
+        )
+        assert (
+            response_dict["empty_custom_doc"]["detections"]["detections"][0]
+            == new_detection
+        )
+
+    @pytest.mark.asyncio
+    async def test_patch_nested_fields(self, mutator, mock_request, sample):
+        new_detection = _create_dummy_instance(fol.Detection)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/nested_doc/custom_documents/0/detections/detections/0",
+                "value": new_detection,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 200
+
+        sample.reload()
+
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+        response_dict = json.loads(response.body)
+
+        assert (
+            response_dict["nested_doc"]["custom_documents"][0]["detections"][
+                "detections"
+            ][0]
+            == new_detection
+        )
+
+    @pytest.mark.asyncio
+    async def test_patch_init_nested_fields_failure(
+        self, mutator, mock_request
+    ):
+        new_detection = _create_dummy_instance(fol.Detection)
+
+        patch_payload = [
+            {
+                "op": "add",
+                "path": "/nested_doc/custom_documents/1/detections/detections/0",
+                "value": new_detection,
+            },
+        ]
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        # auto-initialization not supported for lists of embedded documents
+        assert response.status_code == 500
 
     @pytest.mark.asyncio
     async def test_patch_rplc_primitive(self, mutator, mock_request, sample):
@@ -677,12 +905,19 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "if_match", [None] + _if_match_values, indirect=True
+    )
     async def test_if_match_header_failure(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
+        """Tests that a 4xx HTTPException is raised for an invalid If-Match."""
         if if_match is None:
-            pytest.skip("Fixture returned None, skipping this test.")
+            expected_status = 400
+            expected_detail = "Invalid If-Match header"
+        else:
+            expected_status = 412
+            expected_detail = "If-Match condition failed"
 
         # Update the sample to change its last_modified_at
         sample["primitive_field"] = "new_value"
@@ -697,7 +932,8 @@ class TestSampleFieldRoute:
             await mutator.patch(mock_request)
             #####
 
-        assert exc_info.value.status_code == 412
+        assert exc_info.value.status_code == expected_status
+        assert exc_info.value.detail == expected_detail
 
     @pytest.mark.asyncio
     async def test_field_path_not_found(self, mutator, mock_request, sample):

@@ -3,6 +3,7 @@ export enum PathType {
   LINUX,
   WINDOWS,
 }
+import { win32 } from "@chainner/node-path";
 import pathUtils from "path";
 
 export function determinePathType(path: string): PathType {
@@ -59,9 +60,7 @@ export function resolveParent(path: string): string {
     return url.toString();
   }
   const parsed =
-    pathType === PathType.WINDOWS
-      ? pathUtils.win32.parse(path)
-      : pathUtils.parse(path);
+    pathType === PathType.WINDOWS ? win32.parse(path) : pathUtils.parse(path);
 
   if (parsed.dir && parsed.dir !== path) {
     return parsed.dir;
@@ -101,7 +100,7 @@ export function getBasename(path: string) {
     else if (url.hostname) result = url.hostname;
     else result = null;
   } else if (pathType === PathType.WINDOWS) {
-    result = pathUtils.win32.basename(path);
+    result = win32.basename(path);
   } else {
     result = pathUtils.basename(path);
   }
@@ -116,7 +115,7 @@ export function getRootOrProtocol(path: string) {
     return protocol + "://";
   }
   if (pathType === PathType.WINDOWS) {
-    const parsed = pathUtils.win32.parse(path);
+    const parsed = win32.parse(path);
     return parsed.root;
   }
   return "/";

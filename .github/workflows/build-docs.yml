@@ -47,13 +47,13 @@ jobs:
     steps:
       - name: Clone fiftyone for tag builds
         if: github.ref_type == 'tag'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Fetch full history for rev-parse to work
           fetch-depth: 0
       - name: Clone fiftyone for branch builds
         if: github.ref_type == 'branch'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Get Branch Name
         id: get_branch
         run: |
@@ -91,7 +91,7 @@ jobs:
             esac
           fi
       - name: Checkout fiftyone-teams
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
@@ -143,7 +143,7 @@ jobs:
         run: |
           ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: docs
           path: docs/build/html/
@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: docs
           path: docs-download/
@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: docs
           path: docs-download/
