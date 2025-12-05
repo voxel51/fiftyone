@@ -5,6 +5,7 @@ Utilities for documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import inspect
 import json
@@ -711,7 +712,7 @@ _document_registry = DocumentRegistry()
 
 
 # for backwards compatibility
-# @todo remove at next major release
+# @todo FOEPD-2399 remove at next major release
 def load_dataset(*args, **kwargs):
     from fiftyone.core.odm.database import load_dataset
 
