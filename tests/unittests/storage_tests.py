@@ -7,7 +7,7 @@ This file is suitable for the FiftyOne open source repository which
 only supports local filesystem operations.
 
 Usage:
-    pytest tests/unit/test_storage_unit_local.py -v
+    pytest tests/unittests/storage_tests.py -v
 
 | Copyright 2017-2025, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -451,7 +451,7 @@ class TestLocalFileOperations:
         with open(os.path.join(dir_path, "existing.txt"), "w") as f:
             f.write("existing")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=f"{dir_path} not empty"):
             fos.ensure_empty_dir(dir_path)
 
     def test_ensure_empty_dir_creates_new(self, temp_dir):
@@ -812,7 +812,7 @@ class TestOpenFiles:
                 f.write("content\n")
 
         file_handles = None
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="Test exception"):
             with fos.open_files(paths, "r") as files:
                 file_handles = list(files)
                 raise ValueError("Test exception")
@@ -967,19 +967,27 @@ class TestSerializationLocal:
         assert "\n" in content
 
     def test_load_json_invalid_raises(self):
-        with pytest.raises(ValueError):
-            fos.load_json("not valid json or a file path")
+        filename = "not valid json or a file path"
+        with pytest.raises(
+            ValueError, match=f"Unable to load JSON from '{filename}'"
+        ):
+            fos.load_json(filename)
 
     def test_load_ndjson_invalid_raises(self):
-        with pytest.raises(ValueError):
-            fos.load_ndjson("not valid ndjson or a file path")
+        filename = "not valid ndjson or a file path"
+        with pytest.raises(
+            ValueError, match=f"Unable to load NDJSON from '{filename}'"
+        ):
+            fos.load_ndjson(filename)
 
     def test_read_json_invalid_raises(self, temp_dir):
         path = os.path.join(temp_dir, "invalid.json")
         with open(path, "w") as f:
             f.write("not valid json")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError, match=f"Unable to parse JSON file '{path}'"
+        ):
             fos.read_json(path)
 
 
@@ -1087,11 +1095,18 @@ class TestRun:
 
         with patch.object(
             multiprocessing.dummy, "Pool", return_value=mock_pool
-        ):
+        ) as mock_pool_ctor:
+            recommended_workers = 4
             with patch.object(
-                fou, "recommend_thread_pool_workers", return_value=4
+                fou,
+                "recommend_thread_pool_workers",
+                return_value=recommended_workers,
             ):
                 results = fos.run(lambda x: x * 2, tasks)
+
+                mock_pool_ctor.assert_called_once_with(
+                    processes=recommended_workers
+                )
 
         assert results == [2, 4, 6]
         mock_pool.imap.assert_called_once()

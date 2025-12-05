@@ -191,15 +191,17 @@ def open_file(path, mode="r"):
 
 
 class FileCollection(list):
-    """A list of open file-like objects with a close()ing context manager"""
+    """A list of open file-like objects with a closing context manager"""
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         for f in self:
-            if f is not None:
+            try:
                 f.close()
+            except AttributeError:
+                pass
         return False
 
 
