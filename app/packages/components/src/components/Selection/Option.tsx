@@ -8,6 +8,7 @@ import {
   RowLabelContainer,
   SelectionRow,
   TextContainer,
+  LabelText,
 } from "./styledComponents";
 
 export interface DatasetViewOption {
@@ -46,14 +47,11 @@ export default function (props: Props) {
   const theme = useTheme();
 
   return (
-    <SelectionRow
-      ref={hoverRef}
-      onClick={onClick}
-      data-cy={dataCy}
-    >
+    <SelectionRow ref={hoverRef} onClick={onClick} data-cy={dataCy}>
       <RowLabelContainer>
         <TextContainer>
-          {preDecorator} {label}
+          {preDecorator}
+          <LabelText wrap>{label}</LabelText>
         </TextContainer>
       </RowLabelContainer>
       {(isHovered || isSelected) && (
