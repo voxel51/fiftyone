@@ -13,7 +13,6 @@ from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.json as foj
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
@@ -80,17 +79,9 @@ class Tag(HTTPEndpoint):
             target_labels=False,
         )
 
-        is_video = view.media_type == fom.VIDEO
-        if is_video and current_frame is not None:
-            default_filter = F("frame_number") == 1
-            current_filter = F("frame_number").is_in([current_frame, 1])
-            filter_frames = lambda f: F("frames").filter(f)
-            expr = F.if_else(
-                F("_id").to_string() == modal,
-                filter_frames(current_filter),
-                filter_frames(default_filter),
-            )
-            view = view.set_field("frames", expr)
+        view, is_video = fosu.attach_frame_if_necessary(
+            view, current_frame, modal, group_slice=slice
+        )
 
         samples = []
         async for document in foo.aggregate(
