@@ -90,16 +90,40 @@ export class ModalPom {
   }
 
   async hideControls() {
-    let isControlsOpacityZero = false;
     const controls = this.locator.getByTestId("looker-controls");
 
-    do {
-      await controls.press("c");
-      const opacity = await controls.evaluate(
-        (e) => getComputedStyle(e).opacity
-      );
-      isControlsOpacityZero = parseFloat(opacity) === 0;
-    } while (!isControlsOpacityZero);
+    // Check if controls exist (might not exist in annotate mode)
+    const controlsCount = await controls.count();
+    if (controlsCount === 0) {
+      return;
+    }
+
+    let isHidden = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    // Keep pressing "c" until controls are hidden
+    while (!isHidden && attempts < maxAttempts) {
+      const currentStyle = await controls
+        .evaluate((e) => {
+          const s = getComputedStyle(e);
+          return { opacity: s.opacity, height: s.height };
+        })
+        .catch(() => ({ opacity: "1", height: "auto" }));
+
+      if (
+        parseFloat(currentStyle.opacity) === 0 ||
+        currentStyle.height === "0px"
+      ) {
+        isHidden = true;
+        break;
+      }
+
+      await this.page.keyboard.press("c");
+      await this.page.waitForTimeout(300);
+
+      attempts++;
+    }
   }
 
   async toggleSelection(isPcd = false) {
