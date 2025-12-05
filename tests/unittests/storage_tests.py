@@ -24,11 +24,6 @@ import pytest
 import fiftyone.core.storage as fos
 
 
-# =============================================================================
-# Path Utility Tests (alphabetized by class name)
-# =============================================================================
-
-
 class TestAbspath:
     """Test abspath() function for local paths."""
 
