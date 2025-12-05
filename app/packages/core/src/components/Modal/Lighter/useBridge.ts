@@ -27,7 +27,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
 
-  const eventBus = useLighterEventBus();
+  const eventBus = useLighterEventBus(scene?.getSceneId() ?? "lighter");
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
 

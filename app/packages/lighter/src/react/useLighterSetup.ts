@@ -33,7 +33,7 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const eventBus = useLighterEventBus();
+  const eventBus = useLighterEventBus(sceneId);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 

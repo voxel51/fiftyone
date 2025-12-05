@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventHandler, getEventBus } from "@fiftyone/events";
+import { EventDispatcher, EventHandler, getEventBus } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
 import {
@@ -153,11 +153,14 @@ export class Scene2D {
   private isRenderLoopActive: boolean = false;
 
   private abortController = new AbortController();
-  private readonly eventBus = getEventBus<LighterEventGroup>();
+  private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   public isDestroyed = false;
 
   constructor(private readonly config: Scene2DConfig) {
+    this.sceneOptions = config.options;
+    this.sceneId = config.sceneId;
+
     this.coordinateSystem = new CoordinateSystem2D();
     this.selectionManager = new SelectionManager();
     this.interactionManager = new InteractionManager(
@@ -166,8 +169,8 @@ export class Scene2D {
       this.selectionManager,
       config.renderer
     );
-    this.sceneOptions = config.options;
-    this.sceneId = config.sceneId;
+
+    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
