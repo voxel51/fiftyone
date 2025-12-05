@@ -39,6 +39,11 @@ export interface DrawStyle {
   selectionColor?: string;
 }
 
+export interface Anchor {
+  horizontal?: "left" | "center" | "right";
+  vertical?: "top" | "center" | "bottom";
+}
+
 /**
  * Text rendering options.
  */
@@ -50,6 +55,7 @@ export interface TextOptions {
   padding?: number;
   maxWidth?: number;
   height?: number;
+  anchor?: Anchor;
 }
 
 /**
