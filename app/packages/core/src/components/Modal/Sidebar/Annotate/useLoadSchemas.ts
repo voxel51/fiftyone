@@ -46,7 +46,6 @@ export default function useLoadSchemas() {
 
     const schemas = {};
     for (const path in get.result.schemas) {
-      debugger;
       if (!paths.includes(path)) continue;
 
       schemas[path] = get.result.schemas[path];

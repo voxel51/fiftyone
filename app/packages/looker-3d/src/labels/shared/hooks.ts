@@ -63,7 +63,6 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
     }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
     onPointerOut: useCallback(() => {
       if (canAnnotate) {
-        debugger;
         annotationEventBus.dispatch(
           "annotation:notification:canvasOverlayUnhover",
           {

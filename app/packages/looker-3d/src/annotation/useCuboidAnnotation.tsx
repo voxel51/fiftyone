@@ -61,9 +61,10 @@ export const useCuboidAnnotation = ({
     return currentStagedTransform?.dimensions ?? dimensions;
   }, [currentStagedTransform?.dimensions, dimensions]);
 
+  // Use original itemRotation - no transform controls rotation support
   const effectiveRotation = useMemo(() => {
-    return currentStagedTransform?.rotation ?? itemRotation;
-  }, [currentStagedTransform?.rotation, itemRotation]);
+    return itemRotation;
+  }, [itemRotation]);
 
   // Transform handlers
   const handleTransformStart = useCallback(() => {
@@ -86,27 +87,6 @@ export const useCuboidAnnotation = ({
       const position = contentRef.current.position;
       setTempCuboidTransforms({
         position: position.toArray() as [number, number, number],
-        quaternion: contentRef.current.quaternion.toArray() as [
-          number,
-          number,
-          number,
-          number
-        ],
-      });
-    } else if (mode === "rotate") {
-      // Update rotation
-      setTempCuboidTransforms({
-        position: contentRef.current.position.toArray() as [
-          number,
-          number,
-          number
-        ],
-        quaternion: contentRef.current.quaternion.toArray() as [
-          number,
-          number,
-          number,
-          number
-        ],
       });
     } else if (mode === "scale") {
       // Update dimensions - compute transient dimensions from scale
@@ -119,12 +99,6 @@ export const useCuboidAnnotation = ({
       ];
       setTempCuboidTransforms({
         position: contentRef.current.position.toArray() as [
-          number,
-          number,
-          number
-        ],
-        quaternion: contentRef.current.quaternion.toArray() as [
-          number,
           number,
           number,
           number
@@ -150,10 +124,6 @@ export const useCuboidAnnotation = ({
         effectiveLocation[1] + delta.y,
         effectiveLocation[2] + delta.z,
       ] as Vector3Tuple;
-    } else if (mode === "rotate") {
-      // Commit rotation change
-      const euler = contentRef.current.rotation;
-      newTransform.rotation = euler.toArray().slice(0, 3) as Vector3Tuple;
     } else if (mode === "scale") {
       // Commit scale/dimensions change
       const scale = contentRef.current.scale;
@@ -173,9 +143,9 @@ export const useCuboidAnnotation = ({
       [label._id]: newTransform,
     }));
 
-    // Reset group position to prevent double-application
+    // Reset group transforms to prevent double-application
     // This is important because transform controls are applied to the group
-    // whereas we render the cuboid using effectiveLocation
+    // whereas we render the cuboid using effective values
     if (contentRef.current) {
       contentRef.current.position.set(0, 0, 0);
     }
