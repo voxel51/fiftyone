@@ -29,6 +29,7 @@ import type {
   CoordinateSystem,
   DrawStyle,
   Point,
+  Rect,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
@@ -1585,10 +1586,20 @@ export class Scene2D {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
 
     try {
+      const canonicalMediaBounds: Rect =
+        this.getCanonicalMedia()?.getRenderedBounds() || {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+        };
+
       const ret = overlay.render(
         this.config.renderer,
-        this.createOverlayStyle(overlay)
+        this.createOverlayStyle(overlay),
+        canonicalMediaBounds
       );
+
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);

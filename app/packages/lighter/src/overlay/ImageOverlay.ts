@@ -156,7 +156,10 @@ export class ImageOverlay
     return this.id;
   }
 
-  protected async renderImpl(renderer: Renderer2D): Promise<void> {
+  protected async renderImpl(
+    renderer: Renderer2D,
+    _canonicalMediaBounds: Rect
+  ): Promise<void> {
     // Only dispose if we don't have a texture yet or if the texture source changed
     const needsDispose = !this.texture || this.texture.type !== "texture";
 

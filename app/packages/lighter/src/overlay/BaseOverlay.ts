@@ -87,19 +87,28 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Renders the overlay using the provided renderer and style.
    * @param renderer - The renderer to use for drawing.
    * @param style - The drawing style to apply.
+   * @param canonicalMediaBounds - The location and dimensions of the canonical media within the scene
    */
-  render(renderer: Renderer2D, style: DrawStyle | null): void | Promise<void> {
+  render(
+    renderer: Renderer2D,
+    style: DrawStyle | null,
+    canonicalMediaBounds: Rect
+  ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
 
-    this.renderImpl(renderer);
+    this.renderImpl(renderer, canonicalMediaBounds);
   }
 
   /**
    * Abstract method for subclasses to implement their specific rendering logic.
    * @param renderer - The renderer to use for drawing.
+   * @param canonicalMediaBounds - The location and dimensions of the canonical media within the scene
    */
-  protected abstract renderImpl(renderer: Renderer2D): void | Promise<void>;
+  protected abstract renderImpl(
+    renderer: Renderer2D,
+    canonicalMediaBounds: Rect
+  ): void | Promise<void>;
 
   /**
    * Gets the current draw style used for this overlay.
