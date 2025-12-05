@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.14.0
 --------------------------
-*Released December 4, 2025*
+*Released December 5, 2025*
 
 Includes all updates from :ref:`FiftyOne 1.11.0 <release-notes-v1.11.0>`, plus:
 
@@ -69,7 +69,7 @@ Security
 
 FiftyOne 1.11.0
 ---------------
-*Released December 4, 2025*
+*Released December 5, 2025*
 
 Core
 
