@@ -151,11 +151,10 @@ export class Scene2D {
   private interactiveHandler?: InteractionHandler;
   private readonly sceneId: string | undefined;
   private isRenderLoopActive: boolean = false;
-
   private abortController = new AbortController();
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  public isDestroyed = false;
+  private _isDestroyed = false;
 
   constructor(private readonly config: Scene2DConfig) {
     this.sceneOptions = config.options;
@@ -291,6 +290,14 @@ export class Scene2D {
     document.addEventListener("keydown", this.arrowRotateHandler.bind(this), {
       signal: this.abortController.signal,
     });
+  }
+
+  /**
+   * Gets whether the scene has been destroyed.
+   * @returns True if the scene has been destroyed, false otherwise.
+   */
+  get isDestroyed(): boolean {
+    return this._isDestroyed;
   }
 
   /**
@@ -1266,7 +1273,7 @@ export class Scene2D {
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
 
-    this.isDestroyed = true;
+    this._isDestroyed = true;
   }
 
   /**
