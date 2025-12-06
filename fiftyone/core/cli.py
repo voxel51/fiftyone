@@ -4402,6 +4402,8 @@ class LabsSearchCommand(Command):
     @staticmethod
     def execute(parser, args):
         labs_url = "https://github.com/voxel51/labs"
+        if args.branch:
+            labs_url = f"{labs_url}/tree/{args.branch}"
         plugins = fopu.find_plugins(labs_url, path=args.path, info=True)
         if not plugins:
             msg = f"No plugins found in {labs_url}"
