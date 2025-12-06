@@ -190,6 +190,19 @@ def open_file(path, mode="r"):
     return _open_file(path, mode)
 
 
+class FileCollection(list):
+    """A list of open file-like objects with a close()ing context manager"""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        for f in self:
+            if f is not None:
+                f.close()
+        return False
+
+
 def open_files(paths, mode="r", skip_failures=False, progress=None):
     """Opens the given files for reading or writing.
 
@@ -206,7 +219,8 @@ def open_files(paths, mode="r", skip_failures=False, progress=None):
         a list of open file-like objects
     """
     tasks = [(p, mode, skip_failures) for p in paths]
-    return _run(_do_open_file, tasks, return_results=True, progress=progress)
+    files = _run(_do_open_file, tasks, return_results=True, progress=progress)
+    return FileCollection(files)
 
 
 def read_file(path, binary=False):
