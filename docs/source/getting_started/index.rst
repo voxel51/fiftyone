@@ -77,6 +77,13 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :tags: Core-Fiftyone,Research
 
 .. customcarditem::
+    :header: Depth Estimation Guide
+    :description: Master depth estimation workflows with DIODE, NYU Depth V2, and multiple model approaches. Learn to load depth data, work with heatmaps, and apply models from Model Zoo, Hugging Face, and Diffusers.
+    :link: depth_estimation/index.html
+    :image: https://cdn.voxel51.com/getting_started_depth_estimation/notebook2/all_predicted_depths.webp
+    :tags: Core-Fiftyone,Research
+
+.. customcarditem::
     :header: Model Dataset Zoo Guide
     :description: Master the FiftyOne Zoo with datasets and models. Learn to explore built-in datasets, apply pre-trained models, and integrate custom models from GitHub or public URLs.
     :link: model_dataset_zoo/index.html
@@ -114,5 +121,6 @@ Each guide is designed as a sequential learning experience with navigation betwe
    3D Visual AI Guide <threed_visual_ai/index>
    Model Evaluation Guide <model_evaluation/index>
    Segmentation Guide <segmentation/index>
-   Model Dataset Zoo Guide <model_dataset_zoo/index> 
+   Depth Estimation Guide <depth_estimation/index>
+   Model Dataset Zoo Guide <model_dataset_zoo/index>
    Manufacturing Guide <manufacturing/index>

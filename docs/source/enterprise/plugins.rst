@@ -510,8 +510,8 @@ FiftyOne Enterprise supports executing delegated operations on-demand in
 your connected external compute platform. With on-demand compute, resources are
 only provisioned and used when they're actually needed, minimizing idle times.
 
-On-demand compute is currently supported on
-`Databricks <https://www.databricks.com/>`_ and
+On-demand compute is currently supported on FiftyOne's Kubernetes Orchestrator,
+`Databricks <https://www.databricks.com/>`_, and
 `Anyscale <https://www.anyscale.com/>`_.
 
 Administrators can refer to the

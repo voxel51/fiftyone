@@ -1,3 +1,6 @@
+.header-article__inner
+  padding: 0
+
 ul.bd-breadcrumbs
   li.breadcrumb-item
     a, a:hover, span, .ellipsis
@@ -5,7 +8,7 @@ ul.bd-breadcrumbs
       text-decoration: underline
       color: #000
       font-size: 14px
-      padding: 6px
+      padding: 0
       margin: 0
       text-underline-offset: 4px
 
@@ -13,5 +16,6 @@ ul.bd-breadcrumbs
       font-size: 10px
       color: #00000099
 
-.breadcrumb-home
-  width: 27.75px
+@media (min-width: 1200px)
+  ul.bd-breadcrumbs
+    padding-left: 2rem
