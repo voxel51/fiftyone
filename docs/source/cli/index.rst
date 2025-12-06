@@ -64,7 +64,7 @@ The FiftyOne command-line interface.
 .. code-block:: text
 
     fiftyone [-h] [-v] [--all-help]
-             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
              ...
 
 **Arguments**
@@ -77,7 +77,7 @@ The FiftyOne command-line interface.
       --all-help            show help recursively and exit
 
     available commands:
-      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo,labs}
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
         brain               Tools for working with the FiftyOne Brain.
@@ -93,6 +93,7 @@ The FiftyOne command-line interface.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
+        labs                Tools for working with FiftyOne Labs.
 
 .. _cli-fiftyone-quickstart:
 
@@ -1214,10 +1215,11 @@ Tools for working with FiftyOne plugins.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,info,download,requirements,create,enable,disable,delete}
+      {list,info,download,search,requirements,create,enable,disable,delete}
         list                List plugins that are installed locally.
         info                Prints information about plugins that are installed locally.
         download            Download plugins from the web.
+        search              Search for available plugins in a GitHub repository.
         requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
         enable              Enables the given plugin(s).
@@ -1354,6 +1356,60 @@ formats:
 
     # Download specific plugins from a URL
     fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
+
+.. _cli-fiftyone-plugins-search:
+
+Search plugins
+~~~~~~~~~~~~~~~~
+
+Search for available plugins in a GitHub repository.
+
+When searching for plugins, you can provide any of the following
+formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+.. note::
+
+    To read from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the
+    ``GITHUB_TOKEN`` environment variable.
+
+.. code-block:: text
+
+    fiftyone plugins search [-h] [--path PATH] URL_OR_GH_REPO
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URL_OR_GH_REPO  A URL or <user>/<repo>[/<ref>] of a GitHub repository
+
+    optional arguments:
+      -h, --help      show this help message and exit
+      --path PATH     path inside the GitHub repository for plugins search
+
+**Examples**
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a GitHub repository URL
+    fiftyone plugins search <github-repo-url>
+
+.. code-block:: shell
+
+    # Search for plugins by specifying the GitHub repository details
+    fiftyone plugins search <user>/<repo>[/<ref>]
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a path inside the repository
+    fiftyone plugins search <github-repo-url> --path path/to/dir
+    fiftyone plugins search <user>/<repo>[/<ref>] --path path/to/dir
 
 .. _cli-fiftyone-plugins-requirements:
 
@@ -1569,6 +1625,148 @@ Delete plugins from your local machine.
 
     # Delete all plugins from local disk
     fiftyone plugins delete --all
+
+.. _cli-fiftyone-labs:
+
+FiftyOne Labs
+-------------
+
+Tools for working with FiftyOne Labs.
+
+.. code-block:: text
+
+    fiftyone labs [-h] [--all-help] {install,uninstall,search} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {install,uninstall}
+        install             Install FiftyOne Labs features from the web.
+        uninstall           Uninstall FiftyOne Labs features from your local machine.
+        search              Search for available plugins in FiftyOne Labs repository.
+
+.. _cli-fiftyone-labs-install:
+
+Install Labs features
+~~~~~~~~~~~~~~~~~~~~~
+
+Install features from FiftyOne Labs repository.
+
+.. code-block:: text
+
+    fiftyone labs install [-h] [--branch BRANCH] [-n [FEATURE_NAMES ...]] [-o]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --branch BRANCH       name of FiftyOne Labs branch
+      -n [FEATURE_NAMES ...], --feature-names [FEATURE_NAMES ...]
+                            a labs feature name or list of feature names to download
+      -o, --overwrite       whether to overwrite existing features
+
+
+**Examples**
+
+.. code-block:: shell
+
+    # Install labs features from FiftyOne Labs repo
+    fiftyone labs install
+
+.. code-block:: shell
+
+    # Install labs features from FiftyOne Labs repo
+    fiftyone labs install --branch <branch_name>
+
+.. code-block:: shell
+
+    # Install specific labs feature from FiftyOne Labs repo
+    fiftyone labs install --feature-names <name1> <name2>
+
+.. _cli-fiftyone-labs-uninstall:
+
+Uninstall Labs features
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Uninstall FiftyOne Labs features from your local machine.
+
+.. code-block:: text
+
+    fiftyone labs uninstall [-h] [-a] [NAME ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME        the labs feature name(s)
+
+    optional arguments:
+      -h, --help  show this help message and exit
+      -a, --all   whether to delete all labs features
+
+**Examples**
+
+.. code-block:: shell
+
+    # Uninstall a labs feature from local disk
+    fiftyone labs uninstall <name>
+
+.. code-block:: shell
+
+    # Uninstall multiple labs features from local disk
+    fiftyone labs uninstall <name1> <name2> ...
+
+.. code-block:: shell
+
+    # Uninstall all labs features from local disk
+    fiftyone labs uninstall --all
+
+.. _cli-fiftyone-labs-search:
+
+Search Labs features
+~~~~~~~~~~~~~~~~~~~~
+
+Search for available plugins in FiftyOne Labs repository.
+
+.. code-block:: text
+
+    fiftyone labs search [-h] [--branch BRANCH] [--path PATH]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      --branch BRANCH  name of FiftyOne Labs branch
+      --path PATH      path inside the Labs repository for plugins search
+
+**Examples**
+
+.. code-block:: shell
+
+    # Search for plugins inside the Labs repository
+    fiftyone labs search
+
+.. code-block:: shell
+
+    # Search for plugins by specifying the Labs repository branch
+    fiftyone labs search --branch <branch_name>
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a path inside the Labs repository
+    fiftyone labs search --path path/to/dir
+    fiftyone labs search --branch <branch_name> --path path/to/dir
 
 .. _cli-fiftyone-utils:
 

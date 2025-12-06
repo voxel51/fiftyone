@@ -37,6 +37,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
 import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
+import fiftyone.plugins.utils as fopu
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -104,6 +105,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
+        _register_command(subparsers, "labs", LabsCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -3675,6 +3677,7 @@ class PluginsCommand(Command):
         _register_command(subparsers, "list", PluginsListCommand)
         _register_command(subparsers, "info", PluginsInfoCommand)
         _register_command(subparsers, "download", PluginsDownloadCommand)
+        _register_command(subparsers, "search", PluginsSearchCommand)
         _register_command(
             subparsers, "requirements", PluginsRequirementsCommand
         )
@@ -3909,6 +3912,65 @@ class PluginsDownloadCommand(Command):
             plugin_names=args.plugin_names,
             overwrite=args.overwrite,
         )
+
+
+class PluginsSearchCommand(Command):
+    """Search for available plugins in a GitHub repository.
+
+    When searching for plugins, you can provide any of the following
+    formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+    .. note::
+
+        To read from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
+    Examples::
+
+        # Search for plugins by specifying a GitHub repository URL
+        fiftyone plugins search <github-repo-url>
+
+        # Search for plugins by specifying the GitHub repository details
+        fiftyone plugins search <user>/<repo>[/<ref>]
+
+        # Search for plugins by specifying a path inside the repository
+        fiftyone plugins search <github-repo-url> --path path/to/dir
+        fiftyone plugins search <user>/<repo>[/<ref>] --path path/to/dir
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url_or_gh_repo",
+            metavar="URL_OR_GH_REPO",
+            help="A URL or <user>/<repo>[/<ref>] of a GitHub repository",
+        )
+        parser.add_argument(
+            "--path",
+            default=None,
+            metavar="PATH",
+            help="path inside the GitHub repository for plugins search",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        plugins = fopu.find_plugins(
+            args.url_or_gh_repo, path=args.path, info=True
+        )
+        if not plugins:
+            msg = f"No plugins found in {args.url_or_gh_repo}"
+            if args.path:
+                msg += f"-- path {args.path} "
+            print(msg)
+        else:
+            for p in plugins:
+                print(p.get("name"))
 
 
 class PluginsRequirementsCommand(Command):
@@ -4192,6 +4254,165 @@ class PluginsDeleteCommand(Command):
 
         for name in names:
             fop.delete_plugin(name)
+
+
+class LabsCommand(Command):
+    """Tools for working with FiftyOne Labs."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "install", LabsInstallCommand)
+        _register_command(subparsers, "uninstall", LabsUninstallCommand)
+        _register_command(subparsers, "search", LabsSearchCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class LabsInstallCommand(Command):
+    """Install features from FiftyOne Labs repository.
+
+    Examples::
+
+        # Install labs features from FiftyOne Labs repo
+        fiftyone labs install
+
+        # Install labs features from FiftyOne Labs repo
+        fiftyone labs install --branch <branch_name>
+
+        # Install specific labs feature from FiftyOne Labs repo
+        fiftyone labs install --feature-names <name1> <name2>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--branch",
+            default=None,
+            metavar="BRANCH",
+            help="name of FiftyOne Labs branch",
+        )
+        parser.add_argument(
+            "-n",
+            "--feature-names",
+            nargs="*",
+            default=None,
+            metavar="FEATURE_NAMES",
+            help="a labs feature name or list of feature names to download",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to overwrite existing features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_url = "https://github.com/voxel51/labs"
+        if args.branch:
+            labs_url = f"{labs_url}/tree/{args.branch}"
+        fop.download_plugin(
+            labs_url,
+            plugin_names=args.feature_names,
+            overwrite=args.overwrite,
+        )
+
+
+class LabsUninstallCommand(Command):
+    """Uninstall FiftyOne Labs features from your local machine.
+
+    Examples::
+
+        # Uninstall a labs feature from local disk
+        fiftyone labs uninstall <name>
+
+        # Uninstall multiple labs features from local disk
+        fiftyone labs uninstall <name1> <name2> ...
+
+        # Uninstall all labs features from local disk
+        fiftyone labs uninstall --all
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the labs feature name(s)",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to delete all labs features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.all:
+            names = fop.list_downloaded_plugins()
+        else:
+            names = args.name
+
+        for name in names:
+            if name.startswith("@51labs"):
+                fop.delete_plugin(name)
+            elif not args.all:
+                print(
+                    f"Skipping non-FiftyOne Labs feature '{name}'. "
+                    "Use `fiftyone plugins delete` for non-labs plugins."
+                )
+
+
+class LabsSearchCommand(Command):
+    """Search for available plugins in FiftyOne Labs repository.
+
+    Examples::
+
+        # Search for plugins inside the Labs repository
+        fiftyone labs search
+
+        # Search for plugins by specifying the Labs repository branch
+        fiftyone labs search --branch <branch_name>
+
+        # Search for plugins by specifying a path inside the Labs repository
+        fiftyone labs search --path path/to/dir
+        fiftyone labs search --branch <branch_name> --path path/to/dir
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--branch",
+            default=None,
+            metavar="BRANCH",
+            help="name of FiftyOne Labs branch",
+        )
+        parser.add_argument(
+            "--path",
+            default=None,
+            metavar="PATH",
+            help="path inside the Labs repository for plugins search",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_url = "https://github.com/voxel51/labs"
+        if args.branch:
+            labs_url = f"{labs_url}/tree/{args.branch}"
+        plugins = fopu.find_plugins(labs_url, path=args.path, info=True)
+        if not plugins:
+            msg = f"No plugins found in {labs_url}"
+            if args.path:
+                msg += f"-- path {args.path} "
+            print(msg)
+        else:
+            for p in plugins:
+                print(p.get("name"))
 
 
 class MigrateCommand(Command):
