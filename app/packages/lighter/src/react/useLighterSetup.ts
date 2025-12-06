@@ -33,14 +33,14 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
-  const eventBus = useLighterEventBus();
+  const eventBus = useLighterEventBus(sceneId);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
 
-    const renderer = new PixiRenderer2D(stableCanvas);
+    const renderer = new PixiRenderer2D(stableCanvas, sceneId);
     rendererRef.current = renderer;
 
     // Extract only the options we need for Scene2D

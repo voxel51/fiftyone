@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
+import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
@@ -202,14 +202,16 @@ export class InteractionManager {
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
   private currentPixelCoordinates?: Point;
-  private readonly eventBus = getEventBus<LighterEventGroup>();
+  private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
   constructor(
     private canvas: HTMLCanvasElement,
     private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
-    private renderer: Renderer2D
+    private renderer: Renderer2D,
+    sceneId: string
   ) {
+    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
   }
 

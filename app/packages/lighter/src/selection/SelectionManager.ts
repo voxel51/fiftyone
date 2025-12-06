@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
+import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import type { LighterEventGroup } from "../events";
 import type { Selectable } from "./Selectable";
 
@@ -29,7 +29,11 @@ export class SelectionManager {
 
   private selectedOverlays = new Set<string>();
   private selectableOverlays = new Map<string, Selectable>();
-  private readonly eventBus = getEventBus<LighterEventGroup>();
+  private readonly eventBus: EventDispatcher<LighterEventGroup>;
+
+  constructor(sceneId: string) {
+    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+  }
 
   /**
    * Registers a selectable overlay with the selection manager.

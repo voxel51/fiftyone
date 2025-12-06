@@ -12,6 +12,7 @@ const STORE = getDefaultStore();
 
 export default function useFocus() {
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(scene.getSceneId());
   const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
   const onExit = useExit(false);
@@ -31,7 +32,7 @@ export default function useFocus() {
     selectId.current = null;
   }, [scene]);
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
       (payload) => {
@@ -62,7 +63,7 @@ export default function useFocus() {
     )
   );
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-select",
     useCallback(
       (payload) => {

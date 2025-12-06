@@ -125,6 +125,21 @@ export class EventDispatcher<T extends EventGroup> {
   }
 
   /**
+   * Removes all handlers for all event types.
+   *
+   * @example
+   * ```typescript
+   * // Remove all handlers for all events
+   * eventBus.clearAll();
+   * ```
+   */
+  public clearAll(): void {
+    for (const event in this.handlers) {
+      delete this.handlers[event];
+    }
+  }
+
+  /**
    * Dispatches an event to all registered handlers.
    *
    * @template E - Event type key

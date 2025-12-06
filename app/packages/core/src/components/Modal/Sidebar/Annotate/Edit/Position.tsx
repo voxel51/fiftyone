@@ -39,6 +39,8 @@ export default function Position() {
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
+  const sceneId = scene?.getSceneId();
+  const useEventHandler = useLighterEventHandler(sceneId);
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -76,9 +78,9 @@ export default function Position() {
     [data?._id, overlay, setData]
   );
 
-  useLighterEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
-  useLighterEventHandler("lighter:overlay-drag-move", handleBoundsChange);
-  useLighterEventHandler("lighter:overlay-resize-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
+  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
   const handleUserInputChange = (coordinateDelta: Partial<Coordinates>) => {
     // synchronize internal state

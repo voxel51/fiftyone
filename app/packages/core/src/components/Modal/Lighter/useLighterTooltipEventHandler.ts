@@ -16,7 +16,12 @@ import { useRecoilCallback } from "recoil";
  * Hook that handles tooltip events for lighter overlays.
  * Converts lighter hover events to tooltip state updates.
  */
-export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
+export const useLighterTooltipEventHandler = (
+  scene: Scene2D,
+  sceneId: string
+) => {
+  const useEventHandler = useLighterEventHandler(sceneId);
+
   const tooltip = fos.useTooltip();
 
   const tooltipEventHandler = useRecoilCallback(
@@ -67,7 +72,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     [tooltip]
   );
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-hover",
     useCallback(
       (payload) => {
@@ -79,7 +84,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     )
   );
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-unhover",
     useCallback(
       (payload) => {
@@ -91,7 +96,7 @@ export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
     )
   );
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-hover-move",
     useCallback(
       (payload) => {
