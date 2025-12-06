@@ -2,13 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type {
-  Dimensions2D,
-  DrawStyle,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 
 /**
  * Types of image sources that can be rendered.
@@ -79,7 +73,7 @@ export interface Renderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D;
+  ): Rect;
   drawLine(
     start: Point,
     end: Point,

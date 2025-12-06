@@ -18,13 +18,7 @@ import {
   SELECTED_COLOR,
 } from "../constants";
 import type { LighterEventGroup } from "../events";
-import type {
-  Dimensions2D,
-  DrawStyle,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
@@ -250,18 +244,94 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
+  /**
+   * Calculates text and background positions based on anchor and offset options.
+   * Offset values are multiplied by (height + padding*3) to provide spacing for stacked labels.
+   */
+  private calculatePosition(
+    position: Point,
+    finalHeight: number,
+    finalWidth: number,
+    options: TextOptions | undefined
+  ): { txt: Point; bg: Rect } {
+    const padding =
+      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+
+    // text height + top padding + bottom padding + gap
+    const verticalOffset = finalHeight + padding * 3;
+
+    const anchor = {
+      vertical: "bottom",
+      horizontal: "left",
+      ...options?.anchor,
+    };
+
+    const offset = {
+      top: 0,
+      bottom: 0,
+      ...options?.offset,
+    };
+
+    const txt: Point = { ...position };
+    const bg: Rect = {
+      ...position,
+      width: finalWidth + padding * 2,
+      height: finalHeight + padding * 2,
+    };
+
+    switch (anchor.vertical) {
+      case "top":
+        txt.y += padding;
+        break;
+      case "center":
+        txt.y -= finalHeight / 2;
+        bg.y -= finalHeight / 2 + padding;
+        break;
+      case "bottom":
+        txt.y -= finalHeight + padding;
+        bg.y -= finalHeight + padding * 2;
+        break;
+    }
+
+    switch (anchor.horizontal) {
+      case "left":
+        txt.x += padding;
+        break;
+      case "center":
+        txt.x -= finalWidth / 2;
+        bg.x -= finalWidth / 2 + padding;
+        break;
+      case "right":
+        txt.x -= finalWidth + padding;
+        bg.x -= finalWidth + padding * 2;
+        break;
+    }
+
+    if (offset.top) {
+      txt.y -= verticalOffset * offset.top;
+      bg.y -= verticalOffset * offset.top;
+    }
+
+    if (offset.bottom) {
+      txt.y += verticalOffset * offset.bottom;
+      bg.y += verticalOffset * offset.bottom;
+    }
+
+    return {
+      txt,
+      bg,
+    };
+  }
+
   drawText(
     text: string,
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D {
+  ): Rect {
     if (text?.length === 0) {
-      return { width: 0, height: 0 };
+      return { x: 0, y: 0, width: 0, height: 0 };
     }
-
-    const padding =
-      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || FONT_FAMILY,
@@ -274,8 +344,8 @@ export class PixiRenderer2D implements Renderer2D {
     });
 
     const pixiText = new PIXI.Text({ text, style: textStyle });
-    pixiText.x = position.x + padding;
-    pixiText.y = position.y - padding;
+    pixiText.x = position.x;
+    pixiText.y = position.y;
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
@@ -284,24 +354,29 @@ export class PixiRenderer2D implements Renderer2D {
       (options?.height || textBounds.height) / this.getScale();
     const finalWidth = textBounds.width / this.getScale();
 
-    pixiText.y -= finalHeight;
+    const { txt, bg } = this.calculatePosition(
+      position,
+      finalHeight,
+      finalWidth,
+      options
+    );
+
+    pixiText.x = txt.x;
+    pixiText.y = txt.y;
 
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
 
       background
-        .rect(
-          position.x,
-          position.y - finalHeight - padding * 2,
-          finalWidth + padding * 2,
-          finalHeight + padding * 2
-        )
+        .rect(bg.x, bg.y, bg.width, bg.height)
         .fill(options.backgroundColor);
+
       this.addToContainer(background, containerId);
     }
+
     this.addToContainer(pixiText, containerId);
 
-    return { width: finalWidth, height: finalHeight };
+    return bg;
   }
 
   drawLine(

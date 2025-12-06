@@ -39,6 +39,18 @@ export interface DrawStyle {
   selectionColor?: string;
 }
 
+export interface Anchor {
+  horizontal?: "left" | "center" | "right";
+  vertical?: "top" | "center" | "bottom";
+}
+
+export interface Offset {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}
+
 /**
  * Text rendering options.
  */
@@ -50,6 +62,8 @@ export interface TextOptions {
   padding?: number;
   maxWidth?: number;
   height?: number;
+  anchor?: Anchor;
+  offset?: Offset;
 }
 
 /**
@@ -209,4 +223,9 @@ export class BoundingBoxPersistence {
     public readonly bounds: Rect,
     public readonly misc: Record<string, any> = {}
   ) {}
+}
+
+export interface RenderMeta {
+  canonicalMediaBounds: Rect;
+  overlayIndex: number;
 }

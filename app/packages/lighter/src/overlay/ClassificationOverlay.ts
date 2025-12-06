@@ -9,7 +9,7 @@ import {
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
-import { RawLookerLabel } from "../types";
+import { RawLookerLabel, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -26,6 +26,7 @@ export interface ClassificationOptions {
  */
 export class ClassificationOverlay extends BaseOverlay implements Selectable {
   private isSelectedState = false;
+  private textBounds?: Rect;
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
@@ -39,55 +40,31 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     return this.id;
   }
 
-  protected renderImpl(renderer: Renderer2D): void {
-    return;
+  protected renderImpl(renderer: Renderer2D, renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
     const style = this.getCurrentStyle();
     if (!style) return;
 
-    const text = this.options.showConfidence
-      ? `${this.options.label.label} (${(this.options.confidence * 100).toFixed(
-          1
-        )}%)`
-      : this.options.label.label;
+    if (this.label && this.label?.label) {
+      const { x, y } = renderMeta.canonicalMediaBounds;
+      const labelPosition = { x, y };
 
-    const { overlayStrokeColor, overlayDash } = getSimpleStrokeStyles({
-      isSelected: this.isSelectedState,
-      strokeColor: style.strokeStyle || "#000000",
-      dashLength: this.isSelectedState ? SELECTED_DASH_LENGTH : undefined,
-    });
+      const confidence =
+        this.label.confidence && !isNaN(this.label.confidence)
+          ? this.label.confidence
+          : "";
+      const textToDraw = `${this.label?.label} ${confidence}`.trim();
 
-    // Draw the classification text
-    renderer.drawText(
-      text,
-      this.options.position,
-      {
-        fontColor: style.strokeStyle || "#000",
-        fontSize: FONT_SIZE,
-        backgroundColor: "rgba(255, 255, 255, 0.9)",
-        padding: 4,
-        maxWidth: 200,
-      },
-      this.containerId
-    );
-
-    // Draw selection border if selected
-    if (overlayStrokeColor && overlayDash) {
-      const bounds = this.getBounds();
-      const borderBounds = {
-        x: bounds.x - 2,
-        y: bounds.y - 2,
-        width: bounds.width + 4,
-        height: bounds.height + 4,
-      };
-      renderer.drawRect(
-        borderBounds,
+      this.textBounds = renderer.drawText(
+        textToDraw,
+        labelPosition,
         {
-          strokeStyle: overlayStrokeColor,
-          lineWidth: 2,
-          dashPattern: [overlayDash, overlayDash],
+          fontColor: "#ffffff",
+          backgroundColor: style.fillStyle || style.strokeStyle || "#000",
+          anchor: { vertical: "top" },
+          offset: { bottom: renderMeta.overlayIndex },
         },
         this.containerId
       );
