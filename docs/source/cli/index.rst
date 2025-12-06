@@ -1215,10 +1215,11 @@ Tools for working with FiftyOne plugins.
       --all-help            show help recursively and exit
 
     available commands:
-      {list,info,download,requirements,create,enable,disable,delete}
+      {list,info,download,search,requirements,create,enable,disable,delete}
         list                List plugins that are installed locally.
         info                Prints information about plugins that are installed locally.
         download            Download plugins from the web.
+        search              Search for available plugins in a GitHub repository.
         requirements        Handles package requirements for plugins.
         create              Creates or initializes a plugin.
         enable              Enables the given plugin(s).
@@ -1634,7 +1635,7 @@ Tools for working with FiftyOne Labs.
 
 .. code-block:: text
 
-    fiftyone labs [-h] [--all-help] {install,uninstall} ...
+    fiftyone labs [-h] [--all-help] {install,uninstall,search} ...
 
 **Arguments**
 
@@ -1648,6 +1649,7 @@ Tools for working with FiftyOne Labs.
       {install,uninstall}
         install             Install FiftyOne Labs features from the web.
         uninstall           Uninstall FiftyOne Labs features from your local machine.
+        search              Search for available plugins in FiftyOne Labs repository.
 
 .. _cli-fiftyone-labs-install:
 
