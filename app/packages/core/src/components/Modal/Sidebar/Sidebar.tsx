@@ -17,6 +17,7 @@ const Explore = () => {
       isDisabled={() => false}
       render={renderEntry}
       useEntries={useModalExplorEntries}
+      modal={true}
     />
   );
 };

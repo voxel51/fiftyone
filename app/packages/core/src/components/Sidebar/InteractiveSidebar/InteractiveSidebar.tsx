@@ -8,16 +8,19 @@ import type { InteractiveItems, RenderEntry } from "./types";
 import useAnimate from "./useAnimate";
 import useExit from "./useExit";
 import useGetNewOrder from "./useGetNewOrder";
+import { useRegisterSidebarCommandHandlers } from "./useRegisterSidebarCommandHandlers";
 import { Direction, MARGIN, calculateItemLayout, getEntryKey } from "./utils";
 
 const InteractiveSidebar = ({
   isDisabled,
   render,
   useEntries,
+  modal,
 }: {
   isDisabled: (entry: fos.SidebarEntry) => boolean;
   render: RenderEntry;
   useEntries: () => [fos.SidebarEntry[], (entries: fos.SidebarEntry[]) => void];
+  modal: boolean;
 }) => {
   const cb = useRef<(() => void) | null>(null);
   const container = useRef<HTMLDivElement | null>(null);
@@ -38,6 +41,9 @@ const InteractiveSidebar = ({
   if (entries instanceof Error) {
     throw entries;
   }
+
+  // Register command handlers for expand/scroll field operations
+  useRegisterSidebarCommandHandlers(container, entries, items, modal);
 
   let group: string;
   order.current = [...entries].map((entry) => getEntryKey(entry));
