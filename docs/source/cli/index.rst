@@ -1356,6 +1356,60 @@ formats:
     # Download specific plugins from a URL
     fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
 
+.. _cli-fiftyone-plugins-search:
+
+Search plugins
+~~~~~~~~~~~~~~~~
+
+Search for available plugins in a GitHub repository.
+
+When searching for plugins, you can provide any of the following
+formats:
+
+-   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+-   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+    ``https://github.com/<user>/<repo>/commit/<commit>``
+-   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+.. note::
+
+    To read from a private GitHub repository that you have access to,
+    provide your GitHub personal access token by setting the
+    ``GITHUB_TOKEN`` environment variable.
+
+.. code-block:: text
+
+    fiftyone plugins search [-h] [--path PATH] URL_OR_GH_REPO
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      URL_OR_GH_REPO  A URL or <user>/<repo>[/<ref>] of a GitHub repository
+
+    optional arguments:
+      -h, --help      show this help message and exit
+      --path PATH     path inside the GitHub repository for plugins search
+
+**Examples**
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a GitHub repository URL
+    fiftyone plugins search <github-repo-url>
+
+.. code-block:: shell
+
+    # Search for plugins by specifying the GitHub repository details
+    fiftyone plugins search <user>/<repo>[/<ref>]
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a path inside the repository
+    fiftyone plugins search <github-repo-url> --path path/to/dir
+    fiftyone plugins search <user>/<repo>[/<ref>] --path path/to/dir
+
 .. _cli-fiftyone-plugins-requirements:
 
 Plugin requirements
@@ -1604,7 +1658,7 @@ Install features from FiftyOne Labs repository.
 
 .. code-block:: text
 
-    fiftyone labs install [-h] [--labs-repo LABS_REPO] [-n [FEATURE_NAMES ...]] [-o]
+    fiftyone labs install [-h] [--branch BRANCH] [-n [FEATURE_NAMES ...]] [-o]
 
 **Arguments**
 
@@ -1612,8 +1666,7 @@ Install features from FiftyOne Labs repository.
 
     optional arguments:
       -h, --help            show this help message and exit
-      --labs-repo LABS_REPO
-                            link to FiftyOne Labs repo or branch
+      --branch BRANCH       name of FiftyOne Labs branch
       -n [FEATURE_NAMES ...], --feature-names [FEATURE_NAMES ...]
                             a labs feature name or list of feature names to download
       -o, --overwrite       whether to overwrite existing features
@@ -1625,6 +1678,11 @@ Install features from FiftyOne Labs repository.
 
     # Install labs features from FiftyOne Labs repo
     fiftyone labs install
+
+.. code-block:: shell
+
+    # Install labs features from FiftyOne Labs repo
+    fiftyone labs install --branch <branch_name>
 
 .. code-block:: shell
 
@@ -1669,6 +1727,44 @@ Uninstall FiftyOne Labs features from your local machine.
 
     # Uninstall all labs features from local disk
     fiftyone labs uninstall --all
+
+.. _cli-fiftyone-labs-search:
+
+Search Labs features
+~~~~~~~~~~~~~~~~~~~~
+
+Search for available plugins in FiftyOne Labs repository.
+
+.. code-block:: text
+
+    fiftyone labs search [-h] [--branch BRANCH] [--path PATH]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help       show this help message and exit
+      --branch BRANCH  name of FiftyOne Labs branch
+      --path PATH      path inside the Labs repository for plugins search
+
+**Examples**
+
+.. code-block:: shell
+
+    # Search for plugins inside the Labs repository
+    fiftyone labs search
+
+.. code-block:: shell
+
+    # Search for plugins by specifying the Labs repository branch
+    fiftyone labs search --branch <branch_name>
+
+.. code-block:: shell
+
+    # Search for plugins by specifying a path inside the Labs repository
+    fiftyone labs search --path path/to/dir
+    fiftyone labs search --branch <branch_name> --path path/to/dir
 
 .. _cli-fiftyone-utils:
 
