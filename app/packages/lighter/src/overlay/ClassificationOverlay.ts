@@ -65,6 +65,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
           backgroundColor: style.fillStyle || style.strokeStyle || "#000",
           anchor: { vertical: "top" },
           offset: { bottom: renderMeta.overlayIndex },
+          rounded: 4,
         },
         this.containerId
       );

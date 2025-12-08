@@ -64,6 +64,7 @@ export interface TextOptions {
   height?: number;
   anchor?: Anchor;
   offset?: Offset;
+  rounded?: number;
 }
 
 /**
