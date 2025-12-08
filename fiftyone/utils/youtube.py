@@ -120,8 +120,6 @@ def download_youtube_videos(
             messages for videos that were attempted to be downloaded, but
             failed
     """
-    # Force single-threaded for yt-dlp thread-safety
-    # yt-dlp has threading issues when downloads fail mid-batch
     use_threads = False
     num_workers = 1
     num_workers = _parse_num_workers(num_workers, use_threads=use_threads)
@@ -321,37 +319,31 @@ def _do_download(task):
         if video_path is not None and ext is None:
             ext = os.path.splitext(video_path)[1]
 
-        # Create a unique subdirectory for this download to avoid conflicts
         download_tmp_dir = os.path.join(tmp_dir, str(uuid.uuid4()))
         os.makedirs(download_tmp_dir, exist_ok=True)
 
-        # Build yt-dlp options
         ydl_opts = _build_yt_dlp_opts(
             download_tmp_dir, ext, only_progressive, resolution, clip_segment
         )
 
-        # Download with yt-dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-        # Get downloaded file path
-        if 'requested_downloads' in info and info['requested_downloads']:
-            downloaded_file = info['requested_downloads'][0]['filepath']
+        requested_downloads = info.get('requested_downloads')
+        if requested_downloads:
+            downloaded_file = requested_downloads[0]['filepath']
         else:
-            # Fallback: find file in download_tmp_dir
             files = [f for f in os.listdir(download_tmp_dir) if not f.endswith('.part') and os.path.isfile(os.path.join(download_tmp_dir, f))]
             if not files:
                 raise ValueError("No video file was downloaded")
             downloaded_file = os.path.join(download_tmp_dir, files[0])
 
-        # Determine final path
         if video_path is None:
             filename = os.path.basename(downloaded_file)
             if ext is not None and not filename.endswith(ext):
                 filename = os.path.splitext(filename)[0] + ext
             video_path = os.path.join(download_dir, filename)
         else:
-            # Check if extension matches
             downloaded_ext = os.path.splitext(downloaded_file)[1]
             requested_ext = os.path.splitext(video_path)[1]
             if downloaded_ext != requested_ext and requested_ext:
@@ -361,11 +353,9 @@ def _do_download(task):
                 )
                 video_path = os.path.splitext(video_path)[0] + downloaded_ext
 
-        # Move to final location
         if downloaded_file != video_path:
             etau.move_file(downloaded_file, video_path)
 
-        # Cleanup temporary download directory
         shutil.rmtree(download_tmp_dir, ignore_errors=True)
 
     except Exception as e:
@@ -376,7 +366,6 @@ def _do_download(task):
 
 
 def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment):
-    """Build yt-dlp options dict"""
     opts = {
         'quiet': True,
         'no_warnings': True,
@@ -386,33 +375,29 @@ def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment)
         'retries': 3,
     }
 
-    # Build format selector
     format_selector = _build_format_selector(only_progressive, resolution)
     if format_selector:
         opts['format'] = format_selector
 
-    # Handle clip segments
     if clip_segment is not None:
         start_time, end_time = clip_segment
         if start_time is None:
             start_time = 0
+        if end_time is None:
+            end_time = float('inf')
 
-        # Set download range (end_time can be None for open-ended clips)
         opts['download_ranges'] = yt_dlp.utils.download_range_func(
             None, [(start_time, end_time)]
         )
         opts['force_keyframes_at_cuts'] = True
 
-    # Prefer merging to single file
     opts['merge_output_format'] = ext[1:] if ext else 'mp4'
 
     return opts
 
 
 def _build_format_selector(only_progressive, resolution):
-    """Build yt-dlp format selector string"""
     if only_progressive:
-        # Progressive means single file with both video and audio tracks
         if etau.is_numeric(resolution):
             return 'b[height<=%d][vcodec!=none][acodec!=none]/b' % resolution
         elif resolution == "lowest":
@@ -420,7 +405,6 @@ def _build_format_selector(only_progressive, resolution):
         else:
             return 'b[vcodec!=none][acodec!=none]/b'
     else:
-        # Allow separate video+audio streams that will be merged
         if etau.is_numeric(resolution):
             return 'bv[height<=%d]+ba/b' % resolution
         elif resolution == "lowest":
