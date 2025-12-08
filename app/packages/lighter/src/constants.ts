@@ -14,6 +14,11 @@ export const LABEL_ARCHETYPE_PRIORITY = {
 export const DEFAULT_TEXT_PADDING = 4;
 
 /**
+ * Default gap between stacked text boxes
+ */
+export const DEFAULT_TEXT_GAP = 2;
+
+/**
  * Default stroke width for overlays (matches Looker's STROKE_WIDTH)
  */
 export const STROKE_WIDTH = 3;

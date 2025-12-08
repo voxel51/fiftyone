@@ -6,6 +6,7 @@ import { getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
+  DEFAULT_TEXT_GAP,
   DEFAULT_TEXT_PADDING,
   FONT_FAMILY,
   FONT_SIZE,
@@ -256,11 +257,10 @@ export class PixiRenderer2D implements Renderer2D {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
-    position.x += padding / 2;
-    position.y += padding / 2;
+    position.y += DEFAULT_TEXT_GAP;
 
-    // text height + top padding + bottom padding + gap (gap = padding / 2)
-    const verticalOffset = finalHeight + padding * 2.5;
+    // text height + top padding + bottom padding + gap
+    const verticalOffset = finalHeight + padding * 2 + DEFAULT_TEXT_GAP;
 
     const anchor = {
       vertical: "bottom",
@@ -372,6 +372,7 @@ export class PixiRenderer2D implements Renderer2D {
       if (options?.rounded) {
         background
           .roundRect(bg.x, bg.y, bg.width, bg.height, options.rounded)
+          .rect(bg.x, bg.y, bg.width / 2, bg.height)
           .fill(options.backgroundColor);
       } else {
         background
