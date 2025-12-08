@@ -300,7 +300,7 @@ class SaveContext(object):
                     batcher=False,
                 )[0]
                 encoded_size += res.bulk_api_result.get("nBytes", 0)
-            except Exception as e:
+            except Exception:
                 # requeue to avoid data loss
                 with self.frames_lock:
                     self._frame_ops.extend(frame_ops)
