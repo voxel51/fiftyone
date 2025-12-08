@@ -40,7 +40,7 @@ export default function Position() {
 
   const { scene } = useLighter();
   const sceneId = scene?.getSceneId();
-  const useEventHandler = useLighterEventHandler(sceneId);
+  const useEventHandler = useLighterEventHandler(sceneId ?? "lighter");
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {

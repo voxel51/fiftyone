@@ -12,7 +12,9 @@ const STORE = getDefaultStore();
 
 export default function useFocus() {
   const { scene } = useLighter();
-  const useEventHandler = useLighterEventHandler(scene.getSceneId());
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? "lighter"
+  );
   const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
   const onExit = useExit(false);
