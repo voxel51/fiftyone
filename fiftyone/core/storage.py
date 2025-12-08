@@ -200,7 +200,7 @@ class FileCollection(list):
         for f in self:
             try:
                 f.close()
-            except AttributeError:
+            except Exception:  # catch all so we continue to close the rest
                 pass
         return False
 
