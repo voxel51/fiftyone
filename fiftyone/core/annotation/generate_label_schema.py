@@ -10,8 +10,9 @@ import eta.core.utils as etau
 
 import fiftyone.core.annotation.constants as foac
 from fiftyone.core.annotation.validate_label_schema import (
-    validate_field_label_schema,
+    validate_label_schema,
 )
+import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
@@ -53,8 +54,8 @@ def get_supported_app_annotation_fields(sample_collection):
         a list of supported fields
     """
     _ensure_collection_is_supported(sample_collection)
-    fields = _get_all_supported_fields(sample_collection)
-    return _flatten_fields(sample_collection, fields)
+    fields = foau.get_all_supported_fields(sample_collection)
+    return foau.flatten_fields(sample_collection, fields)
 
 
 def generate_label_schema(sample_collection, fields=None, scan_samples=True):
@@ -72,9 +73,10 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     Currently supported  media types for the collection are ``image`` and
     ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
-    Primitives and components::
+    **Primitives and components**
 
     Supported primitive types are:
+
         -   ``bool``: :class:`fiftyone.core.fields.BooleanField`
         -   ``date``: :class:`fiftyone.core.fields.DateField`
         -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
@@ -95,6 +97,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         -   ``str``: :class:`fiftyone.core.fields.StringField`
 
     Supported ``bool`` components are:
+
         -   ``checkbox``
         -   ``toggle`` - the default
 
@@ -103,6 +106,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     ``dict`` only supports the ``json`` component.
 
     Supported ``float`` and ``int`` components are:
+
         -   ``dropdown``
         -   ``radio``
         -   ``slider``: the default when ``scan_samples`` is ``True`` and
@@ -114,11 +118,13 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     ``True`` with no other settings.
 
     Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
+
         -   ``checkboxes``
         -   ``dropdown``
         -   ``text`` - the default
 
     Supported ``list<str>`` components are:
+
         -   ``checkboxes``: the default if ``<=5`` values are scanned
         -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
             scanned
@@ -126,6 +132,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
             scanned, or ``scan_samples`` is ``False``
 
     Supported ``str`` type components are:
+
         -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
             scanned
         -   ``radio``: the default if ``<=5`` values are scanned
@@ -145,7 +152,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
     ``slider`` requires the ``range: [min, max]`` setting.
 
-    Labels::
+    **Labels**
 
     The ``label`` subfield of all label types are configured via ``classes``
     and support the same settings as a ``str`` type. See the example output
@@ -165,7 +172,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     label schema setting must be ``True``, e.g. ``created_at`` and
     ``last_modified_at`` must be read only.
 
-    Embedded documents::
+    **Embedded documents**
 
     One level of nesting is supported via ``dot.notation`` for
     :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the default
@@ -185,83 +192,85 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
 
         fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
 
-        #{
-        #    'created_at': {
-        #        'type': 'datetime',
-        #        'component': 'datepicker',
-        #        'read_only': True,
-        #    },
-        #    'filepath': {'type': 'str', 'component': 'text'},
-        #    'ground_truth': {
-        #        'attributes': {
-        #            'attributes': {'type': 'dict', 'component': 'json'},
-        #            'confidence': {'type': 'float', 'component': 'text'},
-        #            'id': {
-        #                'type': 'id',
-        #                'component': 'text',
-        #                'read_only': True
-        #            },
-        #            'index': {'type': 'int', 'component': 'text'},
-        #            'mask_path': {'type': 'str', 'component': 'text'},
-        #            'tags': {'type': 'list<str>', 'component': 'text'},
-        #        },
-        #        'classes': [
-        #            'airplane',
-        #            '...',
-        #            'zebra',
-        #        ],
-        #        'component': 'dropdown',
-        #        'type': 'detections',
-        #    },
-        #    'id': {'type': 'id', 'component': 'text', 'read_only': True},
-        #    'last_modified_at': {
-        #        'type': 'datetime',
-        #        'component': 'datepicker',
-        #        'read_only': True,
-        #    },
-        #    'metadata.height': {'type': 'int', 'component': 'text'},
-        #    'metadata.mime_type': {'type': 'str', 'component': 'text'},
-        #    'metadata.num_channels': {'type': 'int', 'component': 'text'},
-        #    'metadata.size_bytes': {'type': 'int', 'component': 'text'},
-        #    'metadata.width': {'type': 'int', 'component': 'text'},
-        #    'predictions': {
-        #        'attributes': {
-        #            'attributes': {'type': 'dict', 'component': 'json'},
-        #            'confidence': {
-        #                'type': 'float',
-        #                'component': 'slider',
-        #                'range': [0.05003104358911514, 0.9999035596847534],
-        #                'default': 0.05003104358911514,
-        #            },
-        #            'id': {
-        #                'type': 'id',
-        #                'component': 'text',
-        #                'read_only': True
-        #            },
-        #            'index': {'type': 'int', 'component': 'text'},
-        #            'mask_path': {'type': 'str', 'component': 'text'},
-        #            'tags': {'type': 'list<str>', 'component': 'text'},
-        #        },
-        #        'classes': [
-        #            'airplane',
-        #            '...',
-        #            'zebra',
-        #        ],
-        #        'component': 'dropdown',
-        #        'type': 'detections',
-        #    },
-        #    'tags': {
-        #        'type': 'list<str>',
-        #        'component': 'checkboxes',
-        #        'values': ['validation'],
-        #    },
-        #    'uniqueness': {
-        #        'type': 'float',
-        #        'component': 'slider',
-        #        'range': [0.15001302256126986, 1.0],
-        #        'default': 0.15001302256126986,
-        #    },
-        #}
+    Output::
+
+        {
+            'created_at': {
+                'type': 'datetime',
+                'component': 'datepicker',
+                'read_only': True,
+            },
+            'filepath': {'type': 'str', 'component': 'text'},
+            'ground_truth': {
+                'attributes': {
+                    'attributes': {'type': 'dict', 'component': 'json'},
+                    'confidence': {'type': 'float', 'component': 'text'},
+                    'id': {
+                        'type': 'id',
+                        'component': 'text',
+                        'read_only': True
+                    },
+                    'index': {'type': 'int', 'component': 'text'},
+                    'mask_path': {'type': 'str', 'component': 'text'},
+                    'tags': {'type': 'list<str>', 'component': 'text'},
+                },
+                'classes': [
+                    'airplane',
+                    '...',
+                    'zebra',
+                ],
+                'component': 'dropdown',
+                'type': 'detections',
+            },
+            'id': {'type': 'id', 'component': 'text', 'read_only': True},
+            'last_modified_at': {
+                'type': 'datetime',
+                'component': 'datepicker',
+                'read_only': True,
+            },
+            'metadata.height': {'type': 'int', 'component': 'text'},
+            'metadata.mime_type': {'type': 'str', 'component': 'text'},
+            'metadata.num_channels': {'type': 'int', 'component': 'text'},
+            'metadata.size_bytes': {'type': 'int', 'component': 'text'},
+            'metadata.width': {'type': 'int', 'component': 'text'},
+            'predictions': {
+                'attributes': {
+                    'attributes': {'type': 'dict', 'component': 'json'},
+                    'confidence': {
+                        'type': 'float',
+                        'component': 'slider',
+                        'range': [0.05003104358911514, 0.9999035596847534],
+                        'default': 0.05003104358911514,
+                    },
+                    'id': {
+                        'type': 'id',
+                        'component': 'text',
+                        'read_only': True
+                    },
+                    'index': {'type': 'int', 'component': 'text'},
+                    'mask_path': {'type': 'str', 'component': 'text'},
+                    'tags': {'type': 'list<str>', 'component': 'text'},
+                },
+                'classes': [
+                    'airplane',
+                    '...',
+                    'zebra',
+                ],
+                'component': 'dropdown',
+                'type': 'detections',
+            },
+            'tags': {
+                'type': 'list<str>',
+                'component': 'checkboxes',
+                'values': ['validation'],
+            },
+            'uniqueness': {
+                'type': 'float',
+                'component': 'slider',
+                'range': [0.15001302256126986, 1.0],
+                'default': 0.15001302256126986,
+            },
+        }
 
     Args:
         sample_collection: the
@@ -270,22 +279,26 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         fields (None): a field name, ``embedded.field.name`` or iterable of
             such values
         scan_samples (False): whether to scan the collection to populate
-            component settings (ranges, values, defaults, etc.)
+            component settings based on actual field values (ranges,
+            values, defaults, etc). By default, the label schema is
+            generated from *only* the statically available information in
+            the dataset's field schema
 
     Raises:
         ValueError: if the sample collection or field is not supported
 
     Returns:
-        a label schema ``dict``
+        a label schema ``dict``, or an individual field's label schema ``dict``
+        if only one field is provided
     """
     is_scalar = etau.is_str(fields)
     if is_scalar:
         fields = [fields]
     elif fields is None:
-        fields = _get_all_supported_fields(sample_collection)
+        fields = foau.get_all_supported_fields(sample_collection)
 
     fields = list(fields)
-    fields = _flatten_fields(sample_collection, fields)
+    fields = foau.flatten_fields(sample_collection, fields)
 
     schema = {}
     for field_name in fields:
@@ -293,8 +306,10 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
             sample_collection, field_name, scan_samples
         )
 
-        validate_field_label_schema(
-            sample_collection, field_name, label_schema
+        validate_label_schema(
+            sample_collection,
+            label_schema,
+            fields=field_name,
         )
         schema[field_name] = label_schema
 
@@ -302,60 +317,6 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         return next(iter(schema.values()))
 
     return schema
-
-
-def _flatten_fields(collection, fields):
-    flattened_fields = []
-    for field_name in fields:
-        field = collection.get_field(field_name)
-
-        if field is None:
-            raise ValueError(f"field '{field_name}' does not exist")
-
-        if not isinstance(field, fof.EmbeddedDocumentField):
-            flattened_fields.append(field_name)
-            continue
-
-        if issubclass(field.document_type, fol.Label):
-            flattened_fields.append(field_name)
-
-        for subfield in field.fields:
-            if not _is_supported_field(subfield, collection.media_type):
-                continue
-
-            flattened_fields.append(f"{field_name}.{subfield.name}")
-
-    return sorted(set(flattened_fields))
-
-
-def _get_all_supported_fields(collection):
-    fields = collection.get_field_schema()
-    media_type = collection.media_type
-
-    result = set()
-    for field_name, field in fields.items():
-
-        if _is_supported_field(field, media_type):
-            result.add(field_name)
-            continue
-
-        if field.document_type in foac.SUPPORTED_DOC_TYPES:
-            result.add(field_name)
-            continue
-
-        if field.document_type in foac.SUPPORTED_LABEL_TYPES:
-            result.add(field_name)
-            continue
-
-        if (
-            media_type in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE
-            and field.document_type
-            in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
-        ):
-            result.add(field_name)
-            continue
-
-    return sorted(result)
 
 
 def _generate_field_label_schema(collection, field_name, scan_samples):
@@ -527,43 +488,3 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
         pass
 
     return settings
-
-
-def _is_supported_field(field, media_type, app_annotation_support=False):
-    if _is_supported_primitive(field):
-        return True
-
-    if not isinstance(field, fof.EmbeddedDocumentField):
-        return False
-
-    if app_annotation_support:
-
-        if field.document_type in foac.SUPPORTED_LABEL_TYPES:
-            return True
-
-        if (
-            field.document_type
-            in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
-        ):
-            return True
-
-        return False
-
-    if (
-        issubclass(field.document_type, fol.Label)
-        and field.document_type not in foac.UNSUPPORTED_LABEL_TYPES
-    ):
-        return True
-
-    return False
-
-
-def _is_supported_primitive(field):
-    if isinstance(field, foac.SUPPORTED_PRIMITIVES):
-        return True
-
-    if isinstance(field, fof.ListField):
-        if isinstance(field.field, foac.SUPPORTED_LISTS_OF_PRIMITIVES):
-            return True
-
-    return False

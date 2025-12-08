@@ -11,7 +11,7 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
-from fiftyone.core.annotation import validate_field_label_schema
+from fiftyone.core.annotation import validate_label_schema
 
 from decorators import drop_datasets
 
@@ -22,40 +22,40 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("bool_field", fo.BooleanField)
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "bool_field",
             {"type": "bool", "component": "checkbox"},
+            fields="bool_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "bool_field",
             {"type": "bool", "component": "toggle"},
+            fields="bool_field",
         )
 
         # wrong 'type'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_field",
                 {"type": "str", "component": "checkbox"},
+                fields="bool_field",
             )
 
         # invalid 'component'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_field",
                 {"type": "bool", "component": "text"},
+                fields="bool_field",
             )
 
         # 'values' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_field",
                 {"type": "bool", "component": "toggle", "values": None},
+                fields="bool_field",
             )
 
     @drop_datasets
@@ -65,38 +65,38 @@ class LabelSchemaValidationTests(unittest.TestCase):
             "bool_list_field", fo.ListField, subfield=fo.BooleanField
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "bool_list_field",
             {"type": "list<bool>", "component": "dropdown", "values": [False]},
+            fields="bool_list_field",
         )
 
         # wrong 'type'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_list_field",
                 {"type": "bool", "component": "dropdown", "values": [False]},
+                fields="bool_list_field",
             )
 
         # invalid 'component'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_list_field",
                 {"type": "list<bool>", "component": "radio"},
+                fields="bool_list_field",
             )
 
         # 'values' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "bool_list_field",
                 {
                     "type": "list<bool>",
                     "component": "text",
                     "values": None,
                 },
+                fields="bool_list_field",
             )
 
     @drop_datasets
@@ -104,18 +104,18 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("date_field", fo.DateField)
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "date_field",
             {"type": "date", "component": "datepicker"},
+            fields="date_field",
         )
 
         # wrong 'type'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "date_field",
                 {"type": "datetime", "component": "datepicker"},
+                fields="date_field",
             )
 
     @drop_datasets
@@ -123,18 +123,18 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("datetime_field", fo.DateTimeField)
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "datetime_field",
             {"type": "datetime", "component": "datepicker"},
+            fields="datetime_field",
         )
 
         # wrong 'type'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "datetime_field",
                 {"type": "date", "component": "datepicker"},
+                fields="datetime_field",
             )
 
     @drop_datasets
@@ -142,48 +142,48 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("dict_field", fo.DictField)
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "dict_field",
             {"type": "dict", "component": "json"},
+            fields="dict_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "dict_field",
             {
                 "type": "dict",
                 "component": "json",
                 "default": {"hello": "world"},
             },
+            fields="dict_field",
         )
 
         # invalid 'component'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "dict_field",
                 {"type": "dict", "component": "text"},
+                fields="dict_field",
             )
 
         # wrong 'type'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "dict_field",
                 {"type": "str", "component": "json"},
+                fields="dict_field",
             )
 
         # invalid 'default'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "dict_field",
                 {
                     "type": "dict",
                     "component": "json",
                     "default": {"invalid": Exception},
                 },
+                fields="dict_field",
             )
 
     @drop_datasets
@@ -194,213 +194,213 @@ class LabelSchemaValidationTests(unittest.TestCase):
 
         ### int
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "int_field",
             {"type": "int", "component": "text", "default": 1},
+            fields="int_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "int_field",
             {
                 "type": "int",
                 "component": "slider",
                 "range": [0, 1],
                 "default": 0,
             },
+            fields="int_field",
         )
 
         # 'range' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                 },
+                fields="int_field",
             )
 
         # 'default' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                     "range": [0, 1],
                 },
+                fields="int_field",
             )
 
         # 'default' is not an int
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {"type": "int", "component": "text", "default": 1.0},
+                fields="int_field",
             )
 
         # 'default' is outside 'range'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                     "range": [0, 1],
                     "default": 2,
                 },
+                fields="int_field",
             )
 
         # 'range' has a float
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                     "range": [0.5, 1],
                     "default": 1,
                 },
+                fields="int_field",
             )
 
         # 'range' is invalid
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                     "range": [1, 0],
                     "default": 1,
                 },
+                fields="int_field",
             )
 
         # 'range' is invalid
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {
                     "type": "int",
                     "component": "slider",
                     "range": [1, 1],
                     "default": 1,
                 },
+                fields="int_field",
             )
 
         # int does not accept 'precision'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_field",
                 {"type": "int", "component": "text", "precision": 1},
+                fields="int_field",
             )
 
         ### float
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "float_field",
             {
                 "type": "float",
                 "component": "text",
                 "default": 1.0,
                 "precision": 1,
             },
+            fields="float_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "float_field",
             {
                 "type": "float",
                 "component": "slider",
                 "range": [0.0, 1.0],
                 "default": 0.0,
             },
+            fields="float_field",
         )
 
         # 'range' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {
                     "type": "float",
                     "component": "slider",
                 },
+                fields="float_field",
             )
 
         # 'default' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {
                     "type": "float",
                     "component": "slider",
                     "range": [0.0, 1.0],
                 },
+                fields="float_field",
             )
 
         # 'default' is not a float
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {"type": "float", "component": "text", "default": 1},
+                fields="float_field",
             )
 
         # 'precision' is negative
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {"type": "float", "component": "text", "precision": -1},
+                fields="float_field",
             )
 
         # 'values' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {
                     "type": "float",
                     "component": "text",
                     "precision": 1,
                     "values": [1],
                 },
+                fields="float_field",
             )
 
         # 'default' not in 'range'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {
                     "type": "float",
                     "component": "slider",
                     "range": [0.0, 1.0],
                     "default": 2.0,
                 },
+                fields="float_field",
             )
 
         # 'range' is not valid
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_field",
                 {
                     "type": "float",
                     "component": "slider",
                     "range": [1.0, 0.0],
                 },
+                fields="float_field",
             )
 
     @drop_datasets
@@ -415,80 +415,79 @@ class LabelSchemaValidationTests(unittest.TestCase):
 
         ### int
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "int_list_field",
             {"type": "list<int>", "component": "text"},
+            fields="int_list_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "int_list_field",
             {
                 "type": "list<int>",
                 "component": "dropdown",
                 "values": [1],
             },
+            fields="int_list_field",
         )
 
         # invalid 'component'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_list_field",
                 {
                     "type": "list<int>",
                     "component": "slider",
                     "range": [0, 1],
                     "defailt": 1,
                 },
+                fields="int_list_field",
             )
 
         # 'values' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_list_field",
                 {"type": "list<int>", "component": "text", "values": [1]},
+                fields="int_list_field",
             )
 
         # 'values' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_list_field",
                 {
                     "type": "list<int>",
                     "component": "dropdown",
                 },
+                fields="int_list_field",
             )
 
         # incompatible 'default'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "int_list_field",
                 {
                     "type": "list<int>",
                     "component": "dropdown",
                     "values": [1],
                     "default": [2],
                 },
+                fields="int_list_field",
             )
 
         ### float
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "float_list_field",
             {"type": "list<float>", "component": "text", "precision": 1},
+            fields="float_list_field",
         )
 
         # 'precision' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "float_list_field",
                 {
                     "type": "list<float>",
                     "component": "dropdown",
@@ -496,6 +495,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": [1.0],
                     "precision": 1,
                 },
+                fields="float_list_field",
             )
 
     @drop_datasets
@@ -503,48 +503,48 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("uuid_field", fof.UUIDField)
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "id",
             {"type": "id", "component": "text", "read_only": True},
+            fields="id",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "uuid_field",
             {"type": "id", "component": "text", "read_only": True},
+            fields="uuid_field",
         )
 
         # id must be read only
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "id",
                 {
                     "type": "id",
                     "component": "text",
                 },
+                fields="id",
             )
 
         # id must be read only
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "id",
                 {"type": "id", "component": "text", "read_only": False},
+                fields="id",
             )
 
         # 'default' is not valid
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "id",
                 {
                     "type": "id",
                     "component": "text",
                     "default": "",
                     "read_only": True,
                 },
+                fields="id",
             )
 
     @drop_datasets
@@ -552,62 +552,64 @@ class LabelSchemaValidationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample_field("str_field", fo.StringField)
 
-        validate_field_label_schema(
-            dataset, "str_field", {"type": "str", "component": "text"}
+        validate_label_schema(
+            dataset,
+            {"type": "str", "component": "text"},
+            fields="str_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "str_field",
             {"type": "str", "component": "dropdown", "values": ["value"]},
+            fields="str_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "str_field",
             {
                 "type": "str",
                 "component": "radio",
                 "values": ["value"],
                 "default": "value",
             },
+            fields="str_field",
         )
 
         # 'values' is not applicable
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_field",
                 {"type": "str", "component": "text", "values": ["value"]},
+                fields="str_field",
             )
 
         # 'default' is required
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_field",
                 {"type": "str", "component": "radio", "values": ["value"]},
+                fields="str_field",
             )
 
         # 'values' is required
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_field",
                 {"type": "str", "component": "radio", "default": "value"},
+                fields="str_field",
             )
 
         # 'default' is not in 'values'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_field",
                 {
                     "type": "str",
                     "component": "radio",
                     "default": "value",
                     "values": ["other"],
                 },
+                fields="str_field",
             )
 
     @drop_datasets
@@ -617,58 +619,58 @@ class LabelSchemaValidationTests(unittest.TestCase):
             "str_list_field", fo.ListField, subfield=fo.StringField
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "str_list_field",
             {
                 "type": "list<str>",
                 "component": "checkboxes",
                 "values": ["value"],
             },
+            fields="str_list_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "str_list_field",
             {
                 "type": "list<str>",
                 "component": "dropdown",
                 "values": ["value"],
                 "default": ["value"],
             },
+            fields="str_list_field",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "str_list_field",
             {
                 "type": "list<str>",
                 "component": "text",
             },
+            fields="str_list_field",
         )
 
         # 'values' is not provided
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_list_field",
                 {
                     "type": "list<str>",
                     "component": "checkboxes",
                 },
+                fields="str_list_field",
             )
 
         # 'default' has duplicates
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "str_list_field",
                 {
                     "type": "list<str>",
                     "component": "checkboxes",
                     "values": ["value"],
                     "default": ["value", "value"],
                 },
+                fields="str_list_field",
             )
 
     @drop_datasets
@@ -684,17 +686,16 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "detections",
             {
                 "type": "detections",
             },
+            fields="detections",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "detection",
             {
                 "attributes": {
                     "id": {
@@ -707,11 +708,11 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "component": "dropdown",
                 "type": "detection",
             },
+            fields="detection",
         )
 
-        validate_field_label_schema(
+        validate_label_schema(
             dataset,
-            "detections",
             {
                 "attributes": {
                     "id": {
@@ -724,12 +725,12 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "component": "dropdown",
                 "type": "detections",
             },
+            fields="detections",
         )
 
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "detections",
                 {
                     "attributes": {
                         "id": {
@@ -743,13 +744,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": "three",
                     "type": "detections",
                 },
+                fields="detections",
             )
 
         # undefined subfield 'missing'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "detections",
                 {
                     "attributes": {
                         "missing": {
@@ -759,13 +760,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     },
                     "type": "detections",
                 },
+                fields="detections",
             )
 
         # reserved attribute 'bounding_box'
-        with self.assertRaises(ValueError):
-            validate_field_label_schema(
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
                 dataset,
-                "detections",
                 {
                     "attributes": {
                         "bounding_box": {
@@ -775,13 +776,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     },
                     "type": "detections",
                 },
+                fields="detections",
             )
 
         # reserved attributes 'bounding_box' and 'label'
         with self.assertRaises(ExceptionGroup):
-            validate_field_label_schema(
+            validate_label_schema(
                 dataset,
-                "detections",
                 {
                     "attributes": {
                         "bounding_box": {
@@ -792,4 +793,5 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     },
                     "type": "detections",
                 },
+                fields="detections",
             )

@@ -10,12 +10,15 @@ from datetime import date, datetime
 from exceptiongroup import ExceptionGroup
 import json
 
+import eta.core.utils as etau
+
 import fiftyone.core.annotation.constants as foac
+import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
-def validate_field_label_schema(sample_collection, field_name, label_schema):
+def validate_label_schema(sample_collection, label_schema, fields=None):
     """Validates a label schema for a given field on a
     :class:`fiftyone.core.collections.SampleCollection`.  See
     :func:`generate_label_schema` for acceptable label schema specifications
@@ -23,15 +26,45 @@ def validate_field_label_schema(sample_collection, field_name, label_schema):
     Args:
         sample_collection: the
             :class:`fiftyone.core.collections.SampleCollection`
-        field_name: the field name or ``embedded.field`` name
-        label_schema: a label schema ``dict``
+        label_schema: a label schema ``dict`` or an individual field's label
+            schema ``dict`` if only one field is provided
+        fields (None): a field name, ``embedded.field.name`` or iterable of
+            such values
 
     Raises:
-        ValueError: if the label schema is invalid for the given field
+        ValueError: if the label schema is invalid
     """
+    is_scalar = etau.is_str(fields)
+
+    if is_scalar:
+        label_schema = {fields: label_schema}
+        fields = [fields]
+    elif fields is None:
+        fields = sorted(label_schema.keys())
+
+    supported_fields = foau.get_all_supported_fields(
+        sample_collection, flatten=True
+    )
+    exceptions = []
+    for field in fields:
+        try:
+            if field not in supported_fields:
+                raise ValueError(f"field '{field}' is not supported")
+
+            _validate_field_label_schema(
+                sample_collection, field, label_schema[field]
+            )
+        except Exception as exc:
+            exceptions.append(exc)
+
+    if exceptions:
+        raise ExceptionGroup(f"invalid label schema", exceptions)
+
+
+def _validate_field_label_schema(sample_collection, field_name, label_schema):
     field = sample_collection.get_field(field_name)
     if field is None:
-        raise ValueError(f"field {field_name} does not exist")
+        raise ValueError(f"field '{field_name}' does not exist")
 
     field_is_read_only = field.read_only
 
@@ -205,7 +238,7 @@ def _validate_float_int_field_label_schema(
 
     for key, value in label_schema.items():
         if key not in settings:
-            if _type == int or key not in foac.FLOAT_SETTINGS:
+            if _type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if key == foac.COMPONENT and value not in foac.FLOAT_INT_COMPONENTS:
@@ -406,7 +439,7 @@ def _validate_attribute(
 ):
     if attribute not in subfields:
         raise ValueError(
-            f"attribute '{attribute}' does not exist on {class_name} field"
+            f"'{attribute}' attribute does not exist on {class_name} field"
             f" '{field_name}'"
         )
 
@@ -421,7 +454,8 @@ def _validate_attribute(
         _DETECTIONS,
     }:
         raise ValueError(
-            f"'bounding_box' is not configurable for field '{field_name}'"
+            f"'bounding_box' attribute is not configurable for field "
+            f"'{field_name}'"
         )
 
     if attribute == foac.POINTS and class_name in {
@@ -429,10 +463,10 @@ def _validate_attribute(
         _POLYLINES,
     }:
         raise ValueError(
-            f"'points' is not configurable for field '{field_name}'"
+            f"'points' attribute is not configurable for field '{field_name}'"
         )
 
-    validate_field_label_schema(
+    _validate_field_label_schema(
         collection, f"{path}.{attribute}", label_schema
     )
 
@@ -467,7 +501,7 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
     if len(exceptions) > 1:
         raise ExceptionGroup(
-            f"invalid attribute(s) for field '{field_name}'", exceptions
+            f"invalid attributes for field '{field_name}'", exceptions
         )
     elif exceptions:
         raise exceptions[0]
@@ -489,10 +523,10 @@ def _validate_default(field_name, value, _type, _range=None, values=None):
                 json_str = json.dumps(value)
                 if json_str != json.dumps(json.loads(json_str)):
                     raise Exception()
-            except Exception:
+            except Exception as exc:
                 raise ValueError(
                     f"invalid json 'default' for field '{field_name}'"
-                )
+                ) from exc
 
         return
 
