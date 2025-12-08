@@ -156,6 +156,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "default": {"hello": "world"},
             },
             fields="dict_field",
+            _allow_default=True,
         )
 
         # invalid 'component'
@@ -184,6 +185,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": {"invalid": Exception},
                 },
                 fields="dict_field",
+                _allow_default=True,
             )
 
     @drop_datasets
@@ -198,6 +200,17 @@ class LabelSchemaValidationTests(unittest.TestCase):
             dataset,
             {"type": "int", "component": "text", "default": 1},
             fields="int_field",
+            _allow_default=True,
+        )
+
+        validate_label_schema(
+            dataset,
+            {
+                "type": "int",
+                "component": "slider",
+                "range": [0, 1],
+            },
+            fields="int_field",
         )
 
         validate_label_schema(
@@ -209,6 +222,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "default": 0,
             },
             fields="int_field",
+            _allow_default=True,
         )
 
         # 'range' is not provided
@@ -222,7 +236,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="int_field",
             )
 
-        # 'default' is not provided
+        # 'default' is not allowed
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,
@@ -230,16 +244,18 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "type": "int",
                     "component": "slider",
                     "range": [0, 1],
+                    "default": 0,
                 },
                 fields="int_field",
             )
 
-        # 'default' is not an int
+        # 'default' is an int
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,
                 {"type": "int", "component": "text", "default": 1.0},
                 fields="int_field",
+                _allow_default=True,
             )
 
         # 'default' is outside 'range'
@@ -253,6 +269,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": 2,
                 },
                 fields="int_field",
+                _allow_default=True,
             )
 
         # 'range' has a float
@@ -263,7 +280,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "type": "int",
                     "component": "slider",
                     "range": [0.5, 1],
-                    "default": 1,
                 },
                 fields="int_field",
             )
@@ -276,7 +292,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "type": "int",
                     "component": "slider",
                     "range": [1, 0],
-                    "default": 1,
                 },
                 fields="int_field",
             )
@@ -289,7 +304,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "type": "int",
                     "component": "slider",
                     "range": [1, 1],
-                    "default": 1,
                 },
                 fields="int_field",
             )
@@ -313,6 +327,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "precision": 1,
             },
             fields="float_field",
+            _allow_default=True,
         )
 
         validate_label_schema(
@@ -324,6 +339,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "default": 0.0,
             },
             fields="float_field",
+            _allow_default=True,
         )
 
         # 'range' is not provided
@@ -337,24 +353,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="float_field",
             )
 
-        # 'default' is not provided
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schema(
-                dataset,
-                {
-                    "type": "float",
-                    "component": "slider",
-                    "range": [0.0, 1.0],
-                },
-                fields="float_field",
-            )
-
         # 'default' is not a float
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,
                 {"type": "float", "component": "text", "default": 1},
                 fields="float_field",
+                _allow_default=True,
             )
 
         # 'precision' is negative
@@ -389,6 +394,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": 2.0,
                 },
                 fields="float_field",
+                _allow_default=True,
             )
 
         # 'range' is not valid
@@ -439,9 +445,10 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "type": "list<int>",
                     "component": "slider",
                     "range": [0, 1],
-                    "defailt": 1,
+                    "default": 1,
                 },
                 fields="int_list_field",
+                _allow_default=True,
             )
 
         # 'values' is not applicable
@@ -474,6 +481,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": [2],
                 },
                 fields="int_list_field",
+                _allow_default=True,
             )
 
         ### float
@@ -496,6 +504,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "precision": 1,
                 },
                 fields="float_list_field",
+                _allow_default=True,
             )
 
     @drop_datasets
@@ -545,6 +554,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "read_only": True,
                 },
                 fields="id",
+                _allow_default=True,
             )
 
     @drop_datasets
@@ -573,6 +583,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "default": "value",
             },
             fields="str_field",
+            _allow_default=True,
         )
 
         # 'values' is not applicable
@@ -583,19 +594,11 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="str_field",
             )
 
-        # 'default' is required
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schema(
-                dataset,
-                {"type": "str", "component": "radio", "values": ["value"]},
-                fields="str_field",
-            )
-
         # 'values' is required
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,
-                {"type": "str", "component": "radio", "default": "value"},
+                {"type": "str", "component": "radio"},
                 fields="str_field",
             )
 
@@ -610,6 +613,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "values": ["other"],
                 },
                 fields="str_field",
+                _allow_default=True,
             )
 
     @drop_datasets
@@ -638,6 +642,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "default": ["value"],
             },
             fields="str_list_field",
+            _allow_default=True,
         )
 
         validate_label_schema(
@@ -671,6 +676,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "default": ["value", "value"],
                 },
                 fields="str_list_field",
+                _allow_default=True,
             )
 
     @drop_datasets
@@ -709,6 +715,25 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 "type": "detection",
             },
             fields="detection",
+        )
+
+        validate_label_schema(
+            dataset,
+            {
+                "attributes": {
+                    "tags": {
+                        "component": "dropdown",
+                        "default": ["one"],
+                        "type": "list<str>",
+                        "values": ["one"],
+                    }
+                },
+                "classes": ["one", "two"],
+                "component": "dropdown",
+                "default": "one",
+                "type": "detections",
+            },
+            fields="detections",
         )
 
         validate_label_schema(

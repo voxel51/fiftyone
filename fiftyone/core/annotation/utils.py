@@ -11,9 +11,18 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
-def get_all_supported_fields(collection, flatten=False):
-    fields = collection.get_field_schema()
-    media_type = collection.media_type
+def get_all_supported_fields(sample_collection, flatten=False):
+    """Gets all fields supported by the App for human annotation for a
+    :class:`fiftyone.core.collections.SampleCollection`
+
+    Args::
+        sample_colection: the
+            :class:`fiftyone.core.collections.SampleCollection`
+        flatten (False): whether to flatten embedded documents with dot
+            notation
+    """
+    fields = sample_collection.get_field_schema()
+    media_type = sample_collection.media_type
 
     result = set()
     for field_name, field in fields.items():
@@ -39,13 +48,21 @@ def get_all_supported_fields(collection, flatten=False):
             continue
 
     if flatten:
-        result = flatten_fields(collection, result)
+        result = flatten_fields(sample_collection, result)
 
     return sorted(result)
 
 
 def flatten_fields(collection, fields):
-    """Flatten"""
+    """Flattens embedded document fields into dot-separated paths.
+
+    Args:
+        collection: the sample collection
+        fields: iterable of field names to flatten
+
+    Returns:
+        sorted list of flattened field names
+    """
     flattened_fields = []
     for field_name in fields:
         field = collection.get_field(field_name)

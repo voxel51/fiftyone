@@ -114,9 +114,6 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         -   ``text``: the default when ``scan_samples`` is ``False`` or
             distinct finite bounds are not found
 
-    ``id`` only supports the ``text`` component where ``read_only`` must be
-    ``True`` with no other settings.
-
     Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
 
         -   ``checkboxes``
@@ -142,8 +139,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     ``float`` types support a ``precision`` setting when a ``text`` component
     is configured  for the number of digits to allow after the decimal.
 
-    All types support a ``default`` value setting except ``id``, as well as a
-    ``read_only`` flag.
+    All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
 
     All components support ``values`` except ``json``, ``slider``, and
     ``toggle`` excepting ``id`` restrictions.
@@ -171,6 +167,9 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     If a field is ``read_only`` in the field schema, then the ``read_only``
     label schema setting must be ``True``, e.g. ``created_at`` and
     ``last_modified_at`` must be read only.
+
+    All attributes and the label class itself support a ``default`` setting
+    that applies when creating a new label.
 
     **Embedded documents**
 
@@ -240,7 +239,6 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
                         'type': 'float',
                         'component': 'slider',
                         'range': [0.05003104358911514, 0.9999035596847534],
-                        'default': 0.05003104358911514,
                     },
                     'id': {
                         'type': 'id',
@@ -268,7 +266,6 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
                 'type': 'float',
                 'component': 'slider',
                 'range': [0.15001302256126986, 1.0],
-                'default': 0.15001302256126986,
             },
         }
 
@@ -354,7 +351,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
         return fn(collection, field_name, is_list, settings, scan_samples)
 
     if is_list:
-        raise ValueError(f"unsupport field {field_name}: {field}")
+        raise ValueError(f"unsupported field {field_name}: {field}")
 
     if isinstance(
         field,
@@ -456,7 +453,6 @@ def _handle_float_or_int(
     if mn != mx and mn is not None:
         settings[foac.COMPONENT] = foac.SLIDER
         settings[foac.RANGE] = [mn, mx]
-        settings[foac.DEFAULT] = mn
 
     return settings
 
@@ -479,9 +475,6 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
 
             if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
                 settings[foac.VALUES] = values
-
-            if settings[foac.COMPONENT] == foac.RADIO:
-                settings[foac.DEFAULT] = values[0]
 
     except:
         # too many distinct values

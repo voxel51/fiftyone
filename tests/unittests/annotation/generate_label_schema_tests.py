@@ -64,7 +64,6 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             generate_label_schema(dataset, "float_field"),
             {
                 "component": "slider",
-                "default": 0.0,
                 "range": [0.0, 1.0],
                 "type": "float",
             },
@@ -87,7 +86,6 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             generate_label_schema(dataset, "int_field"),
             {
                 "component": "slider",
-                "default": 0,
                 "range": [0, 1],
                 "type": "int",
             },
@@ -101,7 +99,6 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             generate_label_schema(dataset, "str_field"),
             {
                 "component": "radio",
-                "default": "test",
                 "type": "str",
                 "values": ["test"],
             },
@@ -145,7 +142,6 @@ class GenerateLabelSchemaTests(unittest.TestCase):
                 },
                 "classes": ["test"],
                 "component": "radio",
-                "default": "test",
                 "type": "detection",
             },
         )
@@ -174,7 +170,6 @@ class GenerateLabelSchemaTests(unittest.TestCase):
                 },
                 "classes": ["test"],
                 "component": "radio",
-                "default": "test",
                 "type": "detections",
             },
         )
