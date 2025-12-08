@@ -1366,8 +1366,8 @@ export class Scene2D {
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 
-        // Update all spatial overlays
         this.updateAllSpatialOverlays();
+        this.updateClasssifications();
       }
     );
 
@@ -1439,6 +1439,17 @@ export class Scene2D {
         this.updateSpatialOverlayCoordinates(overlay);
       }
     }
+  }
+
+  /**
+   * Marks Classifications as dirty to be redrawn
+   */
+  private updateClasssifications(): void {
+    this.overlays.forEach((overlay) => {
+      if (overlay instanceof ClassificationOverlay) {
+        overlay.markDirty();
+      }
+    });
   }
 
   /**
