@@ -190,7 +190,7 @@ class SaveContext(object):
         error = None
         try:
             # Loop-drain self.futures so any submissions triggered by
-            # super().__exit__() are awaited.
+            # self._save_batch() are awaited.
             while self.futures:
                 futures = self.futures
                 self.futures = []
