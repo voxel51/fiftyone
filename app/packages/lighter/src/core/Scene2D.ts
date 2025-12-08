@@ -147,7 +147,7 @@ export class Scene2D {
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
   private undoRedo = new UndoRedoManager();
-  private unsubscribeCanonicalMedia?: () => void;
+  private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
@@ -1264,9 +1264,9 @@ export class Scene2D {
     // Clean up canonical media subscription BEFORE clearing overlays
     // This ensures we properly unsubscribe from boundsChangeCallbacks
     // before the ImageOverlay's boundsChangeCallbacks array is replaced
-    if (this.unsubscribeCanonicalMedia) {
-      this.unsubscribeCanonicalMedia();
-      this.unsubscribeCanonicalMedia = undefined;
+    if (this.unsubscribeCanonicalMediaBounds) {
+      this.unsubscribeCanonicalMediaBounds();
+      this.unsubscribeCanonicalMediaBounds = undefined;
     }
 
     // Clear canonical media references
@@ -1390,7 +1390,7 @@ export class Scene2D {
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
     // Set up bounds change listener for coordinate system updates
-    this.unsubscribeCanonicalMedia = overlayOrMedia.onBoundsChanged(
+    this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 

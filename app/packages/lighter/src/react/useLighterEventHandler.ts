@@ -1,6 +1,8 @@
 import { createUseEventHandler } from "@fiftyone/events";
 import { LighterEventGroup } from "../events";
 
+export const UNDEFINED_LIGHTER_SCENE_ID = "UNDEFINED_LIGHTER_SCENE";
+
 /**
  * Factory function that creates a type-safe event handler hook for Lighter events.
  * The returned hook automatically registers/unregisters handlers on mount/unmount.

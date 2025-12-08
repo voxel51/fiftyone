@@ -1,5 +1,9 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
 import { useCallback } from "react";
 
@@ -7,8 +11,10 @@ export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
   const { scene } = useLighter();
-  const sceneId = scene?.getSceneId() ?? "lighter";
-  const useEventHandler = useLighterEventHandler(sceneId);
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
   useEventHandler(
     "lighter:overlay-hover",
     useCallback((payload) => {

@@ -1,4 +1,8 @@
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
@@ -13,7 +17,7 @@ const STORE = getDefaultStore();
 export default function useFocus() {
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? "lighter"
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);

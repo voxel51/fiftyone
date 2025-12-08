@@ -2,6 +2,7 @@ import { LabeledField } from "@fiftyone/components";
 import {
   BoundingBoxOverlay,
   TransformOverlayCommand,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -39,8 +40,9 @@ export default function Position() {
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
-  const sceneId = scene?.getSceneId();
-  const useEventHandler = useLighterEventHandler(sceneId ?? "lighter");
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
