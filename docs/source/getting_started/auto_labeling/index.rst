@@ -5,7 +5,7 @@ Auto Labeling Guide
 
 .. default-role:: code
 
-**Bootstrapping Datasets with Auto Labeling **
+**Bootstrapping Datasets with Auto Labeling**
 
 **Level:** Intermediate | **Estimated Time:** 30-45 minutes | **Tags:** Auto-Labeling, Annotation, Delegated Operations, Model Inference
 

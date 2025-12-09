@@ -60,10 +60,6 @@ Resources and Further Reading
 
 * `FiftyOne Dataset Zoo <../../user_guide/dataset_zoo/index.html>`_
 
-* `FiftyOne Annotation Integration <../../integrations/annotation.html>`_
-
-* `Active Learning Workflows <../../tutorials/active_learning.html>`_
-
 .. _summary-next-steps:
 
 What to Do Next
