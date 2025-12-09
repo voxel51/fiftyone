@@ -201,14 +201,18 @@ class FileCollection(list):
             try:
                 f.close()
             except Exception:  # catch all so we continue to close the rest
-                logger.debug(
-                    "FileCollection failed to close %r", f, exc_info=True
-                )
+                if f is not None:
+                    logger.debug(
+                        "FileCollection failed to close %r", f, exc_info=True
+                    )
         return False
 
 
 def open_files(paths, mode="r", skip_failures=False, progress=None):
     """Opens the given files for reading or writing.
+
+    Note: when ``skip_failures`` is True, entries corresponding to failed opens
+        are ``None``
 
     Args:
         paths: a list of paths
@@ -220,7 +224,7 @@ def open_files(paths, mode="r", skip_failures=False, progress=None):
             progress callback function to invoke instead
 
     Returns:
-        a list of open file-like objects
+        a :class:`FileCollection` (list) of open file-like objects
     """
     tasks = [(p, mode, skip_failures) for p in paths]
     files = _run(_do_open_file, tasks, return_results=True, progress=progress)
