@@ -15,6 +15,7 @@ import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torch
+import torchvision
 from PIL import Image
 import numpy as np
 
@@ -60,7 +61,8 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def __init__(self, config):
         super().__init__(config)
         self._text_features = None
-        self.preprocess = self._preprocess_shim
+        # self.preprocess = self._preprocess_shim
+        # self._transforms = self._transforms_shim
 
     @property
     def can_embed_prompts(self):
@@ -88,16 +90,27 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         """
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
-    def _preprocess_shim(self, x):
-        if isinstance(x, np.ndarray):
-            x = Image.fromarray(x)
-        return self._preprocess_aux(x)
+    def _build_transforms(self, config):
+        if config.ragged_batches is not None:
+            ragged_batches = config.ragged_batches
+        else:
+            ragged_batches = False
+
+        transforms = [self._preprocess_img]
+        transforms = torchvision.transforms.Compose(transforms)
+
+        return transforms, ragged_batches
+
+    def _preprocess_img(self, img):
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
+        return self._clip_preprocess(img)
 
     def _load_model(self, config):
         (
             self._model,
             _,
-            self._preprocess_aux,
+            self._clip_preprocess,
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
@@ -145,7 +158,8 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def _predict_all(self, imgs):
 
         if self._preprocess:
-            imgs = [self._preprocess(img) for img in imgs]
+            imgs = [self._transforms(img) for img in imgs]
+            # imgs = [self._preprocess(img) for img in imgs]
 
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
