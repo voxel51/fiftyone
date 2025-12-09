@@ -148,19 +148,19 @@ export const useRegisterAnnotationCommandHandlers = () => {
           );
 
           if (success) {
-            eventBus.dispatch("annotation:notification:upsertSuccess", {
+            eventBus.dispatch("annotation:upsertSuccess", {
               labelId,
               type: "upsert",
             });
           } else {
-            eventBus.dispatch("annotation:notification:upsertError", {
+            eventBus.dispatch("annotation:upsertError", {
               labelId,
               type: "upsert",
             });
           }
           return success;
         } catch (error) {
-          eventBus.dispatch("annotation:notification:upsertError", {
+          eventBus.dispatch("annotation:upsertError", {
             labelId,
             type: "upsert",
             error: error as Error,
@@ -185,19 +185,19 @@ export const useRegisterAnnotationCommandHandlers = () => {
           );
 
           if (success) {
-            eventBus.dispatch("annotation:notification:deleteSuccess", {
+            eventBus.dispatch("annotation:deleteSuccess", {
               labelId,
               type: "delete",
             });
           } else {
-            eventBus.dispatch("annotation:notification:deleteError", {
+            eventBus.dispatch("annotation:deleteError", {
               labelId,
               type: "delete",
             });
           }
           return success;
         } catch (error) {
-          eventBus.dispatch("annotation:notification:deleteError", {
+          eventBus.dispatch("annotation:deleteError", {
             labelId,
             type: "delete",
             error: error as Error,
