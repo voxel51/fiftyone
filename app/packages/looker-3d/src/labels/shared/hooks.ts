@@ -39,11 +39,7 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
     onPointerOver: _onPointerOver,
     onPointerOut: _onPointerOut,
     ...restEventHandlers
-  } = useMemo(() => {
-    return {
-      ...tooltip.getMeshProps(label),
-    };
-  }, [tooltip, label]);
+  } = useMemo(() => tooltip.getMeshProps(label), [tooltip, label]);
 
   const canAnnotate = useCanAnnotate();
   const annotationEventBus = useAnnotationEventBus();
@@ -51,24 +47,18 @@ export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
   return {
     onPointerOver: useCallback(() => {
       if (canAnnotate) {
-        annotationEventBus.dispatch(
-          "annotation:notification:canvasOverlayHover",
-          {
-            id: label.id ?? label._id,
-          }
-        );
+        annotationEventBus.dispatch("annotation:canvasOverlayHover", {
+          id: label.id ?? label._id,
+        });
       }
 
       _onPointerOver();
     }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
     onPointerOut: useCallback(() => {
       if (canAnnotate) {
-        annotationEventBus.dispatch(
-          "annotation:notification:canvasOverlayUnhover",
-          {
-            id: label.id ?? label._id,
-          }
-        );
+        annotationEventBus.dispatch("annotation:canvasOverlayUnhover", {
+          id: label.id ?? label._id,
+        });
       }
 
       _onPointerOut();

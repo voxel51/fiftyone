@@ -216,7 +216,7 @@ const AnnotationSchema = () => {
             return;
           }
 
-          eventBus.dispatch("annotation:notification:sidebarValueUpdated", {
+          eventBus.dispatch("annotation:sidebarValueUpdated", {
             overlayId: overlay.id,
             currentLabel: overlay.label as any,
             value,

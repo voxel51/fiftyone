@@ -28,7 +28,7 @@ export const use3dAnnotation = () => {
   const save = useSetAtom(currentData);
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelSelected",
+    "annotation:sidebarLabelSelected",
     useCallback((payload) => {
       if (payload.type !== "Polyline") {
         // Note: we don't support non-polyline annotations in 3D yet
@@ -63,7 +63,7 @@ export const use3dAnnotation = () => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarValueUpdated",
+    "annotation:sidebarValueUpdated",
     useCallback(
       (payload) => {
         if (!Array.isArray(payload.value["points3d"])) {
@@ -105,7 +105,7 @@ export const use3dAnnotation = () => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelHover",
+    "annotation:sidebarLabelHover",
     useCallback((payload) => {
       setHoveredLabel({
         id: payload.id,
@@ -114,7 +114,7 @@ export const use3dAnnotation = () => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelUnhover",
+    "annotation:sidebarLabelUnhover",
     useCallback(() => {
       setHoveredLabel(null);
     }, [])

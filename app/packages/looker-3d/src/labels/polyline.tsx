@@ -47,10 +47,8 @@ export const Polyline = ({
   useHoverState();
   const hoveredLabel = useRecoilValue(hoveredLabelAtom);
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
-    tooltip,
-    label
-  );
+  const { onPointerOver, onPointerOut, ...restEventHandlers } =
+    useEventHandlers(tooltip, label);
 
   const isHovered = hoveredLabel?.id === label._id;
 
