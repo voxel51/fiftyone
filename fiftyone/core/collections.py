@@ -169,6 +169,8 @@ class SaveContext(object):
         self.reloading_lock = threading.Lock()
 
         self.executor = (
+            # Using more than one worker will introduce race conditions in the state preserved between DB writes, but
+            # since prediction is the bottleneck, not writing to the DB, only one worker is necessary.
             ThreadPoolExecutor(max_workers=1)
             if async_writes
             else _DummyExecutor()
