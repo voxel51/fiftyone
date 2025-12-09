@@ -26,6 +26,6 @@ export interface Scene2DConfig {
   canvas: HTMLCanvasElement;
   renderer: Renderer2D;
   resourceLoader: ResourceLoader;
+  sceneId: string;
   options?: SceneOptions;
-  sceneId?: string;
 }
