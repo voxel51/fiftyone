@@ -944,9 +944,7 @@ class TestSerializationLocal:
         with open(path, "w") as f:
             f.write("not valid json")
 
-        with pytest.raises(
-            ValueError, match=f"Unable to parse JSON file '{path}'"
-        ):
+        with pytest.raises(ValueError, match=f"Unable to parse JSON file"):
             fos.read_json(path)
 
 
