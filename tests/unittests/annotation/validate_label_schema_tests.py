@@ -249,7 +249,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 fields="int_field",
             )
 
-        # 'default' is an int
+        # 'default' is a float
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,

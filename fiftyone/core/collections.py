@@ -3654,7 +3654,7 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
             dataset.compute_metadata()
 
-            fo.pprint(dataset.generate_field_schema(scan_samples=True))
+            fo.pprint(dataset.generate_label_schema(scan_samples=True))
 
         Output::
 
@@ -3739,9 +3739,10 @@ class SampleCollection(object):
                 such values
             scan_samples (False): whether to scan the collection to populate
                 component settings based on actual field values (ranges,
-                values, defaults, etc). By default, the label schema is
-                generated from *only* the statically available information in
-                the dataset's field schema
+                values, etc). By default, the label schema is generated from
+                *only* the statically available information in the dataset's
+                field schema
+
 
         Raises:
             ValueError: if the sample collection or field is not supported

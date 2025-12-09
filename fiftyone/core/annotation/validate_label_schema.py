@@ -313,6 +313,7 @@ def _validate_float_int_list_field_label_schema(
                     "'precision' and 'values' are incompatible settings for "
                     f"field '{field_name}'"
                 )
+            _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE and value != _str_type:
