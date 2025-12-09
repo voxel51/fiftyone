@@ -1,11 +1,11 @@
 .. _val_configure_run:
 
-Step 2: Configure Your VAL Run
+Step 2: Configure Your Auto Label Run
 ===============================
 
 .. default-role:: code
 
-With your dataset and DO(s) ready, it's time to configure your Verified Auto-Labeling run. This step guides you through sample and model selection, class configuration, target label fields, and setting a minimum confidence threshold.
+With your dataset and DO(s) ready, it's time to configure your Auto Labeling run. This step guides you through sample and model selection, class configuration, target label fields, and setting a minimum confidence threshold.
 
 Open and Configure Auto Labeling
 -----------------------------
@@ -13,7 +13,7 @@ Open and Configure Auto Labeling
 Start by clicking into your FiftyOne dataset. Above the sample grid, select **New panel > Auto Labeling**. 
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_panel.webp
-   :alt: VAL Panel selection
+   :alt: Auto Labeling Panel selection
    :align: center
    :width: 75%
 
@@ -23,7 +23,7 @@ Start by clicking into your FiftyOne dataset. Above the sample grid, select **Ne
 In the Auto Labeling panel, click **Auto Label**. This opens the main configuration pane where you can select your target sample set, foundation model used for labeling, classes to label, and minimum confidence threshold.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_panel_intro.webp
-   :alt: VAL Panel intro
+   :alt: Auto Labeling Panel intro
    :align: center
    :width: 75%
 
@@ -81,10 +81,10 @@ Now click **Auto Label**, then click **Schedule** for one of your delegated oper
    :align: center
    :width: 75%
 
-Monitor the VAL run
+Monitor the Auto Labeling run
 -------------------
 
-FiftyOne has now begun running the VAL operation as a background job. To view the job's progress, you can click **View Status** from the Auto Labeling panel, or the **Runs** tab and then click into your running job where you'll see the job's progress as well as your configuration parameters as inputs. In the job run, also note the ability to view and download the job log, re-run the job, and if necessary terminate/cancel any stuck jobs.
+FiftyOne has now begun running the auto label operation as a background job. To view the job's progress, you can click **View Status** from the Auto Labeling panel, or the **Runs** tab and then click into your running job where you'll see the job's progress as well as your configuration parameters as inputs. In the job run, also note the ability to view and download the job log, re-run the job, and if necessary terminate/cancel any stuck jobs.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_run_log.webp
    :alt: VAL run log
@@ -94,7 +94,7 @@ FiftyOne has now begun running the VAL operation as a background job. To view th
 Next Steps
 ----------
 
-Your VAL run is now executing! When complete, the run status changes to **Complete**, and you can then return to the Auto Labeling panel to begin analyzing and reviewing predictions.
+Your Auto Labeling run is now executing! When complete, the run status changes to **Complete**, and you can then return to the Auto Labeling panel to begin analyzing and reviewing predictions.
 
 .. image:: https://cdn.voxel51.com/getting_started_val/notebook1/val_in_review_card.webp
    :alt: VAL panel in review
@@ -105,4 +105,4 @@ Your VAL run is now executing! When complete, the run status changes to **Comple
 Click **Next** to learn about :ref:`Step 3: Analyze Label Predictions <val_analyze_results>`.
 
 .. note::
-   You can launch multiple VAL runs in parallel with different configurations to compare models or settings. Each run operates independently.
+   You can launch multiple auto labeling runs in parallel with different configurations to compare models or settings. Each run operates independently.

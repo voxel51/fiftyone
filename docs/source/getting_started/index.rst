@@ -35,9 +35,9 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. Add guide cards below
 
 .. customcarditem::
-    :header: Verified Auto-Labeling Guide
-    :description: Bootstrap datasets rapidly with Verified Auto-Labeling (VAL). Generate auto-labels with foundation models and systematically review predictions with confidence-based filtering and embeddings.
-    :link: verified_auto_labeling/index.html
+    :header: Auto Labeling Guide
+    :description: Bootstrap datasets rapidly with FiftyOne Auto Labeling. Generate auto labels with foundation models and systematically review predictions with confidence-based filtering and embeddings.
+    :link: auto_labeling/index.html
     :image: https://cdn.voxel51.com/getting_started_val/notebook3/val_review_ui.webp
     :tags: FiftyOne-Enterprise,Annotation
 

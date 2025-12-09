@@ -5,7 +5,7 @@ Step 3: Analyze and Approve Predictions
 
 .. default-role:: code
 
-Your VAL run has completed, and label predictions are ready for review. You will now evaluate and verify auto-generated labels using FiftyOne's exploration tools.
+Your Auto Labeling run has completed, and label predictions are ready for review. You will now evaluate and verify auto-generated labels using FiftyOne's exploration tools.
 
 Review Interface
 ----------------
@@ -72,6 +72,6 @@ Those 10 labels are now available in the **Approval** tab. You (or a team member
 Next Steps
 ----------
 
-You've now explored your auto labeled samples and marked some for approval. In the next section, you will compute and visualize patch embeddings to root out false negatives and mark samples in need of human correction.
+You've now explored your auto labeled samples and marked some for approval. In the next section, you will compute and visualize patch embeddings to root out false positives and mark samples in need of human correction.
 
 Click **Next** to proceed to :ref:`Step 4: Visualize embeddings <val_visualize_embeddings>`.
