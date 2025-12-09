@@ -23,7 +23,7 @@ class ComputeAnnotationSchema(foo.Operator):
         path = ctx.params.get("path", None)
 
         return {
-            "config": ctx.dataset.compute_annotation_schema(
+            "config": ctx.dataset.generate_annotation_schema(
                 path, scan_samples=ctx.params.get("scan_samples", True)
             )
         }
@@ -39,13 +39,7 @@ class GetAnnotationSchemas(foo.Operator):
         )
 
     def execute(self, ctx):
-        paths = ctx.params.get("paths", None)
-
-        schemas = {}
-        for path in paths:
-            schemas[path] = ctx.dataset.get_field(path).schema
-
-        return {"schemas": schemas}
+        return {"schemas": ctx.dataset.label_schema or {}}
 
 
 class ActivateAnnotationSchemas(foo.Operator):
@@ -58,11 +52,7 @@ class ActivateAnnotationSchemas(foo.Operator):
         )
 
     def execute(self, ctx):
-        for path in ctx.params.get("paths", []):
-            field = ctx.dataset.get_field(path)
-            field.schema["active"] = True
-
-        ctx.dataset.save()
+        ctx.dataset.activate_label_schemas(ctx.params.get("paths", []))
 
 
 class DeleteAnnotationSchema(foo.Operator):
@@ -75,11 +65,13 @@ class DeleteAnnotationSchema(foo.Operator):
         )
 
     def execute(self, ctx):
-        path = ctx.params.get("path", None)
+        paths = ctx.params.get("paths", [])
+        ctx.dataset.deactivate_label_schemas(paths)
+        schema = ctx.dataset.label_schema
+        for path in paths:
+            del schema[path]
 
-        field = ctx.dataset.get_field(path)
-        field.schema = None
-        field.save()
+        ctx.dataset.save()
 
 
 class DeactivateAnnotationSchemas(foo.Operator):
@@ -92,11 +84,8 @@ class DeactivateAnnotationSchemas(foo.Operator):
         )
 
     def execute(self, ctx):
-        for path in ctx.params.get("paths", []):
-            field = ctx.dataset.get_field(path)
-            field.schema["active"] = False
-
-        ctx.dataset.save()
+        paths = ctx.params.get("paths", [])
+        ctx.dataset.deactivate_label_schemas(paths)
 
 
 class SaveAnnotationSchema(foo.Operator):
@@ -111,80 +100,9 @@ class SaveAnnotationSchema(foo.Operator):
     def execute(self, ctx):
         path = ctx.params.get("path", None)
         config = ctx.params.get("config", None)
+        label_schema = ctx.dataset.label_schema or {}
+        label_schema[path] = config
 
-        field = ctx.dataset.get_field(path)
-
-        if not field.schema:
-            field.schema = {"active": False}
-
-        field.schema["config"] = config
-        field.save()
+        ctx.dataset.label_schema = label_schema
 
         return {"config": config}
-
-
-class AddBoundingBox(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="add_bounding_box",
-            label="Add bounding box",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        field = ctx.params.get("field", None)
-        sample_id = ctx.params.get("sample_id", None)
-
-        label = ctx.params.get("label", None)
-        label_id = ctx.params.get("label_id", None)
-        bounding_box = ctx.params.get("bounding_box", None)
-
-        sample = ctx.dataset[sample_id]
-        field_obj = sample[field]
-        # assume we're setting fo.Detections for now
-        detection_obj = field_obj["detections"]
-
-        # todo: validation
-
-        detection_obj.append(
-            fo.Detection(
-                label=label,
-                bounding_box=bounding_box,
-                id=label_id,
-            )
-        )
-
-        sample.save()
-
-
-class RemoveBoundingBox(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="remove_bounding_box",
-            label="Remove bounding box",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        path = ctx.params.get("path", None)
-        sample_id = ctx.params.get("sample_id", None)
-        bounding_box_id = ctx.params.get("id", None)
-
-        sample = ctx.dataset[sample_id]
-        detection_obj = sample[path]
-
-        # check if the detection_obj is a list
-        if isinstance(detection_obj, list):
-            new_detection_obj = [
-                detection
-                for detection in detection_obj
-                if detection.id != bounding_box_id
-            ]
-            sample[path] = new_detection_obj
-        else:
-            # it's a single fo.Detection object
-            sample[path] = None
-
-        sample.save()

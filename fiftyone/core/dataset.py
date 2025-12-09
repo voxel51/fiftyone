@@ -7,6 +7,7 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+import copy
 from functools import partial
 import contextlib
 from datetime import datetime
@@ -37,6 +38,7 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.constants as focn
+import fiftyone.core.annotation as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
@@ -1103,6 +1105,182 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
+
+    @property
+    def active_label_schemas(self):
+        """The list of active field's in the dataset's
+        :ref:`label schema <annotation-label-schema>`.
+        """
+        return list(self._doc.active_label_schemas)
+
+    @property
+    def label_schema(self):
+        """
+        The dataset's :ref:`label schema <annotation-label-schema>` that
+        defines its App's annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schema` for ways in which to generate a label
+        schema.
+
+        Returns:
+            the dataset's label schema
+        """
+        return copy.deepcopy(self._doc.label_schema) or {}
+
+    def set_label_schema(self, label_schema):
+        """Set the dataset's :ref:`label schema <annotation-label-schema>`
+        defines its App's annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schema` for ways in which to generate a label
+        schema.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Generate and assign a label schema for all supported fields with
+            # populated constraints and other settings, e.g. 'values', and
+            # 'range'. Requires all samples in the dataset
+            dataset.set_label_schema(dataset.generate_label_schema())
+
+
+            # Generate a bare label schema for all supported fields
+            dataset.set_label_schema(
+                dataset.generate_label_schema(scan_samples=False)
+            )
+
+            # Clear the label schema
+            dataset.set_label_schema(None)
+        """
+        if label_schema is None:
+            label_schema = {}
+
+        foa.validate_label_schema(self, label_schema)
+        self._doc.label_schema = label_schema
+        active = set(self._doc.active_label_schemas)
+
+        for field in self._doc.active_label_schemas:
+            if field not in label_schema:
+                active.remove(field)
+
+        self._doc.active_label_schemas = sorted(active)
+        self.save()
+
+    def update_label_schema(self, field, label_schema):
+        """Update an individual field's
+        :ref:`label schema <annotation-label-schema>`.
+
+        Example::
+            dataset.update_label_schema(
+                "ground_truth",
+                dataset.generate_label_schema("ground_truth")
+            )
+
+        Args:
+            field: the field name
+            label_schema: the field's label schema
+
+        Raises:
+            ExceptionGroup: if the label schema is invalid
+        """
+        foa.validate_label_schema(self, label_schema, fields=field)
+        self._doc.label_schema[field] = label_schema
+        self._doc.save()
+
+    def delete_label_schema(self, field):
+        """Delete an individual field's
+        :ref:`label schema <annotation-label-schema>`.
+
+        Args:
+            field: the field name
+
+        Raises:
+            ExceptionGroup: if the label schema is invalid
+        """
+        if field not in self._doc.label_schema:
+            raise ValueError(
+                f"field '{field}' is not in the dataset's label schema"
+            )
+
+        del self._doc.label_schema[field]
+        if field in self._doc.active_label_schemas:
+            self._doc.active_label_schemas.remove(field)
+
+        self._doc.save()
+
+    def activate_label_schemas(self, fields=None):
+        """Activate field in the :meth:`label_schema`. If no fields are
+        provided, all fields are activated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable
+                of such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema
+        """
+        if fields is None:
+            self._doc.active_label_schemas = sorted(self._doc.label_schemas)
+        else:
+            result = set(self._doc.active_label_schemas)
+            if etau.is_str(fields):
+                fields = [fields]
+
+            for field in fields:
+                if field not in self._doc.label_schema:
+                    raise ValueError(
+                        f"field '{field}' is not in the label schema"
+                    )
+
+                if field in result:
+                    raise ValueError(
+                        f"field '{field}' is already active in the label schema"
+                    )
+
+                result.add(field)
+            self._doc.active_label_schemas = sorted(result)
+
+        self._doc.save()
+
+    def deactivate_label_schemas(self, fields=None):
+        """Deactivate fields in the :meth:`label_schema`. If no fields are
+        provided, all label schemas are deactivated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema, or any field
+                is not currently active
+        """
+        if fields is None:
+            self._doc.active_label_schemas = []
+        else:
+            result = set(self._doc.active_label_schemas)
+            if etau.is_str(fields):
+                fields = [fields]
+
+            for field in fields:
+                if field not in self._doc.label_schema:
+                    raise ValueError(
+                        f"field '{field}' is not in the label schema"
+                    )
+
+                if field not in result:
+                    raise ValueError(
+                        f"field '{field}' is not active in the label schema"
+                    )
+
+                result.remove(field)
+            self._doc.active_label_schemas = sorted(result)
+
+        self._doc.save()
 
     def summary(self):
         """Returns a string summary of the dataset.
