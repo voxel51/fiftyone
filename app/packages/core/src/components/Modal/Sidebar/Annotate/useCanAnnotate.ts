@@ -16,6 +16,23 @@ export interface CanAnnotateResult {
   disabledReason: AnnotationDisabledReason;
 }
 
+const MEDIA_TYPE_TO_DISABLED_REASON: Record<string, AnnotationDisabledReason> =
+  {
+    group: "groupedDataset",
+    video: "videoDataset",
+  };
+
+function getDisabledReason(
+  currentMediaType: string | null | undefined,
+  isGenerated: boolean
+): AnnotationDisabledReason {
+  if (isGenerated) return "generatedView";
+  if (currentMediaType && !isAnnotationSupported(currentMediaType)) {
+    return MEDIA_TYPE_TO_DISABLED_REASON[currentMediaType] ?? null;
+  }
+  return null;
+}
+
 export default function useCanAnnotate(): CanAnnotateResult {
   const isReadOnly = useRecoilValue(readOnly);
   const { isEnabled: isAnnotationEnabled } = useFeature({
@@ -24,25 +41,13 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const currentMediaType = useRecoilValue(mediaType);
   const isGenerated = useRecoilValue(isGeneratedView);
 
-  // Original behavior: hide tab entirely for read-only or feature disabled
+  // hide tab entirely for read-only or feature disabled
   if (isReadOnly || !isAnnotationEnabled) {
     return { showAnnotationTab: false, disabledReason: null };
   }
 
-  // New behavior: show tab but with disabled message
-  if (isGenerated) {
-    return { showAnnotationTab: true, disabledReason: "generatedView" };
-  }
-
-  if (!isAnnotationSupported(currentMediaType)) {
-    let disabledReason: AnnotationDisabledReason = null;
-    if (currentMediaType === "group") {
-      disabledReason = "groupedDataset";
-    } else if (currentMediaType === "video") {
-      disabledReason = "videoDataset";
-    }
-    return { showAnnotationTab: true, disabledReason };
-  }
-
-  return { showAnnotationTab: true, disabledReason: null };
+  return {
+    showAnnotationTab: true,
+    disabledReason: getDisabledReason(currentMediaType, isGenerated),
+  };
 }
