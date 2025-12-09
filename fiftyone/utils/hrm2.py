@@ -809,19 +809,6 @@ def _generate_image_patch_cv2(
     return img_patch, trans
 
 
-def _convert_cvimg_to_tensor(cvimg: np.ndarray) -> np.ndarray:
-    """Convert an OpenCV image (HWC) to a tensor-ready format (CHW).
-
-    Args:
-        cvimg: image array in HWC format
-
-    Returns:
-        image array in CHW format
-    """
-    img = cvimg.transpose(2, 0, 1).astype(np.float32)
-    return img
-
-
 def _apply_antialias(
     img: np.ndarray, downsampling_factor: float
 ) -> np.ndarray:
@@ -850,6 +837,22 @@ def _apply_antialias(
     # Fallback to OpenCV Gaussian blur with an approximate kernel
     kernel = int(max(3, 2 * round(sigma * 3) + 1))
     return cv2.GaussianBlur(img, (kernel, kernel), sigmaX=sigma, sigmaY=sigma)
+
+
+def _get_field(sample: "fo.Sample", field_name: str) -> Any:
+    """Helper to safely get field values from a FiftyOne sample.
+
+    Args:
+        sample: FiftyOne sample
+        field_name: name of the field to retrieve
+
+    Returns:
+        field value, or None if field doesn't exist
+    """
+    try:
+        return sample.get_field(field_name)
+    except KeyError:
+        return None
 
 
 class _HRM2CropHelper:
@@ -935,7 +938,8 @@ class _HRM2CropHelper:
             0,
         )
         patch = patch[:, :, ::-1]  # back to RGB
-        img_tensor = _convert_cvimg_to_tensor(patch)
+        # Convert from HWC to CHW format for tensor
+        img_tensor = patch.transpose(2, 0, 1).astype(np.float32)
 
         for c in range(min(img_tensor.shape[0], len(self.mean))):
             img_tensor[c] = (img_tensor[c] - self.mean[c]) / self.std[c]
@@ -1595,14 +1599,6 @@ def _generate_grouped_hrm2_samples(
     Yields:
         :class:`fiftyone.core.sample.Sample` instances with group field set
     """
-
-    def _get_field(sample: "fo.Sample", field_name: str) -> Any:
-        """Helper to safely get field values."""
-        try:
-            return sample.get_field(field_name)
-        except KeyError:
-            return None
-
     for sample in source_dataset.iter_samples():
         # Create a new group for this pair of samples
         group = fo.Group()
@@ -1729,13 +1725,6 @@ def apply_hrm2_to_dataset_as_groups(
             num_workers=num_workers,
             output_dir=output_dir,
         )
-
-        # Collect scene export metadata
-        def _get_field(sample, field_name):
-            try:
-                return sample.get_field(field_name)
-            except KeyError:
-                return None
 
         # Export scenes and collect filepaths mapped to sample filepaths
         scene_paths_map = {}  # Maps image filepath -> scene filepath
