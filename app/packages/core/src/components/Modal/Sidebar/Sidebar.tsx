@@ -23,20 +23,22 @@ const Explore = () => {
 
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
-  const disableAnnotation = !useCanAnnotate();
+  const { showAnnotationTab, disabledReason } = useCanAnnotate();
 
   const loadSchemas = useLoadSchemas();
   useEffect(() => {
-    !disableAnnotation && loadSchemas();
-  }, [disableAnnotation, loadSchemas]);
+    // Only load schemas if annotation is fully enabled (no disabled reason)
+    showAnnotationTab && !disabledReason && loadSchemas();
+  }, [showAnnotationTab, disabledReason, loadSchemas]);
 
   return (
     <SidebarContainer modal={true}>
-      {
-        // Hide Annotation for read only users
-        !disableAnnotation && <Mode />
-      }
-      {mode === EXPLORE || disableAnnotation ? <Explore /> : <Annotate />}
+      {showAnnotationTab && <Mode />}
+      {mode === EXPLORE || !showAnnotationTab ? (
+        <Explore />
+      ) : (
+        <Annotate disabledReason={disabledReason} />
+      )}
     </SidebarContainer>
   );
 };

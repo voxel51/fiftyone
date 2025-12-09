@@ -1,11 +1,8 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
-import { isAnnotationSupported } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import React from "react";
-import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -16,22 +13,24 @@ import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import SchemaManager from "./SchemaManager";
 import { activePaths, schemas, showModal } from "./state";
+import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 
 const showImportPage = atom((get) => !get(activePaths).length);
 
-const GROUP_UNSUPPORTED = (
-  <p>
-    Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-    <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-    you want to label.
-  </p>
-);
-
-const GENERATED_VIEW_UNSUPPORTED = (
-  <p>Annotation isn&rsquo;t supported for patches, frames, or clips views.</p>
-);
+const DISABLED_MESSAGES: Record<string, React.ReactNode> = {
+  generatedView: (
+    <p>Annotation isn&rsquo;t supported for patches, frames, or clips views.</p>
+  ),
+  unsupportedMediaType: (
+    <p>
+      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
+      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
+      you want to label.
+    </p>
+  ),
+};
 
 const Container = styled.div`
   flex: 1;
@@ -92,25 +91,22 @@ const AnnotateSidebar = () => {
   );
 };
 
-const Annotate = () => {
+interface AnnotateProps {
+  disabledReason?: AnnotationDisabledReason;
+}
+
+const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(schemas) === null;
   const editing = useAtomValue(isEditing);
 
-  const mediaType = useRecoilValue(fos.mediaType);
-  const isGeneratedView = useRecoilValue(fos.isGeneratedView);
-
-  const annotationSupported =
-    isAnnotationSupported(mediaType) && !isGeneratedView;
-
-  const disabledMsg = isGeneratedView
-    ? GENERATED_VIEW_UNSUPPORTED
-    : mediaType === "group"
-    ? GROUP_UNSUPPORTED
+  const isDisabled = disabledReason !== null;
+  const disabledMsg = disabledReason
+    ? DISABLED_MESSAGES[disabledReason]
     : undefined;
 
-  if (annotationSupported && loading) {
+  if (!isDisabled && loading) {
     return <Loading />;
   }
 
@@ -120,7 +116,7 @@ const Annotate = () => {
       {showImport ? (
         <ImportSchema
           key="import"
-          disabled={!annotationSupported}
+          disabled={isDisabled}
           disabledMsg={disabledMsg}
         />
       ) : (
