@@ -29,6 +29,10 @@ const GROUP_UNSUPPORTED = (
   </p>
 );
 
+const GENERATED_VIEW_UNSUPPORTED = (
+  <p>Annotation isn&rsquo;t supported for patches, frames, or clips views.</p>
+);
+
 const Container = styled.div`
   flex: 1;
   display: flex;
@@ -95,11 +99,16 @@ const Annotate = () => {
   const editing = useAtomValue(isEditing);
 
   const mediaType = useRecoilValue(fos.mediaType);
-  const annotationSupported = isAnnotationSupported(mediaType);
-  const disabledMsg =
-    !annotationSupported && mediaType === "group"
-      ? GROUP_UNSUPPORTED
-      : undefined;
+  const isGeneratedView = useRecoilValue(fos.isGeneratedView);
+
+  const annotationSupported =
+    isAnnotationSupported(mediaType) && !isGeneratedView;
+
+  const disabledMsg = isGeneratedView
+    ? GENERATED_VIEW_UNSUPPORTED
+    : mediaType === "group"
+    ? GROUP_UNSUPPORTED
+    : undefined;
 
   if (annotationSupported && loading) {
     return <Loading />;
