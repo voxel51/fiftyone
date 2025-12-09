@@ -753,6 +753,18 @@ class LabelSchemaValidationTests(unittest.TestCase):
             fields="detections",
         )
 
+        # 'classes' is not allowed
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schema(
+                dataset,
+                {
+                    "classes": ["one"],
+                    "component": "text",
+                    "type": "detections",
+                },
+                fields="detections",
+            )
+
         with self.assertRaises(ExceptionGroup):
             validate_label_schema(
                 dataset,

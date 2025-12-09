@@ -48,7 +48,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_generate_float_float_label_schema(self):
+    def test_generate_float_field_label_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", float_field=0.0))
         self.assertEqual(

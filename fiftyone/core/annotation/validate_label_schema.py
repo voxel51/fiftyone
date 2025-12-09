@@ -295,7 +295,7 @@ def _validate_float_int_list_field_label_schema(
 
     for key, value in label_schema.items():
         if key not in settings:
-            if _type == int or key not in foac.FLOAT_SETTINGS:
+            if _type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if (
@@ -401,6 +401,7 @@ def _validate_label_field_label_schema(
     values = label_schema.get(foac.CLASSES, None)
     if component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str)
+        settings = settings.union({foac.CLASSES})
 
     for key, value in label_schema.items():
         if key not in settings:

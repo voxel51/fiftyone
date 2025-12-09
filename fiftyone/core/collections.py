@@ -3528,20 +3528,20 @@ class SampleCollection(object):
         :class:`fiftyone.core.collections.SampleCollection`.
 
         A label schema is defined by a ``type`` and ``component``. Further
-        settings depend on the ``type`` and ``component`` combination as
-        outlined below.
+        settings depend on the ``type`` and ``component`` combination as outlined
+        below.
 
         The ``type`` value for a field is inferred from the collection's field
         schema. See
         :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
         Currently supported  media types for the collection are ``image`` and
-        ``3d``. See
-        :attr:`fiftyone.core.collections.SampleCollection.media_type`
+        ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
-        Primitives and components::
+        **Primitives and components**
 
         Supported primitive types are:
+
             -   ``bool``: :class:`fiftyone.core.fields.BooleanField`
             -   ``date``: :class:`fiftyone.core.fields.DateField`
             -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
@@ -3562,6 +3562,7 @@ class SampleCollection(object):
             -   ``str``: :class:`fiftyone.core.fields.StringField`
 
         Supported ``bool`` components are:
+
             -   ``checkbox``
             -   ``toggle`` - the default
 
@@ -3570,76 +3571,76 @@ class SampleCollection(object):
         ``dict`` only supports the ``json`` component.
 
         Supported ``float`` and ``int`` components are:
+
             -   ``dropdown``
             -   ``radio``
             -   ``slider``: the default when ``scan_samples`` is ``True`` and
-                finite values are found that define the ``range``
-            -   ``text``: the default when ``scan_samples`` is ``False``
+                distinct finite bounds are found that define a ``range``
+            -   ``text``: the default when ``scan_samples`` is ``False`` or
+                distinct finite bounds are not found
 
-        ``id`` only supports the ``text`` component where ``read_only`` must be
-        ``True`` with no other settings.
+        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
 
-        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components
-        are:
             -   ``checkboxes``
             -   ``dropdown``
             -   ``text`` - the default
 
         Supported ``list<str>`` components are:
+
             -   ``checkboxes``: the default if ``<=5`` values are scanned
-            -   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+            -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
                 scanned
             -   ``text``: the default if ``0`` values or ``>1000`` values are
                 scanned, or ``scan_samples`` is ``False``
 
         Supported ``str`` type components are:
-            =   ``dropdown``: the default is ``>5`` and ``<=1000`` values are
+
+            -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
                 scanned
             -   ``radio``: the default if ``<=5`` values are scanned
             -   ``text``: the default if ``0`` values or ``>1000`` values are
                 scanned, or ``scan_samples`` is ``False``
 
-        ``float`` types support a ``precision`` setting when a ``text``
-        component is configured  for the number of digits to allow after the
-        decimal.
+        ``float`` types support a ``precision`` setting when a ``text`` component
+        is configured  for the number of digits to allow after the decimal.
 
-        All types support a ``default`` value setting except ``id``, as well as
-        a ``read_only`` flag.
+        All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
 
         All components support ``values`` except ``json``, ``slider``, and
-        ``toggle` excepting ``id`` restrictions.
+        ``toggle`` excepting ``id`` restrictions.
 
         ``checkboxes`` and ``dropdown`` require the ``values`` setting.
 
         ``slider`` requires the ``range: [min, max]`` setting.
 
-        Labels::
+        **Labels**
 
         The ``label`` subfield of all label types are configured via ``classes``
         and support the same settings as a ``str`` type. See the example output
         below for ``detections`` fields in the quickstart dataset. If the label
         type has a visual representation, that field is handled by the App's
-        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
-        Primitive attributes of label types are configured via the
-        ``attributes`` setting.
+        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
+        attributes of label types are configured via the ``attributes`` setting.
 
-        All :class:`fiftyone.core.labels.Label`` types are resolved by this
-        method except :class:`fiftyone.core.labels.GeoLocation`,
+        All :class:`fiftyone.core.labels.Label` types are resolved by this method
+        except :class:`fiftyone.core.labels.GeoLocation`,
         :class:`fiftyone.core.labels.GeoLocations`,
         :class:`fiftyone.core.labels.TemporalDetection`, and
-        :class:`fiftyone.core.labels.TemporalDetections`. For label types
-        supported by the App for annotation, see
-        :meth:`get_supported_app_annotation_fields`.
+        :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
+        by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
 
         If a field is ``read_only`` in the field schema, then the ``read_only``
         label schema setting must be ``True``, e.g. ``created_at`` and
         ``last_modified_at`` must be read only.
 
-        Embedded documents::
+        All attributes and the label class itself support a ``default`` setting
+        that applies when creating a new label.
+
+        **Embedded documents**
 
         One level of nesting is supported via ``dot.notation`` for
-        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the
-        default ``metadata`` field and the
+        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the default
+        ``metadata`` field and the
         :class:`fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument``
         document type. All label and primitive types are supported. See
         :ref:`here <dynamic-attributes>` for more details on adding dynamic
@@ -3651,98 +3652,103 @@ class SampleCollection(object):
             import fiftyone.zoo as foz
 
             dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
 
-            fo.pprint(fo.generate_field_schema(dataset, scan_samples=True))
+            fo.pprint(dataset.generate_field_schema(scan_samples=True))
 
-            #{
-            #    'created_at': {
-            #        'type': 'datetime',
-            #        'component': 'datepicker',
-            #        'read_only': True,
-            #    },
-            #    'filepath': {'type': 'str', 'component': 'text'},
-            #    'ground_truth': {
-            #        'attributes': {
-            #            'attributes': {'type': 'dict', 'component': 'json'},
-            #            'confidence': {'type': 'float', 'component': 'text'},
-            #            'id': {
-            #                'type': 'id',
-            #                'component': 'text',
-            #                'read_only': True
-            #            },
-            #            'index': {'type': 'int', 'component': 'text'},
-            #            'mask_path': {'type': 'str', 'component': 'text'},
-            #            'tags': {'type': 'list<str>', 'component': 'text'},
-            #        },
-            #        'classes': [
-            #            'airplane',
-            #            '...',
-            #            'zebra',
-            #        ],
-            #        'component': 'dropdown',
-            #        'type': 'detections',
-            #    },
-            #    'id': {'type': 'id', 'component': 'text', 'read_only': True},
-            #    'last_modified_at': {
-            #        'type': 'datetime',
-            #        'component': 'datepicker',
-            #        'read_only': True,
-            #    },
-            #    'metadata.height': {'type': 'int', 'component': 'text'},
-            #    'metadata.mime_type': {'type': 'str', 'component': 'text'},
-            #    'metadata.num_channels': {'type': 'int', 'component': 'text'},
-            #    'metadata.size_bytes': {'type': 'int', 'component': 'text'},
-            #    'metadata.width': {'type': 'int', 'component': 'text'},
-            #    'predictions': {
-            #        'attributes': {
-            #            'attributes': {'type': 'dict', 'component': 'json'},
-            #            'confidence': {
-            #                'type': 'float',
-            #                'component': 'slider',
-            #                'range': [0.05003104358911514, 0.9999035596847534],
-            #                'default': 0.05003104358911514,
-            #            },
-            #            'id': {
-            #                'type': 'id',
-            #                'component': 'text',
-            #                'read_only': True
-            #            },
-            #            'index': {'type': 'int', 'component': 'text'},
-            #            'mask_path': {'type': 'str', 'component': 'text'},
-            #            'tags': {'type': 'list<str>', 'component': 'text'},
-            #        },
-            #        'classes': [
-            #            'airplane',
-            #            '...',
-            #            'zebra',
-            #        ],
-            #        'component': 'dropdown',
-            #        'type': 'detections',
-            #    },
-            #    'tags': {
-            #        'type': 'list<str>',
-            #        'component': 'checkboxes',
-            #        'values': ['validation'],
-            #    },
-            #    'uniqueness': {
-            #        'type': 'float',
-            #        'component': 'slider',
-            #        'range': [0.15001302256126986, 1.0],
-            #        'default': 0.15001302256126986,
-            #    },
-            #}
+        Output::
+
+            {
+                'created_at': {
+                    'type': 'datetime',
+                    'component': 'datepicker',
+                    'read_only': True,
+                },
+                'filepath': {'type': 'str', 'component': 'text'},
+                'ground_truth': {
+                    'attributes': {
+                        'attributes': {'type': 'dict', 'component': 'json'},
+                        'confidence': {'type': 'float', 'component': 'text'},
+                        'id': {
+                            'type': 'id',
+                            'component': 'text',
+                            'read_only': True
+                        },
+                        'index': {'type': 'int', 'component': 'text'},
+                        'mask_path': {'type': 'str', 'component': 'text'},
+                        'tags': {'type': 'list<str>', 'component': 'text'},
+                    },
+                    'classes': [
+                        'airplane',
+                        '...',
+                        'zebra',
+                    ],
+                    'component': 'dropdown',
+                    'type': 'detections',
+                },
+                'id': {'type': 'id', 'component': 'text', 'read_only': True},
+                'last_modified_at': {
+                    'type': 'datetime',
+                    'component': 'datepicker',
+                    'read_only': True,
+                },
+                'metadata.height': {'type': 'int', 'component': 'text'},
+                'metadata.mime_type': {'type': 'str', 'component': 'text'},
+                'metadata.num_channels': {'type': 'int', 'component': 'text'},
+                'metadata.size_bytes': {'type': 'int', 'component': 'text'},
+                'metadata.width': {'type': 'int', 'component': 'text'},
+                'predictions': {
+                    'attributes': {
+                        'attributes': {'type': 'dict', 'component': 'json'},
+                        'confidence': {
+                            'type': 'float',
+                            'component': 'slider',
+                            'range': [0.05003104358911514, 0.9999035596847534],
+                        },
+                        'id': {
+                            'type': 'id',
+                            'component': 'text',
+                            'read_only': True
+                        },
+                        'index': {'type': 'int', 'component': 'text'},
+                        'mask_path': {'type': 'str', 'component': 'text'},
+                        'tags': {'type': 'list<str>', 'component': 'text'},
+                    },
+                    'classes': [
+                        'airplane',
+                        '...',
+                        'zebra',
+                    ],
+                    'component': 'dropdown',
+                    'type': 'detections',
+                },
+                'tags': {
+                    'type': 'list<str>',
+                    'component': 'checkboxes',
+                    'values': ['validation'],
+                },
+                'uniqueness': {
+                    'type': 'float',
+                    'component': 'slider',
+                    'range': [0.15001302256126986, 1.0],
+                },
+            }
 
         Args:
             fields (None): a field name, ``embedded.field.name`` or iterable of
                 such values
             scan_samples (False): whether to scan the collection to populate
-                component settings (ranges, values, defaults, etc.)
+                component settings based on actual field values (ranges,
+                values, defaults, etc). By default, the label schema is
+                generated from *only* the statically available information in
+                the dataset's field schema
 
         Raises:
             ValueError: if the sample collection or field is not supported
 
         Returns:
-            a label schema ``dict``
+            a label schema ``dict``, or an individual field's label schema ``dict``
+            if only one field is provided
         """
         return foan.generate_label_schema(
             self, fields=fields, scan_samples=scan_samples
