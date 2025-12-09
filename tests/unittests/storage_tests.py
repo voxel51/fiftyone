@@ -24,6 +24,13 @@ import pytest
 import fiftyone.core.storage as fos
 
 
+@pytest.fixture(name="temp_dir")
+def fixture_temp_dir():
+    tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
+    yield tmpdir
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 class TestAbspath:
     """Test abspath() function for local paths."""
 
@@ -39,12 +46,6 @@ class TestAbspath:
 
 class TestArchiveOperations:
     """Test make_archive() and extract_archive() functions."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_extract_archive_default_outdir(self, temp_dir):
         # Create a zip file
@@ -117,12 +118,6 @@ class TestArchiveOperations:
 
 class TestBatchOperations:
     """Test batch file operations: copy_files, move_files, delete_files, read_files."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_copy_files(self, temp_dir):
         # Create source files
@@ -211,12 +206,6 @@ class TestBatchOperations:
 
 class TestCopyDir:
     """Test copy_dir() function."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_copy_dir(self, temp_dir):
         # Create source directory with files
@@ -408,12 +397,6 @@ class TestListBuckets:
 
 class TestLocalFileOperations:
     """Test file operations on local filesystem."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_copy_file(self, temp_dir):
         src = os.path.join(temp_dir, "source.txt")
@@ -645,12 +628,6 @@ class TestLocalFileOperations:
 class TestMoveDir:
     """Test move_dir() function."""
 
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
     def test_move_dir(self, temp_dir):
         # Create source directory with files
         src_dir = os.path.join(temp_dir, "src")
@@ -736,12 +713,6 @@ class TestNormpath:
 class TestOpenFile:
     """Test open_file() function for single file."""
 
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
-
     def test_open_file_read(self, temp_dir):
         path = os.path.join(temp_dir, "test.txt")
         with open(path, "w") as f:
@@ -783,12 +754,6 @@ class TestOpenFile:
 
 class TestOpenFiles:
     """Test open_files() function and FileCollection context manager."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_open_files_as_context_manager(self, temp_dir):
         """Test that open_files() works as a context manager."""
@@ -867,12 +832,6 @@ class TestOpenFiles:
 
 class TestRealpath:
     """Test realpath() function for local paths."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        tmpdir = tempfile.mkdtemp(prefix="fiftyone_test_")
-        yield tmpdir
-        shutil.rmtree(tmpdir, ignore_errors=True)
 
     def test_realpath_resolves_symlinks(self, temp_dir):
         real_file = os.path.realpath(os.path.join(temp_dir, "real.txt"))
