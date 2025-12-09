@@ -21,15 +21,19 @@ const showImportPage = atom((get) => !get(activePaths).length);
 
 const DISABLED_MESSAGES: Record<string, React.ReactNode> = {
   generatedView: (
-    <p>Annotation isn&rsquo;t supported for patches, frames, or clips views.</p>
+    <p>
+      Annotation isn&rsquo;t supported for patches, frames, clips, or
+      materialized views.
+    </p>
   ),
-  unsupportedMediaType: (
+  groupedDataset: (
     <p>
       Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
       <code>SelectGroupSlices</code> to create a view of the image or 3D slices
       you want to label.
     </p>
   ),
+  videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
 };
 
 const Container = styled.div`
@@ -92,7 +96,7 @@ const AnnotateSidebar = () => {
 };
 
 interface AnnotateProps {
-  disabledReason?: AnnotationDisabledReason;
+  disabledReason: AnnotationDisabledReason;
 }
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
@@ -102,9 +106,8 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const editing = useAtomValue(isEditing);
 
   const isDisabled = disabledReason !== null;
-  const disabledMsg = disabledReason
-    ? DISABLED_MESSAGES[disabledReason]
-    : undefined;
+  const disabledMsg =
+    disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
   if (!isDisabled && loading) {
     return <Loading />;

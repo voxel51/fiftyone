@@ -5,7 +5,8 @@ import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 export type AnnotationDisabledReason =
   | "generatedView"
-  | "unsupportedMediaType"
+  | "groupedDataset"
+  | "videoDataset"
   | null;
 
 export interface CanAnnotateResult {
@@ -34,11 +35,13 @@ export default function useCanAnnotate(): CanAnnotateResult {
   }
 
   if (!isAnnotationSupported(currentMediaType)) {
-    return {
-      showAnnotationTab: true,
-      disabledReason:
-        currentMediaType === "group" ? "unsupportedMediaType" : null,
-    };
+    let disabledReason: AnnotationDisabledReason = null;
+    if (currentMediaType === "group") {
+      disabledReason = "groupedDataset";
+    } else if (currentMediaType === "video") {
+      disabledReason = "videoDataset";
+    }
+    return { showAnnotationTab: true, disabledReason };
   }
 
   return { showAnnotationTab: true, disabledReason: null };
