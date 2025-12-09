@@ -13,7 +13,6 @@ import shutil
 import uuid
 
 import eta.core.utils as etau
-import eta.core.video as etav
 
 import fiftyone.core.utils as fou
 
@@ -329,11 +328,16 @@ def _do_download(task):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
 
-        requested_downloads = info.get('requested_downloads')
+        requested_downloads = info.get("requested_downloads")
         if requested_downloads:
-            downloaded_file = requested_downloads[0]['filepath']
+            downloaded_file = requested_downloads[0]["filepath"]
         else:
-            files = [f for f in os.listdir(download_tmp_dir) if not f.endswith('.part') and os.path.isfile(os.path.join(download_tmp_dir, f))]
+            files = [
+                f
+                for f in os.listdir(download_tmp_dir)
+                if not f.endswith(".part")
+                and os.path.isfile(os.path.join(download_tmp_dir, f))
+            ]
             if not files:
                 raise ValueError("No video file was downloaded")
             downloaded_file = os.path.join(download_tmp_dir, files[0])
@@ -348,7 +352,8 @@ def _do_download(task):
             requested_ext = os.path.splitext(video_path)[1]
             if downloaded_ext != requested_ext and requested_ext:
                 warnings.append(
-                    "Unable to find a '%s' stream for '%s'; downloaded '%s' instead"
+                    "Unable to find a '%s' stream for '%s'; "
+                    "downloaded '%s' instead"
                     % (requested_ext, url, downloaded_ext)
                 )
                 video_path = os.path.splitext(video_path)[0] + downloaded_ext
@@ -365,33 +370,35 @@ def _do_download(task):
     return idx, url, video_path, error, warnings
 
 
-def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment):
+def _build_yt_dlp_opts(
+    tmp_dir, ext, only_progressive, resolution, clip_segment
+):
     opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'outtmpl': os.path.join(tmp_dir, '%(id)s.%(ext)s'),
-        'noplaylist': True,
-        'socket_timeout': 30,
-        'retries': 3,
+        "quiet": True,
+        "no_warnings": True,
+        "outtmpl": os.path.join(tmp_dir, "%(id)s.%(ext)s"),
+        "noplaylist": True,
+        "socket_timeout": 30,
+        "retries": 3,
     }
 
     format_selector = _build_format_selector(only_progressive, resolution)
     if format_selector:
-        opts['format'] = format_selector
+        opts["format"] = format_selector
 
     if clip_segment is not None:
         start_time, end_time = clip_segment
         if start_time is None:
             start_time = 0
         if end_time is None:
-            end_time = float('inf')
+            end_time = float("inf")
 
-        opts['download_ranges'] = yt_dlp.utils.download_range_func(
+        opts["download_ranges"] = yt_dlp.utils.download_range_func(
             None, [(start_time, end_time)]
         )
-        opts['force_keyframes_at_cuts'] = True
+        opts["force_keyframes_at_cuts"] = True
 
-    opts['merge_output_format'] = ext[1:] if ext else 'mp4'
+    opts["merge_output_format"] = ext[1:] if ext else "mp4"
 
     return opts
 
@@ -399,15 +406,15 @@ def _build_yt_dlp_opts(tmp_dir, ext, only_progressive, resolution, clip_segment)
 def _build_format_selector(only_progressive, resolution):
     if only_progressive:
         if etau.is_numeric(resolution):
-            return 'b[height<=%d][vcodec!=none][acodec!=none]/b' % resolution
+            return "b[height<=%d][vcodec!=none][acodec!=none]/b" % resolution
         elif resolution == "lowest":
-            return 'w[vcodec!=none][acodec!=none]/b'
+            return "w[vcodec!=none][acodec!=none]/b"
         else:
-            return 'b[vcodec!=none][acodec!=none]/b'
+            return "b[vcodec!=none][acodec!=none]/b"
     else:
         if etau.is_numeric(resolution):
-            return 'bv[height<=%d]+ba/b' % resolution
+            return "bv[height<=%d]+ba/b" % resolution
         elif resolution == "lowest":
-            return 'wv+wa/w'
+            return "wv+wa/w"
         else:
-            return 'bv+ba/b'
+            return "bv+ba/b"
