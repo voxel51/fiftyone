@@ -83,6 +83,7 @@ const AnnotateSidebar = () => {
           throw new Error("unexpected");
         }}
         useEntries={useEntries}
+        modal={true}
       />
     </>
   );
