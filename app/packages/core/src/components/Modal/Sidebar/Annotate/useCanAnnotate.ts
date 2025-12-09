@@ -16,11 +16,12 @@ export interface CanAnnotateResult {
   disabledReason: AnnotationDisabledReason;
 }
 
-const MEDIA_TYPE_TO_DISABLED_REASON: Record<string, AnnotationDisabledReason> =
-  {
-    group: "groupedDataset",
-    video: "videoDataset",
-  };
+const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
+  Record<string, Exclude<AnnotationDisabledReason, "generatedView" | null>>
+> = {
+  group: "groupedDataset",
+  video: "videoDataset",
+};
 
 function getDisabledReason(
   currentMediaType: string | null | undefined,

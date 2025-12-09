@@ -19,7 +19,10 @@ import useLabels from "./useLabels";
 
 const showImportPage = atom((get) => !get(activePaths).length);
 
-const DISABLED_MESSAGES: Record<string, React.ReactNode> = {
+const DISABLED_MESSAGES: Record<
+  Exclude<AnnotationDisabledReason, null>,
+  React.ReactNode
+> = {
   generatedView: (
     <p>
       Annotation isn&rsquo;t supported for patches, frames, clips, or
