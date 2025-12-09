@@ -1,12 +1,16 @@
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
-import { ModalSample } from "@fiftyone/state";
+import { getEventBus, useEventBus } from "@fiftyone/events";
+import { ModalSample, useDebounceCallback } from "@fiftyone/state";
 import { MenuItem, Select } from "@mui/material";
 import {
   Bounds,
   MapControls,
   OrthographicCamera,
+  useBounds,
   View,
 } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -429,7 +433,17 @@ export const SidePanel = ({
             enableRotate={false}
             zoomSpeed={0.8}
           />
-          <Bounds fit clip observe={observe} margin={1.25}>
+          <Bounds
+            fit
+            clip
+            observe={observe}
+            margin={1.25}
+            maxDuration={0}
+            onFit={() => {
+              getEventBus().dispatch("annotation:sidepanel:fit", null);
+            }}
+          >
+            <BoundApi />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
               <FoSceneComponent scene={foScene} />
@@ -493,4 +507,56 @@ export const SidePanel = ({
       </ViewSelectorWrapper>
     </SidePanelContainer>
   );
+};
+
+function findByUserData(
+  scene: THREE.Scene,
+  key: string,
+  value: unknown
+): THREE.Object3D | null {
+  let result: THREE.Object3D | null = null;
+  scene.traverse((o) => {
+    if (o.userData?.[key] === value) {
+      result = o as THREE.Object3D;
+    }
+  });
+  return result;
+}
+
+const BoundApi = () => {
+  const api = useBounds();
+
+  const { scene, camera } = useThree();
+
+  const eventBus = useEventBus();
+
+  const reconciledRef = useRef(true);
+
+  const debouncedFit = useDebounceCallback(() => {
+    if (reconciledRef.current) return;
+    camera.zoom *= 0.2;
+    camera.updateProjectionMatrix();
+    reconciledRef.current = true;
+  }, 20);
+
+  useEffect(() => {
+    const off = eventBus.on("annotation:sidepanel:fit", debouncedFit);
+
+    return () => {
+      off();
+    };
+  }, [eventBus, debouncedFit]);
+
+  useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
+    const { label } = payload;
+
+    const object = findByUserData(scene, "labelId", label._id);
+
+    if (object) {
+      api.refresh(object).reset().fit();
+      reconciledRef.current = false;
+    }
+  });
+
+  return null;
 };

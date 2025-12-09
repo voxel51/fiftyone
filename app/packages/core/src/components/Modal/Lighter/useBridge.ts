@@ -32,7 +32,7 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
   const overlay = useAtomValue(currentOverlay);
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarValueUpdated",
+    "annotation:sidebarValueUpdated",
     useCallback(
       (payload) => {
         if (!scene) {
@@ -54,7 +54,7 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelHover",
+    "annotation:sidebarLabelHover",
     useCallback(
       (payload) => {
         if (!scene) {
@@ -71,7 +71,7 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelUnhover",
+    "annotation:sidebarLabelUnhover",
     useCallback(
       (payload) => {
         if (!scene) {

@@ -1,3 +1,4 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
@@ -34,9 +35,9 @@ import {
   isCuboidAnnotateActiveAtom,
   isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
+  selectedLabelForAnnotationAtom,
   stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
-  selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
 import { Archetype3d } from "../types";
@@ -161,6 +162,8 @@ export const ThreeDLabels = ({
     ]
   );
 
+  const annotationEventBus = useAnnotationEventBus();
+
   const handleSelect = useCallback(
     (
       label: OverlayLabel,
@@ -168,8 +171,13 @@ export const ThreeDLabels = ({
       e: ThreeEvent<MouseEvent>
     ) => {
       if (isSegmenting) return;
-
       if (mode === "annotate") {
+        annotationEventBus.dispatch("annotation:3dLabelSelected", {
+          id: label._id ?? label["id"],
+          archetype,
+          label,
+        });
+
         if (archetype === "cuboid") {
           selectLabelForAnnotation(label, archetype);
           setCurrentArchetypeSelectedForTransform(archetype);

@@ -60,10 +60,8 @@ export const Cuboid = ({
     }
   }, [isSelectedForAnnotation, setIsCuboidAnnotateActive]);
 
-  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
-    tooltip,
-    label
-  );
+  const { onPointerOver, onPointerOut, ...restEventHandlers } =
+    useEventHandlers(tooltip, label);
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
@@ -216,7 +214,11 @@ export const Cuboid = ({
       explicitObjectRef={contentRef}
       // explicitObjectRef={null}
     >
-      <group ref={contentRef} position={tempTransforms?.position ?? [0, 0, 0]}>
+      <group
+        userData={{ labelId: label._id }}
+        ref={contentRef}
+        position={tempTransforms?.position ?? [0, 0, 0]}
+      >
         {content}
       </group>
     </Transformable>

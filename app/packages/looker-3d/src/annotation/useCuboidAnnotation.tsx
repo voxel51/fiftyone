@@ -97,16 +97,20 @@ export const useCuboidAnnotation = ({
         originalDims[1] * scale.y,
         originalDims[2] * scale.z,
       ];
+
+      const originalPosition = new THREE.Vector3();
+      originalPosition.setFromMatrixPosition(startMatrix);
       setTempCuboidTransforms({
-        position: contentRef.current.position.toArray() as [
-          number,
-          number,
-          number
-        ],
+        position: originalPosition.toArray() as [number, number, number],
         dimensions: transientDimensions,
       });
     }
-  }, [setTempCuboidTransforms, currentStagedTransform?.dimensions, dimensions]);
+  }, [
+    setTempCuboidTransforms,
+    currentStagedTransform?.dimensions,
+    dimensions,
+    startMatrix,
+  ]);
 
   const handleTransformEnd = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
