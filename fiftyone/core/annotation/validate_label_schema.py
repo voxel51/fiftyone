@@ -545,7 +545,7 @@ def _validate_default(
             try:
                 json_str = json.dumps(value)
                 if json_str != json.dumps(json.loads(json_str)):
-                    raise Exception()
+                    raise Exception("inconsistent json")
             except Exception as exc:
                 raise ValueError(
                     f"invalid json 'default' for field '{field_name}'"
