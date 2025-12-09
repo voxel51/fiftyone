@@ -201,7 +201,9 @@ class FileCollection(list):
             try:
                 f.close()
             except Exception:  # catch all so we continue to close the rest
-                pass
+                logger.debug(
+                    "FileCollection failed to close %r", f, exc_info=True
+                )
         return False
 
 

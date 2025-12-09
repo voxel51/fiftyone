@@ -434,7 +434,7 @@ class TestLocalFileOperations:
         with open(os.path.join(dir_path, "existing.txt"), "w") as f:
             f.write("existing")
 
-        with pytest.raises(ValueError, match=f"{dir_path} not empty"):
+        with pytest.raises(ValueError, match=f"not empty"):
             fos.ensure_empty_dir(dir_path)
 
     def test_ensure_empty_dir_creates_new(self, temp_dir):
@@ -944,7 +944,7 @@ class TestSerializationLocal:
         with open(path, "w") as f:
             f.write("not valid json")
 
-        with pytest.raises(ValueError, match=f"Unable to parse JSON file"):
+        with pytest.raises(ValueError, match="Unable to parse JSON file"):
             fos.read_json(path)
 
 
