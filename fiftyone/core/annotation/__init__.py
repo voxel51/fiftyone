@@ -14,8 +14,8 @@ from fiftyone.core.runs import (
 )
 from fiftyone.core.odm import patch_annotation_runs
 
-from .generate_label_schema import generate_label_schema
-from .validate_label_schema import validate_label_schema
+from .generate_label_schemas import generate_label_schemas
+from .validate_label_schemas import validate_label_schemas
 
 
 class AnnotationInfo(BaseRunInfo):

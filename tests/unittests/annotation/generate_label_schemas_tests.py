@@ -10,8 +10,8 @@ from datetime import date, datetime
 import unittest
 
 import fiftyone as fo
-from fiftyone.core.annotation.generate_label_schema import (
-    generate_label_schema,
+from fiftyone.core.annotation.generate_label_schemas import (
+    generate_label_schemas,
 )
 
 from decorators import drop_datasets
@@ -26,7 +26,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", date_field=date.today())
         )
         self.assertEqual(
-            generate_label_schema(dataset, "date_field"),
+            generate_label_schemas(dataset, "date_field"),
             {
                 "component": "datepicker",
                 "type": "date",
@@ -40,7 +40,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", datetime_field=datetime.now())
         )
         self.assertEqual(
-            generate_label_schema(dataset, "datetime_field"),
+            generate_label_schemas(dataset, "datetime_field"),
             {
                 "component": "datepicker",
                 "type": "datetime",
@@ -52,7 +52,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", float_field=0.0))
         self.assertEqual(
-            generate_label_schema(dataset, "float_field"),
+            generate_label_schemas(dataset, "float_field"),
             {
                 "component": "text",
                 "type": "float",
@@ -61,7 +61,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
 
         dataset.add_sample(fo.Sample(filepath="image.png", float_field=1.0))
         self.assertEqual(
-            generate_label_schema(dataset, "float_field"),
+            generate_label_schemas(dataset, "float_field"),
             {
                 "component": "slider",
                 "range": [0.0, 1.0],
@@ -74,7 +74,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", int_field=0))
         self.assertEqual(
-            generate_label_schema(dataset, "int_field"),
+            generate_label_schemas(dataset, "int_field"),
             {
                 "component": "text",
                 "type": "int",
@@ -83,7 +83,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
 
         dataset.add_sample(fo.Sample(filepath="image.png", int_field=1))
         self.assertEqual(
-            generate_label_schema(dataset, "int_field"),
+            generate_label_schemas(dataset, "int_field"),
             {
                 "component": "slider",
                 "range": [0, 1],
@@ -96,7 +96,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_sample(fo.Sample(filepath="image.png", str_field="test"))
         self.assertEqual(
-            generate_label_schema(dataset, "str_field"),
+            generate_label_schemas(dataset, "str_field"),
             {
                 "component": "radio",
                 "type": "str",
@@ -111,7 +111,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(filepath="image.png", str_list_field=["test"])
         )
         self.assertEqual(
-            generate_label_schema(dataset, "str_list_field"),
+            generate_label_schemas(dataset, "str_list_field"),
             {
                 "component": "checkboxes",
                 "type": "list<str>",
@@ -130,7 +130,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            generate_label_schema(dataset, "detection_field"),
+            generate_label_schemas(dataset, "detection_field"),
             {
                 "attributes": {
                     "id": {
@@ -158,7 +158,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             )
         )
         self.assertEqual(
-            generate_label_schema(dataset, "detections_field"),
+            generate_label_schemas(dataset, "detections_field"),
             {
                 "attributes": {
                     "id": {

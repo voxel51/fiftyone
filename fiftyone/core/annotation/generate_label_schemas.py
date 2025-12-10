@@ -9,8 +9,8 @@ Annotation label schema generation
 import eta.core.utils as etau
 
 import fiftyone.core.annotation.constants as foac
-from fiftyone.core.annotation.validate_label_schema import (
-    validate_label_schema,
+from fiftyone.core.annotation.validate_label_schemas import (
+    validate_label_schemas,
 )
 import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
@@ -26,7 +26,7 @@ def get_supported_app_annotation_fields(sample_collection):
     ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
     All supported primitive and ``embedded.document`` primitives are supported
-    as documented in :func:`generate_label_schema`
+    as documented in :func:`generate_label_schemas`
 
     The below :class:`fiftyone.core.labels.Label` types are also resolved.
 
@@ -58,13 +58,13 @@ def get_supported_app_annotation_fields(sample_collection):
     return foau.flatten_fields(sample_collection, fields)
 
 
-def generate_label_schema(sample_collection, fields=None, scan_samples=True):
-    """Generates a label schema given a
+def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
+    """Generates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.
 
-    A label schema is defined by a ``type`` and ``component``. Further
-    settings depend on the ``type`` and ``component`` combination as outlined
-    below.
+    A label schema is defined by a ``type`` and ``component`` with respect
+    to a field. Further settings depend on the ``type`` and ``component``
+    combination as outlined below.
 
     The ``type`` value for a field is inferred from the collection's field
     schema. See
@@ -140,6 +140,9 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     is configured  for the number of digits to allow after the decimal.
 
     All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
+    If a field is ``read_only`` in the field schema, then the ``read_only``
+    label schema setting must be ``True``, e.g. ``created_at`` and
+    ``last_modified_at`` must be read only.
 
     All components support ``values`` except ``json``, ``slider``, and
     ``toggle`` excepting ``id`` restrictions.
@@ -157,16 +160,15 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
     builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
     attributes of label types are configured via the ``attributes`` setting.
 
+    When a label is marked is ``read_only``, all its attributes inherit the
+    setting as well.
+
     All :class:`fiftyone.core.labels.Label` types are resolved by this method
     except :class:`fiftyone.core.labels.GeoLocation`,
     :class:`fiftyone.core.labels.GeoLocations`,
     :class:`fiftyone.core.labels.TemporalDetection`, and
     :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
     by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
-
-    If a field is ``read_only`` in the field schema, then the ``read_only``
-    label schema setting must be ``True``, e.g. ``created_at`` and
-    ``last_modified_at`` must be read only.
 
     All attributes and the label class itself support a ``default`` setting
     that applies when creating a new label.
@@ -189,7 +191,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         dataset = foz.load_zoo_dataset("quickstart")
         dataset.compute_metadata()
 
-        fo.pprint(fo.generate_label_schema(dataset, scan_samples=True))
+        fo.pprint(fo.generate_label_schemas(dataset, scan_samples=True))
 
     Output::
 
@@ -284,8 +286,8 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
         ValueError: if the sample collection or field is not supported
 
     Returns:
-        a label schema ``dict``, or an individual field's label schema ``dict``
-        if only one field is provided
+        a label schemas ``dict``, or an individual field's label schema
+        ``dict`` if only one field is provided
     """
     is_scalar = etau.is_str(fields)
     if is_scalar:
@@ -302,7 +304,7 @@ def generate_label_schema(sample_collection, fields=None, scan_samples=True):
             sample_collection, field_name, scan_samples
         )
 
-        validate_label_schema(
+        validate_label_schemas(
             sample_collection,
             label_schema,
             fields=field_name,

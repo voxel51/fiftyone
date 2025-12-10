@@ -18,23 +18,23 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
-def validate_label_schema(
+def validate_label_schemas(
     sample_collection, label_schema, fields=None, _allow_default=False
 ):
-    """Validates a label schema for a given field on a
+    """Validates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.  See
-    :func:`generate_label_schema` for acceptable label schema specifications
+    :func:`generate_label_schemas` for acceptable label schema specifications
 
     Args:
         sample_collection: the
             :class:`fiftyone.core.collections.SampleCollection`
-        label_schema: a label schema ``dict`` or an individual field's label
+        label_schema: a label schemas ``dict`` or an individual field's label
             schema ``dict`` if only one field is provided
         fields (None): a field name, ``embedded.field.name`` or iterable of
             such values
 
     Raises:
-        ExceptionGroup: if the label schema is invalid
+        ExceptionGroup: if the label schema(s) are invalid
     """
     is_scalar = etau.is_str(fields)
 
@@ -63,7 +63,7 @@ def validate_label_schema(
             exceptions.append(exc)
 
     if exceptions:
-        raise ExceptionGroup("invalid label schema", exceptions)
+        raise ExceptionGroup("invalid label schema(s)", exceptions)
 
 
 def _validate_field_label_schema(
