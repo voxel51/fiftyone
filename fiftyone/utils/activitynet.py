@@ -1169,8 +1169,8 @@ def _flatten_list(l):
 
 
 _ANNOTATION_DOWNLOAD_LINKS = {
-    "100": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-2.min.json",
-    "200": "http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json",
+    "100": "https://github.com/activitynet/ActivityNet/raw/refs/heads/master/Evaluation/data/activity_net.v1-3.min.json",
+    "200": "https://github.com/activitynet/ActivityNet/raw/refs/heads/master/Evaluation/data/activity_net.v1-3.min.json",
 }
 
 _SPLIT_MAP = {

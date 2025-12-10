@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { getEventBus } from "@fiftyone/events";
+import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
@@ -39,7 +39,7 @@ export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
   private tickHandler?: () => void;
   private isRunning = false;
-  private eventBus = getEventBus<LighterEventGroup>();
+  private eventBus: EventDispatcher<LighterEventGroup>;
 
   private viewport?: Viewport;
 
@@ -52,7 +52,9 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  constructor(private canvas: HTMLCanvasElement) {}
+  constructor(private canvas: HTMLCanvasElement, sceneId: string) {
+    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+  }
 
   public async initializePixiJS(): Promise<void> {
     this.app = await sharedPixiApp.initialize(this.canvas);

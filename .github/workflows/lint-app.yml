@@ -9,7 +9,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: changes
         with:

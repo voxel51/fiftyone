@@ -2,7 +2,12 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { EventHandler, getEventBus } from "@fiftyone/events";
+import {
+  clearChannel,
+  EventDispatcher,
+  EventHandler,
+  getEventBus,
+} from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import type { Command } from "../commands/Command";
 import {
@@ -142,32 +147,35 @@ export class Scene2D {
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
   private undoRedo = new UndoRedoManager();
-  private unsubscribeCanonicalMedia?: () => void;
+  private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
-  private readonly sceneId: string | undefined;
   private isRenderLoopActive: boolean = false;
-
   private abortController = new AbortController();
-  private readonly eventBus = getEventBus<LighterEventGroup>();
+  private readonly sceneId: string;
+  private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  public isDestroyed = false;
+  private _isDestroyed = false;
 
   constructor(private readonly config: Scene2DConfig) {
+    this.sceneOptions = config.options;
+    this.sceneId = config.sceneId;
+
     this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager();
+    this.selectionManager = new SelectionManager(this.sceneId);
     this.interactionManager = new InteractionManager(
       config.canvas,
       this.undoRedo,
       this.selectionManager,
-      config.renderer
+      config.renderer,
+      this.sceneId
     );
-    this.sceneOptions = config.options;
-    this.sceneId = config.sceneId;
+
+    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -288,6 +296,14 @@ export class Scene2D {
     document.addEventListener("keydown", this.arrowRotateHandler.bind(this), {
       signal: this.abortController.signal,
     });
+  }
+
+  /**
+   * Gets whether the scene has been destroyed.
+   * @returns True if the scene has been destroyed, false otherwise.
+   */
+  get isDestroyed(): boolean {
+    return this._isDestroyed;
   }
 
   /**
@@ -949,9 +965,10 @@ export class Scene2D {
     }
 
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
-    // Inject renderer into overlay
+    // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
+    overlay.setSceneId(this.sceneId);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -998,6 +1015,9 @@ export class Scene2D {
 
       // Dispose the renderer container to actually remove it from the renderer
       this.config.renderer.dispose(id);
+
+      // Destroy the overlay to clean up event handlers and other resources
+      overlay.destroy();
 
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
@@ -1241,16 +1261,23 @@ export class Scene2D {
 
     this.isRenderLoopActive = false;
 
+    // Clean up canonical media subscription BEFORE clearing overlays
+    // This ensures we properly unsubscribe from boundsChangeCallbacks
+    // before the ImageOverlay's boundsChangeCallbacks array is replaced
+    if (this.unsubscribeCanonicalMediaBounds) {
+      this.unsubscribeCanonicalMediaBounds();
+      this.unsubscribeCanonicalMediaBounds = undefined;
+    }
+
+    // Clear canonical media references
+    this.canonicalMedia = undefined;
+    this.canonicalMediaId = undefined;
+
     // Clear all overlays
     this.clear();
 
     // Clear render callbacks
     this.clearRenderCallbacks();
-
-    // Clean up canonical media subscription
-    if (this.unsubscribeCanonicalMedia) {
-      this.unsubscribeCanonicalMedia();
-    }
 
     // Destroy managers
     this.interactionManager.destroy();
@@ -1260,10 +1287,13 @@ export class Scene2D {
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
 
+    // Clear all event handlers for this scene's channel and remove from registry
+    clearChannel(this.sceneId);
+
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
 
-    this.isDestroyed = true;
+    this._isDestroyed = true;
   }
 
   /**
@@ -1360,7 +1390,7 @@ export class Scene2D {
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
     // Set up bounds change listener for coordinate system updates
-    this.unsubscribeCanonicalMedia = overlayOrMedia.onBoundsChanged(
+    this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 
