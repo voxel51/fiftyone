@@ -41,7 +41,7 @@ def test_hrm2_download_and_load():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_download_and_load
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
 
     # Download models if not already present
     try:
@@ -60,7 +60,7 @@ def test_hrm2_download_and_load():
     if smpl_path and not os.path.exists(smpl_path):
         pytest.skip(f"SMPL model not found at {smpl_path}")
 
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "checkpoint_version": "2.0b",
@@ -82,7 +82,7 @@ def test_hrm2_single_person_inference():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_single_person_inference
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
 
     # Get SMPL path
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
@@ -92,7 +92,7 @@ def test_hrm2_single_person_inference():
         )
 
     # Create config for single-person mode
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
@@ -155,7 +155,7 @@ def test_hrm2_multi_person_inference():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_multi_person_inference
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
     import fiftyone.core.labels as fol
 
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
@@ -163,7 +163,7 @@ def test_hrm2_multi_person_inference():
         pytest.skip("SMPL_MODEL_PATH not set or file not found")
 
     # Create config with detections_field for multi-person mode
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
@@ -250,14 +250,14 @@ def test_hrm2_mesh_export():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_mesh_export
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
 
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
     if not smpl_path or not os.path.exists(smpl_path):
         pytest.skip("SMPL_MODEL_PATH not set")
 
     # Create config with mesh export enabled
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
@@ -307,7 +307,7 @@ def test_hrm2_full_pipeline():
     """
     from fiftyone.utils.hrm2 import (
         HRM2Model,
-        HRM2Config,
+        HRM2ModelConfig,
         apply_hrm2_to_dataset_as_groups,
     )
 
@@ -316,7 +316,7 @@ def test_hrm2_full_pipeline():
         pytest.skip("SMPL_MODEL_PATH not set")
 
     # Create config (removed deprecated enable_multi_person and detector_type)
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": True,
@@ -370,13 +370,13 @@ def test_hrm2_batch_processing():
     Run with:
         pytest tests/intensive/hrm2_tests.py -s -k test_hrm2_batch_processing
     """
-    from fiftyone.utils.hrm2 import HRM2Model, HRM2Config
+    from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
 
     smpl_path = os.environ.get("SMPL_MODEL_PATH")
     if not smpl_path or not os.path.exists(smpl_path):
         pytest.skip("SMPL_MODEL_PATH not set")
 
-    config = HRM2Config(
+    config = HRM2ModelConfig(
         {
             "smpl_model_path": smpl_path,
             "export_meshes": False,

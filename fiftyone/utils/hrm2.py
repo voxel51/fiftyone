@@ -29,8 +29,6 @@ import cv2
 import numpy as np
 from PIL import Image
 
-import eta.core.utils as etau
-
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
@@ -63,7 +61,6 @@ __all__ = [
     "load_smpl_model",
     "apply_hrm2_to_dataset_as_groups",
     "export_hrm2_scene",
-    "HRM2Config",
     "HRM2ModelConfig",
     "HRM2Model",
     "HRM2GetItem",
@@ -978,7 +975,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
     **Resource Requirements:**
     - If ``export_meshes=True``, requires ``smpl_model`` to prepare mesh data
     - These resources are injected at runtime by HRM2Model._build_output_processor()
-    - Config parameter export_meshes is set in HRM2Config
+    - Config parameter export_meshes is set in HRM2ModelConfig
 
     Args:
         smpl_model (None): Optional SMPL model (torch.nn.Module) for mesh data.
@@ -1006,7 +1003,7 @@ class HRM2OutputProcessor(fout.OutputProcessor):
             logger.warning(
                 "export_meshes=True but no SMPL model provided. "
                 "Scene metadata preparation will be disabled. "
-                "To enable mesh export, provide smpl_model_path in HRM2Config."
+                "To enable mesh export, provide smpl_model_path in HRM2ModelConfig."
             )
             self.export_meshes = False
 
@@ -1811,7 +1808,7 @@ def apply_hrm2_to_dataset_as_groups(
             fo.delete_dataset(temp_dataset_name)
 
 
-class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
+class HRM2ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running an :class:`HRM2Model`.
 
     Args:
@@ -1846,14 +1843,10 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "detections_field", default=None
         )
 
-        # Set up HRM2 model entrypoint if not already configured
-        if d.get("entrypoint_fcn") is None:
-            d["entrypoint_fcn"] = load_hrm2_model
-
-        if d.get("entrypoint_args") is None:
+        # Update entrypoint_args with user-configurable and runtime parameters
+        if "entrypoint_args" not in d:
             d["entrypoint_args"] = {}
 
-        # Ensure entrypoint args include HRM2 config
         d["entrypoint_args"].update(
             {
                 "checkpoint_version": self.checkpoint_version,
@@ -1863,29 +1856,18 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
                 "model_config_path": d.get(
                     "model_config_path"
                 ),  # Allow explicit override
-                "init_renderer": False,
             }
         )
 
-        # Enable ragged batches for heterogeneous data from GetItem
-        d["ragged_batches"] = True
-
-        # Configure output processor class and arguments
-        # Config owns serializable args; runtime resources (smpl_model, device)
-        # are injected in _build_output_processor()
-        if d.get("output_processor_cls") is None:
-            d["output_processor_cls"] = HRM2OutputProcessor
-
-        if d.get("output_processor_args") is None:
+        # Update output_processor_args with user-configurable parameters
+        if "output_processor_args" not in d:
             d["output_processor_args"] = {}
 
-        # Set serializable output processor arguments from config
-        # Note: runtime resources (smpl_model, device) will be injected later
-        d["output_processor_args"].update(
-            {
-                "export_meshes": self.export_meshes,
-            }
-        )
+        d["output_processor_args"]["export_meshes"] = self.export_meshes
+
+        # Set ragged_batches=False since HRM2Model uses collate_fn
+        if "ragged_batches" not in d:
+            d["ragged_batches"] = False
 
         super().__init__(d)
 
@@ -1897,15 +1879,6 @@ class HRM2Config(fout.TorchImageModelConfig, fozm.HasZooModel):
                     f"Please register at https://smpl.is.tue.mpg.de/ to "
                     f"obtain the SMPL_NEUTRAL.pkl file."
                 )
-
-
-class HRM2ModelConfig(HRM2Config):
-    """Compatibility alias so the zoo loader can resolve the config class.
-
-    Some loaders expect the config class to be named `<ModelClassName>Config`.
-    """
-
-    pass
 
 
 class HRM2Model(
@@ -1958,10 +1931,10 @@ class HRM2Model(
         )
 
     Args:
-        config: an :class:`HRM2Config`
+        config: an :class:`HRM2ModelConfig`
     """
 
-    def __init__(self, config: HRM2Config) -> None:
+    def __init__(self, config: HRM2ModelConfig) -> None:
         # Set instance attributes BEFORE parent init (which calls _load_model)
         self._hmr2: Optional[Any] = None
         self._smpl: Optional[Any] = None
@@ -1970,27 +1943,33 @@ class HRM2Model(
         # Now initialize parent class
         fout.TorchImageModel.__init__(self, config)
 
-    def _download_model(self, config: HRM2Config) -> None:
-        """Download model if it's a zoo model."""
-        # Download via zoo if HasZooModel is available and model identifiers are provided
-        if hasattr(config, "download_model_if_necessary"):
-            model_name = getattr(config, "model_name", None)
-            model_path = getattr(config, "model_path", None)
-            if model_name or model_path:
-                config.download_model_if_necessary()
-        # Note: HRM2 uses 4D-Humans' own download mechanism via entrypoint
-        # The checkpoint paths are resolved in the load_hrm2_model() entrypoint function
+    def _download_model(self, config: HRM2ModelConfig) -> None:
+        """Download model if it's a zoo model.
 
-    def _load_model(self, config: HRM2Config) -> Any:
+        Note: HRM2 uses 4D-Humans' own download mechanism via the
+        load_hrm2_model() entrypoint function, NOT the FiftyOne zoo download.
+        We only call download_model_if_necessary() if a zoo model_name or
+        model_path is explicitly configured.
+        """
+        # Only call zoo download if model_name or model_path is set
+        # HRM2 typically uses entrypoint-based loading via 4D-Humans
+        model_name = getattr(config, "model_name", None)
+        model_path = getattr(config, "model_path", None)
+        if (model_name or model_path) and hasattr(
+            config, "download_model_if_necessary"
+        ):
+            config.download_model_if_necessary()
+
+    def _load_model(self, config: HRM2ModelConfig) -> Any:
         """Load the HRM2 model and SMPL body model.
 
-        **Loading Order (Critical for Output Processor Pattern):**
+        **Loading Order:**
         1. Load HRM2 model via parent's entrypoint
         2. Load SMPL model (runtime resource needed by output processor)
-        3. Build output processor and inject SMPL model + device
 
-        This order allows the output processor to receive runtime resources
-        (SMPL model, device) that can't be serialized in the config.
+        The parent class will call _build_output_processor() after this,
+        which uses _get_output_processor_runtime_args() to inject SMPL model
+        and device.
         """
         # Load HRM2 model using parent's entrypoint mechanism
         self._hmr2 = super()._load_model(config)
@@ -2014,72 +1993,22 @@ class HRM2Model(
                 "available. Please provide smpl_model_path in config."
             )
 
-        # Build output processor AFTER loading all resources
-        # This allows _build_output_processor() to inject runtime resources
-        # (self._smpl, self._device) into the processor
-        self._output_processor = self._build_output_processor()
-
         return self._hmr2
 
-    def _build_output_processor(
-        self, config: Optional[HRM2Config] = None
-    ) -> Optional[HRM2OutputProcessor]:
-        """Build the output processor with runtime resource injection.
+    def _get_output_processor_runtime_args(self) -> Dict[str, Any]:
+        """Provide runtime resources for the output processor.
 
-        This method:
-        1. Starts with config.output_processor_args (set in HRM2Config.__init__)
-        2. Injects runtime resources that can't be serialized (SMPL model, device)
-        3. Builds the processor
-        4. Cleans up non-serializable objects from config (for JSON export)
+        This hook is called by the parent's _build_output_processor() to inject
+        non-serializable runtime resources (SMPL model, device) that the
+        HRM2OutputProcessor needs for mesh generation.
 
-        This separation allows:
-        - Config to be serialized to JSON
-        - Runtime resources to be passed to processor
-        - Clean separation of concerns
-
-        Args:
-            config: optional config (parent class passes this, but we use self.config)
+        Returns:
+            dict with smpl_model and device for the output processor
         """
-        if config is None:
-            config = self.config
-
-        if config.output_processor_cls is None:
-            return None
-
-        # Start with config's output_processor_args
-        # (already set in HRM2Config.__init__)
-        # These are serializable parameters: export_meshes
-        if not config.output_processor_args:
-            config.output_processor_args = {}
-
-        args = config.output_processor_args.copy()
-
-        # Inject runtime resources that couldn't be in config
-        # (These are non-serializable: loaded model objects, device objects)
-        args.update(
-            {
-                "smpl_model": self._smpl,  # Loaded SMPL model (torch.nn.Module)
-                "device": self._device,  # torch.device object
-            }
-        )
-
-        # Build processor using parent's class resolution logic
-        output_processor_cls = config.output_processor_cls
-        if etau.is_str(output_processor_cls):
-            output_processor_cls = etau.get_class(output_processor_cls)
-
-        # Pass classes if available (may not be set yet during _load_model)
-        # The parent will call this again after setting _classes
-        processor = output_processor_cls(
-            classes=getattr(self, "_classes", None), **args
-        )
-
-        # Clean up non-serializable objects from config for JSON export
-        if config.output_processor_args:
-            config.output_processor_args.pop("smpl_model", None)
-            config.output_processor_args.pop("device", None)
-
-        return processor
+        return {
+            "smpl_model": self._smpl,  # Loaded SMPL model (torch.nn.Module)
+            "device": self._device,  # torch.device object
+        }
 
     def build_get_item(
         self, field_mapping: Optional[Dict[str, str]] = None
@@ -2127,62 +2056,73 @@ class HRM2Model(
             use_numpy=False,
         )
 
-    def predict(
+    @property
+    def has_collate_fn(self) -> bool:
+        """HRM2 needs a custom collate function to handle Detections objects.
+
+        The default PyTorch collate function can't handle fol.Detections objects
+        that are returned by HRM2GetItem. Since HRM2Model processes items
+        individually anyway (not as true batches), we use a pass-through collate
+        function that just returns the list as-is.
+        """
+        return True
+
+    @staticmethod
+    def collate_fn(batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Pass-through collate function for HRM2 structured inputs.
+
+        Since HRM2Model processes each item individually (iterating through
+        detections per image), we don't need to collate items into tensors.
+        This function just returns the batch list as-is, allowing FiftyOne
+        Detections objects to pass through without collation.
+
+        Args:
+            batch: list of dicts from HRM2GetItem, each containing:
+                - image: the loaded image
+                - detections: fol.Detections object (or None)
+                - filepath: path to the image file
+
+        Returns:
+            the same batch list, unmodified
+        """
+        return batch
+
+    # Structured input handling - enables detection-aware processing
+    # Parent's predict() and predict_all() now route through these methods
+
+    def _handles_structured_inputs(self) -> bool:
+        """Indicate that HRM2 processes structured dict inputs.
+
+        This tells the parent TorchImageModel to route dict inputs through
+        _predict_all_structured() instead of the standard image pipeline.
+        """
+        return True
+
+    def _predict_single_structured(
         self, img: Union[Image.Image, np.ndarray, torch.Tensor]
     ) -> Dict[str, fol.Label]:
-        """Run HRM2 inference on a single image and return a label bundle.
+        """Wrap a single image for structured processing.
 
-        This method performs single-person 3D human mesh reconstruction on the
-        provided image. For multi-person scenarios or dataset-level inference,
-        use dataset.apply_model() with the detections_field parameter.
-
-        Args:
-            img: input image as PIL.Image, numpy array (HWC), or torch.Tensor
-
-        Returns:
-            Dict containing Keypoints, Detections, HRM2Person documents,
-            and export data (smpl_faces, frame_size)
+        Called by parent's predict() when _handles_structured_inputs() is True.
         """
-        return self.predict_all([img])[0]
+        return self._predict_all_structured(
+            [{"image": img, "detections": None, "filepath": "image_0"}]
+        )[0]
 
-    def predict_all(
-        self,
-        imgs: List[
-            Union[Image.Image, np.ndarray, torch.Tensor, Dict[str, Any]]
-        ],
-        samples: Optional[Any] = None,  # pylint: disable=unused-argument
+    def _predict_all_structured(
+        self, batch_data: List[Dict[str, Any]]
     ) -> List[Dict[str, fol.Label]]:
-        """Run HRM2 inference on a list of images or batch data.
+        """Process detection-aware batch and return label bundles.
 
-        This method performs single-person 3D human mesh reconstruction on each
-        image in the list. For multi-person scenarios or dataset-level inference,
-        use dataset.apply_model() with the detections_field parameter.
-
-        Args:
-            imgs: list of images (PIL.Image, numpy array, or torch.Tensor) OR
-                list of dicts from GetItem with 'image', 'detections', 'filepath'
-            samples: optional FiftyOne samples (not used for direct predict)
-
-        Returns:
-            list of dicts containing HRM2 predictions, one per image
+        Called by parent's predict_all() when inputs are dicts and
+        _handles_structured_inputs() is True.
         """
-        # Check if we're receiving dicts from GetItem (dataloader mode)
-        # or raw images (direct predict mode)
-        if imgs and isinstance(imgs[0], dict):
-            # Already in batch_data format from GetItem
-            batch_data = imgs
-        else:
-            # Create batch data format from raw images
-            batch_data = [
-                {
-                    "image": img,
-                    "detections": None,  # single-person mode
-                    "filepath": f"image_{idx}",
-                }
-                for idx, img in enumerate(imgs)
-            ]
+        raw_outputs = [self._process_item(data) for data in batch_data]
 
-        return self._predict_all(batch_data)
+        if self._output_processor is None:
+            return raw_outputs
+
+        return self._output_processor(raw_outputs)
 
     def _get_preprocessor(self) -> _HRM2CropHelper:
         if self._hmr2 is None:
@@ -2193,86 +2133,19 @@ class HRM2Model(
             self._preprocessor = _HRM2CropHelper(self._hmr2.cfg)
         return self._preprocessor
 
-    def _predict_all(  # pylint: disable=arguments-renamed
-        self, batch_data: List[Dict[str, Any]]
-    ) -> List[Dict[str, fol.Label]]:
-        """Process batch and return label bundles via output processor.
+    def _process_item(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Run HRM2 inference for a single item."""
+        img = data["image"]
+        detections = data.get("detections")
 
-        This method receives data from the GetItem instance, performs inference
-        via _forward_pass(), and converts raw outputs to FiftyOne labels and
-        HRM2Person metadata using the output processor.
+        output = self._inference_with_detections(img, detections)
+        output["filepath"] = data.get("filepath")
+        return output
 
-        Args:
-            batch_data: list of dicts from GetItem, each containing:
-                - 'image': the loaded image (PIL/numpy/tensor)
-                - 'detections': fol.Detections object or None
-                - 'filepath': path to the source image
-
-        Returns:
-            list of label dicts (if processor exists) or raw outputs
-        """
-        # Get raw outputs from forward pass
-        raw_outputs = self._forward_pass(batch_data)
-
-        # If no processor, return raw outputs
-        if self._output_processor is None:
-            return raw_outputs
-
-        # Process through output processor
-        return self._output_processor(raw_outputs)
-
-    def _forward_pass(  # pylint: disable=arguments-renamed
-        self, batch_data: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        """Run HRM2 inference and return raw outputs.
-
-        This method handles the core inference logic and returns structured
-        raw outputs (tensors on CPU) for postprocessing.
-
-        Args:
-            batch_data: List of dicts from GetItem with 'image', 'detections', 'filepath'
-
-        Returns:
-            List of raw output dicts, one per image, each containing:
-                - "people": List[person_raw_dict] with raw tensors
-                - "img_shape": (height, width) of source image
-        """
-        raw_outputs = []
-
-        for data in batch_data:
-            img = data["image"]
-            detections = data.get("detections")
-
-            # Process based on detection mode
-            if detections is not None and len(detections.detections) > 0:
-                output = self._inference_with_detections(img, detections)
-            else:
-                output = self._inference_single_person(img)
-
-            # Carry filepath through for UID generation in output processor
-            output["filepath"] = data.get("filepath")
-
-            raw_outputs.append(output)
-
-        return raw_outputs
-
-    def _run_inference(self, img_t: torch.Tensor) -> Dict[str, Any]:
-        """Run HMR2 inference on preprocessed tensor.
-
-        The input tensor (preprocessed on CPU) is moved to the model's device
-        for inference. All preprocessing happens on CPU before this call, and
-        all postprocessing (via _extract_predictions) happens on CPU after.
-
-        Args:
-            img_t: preprocessed image tensor (CHW, float, normalized) on CPU
-
-        Returns:
-            dict with HMR2 model outputs including SMPL parameters and keypoints
-        """
-        # Move preprocessed CPU tensor to device for inference
+    def _run_model(self, img_t: torch.Tensor) -> Dict[str, Any]:
+        """Run HMR2 model on a single preprocessed crop tensor."""
         batch_t = img_t.unsqueeze(0).to(self._device)
 
-        # Convert to half precision if configured
         if self.config.use_half_precision:
             batch_t = batch_t.half()
 
@@ -2332,7 +2205,7 @@ class HRM2Model(
         pred_global_orient: np.ndarray,
         pred_keypoints_3d: np.ndarray,
         pred_keypoints_2d: Optional[np.ndarray],
-        pred_vertices: np.ndarray,
+        pred_vertices: Optional[np.ndarray],
         person_id: int = 0,
         bbox: Optional[List[float]] = None,
         camera_translation: Optional[np.ndarray] = None,
@@ -2353,7 +2226,7 @@ class HRM2Model(
             pred_global_orient: SMPL global orientation
             pred_keypoints_3d: 3D keypoint locations
             pred_keypoints_2d: optional 2D keypoint locations (in crop space)
-            pred_vertices: 3D mesh vertices from HMR2
+            pred_vertices: optional 3D mesh vertices from HMR2
             person_id: person identifier
             bbox: optional bounding box [x1, y1, x2, y2]
             camera_translation: optional camera translation [tx, ty, tz]
@@ -2414,7 +2287,7 @@ class HRM2Model(
     def _inference_with_detections(
         self,
         img: Union[Image.Image, np.ndarray, torch.Tensor],
-        detections: fol.Detections,
+        detections: Optional[fol.Detections],
     ) -> Dict[str, Any]:
         """Run inference using provided detections (multi-person mode).
 
@@ -2429,14 +2302,17 @@ class HRM2Model(
         img_np = fout.to_numpy_image(img)
         img_np = ensure_rgb_numpy(img_np)
 
-        # Convert detections to boxes
-        boxes = detections_to_boxes(detections, img_np)
+        # Convert detections to boxes; synthesize full-image box when absent
+        boxes = detections_to_boxes(detections, img_np) if detections else None
 
         if boxes is None or len(boxes) == 0:
             logger.warning(
-                "No valid boxes for image, using single-person mode"
+                "No valid boxes for image, using full-image box as fallback"
             )
-            return self._inference_single_person(img)
+            h, w = img_np.shape[0], img_np.shape[1]
+            boxes = [
+                np.array([0.0, 0.0, float(w), float(h)], dtype=np.float32)
+            ]
 
         logger.debug("Processing %d people in image", len(boxes))
 
@@ -2480,7 +2356,7 @@ class HRM2Model(
         ) = preprocessor(img_np, np.array([x1, y1, x2, y2], dtype=np.float32))
 
         # Run inference
-        outputs = self._run_inference(img_crop_t)
+        outputs = self._run_model(img_crop_t)
 
         # Extract predictions
         (
@@ -2492,8 +2368,10 @@ class HRM2Model(
             pred_keypoints_2d,
         ) = self._extract_predictions(outputs)
 
-        # Extract vertices from outputs
-        pred_vertices = outputs["pred_vertices"][0].cpu().numpy()
+        # Extract vertices from outputs (may not always be present)
+        pred_vertices = None
+        if "pred_vertices" in outputs:
+            pred_vertices = outputs["pred_vertices"][0].cpu().numpy()
 
         # Transform camera from crop to full image space
         image_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
@@ -2524,78 +2402,3 @@ class HRM2Model(
             crop_window=crop_window,
             img_size=img_size,
         )
-
-    def _inference_single_person(
-        self,
-        img: Union[Image.Image, np.ndarray, torch.Tensor],
-    ) -> Dict[str, Any]:
-        """Run inference on full image in single-person mode.
-
-        Args:
-            img: image from GetItem (PIL/numpy/tensor)
-
-        Returns:
-            raw output dict with single person in 'people' list and 'img_shape'
-        """
-        # Convert to numpy and ensure RGB ordering
-        img_np = fout.to_numpy_image(img)
-        img_np = ensure_rgb_numpy(img_np)
-        img_shape = (img_np.shape[0], img_np.shape[1])  # (height, width)
-
-        # Use shared preprocessor to mirror ViTDet cropping pipeline
-        preprocessor = self._get_preprocessor()
-        (
-            img_crop_t,
-            box_center,
-            crop_size,
-            img_size,
-            transform,
-            crop_window,
-        ) = preprocessor(img_np)
-
-        # Run inference
-        outputs = self._run_inference(img_crop_t)
-
-        # Extract predictions
-        (
-            pred_cam,
-            pred_pose,
-            pred_betas,
-            pred_global_orient,
-            pred_keypoints_3d,
-            pred_keypoints_2d,
-        ) = self._extract_predictions(outputs)
-
-        # Extract vertices from outputs
-        pred_vertices = outputs["pred_vertices"][0].cpu().numpy()
-
-        # Project camera parameters to full image coordinates
-        image_size = getattr(self._hmr2.cfg.MODEL, "IMAGE_SIZE", 256)
-        target_h, target_w = get_target_size(image_size)
-        target_size = max(target_h, target_w)
-        focal_length = (
-            self._hmr2.cfg.EXTRA.FOCAL_LENGTH / target_size * img_size.max()
-        )
-        cam_t_full = cam_crop_to_full(
-            pred_cam, box_center, crop_size, img_size, focal_length
-        )
-
-        # Build raw person data
-        # Pass crop metadata for keypoint reprojection
-        person_data = self._build_person_raw(
-            pred_cam,
-            pred_pose,
-            pred_betas,
-            pred_global_orient,
-            pred_keypoints_3d,
-            pred_keypoints_2d,
-            pred_vertices,
-            person_id=0,
-            bbox=None,
-            camera_translation=cam_t_full,
-            crop_transform=transform,
-            crop_window=crop_window,
-            img_size=img_size,
-        )
-
-        return {"people": [person_data], "img_shape": img_shape}

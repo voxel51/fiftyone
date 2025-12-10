@@ -8573,7 +8573,14 @@
                 "type": "fiftyone.utils.hrm2.HRM2Model",
                 "config": {
                     "checkpoint_version": "2.0b",
-                    "export_meshes": true
+                    "export_meshes": true,
+                    "entrypoint_fcn": "fiftyone.utils.hrm2.load_hrm2_model",
+                    "entrypoint_args": {
+                        "init_renderer": false
+                    },
+                    "ragged_batches": false,
+                    "output_processor_cls": "fiftyone.utils.hrm2.HRM2OutputProcessor",
+                    "output_processor_args": {}
                 }
             },
             "requirements": {

@@ -193,28 +193,28 @@ class HRM2TestBase(unittest.TestCase):
         )
 
 
-class HRM2ConfigTests(HRM2TestBase):
-    """Tests for HRM2Config class."""
+class HRM2ModelConfigTests(HRM2TestBase):
+    """Tests for HRM2ModelConfig class."""
 
     def test_hrm2_config_default_initialization(self):
-        """Test HRM2Config with default parameters."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        """Test HRM2ModelConfig with default parameters."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "smpl_model_path": self.mock_smpl_path,
         }
 
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
 
         self.assertEqual(config.smpl_model_path, self.mock_smpl_path)
         self.assertEqual(config.checkpoint_version, "2.0b")
         self.assertTrue(config.export_meshes)
         self.assertIsNone(config.detections_field)
-        self.assertTrue(config.ragged_batches)
+        self.assertFalse(config.ragged_batches)
 
     def test_hrm2_config_custom_parameters(self):
-        """Test HRM2Config with custom parameters."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        """Test HRM2ModelConfig with custom parameters."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "smpl_model_path": self.mock_smpl_path,
@@ -223,41 +223,41 @@ class HRM2ConfigTests(HRM2TestBase):
             "detections_field": "ground_truth_detections",
         }
 
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
 
         self.assertEqual(config.checkpoint_version, "1.0")
         self.assertFalse(config.export_meshes)
         self.assertEqual(config.detections_field, "ground_truth_detections")
-        self.assertTrue(config.ragged_batches)
+        self.assertFalse(config.ragged_batches)
 
     def test_hrm2_config_invalid_smpl_path(self):
-        """Test that HRM2Config raises error for invalid SMPL path."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        """Test that HRM2ModelConfig raises error for invalid SMPL path."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "smpl_model_path": "/nonexistent/path/SMPL_NEUTRAL.pkl",
         }
 
         with self.assertRaises(ValueError) as cm:
-            HRM2Config(config_dict)
+            HRM2ModelConfig(config_dict)
 
         self.assertIn("SMPL model not found", str(cm.exception))
 
     def test_hrm2_config_none_smpl_path(self):
-        """Test that HRM2Config allows None for smpl_model_path."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        """Test that HRM2ModelConfig allows None for smpl_model_path."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "smpl_model_path": None,
         }
 
         # Should not raise an error
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
         self.assertIsNone(config.smpl_model_path)
 
     def test_hrm2_config_output_processor_args_serializable(self):
         """Test that config.output_processor_args contains only serializable parameters."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
         import json
 
         config_dict = {
@@ -265,7 +265,7 @@ class HRM2ConfigTests(HRM2TestBase):
             "export_meshes": True,
         }
 
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
 
         # Check that output_processor_args are set correctly
         self.assertIsNotNone(config.output_processor_args)
@@ -284,13 +284,13 @@ class HRM2ConfigTests(HRM2TestBase):
 
     def test_hrm2_config_output_processor_args_values(self):
         """Test that output_processor_args are correctly populated from config."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "export_meshes": False,
         }
 
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
 
         # Verify args match config values
         self.assertEqual(config.output_processor_args["export_meshes"], False)
@@ -438,7 +438,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
         """Test the complete workflow of config → runtime resource injection."""
         import torch
         import json
-        from fiftyone.utils.hrm2 import HRM2Config, HRM2OutputProcessor
+        from fiftyone.utils.hrm2 import HRM2ModelConfig, HRM2OutputProcessor
 
         # Step 1: Create config with serializable args only
         config_dict = {
@@ -446,7 +446,7 @@ class HRM2OutputProcessorTests(HRM2TestBase):
             "export_meshes": True,
         }
 
-        config = HRM2Config(config_dict)
+        config = HRM2ModelConfig(config_dict)
 
         # Step 2: Verify config args are serializable
         self.assertIn("export_meshes", config.output_processor_args)
@@ -670,8 +670,8 @@ class HRM2ModelTests(HRM2TestBase):
     """Tests for HRM2Model class."""
 
     def _create_mock_config(self, **kwargs):
-        """Create a mock HRM2Config for testing."""
-        from fiftyone.utils.hrm2 import HRM2Config
+        """Create a mock HRM2ModelConfig for testing."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
 
         config_dict = {
             "model_path": kwargs.get("model_path", "/tmp/hrm2_test_model.pth"),
@@ -679,9 +679,10 @@ class HRM2ModelTests(HRM2TestBase):
             "checkpoint_version": kwargs.get("checkpoint_version", "2.0b"),
             "export_meshes": kwargs.get("export_meshes", False),
             "detections_field": kwargs.get("detections_field", None),
+            "entrypoint_fcn": "fiftyone.utils.hrm2.load_hrm2_model",
         }
 
-        return HRM2Config(config_dict)
+        return HRM2ModelConfig(config_dict)
 
     @patch(
         "fiftyone.utils.hrm2._get_hrm2_checkpoint_path",
@@ -780,8 +781,10 @@ class HRM2ModelTests(HRM2TestBase):
                 export_meshes=False,
             )
 
-        # Mock the _inference_single_person method
-        with patch.object(model, "_inference_single_person") as mock_inference:
+        # Mock the _inference_with_detections method (single-person fallback)
+        with patch.object(
+            model, "_inference_with_detections"
+        ) as mock_inference:
             # Return raw output format with tensors and ROTATION MATRICES
             mock_inference.return_value = {
                 "people": [
@@ -907,9 +910,7 @@ class HRM2ModelTests(HRM2TestBase):
                 "fiftyone.utils.torch.to_numpy_image",
                 return_value=test_img.copy(),
             ):
-                with patch.object(
-                    model, "_run_inference", return_value=outputs
-                ):
+                with patch.object(model, "_run_model", return_value=outputs):
                     with patch.object(
                         model,
                         "_extract_predictions",
@@ -931,15 +932,18 @@ class HRM2ModelTests(HRM2TestBase):
                                 "_build_person_raw",
                                 return_value={"person": 0},
                             ) as mock_build:
-                                result = model._inference_single_person(
-                                    test_img
+                                result = model._inference_with_detections(
+                                    test_img, None
                                 )
 
         self.assertEqual(mock_preprocessor.call_count, 1)
         args, kwargs = mock_preprocessor.call_args
         self.assertEqual(kwargs, {})
-        self.assertEqual(len(args), 1)
+        self.assertEqual(len(args), 2)
         np.testing.assert_array_equal(args[0], test_img)
+        np.testing.assert_array_equal(
+            args[1], np.array([0.0, 0.0, 640.0, 480.0], dtype=np.float32)
+        )
 
         mock_cam_full.assert_called_once()
         cam_args, cam_kwargs = mock_cam_full.call_args
@@ -961,11 +965,7 @@ class HRM2ModelTests(HRM2TestBase):
         self.assertEqual(result["people"], [{"person": 0}])
 
     def test_inference_single_person_real_code_path(self):
-        """Test _inference_single_person with real internal code (no internal mocking).
-
-        This test exercises the real implementation of _build_person_raw and would
-        have caught the person_data=None bug. Only external dependencies are mocked.
-        """
+        """Test single-person path via _inference_with_detections (fallback full image)."""
         import torch
         from fiftyone.utils.hrm2 import HRM2Model
 
@@ -1010,9 +1010,7 @@ class HRM2ModelTests(HRM2TestBase):
 
         mock_hmr2.__call__ = mock_forward
 
-        # This should execute ALL real internal code: _build_person_raw, etc.
-        # If person_data=None bug existed, this would fail
-        result = model._inference_single_person(test_img)
+        result = model._inference_with_detections(test_img, None)
 
         # Verify structure
         self.assertIn("people", result)
@@ -1028,11 +1026,74 @@ class HRM2ModelTests(HRM2TestBase):
         self.assertIn("pred_vertices", person)
         self.assertIn("person_id", person)
         self.assertEqual(person["person_id"], 0)
-        self.assertIsNone(person["bbox"])  # single-person mode
+        self.assertIsNotNone(person["bbox"])  # fallback full-image box
 
         # Verify camera_translation was computed (not None)
         self.assertIn("camera_translation", person)
         self.assertIsNotNone(person["camera_translation"])
+
+    def test_collate_fn_handles_detections_objects(self):
+        """Test that HRM2Model.collate_fn handles batches with fol.Detections objects.
+
+        This test verifies that the custom collate_fn properly handles structured
+        inputs from HRM2GetItem, which may contain fol.Detections objects that
+        PyTorch's default_collate cannot handle.
+
+        Without the custom collate_fn, DataLoader would raise:
+        "batch must contain tensors, numpy arrays, numbers, dicts or lists;
+        found <class 'fiftyone.core.labels.Detections'>"
+        """
+        from fiftyone.utils.hrm2 import HRM2Model
+        import fiftyone.core.labels as fol
+
+        # Verify has_collate_fn property returns True
+        model = object.__new__(HRM2Model)
+        self.assertTrue(model.has_collate_fn)
+
+        # Create mock batch data similar to what HRM2GetItem would return
+        # Each batch item is a dict with image data and detections
+        mock_detection1 = fol.Detection(
+            label="person", bounding_box=[0.1, 0.2, 0.3, 0.4], confidence=0.95
+        )
+        mock_detection2 = fol.Detection(
+            label="person", bounding_box=[0.5, 0.3, 0.2, 0.5], confidence=0.85
+        )
+
+        batch = [
+            {
+                "image": np.random.randint(
+                    0, 255, (256, 256, 3), dtype=np.uint8
+                ),
+                "detections": fol.Detections(detections=[mock_detection1]),
+                "filepath": "/path/to/image1.jpg",
+            },
+            {
+                "image": np.random.randint(
+                    0, 255, (256, 256, 3), dtype=np.uint8
+                ),
+                "detections": fol.Detections(detections=[mock_detection2]),
+                "filepath": "/path/to/image2.jpg",
+            },
+        ]
+
+        # Call collate_fn - should pass through unchanged
+        result = HRM2Model.collate_fn(batch)
+
+        # Verify result is the same as input (pass-through behavior)
+        self.assertIs(result, batch)
+        self.assertEqual(len(result), 2)
+
+        # Verify structure is preserved with fol.Detections objects intact
+        self.assertIsInstance(result[0]["detections"], fol.Detections)
+        self.assertIsInstance(result[1]["detections"], fol.Detections)
+        self.assertEqual(len(result[0]["detections"].detections), 1)
+        self.assertEqual(len(result[1]["detections"].detections), 1)
+
+        # Verify detection data is preserved
+        self.assertEqual(result[0]["detections"].detections[0].label, "person")
+        self.assertEqual(
+            result[0]["detections"].detections[0].confidence, 0.95
+        )
 
 
 class HRM2DatasetTests(HRM2TestBase):

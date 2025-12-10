@@ -13,7 +13,7 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List, Union, Tuple
+from typing import Any, Dict, Optional, List, Union, Tuple
 import warnings
 
 import cv2
@@ -848,6 +848,64 @@ class TorchImageModel(
         """The keypoint skeleton for the model, if any."""
         return self._skeleton
 
+    def _handles_structured_inputs(self) -> bool:
+        """Whether this model handles structured dict inputs from GetItem.
+
+        Override to return True if your model's GetItem returns dicts
+        that should be processed by :meth:`_predict_all_structured` rather
+        than the standard image-based :meth:`_predict_all`.
+
+        This is useful for models that need additional context beyond raw
+        images, such as:
+
+        -   Detection-aware models that process person crops from bounding boxes
+        -   Models that need prompts or conditioning inputs
+        -   Multi-modal models that combine images with other data
+
+        Returns:
+            False by default (standard image processing)
+        """
+        return False
+
+    def _predict_all_structured(
+        self,
+        batch_data: List[Dict[str, Any]],
+    ) -> List[Any]:
+        """Process structured inputs from GetItem.
+
+        Override this method when :meth:`_handles_structured_inputs` returns
+        True. This is called instead of :meth:`_predict_all` when inputs are
+        dicts.
+
+        Args:
+            batch_data: list of dicts from ``GetItem.__call__()``. The dict
+                structure depends on your GetItem implementation.
+
+        Returns:
+            list of predictions (Labels or dicts of Labels)
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} sets _handles_structured_inputs()=True "
+            "but does not implement _predict_all_structured()"
+        )
+
+    def _predict_single_structured(self, img) -> Any:
+        """Process a single image through the structured input path.
+
+        Override to customize how single images are wrapped for structured
+        processing. Default wraps in a minimal dict with just the image.
+
+        This is called by :meth:`predict` when
+        :meth:`_handles_structured_inputs` returns True.
+
+        Args:
+            img: the image to process (PIL, numpy, or Tensor)
+
+        Returns:
+            a prediction (Label or dict of Labels)
+        """
+        return self._predict_all_structured([{"image": img}])[0]
+
     def predict(self, img):
         """Performs prediction on the given image.
 
@@ -863,6 +921,9 @@ class TorchImageModel(
             :class:`fiftyone.core.labels.Label` instances containing the
             predictions
         """
+        if self._handles_structured_inputs():
+            return self._predict_single_structured(img)
+
         if isinstance(img, torch.Tensor):
             imgs = img.unsqueeze(0)
         else:
@@ -882,12 +943,21 @@ class TorchImageModel(
                 - A list of Torch tensors (CHW)
                 - A uint8 numpy tensor (NHWC)
                 - A Torch tensor (NCHW)
+                - A list of dicts (for models with structured inputs)
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` instances or a list
             of dicts of :class:`fiftyone.core.labels.Label` instances
             containing the predictions
         """
+        # Check if this model handles structured dict inputs
+        if (
+            self._handles_structured_inputs()
+            and imgs
+            and isinstance(imgs[0], dict)
+        ):
+            return self._predict_all_structured(imgs)
+
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
@@ -1082,7 +1152,47 @@ class TorchImageModel(
         kwargs = config.transforms_args or {}
         return transforms_fcn(**kwargs)
 
-    def _build_output_processor(self, config):
+    def _get_output_processor_runtime_args(self) -> Dict[str, Any]:
+        """Get runtime arguments to inject into the output processor.
+
+        Override this to provide non-serializable resources (loaded models,
+        device objects, etc.) that the output processor needs but can't be
+        stored in config.
+
+        This is called by :meth:`_build_output_processor` after resolving
+        the output processor class.
+
+        This separation allows:
+
+        -   Config to remain serializable to JSON
+        -   Runtime resources (loaded models, devices) to be passed to processor
+        -   Clean separation between config parameters and runtime state
+
+        Returns:
+            dict of additional kwargs for ``output_processor_cls()``
+        """
+        return {}
+
+    def _build_output_processor(self, config=None):
+        """Build the output processor for this model.
+
+        This method:
+
+        1. Checks for a pre-built output_processor in config
+        2. Resolves output_processor_cls (class or string)
+        3. Merges config.output_processor_args with runtime args from
+           :meth:`_get_output_processor_runtime_args`
+        4. Instantiates the processor
+
+        Args:
+            config: optional config (defaults to self.config)
+
+        Returns:
+            an :class:`OutputProcessor` instance, or None
+        """
+        if config is None:
+            config = self.config
+
         if config.output_processor is not None:
             return config.output_processor
 
@@ -1094,7 +1204,11 @@ class TorchImageModel(
         if etau.is_str(output_processor_cls):
             output_processor_cls = etau.get_class(output_processor_cls)
 
-        kwargs = config.output_processor_args or {}
+        # Start with config args, then merge runtime args
+        kwargs = dict(config.output_processor_args or {})
+        runtime_args = self._get_output_processor_runtime_args()
+        kwargs.update(runtime_args)
+
         return output_processor_cls(classes=self._classes, **kwargs)
 
 
@@ -1281,8 +1395,10 @@ def convert_to_tensor_chw(
         elif img.ndim == 3 and img.shape[2] == 3:
             pass  # Already RGB
         else:
-            logger.warning(
-                f"Unexpected numpy array shape: {img.shape}, attempting to use as-is"
+            raise ValueError(
+                f"Unsupported numpy array shape: {img.shape}. "
+                f"Expected 2D (H, W) for grayscale or 3D (H, W, C) where C is 1, 3, or 4. "
+                f"Got array with {img.ndim} dimensions."
             )
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
     elif isinstance(img, torch.Tensor):
