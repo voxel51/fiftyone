@@ -1,8 +1,8 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
-import { getEventBus, useEventBus } from "@fiftyone/events";
-import { ModalSample, useDebounceCallback } from "@fiftyone/state";
-import { MenuItem, Select } from "@mui/material";
+import { ModalSample } from "@fiftyone/state";
+import FitScreenIcon from "@mui/icons-material/FitScreen";
+import { IconButton, MenuItem, Select } from "@mui/material";
 import {
   Bounds,
   MapControls,
@@ -20,6 +20,7 @@ import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
+import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { Crosshair3D } from "./Crosshair3D";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
@@ -42,6 +43,10 @@ const SidePanelContainer = styled.div<{ $area: string }>`
 
 const ViewSelectorWrapper = styled.div`
   position: absolute;
+  width: 95%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   top: 10px;
   left: 10px;
   z-index: 1000;
@@ -377,10 +382,16 @@ export const SidePanel = ({
   // But turn it off so that users can pan/zoom and work with a stable scene
   const [observe, setObserve] = useState(true);
 
+  const [resetKey, setResetKey] = useState(0);
+
   useEffect(() => {
-    const timer = setTimeout(() => setObserve(false), 1000);
+    setObserve(true);
+    const timer = setTimeout(() => {
+      setObserve(false);
+    }, 750);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, [resetKey]);
 
   // Update camera to look at the scene center and use correct up vector
   useEffect(() => {
@@ -412,6 +423,7 @@ export const SidePanel = ({
         </ImageSliceContainer>
       ) : (
         <View
+          key={`${which}-${view}-${resetKey}`}
           style={{
             position: "absolute",
             top: 0,
@@ -433,17 +445,8 @@ export const SidePanel = ({
             enableRotate={false}
             zoomSpeed={0.8}
           />
-          <Bounds
-            fit
-            clip
-            observe={observe}
-            margin={1.25}
-            maxDuration={0}
-            onFit={() => {
-              getEventBus().dispatch("annotation:sidepanel:fit", null);
-            }}
-          >
-            <BoundApi />
+          <Bounds fit clip observe={observe} margin={1.25} maxDuration={0.001}>
+            <BoundsSideEffectsComponent />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
               <FoSceneComponent scene={foScene} />
@@ -504,6 +507,15 @@ export const SidePanel = ({
               </MenuItem>
             ))}
         </Select>
+        <IconButton
+          color="secondary"
+          onClick={() => {
+            setResetKey((prev) => prev + 1);
+          }}
+          title="Reset and fit"
+        >
+          <FitScreenIcon />
+        </IconButton>
       </ViewSelectorWrapper>
     </SidePanelContainer>
   );
@@ -523,29 +535,10 @@ function findByUserData(
   return result;
 }
 
-const BoundApi = () => {
+const BoundsSideEffectsComponent = () => {
   const api = useBounds();
 
-  const { scene, camera } = useThree();
-
-  const eventBus = useEventBus();
-
-  const reconciledRef = useRef(true);
-
-  const debouncedFit = useDebounceCallback(() => {
-    if (reconciledRef.current) return;
-    camera.zoom *= 0.2;
-    camera.updateProjectionMatrix();
-    reconciledRef.current = true;
-  }, 20);
-
-  useEffect(() => {
-    const off = eventBus.on("annotation:sidepanel:fit", debouncedFit);
-
-    return () => {
-      off();
-    };
-  }, [eventBus, debouncedFit]);
+  const { scene } = useThree();
 
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
     const { label } = payload;
@@ -553,8 +546,33 @@ const BoundApi = () => {
     const object = findByUserData(scene, "labelId", label._id);
 
     if (object) {
-      api.refresh(object).reset().fit();
-      reconciledRef.current = false;
+      const objectBox = new Box3().setFromObject(object);
+
+      if (!objectBox.isEmpty()) {
+        const expandedBox = expandBoundingBox(objectBox, 2.5);
+
+        const expandedSize = expandedBox.getSize(new Vector3());
+        const expandedCenter = expandedBox.getCenter(new Vector3());
+        const boxGeometry = new THREE.BoxGeometry(
+          expandedSize.x,
+          expandedSize.y,
+          expandedSize.z
+        );
+        const helperMesh = new THREE.Mesh(boxGeometry);
+        helperMesh.position.copy(expandedCenter);
+        helperMesh.visible = false;
+        scene.add(helperMesh);
+
+        api.refresh(helperMesh).reset().fit();
+
+        // Remove helper mesh after a short delay to ensure the bounds are updated
+        setTimeout(() => {
+          scene.remove(helperMesh);
+          boxGeometry.dispose();
+        }, 0);
+      } else {
+        api.refresh(object).reset().fit();
+      }
     }
   });
 
