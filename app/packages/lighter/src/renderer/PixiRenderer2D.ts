@@ -327,48 +327,40 @@ export class PixiRenderer2D implements Renderer2D {
     if (options?.backgroundColor) {
       const background = new PIXI.Graphics();
 
-      if (options?.rounded && options?.tab) {
-        const corners = { ...bounds };
-        const halfHeight = bounds.height / 2;
-        const halfWidth = bounds.width / 2;
+      if (options?.rounded) {
+        const radius = options?.rounded / this.getScale();
 
-        switch (options.tab) {
-          case "top":
-            corners.y += halfHeight;
-            corners.height -= halfHeight;
-            break;
-          case "bottom":
-            corners.height -= halfHeight;
-            break;
-          case "left":
-            corners.x += halfWidth;
-            corners.width -= halfWidth;
-            break;
-          case "right":
-            corners.width -= halfWidth;
-            break;
+        if (options?.tab) {
+          const corners = { ...bounds };
+          const halfHeight = bounds.height / 2;
+          const halfWidth = bounds.width / 2;
+
+          switch (options.tab) {
+            case "top":
+              corners.y += halfHeight;
+              corners.height -= halfHeight;
+              break;
+            case "bottom":
+              corners.height -= halfHeight;
+              break;
+            case "left":
+              corners.x += halfWidth;
+              corners.width -= halfWidth;
+              break;
+            case "right":
+              corners.width -= halfWidth;
+              break;
+          }
+
+          background
+            .roundRect(bounds.x, bounds.y, bounds.width, bounds.height, radius)
+            .rect(corners.x, corners.y, corners.width, corners.height)
+            .fill(options.backgroundColor);
+        } else {
+          background
+            .roundRect(bounds.x, bounds.y, bounds.width, bounds.height, radius)
+            .fill(options.backgroundColor);
         }
-
-        background
-          .roundRect(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            options.rounded
-          )
-          .rect(corners.x, corners.y, corners.width, corners.height)
-          .fill(options.backgroundColor);
-      } else if (options?.rounded) {
-        background
-          .roundRect(
-            bounds.x,
-            bounds.y,
-            bounds.width,
-            bounds.height,
-            options.rounded
-          )
-          .fill(options.backgroundColor);
       } else {
         background
           .rect(bounds.x, bounds.y, bounds.width, bounds.height)
@@ -391,11 +383,12 @@ export class PixiRenderer2D implements Renderer2D {
   ): { txt: Point; bg: Rect } {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+    const gap = TAB_GAP_DEFAULT / this.getScale();
 
-    position.y += TAB_GAP_DEFAULT;
+    position.y += gap;
 
     // text height + top padding + bottom padding + gap
-    const verticalOffset = finalHeight + padding * 2 + TAB_GAP_DEFAULT;
+    const verticalOffset = finalHeight + padding * 2 + gap;
 
     const anchor = {
       vertical: "bottom",
