@@ -3699,6 +3699,9 @@ class PluginsListCommand(Command):
         # List all available plugins
         fiftyone plugins list
 
+        # List plugins whose name matches the given glob pattern
+        fiftyone plugins list --glob-patt '@voxel51/*'
+
         # List enabled plugins
         fiftyone plugins list --enabled
 
@@ -3711,6 +3714,12 @@ class PluginsListCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="PATT",
+            help="only show plugins whose name matches the glob pattern",
+        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -3762,13 +3771,26 @@ class PluginsListCommand(Command):
         else:
             builtin = "all"
 
-        _print_plugins_list(enabled, builtin, args.names_only)
+        _print_plugins_list(
+            glob_patt=args.glob_patt,
+            enabled=enabled,
+            builtin=builtin,
+            names_only=args.names_only,
+        )
 
 
-def _print_plugins_list(enabled, builtin, names_only):
+def _print_plugins_list(
+    glob_patt=None, enabled="all", builtin="all", names_only=False
+):
     plugin_definitions = fop.list_plugins(
         enabled=enabled, builtin=builtin, shadowed="all"
     )
+
+    if glob_patt is not None:
+        regex = re.compile(fnmatch.translate(glob_patt))
+        plugin_definitions = [
+            pd for pd in plugin_definitions if regex.match(pd.name)
+        ]
 
     if names_only:
         for pd in plugin_definitions:
@@ -4264,6 +4286,7 @@ class LabsCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "install", LabsInstallCommand)
         _register_command(subparsers, "uninstall", LabsUninstallCommand)
+        _register_command(subparsers, "list", LabsListCommand)
         _register_command(subparsers, "search", LabsSearchCommand)
 
     @staticmethod
@@ -4272,51 +4295,61 @@ class LabsCommand(Command):
 
 
 class LabsInstallCommand(Command):
-    """Install features from FiftyOne Labs repository.
+    """Install FiftyOne Labs features on your local machine.
 
     Examples::
 
-        # Install labs features from FiftyOne Labs repo
-        fiftyone labs install
+        # Install specific FiftyOne labs feature(s)
+        fiftyone labs install <name1> <name2> ...
 
-        # Install labs features from FiftyOne Labs repo
-        fiftyone labs install --branch <branch_name>
-
-        # Install specific labs feature from FiftyOne Labs repo
-        fiftyone labs install --feature-names <name1> <name2>
+        # Install all FiftyOne Labs features
+        fiftyone labs install --all
     """
 
     @staticmethod
     def setup(parser):
         parser.add_argument(
-            "--branch",
-            default=None,
-            metavar="BRANCH",
-            help="name of FiftyOne Labs branch",
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the Labs feature(s) to install",
         )
         parser.add_argument(
-            "-n",
-            "--feature-names",
-            nargs="*",
-            default=None,
-            metavar="FEATURE_NAMES",
-            help="a labs feature name or list of feature names to download",
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to install all Labs features",
         )
         parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
-            help="whether to overwrite existing features",
+            help="whether to reinstall existing Labs features",
+        )
+        parser.add_argument(
+            "--branch",
+            default=None,
+            metavar="BRANCH",
+            help="a Labs repository branch from which to install features",
         )
 
     @staticmethod
     def execute(parser, args):
         labs_url = "https://github.com/voxel51/labs"
+
         if args.branch:
             labs_url = f"{labs_url}/tree/{args.branch}"
+
+        if args.all:
+            names = None
+        elif args.name:
+            names = args.name
+        else:
+            return
+
         fop.download_plugin(
             labs_url,
-            plugin_names=args.feature_names,
+            plugin_names=names,
             overwrite=args.overwrite,
         )
 
@@ -4326,13 +4359,10 @@ class LabsUninstallCommand(Command):
 
     Examples::
 
-        # Uninstall a labs feature from local disk
-        fiftyone labs uninstall <name>
-
-        # Uninstall multiple labs features from local disk
+        # Uninstall specific Labs feature(s)
         fiftyone labs uninstall <name1> <name2> ...
 
-        # Uninstall all labs features from local disk
+        # Uninstall all Labs features
         fiftyone labs uninstall --all
     """
 
@@ -4342,46 +4372,77 @@ class LabsUninstallCommand(Command):
             "name",
             metavar="NAME",
             nargs="*",
-            help="the labs feature name(s)",
+            help="the Labs feature(s) to uninstall",
         )
         parser.add_argument(
             "-a",
             "--all",
             action="store_true",
-            help="whether to delete all labs features",
+            help="whether to uninstall all Labs features",
         )
 
     @staticmethod
     def execute(parser, args):
+        labs_prefix = "@51labs/"
+
         if args.all:
             names = fop.list_downloaded_plugins()
-        else:
+        elif args.name:
             names = args.name
+        else:
+            return
 
         for name in names:
-            if name.startswith("@51labs"):
+            if name.startswith(labs_prefix):
                 fop.delete_plugin(name)
             elif not args.all:
                 print(
-                    f"Skipping non-FiftyOne Labs feature '{name}'. "
-                    "Use `fiftyone plugins delete` for non-labs plugins."
+                    f"Skipping non-Labs feature '{name}'. "
+                    "Use `fiftyone plugins delete` to uninstall this plugin"
                 )
 
 
-class LabsSearchCommand(Command):
-    """Search for available plugins in FiftyOne Labs repository.
+class LabsListCommand(Command):
+    """List installed FiftyOne Labs features on your local machine.
 
     Examples::
 
-        # Search for plugins inside the Labs repository
+        # List installed Labs features
+        fiftyone labs list
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_glob_patt = "@51labs/*"
+
+        _print_plugins_list(
+            glob_patt=labs_glob_patt,
+            names_only=args.names_only,
+        )
+
+
+class LabsSearchCommand(Command):
+    """Search for available FiftyOne Labs features.
+
+    Examples::
+
+        # List available Labs features
         fiftyone labs search
 
-        # Search for plugins by specifying the Labs repository branch
+        # List available Labs features in a specific Labs repository branch
         fiftyone labs search --branch <branch_name>
 
-        # Search for plugins by specifying a path inside the Labs repository
+        # List available Labs features in a specific Labs repository directory
         fiftyone labs search --path path/to/dir
-        fiftyone labs search --branch <branch_name> --path path/to/dir
     """
 
     @staticmethod
@@ -4390,7 +4451,7 @@ class LabsSearchCommand(Command):
             "--branch",
             default=None,
             metavar="BRANCH",
-            help="name of FiftyOne Labs branch",
+            help="a Labs repository branch from which to install features",
         )
         parser.add_argument(
             "--path",
@@ -4398,21 +4459,43 @@ class LabsSearchCommand(Command):
             metavar="PATH",
             help="path inside the Labs repository for plugins search",
         )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
 
     @staticmethod
     def execute(parser, args):
         labs_url = "https://github.com/voxel51/labs"
+
         if args.branch:
             labs_url = f"{labs_url}/tree/{args.branch}"
+
         plugins = fopu.find_plugins(labs_url, path=args.path, info=True)
-        if not plugins:
-            msg = f"No plugins found in {labs_url}"
-            if args.path:
-                msg += f"-- path {args.path} "
-            print(msg)
+        if plugins:
+            if args.names_only:
+                for p in plugins:
+                    print(p.get("name"))
+            else:
+                _print_labs_table(plugins)
         else:
-            for p in plugins:
-                print(p.get("name"))
+            msg = f"No Labs features found in {labs_url}"
+            if args.path:
+                msg += f"/{args.path}"
+            print(msg)
+
+
+def _print_labs_table(plugins):
+    records = [
+        (p.get("name"), p.get("version"), p.get("description"))
+        for p in plugins
+    ]
+    headers = ["name", "version", "description"]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
 
 
 class MigrateCommand(Command):

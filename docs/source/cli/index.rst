@@ -1235,26 +1235,33 @@ List plugins that are installed locally.
 
 .. code-block:: text
 
-    fiftyone plugins list [-h] [-e] [-d] [-b] [-c] [-n]
+    fiftyone plugins list [-h] [-g PATT] [-e] [-d] [-b] [-c] [-n]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help           show this help message and exit
-      -e, --enabled        only show enabled plugins
-      -d, --disabled       only show disabled plugins
-      -b, --builtins-only  only show builtin plugins
-      -c, --no-builtins    only show non-builtin plugins
-      -n, --names-only     only show plugin names
+      -h, --help            show this help message and exit
+      -g PATT, --glob-patt PATT
+                            only show plugins whose name matches the glob pattern
+      -e, --enabled         only show enabled plugins
+      -d, --disabled        only show disabled plugins
+      -b, --builtins-only   only show builtin plugins
+      -c, --no-builtins     only show non-builtin plugins
+      -n, --names-only      only show names
 
 **Examples**
 
 .. code-block:: shell
 
-    # List all locally available plugins
+    # List all available plugins
     fiftyone plugins list
+
+.. code-block:: shell
+
+    # List plugins whose name matches the given glob pattern
+    fiftyone plugins list --glob-patt '@voxel51/*'
 
 .. code-block:: shell
 
@@ -1635,7 +1642,7 @@ Tools for working with FiftyOne Labs.
 
 .. code-block:: text
 
-    fiftyone labs [-h] [--all-help] {install,uninstall,search} ...
+    fiftyone labs [-h] [--all-help] {install,uninstall,list,search} ...
 
 **Arguments**
 
@@ -1646,50 +1653,47 @@ Tools for working with FiftyOne Labs.
       --all-help            show help recursively and exit
 
     available commands:
-      {install,uninstall}
-        install             Install FiftyOne Labs features from the web.
+      {install,uninstall,list,search}
+        install             Install FiftyOne Labs features on your local machine.
         uninstall           Uninstall FiftyOne Labs features from your local machine.
-        search              Search for available plugins in FiftyOne Labs repository.
+        list                List installed FiftyOne Labs features on your local machine.
+        search              Search for available FiftyOne Labs features.
 
 .. _cli-fiftyone-labs-install:
 
 Install Labs features
 ~~~~~~~~~~~~~~~~~~~~~
 
-Install features from FiftyOne Labs repository.
+Install FiftyOne Labs features on your local machine.
 
 .. code-block:: text
 
-    fiftyone labs install [-h] [--branch BRANCH] [-n [FEATURE_NAMES ...]] [-o]
+    fiftyone labs install [-h] [-a] [-o] [--branch BRANCH] [NAME ...]
 
 **Arguments**
 
 .. code-block:: text
 
-    optional arguments:
-      -h, --help            show this help message and exit
-      --branch BRANCH       name of FiftyOne Labs branch
-      -n [FEATURE_NAMES ...], --feature-names [FEATURE_NAMES ...]
-                            a labs feature name or list of feature names to download
-      -o, --overwrite       whether to overwrite existing features
+    positional arguments:
+      NAME             the Labs feature(s) to install
 
+    optional arguments:
+      -h, --help       show this help message and exit
+      -a, --all        whether to install all Labs features
+      -o, --overwrite  whether to reinstall existing Labs features
+      --branch BRANCH  a Labs repository branch from which to install features
 
 **Examples**
 
 .. code-block:: shell
 
-    # Install labs features from FiftyOne Labs repo
-    fiftyone labs install
+    # Install specific FiftyOne labs feature(s)
+    fiftyone labs install <name1> <name2> ...
 
 .. code-block:: shell
 
-    # Install labs features from FiftyOne Labs repo
-    fiftyone labs install --branch <branch_name>
-
-.. code-block:: shell
-
-    # Install specific labs feature from FiftyOne Labs repo
-    fiftyone labs install --feature-names <name1> <name2>
+    # Install all FiftyOne Labs features
+    fiftyone labs install --all
 
 .. _cli-fiftyone-labs-uninstall:
 
@@ -1707,66 +1711,87 @@ Uninstall FiftyOne Labs features from your local machine.
 .. code-block:: text
 
     positional arguments:
-      NAME        the labs feature name(s)
+      NAME        the Labs feature(s) to uninstall
 
     optional arguments:
       -h, --help  show this help message and exit
-      -a, --all   whether to delete all labs features
+      -a, --all   whether to uninstall all Labs features
 
 **Examples**
 
 .. code-block:: shell
 
-    # Uninstall a labs feature from local disk
-    fiftyone labs uninstall <name>
-
-.. code-block:: shell
-
-    # Uninstall multiple labs features from local disk
+    # Uninstall specific Labs feature(s)
     fiftyone labs uninstall <name1> <name2> ...
 
 .. code-block:: shell
 
-    # Uninstall all labs features from local disk
+    # Uninstall all Labs features
     fiftyone labs uninstall --all
 
-.. _cli-fiftyone-labs-search:
+.. _cli-fiftyone-labs-list:
 
-Search Labs features
-~~~~~~~~~~~~~~~~~~~~
+List Labs features
+~~~~~~~~~~~~~~~~~~
 
-Search for available plugins in FiftyOne Labs repository.
+List installed FiftyOne Labs features on your local machine.
 
 .. code-block:: text
 
-    fiftyone labs search [-h] [--branch BRANCH] [--path PATH]
+    fiftyone labs list [-h] [-n]
 
 **Arguments**
 
 .. code-block:: text
 
     optional arguments:
-      -h, --help       show this help message and exit
-      --branch BRANCH  name of FiftyOne Labs branch
-      --path PATH      path inside the Labs repository for plugins search
+      -h, --help        show this help message and exit
+      -n, --names-only  only show names
 
 **Examples**
 
 .. code-block:: shell
 
-    # Search for plugins inside the Labs repository
+    # List installed Labs features
+    fiftyone labs list
+
+.. _cli-fiftyone-labs-search:
+
+Search Labs features
+~~~~~~~~~~~~~~~~~~~~
+
+Search for available FiftyOne Labs features.
+
+.. code-block:: text
+
+    fiftyone labs search [-h] [--branch BRANCH] [--path PATH] [-n]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help        show this help message and exit
+      --branch BRANCH   a Labs repository branch from which to install features
+      --path PATH       path inside the Labs repository for plugins search
+      -n, --names-only  only show names
+
+**Examples**
+
+.. code-block:: shell
+
+    # List available Labs features
     fiftyone labs search
 
 .. code-block:: shell
 
-    # Search for plugins by specifying the Labs repository branch
+    # List available Labs features in a specific Labs repository branch
     fiftyone labs search --branch <branch_name>
 
 .. code-block:: shell
 
-    # Search for plugins by specifying a path inside the Labs repository
+    # List available Labs features in a specific Labs repository directory
     fiftyone labs search --path path/to/dir
-    fiftyone labs search --branch <branch_name> --path path/to/dir
 
 .. _cli-fiftyone-utils:
 
