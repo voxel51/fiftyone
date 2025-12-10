@@ -1137,7 +1137,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             the dataset's label schemas ``dict``
         """
-        return copy.deepcopy(self._doc.label_schema) or {}
+        return copy.deepcopy(self._doc.label_schemas) or {}
 
     def set_label_schemas(self, label_schemas):
         """Set the dataset's :ref:`label schemas <annotation-label-schema>`
@@ -1171,14 +1171,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             label_schemas = {}
 
         foa.validate_label_schemas(self, label_schemas)
-        self._doc.label_schema = label_schemas
-        active = set(self._doc.active_label_schemas)
+        self._doc.label_schemas = label_schemas
+        active = list(self.active_label_schemas)
 
         for field in self._doc.active_label_schemas:
             if field not in label_schemas:
                 active.remove(field)
 
-        self._doc.active_label_schemas = sorted(active)
+        self._doc.active_label_schemas = active
         self.save()
 
     def update_label_schema(self, field, label_schema):
@@ -1199,7 +1199,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ExceptionGroup: if the label schema is invalid
         """
         foa.validate_label_schemas(self, label_schema, fields=field)
-        self._doc.label_schema[field] = copy.deepcopy(label_schema)
+        label_schemas = self.label_schemas
+        label_schemas[field] = copy.deepcopy(label_schema)
+        self._doc.label_schemas = label_schemas
         self._doc.save()
 
     def delete_label_schemas(self, fields=None):
@@ -1218,12 +1220,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fields = list(self.label_schemas)
 
         for field in fields:
-            if field not in self._doc.label_schema:
+            if field not in self._doc.label_schemas:
                 raise ValueError(
                     f"field '{field}' is not in the dataset's label schema"
                 )
 
-            del self._doc.label_schema[field]
+            del self._doc.label_schemas[field]
             if field in self._doc.active_label_schemas:
                 self._doc.active_label_schemas.remove(field)
 
@@ -2637,6 +2639,40 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             sample_collection, paths, new_paths
         )
 
+        label_schemas = self.label_schemas
+        new_label_schemas = copy.deepcopy(label_schemas)
+        active_label_schemas = self.active_label_schemas
+        for path, new_path in zip(paths, new_paths):
+            if path in label_schemas:
+                new_label_schemas[new_path] = new_label_schemas.pop(path)
+                if path in active_label_schemas:
+                    active_label_schemas[
+                        active_label_schemas.index(path)
+                    ] = new_path
+                continue
+
+            for field in label_schemas:
+                if field.startswith(f"{path}."):
+                    new_field = f"{new_path}.{field.split('.')[1]}"
+                    new_label_schemas[new_field] = new_label_schemas.pop(field)
+            keys = path.split(".")
+            parent = ".".join(keys[:-1])
+
+            if self._is_label_field(parent):
+                if parent not in label_schemas:
+                    parent = ".".join(parent.split(".")[:-1])
+
+                if parent in label_schemas:
+                    attributes = new_label_schemas[parent].get(
+                        "attributes", {}
+                    )
+                    name = keys[-1]
+                    if name in attributes:
+                        new_name = new_path.split(".")[-1]
+                        attributes[new_name] = attributes.pop(name)
+
+        self.set_label_schemas(new_label_schemas)
+
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -2957,19 +2993,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, _ = _parse_fields(field_names)
 
         label_schemas = self.label_schemas
-        remove = []
+        delete_schemas = []
         for field in fields:
             if field in label_schemas:
-                remove.append(field)
+                delete_schemas.append(field)
 
-        active = self.active_label_schemas
-        deactivate = []
-        for field in remove:
-            if field in active:
-                deactivate.append(field)
-
-        self.deactivate_label_schemas(deactivate)
-        self.delete_label_schemas(remove)
+        self.delete_label_schemas(delete_schemas)
 
         if fields:
             fos.Sample._purge_fields(self._sample_collection_name, fields)

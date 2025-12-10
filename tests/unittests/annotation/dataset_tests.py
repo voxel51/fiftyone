@@ -29,29 +29,52 @@ class DatasetAnnotationTests(unittest.TestCase):
             dataset.deactivate_label_schemas("test")
 
         with self.assertRaises(ValueError):
-            dataset.activate_label_schemas = ["test"]
+            dataset.active_label_schemas = ["test"]
 
+        # noop
         dataset.activate_label_schemas()
+
+        # noop
         dataset.deactivate_label_schemas()
 
         dataset.set_label_schemas(
             {"test": {"type": "int", "component": "text"}}
         )
+        dataset.activate_label_schemas()
+        self.assertEqual(dataset.active_label_schemas, ["test"])
 
-        dataset.set_la
+        dataset.deactivate_label_schemas()
+        self.assertEqual(dataset.active_label_schemas, [])
+
+        dataset.active_label_schemas = ["test"]
+
+        dataset.add_sample_field("other", fo.StringField)
+        dataset.update_label_schema(
+            "other", {"type": "str", "component": "text"}
+        )
+
+        dataset.activate_label_schemas("other")
+        self.assertEqual(dataset.active_label_schemas, ["test", "other"])
+
+        dataset.deactivate_label_schemas("test")
+        dataset.activate_label_schemas("test")
+        self.assertEqual(dataset.active_label_schemas, ["other", "test"])
+
+        dataset.active_label_schemas = ["test", "other"]
+        self.assertEqual(dataset.active_label_schemas, ["test", "other"])
 
     @drop_datasets
     def test_delete_sample_field(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("test", fo.IntField)
-        dataset.set_label_schema(
+        dataset.set_label_schemas(
             {"test": {"type": "int", "component": "text"}}
         )
         dataset.activate_label_schemas("test")
         dataset.delete_sample_field("test")
 
         self.assertNotIn("test", dataset.active_label_schemas)
-        self.assertNotIn("test", dataset.label_schema)
+        self.assertNotIn("test", dataset.label_schemas)
 
     @drop_datasets
     def test_update_label_schema(self):
@@ -62,16 +85,16 @@ class DatasetAnnotationTests(unittest.TestCase):
             "test", {"type": "int", "component": "text"}
         )
         self.assertEqual(
-            dataset.label_schema,
+            dataset.label_schemas,
             {"test": {"type": "int", "component": "text"}},
         )
 
         dataset.update_label_schema(
-            "test", {"type": "int", "component": "text", "default": 1}
+            "test", {"type": "int", "component": "text"}
         )
         self.assertEqual(
-            dataset.label_schema,
-            {"test": {"type": "int", "component": "text", "default": 1}},
+            dataset.label_schemas,
+            {"test": {"type": "int", "component": "text"}},
         )
 
         with self.assertRaises(ExceptionGroup):
@@ -88,12 +111,12 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         dataset.add_sample_field("test", fo.IntField)
-        dataset.set_label_schema(
+        dataset.set_label_schemas(
             {"test": {"type": "int", "component": "text"}}
         )
         dataset.rename_sample_field("test", "renamed")
         self.assertEqual(
-            dataset.label_schema,
+            dataset.label_schemas,
             {"renamed": {"type": "int", "component": "text"}},
         )
 
@@ -103,16 +126,20 @@ class DatasetAnnotationTests(unittest.TestCase):
             embedded_doc_type=fo.Classification,
         )
         dataset.add_sample_field("test_label.test", fo.IntField)
-        dataset.label_schema = {
-            "test_label": {
-                "attributes": {"test": {"type": "int", "component": "text"}},
-                "type": "classification",
+        dataset.set_label_schemas(
+            {
+                "test_label": {
+                    "attributes": {
+                        "test": {"type": "int", "component": "text"}
+                    },
+                    "type": "classification",
+                }
             }
-        }
+        )
 
         dataset.rename_sample_field("test_label", "renamed_label")
         self.assertEqual(
-            dataset.label_schema,
+            dataset.label_schemas,
             {
                 "renamed_label": {
                     "attributes": {
@@ -123,27 +150,69 @@ class DatasetAnnotationTests(unittest.TestCase):
             },
         )
 
-        dataset.rename_sample_field(
-            "renamed_label.test", "renamed_label.renamed"
+        dataset.add_sample_field(
+            "test_labels",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classifications,
         )
-        self.assertEqual(
-            dataset.label_schema,
+        dataset.add_sample_field(
+            "test_labels.classifications.test", fo.IntField
+        )
+        dataset.set_label_schemas(
             {
-                "renamed_label": {
+                "test_labels": {
                     "attributes": {
-                        "renamed": {"type": "int", "component": "text"}
+                        "test": {"type": "int", "component": "text"}
                     },
-                    "type": "classification",
+                    "type": "classifications",
+                }
+            }
+        )
+
+        dataset.rename_sample_field("test_labels", "renamed_labels")
+        self.assertEqual(
+            dataset.label_schemas,
+            {
+                "renamed_labels": {
+                    "attributes": {
+                        "test": {"type": "int", "component": "text"}
+                    },
+                    "type": "classifications",
                 }
             },
         )
 
-    @drop_datasets
-    def test_set_label_schema(self):
-        dataset = fo.Dataset()
-        dataset.label_schema = {}
+        dataset.rename_sample_field(
+            "renamed_labels.classifications.test",
+            "renamed_labels.classifications.renamed",
+        )
+        self.assertEqual(
+            dataset.label_schemas["renamed_labels"],
+            {
+                "attributes": {
+                    "renamed": {"type": "int", "component": "text"}
+                },
+                "type": "classifications",
+            },
+        )
 
-        dataset.set_label_schema(
+        dataset.add_sample_field(
+            "dynamic",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+        dataset.add_sample_field("dynamic.subfield", fo.IntField)
+        dataset.update_label_schema(
+            "dynamic.subfield", {"type": "int", "component": "text"}
+        )
+        dataset.rename_sample_field("dynamic", "dynamic_renamed")
+        self.assertNotIn("dynamic.subfield", dataset.label_schemas)
+
+    @drop_datasets
+    def test_set_label_schemas(self):
+        dataset = fo.Dataset()
+
+        dataset.set_label_schemas(
             {
                 "filepath": {"type": "str", "component": "text"},
             }
@@ -151,26 +220,26 @@ class DatasetAnnotationTests(unittest.TestCase):
 
         dataset.reload()
         self.assertEqual(
-            dataset.label_schema,
+            dataset.label_schemas,
             {
                 "filepath": {"type": "str", "component": "text"},
             },
         )
 
-        with self.assertRaises(ValueError):
-            self.assertEqual(
-                dataset.label_schema,
+        # wrong 'type'
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
                 {
                     "filepath": {"type": "int", "component": "text"},
-                },
+                }
             )
 
-        with self.assertRaises(ValueError):
-            self.assertEqual(
-                dataset.label_schema,
+        # missing field
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
                 {
                     "no_field": {"type": "str", "component": "text"},
-                },
+                }
             )
 
     @drop_datasets
@@ -193,12 +262,8 @@ class DatasetAnnotationTests(unittest.TestCase):
                 embedded_doc_type=label_type,
             )
             with self.assertRaises(ExceptionGroup):
-                dataset.set_label_schema(
+                dataset.set_label_schemas(
                     {"unsupported": {"type": label_type.__name__.lower()}}
                 )
 
             dataset.delete_sample_field("unsupported")
-
-        video = fo.Dataset()
-        video.add_sample(fo.Sample(filepath="video.mp4"))
-        video.label_schema = {}

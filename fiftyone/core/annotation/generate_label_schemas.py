@@ -53,7 +53,7 @@ def get_supported_app_annotation_fields(sample_collection):
     Returns:
         a list of supported fields
     """
-    _ensure_collection_is_supported(sample_collection)
+    foau.ensure_collection_is_supported(sample_collection)
     fields = foau.get_all_supported_fields(sample_collection)
     return foau.flatten_fields(sample_collection, fields)
 
@@ -427,11 +427,6 @@ def _get_type(field, is_list):
         raise ValueError(f"field {field} is not supported")
 
     return _types[field_type]
-
-
-def _ensure_collection_is_supported(collection):
-    if collection.media_type not in foac.SUPPORTED_MEDIA_TYPES:
-        raise ValueError(f"{collection.media_type} media is not supported yet")
 
 
 def _handle_bool(collection, field_name, is_list, settings, scan_samples):
