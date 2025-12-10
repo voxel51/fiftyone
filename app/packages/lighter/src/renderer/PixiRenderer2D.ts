@@ -467,6 +467,7 @@ export class PixiRenderer2D implements Renderer2D {
       fontFamily: options?.font || FONT_FAMILY,
       fontSize: options?.fontSize || FONT_SIZE,
       fontWeight: FONT_WEIGHT,
+      fontStyle: options?.fontStyle || "normal",
       fill: options?.fontColor || "#000000",
       align: "left",
       wordWrap: true,

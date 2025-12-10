@@ -54,44 +54,52 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const style = this.getCurrentStyle();
     if (!style) return;
 
-    if (this.label && this.label?.label) {
-      const { x, y } = renderMeta.canonicalMediaBounds;
-      const labelPosition = { x, y };
+    const { x, y } = renderMeta.canonicalMediaBounds;
+    const labelPosition = { x, y };
 
-      const confidence =
-        this.label.confidence && !isNaN(this.label.confidence)
-          ? this.label.confidence
-          : "";
-      const textToDraw = `${this.label?.label} ${confidence}`.trim();
+    const hasLabel = !!this.label?.label;
 
-      const outlineDash = this.isSelected()
-        ? TAB_DASH_SELECTED
-        : TAB_DASH_HOVERED;
+    const confidence =
+      this.label?.confidence && !isNaN(this.label.confidence)
+        ? this.label.confidence
+        : "";
 
-      const dashline =
-        this.isSelected() || this.isHovered()
-          ? {
-              strokeStyle: "#FFFFFF",
-              lineWidth: TAB_DASH_WIDTH,
-              dashPattern: [outlineDash, outlineDash],
-            }
-          : undefined;
+    const textToDraw = hasLabel
+      ? `${this.label?.label} ${confidence}`.trim()
+      : "select classification...";
 
-      this.textBounds = renderer.drawText(
-        textToDraw,
-        labelPosition,
-        {
-          fontColor: "#FFFFFF",
-          backgroundColor: style.fillStyle || style.strokeStyle || "#000",
-          anchor: { vertical: "top" },
-          offset: { bottom: renderMeta.overlayIndex },
-          rounded: 4,
-          tab: "right",
-          dashline,
-        },
-        this.containerId
-      );
-    }
+    const outlineDash = this.isSelected()
+      ? TAB_DASH_SELECTED
+      : TAB_DASH_HOVERED;
+
+    const dashline =
+      this.isSelected() || this.isHovered()
+        ? {
+            strokeStyle: "#FFFFFF",
+            lineWidth: TAB_DASH_WIDTH,
+            dashPattern: [outlineDash, outlineDash],
+          }
+        : undefined;
+
+    const backgroundColor = hasLabel
+      ? style.fillStyle || style.strokeStyle || "#000"
+      : "#808080";
+
+    this.textBounds = renderer.drawText(
+      textToDraw,
+      labelPosition,
+      {
+        fontColor: "#FFFFFF",
+        fontStyle: hasLabel ? "normal" : "italic",
+        backgroundColor,
+        anchor: { vertical: "top" },
+        offset: { bottom: renderMeta.overlayIndex },
+        rounded: 4,
+        tab: "right",
+        dashline,
+      },
+      this.containerId
+    );
 
     this.emitLoaded();
   }

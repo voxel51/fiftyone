@@ -65,6 +65,7 @@ export type Direction = "top" | "bottom" | "left" | "right";
 export interface TextOptions {
   font?: string;
   fontSize?: number;
+  fontStyle?: "normal" | "italic" | "oblique";
   fontColor?: string;
   backgroundColor?: string;
   padding?: number;
