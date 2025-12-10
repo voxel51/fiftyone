@@ -40,7 +40,7 @@ export const useSetEditingToExistingCuboid = () => {
   const jotaiStore = getDefaultStore();
 
   return useCallback(
-    (label: fos.DetectionAnnotationLabel["data"] & { path: string }) => {
+    (label: fos.Detection3DAnnotationLabel["data"]) => {
       // This cuboid may be manipulated now from the canvas,
       // which is why we add it to "staging"
       syncWithStagedCuboidTransforms(label);
