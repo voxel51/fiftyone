@@ -3523,13 +3523,13 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def generate_label_schema(self, fields=None, scan_samples=True):
-        """Generates a label schema for the
+    def generate_label_schemas(self, fields=None, scan_samples=True):
+        """Generates label schemas for the
         :class:`fiftyone.core.collections.SampleCollection`.
 
-        A label schema is defined by a ``type`` and ``component``. Further
-        settings depend on the ``type`` and ``component`` combination as outlined
-        below.
+        A label schema is defined by a ``type`` and ``component`` with respect
+        to a field. Further settings depend on the ``type`` and ``component``
+        combination as outlined below.
 
         The ``type`` value for a field is inferred from the collection's field
         schema. See
@@ -3579,7 +3579,8 @@ class SampleCollection(object):
             -   ``text``: the default when ``scan_samples`` is ``False`` or
                 distinct finite bounds are not found
 
-        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components are:
+        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components
+        are:
 
             -   ``checkboxes``
             -   ``dropdown``
@@ -3604,7 +3605,10 @@ class SampleCollection(object):
         ``float`` types support a ``precision`` setting when a ``text`` component
         is configured  for the number of digits to allow after the decimal.
 
-        All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
+        All types support a ``read_only`` flag. ``id`` types must be
+        ``read_only``. If a field is ``read_only`` in the field schema, then
+        the ``read_only`` label schema setting must be ``True``, e.g.
+        ``created_at`` and ``last_modified_at`` must be read only.
 
         All components support ``values`` except ``json``, ``slider``, and
         ``toggle`` excepting ``id`` restrictions.
@@ -3622,16 +3626,15 @@ class SampleCollection(object):
         builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
         attributes of label types are configured via the ``attributes`` setting.
 
-        All :class:`fiftyone.core.labels.Label` types are resolved by this method
-        except :class:`fiftyone.core.labels.GeoLocation`,
+        When a label is marked is ``read_only``, all its attributes inherit the
+        setting as well.
+
+        All :class:`fiftyone.core.labels.Label` types are resolved by this
+        method except :class:`fiftyone.core.labels.GeoLocation`,
         :class:`fiftyone.core.labels.GeoLocations`,
         :class:`fiftyone.core.labels.TemporalDetection`, and
         :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
         by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
-
-        If a field is ``read_only`` in the field schema, then the ``read_only``
-        label schema setting must be ``True``, e.g. ``created_at`` and
-        ``last_modified_at`` must be read only.
 
         All attributes and the label class itself support a ``default`` setting
         that applies when creating a new label.
@@ -3654,7 +3657,7 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
             dataset.compute_metadata()
 
-            fo.pprint(dataset.generate_field_schema(scan_samples=True))
+            fo.pprint(dataset.generate_label_schemas(scan_samples=True))
 
         Output::
 
@@ -3742,18 +3745,18 @@ class SampleCollection(object):
                 such values
             scan_samples (False): whether to scan the collection to populate
                 component settings based on actual field values (ranges,
-                values, defaults, etc). By default, the label schema is
-                generated from *only* the statically available information in
-                the dataset's field schema
+                values, etc). By default, the label schema is generated from
+                *only* the statically available information in the dataset's
+                field schema
 
         Raises:
             ValueError: if the sample collection or field is not supported
 
         Returns:
-            a label schema ``dict``, or an individual field's label schema ``dict``
-            if only one field is provided
+            a label schemas ``dict``, or an individual field's label schema
+            ``dict`` if only one field is provided
         """
-        return foan.generate_label_schema(
+        return foan.generate_label_schemas(
             self, fields=fields, scan_samples=scan_samples
         )
 

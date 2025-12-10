@@ -25,6 +25,21 @@ class DatasetAnnotationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             dataset.activate_label_schemas("test")
 
+        with self.assertRaises(ValueError):
+            dataset.deactivate_label_schemas("test")
+
+        with self.assertRaises(ValueError):
+            dataset.activate_label_schemas = ["test"]
+
+        dataset.activate_label_schemas()
+        dataset.deactivate_label_schemas()
+
+        dataset.set_label_schemas(
+            {"test": {"type": "int", "component": "text"}}
+        )
+
+        dataset.set_la
+
     @drop_datasets
     def test_delete_sample_field(self):
         dataset = fo.Dataset()
@@ -33,15 +48,40 @@ class DatasetAnnotationTests(unittest.TestCase):
             {"test": {"type": "int", "component": "text"}}
         )
         dataset.activate_label_schemas("test")
-
         dataset.delete_sample_field("test")
+
         self.assertNotIn("test", dataset.active_label_schemas)
         self.assertNotIn("test", dataset.label_schema)
 
     @drop_datasets
     def test_update_label_schema(self):
         dataset = fo.Dataset()
-        dataset.update_label_schema("test", fo.IntField)
+        dataset.add_sample_field("test", fo.IntField)
+
+        dataset.update_label_schema(
+            "test", {"type": "int", "component": "text"}
+        )
+        self.assertEqual(
+            dataset.label_schema,
+            {"test": {"type": "int", "component": "text"}},
+        )
+
+        dataset.update_label_schema(
+            "test", {"type": "int", "component": "text", "default": 1}
+        )
+        self.assertEqual(
+            dataset.label_schema,
+            {"test": {"type": "int", "component": "text", "default": 1}},
+        )
+
+        with self.assertRaises(ExceptionGroup):
+            dataset.update_label_schema(
+                "missing",
+                {
+                    "type": "int",
+                    "component": "text",
+                },
+            )
 
     @drop_datasets
     def test_rename_sample_field(self):

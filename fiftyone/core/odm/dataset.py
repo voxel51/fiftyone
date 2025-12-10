@@ -943,7 +943,7 @@ class DatasetDocument(Document):
     evaluations = DictField(ReferenceField(RunDocument))
     runs = DictField(ReferenceField(RunDocument))
     active_label_schemas = ListField(StringField(), default=[])
-    label_schema = DictField()
+    label_schemas = DictField()
 
     def get_saved_views(self):
         saved_views = []
