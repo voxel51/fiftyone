@@ -12,7 +12,7 @@ import {
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
-import { RawLookerLabel, Rect, RenderMeta } from "../types";
+import { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -33,6 +33,10 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
 
   constructor(options: ClassificationOptions) {
     super(options.id, options.field, options.label);
+  }
+
+  getCursor(_worldPoint: Point, _scale: number): string {
+    return "pointer";
   }
 
   getOverlayType(): string {
