@@ -3,8 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { Matrix4, Mesh, Vector3 } from "three";
-import { LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR } from "../constants";
 import { Transformable } from "../labels/shared/TransformControls";
+import { SphericalMarker } from "./SphericalMarker";
 import {
   activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
@@ -228,9 +228,12 @@ export const PolylinePointMarker = ({
         position={tempVertexTransforms?.position ?? [0, 0, 0]}
         quaternion={tempVertexTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
-        <mesh
+        <SphericalMarker
           ref={meshRef}
           position={position}
+          color={color}
+          size={size}
+          isSelected={isSelected}
           onPointerOver={() => {
             setHoveredVertex({ labelId, segmentIndex, pointIndex });
           }}
@@ -238,22 +241,7 @@ export const PolylinePointMarker = ({
             setHoveredVertex(null);
           }}
           onClick={handlePointClick}
-        >
-          <sphereGeometry args={[size, 10, 10]} />
-          <meshStandardMaterial
-            color={
-              isSelected
-                ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
-                : color
-            }
-            emissive={
-              isSelected
-                ? LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR
-                : color
-            }
-            emissiveIntensity={isSelected ? 1 : 0.3}
-          />
-        </mesh>
+        />
         {tooltipDescriptor && (
           <VertexTooltip
             position={

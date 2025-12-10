@@ -1,5 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { extend } from "@react-three/fiber";
+import chroma from "chroma-js";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -125,6 +126,11 @@ export const Cuboid = ({
     [edgesGeo]
   );
 
+  const complementaryColor = useMemo(
+    () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
+    [displayDimensions, actualRotation, loc, strokeAndFillColor]
+  );
+
   const material = useMemo(
     () =>
       new LineMaterial({
@@ -174,7 +180,7 @@ export const Cuboid = ({
       />
 
       {/* Clickable volume */}
-      <mesh
+      <group
         position={[loc.x, loc.y, loc.z]}
         rotation={actualRotation}
         onClick={onClick}
@@ -188,13 +194,22 @@ export const Cuboid = ({
         }}
         {...restEventHandlers}
       >
-        <boxGeometry args={displayDimensions} />
-        <meshBasicMaterial
-          transparent={isSimilarLabelHovered ? false : true}
-          opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
-          color={strokeAndFillColor}
-        />
-      </mesh>
+        <mesh>
+          <boxGeometry args={displayDimensions} />
+          <meshBasicMaterial
+            transparent={isSimilarLabelHovered ? false : true}
+            opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
+            color={strokeAndFillColor}
+          />
+        </mesh>
+
+        {isSelectedForAnnotation && (
+          <mesh>
+            <boxGeometry args={displayDimensions} />
+            <meshBasicMaterial wireframe color={complementaryColor} />
+          </mesh>
+        )}
+      </group>
     </>
   );
 
