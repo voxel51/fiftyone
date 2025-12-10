@@ -1,13 +1,10 @@
-import * as fos from "@fiftyone/state";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { TransformControlsProps } from "@react-three/drei";
+import { useCallback, useMemo, useRef } from "react";
+import { useRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
-import {
-  currentActiveAnnotationField3dAtom,
-  stagedCuboidTransformsAtom,
-  tempLabelTransformsAtom,
-} from "../state";
+import { stagedCuboidTransformsAtom, tempLabelTransformsAtom } from "../state";
+import { useReverseSyncCuboidTransforms } from "./useReverseSyncCuboidTransforms";
 
 interface UseCuboidAnnotationProps {
   label: any;
@@ -28,53 +25,31 @@ export const useCuboidAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UseCuboidAnnotationProps) => {
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [stagedCuboidTransforms, setStagedCuboidTransforms] = useRecoilState(
     stagedCuboidTransformsAtom
   );
 
-  const setTempCuboidTransforms = useSetRecoilState(
+  // Reverse sync: when staged transforms change from canvas manipulation,
+  // sync back to the sidebar
+  useReverseSyncCuboidTransforms();
+
+  // Note: For cuboids, `position` means relative offset (delta)
+  const [tempCuboidTransforms, setTempCuboidTransforms] = useRecoilState(
     tempLabelTransformsAtom(label._id)
   );
 
-  const transformControlsRef = useRef(null);
+  const transformControlsRef = useRef<TransformControlsProps>(null);
   const contentRef = useRef<THREE.Group>(null);
-  const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
-
-  // Calculate centroid based on location
-  const centroid = useMemo(() => {
-    return location as [number, number, number];
-  }, [location]);
-
-  // Get current staged transforms for this cuboid
-  const currentStagedTransform = useMemo(() => {
-    return stagedCuboidTransforms[label._id];
-  }, [stagedCuboidTransforms, label._id]);
 
   // Apply staged transforms if they exist, otherwise use original values
-  const effectiveLocation = useMemo(() => {
-    return currentStagedTransform?.location ?? location;
-  }, [currentStagedTransform?.location, location]);
-
-  const effectiveDimensions = useMemo(() => {
-    return currentStagedTransform?.dimensions ?? dimensions;
-  }, [currentStagedTransform?.dimensions, dimensions]);
-
-  // Use original itemRotation - no transform controls rotation support
-  const effectiveRotation = useMemo(() => {
-    return itemRotation;
-  }, [itemRotation]);
-
-  // Transform handlers
-  const handleTransformStart = useCallback(() => {
-    if (!contentRef.current) return;
-
-    // Store the starting matrix for reference
-    const matrix = new THREE.Matrix4();
-    matrix.copy(contentRef.current.matrixWorld);
-    setStartMatrix(matrix);
-  }, []);
+  const [effectiveLocation, effectiveDimensions, effectiveRotation] = useMemo(
+    () => [
+      stagedCuboidTransforms[label._id]?.location ?? location,
+      stagedCuboidTransforms[label._id]?.dimensions ?? dimensions,
+      itemRotation,
+    ],
+    [stagedCuboidTransforms, location, dimensions, itemRotation]
+  );
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -83,34 +58,30 @@ export const useCuboidAnnotation = ({
     const mode = transformControls.mode;
 
     if (mode === "translate") {
-      // Update position
       const position = contentRef.current.position;
       setTempCuboidTransforms({
-        position: position.toArray() as [number, number, number],
+        position: position.toArray(),
       });
     } else if (mode === "scale") {
-      // Update dimensions - compute transient dimensions from scale
+      // Compute transient dimensions from scale
       const scale = contentRef.current.scale;
-      const originalDims = currentStagedTransform?.dimensions ?? dimensions;
+
       const transientDimensions: [number, number, number] = [
-        originalDims[0] * scale.x,
-        originalDims[1] * scale.y,
-        originalDims[2] * scale.z,
+        effectiveDimensions[0] * scale.x,
+        effectiveDimensions[1] * scale.y,
+        effectiveDimensions[2] * scale.z,
       ];
 
-      const originalPosition = new THREE.Vector3();
-      originalPosition.setFromMatrixPosition(startMatrix);
       setTempCuboidTransforms({
-        position: originalPosition.toArray() as [number, number, number],
+        // Note: make sure with scale, position is (0,0,0) to avoid double application of position
+        position: [0, 0, 0],
         dimensions: transientDimensions,
       });
+
+      // Reset scale to avoid double application of scale
+      contentRef.current.scale.set(1, 1, 1);
     }
-  }, [
-    setTempCuboidTransforms,
-    currentStagedTransform?.dimensions,
-    dimensions,
-    startMatrix,
-  ]);
+  }, [effectiveDimensions]);
 
   const handleTransformEnd = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -118,28 +89,25 @@ export const useCuboidAnnotation = ({
     const transformControls = transformControlsRef.current as any;
     const mode = transformControls.mode;
 
-    const newTransform = { ...currentStagedTransform };
+    const newTransform = {
+      location: [...effectiveLocation],
+      dimensions: [...effectiveDimensions],
+    };
 
-    if (mode === "translate") {
-      // Commit position change - add the delta (group position) to effectiveLocation
-      const delta = contentRef.current.position;
+    // Read from temp transforms, commit, and clear
+    const tempTransforms = tempCuboidTransforms;
+
+    if (mode === "translate" && tempTransforms?.position) {
+      // Commit position change - add the delta (from temp transforms) to effectiveLocation
+      const delta = tempTransforms.position;
       newTransform.location = [
-        effectiveLocation[0] + delta.x,
-        effectiveLocation[1] + delta.y,
-        effectiveLocation[2] + delta.z,
+        effectiveLocation[0] + delta[0],
+        effectiveLocation[1] + delta[1],
+        effectiveLocation[2] + delta[2],
       ] as Vector3Tuple;
-    } else if (mode === "scale") {
-      // Commit scale/dimensions change
-      const scale = contentRef.current.scale;
-      // Scale the original dimensions
-      const originalDims = currentStagedTransform?.dimensions ?? dimensions;
-      newTransform.dimensions = [
-        originalDims[0] * scale.x,
-        originalDims[1] * scale.y,
-        originalDims[2] * scale.z,
-      ] as Vector3Tuple;
-      // Reset scale after applying to dimensions
-      contentRef.current.scale.set(1, 1, 1);
+    } else if (mode === "scale" && tempTransforms?.dimensions) {
+      // Commit scale/dimensions change from temp transforms
+      newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
     }
 
     setStagedCuboidTransforms((prev) => ({
@@ -147,59 +115,26 @@ export const useCuboidAnnotation = ({
       [label._id]: newTransform,
     }));
 
-    // Reset group transforms to prevent double-application
-    // This is important because transform controls are applied to the group
-    // whereas we render the cuboid using effective values
     if (contentRef.current) {
       contentRef.current.position.set(0, 0, 0);
+      contentRef.current.scale.set(1, 1, 1);
     }
 
-    // Clear temp transforms
     setTempCuboidTransforms(null);
-    setStartMatrix(null);
-  }, [
-    currentStagedTransform,
-    dimensions,
-    effectiveLocation,
-    label._id,
-    setStagedCuboidTransforms,
-    setTempCuboidTransforms,
-  ]);
-
-  const handlePointerOver = useCallback(() => {
-    // Could be used for additional hover effects in annotation mode
-  }, []);
-
-  const handlePointerOut = useCallback(() => {
-    // Could be used for additional hover effects in annotation mode
-  }, []);
-
-  // Sync staged transforms back to the label data when needed
-  useEffect(() => {
-    if (!isAnnotateMode || !isSelectedForAnnotation) return;
-
-    // This could be used to sync data back to the server
-    // For now, we just keep it in staged state
-  }, [isAnnotateMode, isSelectedForAnnotation, currentStagedTransform]);
+  }, [effectiveLocation, effectiveDimensions, label._id, tempCuboidTransforms]);
 
   return {
-    // State
-    centroid,
+    location,
     isAnnotateMode,
     isSelectedForAnnotation,
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
 
-    // Refs
     transformControlsRef,
     contentRef,
 
-    // Handlers
-    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
-    handlePointerOver,
-    handlePointerOut,
   };
 };

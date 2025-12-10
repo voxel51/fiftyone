@@ -504,6 +504,8 @@ export const stagedCuboidTransformsAtom = atom<
     {
       location?: Vector3Tuple;
       dimensions?: Vector3Tuple;
+      rotation?: Vector3Tuple;
+      quaternion?: [number, number, number, number];
     }
   >
 >({
@@ -542,12 +544,16 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
  * Temporary transform data for labels during manipulation.
  * Stores intermediate transform values before they are committed.
  * Keyed by label ID.
+ *
+ * Depending on the context, this might assume relative or absolute coordinates.
  */
 export const tempLabelTransformsAtom = atomFamily<
   {
     position: [number, number, number];
     /** Optional dimensions for cuboid scale transforms */
     dimensions?: [number, number, number];
+    /** Optional euler for cuboid rotation transforms */
+    rotation?: [number, number, number];
   } | null,
   string
 >({
