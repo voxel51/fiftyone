@@ -22,6 +22,7 @@ import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
+import { useSetEditingToExistingCuboid } from "../annotation/useSetEditingToExistingCuboid";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
@@ -98,6 +99,7 @@ export const ThreeDLabels = ({
   );
 
   const setEditingToExistingPolyline = useSetEditingToExistingPolyline();
+  const setEditingToExistingCuboid = useSetEditingToExistingCuboid();
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -181,6 +183,7 @@ export const ThreeDLabels = ({
         if (archetype === "cuboid") {
           selectLabelForAnnotation(label, archetype);
           setCurrentArchetypeSelectedForTransform(archetype);
+          setEditingToExistingCuboid(label);
           return;
         }
 
@@ -209,6 +212,7 @@ export const ThreeDLabels = ({
       selectLabelForAnnotation,
       isSegmenting,
       setEditingToExistingPolyline,
+      setEditingToExistingCuboid,
       setCurrentArchetypeSelectedForTransform,
     ]
   );

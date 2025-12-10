@@ -71,17 +71,13 @@ export const Cuboid = ({
   );
 
   const {
-    centroid,
     transformControlsRef,
     contentRef,
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
-    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
-    handlePointerOver: handleAnnotationPointerOver,
-    handlePointerOut: handleAnnotationPointerOut,
   } = useCuboidAnnotation({
     label,
     location,
@@ -102,7 +98,10 @@ export const Cuboid = ({
     [displayDimensions]
   );
 
-  // @todo: add comment to add more context on what legacy coordinates means
+  // In legacy coordinate system, location was stored as the top-center of the cuboid
+  // (half-height above the geometric center), so we adjust Y downward by half the height
+  // to position the cuboid correctly. In the new coordinate system, location is stored
+  // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
   const loc = useMemo(() => {
     const [x, y, z] = effectiveLocation;
     return useLegacyCoordinates
@@ -163,7 +162,6 @@ export const Cuboid = ({
    *
    * we're using line2 over core line because line2 allows configurable line width
    */
-
   const content = (
     <>
       {/* Outline */}
@@ -182,12 +180,10 @@ export const Cuboid = ({
         onClick={onClick}
         onPointerOver={() => {
           setHoveredLabel({ id: label._id });
-          handleAnnotationPointerOver();
           onPointerOver();
         }}
         onPointerOut={() => {
           setHoveredLabel(null);
-          handleAnnotationPointerOut();
           onPointerOut();
         }}
         {...restEventHandlers}
@@ -206,17 +202,16 @@ export const Cuboid = ({
     <Transformable
       archetype="cuboid"
       isSelectedForTransform={isSelectedForAnnotation}
-      transformControlsPosition={centroid as THREE.Vector3Tuple}
+      transformControlsPosition={location as THREE.Vector3Tuple}
       transformControlsRef={transformControlsRef}
-      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
-      // explicitObjectRef={null}
     >
       <group
         userData={{ labelId: label._id }}
         ref={contentRef}
+        // Note that tempTransforms?.position is relative offset (delta) for cuboids.
         position={tempTransforms?.position ?? [0, 0, 0]}
       >
         {content}

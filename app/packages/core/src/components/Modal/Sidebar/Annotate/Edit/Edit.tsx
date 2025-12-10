@@ -1,8 +1,10 @@
+import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import styled from "styled-components";
+import { isDetection3d } from "../../../../../utils/labels";
 import Confirmation from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
@@ -12,6 +14,7 @@ import Header from "./Header";
 import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
+import Position3d from "./Position3d";
 import { currentField, currentOverlay, currentType } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
@@ -75,6 +78,9 @@ export default function Edit() {
     };
   }, [confirmExit, clear]);
 
+  const is3dDetection =
+    overlay && isDetection3d(overlay.label as DetectionLabel);
+
   return (
     <Confirmation>
       <ContentContainer>
@@ -82,7 +88,8 @@ export default function Edit() {
         <Content>
           <Id />
           <Field />
-          {type === DETECTION && overlay && <Position />}
+          {type === DETECTION && overlay && !is3dDetection && <Position />}
+          {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema />}
         </Content>
