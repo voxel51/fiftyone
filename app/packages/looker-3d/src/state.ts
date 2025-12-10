@@ -25,6 +25,7 @@ import type {
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
+import { CuboidTransformData } from "./annotation/useSetEditingToNewCuboid";
 
 // =============================================================================
 // GENERAL 3D
@@ -499,15 +500,7 @@ export const stagedPolylineTransformsAtom = atom<
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedCuboidTransformsAtom = atom<
-  Record<
-    string,
-    {
-      location?: Vector3Tuple;
-      dimensions?: Vector3Tuple;
-      rotation?: Vector3Tuple;
-      quaternion?: [number, number, number, number];
-    }
-  >
+  Record<string, CuboidTransformData>
 >({
   key: "fo3d-stagedCuboidTransforms",
   default: {},

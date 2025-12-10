@@ -18,6 +18,7 @@ import {
 export interface CuboidTransformData {
   location: Vector3Tuple;
   dimensions: Vector3Tuple;
+  rotation?: Vector3Tuple;
   quaternion?: [number, number, number, number];
 }
 
