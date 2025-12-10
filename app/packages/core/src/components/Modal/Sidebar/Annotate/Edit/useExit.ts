@@ -38,7 +38,13 @@ export default function useExit(revertLabel = true) {
 
   return useCallback(() => {
     const store = getDefaultStore();
-    store.get(currentOverlay)?.setSelected?.(false);
+    const overlay = store.get(currentOverlay);
+
+    if (overlay) {
+      scene?.deselectOverlay(overlay.id);
+      overlay.onHoverLeave();
+    }
+
     const label = store.get(savedLabel);
     const unsaved = store.get(current);
 
@@ -75,7 +81,6 @@ export default function useExit(revertLabel = true) {
     label && store.set(currentData, label);
 
     if (overlay) {
-      overlay.onHoverLeave();
       scene?.executeCommand(
         new UpdateLabelCommand(overlay, overlay.label, label)
       );
