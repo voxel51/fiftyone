@@ -3,9 +3,12 @@
  */
 
 import {
-  FONT_SIZE,
+  HOVERED_DASH_LENGTH,
   LABEL_ARCHETYPE_PRIORITY,
   SELECTED_DASH_LENGTH,
+  TAB_DASH_HOVERED,
+  TAB_DASH_SELECTED,
+  TAB_DASH_WIDTH,
 } from "../constants";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
@@ -57,15 +60,30 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
           : "";
       const textToDraw = `${this.label?.label} ${confidence}`.trim();
 
+      const outlineDash = this.isSelected()
+        ? TAB_DASH_SELECTED
+        : TAB_DASH_HOVERED;
+
+      const dashline =
+        this.isSelected() || this.isHovered()
+          ? {
+              strokeStyle: "#FFFFFF",
+              lineWidth: TAB_DASH_WIDTH,
+              dashPattern: [outlineDash, outlineDash],
+            }
+          : undefined;
+
       this.textBounds = renderer.drawText(
         textToDraw,
         labelPosition,
         {
-          fontColor: "#ffffff",
+          fontColor: "#FFFFFF",
           backgroundColor: style.fillStyle || style.strokeStyle || "#000",
           anchor: { vertical: "top" },
           offset: { bottom: renderMeta.overlayIndex },
           rounded: 4,
+          tab: "right",
+          dashline,
         },
         this.containerId
       );

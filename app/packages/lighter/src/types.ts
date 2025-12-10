@@ -51,6 +51,14 @@ export interface Offset {
   right?: number;
 }
 
+export interface Dashline {
+  strokeStyle: string;
+  lineWidth: number;
+  dashPattern: number[];
+}
+
+export type Direction = "top" | "bottom" | "left" | "right";
+
 /**
  * Text rendering options.
  */
@@ -65,6 +73,8 @@ export interface TextOptions {
   anchor?: Anchor;
   offset?: Offset;
   rounded?: number;
+  tab?: Direction;
+  dashline?: Dashline;
 }
 
 /**

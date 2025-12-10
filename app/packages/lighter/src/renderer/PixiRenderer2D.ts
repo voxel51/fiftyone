@@ -6,7 +6,6 @@ import { getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
-  DEFAULT_TEXT_GAP,
   DEFAULT_TEXT_PADDING,
   FONT_FAMILY,
   FONT_SIZE,
@@ -17,6 +16,7 @@ import {
   HANDLE_OUTLINE,
   SELECTED_ALPHA,
   SELECTED_COLOR,
+  TAB_GAP_DEFAULT,
 } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
@@ -246,6 +246,148 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   /**
+   * Draws border of background of 'drawText'
+   */
+  private drawBorder(
+    bounds: Rect,
+    options: TextOptions | undefined,
+    containerId: string
+  ): void {
+    if (options?.dashline) {
+      const border = new PIXI.Graphics();
+      const dashline = options.dashline;
+      const { lineWidth, strokeStyle } = dashline;
+      const scaledLineWidth = lineWidth / this.getScale();
+      const halfLineWidth = scaledLineWidth / 2;
+
+      const colorObj = parseColorWithAlpha(strokeStyle);
+      const color = colorObj.color;
+      const alpha = colorObj.alpha;
+
+      let { x, y, width, height } = { ...bounds };
+      x += halfLineWidth;
+      y += halfLineWidth;
+      height -= halfLineWidth * 2;
+      width -= halfLineWidth * 2;
+
+      let corners: Point[];
+      switch (options.tab) {
+        case "top":
+          corners = [
+            { x, y: y + height },
+            { x, y },
+            { x: x + width, y },
+            { x: x + width, y: y + halfLineWidth + height },
+          ];
+          break;
+        case "bottom":
+          corners = [
+            { x: x + width, y },
+            { x: x + width, y: y + height },
+            { x, y: y + height },
+            { x, y: y - halfLineWidth },
+          ];
+          break;
+        case "left":
+          corners = [
+            { x: x + width, y: y + height },
+            { x, y: y + height },
+            { x, y },
+            { x: x + width, y: y + halfLineWidth },
+          ];
+          break;
+        case "right":
+        default:
+          corners = [
+            { x, y },
+            { x: x + width, y },
+            { x: x + width, y: y + height },
+            { x: x - halfLineWidth, y: y + height },
+          ];
+      }
+
+      const dashLine = new DashLine(border, {
+        dash: dashline.dashPattern.map((dash) => dash / this.getScale()),
+        width: scaledLineWidth,
+        color,
+        alpha,
+      });
+
+      dashLine
+        .moveTo(corners[0].x, corners[0].y)
+        .lineTo(corners[1].x, corners[1].y)
+        .lineTo(corners[2].x, corners[2].y)
+        .lineTo(corners[3].x, corners[3].y, !options.tab);
+
+      this.addToContainer(border, containerId);
+    }
+  }
+
+  /**
+   * Draws background of 'drawText'
+   */
+  private drawBackground(
+    bounds: Rect,
+    options: TextOptions | undefined,
+    containerId: string
+  ): void {
+    if (options?.backgroundColor) {
+      const background = new PIXI.Graphics();
+
+      if (options?.rounded && options?.tab) {
+        const corners = { ...bounds };
+        const halfHeight = bounds.height / 2;
+        const halfWidth = bounds.width / 2;
+
+        switch (options.tab) {
+          case "top":
+            corners.y += halfHeight;
+            corners.height -= halfHeight;
+            break;
+          case "bottom":
+            corners.height -= halfHeight;
+            break;
+          case "left":
+            corners.x += halfWidth;
+            corners.width -= halfWidth;
+            break;
+          case "right":
+            corners.width -= halfWidth;
+            break;
+        }
+
+        background
+          .roundRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            options.rounded
+          )
+          .rect(corners.x, corners.y, corners.width, corners.height)
+          .fill(options.backgroundColor);
+      } else if (options?.rounded) {
+        background
+          .roundRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height,
+            options.rounded
+          )
+          .fill(options.backgroundColor);
+      } else {
+        background
+          .rect(bounds.x, bounds.y, bounds.width, bounds.height)
+          .fill(options.backgroundColor);
+      }
+
+      this.addToContainer(background, containerId);
+      this.drawBorder(bounds, options, containerId);
+    }
+  }
+
+  /**
    * Calculates text and background positions based on anchor and offset options.
    */
   private calculatePosition(
@@ -257,10 +399,10 @@ export class PixiRenderer2D implements Renderer2D {
     const padding =
       (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
-    position.y += DEFAULT_TEXT_GAP;
+    position.y += TAB_GAP_DEFAULT;
 
     // text height + top padding + bottom padding + gap
-    const verticalOffset = finalHeight + padding * 2 + DEFAULT_TEXT_GAP;
+    const verticalOffset = finalHeight + padding * 2 + TAB_GAP_DEFAULT;
 
     const anchor = {
       vertical: "bottom",
@@ -366,23 +508,7 @@ export class PixiRenderer2D implements Renderer2D {
     pixiText.x = txt.x;
     pixiText.y = txt.y;
 
-    if (options?.backgroundColor) {
-      const background = new PIXI.Graphics();
-
-      if (options?.rounded) {
-        background
-          .roundRect(bg.x, bg.y, bg.width, bg.height, options.rounded)
-          .rect(bg.x, bg.y, bg.width / 2, bg.height)
-          .fill(options.backgroundColor);
-      } else {
-        background
-          .rect(bg.x, bg.y, bg.width, bg.height)
-          .fill(options.backgroundColor);
-      }
-
-      this.addToContainer(background, containerId);
-    }
-
+    this.drawBackground(bg, options, containerId);
     this.addToContainer(pixiText, containerId);
 
     return bg;

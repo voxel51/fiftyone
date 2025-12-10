@@ -777,19 +777,6 @@ export class BoundingBoxOverlay
     return LABEL_ARCHETYPE_PRIORITY.BOUNDING_BOX;
   }
 
-  // Hoverable interface implementation
-  onHoverEnter(_point: Point, _event: PointerEvent): boolean {
-    this.isHoveredState = true;
-    this.markDirty();
-    return true;
-  }
-
-  onHoverLeave(_point: Point, _event: PointerEvent): boolean {
-    this.isHoveredState = false;
-    this.markDirty();
-    return true;
-  }
-
   getTooltipInfo(): {
     color: string;
     field: string;

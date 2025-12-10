@@ -156,6 +156,10 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     return this.constructor.name;
   }
 
+  isHovered(): boolean {
+    return this.isHoveredState;
+  }
+
   /**
    * Gets the container ID for this overlay.
    * @returns The container ID.
@@ -263,7 +267,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   onHoverEnter(point: Point, event: PointerEvent): boolean {
     this.isHoveredState = true;
-
+    this.markDirty();
     return true;
   }
 
@@ -276,7 +280,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   onHoverLeave?(point: Point, event: PointerEvent): boolean {
     this.isHoveredState = false;
-
+    this.markDirty();
     return true;
   }
 
