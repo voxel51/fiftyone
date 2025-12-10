@@ -15,6 +15,7 @@ import {
   stagedCuboidTransformsAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
 interface CreateCuboidRendererProps {
   color?: string;
@@ -40,6 +41,8 @@ export const CreateCuboidRenderer = ({
   const setIsCreatingCuboidPointerDown = useSetRecoilState(
     isCreatingCuboidPointerDownAtom
   );
+
+  const setEditingToNewCuboid = useSetEditingToNewCuboid();
 
   // Track whether pointer is currently down (to differentiate move vs drag)
   const isPointerDownRef = useRef(false);
@@ -190,15 +193,20 @@ export const CreateCuboidRenderer = ({
           Number(previewCuboid.quaternion[3].toFixed(7)),
         ];
 
+        const transformData = {
+          location,
+          dimensions,
+          quaternion,
+        };
+
         // Add to staged transforms
         setStagedCuboidTransforms((prev) => ({
           ...prev,
-          [labelId]: {
-            location,
-            dimensions,
-            quaternion,
-          },
+          [labelId]: transformData,
         }));
+
+        // Set editing to the new cuboid (similar to polylines)
+        setEditingToNewCuboid(labelId, transformData);
 
         // Select the newly created cuboid
         setSelectedLabelForAnnotation({

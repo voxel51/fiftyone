@@ -23,11 +23,11 @@ import {
   isCreatingCuboidAtom,
   isCuboidAnnotateActiveAtom,
   isPolylineAnnotateActiveAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../../state";
 import type {
@@ -37,7 +37,6 @@ import type {
 } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
 import {
-  CuboidCoordinateInputs,
   PlaneCoordinateInputs,
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
@@ -446,8 +445,6 @@ export const useAnnotationActions = () => {
         customComponent:
           currentArchetypeSelectedForTransform === "annotation-plane" ? (
             <PlaneCoordinateInputs hideRotation={false} />
-          ) : currentArchetypeSelectedForTransform === "cuboid" ? (
-            <CuboidCoordinateInputs />
           ) : (
             <VertexCoordinateInputs />
           ),
