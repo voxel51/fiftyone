@@ -68,12 +68,11 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
       ? `${this.label?.label} ${confidence}`.trim()
       : "select classification...";
 
-    const outlineDash = this.isSelected()
-      ? TAB_DASH_SELECTED
-      : TAB_DASH_HOVERED;
+    const outlineDash =
+      this.isSelected() || !hasLabel ? TAB_DASH_SELECTED : TAB_DASH_HOVERED;
 
     const dashline =
-      this.isSelected() || this.isHovered()
+      this.isSelected() || this.isHovered() || !hasLabel
         ? {
             strokeStyle: "#FFFFFF",
             lineWidth: TAB_DASH_WIDTH,
