@@ -1,3 +1,9 @@
+import { isDetection3d } from "@fiftyone/core";
+import { JSONDeltas } from "@fiftyone/core/src/client";
+import {
+  extractNestedField,
+  generateJsonPatch,
+} from "@fiftyone/core/src/utils/json";
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
@@ -8,11 +14,6 @@ import {
   PolylineAnnotationLabel,
   Sample,
 } from "@fiftyone/state";
-import { JSONDeltas } from "@fiftyone/core/src/client";
-import {
-  extractNestedField,
-  generateJsonPatch,
-} from "@fiftyone/core/src/utils/json";
 import { Field, Schema } from "@fiftyone/utilities";
 
 /**
@@ -462,6 +463,10 @@ const getFieldSchemaHelper = (
 const makeDetectionLabel = (
   label: DetectionAnnotationLabel
 ): DetectionLabel => {
+  if (isDetection3d(label.data)) {
+    return label.data;
+  }
+
   const bounds = label.overlay.getRelativeBounds();
 
   return {
