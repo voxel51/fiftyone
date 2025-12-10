@@ -270,40 +270,33 @@ export class PixiRenderer2D implements Renderer2D {
       height -= halfLineWidth * 2;
       width -= halfLineWidth * 2;
 
-      let corners: Point[];
+      const corners: Point[] = [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ];
+
+      // for 'tabs' shift the start point
+      // such that `!options.tab` can determine if we `closePath` or not
+      // i.e. tab ? draw three sides : draw four sides
       switch (options.tab) {
         case "top":
-          corners = [
-            { x, y: y + height },
-            { x, y },
-            { x: x + width, y },
-            { x: x + width, y: y + halfLineWidth + height },
-          ];
+          corners.unshift(corners.pop()!);
+          corners[3].y += halfLineWidth;
           break;
         case "bottom":
-          corners = [
-            { x: x + width, y },
-            { x: x + width, y: y + height },
-            { x, y: y + height },
-            { x, y: y - halfLineWidth },
-          ];
+          corners.push(corners.shift()!);
+          corners[3].y -= halfLineWidth;
           break;
         case "left":
-          corners = [
-            { x: x + width, y: y + height },
-            { x, y: y + height },
-            { x, y },
-            { x: x + width, y: y + halfLineWidth },
-          ];
+          corners.push(corners.shift()!);
+          corners.push(corners.shift()!);
+          corners[3].x += halfLineWidth;
           break;
         case "right":
-        default:
-          corners = [
-            { x, y },
-            { x: x + width, y },
-            { x: x + width, y: y + height },
-            { x: x - halfLineWidth, y: y + height },
-          ];
+          corners[3].x -= halfLineWidth;
+          break;
       }
 
       const dashLine = new DashLine(border, {
