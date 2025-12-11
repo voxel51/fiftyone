@@ -39,15 +39,10 @@ export default function useFocus() {
           return;
         }
 
-        const label = STORE.get(current);
-        const id = label?.overlay?.id;
+        const id = STORE.get(current)?.overlay?.id;
 
         // no unsaved changes, allow the exit
         if (!id || !STORE.get(hasChanges)) {
-          if (label?.isNew && id) {
-            removeOverlay(id);
-          }
-
           onExit();
           return;
         }
@@ -62,7 +57,7 @@ export default function useFocus() {
           select();
         });
       },
-      [confirmExit, scene, onExit, select, removeOverlay]
+      [confirmExit, scene, onExit, select]
     )
   );
 
@@ -76,8 +71,15 @@ export default function useFocus() {
         selectId.current = payload.id;
 
         if (STORE.get(editing)) {
-          // skip for new labels
-          if (STORE.get(current)?.isNew) return;
+          // if it's a new label with no changes, discard it and allow the selection
+          const currentLabel = STORE.get(current);
+          if (currentLabel?.isNew && !STORE.get(hasChanges)) {
+            removeOverlay(currentLabel.overlay.id);
+            scene?.exitInteractiveMode();
+            onExit();
+            select();
+            return;
+          }
 
           // a label is already being edited, let the DESELECT event handle it
           scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
@@ -86,7 +88,7 @@ export default function useFocus() {
 
         select();
       },
-      [scene, select]
+      [scene, select, onExit, removeOverlay]
     )
   );
 }
