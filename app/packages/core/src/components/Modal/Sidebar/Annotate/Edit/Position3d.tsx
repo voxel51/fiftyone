@@ -1,3 +1,4 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
@@ -15,7 +16,7 @@ import {
   formatRadians,
   formatDegrees,
 } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
-import { currentData } from "./state";
+import { currentData, currentOverlay } from "./state";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
@@ -35,10 +36,7 @@ const hasValidBounds = (coordinates: Coordinates3d): boolean => {
     depth !== undefined &&
     Number.isFinite(width) &&
     Number.isFinite(height) &&
-    Number.isFinite(depth) &&
-    width > 0 &&
-    height > 0 &&
-    depth > 0
+    Number.isFinite(depth)
   );
 };
 
@@ -50,6 +48,8 @@ export default function Position3d() {
   });
   const data = useAtomValue<DetectionLabel>(currentData);
   const setData = useSetAtom(currentData);
+  const overlay = useAtomValue(currentOverlay);
+  const eventBus = useAnnotationEventBus();
   const [stagedCuboidTransforms, setStagedCuboidTransforms] = useRecoilState(
     stagedCuboidTransformsAtom
   );
@@ -189,8 +189,23 @@ export default function Position3d() {
         dimensions: newDimensions,
         rotation: newRotation,
       });
+
+      // Emit event for 3D annotation sync
+      if (overlay?.id) {
+        eventBus.dispatch("annotation:sidebarValueUpdated", {
+          overlayId: overlay.id,
+          currentLabel: overlay.label as DetectionLabel,
+          value: {
+            ...data,
+            _id: data._id,
+            location: newLocation,
+            dimensions: newDimensions,
+            rotation: newRotation,
+          },
+        });
+      }
     },
-    [data?._id, state, setData, setStagedCuboidTransforms]
+    [data, state, setData, setStagedCuboidTransforms, overlay, eventBus]
   );
 
   return (
