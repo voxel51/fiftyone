@@ -41,7 +41,7 @@ export default function useExit(revertLabel = true) {
     const overlay = store.get(currentOverlay);
 
     if (overlay) {
-      scene?.deselectOverlay(overlay.id);
+      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       overlay.onHoverLeave();
     }
 
