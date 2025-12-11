@@ -5,6 +5,7 @@ import {
   stagedCuboidTransformsAtom,
   tempLabelTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
+import { quaternionToRadians } from "@fiftyone/looker-3d/src/utils";
 import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
@@ -65,7 +66,7 @@ export default function Position3d() {
     if (isCurrentlyTransforming && tempTransforms) {
       const tempPosition = tempTransforms.position;
       const tempDimensions = tempTransforms.dimensions;
-      const rotation = tempTransforms.rotation;
+      const tempQuaternion = tempTransforms.quaternion;
 
       // If there's temp position (which is relative offset), compute the absolute position
       const absolutePosition = [
@@ -75,6 +76,11 @@ export default function Position3d() {
       ];
 
       const fallbackDimensions = data.dimensions;
+
+      // Convert quaternion to radians for display
+      const rotationRadians = tempQuaternion
+        ? quaternionToRadians(tempQuaternion)
+        : null;
 
       setState({
         position: {
@@ -95,8 +101,12 @@ export default function Position3d() {
               depth: fallbackDimensions[2],
             }
           : {},
-        rotation: rotation
-          ? { rx: rotation[0], ry: rotation[1], rz: rotation[2] }
+        rotation: rotationRadians
+          ? {
+              rx: rotationRadians[0],
+              ry: rotationRadians[1],
+              rz: rotationRadians[2],
+            }
           : { rx: 0, ry: 0, rz: 0 },
       });
       return;
