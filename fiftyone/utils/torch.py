@@ -13,6 +13,7 @@ import multiprocessing
 import os
 import pickle
 import sys
+from collections.abc import Sequence
 from typing import Any, Dict, Optional, List, Union, Tuple
 import warnings
 
@@ -953,7 +954,8 @@ class TorchImageModel(
         # Check if this model handles structured dict inputs
         if (
             self._handles_structured_inputs()
-            and imgs
+            and isinstance(imgs, Sequence)
+            and len(imgs) > 0
             and isinstance(imgs[0], dict)
         ):
             return self._predict_all_structured(imgs)
@@ -1402,19 +1404,43 @@ def convert_to_tensor_chw(
             )
         img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
     elif isinstance(img, torch.Tensor):
-        if img.ndim == 3 and img.shape[0] in (1, 3, 4):
-            img_t = img.float().clone()
-        elif img.ndim == 3 and img.shape[2] in (1, 3, 4):
-            img_t = img.permute(2, 0, 1).float().clone()
+        # Only accept single-image tensors: 2D (H, W) or 3D (C, H, W) or (H, W, C)
+        # Reject batched tensors (4D) or other dimensionalities
+        if img.ndim == 2:
+            # 2D grayscale (H, W) -> expand to (3, H, W)
+            img_t = img.unsqueeze(0).repeat(3, 1, 1).float()
+        elif img.ndim == 3:
+            # Distinguish CHW vs HWC format
+            if img.shape[0] in (1, 3, 4):
+                # CHW format: (C, H, W)
+                img_t = img.float().clone()
+                # Handle different channel counts
+                if img_t.shape[0] == 1:
+                    img_t = img_t.repeat(3, 1, 1)
+                elif img_t.shape[0] == 4:
+                    # Strip alpha channel (RGBA -> RGB)
+                    img_t = img_t[:3, :, :]
+            elif img.shape[2] in (1, 3, 4):
+                # HWC format: (H, W, C) -> permute to CHW
+                img_t = img.permute(2, 0, 1).float().clone()
+                # Handle different channel counts
+                if img_t.shape[0] == 1:
+                    img_t = img_t.repeat(3, 1, 1)
+                elif img_t.shape[0] == 4:
+                    # Strip alpha channel (RGBA -> RGB)
+                    img_t = img_t[:3, :, :]
+            else:
+                raise ValueError(
+                    f"Unsupported 3D tensor shape: {img.shape}. "
+                    f"Expected CHW with C in {{1, 3, 4}} or HWC with C in {{1, 3, 4}}. "
+                    f"Got shape[0]={img.shape[0]}, shape[2]={img.shape[2]}"
+                )
         else:
-            # Assume already CHW float
-            img_t = img.float().clone()
-        # Handle different channel counts
-        if img_t.shape[0] == 1:
-            img_t = img_t.repeat(3, 1, 1)
-        elif img_t.shape[0] == 4:
-            # Strip alpha channel (RGBA -> RGB)
-            img_t = img_t[:3, :, :]
+            raise ValueError(
+                f"Unsupported tensor dimensionality: {img.ndim}D with shape {img.shape}. "
+                f"Expected 2D (H, W) for grayscale or 3D (C, H, W) or (H, W, C) for single images. "
+                f"Batched 4D tensors are not supported - process images individually."
+            )
     else:
         raise ValueError(
             f"Unsupported image type: {type(img)}. "

@@ -209,7 +209,6 @@ class HRM2ModelConfigTests(HRM2TestBase):
         self.assertEqual(config.smpl_model_path, self.mock_smpl_path)
         self.assertEqual(config.checkpoint_version, "2.0b")
         self.assertTrue(config.export_meshes)
-        self.assertIsNone(config.detections_field)
         self.assertFalse(config.ragged_batches)
 
     def test_hrm2_config_custom_parameters(self):
@@ -220,14 +219,12 @@ class HRM2ModelConfigTests(HRM2TestBase):
             "smpl_model_path": self.mock_smpl_path,
             "checkpoint_version": "1.0",
             "export_meshes": False,
-            "detections_field": "ground_truth_detections",
         }
 
         config = HRM2ModelConfig(config_dict)
 
         self.assertEqual(config.checkpoint_version, "1.0")
         self.assertFalse(config.export_meshes)
-        self.assertEqual(config.detections_field, "ground_truth_detections")
         self.assertFalse(config.ragged_batches)
 
     def test_hrm2_config_invalid_smpl_path(self):
@@ -294,6 +291,44 @@ class HRM2ModelConfigTests(HRM2TestBase):
 
         # Verify args match config values
         self.assertEqual(config.output_processor_args["export_meshes"], False)
+
+
+class HRM2GetItemTests(unittest.TestCase):
+    """Tests for HRM2GetItem class."""
+
+    def test_required_keys_are_static(self):
+        """Test that HRM2GetItem.required_keys always returns static keys."""
+        from fiftyone.utils.hrm2 import HRM2GetItem
+
+        # Test with no field_mapping
+        get_item = HRM2GetItem(field_mapping=None)
+        self.assertEqual(get_item.required_keys, ["filepath", "prompt_field"])
+
+        # Test with field_mapping provided
+        get_item = HRM2GetItem(field_mapping={"prompt_field": "detections"})
+        self.assertEqual(get_item.required_keys, ["filepath", "prompt_field"])
+
+        # Test with empty field_mapping
+        get_item = HRM2GetItem(field_mapping={})
+        self.assertEqual(get_item.required_keys, ["filepath", "prompt_field"])
+
+    def test_get_item_instantiation(self):
+        """Test that HRM2GetItem can be instantiated with various parameters."""
+        from fiftyone.utils.hrm2 import HRM2GetItem
+
+        # Test basic instantiation
+        get_item = HRM2GetItem()
+        self.assertIsNotNone(get_item)
+        self.assertIsNone(get_item.transform)
+        self.assertFalse(get_item.use_numpy)
+
+        # Test with transform
+        def mock_transform(x):
+            return x
+
+        get_item = HRM2GetItem(transform=mock_transform, use_numpy=True)
+        self.assertEqual(get_item.transform, mock_transform)
+        self.assertTrue(get_item.use_numpy)
 
 
 class HRM2UtilityTests(unittest.TestCase):
@@ -669,6 +704,77 @@ class HRM2OutputProcessorTests(HRM2TestBase):
 class HRM2ModelTests(HRM2TestBase):
     """Tests for HRM2Model class."""
 
+    def test_download_model_validation(self):
+        """Test that _download_model raises error when all loading methods are missing."""
+        from fiftyone.utils.hrm2 import HRM2Model, HRM2ModelConfig
+
+        # Create config without model_name, model_path, or entrypoint_fcn
+        config_dict = {
+            "smpl_model_path": self.mock_smpl_path,
+        }
+
+        config = HRM2ModelConfig(config_dict)
+
+        # Create model instance (this will trigger _download_model)
+        with self.assertRaises(ValueError) as cm:
+            HRM2Model(config)
+
+        self.assertIn("requires at least one of", str(cm.exception))
+        self.assertIn("'model_name'", str(cm.exception))
+        self.assertIn("'model_path'", str(cm.exception))
+        self.assertIn("'entrypoint_fcn'", str(cm.exception))
+
+    def test_download_model_with_model_path(self):
+        """Test that _download_model succeeds when model_path is provided."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
+        from unittest.mock import patch, MagicMock
+
+        # Create config with model_path
+        config_dict = {
+            "model_path": "/tmp/hrm2_model.pth",
+            "smpl_model_path": self.mock_smpl_path,
+            "entrypoint_fcn": "fiftyone.utils.hrm2.load_hrm2_model",
+        }
+
+        config = HRM2ModelConfig(config_dict)
+
+        # Mock the entrypoint and model loading
+        with patch("fiftyone.utils.hrm2.load_hrm2_model") as mock_load:
+            with patch("fiftyone.utils.hrm2.load_smpl_model") as mock_smpl:
+                mock_load.return_value = MagicMock()
+                mock_smpl.return_value = MagicMock()
+
+                # This should not raise an error
+                from fiftyone.utils.hrm2 import HRM2Model
+
+                model = HRM2Model(config)
+                self.assertIsNotNone(model)
+
+    def test_download_model_with_entrypoint_only(self):
+        """Test that _download_model succeeds when only entrypoint_fcn is provided."""
+        from fiftyone.utils.hrm2 import HRM2ModelConfig
+        from unittest.mock import patch, MagicMock
+
+        # Create config with only entrypoint_fcn (no model_name or model_path)
+        config_dict = {
+            "smpl_model_path": self.mock_smpl_path,
+            "entrypoint_fcn": "fiftyone.utils.hrm2.load_hrm2_model",
+        }
+
+        config = HRM2ModelConfig(config_dict)
+
+        # Mock the entrypoint and model loading
+        with patch("fiftyone.utils.hrm2.load_hrm2_model") as mock_load:
+            with patch("fiftyone.utils.hrm2.load_smpl_model") as mock_smpl:
+                mock_load.return_value = MagicMock()
+                mock_smpl.return_value = MagicMock()
+
+                # This should not raise an error - entrypoint_fcn is sufficient
+                from fiftyone.utils.hrm2 import HRM2Model
+
+                model = HRM2Model(config)
+                self.assertIsNotNone(model)
+
     def _create_mock_config(self, **kwargs):
         """Create a mock HRM2ModelConfig for testing."""
         from fiftyone.utils.hrm2 import HRM2ModelConfig
@@ -678,7 +784,6 @@ class HRM2ModelTests(HRM2TestBase):
             "smpl_model_path": kwargs.get("smpl_model_path", None),
             "checkpoint_version": kwargs.get("checkpoint_version", "2.0b"),
             "export_meshes": kwargs.get("export_meshes", False),
-            "detections_field": kwargs.get("detections_field", None),
             "entrypoint_fcn": "fiftyone.utils.hrm2.load_hrm2_model",
         }
 
@@ -1031,6 +1136,33 @@ class HRM2ModelTests(HRM2TestBase):
         # Verify camera_translation was computed (not None)
         self.assertIn("camera_translation", person)
         self.assertIsNotNone(person["camera_translation"])
+
+    def test_build_get_item_simplified(self):
+        """Test that build_get_item simply returns HRM2GetItem without auto-configuration."""
+        from fiftyone.utils.hrm2 import HRM2Model, HRM2GetItem
+
+        # Create a minimal model instance
+        model = object.__new__(HRM2Model)
+        model._transforms = None
+
+        # Test with no field_mapping
+        get_item = model.build_get_item(field_mapping=None)
+        self.assertIsInstance(get_item, HRM2GetItem)
+        self.assertEqual(get_item.required_keys, ["filepath", "prompt_field"])
+
+        # Test with explicit field_mapping
+        field_mapping = {"prompt_field": "my_detections"}
+        get_item = model.build_get_item(field_mapping=field_mapping)
+        self.assertIsInstance(get_item, HRM2GetItem)
+        self.assertEqual(get_item.required_keys, ["filepath", "prompt_field"])
+
+        # Test that transform is passed through
+        def mock_transform(x):
+            return x
+
+        model._transforms = mock_transform
+        get_item = model.build_get_item()
+        self.assertEqual(get_item.transform, mock_transform)
 
     def test_collate_fn_handles_detections_objects(self):
         """Test that HRM2Model.collate_fn handles batches with fol.Detections objects.

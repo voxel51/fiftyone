@@ -1408,11 +1408,6 @@ class HRM2GetItem(fout.GetItem):
         use_numpy: bool = False,
         **kwargs: Any,
     ) -> None:
-        # Store whether we have a prompt field BEFORE calling parent init
-        # (parent init calls required_keys which needs this attribute)
-        self._has_prompt_field = (
-            field_mapping is not None and "prompt_field" in field_mapping
-        )
         super().__init__(field_mapping=field_mapping, **kwargs)
         self.transform = transform
         self.use_numpy = use_numpy
@@ -1448,10 +1443,7 @@ class HRM2GetItem(fout.GetItem):
     @property
     def required_keys(self) -> List[str]:
         """Required keys that must be present in sample dicts."""
-        keys = ["filepath"]
-        if self._has_prompt_field:
-            keys.append("prompt_field")
-        return keys
+        return ["filepath", "prompt_field"]
 
 
 def load_hrm2_model(  # pylint: disable=unused-argument
@@ -1640,6 +1632,7 @@ def apply_hrm2_to_dataset_as_groups(
     image_slice_name: str = "image",
     scene_slice_name: str = "3d",
     output_dir: Optional[str] = None,
+    field_mapping: Optional[Dict[str, str]] = None,
 ) -> "fo.Dataset":
     """Apply HRM2 model to a dataset and create grouped samples.
 
@@ -1674,6 +1667,10 @@ def apply_hrm2_to_dataset_as_groups(
         output_dir (None): directory for .fo3d scenes and meshes. If None,
             defaults to fo.config.model_zoo_dir/hrm2. Pass False to disable
             file export (in-memory labels only)
+        field_mapping (None): optional dict mapping model input keys to dataset
+            field names. Use ``{"prompt_field": "detections_field_name"}`` to
+            enable multi-person mode with pre-computed person detections. If
+            None, runs in single-person mode (processes full image).
 
     Returns:
         the grouped dataset
@@ -1721,6 +1718,7 @@ def apply_hrm2_to_dataset_as_groups(
             batch_size=batch_size,
             num_workers=num_workers,
             output_dir=output_dir,
+            field_mapping=field_mapping,
         )
 
         # Export scenes and collect filepaths mapped to sample filepaths
@@ -1818,10 +1816,6 @@ class HRM2ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         export_meshes (True): whether to prepare 3D mesh data for later export.
             If True, HRM2Person documents will contain vertex data for export.
             Actual files are written when output_dir is provided to apply_model()
-        detections_field (None): optional field name containing person detections
-            to use for multi-person processing. If provided, HRM2 will process
-            each detected person separately. If None, processes the full image
-            as single-person mode
         **kwargs: additional parameters for :class:`TorchImageModelConfig`
     """
 
@@ -1837,11 +1831,6 @@ class HRM2ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "checkpoint_version", default="2.0b"
         )
         self.export_meshes = self.parse_bool(d, "export_meshes", default=True)
-
-        # Detections field for multi-person processing
-        self.detections_field = self.parse_string(
-            d, "detections_field", default=None
-        )
 
         # Update entrypoint_args with user-configurable and runtime parameters
         if "entrypoint_args" not in d:
@@ -1950,11 +1939,25 @@ class HRM2Model(
         load_hrm2_model() entrypoint function, NOT the FiftyOne zoo download.
         We only call download_model_if_necessary() if a zoo model_name or
         model_path is explicitly configured.
+
+        Raises:
+            ValueError: if neither model_name, model_path, nor entrypoint_fcn
+                is configured
         """
-        # Only call zoo download if model_name or model_path is set
-        # HRM2 typically uses entrypoint-based loading via 4D-Humans
+        # Check if model loading is configured via model_name, model_path, or entrypoint
         model_name = getattr(config, "model_name", None)
         model_path = getattr(config, "model_path", None)
+        entrypoint_fcn = getattr(config, "entrypoint_fcn", None)
+
+        # Require at least one loading method
+        if not model_name and not model_path and not entrypoint_fcn:
+            raise ValueError(
+                "HRM2Model requires at least one of 'model_name', 'model_path', "
+                "or 'entrypoint_fcn' to be configured. Provide one of these in "
+                "the config dict."
+            )
+
+        # Call zoo download only if model_name or model_path is set
         if (model_name or model_path) and hasattr(
             config, "download_model_if_necessary"
         ):
@@ -2019,39 +2022,21 @@ class HRM2Model(
         a GetItem instance that defines how to load data from samples for this
         model.
 
+        HRM2GetItem requires two keys:
+        - "filepath": path to the image file (always maps to sample.filepath)
+        - "prompt_field": field containing detections for multi-person mode
+
         Args:
             field_mapping: optional dict mapping required_keys to dataset
-                field names. If not provided, will attempt to auto-configure from
-                the model's config.
+                field names. For example:
+                {"prompt_field": "ground_truth_detections"}
+                If not provided, prompt_field will be None (single-person mode).
 
         Returns:
             an :class:`HRM2GetItem` instance
         """
-        # Copy field_mapping to avoid mutating caller's dict
-        if field_mapping is None:
-            field_mapping = {}
-        else:
-            field_mapping = dict(field_mapping)
-
-        # Auto-add prompt_field if we have a detections field
-        # Check field_mapping first (pop to avoid validation errors), then config
-        if "prompt_field" not in field_mapping:
-            # Pop detections_field alias if present to avoid unknown-key errors
-            prompt_field = field_mapping.pop("detections_field", None)
-
-            # Fall back to config if not in field_mapping
-            if prompt_field is None:
-                prompt_field = getattr(self.config, "detections_field", None)
-
-            if prompt_field:
-                # Handle video frames
-                if prompt_field.startswith("frames."):
-                    prompt_field = prompt_field[len("frames.") :]
-
-                field_mapping["prompt_field"] = prompt_field
-
         return HRM2GetItem(
-            field_mapping=field_mapping if field_mapping else None,
+            field_mapping=field_mapping,
             transform=self._transforms,
             use_numpy=False,
         )
