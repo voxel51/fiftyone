@@ -704,6 +704,9 @@ class BaseClassificationResults(BaseEvaluationResults):
         if labels.size == 0:
             print("No classes to analyze")
             return
+        if self.ytrue.size == 0:
+            print("No samples to analyze")
+            return
 
         report_str = skm.classification_report(
             self.ytrue,
