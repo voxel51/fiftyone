@@ -305,19 +305,9 @@ export const ThreeDLabels = ({
       ) {
         const maybeExistingCuboidTransform = cuboidTransforms?.[overlay._id];
 
-        // Use staged transforms if they exist, otherwise use original values
-        const finalLocation =
-          maybeExistingCuboidTransform?.location ?? overlay.location;
-        const finalDimensions =
-          maybeExistingCuboidTransform?.dimensions ?? overlay.dimensions;
-        const finalRotation =
-          maybeExistingCuboidTransform?.rotation ?? overlay.rotation;
-
         const cuboidCombined = {
           ...overlay,
-          location: finalLocation,
-          dimensions: finalDimensions,
-          rotation: finalRotation,
+          ...(maybeExistingCuboidTransform ?? {}),
         };
 
         newCuboidOverlays.push(

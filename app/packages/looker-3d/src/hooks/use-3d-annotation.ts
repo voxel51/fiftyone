@@ -6,8 +6,8 @@ import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import type { Vector3Tuple } from "three";
 import { PolylinePointTransformData } from "../annotation/types";
+import { CuboidTransformData } from "../annotation/useSetEditingToNewCuboid";
 import { points3dToPolylineSegments } from "../annotation/utils/polyline-utils";
 import {
   hoveredLabelAtom,
@@ -62,20 +62,18 @@ export const use3dAnnotation = () => {
         });
       } else if (payload.type === "Detection") {
         const detectionData = payload.data as DetectionLabel;
-        const { location, dimensions, rotation } = detectionData;
 
-        if (!Array.isArray(location) || !Array.isArray(dimensions)) {
+        if (
+          !Array.isArray(detectionData.location) ||
+          !Array.isArray(detectionData.dimensions)
+        ) {
           return;
         }
 
         // Update staging area with the new cuboid
         // overwrite any previously staged cuboid
         setStagedCuboidTransforms({
-          [payload.id]: {
-            location: location as Vector3Tuple,
-            dimensions: dimensions as Vector3Tuple,
-            rotation: rotation as Vector3Tuple,
-          },
+          [payload.id]: { ...detectionData } as CuboidTransformData,
         });
       }
     }, [])
@@ -122,26 +120,25 @@ export const use3dAnnotation = () => {
           save(coerced);
         } else if (hasLocationAndDimensions) {
           const detectionValue = payload.value as DetectionLabel;
-          const { _id, location, dimensions, rotation } = detectionValue;
+          const { _id, ...rest } = detectionValue;
 
           setStagedCuboidTransforms((prev) => {
             const transformData = {
-              location: location as Vector3Tuple,
-              dimensions: dimensions as Vector3Tuple,
-              rotation: rotation as Vector3Tuple,
+              _id,
+              ...rest,
             };
 
             if (!prev) {
               return {
-                [_id]: transformData,
+                [_id]: transformData as CuboidTransformData,
               };
             }
 
             return {
               ...prev,
               [_id]: {
-                ...transformData,
                 ...(prev[_id] ?? {}),
+                ...(transformData as CuboidTransformData),
               },
             };
           });

@@ -131,9 +131,35 @@ export const useCuboidAnnotation = ({
     } else if (mode === "scale" && tempTransforms?.dimensions) {
       // Commit scale/dimensions change from temp transforms
       newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
-    } else if (mode === "rotate" && tempTransforms?.quaternion) {
-      // Convert quaternion to Euler (radians) on commit
-      newTransform.rotation = quaternionToRadians(tempTransforms.quaternion);
+    } else if (mode === "rotate") {
+      // Check if contentRef has a non-identity quaternion (TransformControls may have set it
+      // after the last handleTransformChange due to event timing)
+      const currentQuat = contentRef.current.quaternion;
+      const isIdentity =
+        currentQuat.x === 0 &&
+        currentQuat.y === 0 &&
+        currentQuat.z === 0 &&
+        currentQuat.w === 1;
+
+      let quaternionToCommit: [number, number, number, number] | null = null;
+
+      if (!isIdentity) {
+        // Use current quaternion directly - this is the most up-to-date rotation
+        quaternionToCommit = [
+          currentQuat.x,
+          currentQuat.y,
+          currentQuat.z,
+          currentQuat.w,
+        ];
+      } else if (tempTransforms?.quaternion) {
+        // Fall back to temp quaternion if contentRef was already reset
+        quaternionToCommit = tempTransforms.quaternion;
+      }
+
+      if (quaternionToCommit) {
+        // Convert quaternion to Euler (radians) on commit
+        newTransform.rotation = quaternionToRadians(quaternionToCommit);
+      }
     }
 
     setStagedCuboidTransforms((prev) => ({
