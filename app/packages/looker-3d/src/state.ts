@@ -545,8 +545,8 @@ export const tempLabelTransformsAtom = atomFamily<
     position: [number, number, number];
     /** Optional dimensions for cuboid scale transforms */
     dimensions?: [number, number, number];
-    /** Optional euler for cuboid rotation transforms */
-    rotation?: [number, number, number];
+    /** Optional quaternion for cuboid rotation transforms (stored as quaternion during manipulation, converted to euler on commit) */
+    quaternion?: [number, number, number, number];
   } | null,
   string
 >({

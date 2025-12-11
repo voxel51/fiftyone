@@ -15,6 +15,7 @@ import {
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
+import { quaternionToRadians } from "../utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
@@ -92,7 +93,15 @@ export const Cuboid = ({
   const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
 
   const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
-  const displayRotation = tempTransforms?.rotation ?? effectiveRotation;
+
+  // Convert temp quaternion to Euler for display (only during manipulation)
+  // The authoritative quaternion is stored in temp transforms and converted to Euler on commit
+  const displayRotation = useMemo(() => {
+    if (tempTransforms?.quaternion) {
+      return quaternionToRadians(tempTransforms.quaternion);
+    }
+    return effectiveRotation;
+  }, [tempTransforms?.quaternion, effectiveRotation]);
 
   const geo = useMemo(
     () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),

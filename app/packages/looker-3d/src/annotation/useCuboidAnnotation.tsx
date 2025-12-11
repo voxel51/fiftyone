@@ -4,8 +4,7 @@ import { useRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import { stagedCuboidTransformsAtom, tempLabelTransformsAtom } from "../state";
-import { deg2rad } from "../utils";
-import { rad2deg, quaternionToEulerStable } from "./utils/rotation-utils";
+import { quaternionToRadians } from "../utils";
 import { useReverseSyncCuboidTransforms } from "./useReverseSyncCuboidTransforms";
 
 interface UseCuboidAnnotationProps {
@@ -42,9 +41,6 @@ export const useCuboidAnnotation = ({
 
   const transformControlsRef = useRef<TransformControlsProps>(null);
   const contentRef = useRef<THREE.Group>(null);
-
-  // Track previous rotation for polarity stabilization when converting quaternion to euler
-  const previousRotationRef = useRef<[number, number, number] | null>(null);
 
   // Apply staged transforms if they exist, otherwise use original values
   const [effectiveLocation, effectiveDimensions, effectiveRotation] = useMemo(
@@ -86,7 +82,8 @@ export const useCuboidAnnotation = ({
       // Reset scale to avoid double application of scale
       contentRef.current.scale.set(1, 1, 1);
     } else if (mode === "rotate") {
-      // Get quaternion from the transform controls and convert to Euler angles
+      // Store quaternion directly in temp transforms during manipulation
+      // Conversion to Euler is deferred until commit (handleTransformEnd)
       const quaternion = contentRef.current.quaternion;
       const quaternionArray: [number, number, number, number] = [
         quaternion.x,
@@ -95,35 +92,14 @@ export const useCuboidAnnotation = ({
         quaternion.w,
       ];
 
-      // Use polarity-stable conversion to avoid discontinuous jumps
-      // Reference is the effective rotation (current committed rotation)
-      // Note: effectiveRotation is in radians, quaternionToEulerStable works in degrees
-      const referenceRotationRadians =
-        previousRotationRef.current ?? effectiveRotation;
-      const referenceRotationDegrees: [number, number, number] = [
-        rad2deg(referenceRotationRadians[0]),
-        rad2deg(referenceRotationRadians[1]),
-        rad2deg(referenceRotationRadians[2]),
-      ];
-
-      const eulerDegrees = quaternionToEulerStable(
-        quaternionArray,
-        referenceRotationDegrees
-      );
-
-      // Convert back to radians for storage (our internal representation uses radians)
-      const eulerRadians: [number, number, number] = [
-        deg2rad(eulerDegrees[0]),
-        deg2rad(eulerDegrees[1]),
-        deg2rad(eulerDegrees[2]),
-      ];
-
       setTempCuboidTransforms({
         position: [0, 0, 0],
-        rotation: eulerRadians,
+        quaternion: quaternionArray,
       });
+
+      contentRef.current.quaternion.set(0, 0, 0, 1);
     }
-  }, [effectiveDimensions, effectiveRotation]);
+  }, [effectiveDimensions]);
 
   const handleTransformEnd = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -155,16 +131,9 @@ export const useCuboidAnnotation = ({
     } else if (mode === "scale" && tempTransforms?.dimensions) {
       // Commit scale/dimensions change from temp transforms
       newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
-    } else if (mode === "rotate" && tempTransforms?.rotation) {
-      // Commit rotation change from temp transforms
-      newTransform.rotation = tempTransforms.rotation as Vector3Tuple;
-
-      // Update the previous rotation ref for polarity stabilization
-      previousRotationRef.current = tempTransforms.rotation as [
-        number,
-        number,
-        number
-      ];
+    } else if (mode === "rotate" && tempTransforms?.quaternion) {
+      // Convert quaternion to Euler (radians) on commit
+      newTransform.rotation = quaternionToRadians(tempTransforms.quaternion);
     }
 
     setStagedCuboidTransforms((prev) => ({
@@ -176,7 +145,7 @@ export const useCuboidAnnotation = ({
       contentRef.current.position.set(0, 0, 0);
       contentRef.current.scale.set(1, 1, 1);
       // Reset rotation to identity - the committed rotation will be applied via effectiveRotation
-      // contentRef.current.quaternion.set(0, 0, 0, 1);
+      contentRef.current.quaternion.set(0, 0, 0, 1);
     }
 
     setTempCuboidTransforms(null);
