@@ -541,7 +541,9 @@ export class InteractionManager {
       distance <= this.CLICK_THRESHOLD &&
       duration <= this.CLICK_TIME_THRESHOLD
     ) {
-      const handler = this.findHandlerAtPoint(point);
+      // Skip canonical media (background) when finding handler for clicks
+      // This ensures clicking on empty space clears selection
+      const handler = this.findHandlerAtPoint(point, true);
 
       // Check for double-click first
       if (this.isDoubleClick(point, now)) {
