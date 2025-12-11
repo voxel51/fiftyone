@@ -11,7 +11,7 @@ import { labelMap } from "./useLabels";
 const STORE = getDefaultStore();
 
 export default function useFocus() {
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
   const onExit = useExit(false);
@@ -39,26 +39,30 @@ export default function useFocus() {
           return;
         }
 
-        const current = STORE.get(currentOverlay)?.id;
+        const label = STORE.get(current);
+        const id = label?.overlay?.id;
 
-        if (!current || !STORE.get(hasChanges)) {
-          // no unsaved changes, allow the exit
+        // no unsaved changes, allow the exit
+        if (!id || !STORE.get(hasChanges)) {
+          if (label?.isNew && id) {
+            removeOverlay(id);
+          }
+
           onExit();
-
           return;
         }
 
         // there are unsaved changes, ask for confirmation
         scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
         confirmExit(() => {
-          scene?.deselectOverlay(current, {
+          scene?.deselectOverlay(id, {
             ignoreSideEffects: true,
           });
 
           select();
         });
       },
-      [confirmExit, scene, onExit, select]
+      [confirmExit, scene, onExit, select, removeOverlay]
     )
   );
 
