@@ -3,7 +3,7 @@ import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
-import { current, currentOverlay, hasChanges, savedLabel } from "./Edit/state";
+import { current, hasChanges, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";

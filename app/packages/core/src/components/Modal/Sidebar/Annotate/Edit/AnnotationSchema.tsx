@@ -187,6 +187,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        key={overlay.id}
         schema={schema}
         data={data}
         onChange={async (changes) => {
