@@ -8,10 +8,13 @@ Utilities for working with the
 """
 import logging
 import os
-from collections import defaultdict
+import shutil
+import subprocess
+import zipfile
+import random
+from collections import Counter, defaultdict
 
 import eta.core.utils as etau
-import eta.core.web as etaw
 import pandas as pd
 
 import fiftyone as fo
@@ -34,13 +37,15 @@ class FIWDatasetImporter(foud.BatchDatasetImporter):
 
     """
 
-    def import_samples(self, dataset, tags=None):
+    def import_samples(self, dataset, tags=None, progress=None):
         """Imports samples and labels stored on disk following the format of
         the Families in the Wild dataset.
 
         Args:
             dataset: a :class:`fiftyone.core.dataset.Dataset`
             tags (None): an optional list of tags to attach to each sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
 
         Returns:
             a list of IDs of the samples that were added to the dataset
@@ -286,6 +291,9 @@ def _parse_identifier(identifier):
 def download_fiw_dataset(dataset_dir, split, scratch_dir=None, cleanup=False):
     """Downloads and extracts the Families in the Wild dataset.
 
+    This function downloads data from Kaggle (thesistime/fiwdata) and generates
+    metadata files. Requires the Kaggle CLI to be installed and configured.
+
     Any existing files are not re-downloaded.
 
     Args:
@@ -301,9 +309,7 @@ def download_fiw_dataset(dataset_dir, split, scratch_dir=None, cleanup=False):
         scratch_dir = os.path.join(dataset_dir, "scratch")
         etau.ensure_dir(scratch_dir)
 
-    # Download dataset
-    _download_images_if_necessary(dataset_dir, scratch_dir)
-    _download_labels_if_necessary(dataset_dir, scratch_dir)
+    _download_and_organize_kaggle_data(dataset_dir, scratch_dir)
 
     if cleanup:
         logger.info("Cleaning up %s", scratch_dir)
@@ -314,20 +320,298 @@ def download_fiw_dataset(dataset_dir, split, scratch_dir=None, cleanup=False):
     return num_samples, classes
 
 
-def _download_images_if_necessary(dataset_dir, scratch_dir):
-    if _is_missing_images(dataset_dir):
-        zip_path = os.path.join(scratch_dir, "data.zip")
-        unzip_path = os.path.join(scratch_dir, "data")
+def _download_and_organize_kaggle_data(dataset_dir, scratch_dir):
+    """Downloads FIW data from Kaggle and organizes it."""
+    if not _is_missing_images(dataset_dir) and not _is_missing_labels(
+        dataset_dir
+    ):
+        return
 
-        if not os.path.exists(zip_path):
-            logger.info("Downloading data to '%s'", zip_path)
-            etaw.download_google_drive_file(
-                _IMAGES_DOWNLOAD_LINK, path=zip_path
+    zip_path = os.path.join(scratch_dir, "fiwdata.zip")
+    extracted_dir = os.path.join(scratch_dir, "extracted")
+
+    if not os.path.exists(zip_path):
+        logger.info("Downloading FIW dataset from Kaggle...")
+        try:
+            subprocess.run(
+                [
+                    "kaggle",
+                    "datasets",
+                    "download",
+                    "-d",
+                    _KAGGLE_DATASET,
+                    "-p",
+                    scratch_dir,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            raise RuntimeError(
+                "Kaggle CLI not found. Install it with 'pip install kaggle' "
+                "and configure your API credentials. See "
+                "https://github.com/Kaggle/kaggle-api#api-credentials"
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                "Failed to download FIW dataset from Kaggle: %s" % e.stderr
             )
 
-        logger.info("Unpacking images...")
-        etau.extract_zip(zip_path, outdir=unzip_path, delete_zip=False)
-        _organize_data(unzip_path, dataset_dir)
+    if not os.path.isdir(extracted_dir):
+        logger.info("Extracting dataset...")
+        with zipfile.ZipFile(zip_path, "r") as z:
+            z.extractall(extracted_dir)
+
+    _organize_kaggle_data(extracted_dir, dataset_dir)
+
+
+def _organize_kaggle_data(extracted_dir, dataset_dir):
+    """Organizes Kaggle data into fiftyone expected structure."""
+    test_public_lists = os.path.join(
+        extracted_dir, "test-public-lists", "test-public-lists"
+    )
+
+    logger.info("Building member metadata from typed pairs...")
+    pair_to_type, member_gender, member_rels = _build_member_metadata(
+        test_public_lists
+    )
+
+    # Read train relationships to determine train/val split
+    relationships_csv = os.path.join(extracted_dir, "train_relationships.csv")
+    train_rels_df = (
+        pd.read_csv(relationships_csv)
+        if os.path.exists(relationships_csv)
+        else pd.DataFrame()
+    )
+
+    # Get families with relationship data
+    families_with_rels = set()
+    if len(train_rels_df) > 0:
+        for col in ["p1", "p2"]:
+            for val in train_rels_df[col]:
+                families_with_rels.add(val.split("/")[0])
+
+    # Get all train families
+    train_faces_src = os.path.join(extracted_dir, "train-faces")
+    all_train_families = (
+        set(os.listdir(train_faces_src))
+        if os.path.isdir(train_faces_src)
+        else set()
+    )
+
+    # Split families with relationships 80/20 for train/val
+    complete_families = sorted(families_with_rels & all_train_families)
+    random.seed(42)  # Reproducible split
+    val_count = len(complete_families) // 5
+    val_families = set(random.sample(complete_families, val_count))
+
+    # Families without relationships go to train only
+    train_families = all_train_families - val_families
+
+    # Organize train data
+    if os.path.isdir(train_faces_src):
+        train_data_dest = os.path.join(dataset_dir, "train", "data")
+        etau.ensure_dir(train_data_dest)
+        for family in train_families:
+            src_family = os.path.join(train_faces_src, family)
+            dest_family = os.path.join(train_data_dest, family)
+            if os.path.isdir(src_family) and not os.path.exists(dest_family):
+                shutil.copytree(src_family, dest_family)
+                _generate_mid_csv(
+                    dest_family, family, member_gender, member_rels
+                )
+
+    # Organize val data
+    if os.path.isdir(train_faces_src):
+        val_data_dest = os.path.join(dataset_dir, "val", "data")
+        etau.ensure_dir(val_data_dest)
+        for family in val_families:
+            src_family = os.path.join(train_faces_src, family)
+            dest_family = os.path.join(val_data_dest, family)
+            if os.path.isdir(src_family) and not os.path.exists(dest_family):
+                shutil.copytree(src_family, dest_family)
+                _generate_mid_csv(
+                    dest_family, family, member_gender, member_rels
+                )
+
+    # Generate train labels (excluding val families)
+    if len(train_rels_df) > 0:
+        train_pairs = [
+            (row["p1"].rstrip("/"), row["p2"].rstrip("/"))
+            for _, row in train_rels_df.iterrows()
+            if row["p1"].split("/")[0] not in val_families
+        ]
+        labels_path = os.path.join(dataset_dir, "train", "labels.csv")
+        _generate_labels_csv(train_pairs, labels_path, pair_to_type)
+
+        # Generate val labels
+        val_pairs = [
+            (row["p1"].rstrip("/"), row["p2"].rstrip("/"))
+            for _, row in train_rels_df.iterrows()
+            if row["p1"].split("/")[0] in val_families
+        ]
+        labels_path = os.path.join(dataset_dir, "val", "labels.csv")
+        _generate_labels_csv(val_pairs, labels_path, pair_to_type)
+
+    # Organize test data
+    test_faces_src = os.path.join(
+        extracted_dir, "test-public-faces", "test-public-faces"
+    )
+    if os.path.isdir(test_faces_src):
+        test_data_dest = os.path.join(dataset_dir, "test", "data")
+        etau.ensure_dir(test_data_dest)
+        for family in os.listdir(test_faces_src):
+            src_family = os.path.join(test_faces_src, family)
+            dest_family = os.path.join(test_data_dest, family)
+            if os.path.isdir(src_family) and not os.path.exists(dest_family):
+                shutil.copytree(src_family, dest_family)
+                _generate_mid_csv(
+                    dest_family, family, member_gender, member_rels
+                )
+
+        labels_path = os.path.join(dataset_dir, "test", "labels.csv")
+        _generate_test_labels_csv(test_public_lists, labels_path)
+
+    splits_path = os.path.join(dataset_dir, "splits.csv")
+    _generate_splits_csv(dataset_dir, splits_path)
+
+
+def _build_member_metadata(test_public_dir):
+    """Build gender and relationship info from typed pairs."""
+    member_gender_votes = defaultdict(Counter)
+    member_rels = defaultdict(dict)
+    pair_to_type = {}
+
+    if not os.path.isdir(test_public_dir):
+        return {}, {}, {}
+
+    for f in os.listdir(test_public_dir):
+        if not f.endswith(".csv"):
+            continue
+        rtype = f.replace(".csv", "")
+        df = pd.read_csv(os.path.join(test_public_dir, f))
+
+        g1, g2 = _TYPE_TO_GENDER.get(rtype, (None, None))
+        r1, r2 = _TYPE_TO_REL.get(rtype, (None, None))
+
+        for _, row in df.iterrows():
+            p1 = row["p1"].rstrip("/")
+            p2 = row["p2"].rstrip("/")
+
+            key = (min(p1, p2), max(p1, p2))
+            pair_to_type[key] = rtype
+
+            if g1:
+                member_gender_votes[p1][g1] += 1
+            if g2:
+                member_gender_votes[p2][g2] += 1
+            if r1:
+                member_rels[p1][p2] = r1
+            if r2:
+                member_rels[p2][p1] = r2
+
+    member_gender = {}
+    for m, votes in member_gender_votes.items():
+        if votes:
+            member_gender[m] = votes.most_common(1)[0][0]
+
+    return pair_to_type, member_gender, dict(member_rels)
+
+
+def _generate_mid_csv(family_dir, family_id, member_gender, member_rels):
+    """Generate mid.csv with gender and relationship matrix."""
+    mids = []
+    for item in os.listdir(family_dir):
+        item_path = os.path.join(family_dir, item)
+        if os.path.isdir(item_path) and item.startswith("MID"):
+            try:
+                mid_num = int(item.replace("MID", ""))
+                mids.append(mid_num)
+            except ValueError:
+                continue
+
+    if not mids:
+        return None
+
+    mids.sort()
+
+    rows = []
+    for row_idx, mid in enumerate(mids):
+        identifier = "%s/MID%d" % (family_id, mid)
+        gender = member_gender.get(identifier, "U")
+        row = {"MID": mid}
+        rels = member_rels.get(identifier, {})
+        for col_idx, other_mid in enumerate(mids):
+            other_id = "%s/MID%d" % (family_id, other_mid)
+            rel_code = rels.get(other_id, 0)
+            row["MID%d" % col_idx] = rel_code
+        row["Name"] = "Member_%d" % mid
+        row["Gender"] = gender
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
+    csv_path = os.path.join(family_dir, "mid.csv")
+    df.to_csv(csv_path, index=False)
+    return csv_path
+
+
+def _generate_labels_csv(pairs_source, output_path, pair_to_type):
+    """Generate labels.csv with relationship types."""
+    if isinstance(pairs_source, str):
+        df = pd.read_csv(pairs_source)
+        pairs = [
+            (row["p1"].rstrip("/"), row["p2"].rstrip("/"))
+            for _, row in df.iterrows()
+        ]
+    else:
+        pairs = pairs_source
+
+    rows = []
+    for p1, p2 in pairs:
+        key = (min(p1, p2), max(p1, p2))
+        ptype = pair_to_type.get(key, "kin")
+        rows.append({"p1": p1, "p2": p2, "ptype": ptype})
+
+    df_out = pd.DataFrame(rows)
+    etau.ensure_dir(os.path.dirname(output_path))
+    df_out.to_csv(output_path, index=False)
+    return output_path
+
+
+def _generate_test_labels_csv(test_public_dir, output_path):
+    """Generate test labels.csv from test-public-lists."""
+    rows = []
+    for f in os.listdir(test_public_dir):
+        if not f.endswith(".csv"):
+            continue
+        rtype = f.replace(".csv", "")
+        df = pd.read_csv(os.path.join(test_public_dir, f))
+        for _, row in df.iterrows():
+            p1 = row["p1"].rstrip("/")
+            p2 = row["p2"].rstrip("/")
+            rows.append({"p1": p1, "p2": p2, "ptype": rtype})
+
+    df_out = pd.DataFrame(rows)
+    etau.ensure_dir(os.path.dirname(output_path))
+    df_out.to_csv(output_path, index=False)
+    return len(rows)
+
+
+def _generate_splits_csv(data_dir, output_path):
+    """Generate splits.csv listing all family IDs."""
+    families = set()
+    for split in _SPLITS:
+        split_dir = os.path.join(data_dir, split, "data")
+        if os.path.isdir(split_dir):
+            for item in os.listdir(split_dir):
+                if item.startswith("F") and os.path.isdir(
+                    os.path.join(split_dir, item)
+                ):
+                    families.add(item)
+    df = pd.DataFrame({"FID": sorted(families)})
+    df.to_csv(output_path, index=False)
+    return output_path
 
 
 def _is_missing_images(dataset_dir):
@@ -336,14 +620,6 @@ def _is_missing_images(dataset_dir):
             return True
 
     return False
-
-
-def _organize_data(unzip_path, dataset_dir):
-    for split in _SPLITS:
-        split_unzip_path = os.path.join(unzip_path, split)
-        split_data_dir = os.path.join(dataset_dir, split, "data")
-        etau.ensure_dir(split_data_dir)
-        etau.move_dir(split_unzip_path, split_data_dir)
 
 
 def _is_missing_labels(dataset_dir):
@@ -359,33 +635,6 @@ def _is_missing_labels(dataset_dir):
     return False
 
 
-def _download_labels_if_necessary(dataset_dir, scratch_dir):
-    if _is_missing_labels(dataset_dir):
-        zip_path = os.path.join(scratch_dir, "lists.zip")
-        if not os.path.exists(zip_path):
-            logger.info("Downloading labels to '%s'", zip_path)
-            etaw.download_google_drive_file(
-                _LISTS_DOWNLOAD_LINK, path=zip_path
-            )
-
-        logger.info("Unpacking labels...")
-        etau.extract_zip(zip_path, outdir=scratch_dir, delete_zip=False)
-        _organize_labels(scratch_dir, dataset_dir)
-
-
-def _organize_labels(scratch_dir, dataset_dir):
-    for split in _SPLITS:
-        source_path = os.path.join(scratch_dir, "lists", split + ".csv")
-        split_dir = os.path.join(dataset_dir, split)
-        etau.ensure_dir(split_dir)
-        destination_path = os.path.join(dataset_dir, split, "labels.csv")
-        etau.move_file(source_path, destination_path)
-
-    splits_source = os.path.join(scratch_dir, "lists", "splits.csv")
-    splits_destination = os.path.join(dataset_dir, "splits.csv")
-    etau.move_file(splits_source, splits_destination)
-
-
 def _get_dataset_info(dataset_dir, split):
     splits_file = os.path.join(dataset_dir, "splits.csv")
     splits_df = pd.read_csv(splits_file)
@@ -398,6 +647,35 @@ def _get_dataset_info(dataset_dir, split):
 
 _SPLITS = ["train", "test", "val"]
 
+_KAGGLE_DATASET = "thesistime/fiwdata"
+
+_TYPE_TO_GENDER = {
+    "fs": ("M", "M"),
+    "fd": ("M", "F"),
+    "ms": ("F", "M"),
+    "md": ("F", "F"),
+    "bb": ("M", "M"),
+    "ss": ("F", "F"),
+    "gfgs": ("M", "M"),
+    "gfgd": ("M", "F"),
+    "gmgs": ("F", "M"),
+    "gmgd": ("F", "F"),
+}
+
+_TYPE_TO_REL = {
+    "fs": (4, 1),
+    "fd": (4, 1),
+    "ms": (4, 1),
+    "md": (4, 1),
+    "bb": (2, 2),
+    "ss": (2, 2),
+    "sibs": (2, 2),
+    "gfgs": (6, 3),
+    "gfgd": (6, 3),
+    "gmgs": (6, 3),
+    "gmgd": (6, 3),
+}
+
 _RELATIONSHIP_MAP = {
     1: "child",
     2: "sibling",
@@ -409,8 +687,3 @@ _RELATIONSHIP_MAP = {
     8: "great grandparent",
     9: "TBD",
 }
-
-_IMAGES_DOWNLOAD_LINK = "1rkrDGOjS0e_pptzRHZl5bRGq0yy5xQxQ"
-_MD5_DATA_DOWNLOAD_LINK = "121lbbeaiY-qM2tK9sJXWNuvMczVuwi2p"
-_LISTS_DOWNLOAD_LINK = "1nt22yiCfdGF7aIguUb-SJmsM_1CvcYjg"
-_MD5_LISTS_DOWNLOAD_LINK = "1nt22yiCfdGF7aIguUb-SJmsM_1CvcYjg"
