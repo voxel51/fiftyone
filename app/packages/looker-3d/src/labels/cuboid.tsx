@@ -91,8 +91,8 @@ export const Cuboid = ({
 
   const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
 
-  // Use transient dimensions during scaling, otherwise use effective dimensions
   const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
+  const displayRotation = tempTransforms?.rotation ?? effectiveRotation;
 
   const geo = useMemo(
     () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
@@ -112,10 +112,10 @@ export const Cuboid = ({
 
   // Combine scene rotation with item rotation
   const actualRotation = useMemo(() => {
-    const itemRotationVec = new THREE.Vector3(...effectiveRotation);
+    const itemRotationVec = new THREE.Vector3(...displayRotation);
     const resolvedRotation = new THREE.Vector3(...rotation);
     return resolvedRotation.clone().add(itemRotationVec).toArray();
-  }, [effectiveRotation, rotation]);
+  }, [displayRotation, rotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
