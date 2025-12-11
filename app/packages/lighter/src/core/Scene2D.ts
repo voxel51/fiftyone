@@ -995,6 +995,8 @@ export class Scene2D {
     const overlay = this.overlays.get(id);
 
     if (overlay) {
+      const overlayType = overlay.getOverlayType();
+
       this.interactionManager.removeHandler(overlay);
       this.selectionManager.removeSelectable(id);
 
@@ -1006,6 +1008,13 @@ export class Scene2D {
         (overlayId) => overlayId !== id
       );
       this.renderingState.clear(id);
+
+      // make sure we don't leave a gap in our stack of Classifications
+      if (overlayType === "ClassificationOverlay") {
+        [...this.overlays.values()]
+          .filter((sibling) => sibling.getOverlayType() === overlayType)
+          .forEach((sibling) => sibling.markDirty());
+      }
     }
 
     this.eventBus.dispatch("lighter:overlay-removed", { id });
