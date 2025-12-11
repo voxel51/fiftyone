@@ -896,9 +896,7 @@ class BaseClassificationResults(BaseEvaluationResults):
         #   https://github.com/scikit-learn/scikit-learn/pull/32549
         #   Handle this case here now to maintain consistent functionality with
         #   sklearn < 1.8
-        if any(
-            arr is None or len(arr) < 1 for arr in (self.ytrue, self.ypred)
-        ):
+        if self.ytrue.size == 0:
             return 0.0, 0.0, 0.0
 
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
