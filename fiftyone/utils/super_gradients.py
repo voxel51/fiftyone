@@ -7,6 +7,9 @@ Utilities for working with
 |
 """
 import logging
+import os
+from urllib.parse import urlparse
+
 import fiftyone as fo
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
@@ -25,13 +28,15 @@ logger = logging.getLogger(__name__)
 
 
 def _patch_super_gradients_urls():
-    """Patches super-gradients pretrained model URLs to use the current hosting location.
+    """Patches SuperGradients pretrained model URLs to use the current hosting.
 
-    SuperGradients model weights were originally hosted at https://sghub.deci.ai
-    but have been migrated to https://sg-hub-nv.s3.amazonaws.com. This function
-    updates the URLs in the pretrained models registry to point to the new location.
+    SuperGradients model weights were originally hosted at
+    ``https://sghub.deci.ai`` but have been migrated to
+    ``https://sg-hub-nv.s3.amazonaws.com``. This function updates the URLs in
+    the pretrained models registry and patches the weight loading function to
+    handle the new URL format.
 
-    See: https://github.com/Deci-AI/super-gradients/issues/2064
+    See https://github.com/Deci-AI/super-gradients/issues/2064 for details.
     """
     try:
         import super_gradients.training.pretrained_models as pretrained_models
@@ -46,32 +51,41 @@ def _patch_super_gradients_urls():
                     new_url = value.replace(old_domain, new_domain)
                     pretrained_models.MODEL_URLS[key] = new_url
                     patched_count += 1
-                    logger.debug(f"Patched URL for {key}: {value} -> {new_url}")
+                    logger.debug(
+                        f"Patched URL for {key}: {value} -> {new_url}"
+                    )
 
             if patched_count > 0:
-                logger.info(f"Patched {patched_count} super-gradients model URLs to use AWS S3")
+                logger.info(
+                    f"Patched {patched_count} super-gradients model URLs to use AWS S3"
+                )
     except Exception as e:
         logger.warning(f"Failed to patch super-gradients URLs: {e}")
 
     try:
         from super_gradients.training.utils import checkpoint_utils
         from super_gradients.training.models import model_factory
-        from urllib.parse import urlparse
-        import os
 
         if hasattr(checkpoint_utils, "_sg_patched"):
             return
 
-        def patched_load_pretrained_weights(model, architecture, pretrained_weights):
+        def patched_load_pretrained_weights(
+            model, architecture, pretrained_weights
+        ):
             """Patched version that handles both old and new URL formats."""
             from super_gradients.common.object_names import Models
             from super_gradients.training.utils.checkpoint_utils import (
-                MODEL_URLS, DATASET_LICENSES, MissingPretrainedWeightsException,
-                load_state_dict_from_url, wait_for_the_master, get_local_rank,
-                _load_weights, _maybe_load_preprocessing_params
+                MODEL_URLS,
+                DATASET_LICENSES,
+                MissingPretrainedWeightsException,
+                load_state_dict_from_url,
+                wait_for_the_master,
+                get_local_rank,
+                _load_weights,
+                _maybe_load_preprocessing_params,
             )
 
-            model_url_key = architecture + "_" + str(pretrained_weights)
+            model_url_key = f"{architecture}_{pretrained_weights}"
             if model_url_key not in MODEL_URLS.keys():
                 raise MissingPretrainedWeightsException(model_url_key)
 
@@ -83,36 +97,54 @@ def _patch_super_gradients_urls():
 
             url = MODEL_URLS[model_url_key]
 
-            if architecture in {Models.YOLO_NAS_S, Models.YOLO_NAS_M, Models.YOLO_NAS_L}:
+            if architecture in {
+                Models.YOLO_NAS_S,
+                Models.YOLO_NAS_M,
+                Models.YOLO_NAS_L,
+            }:
                 logger.info(
                     "License Notification: YOLO-NAS pre-trained weights are subjected to the license at "
                     "https://github.com/Deci-AI/super-gradients/blob/master/LICENSE.YOLONAS.md"
                 )
 
             if url.startswith("file://") or os.path.exists(url):
-                pretrained_state_dict = torch.load(url.replace("file://", ""), map_location="cpu")
+                pretrained_state_dict = torch.load(
+                    url.replace("file://", ""), map_location="cpu"
+                )
             else:
                 path = urlparse(url).path
                 if "/models/" in path:
-                    unique_filename = path.split("/models/")[1].replace("/", "_").replace(" ", "_")
+                    unique_filename = (
+                        path.split("/models/")[1]
+                        .replace("/", "_")
+                        .replace(" ", "_")
+                    )
                 else:
                     unique_filename = os.path.basename(path)
 
                 map_location = torch.device("cpu")
                 with wait_for_the_master(get_local_rank()):
                     pretrained_state_dict = load_state_dict_from_url(
-                        url=url, map_location=map_location, file_name=unique_filename
+                        url=url,
+                        map_location=map_location,
+                        file_name=unique_filename,
                     )
 
             _load_weights(architecture, model, pretrained_state_dict)
             _maybe_load_preprocessing_params(model, pretrained_state_dict)
 
-        checkpoint_utils.load_pretrained_weights = patched_load_pretrained_weights
+        checkpoint_utils.load_pretrained_weights = (
+            patched_load_pretrained_weights
+        )
         model_factory.load_pretrained_weights = patched_load_pretrained_weights
         checkpoint_utils._sg_patched = True
-        logger.debug("Patched super-gradients checkpoint_utils for AWS S3 URL compatibility")
+        logger.debug(
+            "Patched super-gradients checkpoint_utils for AWS S3 URL compatibility"
+        )
     except Exception as e:
-        logger.warning(f"Failed to patch super-gradients checkpoint_utils: {e}")
+        logger.warning(
+            f"Failed to patch super-gradients checkpoint_utils: {e}"
+        )
 
 
 def convert_super_gradients_model(model):
