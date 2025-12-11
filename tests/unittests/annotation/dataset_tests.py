@@ -248,13 +248,8 @@ class DatasetAnnotationTests(unittest.TestCase):
         for label_type in [
             fol.GeoLocation,
             fol.GeoLocations,
-            fol.Heatmap,
-            fol.Keypoint,
-            fol.Keypoints,
-            fol.Polyline,
-            fol.Polylines,
-            fol.Regression,
-            fol.Segmentation,
+            fol.TemporalDetection,
+            fol.TemporalDetections,
         ]:
             dataset.add_sample_field(
                 "unsupported",
@@ -265,5 +260,59 @@ class DatasetAnnotationTests(unittest.TestCase):
                 dataset.set_label_schemas(
                     {"unsupported": {"type": label_type.__name__.lower()}}
                 )
-
             dataset.delete_sample_field("unsupported")
+
+        # embedded document lists are not supported
+        dataset.add_sample_field(
+            "unsupported",
+            fo.ListField,
+            subfield=fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+        dataset.add_sample_field("unsupported.subfield", fo.IntField)
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
+                {"unsupported.subfield": {"type": "int", "component": "text"}}
+            )
+        dataset.delete_sample_field("unsupported")
+
+        # too.much.nesting
+        dataset.add_sample_field(
+            "unsupported",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+        dataset.add_sample_field(
+            "unsupported.subfield",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+        dataset.add_sample_field("unsupported.subfield.nesting", fo.IntField)
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
+                {
+                    "unsupported.subfield.nesting": {
+                        "type": "int",
+                        "component": "text",
+                    },
+                }
+            )
+        dataset.delete_sample_field("unsupported.subfield.nesting")
+
+        # labels are not.expanded
+        dataset.add_sample_field(
+            "labels",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classifications,
+        )
+        dataset.add_sample_field("labels.subfield", fo.IntField)
+        with self.assertRaises(ExceptionGroup):
+            dataset.set_label_schemas(
+                {
+                    "labels.subfield": {
+                        "type": "int",
+                        "component": "text",
+                    },
+                }
+            )
+        dataset.delete_sample_field("labels")

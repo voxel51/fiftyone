@@ -33,7 +33,7 @@ const SUPPORTED_ANNOTATION_TYPES = {
 export default function useLoadSchemas() {
   const setSchema = useSetAtom(schemas);
   const setTypes = useSetAtom(fieldTypes);
-  const get = useOperatorExecutor("get_annotation_schemas");
+  const get = useOperatorExecutor("get_label_schemas");
   const type = useRecoilValue(mediaType);
   const paths = useRecoilValue(activeFields({ modal: true }));
 
@@ -43,10 +43,10 @@ export default function useLoadSchemas() {
     }
 
     const schemas = {};
-    for (const path in get.result.schemas) {
+    for (const path in get.result.label_schemas) {
       if (!paths.includes(path)) continue;
 
-      schemas[path] = get.result.schemas[path];
+      schemas[path] = get.result.label_schemas[path];
     }
 
     setSchema(schemas);
@@ -69,7 +69,7 @@ export default function useLoadSchemas() {
           }
         }
 
-        get.execute({ paths });
+        get.execute({ fields: paths });
         setTypes(types);
       },
     [type, setTypes]

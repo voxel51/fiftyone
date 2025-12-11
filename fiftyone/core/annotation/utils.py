@@ -45,6 +45,9 @@ def get_all_supported_fields(sample_collection, flatten=False):
             result.add(field_name)
             continue
 
+        if not isinstance(field, fof.EmbeddedDocumentField):
+            continue
+
         if field.document_type in foac.SUPPORTED_DOC_TYPES:
             result.add(field_name)
             continue
@@ -90,6 +93,7 @@ def flatten_fields(collection, fields):
 
         if issubclass(field.document_type, fol.Label):
             flattened_fields.append(field_name)
+            continue
 
         for subfield in field.fields:
             if not _is_supported_field(subfield, collection.media_type):

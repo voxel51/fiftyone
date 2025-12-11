@@ -6,103 +6,100 @@ Compute annotation schema operator
 |
 """
 
-import fiftyone as fo
 import fiftyone.operators as foo
 
 
-class ComputeAnnotationSchema(foo.Operator):
+class ActivateLabelSchemas(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="compute_annotation_schema",
-            label="Compute annotation schema",
+            name="activate_label_schemas",
+            label="Activate label schemas",
             unlisted=True,
         )
 
     def execute(self, ctx):
-        path = ctx.params.get("path", None)
+        fields = ctx.params.get("fields", [])
+        ctx.dataset.activate_label_schemas(fields)
 
+
+class DeleteLabelSchemas(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_label_schemas",
+            label="Delete label schemas",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", [])
+        ctx.dataset.delete_label_schemas(fields)
+
+
+class DeactivateLabelSchemas(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="deactivate_label_schemas",
+            label="Deactivate label schemas",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", [])
+        ctx.dataset.deactivate_label_schemas(fields)
+
+
+class GenerateLabelSchemas(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="generate_label_schemas",
+            label="Generate label schemas",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        field = ctx.params.get("field", None)
         return {
-            "config": ctx.dataset.generate_annotation_schema(
-                path, scan_samples=ctx.params.get("scan_samples", True)
+            "label_schema": ctx.dataset.generate_label_schemas(
+                fields=field, scan_samples=ctx.params.get("scan_samples", True)
             )
         }
 
 
-class GetAnnotationSchemas(foo.Operator):
+class GetLabelSchemas(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="get_annotation_schemas",
-            label="Get annotation schemas",
+            name="get_label_schemas",
+            label="Get label schemas",
             unlisted=True,
         )
 
     def execute(self, ctx):
-        return {"schemas": ctx.dataset.label_schema or {}}
+        fields = ctx.params.get("fields", None)
+        label_schemas = ctx.dataset.label_schemas
+
+        for field in fields:
+            if field not in label_schemas:
+                label_schemas[field] = None
+
+        return {"label_schemas": label_schemas}
 
 
-class ActivateAnnotationSchemas(foo.Operator):
+class UpdateLabelSchema(foo.Operator):
     @property
     def config(self):
         return foo.OperatorConfig(
-            name="activate_annotation_schemas",
-            label="Activate annotation schemas",
+            name="update_label_schema",
+            label="Update label schema",
             unlisted=True,
         )
 
     def execute(self, ctx):
-        ctx.dataset.activate_label_schemas(ctx.params.get("paths", []))
-
-
-class DeleteAnnotationSchema(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="delete_annotation_schema",
-            label="Delete annotation schema",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        paths = ctx.params.get("paths", [])
-        ctx.dataset.deactivate_label_schemas(paths)
-        schema = ctx.dataset.label_schema
-        for path in paths:
-            del schema[path]
-
-        ctx.dataset.save()
-
-
-class DeactivateAnnotationSchemas(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="deactivate_annotation_schemas",
-            label="Deactivate annotation schemas",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        paths = ctx.params.get("paths", [])
-        ctx.dataset.deactivate_label_schemas(paths)
-
-
-class SaveAnnotationSchema(foo.Operator):
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="save_annotation_schema",
-            label="Save annotation schema",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        path = ctx.params.get("path", None)
-        config = ctx.params.get("config", None)
-        label_schema = ctx.dataset.label_schema or {}
-        label_schema[path] = config
-
-        ctx.dataset.label_schema = label_schema
-
-        return {"config": config}
+        path = ctx.params.get("field", None)
+        label_schema = ctx.params.get("label_schema", None)
+        ctx.dataset.update_label_schema(path, label_schema)
+        return {"label_schema": label_schema}

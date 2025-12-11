@@ -289,17 +289,23 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
         a label schemas ``dict``, or an individual field's label schema
         ``dict`` if only one field is provided
     """
+    original_fields = fields
     is_scalar = etau.is_str(fields)
+    all_fields = foau.get_all_supported_fields(sample_collection)
     if is_scalar:
         fields = [fields]
     elif fields is None:
-        fields = foau.get_all_supported_fields(sample_collection)
+        fields = all_fields
 
     fields = list(fields)
     fields = foau.flatten_fields(sample_collection, fields)
+    is_scalar = is_scalar and len(fields) == 1 and fields[0] == original_fields
 
     schema = {}
     for field_name in fields:
+        if field_name not in all_fields:
+            raise ValueError(f"field '{field_name}' is not supported")
+
         label_schema = _generate_field_label_schema(
             sample_collection, field_name, scan_samples
         )
@@ -393,8 +399,8 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # Field type not supported for schema generation
             pass
 
-    label = attributes.pop(foac.LABEL)
-    label.pop(foac.TYPE)
+    label = attributes.pop(foac.LABEL, {})
+    label.pop(foac.TYPE, None)
     classes = label.pop(foac.VALUES, None)
 
     result = dict(
@@ -461,7 +467,7 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
             values = None
 
         if values:
-            if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+            if values and len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
                 settings[foac.COMPONENT] = (
                     foac.CHECKBOXES if is_list else foac.RADIO
                 )
