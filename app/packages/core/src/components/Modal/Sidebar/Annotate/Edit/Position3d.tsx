@@ -10,6 +10,10 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import type { Vector3Tuple } from "three";
+import {
+  formatRadians,
+  formatDegrees,
+} from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
 import { currentData } from "./state";
 
 interface Coordinates3d {
@@ -301,49 +305,52 @@ export default function Position3d() {
         sx={{ pl: 1, pt: 1, mb: 1 }}
       >
         <LabeledField
-          label="rx"
+          label={`rx (${formatDegrees(state.rotation.rx)}°)`}
           formControl={
             <TextField
               type="number"
-              value={state.rotation.rx ?? ""}
+              value={formatRadians(state.rotation.rx)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rx: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.01 }}
             />
           }
         />
 
         <LabeledField
-          label="ry"
+          label={`ry (${formatDegrees(state.rotation.ry)}°)`}
           formControl={
             <TextField
               type="number"
-              value={state.rotation.ry ?? ""}
+              value={formatRadians(state.rotation.ry)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { ry: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.01 }}
             />
           }
         />
 
         <LabeledField
-          label="rz"
+          label={`rz (${formatDegrees(state.rotation.rz)}°)`}
           formControl={
             <TextField
               type="number"
-              value={state.rotation.rz ?? ""}
+              value={formatRadians(state.rotation.rz)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rz: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.01 }}
             />
           }
         />

@@ -410,7 +410,8 @@ export const useAnnotationActions = () => {
             icon: <ThreeSixtyIcon />,
             tooltip: "Rotate object",
             isVisible:
-              currentArchetypeSelectedForTransform === "annotation-plane",
+              currentArchetypeSelectedForTransform === "annotation-plane" ||
+              currentArchetypeSelectedForTransform === "cuboid",
             isActive: transformMode === "rotate",
             onClick: () => handleTransformModeChange("rotate"),
           },
