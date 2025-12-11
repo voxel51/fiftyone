@@ -890,6 +890,17 @@ class BaseClassificationResults(BaseEvaluationResults):
 
     def _precision_recall_fscore(self, labels, average, beta):
         pos_label = getattr(self, "_pos_label", None)
+
+        # In sklearn 1.8 and later, passing empty arrays raises an error
+        #   instead of returning zeros.
+        #   https://github.com/scikit-learn/scikit-learn/pull/32549
+        #   Handle this case here now to maintain consistent functionality with
+        #   sklearn < 1.8
+        if any(
+            arr is None or len(arr) < 1 for arr in (self.ytrue, self.ypred)
+        ):
+            return 0.0, 0.0, 0.0
+
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,
