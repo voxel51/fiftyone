@@ -141,6 +141,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report
+          name: playwright-report-mongodb-${{ matrix.mongodb-version }}
           path: e2e-pw/playwright-report/
           retention-days: 30
