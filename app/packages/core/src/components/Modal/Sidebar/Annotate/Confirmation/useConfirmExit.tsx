@@ -19,7 +19,7 @@ function ExitChangesModal({
   save,
 }: {
   exit: () => void;
-  save: () => void;
+  save: () => void | Promise<void>;
 }) {
   const [shown, show] = useAtom(showUnsavedChangesConfirmation);
 
@@ -51,8 +51,8 @@ function ExitChangesModal({
           </MuiButton>
           <MuiButton
             color="success"
-            onClick={() => {
-              save();
+            onClick={async () => {
+              await save();
               close();
               shown();
             }}
@@ -68,7 +68,7 @@ function ExitChangesModal({
 
 export default function useConfirmExit(
   exit: () => void,
-  saveAnnotation?: () => void
+  saveAnnotation?: () => void | Promise<void>
 ) {
   const showConfirmation = useSetAtom(showUnsavedChangesConfirmation);
   return {
