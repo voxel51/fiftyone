@@ -303,6 +303,7 @@ export const MediaTypeFo3dComponent = () => {
     isComputing: isComputingSceneBoundingBox,
   } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
     hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+    numPrimaryAssets,
   });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
