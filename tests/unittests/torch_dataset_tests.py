@@ -179,6 +179,8 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 assert_not_none=True,
                 skip_failures=True,
             )
+            # any sample with none for partial_field should
+            # be returned as a ValueError
             for i, val in enumerate(torch_dataset.__getitems__(indices)):
                 if i % 2 == 0:
                     self.assertFalse(isinstance(val, Exception))
