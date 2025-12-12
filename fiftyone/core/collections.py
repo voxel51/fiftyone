@@ -170,7 +170,7 @@ class SaveContext(object):
 
         self.executor = (
             # Using more than one worker will introduce race conditions in the state preserved between DB writes, but
-            # since prediction is the bottleneck, not writing to the DB, only one worker is necessary.
+            # since DB writes shouldn't be the bottleneck, only one worker should be necessary.
             ThreadPoolExecutor(max_workers=1)
             if async_writes
             else _DummyExecutor()
