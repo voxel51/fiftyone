@@ -150,7 +150,9 @@ export const use3dAnnotation = () => {
               quaternion?: [number, number, number, number];
             };
 
-          const rotation = quaternionToRadians(quaternion);
+          const rotation = quaternion
+            ? quaternionToRadians(quaternion)
+            : detectionValue.rotation;
 
           save({ ...allValidFields, rotation });
         }
