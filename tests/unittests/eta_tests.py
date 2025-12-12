@@ -18,7 +18,7 @@ def _requires_tensorflow(test_func):
         try:
             import tensorflow as tf
             tf.constant(0)
-        except (ImportError, AttributeError):
+        except (ImportError, AttributeError, OSError, RuntimeError):
             self.skipTest("TensorFlow not installed")
         return test_func(self, *args, **kwargs)
     return wrapper
@@ -92,6 +92,9 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
             result = predict_fn(tf.zeros((1, 512, 512, 3)))
 
             self.assertEqual(len(result), 3)
+            mock_load.assert_called_once()
+            mock_model.assert_called_once()
+            self.assertEqual(mock_model.call_args.kwargs, {})
 
     @_requires_tensorflow
     def test_patched_function_handles_signature_model(self):
@@ -118,7 +121,9 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
             result = predict_fn(tf.zeros((1, 512, 512, 3)))
 
             self.assertEqual(len(result), 3)
+            mock_load.assert_called_once()
             mock_signature.assert_called_once()
+            self.assertIn("input", mock_signature.call_args.kwargs)
 
 
 if __name__ == "__main__":
