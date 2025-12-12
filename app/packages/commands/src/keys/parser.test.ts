@@ -179,7 +179,7 @@ describe("KeyParser", () => {
     binding = " ,";
     expect(() => {
       KeyParser.parseBinding(binding);
-    }).toThrowError(`The binding ${binding} countains an empty sequence`);
+    }).toThrowError(`The binding ${binding} contains an empty sequence`);
     binding = "";
     expect(() => {
       KeyParser.parseBinding(binding);
