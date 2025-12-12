@@ -7,6 +7,7 @@ Utilities for interfacing with the
 |
 """
 from collections import defaultdict
+import logging
 import warnings
 
 import numpy as np
@@ -42,6 +43,77 @@ _VIDEO_MODELS = (
     etal.VideoEventDetector,
     etal.VideoSemanticSegmenter,
 )
+
+_tf2_patched = False
+
+
+def _patch_tf2_detection_model():
+    """Patches TF2 SavedModel loading for TF2 Model Zoo models.
+
+    TF2 Model Zoo models are exported with signatures rather than as directly
+    callable objects. This patches eta.detectors.tfmodels_detectors to use
+    loaded.signatures['serving_default'] when the loaded model is not callable.
+    """
+    global _tf2_patched
+    if _tf2_patched:
+        return
+
+    try:
+        import os
+
+        import tensorflow as tf
+
+        import eta.core.tfutils as etat
+        import eta.core.utils as etau
+        import eta.detectors.tfmodels_detectors as tfmodels
+
+        tf1 = etat.import_tf1()
+
+        def _load_tf2_detection_model_fixed(model_dir):
+            with etat.TFLoggingLevel(tf1.logging.ERROR):
+                with etau.CaptureStdout():
+                    loaded = tf.saved_model.load(
+                        os.path.join(model_dir, "saved_model")
+                    )
+
+            if callable(loaded):
+                detect_fn = loaded
+                use_signature = False
+            else:
+                detect_fn = loaded.signatures["serving_default"]
+                use_signature = True
+
+            def predict(image):
+                if use_signature:
+                    image = tf.cast(image, tf.float32)
+                    detections = detect_fn(input=image)
+                else:
+                    detections = detect_fn(image)
+
+                if "detection_boxes" in detections:
+                    return (
+                        detections["detection_boxes"],
+                        detections["detection_scores"],
+                        detections["detection_classes"],
+                    )
+                else:
+                    return (
+                        detections["output_3"],
+                        detections["output_1"],
+                        detections["output_2"],
+                    )
+
+            return predict
+
+        tfmodels._load_tf2_detection_model = _load_tf2_detection_model_fixed
+        _tf2_patched = True
+
+    except ImportError:
+        pass
+    except Exception as e:
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to patch TF2 detection model: {e}")
+
 
 
 class ETAModelConfig(fom.ModelConfig):
@@ -100,6 +172,7 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
         fom.LogitsMixin.__init__(self)
 
     def __enter__(self):
+        _patch_tf2_detection_model()
         self._model.__enter__()
         return self
 
