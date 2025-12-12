@@ -6,9 +6,22 @@ FiftyOne ETA utilities unit tests.
 |
 """
 
+import functools
 import types
 import unittest
 from unittest.mock import MagicMock, patch
+
+
+def _requires_tensorflow(test_func):
+    @functools.wraps(test_func)
+    def wrapper(self, *args, **kwargs):
+        try:
+            import tensorflow as tf
+            tf.constant(0)
+        except (ImportError, AttributeError):
+            self.skipTest("TensorFlow not installed")
+        return test_func(self, *args, **kwargs)
+    return wrapper
 
 
 class PatchTF2DetectionModelTests(unittest.TestCase):
@@ -16,6 +29,7 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
         import fiftyone.utils.eta as eta_module
         eta_module._tf2_patched = False
 
+    @_requires_tensorflow
     def test_patch_applied_when_model_not_callable(self):
         import fiftyone.utils.eta as eta_module
         from fiftyone.utils.eta import _patch_tf2_detection_model
@@ -30,6 +44,7 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
             "_load_tf2_detection_model_fixed"
         )
 
+    @_requires_tensorflow
     def test_patch_not_reapplied(self):
         import fiftyone.utils.eta as eta_module
         from fiftyone.utils.eta import _patch_tf2_detection_model
@@ -54,6 +69,7 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
             _patch_tf2_detection_model()
             self.assertFalse(eta_module._tf2_patched)
 
+    @_requires_tensorflow
     def test_patched_function_handles_callable_model(self):
         from fiftyone.utils.eta import _patch_tf2_detection_model
         _patch_tf2_detection_model()
@@ -77,6 +93,7 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
 
             self.assertEqual(len(result), 3)
 
+    @_requires_tensorflow
     def test_patched_function_handles_signature_model(self):
         from fiftyone.utils.eta import _patch_tf2_detection_model
         _patch_tf2_detection_model()
