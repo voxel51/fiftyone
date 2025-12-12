@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 
-export const activeSchemaTab = atom<"active" | "other">("active");
+export const activeSchemaTab = atom<"gui" | "json">("gui");
 
 const selectSchemas = (
   schemas: AnnotationSchemas,
