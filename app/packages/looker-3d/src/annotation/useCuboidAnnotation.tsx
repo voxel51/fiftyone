@@ -4,7 +4,6 @@ import { useRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import { stagedCuboidTransformsAtom, tempLabelTransformsAtom } from "../state";
-import { quaternionToRadians } from "../utils";
 import { useReverseSyncCuboidTransforms } from "./useReverseSyncCuboidTransforms";
 
 interface UseCuboidAnnotationProps {
@@ -43,14 +42,26 @@ export const useCuboidAnnotation = ({
   const contentRef = useRef<THREE.Group>(null);
 
   // Apply staged transforms if they exist, otherwise use original values
-  const [effectiveLocation, effectiveDimensions, effectiveRotation] = useMemo(
+  const [
+    effectiveLocation,
+    effectiveDimensions,
+    effectiveRotation,
+    effectiveQuaternion,
+  ] = useMemo(
     () => [
       stagedCuboidTransforms[label._id]?.location ?? location,
       stagedCuboidTransforms[label._id]?.dimensions ?? dimensions,
       stagedCuboidTransforms[label._id]?.rotation ?? itemRotation,
+      stagedCuboidTransforms[label._id]?.quaternion ?? null,
     ],
     [stagedCuboidTransforms, location, dimensions, itemRotation]
   );
+
+  const originalQuaternion = useMemo(() => {
+    return new THREE.Quaternion(
+      ...(stagedCuboidTransforms[label._id]?.quaternion ?? [0, 0, 0, 1])
+    );
+  }, [stagedCuboidTransforms]);
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -84,7 +95,9 @@ export const useCuboidAnnotation = ({
     } else if (mode === "rotate") {
       // Store quaternion directly in temp transforms during manipulation
       // Conversion to Euler is deferred until commit (handleTransformEnd)
-      const quaternion = contentRef.current.quaternion;
+      const quaternion = originalQuaternion
+        .clone()
+        .multiply(contentRef.current.quaternion);
       const quaternionArray: [number, number, number, number] = [
         quaternion.x,
         quaternion.y,
@@ -111,6 +124,7 @@ export const useCuboidAnnotation = ({
       location: number[];
       dimensions: number[];
       rotation?: Vector3Tuple;
+      quaternion?: [number, number, number, number];
     } = {
       location: [...effectiveLocation],
       dimensions: [...effectiveDimensions],
@@ -132,33 +146,13 @@ export const useCuboidAnnotation = ({
       // Commit scale/dimensions change from temp transforms
       newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
     } else if (mode === "rotate") {
-      // Check if contentRef has a non-identity quaternion (TransformControls may have set it
-      // after the last handleTransformChange due to event timing)
-      const currentQuat = contentRef.current.quaternion;
-      const isIdentity =
-        currentQuat.x === 0 &&
-        currentQuat.y === 0 &&
-        currentQuat.z === 0 &&
-        currentQuat.w === 1;
-
-      let quaternionToCommit: [number, number, number, number] | null = null;
-
-      if (!isIdentity) {
-        // Use current quaternion directly - this is the most up-to-date rotation
-        quaternionToCommit = [
-          currentQuat.x,
-          currentQuat.y,
-          currentQuat.z,
-          currentQuat.w,
-        ];
-      } else if (tempTransforms?.quaternion) {
-        // Fall back to temp quaternion if contentRef was already reset
-        quaternionToCommit = tempTransforms.quaternion;
-      }
+      let quaternionToCommit = tempTransforms.quaternion;
 
       if (quaternionToCommit) {
-        // Convert quaternion to Euler (radians) on commit
-        newTransform.rotation = quaternionToRadians(quaternionToCommit);
+        // Store quaternion directly - conversion to Euler is deferred until final save
+        newTransform.quaternion = quaternionToCommit;
+        // Clear rotation to avoid conflict - quaternion is authoritative
+        newTransform.rotation = undefined;
       }
     }
 
@@ -181,6 +175,7 @@ export const useCuboidAnnotation = ({
     effectiveRotation,
     label._id,
     tempCuboidTransforms,
+    stagedCuboidTransforms,
   ]);
 
   return {
@@ -190,6 +185,7 @@ export const useCuboidAnnotation = ({
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
+    effectiveQuaternion,
 
     transformControlsRef,
     contentRef,

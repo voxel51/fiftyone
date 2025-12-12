@@ -2,20 +2,23 @@ import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
+  formatDegrees,
+  formatRadians,
+} from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
+import {
   isCurrentlyTransformingAtom,
   stagedCuboidTransformsAtom,
   tempLabelTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { quaternionToRadians } from "@fiftyone/looker-3d/src/utils";
-import { Box, Stack, TextField } from "@mui/material";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useState } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import type { Vector3Tuple } from "three";
 import {
-  formatRadians,
-  formatDegrees,
-} from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
+  quaternionToRadians,
+  radiansToQuaternion,
+} from "@fiftyone/looker-3d/src/utils";
+import { Box, Stack, TextField } from "@mui/material";
+import { useAtomValue } from "jotai";
+import { useCallback, useEffect, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { Quaternion, Vector3Tuple } from "three";
 import { currentData, currentOverlay } from "./state";
 
 interface Coordinates3d {
@@ -47,26 +50,33 @@ export default function Position3d() {
     rotation: {},
   });
   const data = useAtomValue<DetectionLabel>(currentData);
-  const setData = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
-  const [stagedCuboidTransforms, setStagedCuboidTransforms] = useRecoilState(
-    stagedCuboidTransformsAtom
-  );
+  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
   const labelId = data?._id ?? "";
   const tempTransforms = useRecoilValue(tempLabelTransformsAtom(labelId));
 
   useEffect(() => {
-    if (!data) {
+    if (typeof stagedCuboidTransforms[labelId]?.dimensions === "undefined") {
       return;
     }
+
+    // Resolve final quaterninon by combining the temp quaternion with the original quaternion
+    // console.log(">>>stagedCuboidTransforms[data._id]?.quaternion", stagedCuboidTransforms[data._id]?.quaternion);
+    const stagedQuat = new Quaternion(
+      ...stagedCuboidTransforms[labelId]?.quaternion
+    );
 
     // If currently transforming, use temp transforms if available
     if (isCurrentlyTransforming && tempTransforms) {
       const tempPosition = tempTransforms.position;
       const tempDimensions = tempTransforms.dimensions;
       const tempQuaternion = tempTransforms.quaternion;
+
+      const finalQuat = (
+        tempQuaternion ? new Quaternion(...tempQuaternion) : stagedQuat
+      ).toArray();
 
       // If there's temp position (which is relative offset), compute the absolute position
       const absolutePosition = [
@@ -78,9 +88,7 @@ export default function Position3d() {
       const fallbackDimensions = data.dimensions;
 
       // Convert quaternion to radians for display
-      const rotationRadians = tempQuaternion
-        ? quaternionToRadians(tempQuaternion)
-        : null;
+      const rotationRadians = finalQuat ? quaternionToRadians(finalQuat) : null;
 
       setState({
         position: {
@@ -114,7 +122,7 @@ export default function Position3d() {
 
     const location = data.location;
     const dimensions = data.dimensions;
-    const rotation = data.rotation ?? [0, 0, 0];
+    const rotation = data.rotation;
 
     if (location && dimensions) {
       setState({
@@ -173,22 +181,9 @@ export default function Position3d() {
         newState.rotation.rz ?? 0,
       ];
 
-      setStagedCuboidTransforms((prev) => ({
-        ...prev,
-        [data._id]: {
-          ...prev[data._id],
-          location: newLocation,
-          dimensions: newDimensions,
-          rotation: newRotation,
-        },
-      }));
-
-      // Update label data
-      setData({
-        location: newLocation,
-        dimensions: newDimensions,
-        rotation: newRotation,
-      });
+      const newQuaternion = newRotation
+        ? radiansToQuaternion(newRotation)
+        : null;
 
       // Emit event for 3D annotation sync
       if (overlay?.id) {
@@ -200,12 +195,13 @@ export default function Position3d() {
             _id: data._id,
             location: newLocation,
             dimensions: newDimensions,
+            quaternion: newQuaternion,
             rotation: newRotation,
           },
         });
       }
     },
-    [data, state, setData, setStagedCuboidTransforms, overlay, eventBus]
+    [data, state, overlay, eventBus]
   );
 
   return (

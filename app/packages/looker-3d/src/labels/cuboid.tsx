@@ -15,7 +15,6 @@ import {
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
-import { quaternionToRadians } from "../utils";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
@@ -62,8 +61,16 @@ export const Cuboid = ({
     }
   }, [isSelectedForAnnotation, setIsCuboidAnnotateActive]);
 
+  const labelWoQuaternion = useMemo(() => {
+    if (!label.quaternion) {
+      return label;
+    }
+    const { quaternion, ...rest } = label;
+    return rest;
+  }, [label]);
+
   const { onPointerOver, onPointerOut, ...restEventHandlers } =
-    useEventHandlers(tooltip, label);
+    useEventHandlers(tooltip, labelWoQuaternion);
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
@@ -78,6 +85,7 @@ export const Cuboid = ({
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
+    effectiveQuaternion,
     handleTransformChange,
     handleTransformEnd,
   } = useCuboidAnnotation({
@@ -93,15 +101,6 @@ export const Cuboid = ({
   const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
 
   const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
-
-  // Convert temp quaternion to Euler for display (only during manipulation)
-  // The authoritative quaternion is stored in temp transforms and converted to Euler on commit
-  const displayRotation = useMemo(() => {
-    if (tempTransforms?.quaternion) {
-      return quaternionToRadians(tempTransforms.quaternion);
-    }
-    return effectiveRotation;
-  }, [tempTransforms?.quaternion, effectiveRotation]);
 
   const geo = useMemo(
     () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
@@ -119,12 +118,27 @@ export const Cuboid = ({
       : new THREE.Vector3(x, y, z);
   }, [effectiveLocation, displayDimensions, useLegacyCoordinates]);
 
-  // Combine scene rotation with item rotation
+  // When quaternion is present (temp or staged), use it directly to avoid euler conversion issues
+  // (gimbal lock, precision loss). We convert to euler only on final save.
+  // Priority: tempTransforms.quaternion > effectiveQuaternion (staged) > euler fallback
+  const combinedQuaternion = useMemo(() => {
+    const quaternionToUse = tempTransforms?.quaternion ?? effectiveQuaternion;
+    if (!quaternionToUse) {
+      return null;
+    }
+
+    return new THREE.Quaternion(...quaternionToUse);
+  }, [tempTransforms?.quaternion, effectiveQuaternion, rotation]);
+
+  // Fallback to euler-based rotation when no quaternion available
   const actualRotation = useMemo(() => {
-    const itemRotationVec = new THREE.Vector3(...displayRotation);
+    if (combinedQuaternion) {
+      return undefined;
+    }
+    const itemRotationVec = new THREE.Vector3(...effectiveRotation);
     const resolvedRotation = new THREE.Vector3(...rotation);
     return resolvedRotation.clone().add(itemRotationVec).toArray();
-  }, [displayRotation, rotation]);
+  }, [combinedQuaternion, effectiveRotation, rotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -178,20 +192,18 @@ export const Cuboid = ({
    * we're using line2 over core line because line2 allows configurable line width
    */
   const content = (
-    <>
+    <group
+      // By default, quaternion is preferred automatically over euler
+      rotation={actualRotation ?? undefined}
+      quaternion={combinedQuaternion ?? undefined}
+      position={loc.toArray()}
+    >
       {/* Outline */}
       {/* @ts-ignore */}
-      <lineSegments2
-        position={[loc.x, loc.y, loc.z]}
-        rotation={actualRotation}
-        geometry={geometry}
-        material={material}
-      />
+      <lineSegments2 geometry={geometry} material={material} />
 
       {/* Clickable volume */}
       <group
-        position={[loc.x, loc.y, loc.z]}
-        rotation={actualRotation}
         onClick={onClick}
         onPointerOver={() => {
           setHoveredLabel({ id: label._id });
@@ -219,7 +231,7 @@ export const Cuboid = ({
           </mesh>
         )}
       </group>
-    </>
+    </group>
   );
 
   return (
