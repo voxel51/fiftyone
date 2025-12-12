@@ -91,7 +91,7 @@ export class KeyManager {
    * ctrl+x, ctrl+z, when ctrl+x has already matched.
    */
   public multiSequenceInProgress(): boolean {
-    return this.priorMatches.length === 0;
+    return this.priorMatches.length > 0;
   }
   /**
    * Updates internal state based on the result of a scoped match result.
