@@ -10,7 +10,7 @@ interface UseCuboidAnnotationProps {
   label: any;
   location: Vector3Tuple;
   dimensions: Vector3Tuple;
-  itemRotation: Vector3Tuple;
+  rotation: Vector3Tuple;
   strokeAndFillColor: string;
   isAnnotateMode: boolean;
   isSelectedForAnnotation: boolean;
@@ -20,7 +20,7 @@ export const useCuboidAnnotation = ({
   label,
   location,
   dimensions,
-  itemRotation,
+  rotation,
   strokeAndFillColor,
   isAnnotateMode,
   isSelectedForAnnotation,
@@ -51,17 +51,24 @@ export const useCuboidAnnotation = ({
     () => [
       stagedCuboidTransforms[label._id]?.location ?? location,
       stagedCuboidTransforms[label._id]?.dimensions ?? dimensions,
-      stagedCuboidTransforms[label._id]?.rotation ?? itemRotation,
+      stagedCuboidTransforms[label._id]?.rotation ?? rotation,
       stagedCuboidTransforms[label._id]?.quaternion ?? null,
     ],
-    [stagedCuboidTransforms, location, dimensions, itemRotation]
+    [stagedCuboidTransforms, location, dimensions, rotation]
   );
 
   const originalQuaternion = useMemo(() => {
-    return new THREE.Quaternion(
-      ...(stagedCuboidTransforms[label._id]?.quaternion ?? [0, 0, 0, 1])
-    );
-  }, [stagedCuboidTransforms]);
+    // Use staged quaternion if available, otherwise convert from euler rotation
+    // This ensures we preserve the existing rotation when starting to rotate
+    const stagedQuaternion = stagedCuboidTransforms[label._id]?.quaternion;
+    if (stagedQuaternion) {
+      return new THREE.Quaternion(...stagedQuaternion);
+    }
+
+    // Convert euler rotation to quaternion
+    const euler = new THREE.Euler(...effectiveRotation, "XYZ");
+    return new THREE.Quaternion().setFromEuler(euler);
+  }, [stagedCuboidTransforms, effectiveRotation]);
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -97,7 +104,7 @@ export const useCuboidAnnotation = ({
       // Conversion to Euler is deferred until commit (handleTransformEnd)
       const quaternion = originalQuaternion
         .clone()
-        .multiply(contentRef.current.quaternion);
+        .multiply(contentRef.current.quaternion.clone());
       const quaternionArray: [number, number, number, number] = [
         quaternion.x,
         quaternion.y,

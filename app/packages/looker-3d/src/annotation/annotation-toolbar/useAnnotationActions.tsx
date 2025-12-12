@@ -475,6 +475,8 @@ export const useAnnotationActions = () => {
     handleToggleEditSegmentsMode,
     editing,
     handleDeselectLabel,
+    isPolylineAnnotateActive,
+    isCuboidAnnotateActive,
   ]);
 
   return {

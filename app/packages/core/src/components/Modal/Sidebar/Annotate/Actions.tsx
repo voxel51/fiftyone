@@ -6,8 +6,8 @@ import {
 } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
-import CuboidIcon from "@mui/icons-material/ViewInAr";
 import PolylineIcon from "@mui/icons-material/Timeline";
+import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
@@ -207,10 +207,7 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
-          if (!isPolylineAnnotateActive) {
-            // Turn off cuboid annotation when enabling polyline
-            setIsCuboidAnnotateActive(false);
-          }
+          setIsCuboidAnnotateActive(false);
           setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
         }}
       >
@@ -240,10 +237,7 @@ export const ThreeDCuboids = () => {
       <Square
         $active={isCuboidAnnotateActive}
         onClick={() => {
-          if (!isCuboidAnnotateActive) {
-            // Turn off polyline annotation when enabling cuboid
-            setIsPolylineAnnotateActive(false);
-          }
+          setIsPolylineAnnotateActive(false);
           setIsCuboidAnnotateActive(!isCuboidAnnotateActive);
         }}
       >
