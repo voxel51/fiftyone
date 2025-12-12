@@ -457,13 +457,9 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             detection label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
-    Note: 
-       When used with the 3D visualizer, Detection also supports these
-       dynamic attributes:
-    
-        - location: object center [x, y, z] in scene coordinates
-        - dimensions: object size [x, y, z] in scene units
-        - rotation: rotation [x, y, z] around center, in [-pi, pi]
+        location (None): object center [x, y, z] in scene coordinates (3D only)
+        dimensions (None): object size [x, y, z] in scene units (3D only)
+        rotation (None): rotation [x, y, z] around center, in [-pi, pi] (3D only)
     
         See the 3D detections guide for details https://docs.voxel51.com/getting_started/threed_visual_ai/02_loading_annotations.html
     """
