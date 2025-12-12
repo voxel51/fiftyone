@@ -35,7 +35,6 @@ export const useSyncWithStagedCuboidTransforms = () => {
         }
 
         return {
-          ...prev,
           [_id]: {
             ...transformData,
             ...(prev[_id] ?? {}),

@@ -3,10 +3,14 @@ import {
   activeSchemas,
   fieldTypes,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
-import { currentActiveAnnotationField3dAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  currentActiveAnnotationField3dAtom,
+  isCuboidAnnotateActiveAtom,
+  isPolylineAnnotateActiveAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 export const FieldSelection = () => {
   const [currentActiveField, setCurrentActiveField] = useRecoilState(
@@ -15,18 +19,34 @@ export const FieldSelection = () => {
   const activeSchema = useAtomValue(activeSchemas);
   const fieldTypesVal = useAtomValue(fieldTypes);
 
+  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
+
   const schemaFields = useMemo(
     () =>
       Object.keys(activeSchema ?? {}).filter((field) => {
         const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
+        if (isPolylineAnnotateActive) {
+          return thisFieldType === "polyline" || thisFieldType === "polylines";
+        }
+        if (isCuboidAnnotateActive) {
+          return (
+            thisFieldType === "detection" || thisFieldType === "detections"
+          );
+        }
         return (
-          thisFieldType === "polyline" ||
-          thisFieldType === "polylines" ||
           thisFieldType === "detection" ||
-          thisFieldType === "detections"
+          thisFieldType === "detections" ||
+          thisFieldType === "polyline" ||
+          thisFieldType === "polylines"
         );
       }),
-    [activeSchema, fieldTypesVal]
+    [
+      activeSchema,
+      fieldTypesVal,
+      isPolylineAnnotateActive,
+      isCuboidAnnotateActive,
+    ]
   );
 
   const theme = useTheme() as any;
