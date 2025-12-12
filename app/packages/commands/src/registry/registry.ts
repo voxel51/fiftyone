@@ -51,7 +51,7 @@ export class CommandRegistry {
   /**
    * Executes a registered command
    * @param id The command id
-   * @returns trrue if the command was registered and enabled and executed.
+   * @returns true if the command was registered and enabled and executed.
    */
   public async executeCommand(id: string): Promise<boolean> {
     const command = this.getCommand(id);
