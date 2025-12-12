@@ -145,7 +145,7 @@ export class KeyManager {
     test: Array<KeySequence>
   ): boolean {
     return (
-      bindings.keys().find((sequences) => {
+      [...bindings.keys()].find((sequences) => {
         if (sequences.length !== test.length) {
           return false;
         }
@@ -159,7 +159,7 @@ export class KeyManager {
     );
   }
   /**
-   * @see KeyManager for documentation of the sequence specification
+   * @see KeyParser for documentation of the sequence specification
    * @param scope The binding scope
    * @param sequence The sequence, ie "strl+shift+F12"
    * @param commandId A previously registered command id. @see CommandRegistry
@@ -201,8 +201,11 @@ export class KeyManager {
   }
 }
 //global
-const keyManager = new KeyManager();
+let keyManager: KeyManager | undefined = undefined;
 
 export function getKeyManager(): KeyManager {
+  if (!keyManager) {
+    keyManager = new KeyManager();
+  }
   return keyManager;
 }
