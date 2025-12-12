@@ -1,7 +1,7 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
 import { ExpandLess, ExpandMore, KeyboardArrowUp } from "@mui/icons-material";
-import { Button, Collapse, Typography } from "@mui/material";
+import { Button, Chip, Collapse, Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback, useState } from "react";
@@ -15,7 +15,6 @@ import {
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
-import { Header } from "./Modal";
 
 // Selection state for active fields
 export const selectedActiveFields = atom(new Set<string>());
@@ -53,14 +52,6 @@ const SectionHeader = styled.div`
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0;
-`;
-
-const CountBadge = styled.span`
-  background: ${({ theme }) => theme.background.level1};
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 12px;
-  color: ${({ theme }) => theme.text.secondary};
 `;
 
 const CollapsibleHeader = styled(SectionHeader)`
@@ -146,7 +137,7 @@ const ActiveFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
-          <CountBadge>0</CountBadge>
+          <Chip label="0" size="small" />
         </SectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
@@ -161,7 +152,7 @@ const ActiveFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
-        <CountBadge>{fields.length}</CountBadge>
+        <Chip label={fields.length} size="small" />
       </SectionHeader>
       {fields.map((path) => (
         <FieldRow
@@ -200,7 +191,7 @@ const HiddenFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Hidden fields
         </Typography>
-        <CountBadge>{fields.length}</CountBadge>
+        <Chip label={fields.length} size="small" />
         {expanded ? <ExpandLess /> : <ExpandMore />}
       </CollapsibleHeader>
       <Collapse in={expanded}>

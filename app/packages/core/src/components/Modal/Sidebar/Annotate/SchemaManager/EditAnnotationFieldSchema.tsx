@@ -1,4 +1,8 @@
-import { LoadingSpinner } from "@fiftyone/components";
+import {
+  CenteredStack,
+  IconButton,
+  LoadingSpinner,
+} from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
 import {
@@ -9,6 +13,7 @@ import {
 } from "@mui/icons-material";
 import {
   Box,
+  Chip,
   MenuItem,
   Select,
   Switch,
@@ -125,42 +130,6 @@ const ItemActions = styled.div`
   gap: 0.25rem;
 `;
 
-const IconButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: ${({ theme }) => theme.text.secondary};
-  border-radius: 4px;
-
-  &:hover {
-    background: ${({ theme }) => theme.background.level2};
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
-const EmptyState = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 2rem;
-  color: ${({ theme }) => theme.text.secondary};
-  background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
-`;
-
-const Badge = styled.span`
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid ${({ theme }) => theme.divider};
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 11px;
-  color: ${({ theme }) => theme.text.secondary};
-`;
-
 const AddButton = styled.button`
   background: none;
   border: none;
@@ -176,13 +145,13 @@ const AddButton = styled.button`
   }
 `;
 
-const LoadingContainer = styled.div`
+const EmptyStateBox = styled(Box)`
+  background: ${({ theme }) => theme.background.level1};
+  border-radius: 4px;
+  padding: 2rem;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 3rem;
-  gap: 1rem;
 `;
 
 const ScanButton = styled(RoundButtonWhite)`
@@ -383,7 +352,7 @@ const AttributeRow = ({
         {optionCount !== undefined &&
           ` · ${optionCount} option${optionCount !== 1 ? "s" : ""}`}
       </Typography>
-      {readOnly && <Badge>Read-only</Badge>}
+      {readOnly && <Chip label="Read-only" size="small" variant="outlined" />}
     </ItemContent>
     <ItemActions>
       <IconButton onClick={onDelete}>
@@ -417,7 +386,9 @@ const ClassesSection = ({
         <AddButton onClick={onAddClass}>+ Add class</AddButton>
       </SectionHeader>
       {classEntries.length === 0 ? (
-        <EmptyState>No classes yet</EmptyState>
+        <EmptyStateBox>
+          <Typography color="secondary">No classes yet</Typography>
+        </EmptyStateBox>
       ) : (
         classEntries.map(([name, config]) => (
           <ClassRow
@@ -454,7 +425,9 @@ const AttributesSection = ({
         <AddButton onClick={onAddAttribute}>+ Add attribute</AddButton>
       </SectionHeader>
       {attrEntries.length === 0 ? (
-        <EmptyState>No attributes yet</EmptyState>
+        <EmptyStateBox>
+          <Typography color="secondary">No attributes yet</Typography>
+        </EmptyStateBox>
       ) : (
         attrEntries.map(([name, config]) => (
           <AttributeRow
@@ -490,19 +463,19 @@ const GUIViewContent = ({
           <SectionHeader>
             <Typography fontWeight={500}>Classes</Typography>
           </SectionHeader>
-          <EmptyState>
+          <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
-            Scanning schema
-          </EmptyState>
+            <Typography color="secondary">Scanning schema</Typography>
+          </EmptyStateBox>
         </Section>
         <Section>
           <SectionHeader>
             <Typography fontWeight={500}>Attributes</Typography>
           </SectionHeader>
-          <EmptyState>
+          <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
-            Scanning schema
-          </EmptyState>
+            <Typography color="secondary">Scanning schema</Typography>
+          </EmptyStateBox>
         </Section>
       </ListContainer>
     );
@@ -552,10 +525,10 @@ const JSONViewContent = ({
 }) => {
   if (scanning) {
     return (
-      <LoadingContainer>
+      <CenteredStack spacing={1} sx={{ p: 3 }}>
         <LoadingSpinner />
         <Typography color="secondary">Scanning schema</Typography>
-      </LoadingContainer>
+      </CenteredStack>
     );
   }
 
