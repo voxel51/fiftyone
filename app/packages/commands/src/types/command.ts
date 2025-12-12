@@ -63,6 +63,7 @@ export class Command {
   public updateEnabled(isEnabled?: boolean): boolean {
     if (this.enablementFunc) {
       this.enabled = this.enablementFunc();
+      return this.enabled;
     }
     if (isEnabled) {
       this.enabled = isEnabled;

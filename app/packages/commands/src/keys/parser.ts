@@ -155,7 +155,7 @@ export class KeyParser {
         const ret = new Array<KeySequence>();
         sequences.forEach((sequence) => {
             if (sequence.trim().length === 0) {
-                throw new Error(`The binding ${binding} countains an empty sequence`);
+                throw new Error(`The binding ${binding} contains an empty sequence`);
             }
             const keySequence = new KeySequence();
             const keys = sequence.split(/(?<!\\)\+/);
