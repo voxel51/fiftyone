@@ -15,6 +15,7 @@ import {
   stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
 } from "../state";
+import { quaternionToRadians } from "../utils";
 
 /**
  * Hook that initializes 3D annotation.
@@ -143,7 +144,15 @@ export const use3dAnnotation = () => {
             };
           });
 
-          save(detectionValue);
+          // Save everything except quaternion since it's not part of data model
+          const { quaternion, ...allValidFields } =
+            detectionValue as DetectionLabel & {
+              quaternion?: [number, number, number, number];
+            };
+
+          const rotation = quaternionToRadians(quaternion);
+
+          save({ ...allValidFields, rotation });
         }
       },
       [save]

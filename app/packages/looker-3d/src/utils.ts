@@ -415,6 +415,28 @@ export function quaternionToRadians(
 }
 
 /**
+ * Converts Euler angles (in radians) to a quaternion.
+ *
+ * @param eulerAngles - Array of [x, y, z] Euler angles in radians
+ * @param order - The order of rotations (default: 'XYZ')
+ * @returns Quaternion as [x, y, z, w] array
+ */
+export function radiansToQuaternion(
+  eulerAngles: [number, number, number],
+  order: EulerOrder = "XYZ"
+): [number, number, number, number] {
+  const euler = new Euler(
+    eulerAngles[0],
+    eulerAngles[1],
+    eulerAngles[2],
+    order
+  );
+  const quaternion = new Quaternion();
+  quaternion.setFromEuler(euler);
+  return [quaternion.x, quaternion.y, quaternion.z, quaternion.w];
+}
+
+/**
  * Validates a single 3D point to ensure it's a valid array of 3 numbers
  */
 export const isValidPoint3d = (point: unknown): point is Vector3Tuple => {
