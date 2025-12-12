@@ -13,6 +13,7 @@ import {
 } from "@mui/icons-material";
 import {
   Box,
+  Button,
   Chip,
   MenuItem,
   Select,
@@ -25,12 +26,27 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
-import { RoundButtonWhite } from "../Actions";
 import { activePaths, fieldType, inactivePaths, schemaConfig } from "../state";
 import Footer from "./Footer";
 import { currentField } from "./state";
+import {
+  ContentArea,
+  EditContainer,
+  EditSectionHeader,
+  editTabsStyles,
+  EmptyStateBox,
+  FieldColumn,
+  FieldRow,
+  ItemActions,
+  ItemContent,
+  ItemRow,
+  Label,
+  ListContainer,
+  SchemaSection,
+  Section,
+  TabsRow,
+} from "./styled";
 
 // Types
 interface AttributeConfig {
@@ -47,149 +63,6 @@ interface SchemaConfigType {
   classes?: Record<string, ClassConfig>;
   attributes?: Record<string, AttributeConfig>;
 }
-
-// Styled components
-const Container = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  margin-bottom: 64px;
-`;
-
-const Section = styled.div`
-  margin-bottom: 1.5rem;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-`;
-
-const FieldRow = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const FieldColumn = styled.div`
-  flex: 1;
-`;
-
-const Label = styled(Typography)`
-  margin-bottom: 0.5rem !important;
-  color: ${({ theme }) => theme.text.secondary};
-`;
-
-const SchemaSection = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-`;
-
-const TabsRow = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-`;
-
-const ContentArea = styled.div`
-  flex: 1;
-  overflow: auto;
-  border: 1px solid ${({ theme }) => theme.divider};
-  border-radius: 4px;
-`;
-
-const ListContainer = styled.div`
-  padding: 1rem;
-`;
-
-const ItemRow = styled.div`
-  display: flex;
-  align-items: center;
-  background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
-  padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
-  gap: 0.75rem;
-`;
-
-const ItemContent = styled.div`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const ItemActions = styled.div`
-  display: flex;
-  gap: 0.25rem;
-`;
-
-const AddButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: ${({ theme }) => theme.text.secondary};
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 14px;
-
-  &:hover {
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
-const EmptyStateBox = styled(Box)`
-  background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
-  padding: 2rem;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-const ScanButton = styled(RoundButtonWhite)`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-// Tab styles
-const tabsStyles = {
-  minHeight: 36,
-  "& .MuiTabs-flexContainer": {
-    height: 36,
-  },
-  "& .MuiTab-root": {
-    minHeight: 36,
-    height: 36,
-    padding: "7px 16px",
-    minWidth: "unset",
-    textTransform: "none",
-    border: "1px solid",
-    borderColor: "divider",
-    borderRight: "none",
-    "&:first-of-type": {
-      borderTopLeftRadius: 4,
-      borderBottomLeftRadius: 4,
-    },
-    "&:last-of-type": {
-      borderTopRightRadius: 4,
-      borderBottomRightRadius: 4,
-      borderRight: "1px solid",
-      borderRightColor: "divider",
-    },
-    "&.Mui-selected": {
-      backgroundColor: "background.paper",
-    },
-  },
-};
 
 // Helper functions
 const toStr = (config: SchemaConfigType | undefined) =>
@@ -381,10 +254,16 @@ const ClassesSection = ({
 
   return (
     <Section>
-      <SectionHeader>
+      <EditSectionHeader>
         <Typography fontWeight={500}>Classes</Typography>
-        <AddButton onClick={onAddClass}>+ Add class</AddButton>
-      </SectionHeader>
+        <Button
+          size="small"
+          onClick={onAddClass}
+          sx={{ color: "text.primary", textTransform: "none" }}
+        >
+          + Add class
+        </Button>
+      </EditSectionHeader>
       {classEntries.length === 0 ? (
         <EmptyStateBox>
           <Typography color="secondary">No classes yet</Typography>
@@ -420,10 +299,16 @@ const AttributesSection = ({
 
   return (
     <Section>
-      <SectionHeader>
+      <EditSectionHeader>
         <Typography fontWeight={500}>Attributes</Typography>
-        <AddButton onClick={onAddAttribute}>+ Add attribute</AddButton>
-      </SectionHeader>
+        <Button
+          size="small"
+          onClick={onAddAttribute}
+          sx={{ color: "text.primary", textTransform: "none" }}
+        >
+          + Add attribute
+        </Button>
+      </EditSectionHeader>
       {attrEntries.length === 0 ? (
         <EmptyStateBox>
           <Typography color="secondary">No attributes yet</Typography>
@@ -460,18 +345,18 @@ const GUIViewContent = ({
     return (
       <ListContainer>
         <Section>
-          <SectionHeader>
+          <EditSectionHeader>
             <Typography fontWeight={500}>Classes</Typography>
-          </SectionHeader>
+          </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
             <Typography color="secondary">Scanning schema</Typography>
           </EmptyStateBox>
         </Section>
         <Section>
-          <SectionHeader>
+          <EditSectionHeader>
             <Typography fontWeight={500}>Attributes</Typography>
-          </SectionHeader>
+          </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
             <Typography color="secondary">Scanning schema</Typography>
@@ -584,7 +469,7 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
   }, [data.savingComplete, setCurrentField, setNotification]);
 
   return (
-    <Container>
+    <EditContainer>
       {/* Field name and type section */}
       <FieldRow style={{ marginTop: "1rem" }}>
         <FieldColumn>
@@ -635,16 +520,31 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
         <TabsRow>
           <Tabs
             value={tab}
-            sx={tabsStyles}
+            sx={editTabsStyles}
             TabIndicatorProps={{ style: { display: "none" } }}
           >
             <Tab label="GUI" value="gui" onClick={() => setTab("gui")} />
             <Tab label="JSON" value="json" onClick={() => setTab("json")} />
           </Tabs>
-          <ScanButton onClick={() => data.compute()}>
-            <Sync fontSize="small" />
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Sync fontSize="small" />}
+            onClick={() => data.compute()}
+            sx={{
+              color: "text.primary",
+              borderColor: "divider",
+              textTransform: "none",
+              "&:hover": {
+                borderColor: "action.active",
+              },
+              "&:active": {
+                borderColor: "action.active",
+              },
+            }}
+          >
             Scan
-          </ScanButton>
+          </Button>
         </TabsRow>
 
         <ContentArea>
@@ -673,7 +573,7 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
           text: data.saving ? "Saving..." : "Save",
         }}
       />
-    </Container>
+    </EditContainer>
   );
 };
 

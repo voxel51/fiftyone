@@ -5,7 +5,6 @@ import { Button, Chip, Collapse, Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback, useState } from "react";
-import styled from "styled-components";
 import {
   activePaths,
   addToActiveSchemas,
@@ -15,6 +14,7 @@ import {
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
+import { CollapsibleHeader, FooterContainer, GUISectionHeader } from "./styled";
 
 // Selection state for active fields
 export const selectedActiveFields = atom(new Set<string>());
@@ -46,42 +46,6 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
 export const fieldHasSchema = atomFamily((path: string) =>
   atom((get) => !!get(schema(path))?.config)
 );
-
-const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
-`;
-
-const CollapsibleHeader = styled(SectionHeader)`
-  cursor: pointer;
-  user-select: none;
-
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
-const FooterContainer = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 1rem 2rem;
-  background: ${({ theme }) => theme.background.level2};
-  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const MoveButton = styled(Button)`
-  text-transform: none !important;
-  color: ${({ theme }) => theme.text.primary} !important;
-  border-color: ${({ theme }) => theme.primary.plainBorder} !important;
-`;
 
 const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
@@ -133,12 +97,12 @@ const ActiveFieldsSection = () => {
   if (!fields.length) {
     return (
       <>
-        <SectionHeader>
+        <GUISectionHeader>
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
           <Chip label="0" size="small" />
-        </SectionHeader>
+        </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
         </Item>
@@ -148,12 +112,12 @@ const ActiveFieldsSection = () => {
 
   return (
     <>
-      <SectionHeader>
+      <GUISectionHeader>
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
         <Chip label={fields.length} size="small" />
-      </SectionHeader>
+      </GUISectionHeader>
       {fields.map((path) => (
         <FieldRow
           key={path}
@@ -221,14 +185,32 @@ const SelectionFooter = () => {
     <FooterContainer>
       <KeyboardArrowUp fontSize="small" />
       {hiddenCount > 0 && (
-        <MoveButton variant="outlined" size="small" onClick={activateFields}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={activateFields}
+          sx={{
+            color: "text.primary",
+            borderColor: "text.primary",
+            textTransform: "none",
+          }}
+        >
           Move {hiddenCount} to visible fields
-        </MoveButton>
+        </Button>
       )}
       {activeCount > 0 && (
-        <MoveButton variant="outlined" size="small" onClick={deactivateFields}>
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={deactivateFields}
+          sx={{
+            color: "text.primary",
+            borderColor: "text.primary",
+            textTransform: "none",
+          }}
+        >
           Move {activeCount} to hidden fields
-        </MoveButton>
+        </Button>
       )}
     </FooterContainer>
   );
