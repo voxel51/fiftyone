@@ -1855,6 +1855,8 @@ class FiftyOneTorchDataset(Dataset):
             the intended field values
         local_process_group (None): the local process group. Only used during
             distributed training
+        assert_not_none (False): whether to raise an error if any of the sample values required by the GetItem are
+            None. Note: This only works with vectorized=False
     """
 
     def __init__(
@@ -1864,6 +1866,7 @@ class FiftyOneTorchDataset(Dataset):
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
+        assert_not_none=False,
     ):
         super().__init__()
 
@@ -1882,6 +1885,7 @@ class FiftyOneTorchDataset(Dataset):
 
         self.get_item = get_item
         self.skip_failures = skip_failures
+        self.assert_not_none = assert_not_none
 
         self.ids = self._load_field(
             samples, "id", local_process_group=local_process_group
@@ -2022,7 +2026,14 @@ class FiftyOneTorchDataset(Dataset):
             d = {}
             for key, field in self.field_mapping.items():
                 try:
-                    d[key] = sample[field]
+                    value = sample[field]
+
+                    if self.assert_not_none and value is None:
+                        raise ValueError(
+                            f"{field} cannot be None. (sample id={sample['id']})"
+                        )
+
+                    d[key] = value
                 except Exception as e:
                     error = ValueError(
                         f"Error loading field {field} assigned to key {key}: {e}"
