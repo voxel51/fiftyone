@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import { stagedCuboidTransformsAtom } from "../state";
+import { radiansToQuaternion } from "../utils";
 
 /**
  * Hook that provides a function to sync cuboid label data with the
@@ -17,11 +18,14 @@ export const useSyncWithStagedCuboidTransforms = () => {
     (label: fos.DetectionAnnotationLabel["data"]) => {
       const { _id, location, dimensions, rotation } = label;
 
+      const quaternion = rotation ? radiansToQuaternion(rotation) : null;
+
       setStagedCuboidTransforms((prev) => {
         const transformData = {
           location: location as Vector3Tuple,
           dimensions: dimensions as Vector3Tuple,
-          rotation: rotation as Vector3Tuple,
+          quaternion,
+          rotation: undefined,
         };
 
         if (!prev) {

@@ -7,6 +7,7 @@ import { isEqual } from "lodash";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { stagedCuboidTransformsAtom } from "../state";
+import { quaternionToRadians, radiansToQuaternion } from "../utils";
 
 /**
  * Hook that performs reverse sync - when staged cuboid transforms are changed (from the canvas),
@@ -33,22 +34,26 @@ export const useReverseSyncCuboidTransforms = () => {
 
     const newLocation = transformData.location;
     const newDimensions = transformData.dimensions;
-    const newRotation = transformData.rotation;
+    const newQuaternion = transformData.quaternion;
 
     const currentLocation = currentAnnotation.data.location;
     const currentDimensions = currentAnnotation.data.dimensions;
-    const currentRotation = currentAnnotation.data.rotation;
+    const currentQuaternion = currentAnnotation.data.rotation
+      ? radiansToQuaternion(currentAnnotation.data.rotation)
+      : null;
 
     const hasLocationChanged = !isEqual(currentLocation, newLocation);
     const hasDimensionsChanged = !isEqual(currentDimensions, newDimensions);
-    const hasRotationChanged = !isEqual(currentRotation, newRotation);
+    const hasQuaternionChanged = !isEqual(currentQuaternion, newQuaternion);
 
-    if (hasLocationChanged || hasDimensionsChanged || hasRotationChanged) {
+    if (hasLocationChanged || hasDimensionsChanged || hasQuaternionChanged) {
       const updatedData = {
         ...currentAnnotation.data,
         ...(newLocation && { location: newLocation }),
         ...(newDimensions && { dimensions: newDimensions }),
-        ...(newRotation && { rotation: newRotation }),
+        ...(hasQuaternionChanged && {
+          rotation: quaternionToRadians(newQuaternion),
+        }),
       };
 
       setCurrentData({
@@ -63,7 +68,9 @@ export const useReverseSyncCuboidTransforms = () => {
       setSavedLabel({
         ...(newLocation && { location: newLocation }),
         ...(newDimensions && { dimensions: newDimensions }),
-        ...(newRotation && { rotation: newRotation }),
+        ...(hasQuaternionChanged && {
+          rotation: quaternionToRadians(newQuaternion),
+        }),
       });
     }
   }, [cuboidTransforms, currentAnnotation]);
