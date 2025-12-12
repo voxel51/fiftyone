@@ -82,13 +82,10 @@ aggregation = _make_registrar()
 
 
 class _DummyFuture:
-    def __init__(self, *, value=None, exception=None):
+    def __init__(self, *, value=None):
         self.value = value
-        self.exception = exception
 
     def result(self):
-        if self.exception:
-            raise self.exception
         return self.value
 
 
@@ -100,11 +97,7 @@ class _DummyExecutor:
         pass
 
     def submit(self, fn, *args, **kwargs):
-        try:
-            result = fn(*args, **kwargs)
-            return _DummyFuture(value=result)
-        except Exception as e:
-            return _DummyFuture(exception=e)
+        return _DummyFuture(value=fn(*args, **kwargs))
 
 
 class SaveContext(object):
