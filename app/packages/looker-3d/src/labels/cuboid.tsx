@@ -14,6 +14,7 @@ import {
   isCuboidAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
+  transformModeAtom,
 } from "../state";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
@@ -100,6 +101,8 @@ export const Cuboid = ({
 
   const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
 
+  const transformMode = useRecoilValue(transformModeAtom);
+
   const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
 
   const geo = useMemo(
@@ -122,13 +125,21 @@ export const Cuboid = ({
   // (gimbal lock, precision loss). We convert to euler only on final save.
   // Priority: tempTransforms.quaternion > effectiveQuaternion (staged) > euler fallback
   const combinedQuaternion = useMemo(() => {
+    if (transformMode !== "rotate") {
+      return null;
+    }
     const quaternionToUse = tempTransforms?.quaternion ?? effectiveQuaternion;
     if (!quaternionToUse) {
       return null;
     }
 
     return new THREE.Quaternion(...quaternionToUse);
-  }, [tempTransforms?.quaternion, effectiveQuaternion, rotation]);
+  }, [
+    tempTransforms?.quaternion,
+    effectiveQuaternion,
+    rotation,
+    transformMode,
+  ]);
 
   // Fallback to euler-based rotation when no quaternion available
   const actualRotation = useMemo(() => {
@@ -136,7 +147,7 @@ export const Cuboid = ({
       return undefined;
     }
     const itemRotationVec = new THREE.Vector3(...effectiveRotation);
-    const resolvedRotation = new THREE.Vector3(...rotation);
+    const resolvedRotation = new THREE.Vector3(...(rotation ?? [0, 0, 0]));
     return resolvedRotation.clone().add(itemRotationVec).toArray();
   }, [combinedQuaternion, effectiveRotation, rotation]);
 
@@ -194,8 +205,8 @@ export const Cuboid = ({
   const content = (
     <group
       // By default, quaternion is preferred automatically over euler
-      rotation={actualRotation ?? undefined}
-      quaternion={combinedQuaternion ?? undefined}
+      rotation={combinedQuaternion ? undefined : actualRotation ?? undefined}
+      quaternion={actualRotation ? undefined : combinedQuaternion ?? undefined}
       position={loc.toArray()}
     >
       {/* Outline */}
