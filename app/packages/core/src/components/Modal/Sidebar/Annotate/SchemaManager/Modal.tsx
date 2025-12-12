@@ -5,11 +5,11 @@ import React, { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import styled from "styled-components";
 import { ItemLeft } from "../Components";
-import { activeSchemaTab, schema, showModal } from "../state";
-import ActiveSchema from "./ActiveSchema";
+import { activeSchemaTab, showModal } from "../state";
 import EditAnnotationFieldSchema from "./EditAnnotationFieldSchema";
 import FieldsTabs from "./FieldsTabs";
-import OtherFields from "./OtherFields";
+import GUIView from "./GUIView";
+import JSONView from "./JSONView";
 import { currentField } from "./state";
 
 const Back = styled(BackIcon)`
@@ -74,7 +74,7 @@ export const Header = styled.div`
 
 const Heading = () => {
   const [field, setField] = useAtom(currentField);
-  const type = useAtomValue(schema(field ?? ""))?.type;
+
   if (!field) {
     return <Typography variant="h5">Schema manager</Typography>;
   }
@@ -82,10 +82,7 @@ const Heading = () => {
   return (
     <ItemLeft>
       <Back color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">{field}</Typography>
-      <Typography color="secondary" variant="h5">
-        {type}
-      </Typography>
+      <Typography variant="h5">Edit field schema</Typography>
     </ItemLeft>
   );
 };
@@ -117,11 +114,11 @@ const Page = () => {
     return <EditAnnotationFieldSchema path={field} />;
   }
 
-  if (tab === "active") {
-    return <ActiveSchema />;
+  if (tab === "gui") {
+    return <GUIView />;
   }
 
-  return <OtherFields />;
+  return <JSONView />;
 };
 
 const Modal = () => {

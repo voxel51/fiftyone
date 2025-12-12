@@ -8,11 +8,7 @@ const tabsStyles = {
 
   "& .MuiTabs-flexContainer": {
     height: 36,
-    width: "100%",
     display: "flex",
-    "& > *": {
-      flex: 1,
-    },
   },
   "& .MuiTab-root": {
     minHeight: 36,
@@ -52,12 +48,8 @@ const FieldsTabs = () => {
         style: { display: "none" },
       }}
     >
-      <Tab
-        label="Active fields"
-        value="active"
-        onClick={() => setTab("active")}
-      />
-      <Tab label="Other fields" value="other" onClick={() => setTab("other")} />
+      <Tab label="GUI" value="gui" onClick={() => setTab("gui")} />
+      <Tab label="JSON" value="json" onClick={() => setTab("json")} />
     </Tabs>
   );
 };
