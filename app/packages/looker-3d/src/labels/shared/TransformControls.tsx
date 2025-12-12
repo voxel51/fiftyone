@@ -15,6 +15,7 @@ type TransformableProps = {
   archetype: Archetype3d;
   explicitObjectRef?: React.RefObject<any>;
   transformControlsPosition?: THREE.Vector3Tuple;
+  transformControlsQuaternion?: THREE.Vector4Tuple;
   children: React.ReactNode;
 } & Pick<
   TransformProps,
@@ -44,6 +45,7 @@ export const Transformable = ({
   onTransformChange,
   transformControlsRef,
   transformControlsPosition = [0, 0, 0],
+  transformControlsQuaternion = [0, 0, 0, 1],
   ...transformControlsProps
 }: TransformableProps) => {
   const groupRef = useRef<any>(null);
@@ -100,7 +102,7 @@ export const Transformable = ({
               ref={transformControlsRef}
               object={explicitObjectRef?.current || groupRef.current}
               mode={transformMode}
-              space="local"
+              space="world"
               onMouseDown={onTransformStartDecorated}
               onMouseUp={onTransformEndDecorated}
               onObjectChange={onObjectChangeDecorated}

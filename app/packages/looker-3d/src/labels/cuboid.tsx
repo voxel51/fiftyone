@@ -93,7 +93,7 @@ export const Cuboid = ({
     label,
     location,
     dimensions,
-    itemRotation,
+    rotation,
     strokeAndFillColor,
     isAnnotateMode,
     isSelectedForAnnotation,
@@ -146,9 +146,7 @@ export const Cuboid = ({
     if (combinedQuaternion) {
       return undefined;
     }
-    const itemRotationVec = new THREE.Vector3(...effectiveRotation);
-    const resolvedRotation = new THREE.Vector3(...(rotation ?? [0, 0, 0]));
-    return resolvedRotation.clone().add(itemRotationVec).toArray();
+    return effectiveRotation;
   }, [combinedQuaternion, effectiveRotation, rotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
@@ -206,7 +204,7 @@ export const Cuboid = ({
     <group
       // By default, quaternion is preferred automatically over euler
       rotation={combinedQuaternion ? undefined : actualRotation ?? undefined}
-      quaternion={actualRotation ? undefined : combinedQuaternion ?? undefined}
+      quaternion={combinedQuaternion ?? undefined}
       position={loc.toArray()}
     >
       {/* Outline */}
