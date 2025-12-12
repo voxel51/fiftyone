@@ -11,12 +11,26 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
+def ensure_collection_is_supported(sample_collection):
+    """Ensure a :class:`fiftyone.core.collections.SampleCollection` is
+    supported by the App for annotation.
+
+        Args:
+            sample_collection: a
+                :class:`fiftyone.core.collections.SampleCollection`
+    """
+    if sample_collection.media_type not in foac.SUPPORTED_MEDIA_TYPES:
+        raise ValueError(
+            f"{sample_collection.media_type} media is not supported yet"
+        )
+
+
 def get_all_supported_fields(sample_collection, flatten=False):
     """Gets all fields supported by the App for human annotation for a
     :class:`fiftyone.core.collections.SampleCollection`
 
     Args::
-        sample_colection: the
+        sample_colection: a
             :class:`fiftyone.core.collections.SampleCollection`
         flatten (False): whether to flatten embedded documents with dot
             notation
@@ -29,6 +43,9 @@ def get_all_supported_fields(sample_collection, flatten=False):
 
         if _is_supported_field(field, media_type):
             result.add(field_name)
+            continue
+
+        if not isinstance(field, fof.EmbeddedDocumentField):
             continue
 
         if field.document_type in foac.SUPPORTED_DOC_TYPES:
@@ -76,6 +93,7 @@ def flatten_fields(collection, fields):
 
         if issubclass(field.document_type, fol.Label):
             flattened_fields.append(field_name)
+            continue
 
         for subfield in field.fields:
             if not _is_supported_field(subfield, collection.media_type):

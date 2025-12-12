@@ -5,7 +5,7 @@ import { Sync } from "@mui/icons-material";
 import { Link, Typography } from "@mui/material";
 import { useAtom, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { default as React, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styled from "styled-components";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { RoundButtonWhite } from "../Actions";
@@ -50,25 +50,25 @@ const useAnnotationSchema = (path: string) => {
 
   const [localConfig, setLocalConfig] = useState(toStr(config));
 
-  const compute = useOperatorExecutor("compute_annotation_schema");
-  const save = useOperatorExecutor("save_annotation_schema");
+  const generate = useOperatorExecutor("generate_label_schemas");
+  const update = useOperatorExecutor("update_label_schema");
 
   const setNotification = useNotification();
 
   useEffect(() => {
-    if (!compute.result) {
+    if (!generate.result) {
       return;
     }
 
     setLoading(false);
-    setLocalConfig(toStr(compute.result.config));
-  }, [compute.result]);
+    setLocalConfig(toStr(generate.result.label_schema));
+  }, [generate.result]);
 
   useEffect(() => {
-    if (save.result) {
-      setConfig(save.result.config);
+    if (update.result) {
+      setConfig(update.result.label_schema);
     }
-  }, [save.result, setConfig]);
+  }, [update.result, setConfig]);
 
   const hasChanges = useMemo(() => {
     try {
@@ -81,9 +81,9 @@ const useAnnotationSchema = (path: string) => {
   return {
     compute: (scan = true) => {
       setLoading(scan ? "scanning" : "loading");
-      compute.execute({ path, scan_samples: scan });
+      generate.execute({ field: path, scan_samples: scan });
     },
-    computed: compute.result,
+    computed: generate.result,
 
     loading: loading,
 
@@ -97,14 +97,14 @@ const useAnnotationSchema = (path: string) => {
 
       try {
         const config = parse(localConfig);
-        save.execute({ path, config });
+        update.execute({ field: path, label_schema: config });
         setConfig(parse(localConfig));
       } catch {
         setNotification({ msg: "Unable to parse config", variant: "error" });
       }
     },
-    saving: save.isExecuting,
-    savingComplete: save.hasExecuted,
+    saving: update.isExecuting,
+    savingComplete: update.hasExecuted,
     schema: localConfig,
     setSchema: setLocalConfig,
 

@@ -3,7 +3,7 @@ import { useNotification } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { RoundButton } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 import {
@@ -19,12 +19,12 @@ import { Header } from "./Modal";
 const useActivate = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedFields);
-  const activateFields = useOperatorExecutor("activate_annotation_schemas");
+  const activateFields = useOperatorExecutor("activate_label_schemas");
   const setMessage = useNotification();
 
   return useCallback(() => {
     addToActiveSchema(selected);
-    activateFields.execute({ paths: Array.from(selected) });
+    activateFields.execute({ fields: Array.from(selected) });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${selected.size > 1 ? "s" : ""} activated`,
@@ -57,14 +57,14 @@ const otherFieldsWithSchema = atom((get) =>
 );
 
 const useDeleteSchema = () => {
-  const deleteSchema = useOperatorExecutor("delete_annotation_schema");
+  const deleteSchema = useOperatorExecutor("delete_label_schemas");
   const deletePaths = useSetAtom(deleteSchemas);
   const setMessage = useNotification();
   const remove = useSetAtom(removeSelection);
 
   return useCallback(
     (path: string) => {
-      deleteSchema.execute({ path });
+      deleteSchema.execute({ fields: [path] });
       deletePaths([path]);
 
       setMessage({ msg: `${path} schema deleted`, variant: "success" });

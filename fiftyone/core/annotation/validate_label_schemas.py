@@ -34,7 +34,7 @@ def validate_label_schemas(
             such values
 
     Raises:
-        ExceptionGroup: if the label schema(s) are invalid
+        ExceptionGroup: if the label schema(s) are invalidp
     """
     is_scalar = etau.is_str(fields)
 
@@ -44,12 +44,16 @@ def validate_label_schemas(
     elif fields is None:
         fields = sorted(label_schema.keys())
 
+    all_fields = sample_collection.get_field_schema(flat=True)
     supported_fields = foau.get_all_supported_fields(
         sample_collection, flatten=True
     )
     exceptions = []
     for field in fields:
         try:
+            if field not in all_fields:
+                raise ValueError(f"field '{field}' does not exist")
+
             if field not in supported_fields:
                 raise ValueError(f"field '{field}' is not supported")
 
