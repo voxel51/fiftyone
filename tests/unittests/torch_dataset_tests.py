@@ -167,6 +167,25 @@ class FiftyOneTorchDatasetTests(unittest.TestCase):
                 else:
                     self.assertTrue(isinstance(res[i], Exception))
 
+    def test_assert_not_none(self):
+        with ShortLivedDataset() as dataset:
+            indices = list(range(len(dataset)))
+            dataset.set_values(
+                "partial_field", [1 if i % 2 == 0 else None for i in indices]
+            )
+            torch_dataset = dataset.to_torch(
+                IdentityGetItem(["id", "partial_field"]),
+                vectorize=False,
+                assert_not_none=True,
+                skip_failures=True,
+            )
+            for i, val in enumerate(torch_dataset.__getitems__(indices)):
+                if i % 2 == 0:
+                    self.assertFalse(isinstance(val, Exception))
+                    self.assertEqual(val[1], 1)
+                else:
+                    self.assertTrue(isinstance(val, ValueError))
+
 
 if __name__ == "__main__":
     fo.config.show_progress_bars = False

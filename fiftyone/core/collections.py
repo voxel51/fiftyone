@@ -10041,6 +10041,7 @@ class SampleCollection(object):
         vectorize=False,
         skip_failures=False,
         local_process_group=None,
+        assert_not_none=False,
     ):
         """Constructs a :class:`torch:torch.utils.data.Dataset` that loads data
         from this collection via the provided
@@ -10061,6 +10062,8 @@ class SampleCollection(object):
                 rather than the intended field values
             local_process_group (None): the local process group. Only used
                 during distributed training
+            assert_not_none (False): whether to raise an error if any sample
+                values required by GetItem are None
 
         Returns:
             a :class:`torch:torch.utils.data.Dataset`
@@ -10073,6 +10076,7 @@ class SampleCollection(object):
             vectorize=vectorize,
             skip_failures=skip_failures,
             local_process_group=local_process_group,
+            assert_not_none=assert_not_none,
         )
 
     def annotate(

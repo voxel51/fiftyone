@@ -2027,7 +2027,6 @@ class FiftyOneTorchDataset(Dataset):
             for key, field in self.field_mapping.items():
                 try:
                     value = sample[field]
-
                     if self.assert_not_none and value is None:
                         raise ValueError(
                             f"{field} cannot be None. (sample id={sample['id']})"
