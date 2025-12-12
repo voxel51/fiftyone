@@ -172,7 +172,8 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
         fom.LogitsMixin.__init__(self)
 
     def __enter__(self):
-        _patch_tf2_detection_model()
+        if "tfmodels_detectors" in type(self._model).__module__:
+            _patch_tf2_detection_model()
         self._model.__enter__()
         return self
 

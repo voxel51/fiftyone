@@ -6,6 +6,7 @@ FiftyOne ETA utilities unit tests.
 |
 """
 
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -51,6 +52,7 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
             eta_module._tf2_patched = False
             from fiftyone.utils.eta import _patch_tf2_detection_model
             _patch_tf2_detection_model()
+            self.assertFalse(eta_module._tf2_patched)
 
     def test_patched_function_handles_callable_model(self):
         from fiftyone.utils.eta import _patch_tf2_detection_model
@@ -89,18 +91,17 @@ class PatchTF2DetectionModelTests(unittest.TestCase):
         }
 
         with patch("tensorflow.saved_model.load") as mock_load:
-            mock_model = MagicMock()
-            mock_model.configure_mock(**{"__call__": None})
-            del mock_model.__call__
-
             mock_signature = MagicMock(return_value=mock_detections)
-            mock_model.signatures = {"serving_default": mock_signature}
+            mock_model = types.SimpleNamespace(
+                signatures={"serving_default": mock_signature}
+            )
             mock_load.return_value = mock_model
 
             predict_fn = tfmodels._load_tf2_detection_model("/fake/path")
             result = predict_fn(tf.zeros((1, 512, 512, 3)))
 
             self.assertEqual(len(result), 3)
+            mock_signature.assert_called_once()
 
 
 if __name__ == "__main__":
