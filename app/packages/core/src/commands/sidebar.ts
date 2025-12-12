@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { Command, getCommandBus } from "@fiftyone/commands";
+import { Command, getCommandBus } from "@fiftyone/command-bus";
 
 /**
  * Command to expand a field in the grid sidebar.

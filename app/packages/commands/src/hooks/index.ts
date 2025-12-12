@@ -1,2 +1,2 @@
-export * from "./useCommandBus";
-export * from "./useRegisterCommandHandler";
+export * from "./useCommand";
+export * from "./useNewCommand";

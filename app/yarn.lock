@@ -2436,6 +2436,25 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/command-bus@workspace:packages/command-bus":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/command-bus@workspace:packages/command-bus"
+  dependencies:
+    "@testing-library/dom": "npm:^10.4.0"
+    "@testing-library/react": "npm:^16.2.0"
+    "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
+    "@typescript-eslint/parser": "npm:^6.0.0"
+    eslint: "npm:^8.0.0"
+    jsdom: "npm:^26.0.0"
+    typescript: "npm:^4.7.4"
+    vite: "npm:^5.4.12"
+    vite-plugin-externals: "npm:^0.5.0"
+    vitest: "npm:^1.6.0"
+  peerDependencies:
+    react: "*"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/commands@workspace:packages/commands":
   version: 0.0.0-use.local
   resolution: "@fiftyone/commands@workspace:packages/commands"
