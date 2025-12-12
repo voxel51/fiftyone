@@ -18,6 +18,10 @@ import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
 import fiftyone.core.utils as fou
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 fos = fou.lazy_import("fiftyone.core.sample")
 fov = fou.lazy_import("fiftyone.core.view")
 
@@ -1110,7 +1114,17 @@ class Frame(Document, metaclass=FrameSingleton):
         d = self._dataset._frame_collection.find_one(
             {"_sample_id": self._sample_id, "frame_number": self.frame_number}
         )
-        self._doc = self._dataset._frame_dict_to_doc(d)
+
+        if d:
+            self._doc = self._dataset._frame_dict_to_doc(
+                d, _reload_backing_docs=False
+            )
+        else:
+            # Frame doc has an 'id' but not found during reload.
+            # This can occur if the frame was deleted externally
+            logger.warning(
+                f"Frame number {self.frame_number} of sample with ID {self._id} has been deleted"
+            )
 
 
 class FrameView(DocumentView):

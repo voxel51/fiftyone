@@ -69,9 +69,19 @@ main
   box-shadow: none !important
   outline: none !important
 
+.bd-main .bd-content .bd-article-container
+  margin-top: 8px
+
+.bd-content:has(.bd-sidebar-secondary) .bd-article-container
+  max-width: 50em
+
 @media (min-width: 960px)
   .bd-page-width
     max-width: 82.5rem
+
+@media (min-width: 1200px)
+  .bd-main .bd-content .bd-article-container .bd-article
+    padding-top: 0
 
 @media (min-width: 1500px)
   .bd-header__inner.bd-page-width,

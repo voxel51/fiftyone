@@ -6,6 +6,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
+  hoveredLabelAtom,
   isPolylineAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
@@ -43,11 +44,15 @@ export const Polyline = ({
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
-  const { isHovered, setIsHovered } = useHoverState();
+  useHoverState();
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
     tooltip,
     label
   );
+
+  const isHovered = hoveredLabel?.id === label._id;
 
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
@@ -271,12 +276,12 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={() => {
-            setIsHovered(true);
+            setHoveredLabel({ id: label._id });
             handleAnnotationPointerOver();
             onPointerOver();
           }}
           onPointerOut={() => {
-            setIsHovered(false);
+            setHoveredLabel(null);
             handleAnnotationPointerOut();
             onPointerOut();
           }}

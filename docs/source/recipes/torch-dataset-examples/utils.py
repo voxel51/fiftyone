@@ -1,5 +1,5 @@
 import fiftyone as fo
-from fiftyone.utils.torch import FiftyOneTorchDataset
+from fiftyone.utils.torch import FiftyOneTorchDataset, GetItem
 
 import numpy as np
 import torch
@@ -7,6 +7,31 @@ from torchvision.models import resnet18, ResNet18_Weights
 import torchvision.transforms.v2 as transforms
 from torchvision import tv_tensors
 from PIL import Image
+
+
+# Helper class to wrap a function with field names for vectorized caching
+class SimpleGetItem(GetItem):
+    """A simple wrapper that allows using a function with specific field names for caching.
+
+    Args:
+        func: A callable that takes a dict of field_name -> value and returns the processed data
+        field_names: A list of field names to cache from the dataset
+    """
+
+    def __init__(self, func, field_names):
+        self._func = func
+        self._field_names = field_names
+        # Create a field mapping where keys and values are the same
+        field_mapping = {name: name for name in field_names}
+        super().__init__(field_mapping=field_mapping)
+
+    @property
+    def required_keys(self):
+        return self._field_names
+
+    def __call__(self, d):
+        return self._func(d)
+
 
 ### basic_example.ipynb utils ###
 augmentations_quickstart = transforms.Compose(
@@ -109,29 +134,63 @@ convert_and_normalize = transforms.Compose(
 )
 
 
-def mnist_get_item(sample):
-    sample_id = sample["id"]
-    image = convert_and_normalize(
-        Image.open(sample["filepath"]).convert("RGB")
-    )
-    # labels are in the format "<number> - <number name english>"
-    label = int(sample["ground_truth.label"][0])
-    return {"image": image, "label": label, "id": sample_id}
+class MnistGetItem(GetItem):
+    """GetItem for MNIST dataset."""
+
+    def __init__(self):
+        super().__init__(
+            field_mapping={
+                "id": "id",
+                "filepath": "filepath",
+                "label": "ground_truth.label",
+            }
+        )
+
+    @property
+    def required_keys(self):
+        return ["id", "filepath", "label"]
+
+    def __call__(self, sample):
+        sample_id = sample["id"]
+        image = convert_and_normalize(
+            Image.open(sample["filepath"]).convert("RGB")
+        )
+        # labels are in the format "<number> - <number name english>"
+        label = int(sample["label"][0])
+        return {"image": image, "label": label, "id": sample_id}
+
+
+# Create instance for use
+mnist_get_item = MnistGetItem()
 
 
 def create_dataloaders(
     dataset,
     get_item,
-    cache_field_names=None,
     local_process_group=None,
     **kwargs,
 ):
+    """Create dataloaders for train/validation/test splits.
+
+    Args:
+        dataset: FiftyOne dataset with train/validation/test tags
+        get_item: A GetItem object
+        local_process_group: Process group for distributed training
+        **kwargs: Additional arguments for DataLoader
+
+    Returns:
+        Dict of dataloaders for each split
+    """
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
+
+    # Use vectorize only for SimpleGetItem (cached fields)
+    use_vectorize = isinstance(get_item, SimpleGetItem)
+
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
-            cache_field_names=cache_field_names,
+            vectorize=use_vectorize,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False
@@ -172,16 +231,30 @@ def setup_ddp_model(**kwargs):
 def create_dataloaders_ddp(
     dataset,
     get_item,
-    cache_field_names=None,
     local_process_group=None,
     **kwargs,
 ):
+    """Create dataloaders for distributed training.
+
+    Args:
+        dataset: FiftyOne dataset with train/validation/test tags
+        get_item: A GetItem object
+        local_process_group: Process group for distributed training
+        **kwargs: Additional arguments for DataLoader
+
+    Returns:
+        Dict of dataloaders for each split with DistributedSampler
+    """
     split_tags = ["train", "validation", "test"]
     dataloaders = {}
+
+    # Use vectorize only for SimpleGetItem (cached fields)
+    use_vectorize = isinstance(get_item, SimpleGetItem)
+
     for split_tag in split_tags:
         split = dataset.match_tags(split_tag).to_torch(
             get_item,
-            cache_field_names=cache_field_names,
+            vectorize=use_vectorize,
             local_process_group=local_process_group,
         )
         shuffle = True if split_tag == "train" else False

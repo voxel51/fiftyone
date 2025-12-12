@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEFAULT_CHANNEL_ID } from "../dispatch";
 import { EventGroup, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
@@ -18,22 +19,41 @@ import { useEventBus } from "./useEventBus";
  * const useDemoEventHandler = createUseEventHandler<DemoEventGroup>();
  *
  * function Component() {
- *   useDemoEventHandler("demo:eventA", (data) => console.log(data.id, data.name));
- *   useDemoEventHandler("demo:eventD", () => console.log("Event D received"));
+ *   // ⚠️ IMPORTANT: Always wrap handlers in useCallback to avoid unnecessary re-renders
+ *   // Using useCallback directly as the second argument provides type inference
+ *   useDemoEventHandler("demo:eventA", useCallback((data) => {
+ *     console.log(data.id, data.name); // data is automatically typed
+ *   }, []));
+ *
+ *   useDemoEventHandler("demo:eventD", useCallback(() => {
+ *     console.log("Event D received");
+ *   }, []));
+ *
  *   return <div>...</div>;
  * }
  * ```
+ *
+ * @remarks
+ * **⚠️ IMPORTANT**: Always wrap your handler functions in `useCallback` to ensure
+ * referential stability. Without `useCallback`, the handler will be a new function reference
+ * on every render, causing the event handler to be unregistered and re-registered unnecessarily,
+ * which can lead to performance issues and missed events.
+ *
+ * You can use `useCallback` directly as the second argument to get automatic type inference
+ * for the handler's data parameter, and this pattern doesn't violate the rules of hooks.
  */
-export function createUseEventHandler<T extends EventGroup>() {
+export function createUseEventHandler<T extends EventGroup>(
+  channelId = DEFAULT_CHANNEL_ID
+) {
   return function useEventHandler<K extends keyof T>(
     event: K,
     handler: EventHandler<T[K]>
   ) {
-    const bus = useEventBus<T>();
+    const bus = useEventBus<T>(channelId);
 
     useEffect(() => {
       bus.on(event, handler);
       return () => bus.off(event, handler);
-    }, [bus, event, handler]);
+    }, [bus, event, handler, channelId]);
   };
 }

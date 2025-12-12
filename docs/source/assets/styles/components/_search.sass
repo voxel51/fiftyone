@@ -8,7 +8,10 @@
   width: 100%
   padding: 3px 4px
 
-  @media (min-width: 960px)
+  .DocSearch-Button-Placeholder
+    color: inherit
+
+  @media (min-width: 1200px)
     min-width: 180px
 
     &:hover, &:active, &:focus
@@ -53,3 +56,22 @@
 
 #searchbox-mobile .DocSearch-Button
   margin-bottom: 16px
+
+.docsearch-enterprise-banner
+  background-color: var(--color-background)
+  border-top: 1px solid var(--pst-border-color)
+  padding: 12px 16px
+
+  .enterprise-banner-content
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    flex-wrap: wrap
+
+  .enterprise-banner-text
+    font-size: 14px
+    line-height: 1.4
+    color: var(--pst-color-text-base)
+    flex: 1
+    min-width: 200px

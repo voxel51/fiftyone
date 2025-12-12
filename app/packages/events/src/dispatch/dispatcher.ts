@@ -48,22 +48,30 @@ export class EventDispatcher<T extends EventGroup> {
    * @param event - Event type name
    * @param handler - Handler function (sync or async)
    *
+   * @returns A function to unregister the handler
+   *
    * @example
    * ```typescript
    * // Synchronous handler
    * const syncHandler = (data: DemoEventGroup["demo:eventA"]) => console.log(data.id);
-   * eventBus.on("demo:eventA", syncHandler);
+   * const unregister = eventBus.on("demo:eventA", syncHandler);
+   * unregister();
    *
    * // Asynchronous handler
-   * eventBus.on("demo:eventA", async (data) => {
+   * const unregister = eventBus.on("demo:eventA", async (data) => {
    *   await fetch(`/api/events/${data.id}`);
    * });
+   * unregister();
    *
    * // No payload
-   * eventBus.on("demo:eventD", () => console.log("no payload"));
+   * const unregister = eventBus.on("demo:eventD", () => console.log("no payload"));
+   * unregister();
    * ```
    */
-  public on<E extends keyof T>(event: E, handler: EventHandler<T[E]>): void {
+  public on<E extends keyof T>(
+    event: E,
+    handler: EventHandler<T[E]>
+  ): () => void {
     const handlers = this.handlers[event];
 
     if (handlers) {
@@ -73,6 +81,8 @@ export class EventDispatcher<T extends EventGroup> {
     } else {
       this.handlers[event] = [handler];
     }
+
+    return () => this.off(event, handler);
   }
 
   /**
@@ -115,6 +125,21 @@ export class EventDispatcher<T extends EventGroup> {
   }
 
   /**
+   * Removes all handlers for all event types.
+   *
+   * @example
+   * ```typescript
+   * // Remove all handlers for all events
+   * eventBus.clearAll();
+   * ```
+   */
+  public clearAll(): void {
+    for (const event in this.handlers) {
+      delete this.handlers[event];
+    }
+  }
+
+  /**
    * Dispatches an event to all registered handlers.
    *
    * @template E - Event type key
@@ -147,17 +172,13 @@ export class EventDispatcher<T extends EventGroup> {
     }
 
     // Collect all handler results (sync handlers return void, async return Promise<void>)
-    const promises = typeHandlers.map((handler, index) => {
+    const promises = typeHandlers.map((handler) => {
       try {
         const result = handler(data);
         // If handler returns a Promise, return it; otherwise wrap void in resolved Promise
         return result instanceof Promise ? result : Promise.resolve();
       } catch (error) {
-        // Sync handler threw synchronously - log and return rejected promise
-        console.error(
-          `error handling event '${String(event)}' in handler ${index}`,
-          error
-        );
+        // Sync handler threw synchronously - return rejected promise
         return Promise.reject(error);
       }
     });

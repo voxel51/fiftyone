@@ -1,3 +1,4 @@
+import { useRegisterAnnotationCommandHandlers } from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -50,6 +51,11 @@ const SpacesContainer = styled.div`
   overflow: hidden;
   z-index: 1501;
 `;
+
+const ModalCommandHandlersRegistration = () => {
+  useRegisterAnnotationCommandHandlers();
+  return null;
+};
 
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -242,6 +248,7 @@ const Modal = () => {
         data-cy="modal"
       >
         <Actions />
+        <ModalCommandHandlersRegistration />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

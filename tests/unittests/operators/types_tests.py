@@ -107,7 +107,10 @@ class TestPipelineType(unittest.TestCase):
 
     def test_pipeline_run_info(self):
         run_info = types.PipelineRunInfo(
-            active=False, stage_index=2, expected_children=[1, 2]
+            active=False,
+            stage_index=2,
+            expected_children=[1, 2],
+            child_errors={"child1": "error1", "child2": "error2"},
         )
         dict_rep = run_info.to_json()
         self.assertEqual(
@@ -116,6 +119,7 @@ class TestPipelineType(unittest.TestCase):
                 "active": False,
                 "stage_index": 2,
                 "expected_children": [1, 2],
+                "child_errors": {"child1": "error1", "child2": "error2"},
             },
         )
         new_obj = types.PipelineRunInfo.from_json(dict_rep)

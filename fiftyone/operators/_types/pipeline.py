@@ -191,6 +191,23 @@ class PipelineRunInfo:
     stage_index: int = 0
     """Index of the pipeline's current execution stage"""
 
+    child_errors: Optional[dict[str, str]] = None
+    """Mapping from child operation IDs to error messages"""
+
+    # Overriding default init so we swallow extra kwargs
+    def __init__(
+        self,
+        active=True,
+        expected_children=None,
+        stage_index=0,
+        child_errors=None,
+        **_,
+    ):
+        self.active = active
+        self.expected_children = expected_children
+        self.stage_index = stage_index
+        self.child_errors = child_errors
+
     @classmethod
     def from_json(cls, doc: dict):
         if doc is None:

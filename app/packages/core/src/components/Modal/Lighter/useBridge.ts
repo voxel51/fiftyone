@@ -2,10 +2,19 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { LIGHTER_EVENTS, type Scene2D } from "@fiftyone/lighter";
-import { useEffect } from "react";
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  UpdateLabelCommand,
+  useLighterEventBus,
+  useLighterEventHandler,
+  type LighterEventGroup,
+  type Scene2D,
+} from "@fiftyone/lighter";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect } from "react";
+import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
+import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
 import useColorMappingContext from "./useColorMappingContext";
-import { useOverlayPersistence } from "./useOverlayPersistence";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
 /**
@@ -15,9 +24,107 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  * 1. We listen to certain events from "FiftyOne state" world and react to them, or
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
-export const useBridge = (scene: Scene2D | null) => {
-  useLighterTooltipEventHandler(scene);
-  useOverlayPersistence(scene);
+export const useBridge = (scene: Scene2D | null, sceneId: string) => {
+  useLighterTooltipEventHandler(scene, sceneId);
+  const eventBus = useLighterEventBus(sceneId);
+  const useEventHandler = useLighterEventHandler(sceneId);
+  const save = useSetAtom(currentData);
+  const overlay = useAtomValue(currentOverlay);
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarValueUpdated",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        const overlay = scene.getOverlay(payload.overlayId);
+
+        if (!overlay) {
+          return;
+        }
+
+        scene.executeCommand(
+          new UpdateLabelCommand(overlay, payload.currentLabel, payload.value)
+        );
+      },
+      [scene]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelHover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        eventBus.dispatch("lighter:do-overlay-hover", {
+          id: payload.id,
+          tooltip: payload.tooltip ?? false,
+        });
+      },
+      [scene, eventBus]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:notification:sidebarLabelUnhover",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        eventBus.dispatch("lighter:do-overlay-unhover", {
+          id: payload.id,
+        });
+      },
+      [scene, eventBus]
+    )
+  );
+
+  const handleCommandEvent = useCallback(
+    (
+      payload:
+        | LighterEventGroup["lighter:command-executed"]
+        | LighterEventGroup["lighter:undo"]
+        | LighterEventGroup["lighter:redo"]
+    ) => {
+      // Here, this would be true for `undo` or `redo`
+      if (
+        !("command" in payload) ||
+        !(payload.command instanceof UpdateLabelCommand)
+      ) {
+        const label = overlay?.label;
+
+        if (label) {
+          save(label);
+        }
+
+        return;
+      }
+
+      if (!payload.command.nextLabel) {
+        return;
+      }
+
+      const newLabel = coerceStringBooleans(
+        payload.command.nextLabel as Record<string, unknown>
+      );
+
+      if (newLabel) {
+        save(newLabel);
+      }
+    },
+    [overlay, save]
+  );
+
+  useEventHandler("lighter:command-executed", handleCommandEvent);
+  useEventHandler("lighter:redo", handleCommandEvent);
+  useEventHandler("lighter:undo", handleCommandEvent);
 
   const context = useColorMappingContext();
 

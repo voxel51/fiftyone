@@ -704,6 +704,9 @@ class BaseClassificationResults(BaseEvaluationResults):
         if labels.size == 0:
             print("No classes to analyze")
             return
+        if self.ytrue.size == 0:
+            print("No samples to analyze")
+            return
 
         report_str = skm.classification_report(
             self.ytrue,
@@ -890,6 +893,26 @@ class BaseClassificationResults(BaseEvaluationResults):
 
     def _precision_recall_fscore(self, labels, average, beta):
         pos_label = getattr(self, "_pos_label", None)
+
+        # In sklearn 1.8 and later, passing empty arrays raises an error
+        #   instead of returning zeros.
+        #   https://github.com/scikit-learn/scikit-learn/pull/32549
+        #   Handle this case here now to maintain consistent functionality with
+        #   sklearn < 1.8
+        if self.ytrue.size == 0:
+            # If average is None, return arrays of zeros. From function
+            # docstring:
+            # precision : float (if average is not None) or array of float,
+            #         shape =\
+            #         [n_unique_labels]
+            #         Precision score.
+            if average is None:
+                num_labels = 0 if labels is None else len(labels)
+                zeros = np.zeros(num_labels, dtype=float)
+                return zeros, zeros, zeros
+
+            return 0.0, 0.0, 0.0
+
         precision, recall, fscore, _ = skm.precision_recall_fscore_support(
             self.ytrue,
             self.ypred,

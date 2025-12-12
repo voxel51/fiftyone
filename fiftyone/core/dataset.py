@@ -57,6 +57,7 @@ import fiftyone.core.view as fov
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -4529,7 +4530,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset._doc.id != self._doc.id:
             raise ValueError("Cannot save view into a different dataset")
 
-        view._set_name(name)
         slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
@@ -4556,6 +4556,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.saved_views.append(view_doc)
         self._doc.last_modified_at = now
         self._doc.save(virtual=True)
+
+        view._set_name(name)
+
+        # Backing datasets for saved generated views should be persistent
+        if view._is_generated:
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4652,8 +4659,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         view_doc = self._get_saved_view_doc(name)
         view = self._load_saved_view_from_doc(view_doc)
+        self._update_saved_view_if_necessary(view, view_doc=view_doc)
         view_doc._update_last_loaded_at()
         return view
+
+    def _update_saved_view_if_necessary(
+        self, view, view_doc=None, reload=False
+    ):
+        if view_doc is None:
+            view_doc = self._get_saved_view_doc(view.name)
+
+        updated = False
+
+        # Some view stages store a `_state` parameter that encodes information
+        # about their source collection to determine when they need updating.
+        # Over time, ViewStage kwargs may be changed, which then need to be
+        # incorporated into the saved `view_stages`
+        view_stages = view._serialize(include_uuids=False)
+        saved_view_stages = [json_util.loads(s) for s in view_doc.view_stages]
+        if view_stages != saved_view_stages:
+            view_doc.view_stages = [json_util.dumps(s) for s in view_stages]
+            updated = True
+
+        # When reloading generated views, increment `last_modified_at` so we
+        # can compute when the view next needs refreshing
+        if reload and view._is_generated:
+            view_doc.last_modified_at = datetime.utcnow()
+            updated = True
+
+        if updated:
+            view_doc.save(virtual=True)
+            self._doc.reload("saved_views")
+
+        # Backing datasets for saved generated views should be persistent
+        if view._is_generated and not view._dataset.persistent:
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
@@ -4674,6 +4715,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if isinstance(view_doc, DBRef):
                 continue
 
+            _handle_delete_generated_saved_view(self, view_doc)
             view_doc.delete()
 
         self._doc.saved_views = []
@@ -4681,11 +4723,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_saved_view(self, name):
         view_doc = self._get_saved_view_doc(name, pop=True)
-        if not isinstance(view_doc, DBRef):
-            view_id = str(view_doc.id)
-            view_doc.delete()
-        else:
+        if isinstance(view_doc, DBRef):
             view_id = None
+        else:
+            view_id = str(view_doc.id)
+
+            _handle_delete_generated_saved_view(self, view_doc)
+            view_doc.delete()
 
         self.save()
 
@@ -4717,9 +4761,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _load_saved_view_from_doc(self, view_doc):
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         name = getattr(view_doc, "name")
-        view = fov.DatasetView._build(self, stage_dicts)
-        view._set_name(name)
-        return view
+        return fov.DatasetView._build(self, stage_dicts, name=name)
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
@@ -5459,12 +5501,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        svc = foos.ExecutionStoreService(dataset_id=self._doc.id)
-        svc.cleanup()
+        _delete_dataset_extras(self)
 
         # Update singleton
         self._instances.pop(self._doc.name, None)
-        _delete_dataset_doc(self._doc)
+
+        self._doc.delete()
+
         self._deleted = True
 
     def add_dir(
@@ -8203,7 +8246,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     validate=False,
                 )
 
-            # pylint: disable=possibly-used-before-assignment
             if not dynamic and field_name in schema:
                 continue
 
@@ -8241,7 +8283,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
-                # pylint: disable=possibly-used-before-assignment
                 if not dynamic and field_name in schema:
                     continue
 
@@ -8263,13 +8304,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def _sample_dict_to_doc(self, d):
+    def _sample_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._sample_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading sample with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._sample_doc_cls.from_dict(d)
 
@@ -8277,13 +8326,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._frame_dict_to_doc(d)
         return fofr.Frame.from_doc(doc, dataset=self)
 
-    def _frame_dict_to_doc(self, d):
+    def _frame_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._frame_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading frame with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
@@ -9056,11 +9113,29 @@ def _do_load_dataset(obj, name):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
-def _delete_dataset_doc(dataset_doc):
+def _handle_delete_generated_saved_view(dataset, view_doc):
+    if not any("_state" in s for s in view_doc.view_stages):
+        return
+
+    try:
+        # When deleting generated saved views, mark the backing dataset as
+        # non-persistent so it can be garbage collected
+        view = dataset._load_saved_view_from_doc(view_doc)
+        view._dataset._doc.persistent = False
+        view._dataset.save()
+    except:
+        pass
+
+
+def _delete_dataset_extras(dataset):
+    dataset_doc = dataset._doc
+    dataset_id = dataset_doc.id
+
     for view_doc in dataset_doc.saved_views:
         if isinstance(view_doc, DBRef):
             continue
 
+        _handle_delete_generated_saved_view(dataset, view_doc)
         view_doc.delete()
 
     for workspace_doc in dataset_doc.workspaces:
@@ -9105,11 +9180,11 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
-    from fiftyone.operators.delegated import DelegatedOperationService
+    svc = food.DelegatedOperationService()
+    svc.delete_for_dataset(dataset_id=dataset_id)
 
-    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
-
-    dataset_doc.delete()
+    svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+    svc.cleanup()
 
 
 def _clone_collection(

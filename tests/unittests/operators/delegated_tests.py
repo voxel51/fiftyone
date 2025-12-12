@@ -199,9 +199,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             {"operator": {"$regex": TEST_DO_PREFIX}}
         )
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_delegate_operation(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -425,9 +423,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset.delete()
         dataset2.delete()
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_set_run_states(self, mock_load_dataset, mock_get_operator):
         mock_inputs = MockInputs()
         mock_load_dataset.return_value = MockDataset()
@@ -471,9 +467,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_sets_progress(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockOperator(sets_progress=True)
@@ -504,9 +498,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_full_run_success(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
@@ -539,9 +531,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(doc.result.result, {"executed": True})
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_generator_run_success(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator()
@@ -572,9 +562,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_generator_sets_progress(
         self, mock_load_dataset, mock_get_operator
     ):
@@ -605,9 +593,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_updates_progress(self, mock_load_dataset, mock_get_operator):
         mock_inputs = MockInputs()
         mock_outputs = MockOutputs()
@@ -671,9 +657,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.RUNNING)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_full_run_fail(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -710,9 +694,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertTrue("Exception: MockOperator failed" in doc.result.error)
         self.assertIsNotNone(doc.failed_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_rerun_failed(self, mock_load_dataset, get_op_mock):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -854,9 +836,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 with pytest.raises(ValueError):
                     _ = self.svc.rerun_operation("abc123")
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_execute_with_already_processing_op(
         self, mock_load_dataset, mock_get_operator
     ):
@@ -1234,7 +1214,10 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     ):
         with patch.object(self.svc, "get") as do_get_mock:
             parent_run_info = PipelineRunInfo(
-                active=False, expected_children=[1, 1, 5], stage_index=2
+                active=False,
+                expected_children=[1, 1, 5],
+                stage_index=2,
+                child_errors={"child1": "error1", "child2": "error2"},
             )
             parent_id = ObjectId()
             pipeline = Pipeline(
@@ -1282,6 +1265,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 num_distributed_tasks=pipeline.stages[
                     parent_run_info.stage_index
                 ].num_distributed_tasks,
+                pipeline_errors=parent_run_info.child_errors,
             )
             prepare_operator_mock.assert_called_once_with(
                 operator_uri=child_do.operator,
@@ -1439,9 +1423,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(total, 25)
         dataset.delete()
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_gets_dataset_id_from_name(
         self, mock_load_dataset, mock_get_operator, *args
     ):
@@ -1463,9 +1445,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(doc.dataset_id, dataset_id)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_deletes_by_dataset_id(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1516,9 +1496,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(len(ops), 0)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_search(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1615,9 +1593,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(len(docs), 1)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_count(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1664,9 +1640,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(docs, 25)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_rename_operation(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1691,9 +1665,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc.id)
         self.assertEqual(doc.label, "this is my delegated operation run.")
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     @pytest.mark.asyncio
     async def test_set_completed_in_async_context(
         self, mock_load_dataset, mock_get_operator
@@ -1780,3 +1752,58 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_failed_exec_adds_child_error_to_parent(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(operator_uri="@test/op1", name="one"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(name="three", operator_uri="@test/op3"),
+            ]
+        )
+        parent_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+        self.docs_to_delete.append(parent_doc)
+
+        #####
+        child_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(child_doc)
+        child_doc.parent_id = parent_doc.id
+        self.svc.execute_operation(child_doc)
+        #####
+
+        updated_parent_do = self.svc.get(parent_doc.id)
+        self.assertIn(
+            str(child_doc.id), updated_parent_do.pipeline_run_info.child_errors
+        )
+        self.assertIn(
+            "MockOperator failed",
+            updated_parent_do.pipeline_run_info.child_errors[
+                str(child_doc.id)
+            ],
+        )

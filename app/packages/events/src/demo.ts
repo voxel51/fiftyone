@@ -1,4 +1,4 @@
-import { getEventBus } from "./hooks";
+import { getEventBus } from "./dispatch";
 import { EventHandler } from "./types";
 
 export type DemoEventGroup = {

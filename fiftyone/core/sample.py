@@ -18,6 +18,9 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 from fiftyone.core.singletons import SampleSingleton
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_default_sample_fields(include_private=False, use_db_fields=False):
@@ -536,7 +539,15 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             return
 
         d = self._dataset._sample_collection.find_one({"_id": self._id})
-        self._doc = self._dataset._sample_dict_to_doc(d)
+        if d:
+            # Disable reloading of backing docs to prevent infinite recursion
+            self._doc = self._dataset._sample_dict_to_doc(
+                d, _reload_backing_docs=False
+            )
+        else:
+            # Sample has an 'id' but not found during reload.
+            # This can occur if the sample was deleted externally
+            logger.warning(f"Sample with ID {self._id} has been deleted")
 
     def reload(self, hard=False, include_frames=True):
         """Reloads the sample from the database.

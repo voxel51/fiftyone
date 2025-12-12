@@ -103,6 +103,7 @@ class TestOperatorExecutionContext(unittest.TestCase):
                     constants.ViewTarget.SELECTED_SAMPLES,
                     view.select([selected]),
                 ),
+                (constants.ViewTarget.CUSTOM_VIEW_TARGET, ds.limit(5)),
                 ("TESTING_INVALID", view),
                 (None, view),
             ]
@@ -113,6 +114,12 @@ class TestOperatorExecutionContext(unittest.TestCase):
                     "params": {
                         "name": "Jon",
                         "view_target": target_view,
+                        "custom_view_target": [
+                            {
+                                "_cls": "fiftyone.core.stages.Limit",
+                                "kwargs": [["limit", 5]],
+                            }
+                        ],
                     },
                     "view": [
                         {

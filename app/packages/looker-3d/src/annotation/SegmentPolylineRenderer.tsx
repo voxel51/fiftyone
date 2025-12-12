@@ -17,7 +17,7 @@ import {
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
-  polylinePointTransformsAtom,
+  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
@@ -52,8 +52,8 @@ export const SegmentPolylineRenderer = ({
     activeSegmentationStateAtom
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const setPolylinePointTransforms = useSetRecoilState(
-    polylinePointTransformsAtom
+  const setStagedPolylineTransforms = useSetRecoilState(
+    stagedPolylineTransformsAtom
   );
 
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
@@ -92,7 +92,7 @@ export const SegmentPolylineRenderer = ({
           ),
         };
 
-        setPolylinePointTransforms((prev) => {
+        setStagedPolylineTransforms((prev) => {
           let transformData: PolylinePointTransformData;
           if (!prev || Object.keys(prev).length === 0 || !prev[labelId]) {
             transformData = {

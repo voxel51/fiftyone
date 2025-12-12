@@ -1,2 +1,2 @@
 export * from "./dispatcher";
-export { getEventBus } from "./registry";
+export { DEFAULT_CHANNEL_ID, getEventBus, clearChannel } from "./registry";

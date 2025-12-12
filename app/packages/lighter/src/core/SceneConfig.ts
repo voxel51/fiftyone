@@ -2,7 +2,6 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import type { EventBus } from "../event/EventBus";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 
@@ -27,7 +26,6 @@ export interface Scene2DConfig {
   canvas: HTMLCanvasElement;
   renderer: Renderer2D;
   resourceLoader: ResourceLoader;
-  eventBus: EventBus;
+  sceneId: string;
   options?: SceneOptions;
-  sceneId?: string;
 }

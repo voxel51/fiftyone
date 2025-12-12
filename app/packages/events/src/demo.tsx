@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useState } from "react";
 import { createUseEventHandler, useEventBus } from "./hooks";
 import { EventHandler } from "./types";
 
@@ -107,18 +107,31 @@ const Sink = () => {
   }, [eventBus]);
 
   // OR if you don't want to deal with on/off --
-  useDemoEventHandler("demo:eventC", (data) => console.log(data.foo));
+  // ⚠️ IMPORTANT: Always wrap handlers in useCallback to avoid unnecessary re-renders
+  // Using useCallback directly as the second argument provides type inference
+  useDemoEventHandler(
+    "demo:eventC",
+    useCallback((data) => {
+      console.log(data.foo);
+    }, [])
+  );
 
   // Optional payload handler
-  useDemoEventHandler("demo:eventD", () => {
-    console.log("Event D received (no payload)");
-  });
+  useDemoEventHandler(
+    "demo:eventD",
+    useCallback(() => {
+      console.log("Event D received (no payload)");
+    }, [])
+  );
 
   // Async handler using the hook - handlers run in parallel
-  useDemoEventHandler("demo:eventA", async (data) => {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    console.log("Hook async handler completed:", data.name);
-  });
+  useDemoEventHandler(
+    "demo:eventA",
+    useCallback(async (data) => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      console.log("Hook async handler completed:", data.name);
+    }, [])
+  );
 
   return <Fragment />;
 };
