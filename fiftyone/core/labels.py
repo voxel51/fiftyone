@@ -436,33 +436,43 @@ class Classifications(_HasLabelList, Label):
 
 
 class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
-    """An object detection.
+"""An object detection.
 
-    Args:
-        label (None): the label string
-        bounding_box (None): a list of relative bounding box coordinates in
-            ``[0, 1]`` in the following format::
+This class can represent 2D or 3D objects:
+
+-   For :ref:`2D objects <object-detection>`, you must provide the
+    ``bounding_box`` parameter, and you can also provide the optional
+    ``mask`` or ``mask_path`` parameters to represent
+    :ref:`instance segmentations <instance-segmentation>`
+-   For :ref:`3D objects <3d-detections>`, you must instead provide the
+    ``location``, ``dimensions``, and ``rotation`` parameters
+
+Args:
+    label (None): the label string
+    bounding_box (None): a list of relative bounding box coordinates in
+        ``[0, 1]`` in the following format (2D only)::
 
             [<top-left-x>, <top-left-y>, <width>, <height>]
 
-        mask (None): an instance segmentation mask for the detection within
-            its bounding box, which should be a 2D binary or 0/1 integer numpy
-            array
-        mask_path (None):  the absolute path to the instance segmentation image
-            on disk, which should be a single-channel PNG image where any
-            non-zero values represent the instance's extent
-        confidence (None): a confidence in ``[0, 1]`` for the detection
-        index (None): an index for the object
-        instance (None): an instance of :class:`Instance` to link this
-            detection label to other similar labels
-        attributes ({}): a dict mapping attribute names to :class:`Attribute`
-            instances
-        location (None): object center [x, y, z] in scene coordinates (3D only)
-        dimensions (None): object size [x, y, z] in scene units (3D only)
-        rotation (None): rotation [x, y, z] around center, in [-pi, pi] (3D only)
-    
-        See the 3D detections guide for details https://docs.voxel51.com/getting_started/threed_visual_ai/02_loading_annotations.html
-    """
+    mask (None): an instance segmentation mask for the detection within
+        its bounding box, which should be a 2D binary or 0/1 integer numpy
+        array (2D only)
+    mask_path (None): the absolute path to the instance segmentation image
+        on disk, which should be a single-channel PNG image where any
+        non-zero values represent the instance's extent (2D only)
+    location (None): the object center ``[x, y, z]`` in scene coordinates
+        (3D only)
+    dimensions (None): the object size ``[x, y, z]`` in scene units
+        (3D only)
+    rotation (None): the object rotation ``[x, y, z]`` around its center,
+        in ``[-pi, pi]`` (3D only)
+    confidence (None): a confidence in ``[0, 1]`` for the detection
+    index (None): an index for the object
+    instance (None): an instance of :class:`Instance` to link this
+        detection label to other similar labels
+    attributes ({}): a dict mapping attribute names to :class:`Attribute`
+        instances
+"""
 
     _MEDIA_FIELD = "mask_path"
 
