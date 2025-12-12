@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getCommandRegistry } from "../registry";
 import { Command } from "../types";
 
@@ -17,29 +17,33 @@ import { Command } from "../types";
  * @param enablement The function that determines if the command is enabled or not.
  * @returns The command instance.
  */
-export const useNewCommand = async (
+export const useNewCommand = (
   id: string,
   execute: () => Promise<void>,
   undo?: () => Promise<void>,
   label?: string,
   description?: string,
   enablement?: () => boolean
-): Promise<Command | undefined> => {
+): Command | undefined => {
   const registry = getCommandRegistry();
-  const command = await registry.registerCommand(
-    id,
-    execute,
-    undo,
-    label,
-    description,
-    enablement
-  );
+  const [command, setCommand] = useState<Command | undefined>(undefined);
   useEffect(() => {
-    if (command) {
-      return () => {
-        registry.unregisterCommand(id);
-      };
+    async () => {
+      const cmd = await registry.registerCommand(
+        id,
+        execute,
+        undo,
+        label,
+        description,
+        enablement
+      );
+      setCommand(cmd);
+      return ()=>{
+        if(command){
+          registry.unregisterCommand(id);
+        }
+      }
     }
-  });
+  }, [id, execute, undo, label, description, enablement]);
   return command;
 };
