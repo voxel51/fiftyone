@@ -25,7 +25,7 @@ export const useSyncWithStagedCuboidTransforms = () => {
           location: location as Vector3Tuple,
           dimensions: dimensions as Vector3Tuple,
           quaternion,
-          rotation: undefined,
+          rotation,
         };
 
         if (!prev) {

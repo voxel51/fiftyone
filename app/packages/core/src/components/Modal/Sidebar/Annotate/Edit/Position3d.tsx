@@ -65,7 +65,9 @@ export default function Position3d() {
     // Resolve final quaterninon by combining the temp quaternion with the original quaternion
     // console.log(">>>stagedCuboidTransforms[data._id]?.quaternion", stagedCuboidTransforms[data._id]?.quaternion);
     const stagedQuat = new Quaternion(
-      ...stagedCuboidTransforms[labelId]?.quaternion
+      ...(Array.isArray(stagedCuboidTransforms[labelId]?.quaternion)
+        ? stagedCuboidTransforms[labelId]?.quaternion
+        : [0, 0, 0, 1])
     );
 
     // If currently transforming, use temp transforms if available

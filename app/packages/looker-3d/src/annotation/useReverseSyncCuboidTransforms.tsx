@@ -44,14 +44,17 @@ export const useReverseSyncCuboidTransforms = () => {
 
     const hasLocationChanged = !isEqual(currentLocation, newLocation);
     const hasDimensionsChanged = !isEqual(currentDimensions, newDimensions);
-    const hasQuaternionChanged = !isEqual(currentQuaternion, newQuaternion);
+    const isValidQuaternion =
+      Array.isArray(newQuaternion) && newQuaternion.length === 4;
+    const hasQuaternionChanged =
+      !isEqual(currentQuaternion, newQuaternion) && isValidQuaternion;
 
     if (hasLocationChanged || hasDimensionsChanged || hasQuaternionChanged) {
       const updatedData = {
         ...currentAnnotation.data,
         ...(newLocation && { location: newLocation }),
         ...(newDimensions && { dimensions: newDimensions }),
-        ...(hasQuaternionChanged && {
+        ...(newQuaternion && {
           rotation: quaternionToRadians(newQuaternion),
         }),
       };
@@ -68,7 +71,7 @@ export const useReverseSyncCuboidTransforms = () => {
       setSavedLabel({
         ...(newLocation && { location: newLocation }),
         ...(newDimensions && { dimensions: newDimensions }),
-        ...(hasQuaternionChanged && {
+        ...(newQuaternion && {
           rotation: quaternionToRadians(newQuaternion),
         }),
       });
