@@ -36,7 +36,7 @@ export class KeyManager {
    * If not provided it will use the global one.
    */
   constructor(commandRegistry?: CommandRegistry) {
-    document.addEventListener("keydown", this.handleKeyDown);
+    document.addEventListener("keydown", this.handleKeyDown.bind(this));
     if (commandRegistry) {
       this.commandRegistry = commandRegistry;
     } else {
