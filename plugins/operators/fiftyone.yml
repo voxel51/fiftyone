@@ -32,6 +32,7 @@ operators:
   - delete_group_slice
   - list_saved_views
   - load_saved_view
+  - reload_saved_view
   - save_view
   - edit_saved_view_info
   - delete_saved_view
@@ -44,6 +45,7 @@ operators:
   - list_files
   - download_file
   - model_evaluation_configure_scenario
+  - mes_plot_resolver
 
   # view stages
   - load_group_by

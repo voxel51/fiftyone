@@ -8,8 +8,11 @@ import {
   PolylineAnnotationLabel,
   Sample,
 } from "@fiftyone/state";
-import { JSONDeltas } from "../../../client";
-import { extractNestedField, generateJsonPatch } from "../../../utils/json";
+import { JSONDeltas } from "@fiftyone/core/src/client";
+import {
+  extractNestedField,
+  generateJsonPatch,
+} from "@fiftyone/core/src/utils/json";
 import { Field, Schema } from "@fiftyone/utilities";
 
 /**

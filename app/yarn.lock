@@ -1516,6 +1516,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@chainner/node-path@npm:^0.1.1":
+  version: 0.1.1
+  resolution: "@chainner/node-path@npm:0.1.1"
+  checksum: 10/2f71d598c730daf6d833aadb50c8773a24e0bc9f567c67e855ee0e9a2b6c4c0230de1f654ffc2a34936fb82f548b080025d3134ea381709e59999473296d3965
+  languageName: node
+  linkType: hard
+
 "@choojs/findup@npm:^0.2.0":
   version: 0.2.1
   resolution: "@choojs/findup@npm:0.2.1"
@@ -2354,6 +2361,28 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@fiftyone/annotation@workspace:packages/annotation":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/annotation@workspace:packages/annotation"
+  dependencies:
+    "@testing-library/dom": "npm:^10.4.0"
+    "@testing-library/react": "npm:^16.2.0"
+    "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
+    "@typescript-eslint/parser": "npm:^6.0.0"
+    eslint: "npm:^8.0.0"
+    jsdom: "npm:^26.0.0"
+    typescript: "npm:^4.7.4"
+    vite: "npm:^5.4.12"
+    vite-plugin-externals: "npm:^0.5.0"
+    vitest: "npm:^1.6.0"
+  peerDependencies:
+    "@fiftyone/commands": "*"
+    "@fiftyone/events": "*"
+    jotai: "*"
+    react: "*"
+  languageName: unknown
+  linkType: soft
+
 "@fiftyone/app@workspace:packages/app":
   version: 0.0.0-use.local
   resolution: "@fiftyone/app@workspace:packages/app"
@@ -2404,6 +2433,25 @@ __metadata:
   peerDependencies:
     "@mui/icons-material": "*"
     "@react-spring/web": "*"
+  languageName: unknown
+  linkType: soft
+
+"@fiftyone/commands@workspace:packages/commands":
+  version: 0.0.0-use.local
+  resolution: "@fiftyone/commands@workspace:packages/commands"
+  dependencies:
+    "@testing-library/dom": "npm:^10.4.0"
+    "@testing-library/react": "npm:^16.2.0"
+    "@typescript-eslint/eslint-plugin": "npm:^6.0.0"
+    "@typescript-eslint/parser": "npm:^6.0.0"
+    eslint: "npm:^8.0.0"
+    jsdom: "npm:^26.0.0"
+    typescript: "npm:^4.7.4"
+    vite: "npm:^5.4.12"
+    vite-plugin-externals: "npm:^0.5.0"
+    vitest: "npm:^1.6.0"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
@@ -2519,6 +2567,7 @@ __metadata:
     vite-plugin-relay: "npm:^1.0.7"
     xstate: "npm:^4.14.0"
   peerDependencies:
+    "@fiftyone/annotation": "*"
     "@mui/icons-material": "*"
     "@mui/material": "*"
     "@react-spring/web": "*"
@@ -2565,6 +2614,7 @@ __metadata:
   peerDependencies:
     jotai: "*"
     react: "*"
+    uuid: "*"
   languageName: unknown
   linkType: soft
 
@@ -2649,6 +2699,7 @@ __metadata:
     pixi.js: "npm:^8.13.1"
     typescript: "npm:^5.8.3"
   peerDependencies:
+    "@fiftyone/events": "*"
     jotai: "*"
     react: ^18.0.0
     react-dom: ^18.0.0
@@ -2876,6 +2927,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/utilities@workspace:packages/utilities"
   dependencies:
+    "@chainner/node-path": "npm:^0.1.1"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     fetch-retry: "npm:^5.0.3"
     lodash: "npm:^4.17.21"
@@ -13322,14 +13374,14 @@ __metadata:
   linkType: hard
 
 "js-yaml@npm:^3.13.1":
-  version: 3.14.1
-  resolution: "js-yaml@npm:3.14.1"
+  version: 3.14.2
+  resolution: "js-yaml@npm:3.14.2"
   dependencies:
     argparse: "npm:^1.0.7"
     esprima: "npm:^4.0.0"
   bin:
     js-yaml: bin/js-yaml.js
-  checksum: 10/9e22d80b4d0105b9899135365f746d47466ed53ef4223c529b3c0f7a39907743fdbd3c4379f94f1106f02755b5e90b2faaf84801a891135544e1ea475d1a1379
+  checksum: 10/172e0b6007b0bf0fc8d2469c94424f7dd765c64a047d2b790831fecef2204a4054eabf4d911eb73ab8c9a3256ab8ba1ee8d655b789bf24bf059c772acc2075a1
   languageName: node
   linkType: hard
 

@@ -6,6 +6,7 @@ jobs:
   test-e2e:
     timeout-minutes: 90
     runs-on: ubuntu-latest-m
+    name: Test e2e (Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -17,9 +18,17 @@ jobs:
     defaults:
       run:
         shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb-version:
+          - "6"
+          - "7"
+          - "8.0"
+          - "latest"
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -34,9 +43,9 @@ jobs:
         run: corepack prepare yarn@4.9.1 --activate
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.12.0
+        uses: supercharge/mongodb-github-action@1.12.1
         with:
-          mongodb-version: latest
+          mongodb-version: ${{ matrix.mongodb-version }}
 
       - name: Setup
         uses: actions/setup-python@v6
@@ -114,7 +123,6 @@ jobs:
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-          working-directory: e2e-pw
 
       - name: Install Playwright browser if not cached
         run: yarn playwright install
@@ -133,6 +141,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v5
         with:
-          name: playwright-report
+          name: playwright-report-mongodb-${{ matrix.mongodb-version }}
           path: e2e-pw/playwright-report/
           retention-days: 30

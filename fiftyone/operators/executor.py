@@ -8,6 +8,7 @@ FiftyOne operator execution.
 
 import asyncio
 import collections
+import contextlib
 import dataclasses
 import inspect
 import logging
@@ -17,7 +18,7 @@ from typing import Optional
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-import fiftyone.core.odm.utils as focu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators import constants
@@ -34,6 +35,9 @@ import fiftyone.server.view as fosv
 
 
 logger = logging.getLogger(__name__)
+
+# This is for reduced code conflicts with enterprise logging
+logging_context = contextlib.nullcontext
 
 
 class ExecutionRunState(object):
@@ -242,131 +246,157 @@ async def execute_or_delegate_operator(
         raise prepared.to_exception()
     operator, executor, ctx, inputs = prepared
 
-    execution_options = operator.resolve_execution_options(ctx)
-    if (
-        not execution_options.allow_immediate_execution
-        and not execution_options.allow_delegated_execution
+    with logging_context(
+        {
+            "operator_uri": operator_uri,
+            "user_id": str(ctx.user.id) if ctx.user else None,
+        }
     ):
-        raise RuntimeError(
-            "This operation does not support immediate OR delegated execution"
-        )
-
-    should_delegate = (
-        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
-    )
-    if should_delegate:
-        if not execution_options.allow_delegated_execution:
-            logger.warning(
-                "This operation does not support delegated "
-                "execution; it will be executed immediately"
-            )
-            should_delegate = False
-    else:
-        if not execution_options.allow_immediate_execution:
-            logger.warning(
-                "This operation does not support immediate "
-                "execution; it will be delegated"
-            )
-            should_delegate = True
-
-    # Validate PipelineOperators
-    pipeline = None
-    if isinstance(operator, PipelineOperator):
-        try:
-            pipeline = operator.resolve_pipeline(ctx)
-            if not pipeline or not isinstance(pipeline, types.Pipeline):
-                raise TypeError(
-                    "Pipeline must be a fiftyone.operators.types.Pipeline"
-                )
-            if not all(
-                isinstance(s, types.PipelineStage) for s in pipeline.stages
-            ):
-                raise TypeError(
-                    "Pipeline stages must be of type PipelineStage"
-                )
-        except Exception as e:
-            return ExecutionResult(
-                executor=executor,
-                error=traceback.format_exc(),
-                error_message=f"Failed to resolve pipeline: {str(e)}",
+        # User code
+        with ctx:
+            execution_options = operator.resolve_execution_options(ctx)
+        if (
+            not execution_options.allow_immediate_execution
+            and not execution_options.allow_delegated_execution
+        ):
+            raise RuntimeError(
+                "This operation does not support immediate OR delegated execution"
             )
 
-    if should_delegate:
-        try:
-            from .delegated import DelegatedOperationService
+        # User code
+        with ctx:
+            should_delegate = (
+                operator.resolve_delegation(ctx)
+                or ctx.requesting_delegated_execution
+            )
 
-            # Cannot distribute tasks from this repo
-            if (
-                ctx.num_distributed_tasks
-                or "num_distributed_tasks" in ctx.request_params
-            ):
-                # Distributed execution is only supported in FiftyOne Enterprise
-                ctx.request_params.pop("num_distributed_tasks", None)
+        if should_delegate:
+            if not execution_options.allow_delegated_execution:
+                logger.warning(
+                    "This operation does not support delegated "
+                    "execution; it will be executed immediately"
+                )
+                should_delegate = False
+        else:
+            if not execution_options.allow_immediate_execution:
+                logger.warning(
+                    "This operation does not support immediate "
+                    "execution; it will be delegated"
+                )
+                should_delegate = True
 
-            if isinstance(operator, PipelineOperator):
-                raise ValueError(
-                    "Pipeline operators require a distributed executor, "
-                    "available only in FiftyOne Enterprise"
+        # Validate PipelineOperators
+        pipeline = None
+
+        if isinstance(operator, PipelineOperator):
+            try:
+                # User code
+                with ctx:
+                    pipeline = operator.resolve_pipeline(ctx)
+                if not pipeline or not isinstance(pipeline, types.Pipeline):
+                    raise TypeError(
+                        "Pipeline must be a fiftyone.operators.types.Pipeline"
+                    )
+                if not all(
+                    isinstance(s, types.PipelineStage) for s in pipeline.stages
+                ):
+                    raise TypeError(
+                        "Pipeline stages must be of type PipelineStage"
+                    )
+            except Exception as e:
+                return ExecutionResult(
+                    executor=executor,
+                    error=traceback.format_exc(),
+                    error_message=f"Failed to resolve pipeline: {str(e)}",
                 )
 
-            ctx.request_params["delegated"] = True
-            metadata = {"inputs_schema": None, "outputs_schema": None}
+        if should_delegate:
+            try:
+                from .delegated import DelegatedOperationService
 
-            if inputs is not None:
-                try:
-                    metadata["inputs_schema"] = inputs.to_json()
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to resolve inputs schema for the operation: {str(e)}"
+                # Cannot distribute tasks from this repo
+                if (
+                    ctx.num_distributed_tasks
+                    or "num_distributed_tasks" in ctx.request_params
+                ):
+                    # Distributed execution is only supported in FiftyOne Enterprise
+                    ctx.request_params.pop("num_distributed_tasks", None)
+
+                if isinstance(operator, PipelineOperator):
+                    raise ValueError(
+                        "Pipeline operators require a distributed executor, "
+                        "available only in FiftyOne Enterprise"
                     )
 
-            op = DelegatedOperationService().queue_operation(
-                operator=operator.uri,
-                context=ctx.serialize(),
-                delegation_target=ctx.delegation_target,
-                label=operator.resolve_run_name(ctx),
-                metadata=metadata,
-                pipeline=None,  # pipelines not supported in this repo
-            )
+                ctx.request_params["delegated"] = True
+                metadata = {"inputs_schema": None, "outputs_schema": None}
 
-            execution = ExecutionResult(
-                op.__dict__, executor, None, delegated=True
-            )
-            execution.result["context"] = (
-                execution.result["context"].serialize()
-                if execution.result["context"]
-                else None
-            )
-            execution.result["pipeline"] = (
-                execution.result["pipeline"].to_json()
-                if execution.result["pipeline"]
-                else None
-            )
-            return execution
-        except Exception as error:
-            return ExecutionResult(
-                executor=executor,
-                error=traceback.format_exc(),
-                error_message=str(error),
-            )
-    else:
-        if isinstance(operator, PipelineOperator):
-            raise NotImplementedError(
-                "Immediate execution of pipeline operators is not supported"
-            )
-        # Not delegated, force distributed execution off
-        ctx.request_params.pop("num_distributed_tasks", None)
+                if inputs is not None:
+                    try:
+                        metadata["inputs_schema"] = inputs.to_json()
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to resolve inputs schema for the operation: {str(e)}"
+                        )
 
-        try:
-            result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except Exception as error:
-            return ExecutionResult(
-                executor=executor,
-                error=traceback.format_exc(),
-                error_message=str(error),
-            )
+                # User code
+                with ctx:
+                    run_name = operator.resolve_run_name(ctx)
 
-        return ExecutionResult(result=result, executor=executor)
+                op = DelegatedOperationService().queue_operation(
+                    operator=operator.uri,
+                    context=ctx.serialize(),
+                    delegation_target=ctx.delegation_target,
+                    label=run_name,
+                    metadata=metadata,
+                    pipeline=None,  # pipelines not supported in this repo
+                )
+
+                execution = ExecutionResult(
+                    op.__dict__, executor, None, delegated=True
+                )
+                execution.result["context"] = (
+                    execution.result["context"].serialize()
+                    if execution.result["context"]
+                    else None
+                )
+                execution.result["pipeline"] = (
+                    execution.result["pipeline"].to_json()
+                    if execution.result["pipeline"]
+                    else None
+                )
+                return execution
+            except Exception as error:
+                return ExecutionResult(
+                    executor=executor,
+                    error=traceback.format_exc(),
+                    error_message=str(error),
+                )
+        else:
+            if isinstance(operator, PipelineOperator):
+                raise NotImplementedError(
+                    "Immediate execution of pipeline operators is not supported"
+                )
+            # Not delegated, force distributed execution off
+            ctx.request_params.pop("num_distributed_tasks", None)
+
+            try:
+                result = await do_execute_operator(
+                    operator, ctx, exhaust=exhaust
+                )
+            except Exception as error:
+                return ExecutionResult(
+                    executor=executor,
+                    error=traceback.format_exc(),
+                    error_message=str(error),
+                )
+
+            if hasattr(operator, "IS_SSE_OPERATOR"):
+                return ExecutionResult(
+                    result=result, executor=executor, is_sse=True
+                )
+
+            return ExecutionResult(result=result, executor=executor)
 
 
 async def prepare_operator_executor(
@@ -393,7 +423,11 @@ async def prepare_operator_executor(
     )
 
     await ctx.resolve_secret_values(operator._plugin_secrets)
-    inputs = operator.resolve_input(ctx)
+
+    # User code
+    with ctx:
+        inputs = operator.resolve_input(ctx)
+
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
@@ -404,24 +438,26 @@ async def prepare_operator_executor(
 
 
 async def do_execute_operator(operator, ctx, exhaust=False):
-    result = await (
-        operator.execute(ctx)
-        if asyncio.iscoroutinefunction(operator.execute)
-        else fou.run_sync_task(operator.execute, ctx)
-    )
+    # User code
+    with ctx:
+        result = await (
+            operator.execute(ctx)
+            if asyncio.iscoroutinefunction(operator.execute)
+            else fou.run_sync_task(operator.execute, ctx)
+        )
 
-    if not exhaust:
-        return result
+        if not exhaust:
+            return result
 
-    if inspect.isgenerator(result):
-        # Fastest way to exhaust sync generator, re: itertools consume()
-        #   https://docs.python.org/3/library/itertools.html
-        collections.deque(result, maxlen=0)
-    elif inspect.isasyncgen(result):
-        async for _ in result:
-            pass
-    else:
-        return result
+        if inspect.isgenerator(result):
+            # Fastest way to exhaust sync generator, re: itertools consume()
+            #   https://docs.python.org/3/library/itertools.html
+            collections.deque(result, maxlen=0)
+        elif inspect.isasyncgen(result):
+            async for _ in result:
+                pass
+        else:
+            return result
 
 
 async def resolve_type(registry, operator_uri, request_params):
@@ -492,7 +528,12 @@ async def resolve_execution_options(registry, operator_uri, request_params):
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
-        return operator.resolve_execution_options(ctx)
+        # User code
+        with ctx:
+            execution_options = operator.resolve_execution_options(ctx)
+
+        return execution_options
+
     except Exception as e:
         return ExecutionResult(error=traceback.format_exc())
 
@@ -513,12 +554,14 @@ def resolve_placement(operator, request_params):
         required_secrets=operator._plugin_secrets,
     )
     try:
-        return operator.resolve_placement(ctx)
+        # User code
+        with ctx:
+            return operator.resolve_placement(ctx)
     except Exception as e:
         return ExecutionResult(error=str(e))
 
 
-class ExecutionContext(object):
+class ExecutionContext(contextlib.AbstractContextManager):
     """Represents the execution context of an operator.
 
     Operators can use the execution context to access the view, dataset, and
@@ -579,6 +622,13 @@ class ExecutionContext(object):
             self._panel_state = self.params.get("panel_state", {})
             self._panel = PanelRef(self)
 
+    # null context manager methods, for reducing code conflicts with enterprise
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
     @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
@@ -589,7 +639,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid, reload=True)
+            self._dataset = foo.load_dataset(id=uid, reload=True)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -597,7 +647,7 @@ class ExecutionContext(object):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid, reload=True)
+                self._dataset = foo.load_dataset(name=uid, reload=True)
 
         if (
             self.group_slice is not None
@@ -672,6 +722,12 @@ class ExecutionContext(object):
             return self.view.select_labels(self.selected_labels)
         if target == constants.ViewTarget.DATASET_VIEW:
             return self.dataset.view()
+        if target == constants.ViewTarget.CUSTOM_VIEW_TARGET:
+            if (
+                view_stages := self.params.get("custom_view_target")
+            ) is not None:
+                # pylint: disable-next-line=protected-access
+                return fov.DatasetView._build(self.dataset, view_stages)
 
         return self.view if self.has_custom_view else self.dataset
 
@@ -1034,6 +1090,8 @@ class ExecutionResult(object):
         delegated (False): whether execution was delegated
         outputs_schema (None): a JSON dict representing the output schema of
             the operator
+        is_sse (False): whether execution was from an operator handling
+            server-sent events (SSE)
     """
 
     def __init__(
@@ -1045,6 +1103,7 @@ class ExecutionResult(object):
         validation_ctx=None,
         delegated=False,
         outputs_schema=None,
+        is_sse=False,
     ):
         self.result = result
         self.executor = executor
@@ -1053,6 +1112,7 @@ class ExecutionResult(object):
         self.validation_ctx = validation_ctx
         self.delegated = delegated
         self.outputs_schema = outputs_schema
+        self.is_sse = is_sse
 
     @property
     def is_generator(self):
@@ -1126,11 +1186,13 @@ class PipelineExecutionContext(object):
     total_stages: int
     """The total number of stages in the pipeline"""
 
+    pipeline_errors: Optional[dict[str, str]] = None
+    """Mapping from past pipeline child operation str IDs to error messages,
+    if available
+    """
+
     num_distributed_tasks: int = 0
     """The number of distributed tasks in the current stage"""
-
-    error: Optional[str] = None
-    """Error message, if any. Applicable only if the pipeline is not active"""
 
     # Overriding default init so we swallow extra kwargs
     def __init__(
@@ -1138,14 +1200,14 @@ class PipelineExecutionContext(object):
         active,
         curr_stage_index,
         total_stages,
-        error=None,
+        pipeline_errors=None,
         num_distributed_tasks=0,
         **_,
     ):
         self.active = active
         self.curr_stage_index = curr_stage_index
         self.total_stages = total_stages
-        self.error = error
+        self.pipeline_errors = pipeline_errors
         self.num_distributed_tasks = num_distributed_tasks
 
 

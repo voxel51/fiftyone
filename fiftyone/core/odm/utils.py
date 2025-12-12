@@ -5,6 +5,7 @@ Utilities for documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import inspect
 import json
@@ -511,9 +512,10 @@ def _merge_embedded_doc_fields(fields_dict, fields):
         subfield = field.get("subfield", None)
 
         if name not in fields_dict:
-            fields_dict[name] = field
             if ftype == fof.EmbeddedDocumentField:
-                field["fields"] = {f["name"]: f for f in field["fields"]}
+                _init_embedded_doc_fields(field)
+
+            fields_dict[name] = field
         else:
             efield = fields_dict[name]
             etype = efield["ftype"]
@@ -528,6 +530,17 @@ def _merge_embedded_doc_fields(fields_dict, fields):
                     efield["subfield"] = subfield
             elif ftype == fof.EmbeddedDocumentField:
                 _merge_embedded_doc_fields(efield["fields"], field["fields"])
+
+
+def _init_embedded_doc_fields(field):
+    fields_dict = {}
+    for _field in field["fields"]:
+        if _field["ftype"] == fof.EmbeddedDocumentField:
+            _init_embedded_doc_fields(_field)
+
+        fields_dict[_field["name"]] = _field
+
+    field["fields"] = fields_dict
 
 
 def _finalize_embedded_doc_fields(fields_dict):
@@ -698,36 +711,9 @@ class DocumentRegistryError(Exception):
 _document_registry = DocumentRegistry()
 
 
-def load_dataset(id=None, name=None, reload=False):
-    """Loads the dataset from the database by its unique id or name. Throws
-    an error if neither id nor name is provided.
+# for backwards compatibility
+# @todo FOEPD-2399 remove at next major release
+def load_dataset(*args, **kwargs):
+    from fiftyone.core.odm.database import load_dataset
 
-    Args:
-        id (None): the unique id of the dataset
-        name (None): the name of the dataset
-        reload (False): whether to reload the dataset if necessary
-
-    Returns:
-        a :class:`fiftyone.core.dataset.Dataset`
-    """
-    import fiftyone.core.odm as foo
-    import fiftyone.core.dataset as fod
-
-    if name:
-        return fod.load_dataset(name, reload=reload)
-
-    if not id:
-        raise ValueError("Must provide either id or name")
-
-    db = foo.get_db_conn()
-    try:
-        _id = ObjectId(id)
-    except:
-        # Although _id is an ObjectId by default, it's possible to set it to
-        # something else
-        _id = id
-
-    res = db.datasets.find_one({"_id": _id}, {"name": True})
-    if not res:
-        raise ValueError(f"Dataset with _id={_id} does not exist")
-    return fod.load_dataset(res.get("name"), reload=reload)
+    return load_dataset(*args, **kwargs)

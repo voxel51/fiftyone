@@ -33,6 +33,7 @@
     "packageManager": "yarn@4.9.1",
     "peerDependencies": {
         "jotai": "*",
-        "react": "*"
+        "react": "*",
+        "uuid": "*"
     }
 }

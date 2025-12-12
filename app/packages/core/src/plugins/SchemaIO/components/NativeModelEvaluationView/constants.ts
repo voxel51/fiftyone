@@ -13,3 +13,8 @@ export const CONFUSION_MATRIX_SORT_OPTIONS = [
   { value: "lc", label: "Least common classes" },
 ];
 export const DEFAULT_BAR_CONFIG = { sortBy: "default" };
+export const DEFAULT_CONFUSION_MATRIX_CONFIG = {
+  sortBy: "default",
+  limit: 100,
+  log: true,
+};

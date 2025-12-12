@@ -19,7 +19,7 @@ import {
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
-  polylinePointTransformsAtom,
+  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
@@ -64,8 +64,8 @@ export const useAnnotationActions = () => {
   const [editing, setEditing] = useAtom(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
-  const setPolylinePointTransforms = useSetRecoilState(
-    polylinePointTransformsAtom
+  const setStagedPolylineTransforms = useSetRecoilState(
+    stagedPolylineTransformsAtom
   );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
@@ -108,7 +108,7 @@ export const useAnnotationActions = () => {
 
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
-    setPolylinePointTransforms((prev) => {
+    setStagedPolylineTransforms((prev) => {
       const currentData = prev[labelId];
       if (!currentData) return prev;
 
@@ -154,35 +154,9 @@ export const useAnnotationActions = () => {
     currentSampleId,
     currentActiveField,
     selectedPoint,
-    setPolylinePointTransforms,
+    setStagedPolylineTransforms,
     setSelectedPoint,
     setCurrentArchetypeSelectedForTransform,
-  ]);
-
-  const handleDeleteEntireTransform = useCallback(() => {
-    if (
-      !selectedLabelForAnnotation ||
-      selectedLabelForAnnotation._cls !== "Polyline"
-    )
-      return;
-
-    const labelId = selectedLabelForAnnotation._id;
-
-    setPolylinePointTransforms((prev) => {
-      const newTransforms = { ...prev };
-      delete newTransforms[labelId];
-      return newTransforms;
-    });
-
-    setSelectedLabelForAnnotation(null);
-    setCurrentArchetypeSelectedForTransform(null);
-    setSelectedPoint(null);
-  }, [
-    selectedLabelForAnnotation,
-    setPolylinePointTransforms,
-    setSelectedLabelForAnnotation,
-    setCurrentArchetypeSelectedForTransform,
-    setSelectedPoint,
   ]);
 
   const handleContextualDelete = useCallback(() => {
@@ -276,7 +250,7 @@ export const useAnnotationActions = () => {
 
   // Custom exit function that also clears polyline transforms
   const customExit = useCallback(() => {
-    setPolylinePointTransforms(null);
+    setStagedPolylineTransforms({});
     setSelectedLabelForAnnotation(null);
     setEditing(null);
     setEditSegmentsMode(false);

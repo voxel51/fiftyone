@@ -10,10 +10,10 @@ import {
   transformModeAtom,
   transformSpaceAtom,
 } from "../../state";
-import type { TransformArchetype, TransformProps } from "../../types";
+import type { Archetype3d, TransformProps } from "../../types";
 
 type TransformableProps = {
-  archetype: TransformArchetype;
+  archetype: Archetype3d;
   explicitObjectRef?: React.RefObject<any>;
   transformControlsPosition?: THREE.Vector3Tuple;
   children: React.ReactNode;

@@ -646,7 +646,7 @@ def _validate_values_setting(field_name, value, _type):
 
     for v in value:
         if not isinstance(v, _type):
-            ValueError(
+            raise ValueError(
                 f"invalid value '{v}' in 'values' setting for field "
                 f"'{field_name}'"
             )

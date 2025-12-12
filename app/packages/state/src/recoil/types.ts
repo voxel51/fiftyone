@@ -79,7 +79,7 @@ export namespace State {
     version: string;
     timestamp: string;
     config: {};
-    viewStages: readonly string[];
+    viewStages?: readonly string[];
   }
 
   export interface BrainRun extends Run {

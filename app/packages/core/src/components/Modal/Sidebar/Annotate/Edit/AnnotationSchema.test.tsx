@@ -1,4 +1,4 @@
-import { LIGHTER_EVENTS, TransformOverlayCommand } from "@fiftyone/lighter";
+import { TransformOverlayCommand } from "@fiftyone/lighter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("AnnotationSchema", () => {
@@ -10,7 +10,7 @@ describe("AnnotationSchema", () => {
     commandExecutedHandler = null;
     mockScene = {
       on: vi.fn((event: string, handler: any) => {
-        if (event === LIGHTER_EVENTS.COMMAND_EXECUTED) {
+        if (event === "lighter:command-executed") {
           commandExecutedHandler = handler;
         }
       }),

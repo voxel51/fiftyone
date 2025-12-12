@@ -20,20 +20,37 @@ export default function ConfusionMatrixConfig(props) {
   const { config, onSave, classes = [] } = props;
   const [open, setOpen] = React.useState(false);
   const [state, setState] = React.useState(config);
-  const hasChosenClasses = state.classes && state.classes.length > 0;
 
-  const { sortBy = "default", limit, log } = state;
+  const { sortBy, limit, log, classes: chosenClasses } = state;
+  const hasChosenClasses =
+    Array.isArray(chosenClasses) && chosenClasses.length > 0;
   const showClassesFilter = classes.length > 0;
+  const sortByLabel = CONFUSION_MATRIX_SORT_OPTIONS.find(
+    (option) => option.value === sortBy
+  )?.label?.toLowerCase();
+  const classFilterLabel = hasChosenClasses ? "chosen" : "all";
+  const limitLabel =
+    limit && !hasChosenClasses ? `maximum ${limit}` : classFilterLabel;
 
   return (
     <Stack>
-      <IconButton
-        onClick={() => {
-          setOpen(true);
-        }}
-      >
-        <Settings />
-      </IconButton>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Typography
+          variant="subtitle2"
+          color="secondary"
+          sx={{ fontStyle: "italic" }}
+        >
+          Displaying {limitLabel} classes with {sortByLabel} order
+          {log ? " and logarithmic colorscale" : ""}
+        </Typography>
+        <IconButton
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          <Settings />
+        </IconButton>
+      </Stack>
       <Dialog open={Boolean(open)} fullWidth onClose={() => setOpen(false)}>
         <Stack spacing={2} sx={{ p: 2 }}>
           <Stack direction="row" spacing={1} alignItems="center">

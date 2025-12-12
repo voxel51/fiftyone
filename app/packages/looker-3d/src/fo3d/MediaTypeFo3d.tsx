@@ -1,21 +1,13 @@
 import { LoadingDots } from "@fiftyone/components";
 import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
-import { useOverlayPersistence } from "@fiftyone/core/src/components/Modal/Lighter/useOverlayPersistence";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
-import {
-  EventBus,
-  lighterSceneAtom,
-  MockRenderer2D,
-  MockResourceLoader,
-  Scene2D,
-} from "@fiftyone/lighter";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { isInMultiPanelViewAtom, useBrowserStorage } from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import CameraControlsImpl from "camera-controls";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import {
   useCallback,
   useEffect,
@@ -64,6 +56,7 @@ import {
 } from "../state";
 import { HoverMetadata } from "../types";
 import { calculateCameraPositionForUpVector } from "../utils";
+import { Annotation3d } from "./Annotation3d";
 import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
 import { Fo3dSceneContext } from "./context";
@@ -116,38 +109,6 @@ export const MediaTypeFo3dComponent = () => {
     if (!foScene) return 0;
     return foScene.children?.length ?? 0;
   }, [foScene]);
-
-  const [scene, setScene] = useAtom(lighterSceneAtom);
-
-  // Hack: Setup a ghost lighter for human annotation needs
-  // Todo: Remove this and abstract out event bus / annotaion system from Lighter
-  useEffect(() => {
-    if (mode !== "annotate") return;
-
-    const mockRenderer = new MockRenderer2D();
-    const eventBus = new EventBus();
-    const mockResourceLoader = new MockResourceLoader();
-
-    const newScene = new Scene2D({
-      renderer: mockRenderer,
-      eventBus,
-      canvas: document.createElement("canvas"),
-      resourceLoader: mockResourceLoader,
-      options: {
-        activePaths: [],
-      },
-    });
-
-    setScene(newScene);
-
-    return () => {
-      newScene.destroy();
-      setScene(null);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, fo3dRoot]);
-
-  useOverlayPersistence(scene);
 
   useHotkey(
     "KeyB",
@@ -393,6 +354,16 @@ export const MediaTypeFo3dComponent = () => {
         );
       }
 
+      const defaultCameraPosition = foScene?.cameraProps.position;
+
+      if (defaultCameraPosition) {
+        return new Vector3(
+          defaultCameraPosition[0],
+          defaultCameraPosition[1],
+          defaultCameraPosition[2]
+        );
+      }
+
       if (
         !ignoreLastSavedCameraPosition &&
         lastSavedCameraPosition &&
@@ -402,16 +373,6 @@ export const MediaTypeFo3dComponent = () => {
           lastSavedCameraPosition[0],
           lastSavedCameraPosition[1],
           lastSavedCameraPosition[2]
-        );
-      }
-
-      const defaultCameraPosition = foScene?.cameraProps.position;
-
-      if (defaultCameraPosition) {
-        return new Vector3(
-          defaultCameraPosition[0],
-          defaultCameraPosition[1],
-          defaultCameraPosition[2]
         );
       }
 
@@ -740,6 +701,7 @@ export const MediaTypeFo3dComponent = () => {
         pluginSettings: settings,
       }}
     >
+      {canAnnotate && <Annotation3d />}
       {shouldRenderMultiPanelView ? (
         <MultiPanelView
           key={upVector ? upVector.toArray().join(",") : null}

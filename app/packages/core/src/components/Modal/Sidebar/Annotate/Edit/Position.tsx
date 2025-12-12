@@ -1,14 +1,15 @@
+import { LabeledField } from "@fiftyone/components";
 import {
   BoundingBoxOverlay,
-  LIGHTER_EVENTS,
   TransformOverlayCommand,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
-import { currentData, currentOverlay } from "./state";
 import { Box, Stack, TextField } from "@mui/material";
-import { LabeledField } from "@fiftyone/components";
+import { useAtom, useAtomValue } from "jotai";
+import React, { useCallback, useEffect, useState } from "react";
+import { currentData, currentOverlay } from "./state";
 
 interface Coordinates {
   position: { x?: number; y?: number };
@@ -16,15 +17,17 @@ interface Coordinates {
 }
 
 const hasValidBounds = (coordinates: Coordinates): boolean => {
+  const { x, y } = coordinates.position;
+  const { width, height } = coordinates.dimensions;
   return (
-    [
-      coordinates.position.x,
-      coordinates.position.y,
-      coordinates.dimensions.width,
-      coordinates.dimensions.height,
-    ].every((num) => Number.isFinite(num)) &&
-    coordinates.dimensions.width > 0 &&
-    coordinates.dimensions.height > 0
+    Number.isFinite(x) &&
+    Number.isFinite(y) &&
+    width !== undefined &&
+    height !== undefined &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0
   );
 };
 
@@ -37,6 +40,9 @@ export default function Position() {
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -50,12 +56,12 @@ export default function Position() {
     });
   }, [overlay]);
 
-  useEffect(() => {
-    const handler = (event) => {
+  const handleBoundsChange = useCallback(
+    (payload: { id: string }) => {
       if (
         !(overlay instanceof BoundingBoxOverlay) ||
         !overlay.hasValidBounds() ||
-        event.detail.id !== data?._id
+        payload.id !== data?._id
       ) {
         return;
       }
@@ -70,18 +76,13 @@ export default function Position() {
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
-    };
+    },
+    [data?._id, overlay, setData]
+  );
 
-    scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-    };
-  }, [data?._id, overlay, scene, setData]);
+  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
+  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
   const handleUserInputChange = (coordinateDelta: Partial<Coordinates>) => {
     // synchronize internal state

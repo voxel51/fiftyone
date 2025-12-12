@@ -21,6 +21,7 @@ export interface BaseLabel {
   tags?: string[];
   index?: number;
   _renderStatus?: DenseLabelRenderStatus;
+  path?: string;
 
   /**
    * Unlike id, instanceId is not guaranteed to be unique across samples.
