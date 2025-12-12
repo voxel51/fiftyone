@@ -41,7 +41,7 @@ export class CommandRegistry {
   }
 
   /**
-   * Removes a commmand from the registry.
+   * Removes a command from the registry.
    * @param id The command id
    */
   public unregisterCommand(id: string): void {
