@@ -20,10 +20,6 @@ const extensionDatasetNamePairs = ["mp4", "pcd", "png"].map(
     ] as const
 );
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 

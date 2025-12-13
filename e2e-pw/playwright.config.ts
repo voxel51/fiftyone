@@ -14,6 +14,13 @@ export default defineConfig({
     process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true"
       ? Duration.Minutes(10)
       : Duration.Seconds(60),
+  /* Saves time in CI */
+  maxFailures: process.env.CI ? 1 : 0,
+  /* Maximum time for the entire test run */
+  globalTimeout:
+    process.env.USE_DEV_BUILD?.toLocaleLowerCase() === "true"
+      ? Duration.Minutes(60)
+      : Duration.Minutes(35),
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -31,6 +38,7 @@ export default defineConfig({
     trace: process.env.CI ? "on-all-retries" : "retain-on-failure",
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
+    video: process.env.CI ? "retain-on-failure" : "off",
   },
   expect: {
     toHaveScreenshot: {

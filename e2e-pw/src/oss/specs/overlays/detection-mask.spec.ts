@@ -22,10 +22,6 @@ const test = base.extend<{ modal: ModalPom; grid: GridPom }>({
   },
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer, mediaFactory }) => {
   await foWebServer.startWebServer();
   await Promise.all(
