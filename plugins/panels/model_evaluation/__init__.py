@@ -338,7 +338,7 @@ class EvaluationPanel(Panel):
         sums = defaultdict(float)
         for yp, conf in zip(results.ypred, results.confs):
             counts[yp] += 1
-            sums[yp] += conf if conf is not None else 0.0
+            sums[yp] += conf if (conf and not np.isnan(conf)) else 0.0
 
         avg_confs = {}
         for c in results.classes:
