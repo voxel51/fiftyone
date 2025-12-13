@@ -11,7 +11,6 @@ import inspect
 import json
 import numbers
 import sys
-
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
@@ -512,7 +511,9 @@ def _merge_embedded_doc_fields(fields_dict, fields):
         subfield = field.get("subfield", None)
 
         if name not in fields_dict:
-            if ftype == fof.EmbeddedDocumentField:
+            if inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 _init_embedded_doc_fields(field)
 
             fields_dict[name] = field
@@ -528,14 +529,19 @@ def _merge_embedded_doc_fields(fields_dict, fields):
                     efield["subfield"] = None
                 elif subfield is not None:
                     efield["subfield"] = subfield
-            elif ftype == fof.EmbeddedDocumentField:
+            elif inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 _merge_embedded_doc_fields(efield["fields"], field["fields"])
 
 
 def _init_embedded_doc_fields(field):
     fields_dict = {}
     for _field in field["fields"]:
-        if _field["ftype"] == fof.EmbeddedDocumentField:
+        ftype = _field["ftype"]
+        if inspect.isclass(ftype) and issubclass(
+            ftype, fof.EmbeddedDocumentField
+        ):
             _init_embedded_doc_fields(_field)
 
         fields_dict[_field["name"]] = _field
@@ -548,7 +554,10 @@ def _finalize_embedded_doc_fields(fields_dict):
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
-            if field["ftype"] == fof.EmbeddedDocumentField:
+            ftype = field["ftype"]
+            if inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )
