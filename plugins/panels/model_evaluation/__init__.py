@@ -51,7 +51,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v3.0.0"
+CACHE_VERSION = "v3.0.1"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
