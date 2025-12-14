@@ -6,6 +6,9 @@ import { Command } from "../types";
 import { KeySequence, KeyParser } from "./parser";
 import { CommandRegistry, getCommandRegistry } from "../registry";
 
+/**
+ * The order of this enum determines the precedence of the scopes
+ */
 export enum KeyBindingScope {
   User = "User",
   Plugin = "Plugin",
@@ -31,6 +34,7 @@ export class KeyManager {
   private coreBindings = new Map<Array<KeySequence>, Command>();
   private priorMatches = new Array<KeyboardEvent>();
   private readonly commandRegistry: CommandRegistry;
+
   /**
    * @param commandRegistry For testing we want a local command registry.
    * If not provided it will use the global one.
@@ -41,6 +45,17 @@ export class KeyManager {
       this.commandRegistry = commandRegistry;
     } else {
       this.commandRegistry = getCommandRegistry();
+    }
+  }
+
+  private getBindings(inScope: KeyBindingScope): Map<Array<KeySequence>, Command> {
+    switch (inScope) {
+      case KeyBindingScope.Core:
+        return this.coreBindings;
+      case KeyBindingScope.Plugin:
+        return this.pluginBindings;
+      case KeyBindingScope.User:
+        return this.userBindings;
     }
   }
   /**
@@ -56,12 +71,11 @@ export class KeyManager {
     let hasMatch = false;
     let command: Command | undefined = undefined;
     for (const [sequences, cmd] of bindings) {
-      //run through the bindings
       for (const [index, sequence] of sequences.entries()) {
         //Match to prior matches for the begining if there are any
         if (index < this.priorMatches.length) {
           if (!sequence.matches(this.priorMatches[index])) {
-            continue;
+            break;
           }
         } else {
           //now match this event, since possible prior matches match
@@ -114,18 +128,14 @@ export class KeyManager {
     const state: MatchState = {
       partial: false,
     };
-    await this.scopedHandle(this.userBindings, event, state);
-    if (await this.processMatch(state)) {
-      return;
-    }
-    await this.scopedHandle(this.pluginBindings, event, state);
-    if (await this.processMatch(state)) {
-      return;
-    }
-    await this.scopedHandle(this.coreBindings, event, state);
-    if (await this.processMatch(state)) {
-      return;
-    }
+    for (const scope of Object.values(KeyBindingScope)) {
+      const bindings = this.getBindings(scope);
+      await this.scopedHandle(bindings, event, state);
+      if(await this.processMatch(state)){
+        return;
+      }
+    };
+    
     if (state.partial) {
       //It matched a sequence, but not the full binding
       this.priorMatches.push(event);
@@ -164,7 +174,7 @@ export class KeyManager {
    * @param sequence The sequence, ie "strl+shift+F12"
    * @param commandId A previously registered command id. @see CommandRegistry
    */
-  public bindKey(scope: KeyBindingScope, sequence: string, commandId: string) {
+  public bindKey(inScope: KeyBindingScope, sequence: string, commandId: string) {
     const keySequences = KeyParser.parseBinding(sequence);
     const command = this.commandRegistry.getCommand(commandId);
     if (!command) {
@@ -172,32 +182,13 @@ export class KeyManager {
         `The command id ${commandId} is not registered for binding ${sequence}`
       );
     }
-    switch (scope) {
-      case KeyBindingScope.Core:
-        if (this.isKeyBound(this.coreBindings, keySequences)) {
-          throw new Error(
-            `The binding ${sequence} is already bound in the ${scope} scope`
-          );
-        }
-        this.coreBindings.set(keySequences, command);
-        break;
-      case KeyBindingScope.Plugin:
-        if (this.isKeyBound(this.pluginBindings, keySequences)) {
-          throw new Error(
-            `The binding ${sequence} is already bound in the ${scope} scope`
-          );
-        }
-        this.pluginBindings.set(keySequences, command);
-        break;
-      case KeyBindingScope.User:
-        if (this.isKeyBound(this.userBindings, keySequences)) {
-          throw new Error(
-            `The binding ${sequence} is already bound in the ${scope} scope`
-          );
-        }
-        this.userBindings.set(keySequences, command);
-        break;
+    const bindings = this.getBindings(inScope);
+    if (this.isKeyBound(bindings, keySequences)) {
+      throw new Error(
+        `The binding ${sequence} is already bound in the ${inScope} scope`
+      );
     }
+    bindings.set(keySequences, command);
   }
 }
 //global

@@ -3,27 +3,28 @@
  */
 
 /**
- * Class to handle command style invocation.  It deletegates
+ * Class to handle command style invocation.  It delegates
  * execution, undo, and enablement to lambdas vs a subclass
  * approach.
  * Commands are registered in to the CommandRegistry for
  * access from children, and unregistered on unmount.
  */
 export class Command {
-  public enabled: boolean;
+  //The current enabled state based on last evaluation
+  private _enabled = false;
+  private enablementListeners = new Set<() => void>;
   constructor(
     public readonly id: string,
     private readonly executeFunc: () => Promise<void>,
-    private readonly enablementFunc?: () => boolean,
+    private enablementFunc: () => boolean,
     private readonly undoFunc?: () => Promise<void>,
     public readonly label?: string,
     public readonly description?: string
   ) {
-    if (enablementFunc) {
-      this.enabled = enablementFunc();
-    } else {
-      this.enabled = true;
-    }
+    //We don't fire listeners for initial
+    //enablement, assuming the call is in process
+    //of creating it and its local state is enough
+    this._enabled = this.enablementFunc();
   }
 
   private canUndo(): boolean {
@@ -53,21 +54,36 @@ export class Command {
   }
 
   /**
-   * Updates the enabled state.  If the command has an enablement function, isEnabled is
-   * ignored, and the enablementFunc is reevaluted.
-   * If isEnabled is not passed and there is no enablementFunc, the current enabled state
-   * is returned.
-   * @param isEnabled Optional value new value for enabled
-   * @returns The enabled state
+   * Evaluates the enablement function and returns the result.
    */
-  public updateEnabled(isEnabled?: boolean): boolean {
-    if (this.enablementFunc) {
-      this.enabled = this.enablementFunc();
-      return this.enabled;
+  public isEnabled(): boolean {
+    return this.enablementFunc();
+  }
+
+  /**
+   * Replaces the current enablement function and update the enablement
+   * @param func 
+   */
+  public setEnablement(func: () => boolean) {
+    this.enablementFunc = func;
+    if (this._enabled !== this.enablementFunc()) {
+      this._enabled = !this._enabled;
+      this.fireListeners();
     }
-    if (isEnabled) {
-      this.enabled = isEnabled;
+  }
+
+  private fireListeners(): void {
+    this.enablementListeners.forEach((listener) => { listener() });
+  }
+  /**
+   * Subscribes to changes in the enabled state
+   * @param listener callback
+   * @returns A callback to unsubscribe
+   */
+  public subscribe(listener: () => void): () => void {
+    this.enablementListeners.add(listener);
+    return () => {
+      this.enablementListeners.delete(listener);
     }
-    return this.enabled;
   }
 }

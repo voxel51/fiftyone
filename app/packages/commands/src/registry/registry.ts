@@ -12,6 +12,7 @@ import { Command } from "../types";
  */
 export class CommandRegistry {
   private commands = new Map<string, Command>();
+  private listeners = new Set<() => void>;
   /**
    * 
    * @param id The command id.  Use the "fo." prefix for our commands.  Plugins may register them as well.
@@ -24,19 +25,21 @@ export class CommandRegistry {
    * registering a command and can be refresh with the @link updateEnabled function.
    * @returns A command object that can be used locally to execute, enable etc.
    */
-  public async registerCommand(
+  public registerCommand(
     id: string,
     execute: () => Promise<void>,
+    enablement: () => boolean,
     undo?: () => Promise<void>,
     label?: string,
     description?: string,
-    enablement?: () => boolean
-  ): Promise<Command> {
+
+  ): Command {
     if (this.getCommand(id)) {
       throw new Error(`The command id ${id} is already registered`);
     }
     const cmd = new Command(id, execute, enablement, undo, label, description);
     this.commands.set(id, cmd);
+    this.fireListeners();
     return cmd;
   }
 
@@ -45,7 +48,9 @@ export class CommandRegistry {
    * @param id The command id
    */
   public unregisterCommand(id: string): void {
-    this.commands.delete(id);
+    if (this.commands.delete(id)) {
+      this.fireListeners();
+    }
   }
 
   /**
@@ -55,13 +60,16 @@ export class CommandRegistry {
    */
   public async executeCommand(id: string): Promise<boolean> {
     const command = this.getCommand(id);
-    if (command && command.enabled) {
+    if (command && command.isEnabled()) {
       await command.execute();
       return true;
     }
     return false;
   }
 
+  private fireListeners() {
+    this.listeners.forEach((listener) => { listener() });
+  }
   /**
    * Retrieves a previously registered command
    * @param id The command id
@@ -69,6 +77,21 @@ export class CommandRegistry {
    */
   public getCommand(id: string): Command | undefined {
     return this.commands.get(id);
+  }
+  /**
+   * Register a listener to changes in the command registry
+   * @param listener a callback
+   */
+  public addListener(listener: () => void) {
+    this.listeners.add(listener);
+  }
+
+  /**
+   * Unregister a previously registered listener
+   * @param listener a callback
+   */
+  public removeListener(listener: () => void) {
+    this.listeners.delete(listener);
   }
 }
 //global

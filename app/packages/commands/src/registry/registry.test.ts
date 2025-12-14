@@ -13,44 +13,40 @@ describe("CommandRegistry", () => {
         registry = new CommandRegistry();
     });
 
-    it("can register commands", async () => {
-        let command = await registry.registerCommand(cmdOne, async () => {
+    it("can register commands", () => {
+        let command = registry.registerCommand(cmdOne, async () => {
             return;
-        });
+        }, () => { return true });
         expect(command).toBeDefined();
-        command = await registry.registerCommand(
+        command = registry.registerCommand(
             cmdTwo,
             async () => {
                 return;
             },
+            () => { return true; },
             undefined,
             "fo",
             "test fo command",
-            () => {
-                return false;
-            }
         );
-        expect(command.enabled).toBe(false);
+        expect(command.isEnabled()).toBe(true);
         expect(registry.getCommand(cmdOne)).toBeDefined();
         expect(registry.getCommand(cmdTwo)).toBeDefined();
     });
 
-    it("can unregister commands", async () => {
-        let command = await registry.registerCommand(cmdOne, async () => {
+    it("can unregister commands", () => {
+        let command = registry.registerCommand(cmdOne, async () => {
             return;
-        });
+        }, () => { return true });
         expect(command).toBeDefined();
-        command = await registry.registerCommand(
+        command = registry.registerCommand(
             cmdTwo,
             async () => {
                 return;
             },
+            () => { return true; },
             undefined,
             "fo",
-            "test fo command",
-            () => {
-                return true;
-            }
+            "test fo command"
         );
         expect(command).toBeDefined();
 
@@ -67,18 +63,17 @@ describe("CommandRegistry", () => {
     it("can execute a registered command", async () => {
         const testFunc = vi.fn(() => { return; });
 
-        const command = await registry.registerCommand(
+        registry.registerCommand(
             cmdOne,
             async () => {
                 testFunc();
             },
+            () => {
+                return true;
+            },
             undefined,
             "fo",
             "test fo command",
-            () => {
-                //command is always enabled
-                return true;
-            }
         );
         expect(registry.getCommand(cmdOne)).toBeDefined();
         expect(await registry.executeCommand(cmdOne)).toEqual(true);
@@ -87,21 +82,57 @@ describe("CommandRegistry", () => {
     it("does not execute a registered command that is disabled", async () => {
         const testFunc = vi.fn(() => { return; });
 
-        const command = await registry.registerCommand(
+        registry.registerCommand(
             cmdOne,
             async () => {
                 testFunc();
             },
+            () => {
+                return false;
+            },
             undefined,
             "fo",
             "test fo command",
-            () => {
-                //command is always disabled
-                return false;
-            }
         );
         expect(registry.getCommand(cmdOne)).toBeDefined();
         expect(await registry.executeCommand(cmdOne)).toEqual(false);
         expect(testFunc).toBeCalledTimes(0);
+    });
+    
+    it("can properly invoke and unregister listeners", () => {
+        const listener = vi.fn(() => { return; });
+        registry.addListener(listener);
+        registry.registerCommand(
+            cmdOne,
+            async () => {
+                return;
+            },
+            () => {
+                return false;
+            },
+            undefined,
+            "fo",
+            "test fo command",
+        );
+        //ensure listeners fire on register/unregister
+        expect(listener).toBeCalledTimes(1);
+        registry.unregisterCommand(cmdOne);
+        expect(listener).toBeCalledTimes(2);
+        registry.removeListener(listener);
+        registry.registerCommand(
+            cmdOne,
+            async () => {
+                return;
+            },
+            () => {
+                return false;
+            },
+            undefined,
+            "fo",
+            "test fo command",
+        );
+        expect(listener).toBeCalledTimes(2);
+        registry.unregisterCommand(cmdOne);
+        expect(listener).toBeCalledTimes(2);
     });
 });

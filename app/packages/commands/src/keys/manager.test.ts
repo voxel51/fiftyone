@@ -15,11 +15,12 @@ describe("KeyManager", () => {
     });
 
     it("can register binding", async () => {
-        const command = await commandRegistry.registerCommand(
+        const command = commandRegistry.registerCommand(
             "fo.test.command",
             async () => {
                 return;
-            }
+            },
+            () => { return true; }
         );
         expect(command).toBeDefined();
         expect(() => {
@@ -38,9 +39,10 @@ describe("KeyManager", () => {
         const testFunc = vi.fn(async () => {
             return;
         });
-        const command = await commandRegistry.registerCommand(
+        const command = commandRegistry.registerCommand(
             "fo.test.command",
-            testFunc
+            testFunc,
+            () => { return true; }
         );
         expect(command).toBeDefined();
         expect(() => {
@@ -58,7 +60,8 @@ describe("KeyManager", () => {
         });
         const command = await commandRegistry.registerCommand(
             "fo.test.command",
-            testFunc
+            testFunc,
+            () => { return true; }
         );
         expect(command).toBeDefined();
         expect(() => {
@@ -81,9 +84,10 @@ describe("KeyManager", () => {
         const testFunc = vi.fn(async () => {
             return;
         });
-        const command = await commandRegistry.registerCommand(
+        const command = commandRegistry.registerCommand(
             "fo.test.command",
-            testFunc
+            testFunc,
+            () => { return true; }
         );
         expect(command).toBeDefined();
         expect(() => {
@@ -110,14 +114,16 @@ describe("KeyManager", () => {
         const testFunc2 = vi.fn(async () => {
             return;
         });
-        const command1 = await commandRegistry.registerCommand(
+        const command1 = commandRegistry.registerCommand(
             "fo.test.command1",
-            testFunc1
+            testFunc1,
+            () => { return true; }
         );
         expect(command1).toBeDefined();
-        const command2 = await commandRegistry.registerCommand(
+        const command2 = commandRegistry.registerCommand(
             "fo.test.command2",
-            testFunc2
+            testFunc2,
+            () => { return true; }
         );
         expect(command2).toBeDefined();
         //The start sequence ctrl+s is the same for both commands, one is User the other Core
@@ -156,9 +162,10 @@ describe("KeyManager", () => {
         const testFunc = vi.fn(async () => {
             return;
         });
-        const command = await commandRegistry.registerCommand(
+        const command = commandRegistry.registerCommand(
             "fo.test.command",
-            testFunc
+            testFunc,
+            () => { return true; }
         );
         expect(command).toBeDefined();
         expect(() => {
@@ -189,14 +196,16 @@ describe("KeyManager", () => {
     });
 
     it("will not register the same binding in the same scope", async () => {
-        const command1 = await commandRegistry.registerCommand(
+        const command1 = commandRegistry.registerCommand(
             "fo.test.command1",
-            async () => { return; }
+            async () => { return; },
+            () => { return true; }
         );
         expect(command1).toBeDefined();
-        const command2 = await commandRegistry.registerCommand(
+        const command2 =  commandRegistry.registerCommand(
             "fo.test.command2",
-            async () => { return; }
+            async () => { return; },
+            () => { return true; }
         );
         const binding = "ctrl+s, alt+d";
         expect(() => {
@@ -215,15 +224,17 @@ describe("KeyManager", () => {
         }).toThrowError(`The binding ${binding} is already bound in the ${KeyBindingScope.Core} scope`)
         expect(command2).toBeDefined();
     });
-    it("will register the same binding in the different scopes (shadowing)", async () => {
-        const command1 = await commandRegistry.registerCommand(
+    it("will register the same binding in the different scopes (shadowing) for user", async () => {
+        const command1 = commandRegistry.registerCommand(
             "fo.test.command1",
-            async () => { return; }
+            async () => { return; },
+            () => { return true; }
         );
         expect(command1).toBeDefined();
-        const command2 = await commandRegistry.registerCommand(
+        const command2 = commandRegistry.registerCommand(
             "fo.test.command2",
-            async () => { return; }
+            async () => { return; },
+            () => { return true; }
         );
         expect(command2).toBeDefined();
         const binding = "ctrl+s, alt+d";
@@ -241,6 +252,64 @@ describe("KeyManager", () => {
                 "fo.test.command2"
             );
         }).not.toThrow();
+    });
 
+        it("will register the same binding in the different scopes (shadowing) for plugin", async () => {
+        const command1 = commandRegistry.registerCommand(
+            "fo.test.command1",
+            async () => { return; },
+            () => { return true; }
+        );
+        expect(command1).toBeDefined();
+        const command2 = commandRegistry.registerCommand(
+            "fo.test.command2",
+            async () => { return; },
+            () => { return true; }
+        );
+        expect(command2).toBeDefined();
+        const binding = "ctrl+s, alt+d";
+        expect(() => {
+            keyManager.bindKey(
+                KeyBindingScope.Core,
+                binding,
+                "fo.test.command1"
+            );
+        }).not.toThrow();
+        expect(() => {
+            keyManager.bindKey(
+                KeyBindingScope.Plugin,
+                binding,
+                "fo.test.command2"
+            );
+        }).not.toThrow();
+    });
+        it("will register the same binding in the different scopes (shadowing) user over plugin", async () => {
+        const command1 = commandRegistry.registerCommand(
+            "fo.test.command1",
+            async () => { return; },
+            () => { return true; }
+        );
+        expect(command1).toBeDefined();
+        const command2 = commandRegistry.registerCommand(
+            "fo.test.command2",
+            async () => { return; },
+            () => { return true; }
+        );
+        expect(command2).toBeDefined();
+        const binding = "ctrl+s, alt+d";
+        expect(() => {
+            keyManager.bindKey(
+                KeyBindingScope.Plugin,
+                binding,
+                "fo.test.command1"
+            );
+        }).not.toThrow();
+        expect(() => {
+            keyManager.bindKey(
+                KeyBindingScope.User,
+                binding,
+                "fo.test.command2"
+            );
+        }).not.toThrow();
     });
 });
