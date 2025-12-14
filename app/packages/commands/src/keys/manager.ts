@@ -160,11 +160,11 @@ export class KeyManager {
           return false;
         }
         for (let i = 0; i < sequences.length; i++) {
-          if (sequences[i].equals(test[i]) && i == sequences.length - 1) {
-            return true;
+          if (!sequences[i].equals(test[i])) {
+            return false;
           }
         }
-        return false;
+        return true;
       }) !== undefined
     );
   }
