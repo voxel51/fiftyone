@@ -25,11 +25,11 @@ export class KeySequence {
     //Match for KeyboardEvents
     public matches(other: KeyboardEvent) {
         return (
-            other.ctrlKey == this.isCtrl &&
-            other.metaKey == this.isMeta &&
-            other.shiftKey == this.isShift &&
-            other.altKey == this.isAlt &&
-            other.key == this.key
+            other.ctrlKey === this.isCtrl &&
+            other.metaKey === this.isMeta &&
+            other.shiftKey === this.isShift &&
+            other.altKey === this.isAlt &&
+            other.key === this.key
         );
     }
     /**
