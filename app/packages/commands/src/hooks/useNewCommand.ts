@@ -18,7 +18,6 @@ export const useNewCommand = (
 
   const [isEnabled, setIsEnabled] = useState<boolean>(isEnabledFn());
   const isEnabledFnRef = useRef<() => boolean>(isEnabledFn);
-
   // Create command instance, and unregister it on unmount
   useEffect(() => {
     let command: Command | undefined;
@@ -59,6 +58,8 @@ export const useNewCommand = (
   const setEnabledFn = useCallback((fn: () => boolean) => {
     isEnabledFnRef.current = fn;
     setIsEnabled(fn());
+    //update the registered command too
+    getCommandRegistry().getCommand(id)!.setEnablement(isEnabledFn);
   }, []);
 
   return {
