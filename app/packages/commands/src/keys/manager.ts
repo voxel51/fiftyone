@@ -194,6 +194,11 @@ export class KeyManager {
 //global
 let keyManager: KeyManager | undefined = undefined;
 
+/**
+ * Get the singleton KeyManager instance, creating it on first access.
+ *
+ * @returns The global KeyManager singleton.
+ */
 export function getKeyManager(): KeyManager {
   if (!keyManager) {
     keyManager = new KeyManager();

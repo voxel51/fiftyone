@@ -97,6 +97,11 @@ export class CommandRegistry {
 //global
 const commandRegistry = new CommandRegistry();
 
+/**
+ * Accesses the shared CommandRegistry singleton.
+ *
+ * @returns The global CommandRegistry instance
+ */
 export function getCommandRegistry(): CommandRegistry {
   return commandRegistry;
 }
