@@ -10,7 +10,8 @@ import { Command } from "../types";
  * component.  It does not unregister it on unmount.
  * @param id The id of an already registered command
  */
-export const useCommand = (id: string): Command | undefined => {
-  const registry = getCommandRegistry();
-  return registry.getCommand(id);
+export const useCommand = (id: string) => {
+  /**
+   * TODO
+   */
 };
