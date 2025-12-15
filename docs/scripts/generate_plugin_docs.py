@@ -50,6 +50,34 @@ class PluginDocGenerator:
             r"[\U0001F300-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251\u2600-\u26FF\u2700-\u27BF]",
             flags=re.UNICODE,
         )
+        self.feature_patterns = [
+            (re.compile(p), f) for p, f in [
+                (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
+                (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
+                (r"sam\d?|segment\s?anything", "Segmentation"),
+                (r"segmentation|instance.?mask", "Segmentation"),
+                (r"object.?detection|yolo|detectron", "Detection"),
+                (r"ocr|text.?recognition|document.?parsing", "OCR & Document"),
+                (r"pose.?estimation|keypoint|vitpose", "Pose Estimation"),
+                (r"embedding|siglip|clip|nomic", "Embeddings"),
+                (r"similarity.?search|retrieval|vector", "Search & Retrieval"),
+                (r"semantic.?search", "Semantic Search"),
+                (r"deduplication|duplicate", "Data Curation"),
+                (r"clustering|outlier|anomaly", "Data Curation"),
+                (r"quality.?issue|image.?issue", "Data Quality"),
+                (r"annotation|label|cvat|labelbox", "Annotation"),
+                (r"evaluation|metrics|confidence.?threshold", "Evaluation"),
+                (r"active.?learning", "Active Learning"),
+                (r"video.?understanding|video.?analysis", "Video Analysis"),
+                (r"3d|point.?cloud|depth", "3D Vision"),
+                (r"medical|healthcare|dicom|radiology", "Medical Imaging"),
+                (r"audio|speech", "Audio"),
+                (r"pdf|document", "Document Processing"),
+                (r"import|export|loader", "Data Import/Export"),
+                (r"augmentation|transform", "Augmentation"),
+                (r"anonymize|blur|privacy", "Privacy Tools"),
+            ]
+        ]
         self.table_section_pattern = re.compile(
             r"## {}\s*\n\n(.*?)(?=\n## |\n$)", re.DOTALL
         )
@@ -140,35 +168,9 @@ class PluginDocGenerator:
         if not readme_content:
             return None
 
-        feature_patterns = [
-            (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
-            (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
-            (r"sam\d?|segment\s?anything", "Segmentation"),
-            (r"segmentation|instance.?mask", "Segmentation"),
-            (r"object.?detection|yolo|detectron", "Detection"),
-            (r"ocr|text.?recognition|document.?parsing", "OCR & Document"),
-            (r"pose.?estimation|keypoint|vitpose", "Pose Estimation"),
-            (r"embedding|siglip|clip|nomic", "Embeddings"),
-            (r"similarity.?search|retrieval|vector", "Search & Retrieval"),
-            (r"semantic.?search", "Semantic Search"),
-            (r"deduplication|duplicate", "Data Curation"),
-            (r"clustering|outlier|anomaly", "Data Curation"),
-            (r"quality.?issue|image.?issue", "Data Quality"),
-            (r"annotation|label|cvat|labelbox", "Annotation"),
-            (r"evaluation|metrics|confidence.?threshold", "Evaluation"),
-            (r"active.?learning", "Active Learning"),
-            (r"video.?understanding|video.?analysis", "Video Analysis"),
-            (r"3d|point.?cloud|depth", "3D Vision"),
-            (r"medical|healthcare|dicom|radiology", "Medical Imaging"),
-            (r"audio|speech", "Audio"),
-            (r"pdf|document", "Document Processing"),
-            (r"import|export|loader", "Data Import/Export"),
-            (r"augmentation|transform", "Augmentation"),
-            (r"anonymize|blur|privacy", "Privacy Tools"),
-        ]
         content_lower = readme_content.lower()
-        for pattern, feature in feature_patterns:
-            if re.search(pattern, content_lower):
+        for pattern, feature in self.feature_patterns:
+            if pattern.search(content_lower):
                 return feature
         return None
 
@@ -195,15 +197,7 @@ class PluginDocGenerator:
 
         for line in readme_content.split("\n"):
             line = line.strip()
-            if (
-                not line
-                or line.startswith("#")
-                or line.startswith("!")
-                or line.startswith("<")
-                or line.startswith("```")
-                or line.startswith("[!")
-                or line.startswith("|-")
-            ):
+            if not line or line.startswith(("#", "!", "<", "```", "[!", "|-")):
                 continue
 
             sentence = re.split(r"(?<=[.!?])\s", line)[0]
@@ -233,9 +227,24 @@ class PluginDocGenerator:
 
     def _generate_frontmatter(self, seo_metadata: dict) -> str:
         """Generate MyST frontmatter with SEO metadata."""
-        title = seo_metadata["title"].replace('"', '\\"')
-        description = seo_metadata["description"].replace('"', '\\"')
-        keywords = seo_metadata["keywords"].replace('"', '\\"')
+        title = (
+            seo_metadata["title"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
+        description = (
+            seo_metadata["description"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
+        keywords = (
+            seo_metadata["keywords"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
 
         return f'''---
 myst:
