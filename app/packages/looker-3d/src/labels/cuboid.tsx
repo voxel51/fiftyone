@@ -203,9 +203,11 @@ export const Cuboid = ({
   const content = (
     <group
       // By default, quaternion is preferred automatically over euler
+      ref={contentRef}
+      userData={{ labelId: label._id }}
       rotation={combinedQuaternion ? undefined : actualRotation ?? undefined}
       quaternion={combinedQuaternion ?? undefined}
-      position={loc.toArray()}
+      position={tempTransforms?.position ?? loc.toArray()}
     >
       {/* Outline */}
       {/* @ts-ignore */}
@@ -247,20 +249,12 @@ export const Cuboid = ({
     <Transformable
       archetype="cuboid"
       isSelectedForTransform={isSelectedForAnnotation}
-      transformControlsPosition={location as THREE.Vector3Tuple}
       transformControlsRef={transformControlsRef}
       onTransformEnd={handleTransformEnd}
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group
-        userData={{ labelId: label._id }}
-        ref={contentRef}
-        // Note that tempTransforms?.position is relative offset (delta) for cuboids.
-        position={tempTransforms?.position ?? [0, 0, 0]}
-      >
-        {content}
-      </group>
+      {content}
     </Transformable>
   );
 };
