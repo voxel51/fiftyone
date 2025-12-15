@@ -23,23 +23,23 @@ import { currentData, currentOverlay } from "./state";
 
 interface Coordinates3d {
   position: { x?: number; y?: number; z?: number };
-  dimensions: { width?: number; height?: number; depth?: number };
+  dimensions: { lx?: number; ly?: number; lz?: number };
   rotation: { rx?: number; ry?: number; rz?: number };
 }
 
 const hasValidBounds = (coordinates: Coordinates3d): boolean => {
   const { x, y, z } = coordinates.position;
-  const { width, height, depth } = coordinates.dimensions;
+  const { lx, ly, lz } = coordinates.dimensions;
   return (
     Number.isFinite(x) &&
     Number.isFinite(y) &&
     Number.isFinite(z) &&
-    width !== undefined &&
-    height !== undefined &&
-    depth !== undefined &&
-    Number.isFinite(width) &&
-    Number.isFinite(height) &&
-    Number.isFinite(depth)
+    lx !== undefined &&
+    ly !== undefined &&
+    lz !== undefined &&
+    Number.isFinite(lx) &&
+    Number.isFinite(ly) &&
+    Number.isFinite(lz)
   );
 };
 
@@ -100,15 +100,15 @@ export default function Position3d() {
         },
         dimensions: tempDimensions
           ? {
-              width: tempDimensions[0],
-              height: tempDimensions[1],
-              depth: tempDimensions[2],
+              lx: tempDimensions[0],
+              ly: tempDimensions[1],
+              lz: tempDimensions[2],
             }
           : fallbackDimensions
           ? {
-              width: fallbackDimensions[0],
-              height: fallbackDimensions[1],
-              depth: fallbackDimensions[2],
+              lx: fallbackDimensions[0],
+              ly: fallbackDimensions[1],
+              lz: fallbackDimensions[2],
             }
           : {},
         rotation: rotationRadians
@@ -130,9 +130,9 @@ export default function Position3d() {
       setState({
         position: { x: location[0], y: location[1], z: location[2] },
         dimensions: {
-          width: dimensions[0],
-          height: dimensions[1],
-          depth: dimensions[2],
+          lx: dimensions[0],
+          ly: dimensions[1],
+          lz: dimensions[2],
         },
         rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
       });
@@ -173,9 +173,9 @@ export default function Position3d() {
         newState.position.z ?? 0,
       ];
       const newDimensions: Vector3Tuple = [
-        newState.dimensions.width ?? 0,
-        newState.dimensions.height ?? 0,
-        newState.dimensions.depth ?? 0,
+        newState.dimensions.lx ?? 0,
+        newState.dimensions.ly ?? 0,
+        newState.dimensions.lz ?? 0,
       ];
       const newRotation: Vector3Tuple = [
         newState.rotation.rx ?? 0,
@@ -272,14 +272,14 @@ export default function Position3d() {
         sx={{ pl: 1, pt: 1, mb: 1 }}
       >
         <LabeledField
-          label="width"
+          label="lx"
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.width ?? ""}
+              value={state.dimensions.lx ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
-                  dimensions: { width: parseFloat(e.target.value) },
+                  dimensions: { lx: parseFloat(e.target.value) },
                 });
               }}
               size="small"
@@ -288,14 +288,14 @@ export default function Position3d() {
         />
 
         <LabeledField
-          label="height"
+          label="ly"
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.height ?? ""}
+              value={state.dimensions.ly ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
-                  dimensions: { height: parseFloat(e.target.value) },
+                  dimensions: { ly: parseFloat(e.target.value) },
                 });
               }}
               size="small"
@@ -304,14 +304,14 @@ export default function Position3d() {
         />
 
         <LabeledField
-          label="depth"
+          label="lz"
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.depth ?? ""}
+              value={state.dimensions.lz ?? ""}
               onChange={(e) => {
                 handleUserInputChange({
-                  dimensions: { depth: parseFloat(e.target.value) },
+                  dimensions: { lz: parseFloat(e.target.value) },
                 });
               }}
               size="small"

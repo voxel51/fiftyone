@@ -535,13 +535,13 @@ export const getAxisAlignedBoundingBoxForPoints3d = (
   const centerY = (minY + maxY) / 2;
   const centerZ = (minZ + maxZ) / 2;
 
-  const width = maxX - minX;
-  const height = maxY - minY;
-  const depth = maxZ - minZ;
+  const lx = maxX - minX;
+  const ly = maxY - minY;
+  const lz = maxZ - minZ;
 
   return {
     location: [centerX, centerY, centerZ],
-    dimensions: [width, height, depth],
+    dimensions: [lx, ly, lz],
   };
 };
 
@@ -554,7 +554,7 @@ export const getAxisAlignedBoundingBoxForPoints3d = (
  * at a slight angle (specifically optimized for automotive/ego-centric scenes).
  *
  * @param center - The center point of the bounding box to frame
- * @param size - The dimensions (width, height, depth) of the bounding box
+ * @param size - The dimensions (lx, ly, lz) of the bounding box
  * @param upVector - The desired up direction for the camera (will be normalized)
  * @param distanceMultiplier - Multiplier for the base distance (default: 2.5).
  *                              Distance is calculated as max(size.x, size.y, size.z) * multiplier
