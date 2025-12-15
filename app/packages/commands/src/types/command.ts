@@ -34,10 +34,8 @@ export class Command {
    * Executes the executeFunc for this command.
    */
   public async execute(): Promise<void> {
-    if (this.enablementFunc) {
-      if (!this.enablementFunc()) {
-        return;
-      }
+    if (!this.enablementFunc()) {
+      return;
     }
     await this.executeFunc();
     if (this.canUndo()) {
