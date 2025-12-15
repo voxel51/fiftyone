@@ -100,9 +100,15 @@ export const Transformable = ({
           <group position={new THREE.Vector3(...transformControlsPosition)}>
             <TransformControls
               ref={transformControlsRef}
+              rotationSnap={0.01}
+              scaleSnap={0.01}
               object={explicitObjectRef?.current || groupRef.current}
               mode={transformMode}
-              space="world"
+              space={
+                transformMode === "scale" || transformMode === "rotate"
+                  ? "local"
+                  : "world"
+              }
               onMouseDown={onTransformStartDecorated}
               onMouseUp={onTransformEndDecorated}
               onObjectChange={onObjectChangeDecorated}

@@ -93,18 +93,14 @@ export const useCuboidAnnotation = ({
 
       setTempCuboidTransforms({
         // Note: make sure with scale, position is (0,0,0) to avoid double application of position
-        position: [0, 0, 0],
+        position: contentRef.current.position.toArray(),
         dimensions: transientDimensions,
       });
 
       // Reset scale to avoid double application of scale
       contentRef.current.scale.set(1, 1, 1);
     } else if (mode === "rotate") {
-      // Store quaternion directly in temp transforms during manipulation
-      // Conversion to Euler is deferred until commit (handleTransformEnd)
-      const quaternion = originalQuaternion
-        .clone()
-        .multiply(contentRef.current.quaternion.clone());
+      const quaternion = contentRef.current.quaternion.clone();
       const quaternionArray: [number, number, number, number] = [
         quaternion.x,
         quaternion.y,
@@ -113,11 +109,11 @@ export const useCuboidAnnotation = ({
       ];
 
       setTempCuboidTransforms({
-        position: [0, 0, 0],
+        position: contentRef.current.position.toArray(),
         quaternion: quaternionArray,
       });
 
-      contentRef.current.quaternion.set(0, 0, 0, 1);
+      // contentRef.current.quaternion.set(0, 0, 0, 1);
     }
   }, [effectiveDimensions]);
 
@@ -135,6 +131,7 @@ export const useCuboidAnnotation = ({
     } = {
       location: [...effectiveLocation],
       dimensions: [...effectiveDimensions],
+      quaternion: [...effectiveQuaternion],
       rotation: effectiveRotation,
     };
 
@@ -144,11 +141,7 @@ export const useCuboidAnnotation = ({
     if (mode === "translate" && tempTransforms?.position) {
       // Commit position change - add the delta (from temp transforms) to effectiveLocation
       const delta = tempTransforms.position;
-      newTransform.location = [
-        effectiveLocation[0] + delta[0],
-        effectiveLocation[1] + delta[1],
-        effectiveLocation[2] + delta[2],
-      ] as Vector3Tuple;
+      newTransform.location = [delta[0], delta[1], delta[2]] as Vector3Tuple;
     } else if (mode === "scale" && tempTransforms?.dimensions) {
       // Commit scale/dimensions change from temp transforms
       newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
@@ -167,13 +160,6 @@ export const useCuboidAnnotation = ({
       ...prev,
       [label._id]: newTransform,
     }));
-
-    if (contentRef.current) {
-      contentRef.current.position.set(0, 0, 0);
-      contentRef.current.scale.set(1, 1, 1);
-      // Reset rotation to identity - the committed rotation will be applied via effectiveRotation
-      contentRef.current.quaternion.set(0, 0, 0, 1);
-    }
 
     setTempCuboidTransforms(null);
   }, [

@@ -1,10 +1,7 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
-import {
-  formatDegrees,
-  formatRadians,
-} from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
+import { formatDegrees } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
 import {
   isCurrentlyTransformingAtom,
   stagedCuboidTransformsAtom,
@@ -26,6 +23,15 @@ interface Coordinates3d {
   dimensions: { lx?: number; ly?: number; lz?: number };
   rotation: { rx?: number; ry?: number; rz?: number };
 }
+
+/**
+ * Formats a number to a maximum of 2 decimal places.
+ * Returns empty string for undefined or non-finite values.
+ */
+const formatValue = (value: number | undefined): string => {
+  if (value === undefined || !Number.isFinite(value)) return "";
+  return value.toFixed(2);
+};
 
 const hasValidBounds = (coordinates: Coordinates3d): boolean => {
   const { x, y, z } = coordinates.position;
@@ -80,13 +86,6 @@ export default function Position3d() {
         tempQuaternion ? new Quaternion(...tempQuaternion) : stagedQuat
       ).toArray();
 
-      // If there's temp position (which is relative offset), compute the absolute position
-      const absolutePosition = [
-        data.location[0] + tempPosition[0],
-        data.location[1] + tempPosition[1],
-        data.location[2] + tempPosition[2],
-      ];
-
       const fallbackDimensions = data.dimensions;
 
       // Convert quaternion to radians for display
@@ -94,9 +93,9 @@ export default function Position3d() {
 
       setState({
         position: {
-          x: absolutePosition[0],
-          y: absolutePosition[1],
-          z: absolutePosition[2],
+          x: tempPosition[0],
+          y: tempPosition[1],
+          z: tempPosition[2],
         },
         dimensions: tempDimensions
           ? {
@@ -212,15 +211,15 @@ export default function Position3d() {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        spacing={2}
-        sx={{ pl: 1, pt: 1, mb: 1 }}
+        spacing={1.25}
+        sx={{ pl: 0, pt: 1, mb: 1 }}
       >
         <LabeledField
           label="x"
           formControl={
             <TextField
               type="number"
-              value={state.position.x ?? ""}
+              value={formatValue(state.position.x)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { x: parseFloat(e.target.value) },
@@ -236,7 +235,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={state.position.y ?? ""}
+              value={formatValue(state.position.y)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { y: parseFloat(e.target.value) },
@@ -252,7 +251,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={state.position.z ?? ""}
+              value={formatValue(state.position.z)}
               onChange={(e) => {
                 handleUserInputChange({
                   position: { z: parseFloat(e.target.value) },
@@ -268,21 +267,22 @@ export default function Position3d() {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        spacing={2}
-        sx={{ pl: 1, pt: 1, mb: 1 }}
+        spacing={1.25}
+        sx={{ pl: 0, pt: 1, mb: 1 }}
       >
         <LabeledField
           label="lx"
           formControl={
             <TextField
-              type="number"
-              value={state.dimensions.lx ?? ""}
+              fullWidth
+              value={formatValue(state.dimensions.lx)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { lx: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.1 }}
             />
           }
         />
@@ -292,13 +292,14 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.ly ?? ""}
+              value={formatValue(state.dimensions.ly)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { ly: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.1 }}
             />
           }
         />
@@ -308,13 +309,14 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={state.dimensions.lz ?? ""}
+              value={formatValue(state.dimensions.lz)}
               onChange={(e) => {
                 handleUserInputChange({
                   dimensions: { lz: parseFloat(e.target.value) },
                 });
               }}
               size="small"
+              inputProps={{ step: 0.1 }}
             />
           }
         />
@@ -324,15 +326,15 @@ export default function Position3d() {
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        spacing={2}
-        sx={{ pl: 1, pt: 1, mb: 1 }}
+        spacing={1.25}
+        sx={{ pl: 0, pt: 1, mb: 1 }}
       >
         <LabeledField
           label={`rx (${formatDegrees(state.rotation.rx)}°)`}
           formControl={
             <TextField
               type="number"
-              value={formatRadians(state.rotation.rx)}
+              value={formatValue(state.rotation.rx)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rx: parseFloat(e.target.value) },
@@ -349,7 +351,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatRadians(state.rotation.ry)}
+              value={formatValue(state.rotation.ry)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { ry: parseFloat(e.target.value) },
@@ -366,7 +368,7 @@ export default function Position3d() {
           formControl={
             <TextField
               type="number"
-              value={formatRadians(state.rotation.rz)}
+              value={formatValue(state.rotation.rz)}
               onChange={(e) => {
                 handleUserInputChange({
                   rotation: { rz: parseFloat(e.target.value) },
