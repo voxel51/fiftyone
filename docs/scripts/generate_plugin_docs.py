@@ -103,6 +103,151 @@ class PluginDocGenerator:
             lambda m: " " if m.group(0) == "\n" else "\\:", description
         )
 
+    def _generate_seo_metadata(
+        self, plugin: Plugin, readme_content: str
+    ) -> dict:
+        """Generate SEO metadata for a plugin."""
+        display_name = self._get_display_name(plugin.name)
+        feature = self._extract_feature_hint(readme_content)
+        return {
+            "title": self._generate_meta_title(display_name, feature),
+            "description": self._generate_meta_description(
+                plugin.description, readme_content
+            ),
+            "keywords": self._generate_keywords(
+                display_name, plugin.category, feature
+            ),
+        }
+
+    def _get_display_name(self, plugin_name: str) -> str:
+        """Convert plugin name to display format."""
+        name = plugin_name.split("/")[-1].replace("`", "").strip()
+        return " ".join(
+            word.capitalize()
+            for word in name.replace("_", " ").replace("-", " ").split()
+        )
+
+    def _generate_meta_title(
+        self, display_name: str, feature: Optional[str]
+    ) -> str:
+        """Generate SEO-optimized meta title for a plugin."""
+        if feature:
+            return f"{display_name} Plugin for FiftyOne | {feature}"
+        return f"{display_name} Plugin for FiftyOne"
+
+    def _extract_feature_hint(self, readme_content: str) -> Optional[str]:
+        """Extract a feature hint from README content."""
+        if not readme_content:
+            return None
+
+        feature_patterns = [
+            (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
+            (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
+            (r"sam\d?|segment\s?anything", "Segmentation"),
+            (r"segmentation|instance.?mask", "Segmentation"),
+            (r"object.?detection|yolo|detectron", "Detection"),
+            (r"ocr|text.?recognition|document.?parsing", "OCR & Document"),
+            (r"pose.?estimation|keypoint|vitpose", "Pose Estimation"),
+            (r"embedding|siglip|clip|nomic", "Embeddings"),
+            (r"similarity.?search|retrieval|vector", "Search & Retrieval"),
+            (r"semantic.?search", "Semantic Search"),
+            (r"deduplication|duplicate", "Data Curation"),
+            (r"clustering|outlier|anomaly", "Data Curation"),
+            (r"quality.?issue|image.?issue", "Data Quality"),
+            (r"annotation|label|cvat|labelbox", "Annotation"),
+            (r"evaluation|metrics|confidence.?threshold", "Evaluation"),
+            (r"active.?learning", "Active Learning"),
+            (r"video.?understanding|video.?analysis", "Video Analysis"),
+            (r"3d|point.?cloud|depth", "3D Vision"),
+            (r"medical|healthcare|dicom|radiology", "Medical Imaging"),
+            (r"audio|speech", "Audio"),
+            (r"pdf|document", "Document Processing"),
+            (r"import|export|loader", "Data Import/Export"),
+            (r"augmentation|transform", "Augmentation"),
+            (r"anonymize|blur|privacy", "Privacy Tools"),
+        ]
+        content_lower = readme_content.lower()
+        for pattern, feature in feature_patterns:
+            if re.search(pattern, content_lower):
+                return feature
+        return None
+
+    def _generate_meta_description(
+        self, description: str, readme_content: str
+    ) -> str:
+        """Generate SEO-optimized meta description for a plugin."""
+        base = description.strip().rstrip(".")
+        extra = self._extract_first_sentence(readme_content)
+
+        if extra and extra.lower() != base.lower():
+            full = f"{base}. {extra}"
+        else:
+            full = f"{base}. Open source FiftyOne plugin for computer vision workflows."
+
+        if len(full) > 155:
+            full = full[:152].rsplit(" ", 1)[0] + "..."
+        return full
+
+    def _extract_first_sentence(self, readme_content: str) -> Optional[str]:
+        """Extract the first meaningful sentence from README content."""
+        if not readme_content:
+            return None
+
+        for line in readme_content.split("\n"):
+            line = line.strip()
+            if (
+                not line
+                or line.startswith("#")
+                or line.startswith("!")
+                or line.startswith("<")
+                or line.startswith("```")
+                or line.startswith("[!")
+                or line.startswith("|-")
+            ):
+                continue
+
+            sentence = re.split(r"(?<=[.!?])\s", line)[0]
+            if len(sentence) > 20:
+                return sentence.strip()
+        return None
+
+    def _generate_keywords(
+        self, display_name: str, category: str, feature: Optional[str] = None
+    ) -> str:
+        """Generate SEO keywords for a plugin."""
+        base_keywords = ["FiftyOne", "plugin", "computer vision"]
+        words = display_name.lower().replace("-", " ").split()
+        name_keywords = [w for w in words if len(w) > 2]
+        all_keywords = base_keywords + name_keywords + [category]
+        if feature:
+            all_keywords.append(feature.lower())
+
+        seen = set()
+        unique = []
+        for kw in all_keywords:
+            kw_lower = kw.lower()
+            if kw_lower not in seen and kw_lower not in ("for", "the", "and"):
+                seen.add(kw_lower)
+                unique.append(kw)
+        return ", ".join(unique[:10])
+
+    def _generate_frontmatter(self, seo_metadata: dict) -> str:
+        """Generate MyST frontmatter with SEO metadata."""
+        title = seo_metadata["title"].replace('"', '\\"')
+        description = seo_metadata["description"].replace('"', '\\"')
+        keywords = seo_metadata["keywords"].replace('"', '\\"')
+
+        return f'''---
+myst:
+  html_meta:
+    "description": "{description}"
+    "keywords": "{keywords}"
+    "og:title": "{title}"
+    "og:description": "{description}"
+---
+
+'''
+
     def _generate_github_badge(self, plugin: Plugin) -> str:
         """Generate GitHub badge markdown for a plugin."""
         return f'\n\n<a href="{plugin.github_url}" target="_blank">![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-black?logo=github)</a>\n'
@@ -507,6 +652,8 @@ class PluginDocGenerator:
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
+                seo_metadata = self._generate_seo_metadata(plugin, readme_content)
+                frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
                 if plugin.category == "community":
@@ -517,9 +664,14 @@ Please review each plugin's documentation and license before use.
 ```
 
 """
-                    f.write(community_note + github_badge + processed_readme)
+                    f.write(
+                        frontmatter
+                        + community_note
+                        + github_badge
+                        + processed_readme
+                    )
                 else:
-                    f.write(github_badge + processed_readme)
+                    f.write(frontmatter + github_badge + processed_readme)
 
             repo_info = self.fetch_github_stars(owner, repo)
             image_path = self._extract_image_from_readme(
