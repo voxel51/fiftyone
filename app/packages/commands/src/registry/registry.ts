@@ -21,7 +21,7 @@ export class CommandRegistry {
    * perform the undo.
    * @param label A short name like Save, Delete, etc
    * @param description A longer description such as "Deletes the selected annotation"
-   * @param enablement A function to determine if the command is inabled.  It is invoked when 
+   * @param enablement A function to determine if the command is enabled.  It is invoked when 
    * registering a command and can be refresh with the @link updateEnabled function.
    * @returns A command object that can be used locally to execute, enable etc.
    */
