@@ -12,7 +12,7 @@
 export class Command {
   //The current enabled state based on last evaluation
   private _enabled = false;
-  private enablementListeners = new Set<() => void>;
+  private enablementListeners = new Set<() => void>();
   constructor(
     public readonly id: string,
     private readonly executeFunc: () => Promise<void>,
