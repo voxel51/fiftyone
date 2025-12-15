@@ -62,7 +62,7 @@ jobs:
       - name: Build python
         run: make python -o app
       - name: Upload dist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist
           path: dist/
