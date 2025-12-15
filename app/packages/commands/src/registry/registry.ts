@@ -12,7 +12,7 @@ import { Command } from "../types";
  */
 export class CommandRegistry {
   private commands = new Map<string, Command>();
-  private listeners = new Set<() => void>;
+  private listeners = new Set<() => void>();
   /**
    * 
    * @param id The command id.  Use the "fo." prefix for our commands.  Plugins may register them as well.
