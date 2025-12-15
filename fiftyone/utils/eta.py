@@ -27,6 +27,7 @@ import eta.core.video as etav
 
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
+import fiftyone.core.utils as fou
 
 
 _IMAGE_MODELS = (
@@ -44,20 +45,15 @@ _VIDEO_MODELS = (
     etal.VideoSemanticSegmenter,
 )
 
-_tf2_patched = False
+def _make_tf2_detection_model_loader():
+    """Creates a fixed TF2 detection model loader.
 
+    Some models export with signatures rather than as directly callable
+    objects. This loader handles both cases.
 
-def _patch_tf2_detection_model():
-    """Patches TF2 SavedModel loading for TF2 Model Zoo models.
-
-    TF2 Model Zoo models are exported with signatures rather than as directly
-    callable objects. This patches eta.detectors.tfmodels_detectors to use
-    loaded.signatures['serving_default'] when the loaded model is not callable.
+    Returns:
+        The fixed loader function, or None if TensorFlow is unavailable.
     """
-    global _tf2_patched
-    if _tf2_patched:
-        return
-
     try:
         import os
 
@@ -65,54 +61,48 @@ def _patch_tf2_detection_model():
 
         import eta.core.tfutils as etat
         import eta.core.utils as etau
-        import eta.detectors.tfmodels_detectors as tfmodels
 
         tf1 = etat.import_tf1()
-
-        def _load_tf2_detection_model_fixed(model_dir):
-            with etat.TFLoggingLevel(tf1.logging.ERROR):
-                with etau.CaptureStdout():
-                    loaded = tf.saved_model.load(
-                        os.path.join(model_dir, "saved_model")
-                    )
-
-            if callable(loaded):
-                detect_fn = loaded
-                use_signature = False
-            else:
-                detect_fn = loaded.signatures["serving_default"]
-                use_signature = True
-
-            def predict(image):
-                if use_signature:
-                    image = tf.cast(image, tf.float32)
-                    detections = detect_fn(input=image)
-                else:
-                    detections = detect_fn(image)
-
-                if "detection_boxes" in detections:
-                    return (
-                        detections["detection_boxes"],
-                        detections["detection_scores"],
-                        detections["detection_classes"],
-                    )
-                else:
-                    return (
-                        detections["output_3"],
-                        detections["output_1"],
-                        detections["output_2"],
-                    )
-
-            return predict
-
-        tfmodels._load_tf2_detection_model = _load_tf2_detection_model_fixed
-        _tf2_patched = True
-
     except ImportError:
-        pass
-    except Exception as e:
-        logger = logging.getLogger(__name__)
-        logger.warning(f"Failed to patch TF2 detection model: {e}")
+        return None
+
+    def _load_tf2_detection_model_fixed(model_dir):
+        with etat.TFLoggingLevel(tf1.logging.ERROR):
+            with etau.CaptureStdout():
+                loaded = tf.saved_model.load(
+                    os.path.join(model_dir, "saved_model")
+                )
+
+        if callable(loaded):
+            detect_fn = loaded
+            use_signature = False
+        else:
+            detect_fn = loaded.signatures["serving_default"]
+            use_signature = True
+
+        def predict(image):
+            if use_signature:
+                image = tf.cast(image, tf.float32)
+                detections = detect_fn(input=image)
+            else:
+                detections = detect_fn(image)
+
+            if "detection_boxes" in detections:
+                return (
+                    detections["detection_boxes"],
+                    detections["detection_scores"],
+                    detections["detection_classes"],
+                )
+            else:
+                return (
+                    detections["output_3"],
+                    detections["output_1"],
+                    detections["output_2"],
+                )
+
+        return predict
+
+    return _load_tf2_detection_model_fixed
 
 
 
@@ -169,16 +159,37 @@ class ETAModel(fom.Model, fom.EmbeddingsMixin, fom.LogitsMixin):
 
         self.config = config
         self._model = _model
+        self._tf2_patch = None
+        self._context_depth = 0
         fom.LogitsMixin.__init__(self)
 
     def __enter__(self):
-        if "tfmodels_detectors" in type(self._model).__module__:
-            _patch_tf2_detection_model()
+        self._context_depth += 1
+        if self._context_depth == 1:
+            if "tfmodels_detectors" in type(self._model).__module__:
+                fixed_loader = _make_tf2_detection_model_loader()
+                if fixed_loader is not None:
+                    try:
+                        import eta.detectors.tfmodels_detectors as tfmodels
+
+                        self._tf2_patch = fou.MonkeyPatchFunction(
+                            tfmodels,
+                            fixed_loader,
+                            fcn_name="_load_tf2_detection_model",
+                        )
+                        self._tf2_patch.__enter__()
+                    except Exception as e:
+                        logger = logging.getLogger(__name__)
+                        logger.warning(f"Failed to patch TF2 detection model: {e}")
         self._model.__enter__()
         return self
 
     def __exit__(self, *args):
         self._model.__exit__(*args)
+        self._context_depth -= 1
+        if self._context_depth == 0 and self._tf2_patch is not None:
+            self._tf2_patch.__exit__(*args)
+            self._tf2_patch = None
 
     @property
     def media_type(self):
