@@ -65,14 +65,14 @@ jobs:
           cd package/db
           python -Im build --sdist
       - name: Upload
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: ${{ matrix.platform == 'sdist' }}
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.tar.gz
       - name: Upload wheel
         if: ${{ matrix.platform != 'sdist' }}
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*.whl

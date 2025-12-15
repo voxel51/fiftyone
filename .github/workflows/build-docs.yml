@@ -143,7 +143,7 @@ jobs:
         run: |
           ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           path: docs/build/html/
