@@ -91,4 +91,10 @@ export type AnnotationEventGroup = {
   "annotation:3dLabelUnselected": {
     id: string;
   };
+  /**
+   * Notification event emitted when cuboid creation starts (first click).
+   */
+  "annotation:cuboidCreationStarted": {
+    position: [number, number, number];
+  };
 };
