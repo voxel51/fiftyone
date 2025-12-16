@@ -20,9 +20,7 @@ export const useShowOverlays = () => {
 
 export const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) =>
-      async () =>
-        set(fos.selectedLabels, []),
+    ({ set }) => async () => set(fos.selectedLabels, []),
     []
   );
 };
@@ -35,6 +33,7 @@ interface LookerProps {
   // we'll remove this once we've migrated to lighter
   // `ghost` means looker will render but with width and height set to 0
   ghost?: boolean;
+  showControls?: boolean;
 }
 
 const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
@@ -81,11 +80,19 @@ export const ModalLooker = React.memo(
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
 
     if (shouldRenderImavid) {
-      return <ImaVidLookerReact sample={sample} key={modalMediaField} />;
+      return (
+        <ImaVidLookerReact
+          sample={sample}
+          key={modalMediaField}
+          showControls={mode !== "annotate"}
+        />
+      );
     }
 
     if (video) {
-      return <VideoLookerReact sample={sample} />;
+      return (
+        <VideoLookerReact sample={sample} showControls={mode !== "annotate"} />
+      );
     }
 
     if (
@@ -94,7 +101,11 @@ export const ModalLooker = React.memo(
       return (
         <>
           {mode === "annotate" && <LighterSampleRenderer sample={sample} />}
-          <ModalLookerNoTimeline sample={sample} ghost={mode === "annotate"} />
+          <ModalLookerNoTimeline
+            sample={sample}
+            ghost={mode === "annotate"}
+            showControls={mode !== "annotate"}
+          />
         </>
       );
     }

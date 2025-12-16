@@ -2702,6 +2702,7 @@ __metadata:
     pixi.js: "npm:^8.13.1"
     typescript: "npm:^5.8.3"
   peerDependencies:
+    "@fiftyone/events": "*"
     jotai: "*"
     react: ^18.0.0
     react-dom: ^18.0.0

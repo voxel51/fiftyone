@@ -1,13 +1,14 @@
 import {
   BoundingBoxOverlay,
-  LIGHTER_EVENTS,
+  TransformOverlayCommand,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { TransformOverlayCommand } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
+import { useAtom, useAtomValue } from "jotai";
 
 const createInput = (name: string) => {
   return {
@@ -46,9 +47,12 @@ export default function Position() {
   });
 
   const overlay = useAtomValue(currentOverlay);
-  const setData = useSetAtom(currentData);
+  const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -63,11 +67,12 @@ export default function Position() {
     });
   }, [overlay]);
 
-  useEffect(() => {
-    const handler = () => {
+  const handleBoundsChange = useCallback(
+    (payload: { id: string }) => {
       if (
         !(overlay instanceof BoundingBoxOverlay) ||
-        !overlay.hasValidBounds()
+        !overlay.hasValidBounds() ||
+        payload.id !== data?._id
       ) {
         return;
       }
@@ -82,22 +87,18 @@ export default function Position() {
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
-    };
+    },
+    [data?._id, overlay, setData]
+  );
 
-    scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-    };
-  }, [overlay, scene, setData]);
+  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
+  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
+        key={overlay?.id}
         smartForm={true}
         schema={{
           type: "object",

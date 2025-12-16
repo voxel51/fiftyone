@@ -226,7 +226,7 @@ class HFDatasetDocGenerator:
                 encoding="utf-8",
             ) as f:
                 note = """```{note}
-This is a **Hugging Face dataset**. Learn how to load datasets from the Hub in the <a href="https://docs.voxel51.com/integrations/huggingface.html#loading-datasets-from-the-hub" target="_blank">Hugging Face integration docs</a>.
+This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>=1.1.3` to avoid rate limits. Learn more in the <a href="https://docs.voxel51.com/integrations/huggingface.html#loading-datasets-from-the-hub" target="_blank">Hugging Face integration docs</a>.
 ```
 
 """

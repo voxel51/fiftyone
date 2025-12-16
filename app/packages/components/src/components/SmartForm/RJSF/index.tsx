@@ -23,7 +23,7 @@ export interface RJSFProps {
 }
 
 export default function RJSF(props: RJSFProps) {
-  if (!props.schema || !props.jsonSchema) {
+  if (!props.schema && !props.jsonSchema) {
     console.log(
       "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
     );

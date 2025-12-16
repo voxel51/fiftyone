@@ -3,7 +3,6 @@
  */
 
 import { getSampleSrc } from "@fiftyone/state";
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
 import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
 import type {
@@ -43,27 +42,11 @@ export class ImageOverlay
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, "", null, options.field);
+    super(id, "", null);
   }
 
   getOverlayType(): string {
     return "ImageOverlay";
-  }
-
-  /**
-   * Attaches the event bus to this overlay.
-   * @param bus - The event bus to attach.
-   */
-  attachEventBus(bus: EventBus): void {
-    super.attachEventBus(bus);
-
-    // Listen for resize events from the event bus
-    if (this.eventBus) {
-      this.eventBus.on(LIGHTER_EVENTS.RESIZE, (event) => {
-        const { width, height } = event.detail;
-        this.handleResize(width, height);
-      });
-    }
   }
 
   /**
@@ -84,6 +67,23 @@ export class ImageOverlay
    */
   setRenderer(renderer: Renderer2D): void {
     super.setRenderer(renderer);
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
+
+    const canvas = renderer.getCanvas();
+    const parentElement = canvas.parentElement;
+    if (parentElement) {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          this.handleResize(width, height);
+        }
+      });
+      this.resizeObserver.observe(parentElement);
+    }
   }
 
   /**
