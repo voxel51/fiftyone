@@ -2,7 +2,7 @@ import { Typography } from "@mui/material";
 import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import { activeSchemas, schemas } from "../state";
+import { activeSchemas } from "../state";
 import { Container } from "./Components";
 
 const JSONContainer = styled.div`
@@ -18,11 +18,10 @@ const JSONContainer = styled.div`
 `;
 
 const JSONView = () => {
-  const allSchemas = useAtomValue(schemas);
   const active = useAtomValue(activeSchemas);
 
   return (
-    <Container>
+    <Container style={{ marginBottom: "4rem" }}>
       <Typography color="secondary" padding="0.5rem 0">
         Active schemas (read-only)
       </Typography>

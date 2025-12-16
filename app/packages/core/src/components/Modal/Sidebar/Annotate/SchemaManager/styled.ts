@@ -1,3 +1,4 @@
+import { Close as CloseIcon, West as BackIcon } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
 import styled from "styled-components";
 
@@ -172,16 +173,89 @@ export const CollapsibleHeader = styled(GUISectionHeader)`
   }
 `;
 
-export const FooterContainer = styled.div`
+// ============================================
+// Modal Components
+// ============================================
+
+export const ModalBackground = styled.div`
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  top: 0;
+  left: 0;
+  z-index: 1001;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`;
+
+export const ModalContainer = styled.div`
+  width: 800px;
+  max-width: 90%;
+  height: 90%;
+  padding: 2rem;
+  background: ${({ theme }) => theme.background.level2};
+  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  flex-direction: column;
+  position: relative;
+`;
+
+export const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 36px;
+`;
+
+const IconButton = styled.div`
+  cursor: pointer;
+  height: 3rem;
+  padding: 0.5rem;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: ${({ theme }) => theme.background.level1};
+    border-radius: 1.5rem;
+    color: ${({ theme }) => theme.text.primary};
+  }
+`;
+
+export const BackButton = styled(IconButton).attrs({
+  as: BackIcon,
+})``;
+
+export const CloseButton = styled(IconButton).attrs({
+  as: CloseIcon,
+})``;
+
+export const ModalFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 1rem 2rem;
+  padding: 0.625rem 1.5rem;
   background: ${({ theme }) => theme.background.level2};
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
+`;
+
+export const FooterLeft = styled.div`
   display: flex;
-  justify-content: flex-start;
   align-items: center;
   gap: 0.5rem;
+`;
+
+export const FooterRight = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 `;

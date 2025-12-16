@@ -1,7 +1,7 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
-import { ExpandLess, ExpandMore, KeyboardArrowUp } from "@mui/icons-material";
-import { Button, Chip, Collapse, Typography } from "@mui/material";
+import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
+import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback, useState } from "react";
@@ -14,7 +14,7 @@ import {
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
-import { CollapsibleHeader, FooterContainer, GUISectionHeader } from "./styled";
+import { CollapsibleHeader, GUISectionHeader } from "./styled";
 
 // Selection state for active fields
 export const selectedActiveFields = atom(new Set<string>());
@@ -25,6 +25,10 @@ export const isActiveFieldSelected = atomFamily((path: string) =>
       const selected = new Set(get(selectedActiveFields));
       toggle ? selected.add(path) : selected.delete(path);
       set(selectedActiveFields, selected);
+      // Clear hidden fields selection when selecting active fields
+      if (toggle) {
+        set(selectedHiddenFields, new Set());
+      }
     }
   )
 );
@@ -38,6 +42,10 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
       const selected = new Set(get(selectedHiddenFields));
       toggle ? selected.add(path) : selected.delete(path);
       set(selectedHiddenFields, selected);
+      // Clear active fields selection when selecting hidden fields
+      if (toggle) {
+        set(selectedActiveFields, new Set());
+      }
     }
   )
 );
@@ -47,7 +55,7 @@ export const fieldHasSchema = atomFamily((path: string) =>
   atom((get) => !!get(schema(path))?.config)
 );
 
-const useActivateFields = () => {
+export const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
   const activateFields = useOperatorExecutor("activate_annotation_schemas");
@@ -66,7 +74,7 @@ const useActivateFields = () => {
   }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
 };
 
-const useDeactivateFields = () => {
+export const useDeactivateFields = () => {
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
   const deactivateFields = useOperatorExecutor("deactivate_annotation_schemas");
@@ -101,6 +109,9 @@ const ActiveFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
+          <Tooltip title="Fields currently active and available for dataset annotation">
+            <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+          </Tooltip>
           <Chip label="0" size="small" />
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
@@ -116,6 +127,9 @@ const ActiveFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
+        <Tooltip title="Fields currently active and available for dataset annotation">
+          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+        </Tooltip>
         <Chip label={fields.length} size="small" />
       </GUISectionHeader>
       {fields.map((path) => (
@@ -123,6 +137,8 @@ const ActiveFieldsSection = () => {
           key={path}
           path={path}
           isSelected={isActiveFieldSelected(path)}
+          showDragHandle={true}
+          hasSchema={true}
         />
       ))}
     </>
@@ -137,12 +153,30 @@ const HiddenFieldRow = ({ path }: { path: string }) => {
       key={path}
       path={path}
       isSelected={hasSchema ? isHiddenFieldSelected(path) : undefined}
+      hasSchema={hasSchema}
     />
   );
 };
 
+// Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
+const sortedInactivePaths = atom((get) => {
+  const fields = get(inactivePaths);
+  const withSchema: string[] = [];
+  const withoutSchema: string[] = [];
+
+  for (const field of fields) {
+    if (get(schema(field))?.config) {
+      withSchema.push(field);
+    } else {
+      withoutSchema.push(field);
+    }
+  }
+
+  return [...withSchema, ...withoutSchema];
+});
+
 const HiddenFieldsSection = () => {
-  const fields = useAtomValue(inactivePaths);
+  const fields = useAtomValue(sortedInactivePaths);
   const [expanded, setExpanded] = useState(true);
 
   if (!fields.length) {
@@ -151,13 +185,21 @@ const HiddenFieldsSection = () => {
 
   return (
     <>
-      <CollapsibleHeader onClick={() => setExpanded(!expanded)}>
-        <Typography variant="body1" fontWeight={500}>
-          Hidden fields
-        </Typography>
+      <GUISectionHeader>
+        <CollapsibleHeader
+          onClick={() => setExpanded(!expanded)}
+          style={{ padding: 0, flex: "none" }}
+        >
+          <Typography variant="body1" fontWeight={500}>
+            Hidden fields
+          </Typography>
+          {expanded ? <ExpandLess /> : <ExpandMore />}
+        </CollapsibleHeader>
+        <Tooltip title="Fields currently hidden and not available for dataset annotation">
+          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+        </Tooltip>
         <Chip label={fields.length} size="small" />
-        {expanded ? <ExpandLess /> : <ExpandMore />}
-      </CollapsibleHeader>
+      </GUISectionHeader>
       <Collapse in={expanded}>
         {fields.map((path) => (
           <HiddenFieldRow key={path} path={path} />
@@ -167,64 +209,12 @@ const HiddenFieldsSection = () => {
   );
 };
 
-const SelectionFooter = () => {
-  const activeSelected = useAtomValue(selectedActiveFields);
-  const hiddenSelected = useAtomValue(selectedHiddenFields);
-  const activateFields = useActivateFields();
-  const deactivateFields = useDeactivateFields();
-
-  const activeCount = activeSelected.size;
-  const hiddenCount = hiddenSelected.size;
-  const totalSelected = activeCount + hiddenCount;
-
-  if (totalSelected === 0) {
-    return null;
-  }
-
-  return (
-    <FooterContainer>
-      <KeyboardArrowUp fontSize="small" />
-      {hiddenCount > 0 && (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={activateFields}
-          sx={{
-            color: "text.primary",
-            borderColor: "text.primary",
-            textTransform: "none",
-          }}
-        >
-          Move {hiddenCount} to visible fields
-        </Button>
-      )}
-      {activeCount > 0 && (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={deactivateFields}
-          sx={{
-            color: "text.primary",
-            borderColor: "text.primary",
-            textTransform: "none",
-          }}
-        >
-          Move {activeCount} to hidden fields
-        </Button>
-      )}
-    </FooterContainer>
-  );
-};
-
 const GUIView = () => {
   return (
-    <>
-      <Container style={{ marginBottom: 60 }}>
-        <ActiveFieldsSection />
-        <HiddenFieldsSection />
-      </Container>
-      <SelectionFooter />
-    </>
+    <Container style={{ marginBottom: "4rem" }}>
+      <ActiveFieldsSection />
+      <HiddenFieldsSection />
+    </Container>
   );
 };
 
