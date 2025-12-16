@@ -707,13 +707,14 @@ updated and will now display as failed:
 .. image:: /images/plugins/operators/runs/runs_terminate.png
 
 .. version-changed:: 2.12.0
+   The "Terminate" action now actually stops running delegated operations.
+
+.. note::
 
    If you are running a version older than 2.12.0, the button will say
-   "Mark as Failed" instead of "Terminate". In this case if the delegated 
-   operation is in fact still in progress in your orchestrator, the run 
-   **will not** terminate the execution of the operation. It will continue 
-   executing until completion but the operation will be marked as failed 
-   regardless of the actual outcome.
+   "Mark as Failed" instead of "Terminate", and it **will not** stop the
+   operation on your orchestrator-it will only mark the run as failed
+   while the operation continues executing.
 
 .. _enterprise-runs-monitoring-progress:
 
