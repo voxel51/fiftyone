@@ -52,7 +52,12 @@ function ExitChangesModal({
           <MuiButton
             color="success"
             onClick={async () => {
-              await save();
+              try {
+                await save();
+              } catch (error) {
+                console.error("Failed to save annotations:", error);
+              }
+
               close();
               shown();
             }}
