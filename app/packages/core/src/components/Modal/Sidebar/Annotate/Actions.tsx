@@ -1,9 +1,6 @@
 import { Tooltip } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
-import {
-  isCuboidAnnotateActiveAtom,
-  isPolylineAnnotateActiveAtom,
-} from "@fiftyone/looker-3d/src/state";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
@@ -189,11 +186,10 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
-  const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
-    useRecoilState(isPolylineAnnotateActiveAtom);
-  const setIsCuboidAnnotateActive = useSetRecoilState(
-    isCuboidAnnotateActiveAtom
+  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
+    current3dAnnotationModeAtom
   );
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
 
   return (
     <Tooltip
@@ -207,8 +203,9 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
-          setIsCuboidAnnotateActive(false);
-          setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
+          setCurrent3dAnnotationMode(
+            isPolylineAnnotateActive ? null : "polyline"
+          );
         }}
       >
         <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
@@ -218,12 +215,10 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
-  const [isCuboidAnnotateActive, setIsCuboidAnnotateActive] = useRecoilState(
-    isCuboidAnnotateActiveAtom
+  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
+    current3dAnnotationModeAtom
   );
-  const setIsPolylineAnnotateActive = useSetRecoilState(
-    isPolylineAnnotateActiveAtom
-  );
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
   return (
     <Tooltip
@@ -237,8 +232,7 @@ export const ThreeDCuboids = () => {
       <Square
         $active={isCuboidAnnotateActive}
         onClick={() => {
-          setIsPolylineAnnotateActive(false);
-          setIsCuboidAnnotateActive(!isCuboidAnnotateActive);
+          setCurrent3dAnnotationMode(isCuboidAnnotateActive ? null : "cuboid");
         }}
       >
         <CuboidIcon />

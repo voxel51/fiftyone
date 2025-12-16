@@ -421,31 +421,16 @@ export const cuboidCreationStateAtom = atom<CuboidCreationState>({
 });
 
 /**
- * Whether polyline annotation mode is currently active.
+ * The currently active 3D annotation mode.
+ * Can be 'cuboid', 'polyline', or null (no annotation mode active).
  * Persisted in session storage to maintain state across page reloads.
  */
-export const isPolylineAnnotateActiveAtom = atom<boolean>({
-  key: "fo3d-isPolylineAnnotateActive",
-  default: false,
+export const current3dAnnotationModeAtom = atom<"cuboid" | "polyline" | null>({
+  key: "fo3d-current3dAnnotationMode",
+  default: null,
   effects: [
-    getBrowserStorageEffectForKey("fo3d-isPolylineAnnotateActive", {
-      valueClass: "boolean",
-      sessionStorage: true,
-      prependDatasetNameInKey: true,
-    }),
-  ],
-});
-
-/**
- * Whether cuboid annotation mode is currently active.
- * Persisted in session storage to maintain state across page reloads.
- */
-export const isCuboidAnnotateActiveAtom = atom<boolean>({
-  key: "fo3d-isCuboidAnnotateActive",
-  default: false,
-  effects: [
-    getBrowserStorageEffectForKey("fo3d-isCuboidAnnotateActive", {
-      valueClass: "boolean",
+    getBrowserStorageEffectForKey("fo3d-current3dAnnotationMode", {
+      useJsonSerialization: true,
       sessionStorage: true,
       prependDatasetNameInKey: true,
     }),
