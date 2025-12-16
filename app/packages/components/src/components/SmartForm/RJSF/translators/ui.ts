@@ -1,5 +1,6 @@
 import type { UiSchema } from "@rjsf/utils";
 import { addWarning, type TranslationContext } from "./utils";
+import { SmartFormComponents } from "../../types";
 
 /**
  * Translates SchemaIO view to UI Schema
@@ -19,7 +20,7 @@ export function translateToUISchema(
   const component = view.component || view.name;
 
   switch (component) {
-    case "FieldView":
+    case SmartFormComponents.FieldView:
       if (view.placeholder) {
         uiSchema["ui:placeholder"] = view.placeholder;
       }
@@ -30,12 +31,12 @@ export function translateToUISchema(
 
       break;
 
-    case "CheckboxView":
+    case SmartFormComponents.CheckboxView:
       uiSchema["ui:widget"] = "checkbox";
       break;
 
-    case "DropdownView":
-    case "Dropdown":
+    case SmartFormComponents.DropdownView:
+    case SmartFormComponents.Dropdown:
       uiSchema["ui:widget"] = "Dropdown";
       uiSchema["ui:options"] = {
         multiple: view.multiple,
@@ -45,12 +46,12 @@ export function translateToUISchema(
       };
       break;
 
-    case "RadioView":
-    case "RadioGroup":
+    case SmartFormComponents.RadioView:
+    case SmartFormComponents.RadioGroup:
       uiSchema["ui:widget"] = "radio";
       break;
 
-    case "AutocompleteView":
+    case SmartFormComponents.AutocompleteView:
       uiSchema["ui:widget"] = "AutoComplete";
       uiSchema["ui:options"] = {
         freeSolo: view.allow_user_input ?? true,
@@ -59,12 +60,12 @@ export function translateToUISchema(
       };
       break;
 
-    case "ColorView":
+    case SmartFormComponents.ColorView:
       uiSchema["ui:widget"] = "color";
       break;
 
-    case "CodeView":
-    case "JSONView":
+    case SmartFormComponents.CodeView:
+    case SmartFormComponents.JSONView:
       uiSchema["ui:widget"] = "textarea";
       uiSchema["ui:options"] = {
         rows: 10,
@@ -77,7 +78,7 @@ export function translateToUISchema(
       );
       break;
 
-    case "FileView":
+    case SmartFormComponents.FileView:
       uiSchema["ui:widget"] = "file";
       addWarning(
         context,
@@ -87,7 +88,7 @@ export function translateToUISchema(
       );
       break;
 
-    case "TabsView":
+    case SmartFormComponents.TabsView:
       uiSchema["ui:widget"] = "radio";
       if (view.variant) {
         uiSchema["ui:options"] = { inline: true };
@@ -98,7 +99,7 @@ export function translateToUISchema(
       );
       break;
 
-    case "ObjectView":
+    case SmartFormComponents.ObjectView:
       // Handle object properties recursively
       if (schemaIO.properties) {
         for (const [key, value] of Object.entries(schemaIO.properties)) {
@@ -111,7 +112,7 @@ export function translateToUISchema(
       }
       break;
 
-    case "GridView":
+    case SmartFormComponents.GridView:
       // GridView is a layout container - hide title and apply layout options
       uiSchema["ui:options"] = {
         ...uiSchema["ui:options"],
@@ -137,7 +138,7 @@ export function translateToUISchema(
       }
       break;
 
-    case "ListView":
+    case SmartFormComponents.ListView:
       if (schemaIO.items && !Array.isArray(schemaIO.items)) {
         uiSchema.items = translateToUISchema(schemaIO.items, {
           ...context,
@@ -146,7 +147,7 @@ export function translateToUISchema(
       }
       break;
 
-    case "TupleView":
+    case SmartFormComponents.TupleView:
       if (schemaIO.items && Array.isArray(schemaIO.items)) {
         uiSchema.items = schemaIO.items.map((item: any, index: number) =>
           translateToUISchema(item, {
@@ -157,7 +158,7 @@ export function translateToUISchema(
       }
       break;
 
-    case "MapView":
+    case SmartFormComponents.MapView:
       uiSchema["ui:options"] = {
         addable: true,
         orderable: false,
@@ -169,7 +170,7 @@ export function translateToUISchema(
       );
       break;
 
-    case "OneOfView":
+    case SmartFormComponents.OneOfView:
       if (schemaIO.types) {
         uiSchema["ui:options"] = {
           discriminator: true,
@@ -177,16 +178,16 @@ export function translateToUISchema(
       }
       break;
 
-    case "ProgressView":
-    case "LinkView":
-    case "DashboardView":
-    case "FileExplorerView":
-    case "LazyFieldView":
-    case "MenuView":
-    case "ButtonView":
-    case "NoticeView":
-    case "MarkdownView":
-    case "PlotlyView":
+    case SmartFormComponents.ProgressView:
+    case SmartFormComponents.LinkView:
+    case SmartFormComponents.DashboardView:
+    case SmartFormComponents.FileExplorerView:
+    case SmartFormComponents.LazyFieldView:
+    case SmartFormComponents.MenuView:
+    case SmartFormComponents.ButtonView:
+    case SmartFormComponents.NoticeView:
+    case SmartFormComponents.MarkdownView:
+    case SmartFormComponents.PlotlyView:
       // These are custom SchemaIO components without direct RJSF equivalents
       addWarning(
         context,
