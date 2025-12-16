@@ -472,7 +472,7 @@ class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
             detection label to other similar labels
         attributes ({}): a dict mapping attribute names to :class:`Attribute`
             instances
-"""
+    """
 
     _MEDIA_FIELD = "mask_path"
 
