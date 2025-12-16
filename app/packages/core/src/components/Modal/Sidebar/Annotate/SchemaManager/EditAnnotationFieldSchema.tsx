@@ -1,67 +1,104 @@
-import { LoadingSpinner } from "@fiftyone/components";
+import {
+  CenteredStack,
+  IconButton,
+  LoadingSpinner,
+} from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
-import { Sync } from "@mui/icons-material";
-import { Link, Typography } from "@mui/material";
-import { useAtom, useSetAtom } from "jotai";
+import {
+  DeleteOutlined,
+  DragIndicator,
+  EditOutlined,
+  Sync,
+} from "@mui/icons-material";
+import {
+  Box,
+  Button,
+  Chip,
+  MenuItem,
+  Select,
+  Switch,
+  Tab,
+  Tabs,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { useEffect, useMemo, useState } from "react";
-import styled from "styled-components";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
-import { RoundButtonWhite } from "../Actions";
-import { schemaConfig } from "../state";
+import { activePaths, fieldType, inactivePaths, schemaConfig } from "../state";
 import Footer from "./Footer";
 import { currentField } from "./state";
+import {
+  ContentArea,
+  EditContainer,
+  EditSectionHeader,
+  EmptyStateBox,
+  FieldColumn,
+  FieldRow,
+  ItemActions,
+  ItemContent,
+  ItemRow,
+  Label,
+  ListContainer,
+  SchemaSection,
+  Section,
+  TabsRow,
+  editTabsStyles,
+} from "./styled";
 
-const Container = styled.div`
-  flex: 1;
-  margin-bottom: 3rem;
-  border-radius: 3px;
-  border: 1px solid ${({ theme }) => theme.divider};
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  overflow: auto;
+// Types
+interface AttributeConfig {
+  type: string;
+  options?: string[];
+  readOnly?: boolean;
+}
 
-  & > div.json {
-    width: 100%;
-    height: 100%;
-  }
-`;
+interface ClassConfig {
+  attributes?: Record<string, AttributeConfig>;
+}
 
-const Loading = ({ scanning }: { scanning?: boolean }) => {
-  return (
-    <>
-      <LoadingSpinner />
-      <Typography color="secondary" padding="1rem 0">
-        {scanning ? "Scanning samples" : "Loading"}
-      </Typography>
-    </>
-  );
+interface SchemaConfigType {
+  classes?: Record<string, ClassConfig>;
+  attributes?: Record<string, AttributeConfig>;
+}
+
+// Helper functions
+const toStr = (config: SchemaConfigType | undefined) =>
+  JSON.stringify(config, undefined, 2);
+const parse = (config: string): SchemaConfigType => JSON.parse(config);
+
+const getAttributeTypeLabel = (type: string): string => {
+  const typeMap: Record<string, string> = {
+    radio: "Radio group",
+    checkbox: "Checkbox",
+    dropdown: "Dropdown",
+    text: "Text",
+    number: "Number",
+  };
+  return typeMap[type] || type;
 };
 
-const toStr = (config) => JSON.stringify(config, undefined, 2);
-const parse = (config: string) => JSON.parse(config);
-
+// Custom hook for annotation schema management
 const useAnnotationSchema = (path: string) => {
   const [loading, setLoading] = useState<"loading" | "scanning" | false>(false);
   const [config, setConfig] = useAtom(schemaConfig(path));
-
-  const [localConfig, setLocalConfig] = useState(toStr(config));
+  const [localConfig, setLocalConfig] = useState<SchemaConfigType | undefined>(
+    config
+  );
+  const [localConfigStr, setLocalConfigStr] = useState(toStr(config));
 
   const generate = useOperatorExecutor("generate_label_schemas");
   const update = useOperatorExecutor("update_label_schema");
-
   const setNotification = useNotification();
 
   useEffect(() => {
-    if (!generate.result) {
-      return;
-    }
-
+    if (!generate.result) return;
     setLoading(false);
-    setLocalConfig(toStr(generate.result.label_schema));
+    const newConfig = generate.result.config as SchemaConfigType;
+    setLocalConfig(newConfig);
+    setLocalConfigStr(toStr(newConfig));
   }, [generate.result]);
 
   useEffect(() => {
@@ -72,50 +109,357 @@ const useAnnotationSchema = (path: string) => {
 
   const hasChanges = useMemo(() => {
     try {
-      return !isEqual(config, parse(localConfig));
+      return !isEqual(config, localConfig);
     } catch {
       return true;
     }
   }, [config, localConfig]);
+
+  const updateFromJson = useCallback((jsonStr: string) => {
+    setLocalConfigStr(jsonStr);
+    try {
+      setLocalConfig(parse(jsonStr));
+    } catch {
+      // Invalid JSON, keep the string but don't update the object
+    }
+  }, []);
+
+  const updateFromGui = useCallback((newConfig: SchemaConfigType) => {
+    setLocalConfig(newConfig);
+    setLocalConfigStr(toStr(newConfig));
+  }, []);
 
   return {
     compute: (scan = true) => {
       setLoading(scan ? "scanning" : "loading");
       generate.execute({ field: path, scan_samples: scan });
     },
-    computed: generate.result,
-
-    loading: loading,
-
+    loading,
     scanning: loading === "scanning",
-    reset: () => setLocalConfig(toStr(config)),
-
+    reset: () => {
+      setLocalConfig(config);
+      setLocalConfigStr(toStr(config));
+    },
     save: () => {
       if (!localConfig) {
-        throw new Error("undefined schema");
+        setNotification({ msg: "No schema to save", variant: "error" });
+        return;
       }
-
       try {
-        const config = parse(localConfig);
-        update.execute({ field: path, label_schema: config });
-        setConfig(parse(localConfig));
+        update.execute({ path, config: localConfig });
+        setConfig(localConfig);
       } catch {
-        setNotification({ msg: "Unable to parse config", variant: "error" });
+        setNotification({ msg: "Unable to save config", variant: "error" });
       }
     },
     saving: update.isExecuting,
     savingComplete: update.hasExecuted,
-    schema: localConfig,
-    setSchema: setLocalConfig,
-
+    config: localConfig,
+    configStr: localConfigStr,
+    setConfigStr: updateFromJson,
+    setConfig: updateFromGui,
     hasChanges,
+    hasSchema: !!localConfig,
   };
 };
 
-const EditAnnotationSchema = ({ path }: { path: string }) => {
+// Class row component
+const ClassRow = ({
+  name,
+  attributeCount,
+  onDelete,
+  onEdit,
+}: {
+  name: string;
+  attributeCount: number;
+  onDelete: () => void;
+  onEdit: () => void;
+}) => (
+  <ItemRow>
+    <DragIndicator
+      fontSize="small"
+      sx={{ color: "text.secondary", cursor: "grab" }}
+    />
+    <ItemContent>
+      <Typography fontWeight={500}>{name}</Typography>
+      <Typography color="secondary" variant="body2">
+        {attributeCount} attribute{attributeCount !== 1 ? "s" : ""}
+      </Typography>
+    </ItemContent>
+    <ItemActions>
+      <IconButton onClick={onDelete}>
+        <DeleteOutlined fontSize="small" />
+      </IconButton>
+      <IconButton onClick={onEdit}>
+        <EditOutlined fontSize="small" />
+      </IconButton>
+    </ItemActions>
+  </ItemRow>
+);
+
+// Attribute row component
+const AttributeRow = ({
+  name,
+  type,
+  optionCount,
+  readOnly,
+  onDelete,
+  onEdit,
+}: {
+  name: string;
+  type: string;
+  optionCount?: number;
+  readOnly?: boolean;
+  onDelete: () => void;
+  onEdit: () => void;
+}) => (
+  <ItemRow>
+    <DragIndicator
+      fontSize="small"
+      sx={{ color: "text.secondary", cursor: "grab" }}
+    />
+    <ItemContent>
+      <Typography fontWeight={500}>{name}</Typography>
+      <Typography color="secondary" variant="body2">
+        {getAttributeTypeLabel(type)}
+        {optionCount !== undefined &&
+          ` · ${optionCount} option${optionCount !== 1 ? "s" : ""}`}
+      </Typography>
+      {readOnly && <Chip label="Read-only" size="small" variant="outlined" />}
+    </ItemContent>
+    <ItemActions>
+      <IconButton onClick={onDelete}>
+        <DeleteOutlined fontSize="small" />
+      </IconButton>
+      <IconButton onClick={onEdit}>
+        <EditOutlined fontSize="small" />
+      </IconButton>
+    </ItemActions>
+  </ItemRow>
+);
+
+// Classes section component
+const ClassesSection = ({
+  classes,
+  onAddClass,
+  onDeleteClass,
+  onEditClass,
+}: {
+  classes: Record<string, ClassConfig>;
+  onAddClass: () => void;
+  onDeleteClass: (name: string) => void;
+  onEditClass: (name: string) => void;
+}) => {
+  const classEntries = Object.entries(classes);
+
+  return (
+    <Section>
+      <EditSectionHeader>
+        <Typography fontWeight={500}>Classes</Typography>
+        <Button
+          size="small"
+          onClick={onAddClass}
+          sx={{ color: "text.primary", textTransform: "none" }}
+        >
+          + Add class
+        </Button>
+      </EditSectionHeader>
+      {classEntries.length === 0 ? (
+        <EmptyStateBox>
+          <Typography color="secondary">No classes yet</Typography>
+        </EmptyStateBox>
+      ) : (
+        classEntries.map(([name, config]) => (
+          <ClassRow
+            key={name}
+            name={name}
+            attributeCount={Object.keys(config.attributes || {}).length}
+            onDelete={() => onDeleteClass(name)}
+            onEdit={() => onEditClass(name)}
+          />
+        ))
+      )}
+    </Section>
+  );
+};
+
+// Attributes section component
+const AttributesSection = ({
+  attributes,
+  onAddAttribute,
+  onDeleteAttribute,
+  onEditAttribute,
+}: {
+  attributes: Record<string, AttributeConfig>;
+  onAddAttribute: () => void;
+  onDeleteAttribute: (name: string) => void;
+  onEditAttribute: (name: string) => void;
+}) => {
+  const attrEntries = Object.entries(attributes);
+
+  return (
+    <Section>
+      <EditSectionHeader>
+        <Typography fontWeight={500}>Attributes</Typography>
+        <Button
+          size="small"
+          onClick={onAddAttribute}
+          sx={{ color: "text.primary", textTransform: "none" }}
+        >
+          + Add attribute
+        </Button>
+      </EditSectionHeader>
+      {attrEntries.length === 0 ? (
+        <EmptyStateBox>
+          <Typography color="secondary">No attributes yet</Typography>
+        </EmptyStateBox>
+      ) : (
+        attrEntries.map(([name, config]) => (
+          <AttributeRow
+            key={name}
+            name={name}
+            type={config.type}
+            optionCount={config.options?.length}
+            readOnly={config.readOnly}
+            onDelete={() => onDeleteAttribute(name)}
+            onEdit={() => onEditAttribute(name)}
+          />
+        ))
+      )}
+    </Section>
+  );
+};
+
+// GUI View component
+const GUIViewContent = ({
+  config,
+  scanning,
+}: {
+  config: SchemaConfigType | undefined;
+  scanning: boolean;
+}) => {
+  const classes = config?.classes || {};
+  const attributes = config?.attributes || {};
+
+  if (scanning) {
+    return (
+      <ListContainer>
+        <Section>
+          <EditSectionHeader>
+            <Typography fontWeight={500}>Classes</Typography>
+          </EditSectionHeader>
+          <EmptyStateBox>
+            <LoadingSpinner style={{ marginRight: 8 }} />
+            <Typography color="secondary">Scanning schema</Typography>
+          </EmptyStateBox>
+        </Section>
+        <Section>
+          <EditSectionHeader>
+            <Typography fontWeight={500}>Attributes</Typography>
+          </EditSectionHeader>
+          <EmptyStateBox>
+            <LoadingSpinner style={{ marginRight: 8 }} />
+            <Typography color="secondary">Scanning schema</Typography>
+          </EmptyStateBox>
+        </Section>
+      </ListContainer>
+    );
+  }
+
+  return (
+    <ListContainer>
+      <ClassesSection
+        classes={classes}
+        onAddClass={() => {
+          // TODO: Implement add class
+        }}
+        onDeleteClass={(name) => {
+          // TODO: Implement delete class
+        }}
+        onEditClass={(name) => {
+          // TODO: Implement edit class
+        }}
+      />
+      <AttributesSection
+        attributes={attributes}
+        onAddAttribute={() => {
+          // TODO: Implement add attribute
+        }}
+        onDeleteAttribute={(name) => {
+          // TODO: Implement delete attribute
+        }}
+        onEditAttribute={(name) => {
+          // TODO: Implement edit attribute
+        }}
+      />
+    </ListContainer>
+  );
+};
+
+// JSON View component
+const JSONViewContent = ({
+  configStr,
+  onChange,
+  path,
+  scanning,
+}: {
+  configStr: string;
+  onChange: (value: string) => void;
+  path: string;
+  scanning: boolean;
+}) => {
+  if (scanning) {
+    return (
+      <CenteredStack spacing={1} sx={{ p: 3 }}>
+        <LoadingSpinner />
+        <Typography color="secondary">Scanning schema</Typography>
+      </CenteredStack>
+    );
+  }
+
+  if (!configStr) {
+    return null;
+  }
+
+  return (
+    <CodeView
+      data={configStr}
+      onChange={(_, value) => onChange(value)}
+      path={path}
+      schema={{
+        view: {
+          language: "json",
+          readOnly: false,
+          width: "100%",
+          height: "100%",
+          componentsProps: {
+            container: {
+              style: { height: "100%" },
+            },
+          },
+        },
+      }}
+    />
+  );
+};
+
+// Main component
+const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
   const data = useAnnotationSchema(path);
   const setCurrentField = useSetAtom(currentField);
   const setNotification = useNotification();
+  const fType = useAtomValue(fieldType(path));
+  const activeFields = useAtomValue(activePaths);
+  const hiddenFields = useAtomValue(inactivePaths);
+
+  // All fields for the dropdown
+  const allFields = useMemo(
+    () => [...activeFields, ...hiddenFields].sort(),
+    [activeFields, hiddenFields]
+  );
+
+  const [tab, setTab] = useState<"gui" | "json">("gui");
+  const [readOnlyField, setReadOnlyField] = useState(false);
 
   useEffect(() => {
     if (data.savingComplete) {
@@ -123,68 +467,114 @@ const EditAnnotationSchema = ({ path }: { path: string }) => {
       setNotification({ msg: "Schema changes saved", variant: "success" });
     }
   }, [data.savingComplete, setCurrentField, setNotification]);
+
   return (
-    <>
-      <Container>
-        {data.loading && <Loading scanning={data.scanning} />}
-        {!data.schema && !data.loading && (
-          <>
-            <RoundButtonWhite
-              onClick={() => {
-                data.compute();
-              }}
-            >
-              <Sync /> Scan samples
-            </RoundButtonWhite>
-            <Link
-              color="secondary"
-              onClick={() => {
-                data.compute(false);
-              }}
-            >
-              Skip scan
-            </Link>
-          </>
-        )}
-        {data.schema && !data.loading && (
-          <CodeView
-            data={data.schema}
-            onChange={(_, value) => {
-              data.setSchema(value);
-            }}
-            path={path}
-            schema={{
-              view: {
-                language: "json",
-                readOnly: false,
-                width: "100%",
-                height: "100%",
-                componentsProps: {
-                  container: {
-                    className: "json",
-                  },
-                },
+    <EditContainer>
+      {/* Field name and type section */}
+      <FieldRow style={{ marginTop: "1rem" }}>
+        <FieldColumn>
+          <Label variant="body2">Field name</Label>
+          <Select
+            fullWidth
+            size="small"
+            value={path}
+            onChange={(e) => setCurrentField(e.target.value as string)}
+          >
+            {allFields.map((field) => (
+              <MenuItem key={field} value={field}>
+                {field}
+              </MenuItem>
+            ))}
+          </Select>
+        </FieldColumn>
+        <FieldColumn>
+          <Label variant="body2">Field type</Label>
+          <TextField
+            fullWidth
+            size="small"
+            value={fType || ""}
+            disabled
+            InputProps={{ readOnly: true }}
+          />
+        </FieldColumn>
+      </FieldRow>
+
+      {/* Read-only toggle */}
+      <Box my={2}>
+        <Typography fontWeight={500}>Read-only</Typography>
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Typography variant="body2" color="secondary">
+            When enabled, annotators can view this field but can't edit its
+            values.
+          </Typography>
+          <Switch
+            checked={readOnlyField}
+            onChange={(e) => setReadOnlyField(e.target.checked)}
+          />
+        </Box>
+      </Box>
+
+      {/* Schema section */}
+      <SchemaSection>
+        <Label variant="body2">Schema</Label>
+        <TabsRow>
+          <Tabs
+            value={tab}
+            sx={editTabsStyles}
+            TabIndicatorProps={{ style: { display: "none" } }}
+          >
+            <Tab label="GUI" value="gui" onClick={() => setTab("gui")} />
+            <Tab label="JSON" value="json" onClick={() => setTab("json")} />
+          </Tabs>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<Sync fontSize="small" />}
+            onClick={() => data.compute()}
+            sx={{
+              color: "text.primary",
+              borderColor: "divider",
+              textTransform: "none",
+              "&:hover": {
+                borderColor: "action.active",
+              },
+              "&:active": {
+                borderColor: "action.active",
               },
             }}
-          />
-        )}
-      </Container>
+          >
+            Scan
+          </Button>
+        </TabsRow>
+
+        <ContentArea>
+          {tab === "gui" ? (
+            <GUIViewContent config={data.config} scanning={data.scanning} />
+          ) : (
+            <JSONViewContent
+              configStr={data.configStr}
+              onChange={data.setConfigStr}
+              path={path}
+              scanning={data.scanning}
+            />
+          )}
+        </ContentArea>
+      </SchemaSection>
+
       <Footer
         secondaryButton={{
           onClick: () => data.reset(),
           disabled: !data.hasChanges,
-          text: "Reset",
+          text: "Discard",
         }}
         primaryButton={{
-          onClick: () => {
-            data.save();
-          },
+          onClick: () => data.save(),
           disabled: !data.hasChanges || data.saving,
-          text: data.saving ? "Saving..." : "Save schema",
+          text: data.saving ? "Saving..." : "Save",
         }}
       />
-    </>
+    </EditContainer>
   );
 };
 
-export default EditAnnotationSchema;
+export default EditAnnotationFieldSchema;
