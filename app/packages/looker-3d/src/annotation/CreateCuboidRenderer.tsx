@@ -3,7 +3,6 @@ import { objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { useFo3dContext } from "../fo3d/context";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
   annotationPlaneAtom,
@@ -22,6 +21,8 @@ interface CreateCuboidRendererProps {
 }
 
 const MIN_DIMENSION = 0.1;
+
+const DEFAULT_HEIGHT = 1;
 
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
@@ -46,16 +47,6 @@ export const CreateCuboidRenderer = ({
 
   // Track whether pointer is currently down (to differentiate move vs drag)
   const isPointerDownRef = useRef(false);
-
-  const { sceneBoundingBox } = useFo3dContext();
-
-  // Calculate depth as 10% of scene bounding box average dimension
-  const defaultDepth = useMemo(() => {
-    if (!sceneBoundingBox) return 1;
-    const size = sceneBoundingBox.getSize(new THREE.Vector3());
-    const avgDimension = (size.x + size.y + size.z) / 3;
-    return avgDimension * 0.1;
-  }, [sceneBoundingBox]);
 
   // Get the plane's local axes from its quaternion
   const planeAxes = useMemo(() => {
@@ -107,11 +98,15 @@ export const CreateCuboidRenderer = ({
     const center = start.clone().add(current).multiplyScalar(0.5);
 
     // Offset center by half depth along the plane normal (so cuboid sits on the plane)
-    center.add(planeAxes.normal.clone().multiplyScalar(defaultDepth / 2));
+    center.add(planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2));
 
     return {
       location: center.toArray() as THREE.Vector3Tuple,
-      dimensions: [finalWidth, finalHeight, defaultDepth] as THREE.Vector3Tuple,
+      dimensions: [
+        finalWidth,
+        finalHeight,
+        DEFAULT_HEIGHT,
+      ] as THREE.Vector3Tuple,
       quaternion: annotationPlane.quaternion as [
         number,
         number,
@@ -119,7 +114,7 @@ export const CreateCuboidRenderer = ({
         number
       ],
     };
-  }, [dragState, planeAxes, defaultDepth, annotationPlane.quaternion]);
+  }, [dragState, planeAxes, DEFAULT_HEIGHT, annotationPlane.quaternion]);
 
   // Handle pointer down - mark that we're ready to start dragging
   const handlePointerDown = useCallback(() => {
