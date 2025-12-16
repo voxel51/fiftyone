@@ -10,6 +10,7 @@ import inspect
 import json
 import numbers
 import sys
+
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
@@ -413,7 +414,9 @@ def get_implied_field_kwargs(value, dynamic=False):
             value_type = next(iter(value_types))
             kwargs["subfield"] = value_type
 
-            if value_type == fof.EmbeddedDocumentField:
+            if inspect.isclass(value_type) and issubclass(
+                value_type, fof.EmbeddedDocumentField
+            ):
                 document_type = _get_list_subfield_type(value)
                 fields = _parse_embedded_doc_list_fields(value, dynamic)
                 kwargs["embedded_doc_type"] = document_type
