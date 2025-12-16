@@ -34,6 +34,11 @@ jobs:
         run: |
           pip install --upgrade pip setuptools wheel build
 
+      - name: Setup node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
