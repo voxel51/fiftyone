@@ -4,10 +4,7 @@ import { useContext } from "react";
 import { Redo, Round, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 
-import {
-  isCuboidAnnotateActiveAtom,
-  isPolylineAnnotateActiveAtom,
-} from "@fiftyone/looker-3d/src/state";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { useRecoilValue } from "recoil";
 import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
@@ -21,8 +18,9 @@ const Header = () => {
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
   const { onExit } = useContext(ConfirmationContext);
 
-  const isAnnotatingPolyline = useRecoilValue(isPolylineAnnotateActiveAtom);
-  const isAnnotatingCuboid = useRecoilValue(isCuboidAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
+  const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
   return (
     <Row>

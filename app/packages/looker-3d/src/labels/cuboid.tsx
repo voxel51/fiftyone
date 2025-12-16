@@ -10,8 +10,8 @@ import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import {
+  current3dAnnotationModeAtom,
   hoveredLabelAtom,
-  isCuboidAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
   transformModeAtom,
@@ -52,15 +52,15 @@ export const Cuboid = ({
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
-  const setIsCuboidAnnotateActive = useSetRecoilState(
-    isCuboidAnnotateActiveAtom
+  const setCurrent3dAnnotationMode = useSetRecoilState(
+    current3dAnnotationModeAtom
   );
 
   useEffect(() => {
     if (isSelectedForAnnotation) {
-      setIsCuboidAnnotateActive(true);
+      setCurrent3dAnnotationMode("cuboid");
     }
-  }, [isSelectedForAnnotation, setIsCuboidAnnotateActive]);
+  }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
   const labelWoQuaternion = useMemo(() => {
     if (!label.quaternion) {

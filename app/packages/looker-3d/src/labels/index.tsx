@@ -31,10 +31,9 @@ import {
   cuboidLabelLineWidthAtom,
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
+  current3dAnnotationModeAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
-  isCuboidAnnotateActiveAtom,
-  isPolylineAnnotateActiveAtom,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
   stagedCuboidTransformsAtom,
@@ -62,13 +61,10 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const setIsPolylineAnnotateActive = useSetRecoilState(
-    isPolylineAnnotateActiveAtom
+  const setCurrent3dAnnotationMode = useSetRecoilState(
+    current3dAnnotationModeAtom
   );
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const setIsCuboidAnnotateActive = useSetRecoilState(
-    isCuboidAnnotateActiveAtom
-  );
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -150,17 +146,16 @@ export const ThreeDLabels = ({
 
       // Set the appropriate annotation mode active based on archetype
       if (archetype === "cuboid") {
-        setIsCuboidAnnotateActive(true);
+        setCurrent3dAnnotationMode("cuboid");
       } else if (archetype === "polyline") {
-        setIsPolylineAnnotateActive(true);
+        setCurrent3dAnnotationMode("polyline");
       }
     },
     [
       setSelectedLabelForAnnotation,
       transformMode,
       setTransformMode,
-      setIsCuboidAnnotateActive,
-      setIsPolylineAnnotateActive,
+      setCurrent3dAnnotationMode,
     ]
   );
 

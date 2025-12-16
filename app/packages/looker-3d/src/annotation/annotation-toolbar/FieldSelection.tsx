@@ -5,8 +5,7 @@ import {
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   currentActiveAnnotationField3dAtom,
-  isCuboidAnnotateActiveAtom,
-  isPolylineAnnotateActiveAtom,
+  current3dAnnotationModeAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
@@ -19,8 +18,9 @@ export const FieldSelection = () => {
   const activeSchema = useAtomValue(activeSchemas);
   const fieldTypesVal = useAtomValue(fieldTypes);
 
-  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
-  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
   const schemaFields = useMemo(
     () =>

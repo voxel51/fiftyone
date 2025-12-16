@@ -49,10 +49,9 @@ import {
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidPointerDownAtom,
-  isCuboidAnnotateActiveAtom,
+  current3dAnnotationModeAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
-  isPolylineAnnotateActiveAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
@@ -668,8 +667,9 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
-  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
   const canAnnotate = useCanAnnotate();
 

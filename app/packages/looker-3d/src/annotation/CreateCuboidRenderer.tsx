@@ -299,12 +299,11 @@ export const CreateCuboidRenderer = ({
         };
 
         // Add to staged transforms
-        setStagedCuboidTransforms((prev) => ({
-          ...prev,
+        setStagedCuboidTransforms({
           [labelId]: transformData,
-        }));
+        });
 
-        // Set editing to the new cuboid (similar to polylines)
+        // Set editing to the new cuboid
         setEditingToNewCuboid(labelId, transformData);
 
         // Select the newly created cuboid

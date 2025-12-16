@@ -6,6 +6,7 @@ import {
 } from "@fiftyone/lighter";
 import {
   stagedPolylineTransformsAtom,
+  stagedCuboidTransformsAtom,
   selectedLabelForAnnotationAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
@@ -28,6 +29,9 @@ export default function useExit(revertLabel = true) {
 
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
+  );
+  const setStagedCuboidTransforms = useSetRecoilState(
+    stagedCuboidTransformsAtom
   );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
@@ -54,6 +58,7 @@ export default function useExit(revertLabel = true) {
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
     setStagedPolylineTransforms({});
+    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
@@ -108,6 +113,7 @@ export default function useExit(revertLabel = true) {
     revertLabel,
     removeOverlay,
     setStagedPolylineTransforms,
+    setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
   ]);
 }

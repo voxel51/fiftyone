@@ -18,11 +18,10 @@ import {
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
+  current3dAnnotationModeAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
-  isCuboidAnnotateActiveAtom,
-  isPolylineAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
@@ -56,8 +55,9 @@ export const useAnnotationActions = () => {
     selectedPolylineVertexAtom
   );
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const isCuboidAnnotateActive = useRecoilValue(isCuboidAnnotateActiveAtom);
-  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
   const [segmentState, setSegmentState] = useRecoilState(

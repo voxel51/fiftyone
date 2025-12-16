@@ -6,8 +6,8 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
+  current3dAnnotationModeAtom,
   hoveredLabelAtom,
-  isPolylineAnnotateActiveAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
@@ -55,15 +55,15 @@ export const Polyline = ({
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
-  const setIsPolylineAnnotateActive = useSetRecoilState(
-    isPolylineAnnotateActiveAtom
+  const setCurrent3dAnnotationMode = useSetRecoilState(
+    current3dAnnotationModeAtom
   );
 
   useEffect(() => {
     if (isSelectedForAnnotation) {
-      setIsPolylineAnnotateActive(true);
+      setCurrent3dAnnotationMode("polyline");
     }
-  }, [isSelectedForAnnotation]);
+  }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
   const { strokeAndFillColor } = useLabelColor(
     { selected, color },
