@@ -706,7 +706,7 @@ updated and will now display as failed:
 
 .. image:: /images/plugins/operators/runs/runs_terminate.png
 
-.. warning::
+.. version-changed:: 2.12.0
 
    If you are running a version older than 2.12.0, the button will say
    "Mark as Failed" instead of "Terminate". In this case if the delegated 
@@ -714,9 +714,6 @@ updated and will now display as failed:
    **will not** terminate the execution of the operation. It will continue 
    executing until completion but the operation will be marked as failed 
    regardless of the actual outcome.
-
-   In version 2.12.0 and later, "Terminate" will actually stop a running
-   operation if it is still in progress on the orchestrator.
 
 .. _enterprise-runs-monitoring-progress:
 
