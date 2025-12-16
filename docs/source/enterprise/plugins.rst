@@ -695,26 +695,16 @@ indicated by “3”:
 
 .. image:: /images/plugins/operators/runs/run_rename.png
 
-.. _enterprise-runs-mark-as-failed:
+.. _enterprise-runs-terminate:
 
-Mark as failed
-^^^^^^^^^^^^^^
+Terminate
+^^^^^^^^^
 
-If a delegated operation run terminates unexpectedly without reporting failure,
-you can manually mark it as failed from the Runs page.
-
-To mark a run as failed, click the three dots indicated by "1". Then, in the
-menu, click "Mark as failed" as indicated by "2". The run status will be
+To terminate a run, click the three dots indicated by "1". Then, in the
+menu, click "Terminate" as indicated by "2". The run status will be
 updated and will now display as failed:
 
-.. image:: /images/plugins/operators/runs/runs_mark_as_failed.png
-
-.. warning::
-
-    If the delegated operation is, in fact, still in progress in your
-    orchestrator, marking the run as failed **will not** terminate the
-    execution of operation. It will continue executing until completion but the
-    operation will be marked as failed regardless of its outcome.
+.. image:: /images/plugins/operators/runs/runs_terminate.png
 
 .. _enterprise-runs-monitoring-progress:
 
