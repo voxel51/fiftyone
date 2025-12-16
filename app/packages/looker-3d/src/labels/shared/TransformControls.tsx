@@ -104,11 +104,7 @@ export const Transformable = ({
               scaleSnap={0.01}
               object={explicitObjectRef?.current || groupRef.current}
               mode={transformMode}
-              space={
-                transformMode === "scale" || transformMode === "rotate"
-                  ? "local"
-                  : "world"
-              }
+              space="local"
               onMouseDown={onTransformStartDecorated}
               onMouseUp={onTransformEndDecorated}
               onObjectChange={onObjectChangeDecorated}
