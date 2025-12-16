@@ -22,6 +22,7 @@ import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
+import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
@@ -471,6 +472,7 @@ export const SidePanel = ({
               }
             />
             <SegmentPolylineRenderer ignoreEffects />
+            <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D />
           </Bounds>
           <Lights lights={foScene?.lights} />
@@ -535,7 +537,7 @@ function findByUserData(
   return result;
 }
 
-const DEFAULT_CUBOID_CREATION_SIZE = 5;
+const DEFAULT_CUBOID_CREATION_MARGIN = 50;
 
 const BoundsSideEffectsComponent = () => {
   const api = useBounds();
@@ -583,9 +585,9 @@ const BoundsSideEffectsComponent = () => {
     const { position } = payload;
 
     const boxGeometry = new THREE.BoxGeometry(
-      DEFAULT_CUBOID_CREATION_SIZE,
-      DEFAULT_CUBOID_CREATION_SIZE,
-      DEFAULT_CUBOID_CREATION_SIZE
+      DEFAULT_CUBOID_CREATION_MARGIN,
+      DEFAULT_CUBOID_CREATION_MARGIN,
+      DEFAULT_CUBOID_CREATION_MARGIN
     );
     const helperMesh = new THREE.Mesh(boxGeometry);
     helperMesh.position.set(position[0], position[1], position[2]);

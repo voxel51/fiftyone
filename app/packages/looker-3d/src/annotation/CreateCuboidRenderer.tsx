@@ -18,6 +18,7 @@ import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
 interface CreateCuboidRendererProps {
   color?: string;
+  ignoreEffects?: boolean;
 }
 
 const MIN_DIMENSION = 0.1;
@@ -26,6 +27,7 @@ const DEFAULT_HEIGHT = 1;
 
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
+  ignoreEffects = false,
 }: CreateCuboidRendererProps) => {
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [isCreatingCuboid, setIsCreatingCuboid] =
@@ -348,6 +350,8 @@ export const CreateCuboidRenderer = ({
 
   // Reset creation state when create mode is disabled
   useEffect(() => {
+    if (ignoreEffects) return;
+
     if (!isCreatingCuboid) {
       isActiveRef.current = false;
       setIsCreatingCuboidPointerDown(false);
@@ -358,21 +362,63 @@ export const CreateCuboidRenderer = ({
         currentPosition: null,
       });
     }
-  }, [isCreatingCuboid, setCreationState, setIsCreatingCuboidPointerDown]);
+  }, [
+    ignoreEffects,
+    isCreatingCuboid,
+    setCreationState,
+    setIsCreatingCuboidPointerDown,
+  ]);
 
   // Set cursor to crosshair when in create mode
   useEffect(() => {
+    if (ignoreEffects) return;
+
     if (isCreatingCuboid) {
       document.body.style.cursor = "crosshair";
       return () => {
         document.body.style.cursor = "default";
       };
     }
-  }, [isCreatingCuboid]);
+  }, [ignoreEffects, isCreatingCuboid]);
+
+  // Handle Escape key to cancel cuboid creation
+  useEffect(() => {
+    if (ignoreEffects) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!isCreatingCuboid || creationState.step === 0) return;
+
+      if (event.key === "Escape") {
+        // Reset creation state
+        isActiveRef.current = false;
+        setIsCreatingCuboidPointerDown(false);
+        setCreationState({
+          step: 0,
+          centerPosition: null,
+          orientationPoint: null,
+          currentPosition: null,
+        });
+
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    ignoreEffects,
+    isCreatingCuboid,
+    creationState.step,
+    setCreationState,
+    setIsCreatingCuboidPointerDown,
+  ]);
 
   useEmptyCanvasInteraction({
-    onPointerMove: isCreatingCuboid ? handlePointerMove : undefined,
-    onPointerUp: isCreatingCuboid ? handlePointerUp : undefined,
+    onPointerMove:
+      !ignoreEffects && isCreatingCuboid ? handlePointerMove : undefined,
+    onPointerUp:
+      !ignoreEffects && isCreatingCuboid ? handlePointerUp : undefined,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
   });

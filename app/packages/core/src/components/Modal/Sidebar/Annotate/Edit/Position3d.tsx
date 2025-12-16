@@ -274,7 +274,7 @@ export default function Position3d() {
           label="lx"
           formControl={
             <TextField
-              fullWidth
+              type="number"
               value={formatValue(state.dimensions.lx)}
               onChange={(e) => {
                 handleUserInputChange({
