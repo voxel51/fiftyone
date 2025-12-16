@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { DEFAULT_CHANNEL_ID } from "../dispatch";
 import { EventGroup, EventHandler } from "../types";
 import { useEventBus } from "./useEventBus";
 
@@ -41,16 +42,18 @@ import { useEventBus } from "./useEventBus";
  * You can use `useCallback` directly as the second argument to get automatic type inference
  * for the handler's data parameter, and this pattern doesn't violate the rules of hooks.
  */
-export function createUseEventHandler<T extends EventGroup>() {
+export function createUseEventHandler<T extends EventGroup>(
+  channelId = DEFAULT_CHANNEL_ID
+) {
   return function useEventHandler<K extends keyof T>(
     event: K,
     handler: EventHandler<T[K]>
   ) {
-    const bus = useEventBus<T>();
+    const bus = useEventBus<T>(channelId);
 
     useEffect(() => {
       bus.on(event, handler);
       return () => bus.off(event, handler);
-    }, [bus, event, handler]);
+    }, [bus, event, handler, channelId]);
   };
 }

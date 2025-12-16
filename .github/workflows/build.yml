@@ -41,7 +41,7 @@ jobs:
 
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             app/node_modules
@@ -62,7 +62,7 @@ jobs:
       - name: Build python
         run: make python -o app
       - name: Upload dist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: dist
           path: dist/

@@ -60,6 +60,7 @@ class DelegatedOperationDocument(object):
         self.log_upload_error = None
         self.log_size = None
         self.log_path = None
+        self.monitored = False
 
         # distributed task fields
         self.parent_id = None  # Only on children
@@ -93,6 +94,7 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+        self.monitored = doc.get("monitored", False)
 
         # grouped fields
         self.parent_id = doc.get("parent_id", None)

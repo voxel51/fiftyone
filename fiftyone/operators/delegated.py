@@ -13,19 +13,19 @@ import logging.handlers
 import multiprocessing
 import os
 import traceback
+
 import psutil
 
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
+from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.executor import (
-    prepare_operator_executor,
-    do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
-    resolve_type_with_context,
     PipelineExecutionContext,
+    do_execute_operator,
+    prepare_operator_executor,
+    resolve_type_with_context,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +180,7 @@ class DelegatedOperationService(object):
         run_link=None,
         log_path=None,
         required_state=None,
+        monitored=False,
     ):
         """Sets the given delegated operation to running state.
 
@@ -195,6 +196,8 @@ class DelegatedOperationService(object):
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
                 performed if the referenced operation matches this state.
+            monitored (False): whether the operation is being monitored by
+                an external process
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
@@ -207,6 +210,7 @@ class DelegatedOperationService(object):
             log_path=log_path,
             progress=progress,
             required_state=required_state,
+            monitored=monitored,
         )
 
     def set_scheduled(self, doc_id, required_state=None):
@@ -627,6 +631,7 @@ class DelegatedOperationService(object):
                         run_link=run_link,
                         log_path=log_path,
                         required_state=ExecutionRunState.QUEUED,
+                        monitored=monitor,
                     )
                     is not None
                 )

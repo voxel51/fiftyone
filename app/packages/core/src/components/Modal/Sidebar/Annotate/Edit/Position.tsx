@@ -2,6 +2,7 @@ import { LabeledField } from "@fiftyone/components";
 import {
   BoundingBoxOverlay,
   TransformOverlayCommand,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
@@ -39,6 +40,9 @@ export default function Position() {
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -76,9 +80,9 @@ export default function Position() {
     [data?._id, overlay, setData]
   );
 
-  useLighterEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
-  useLighterEventHandler("lighter:overlay-drag-move", handleBoundsChange);
-  useLighterEventHandler("lighter:overlay-resize-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
+  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
   const handleUserInputChange = (coordinateDelta: Partial<Coordinates>) => {
     // synchronize internal state

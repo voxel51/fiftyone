@@ -64,6 +64,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
       // we can disable 1) analytics, and 2) QA performance toast banners
       window.IS_PLAYWRIGHT = true;
+
+      // Clear modal mode state to ensure tests start in explore mode
+      const keys = Object.keys(localStorage);
+      keys.forEach((key) => {
+        if (key.includes("modalMode")) {
+          localStorage.removeItem(key);
+        }
+      });
     });
 
     const forceDatasetFromSelector = async () => {

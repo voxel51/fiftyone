@@ -1,4 +1,8 @@
-import { useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
@@ -12,6 +16,9 @@ const STORE = getDefaultStore();
 
 export default function useFocus() {
   const { scene, removeOverlay } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
   const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
   const onExit = useExit(false);
@@ -31,7 +38,7 @@ export default function useFocus() {
     selectId.current = null;
   }, [scene]);
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
       (payload) => {
@@ -61,7 +68,7 @@ export default function useFocus() {
     )
   );
 
-  useLighterEventHandler(
+  useEventHandler(
     "lighter:overlay-select",
     useCallback(
       (payload) => {

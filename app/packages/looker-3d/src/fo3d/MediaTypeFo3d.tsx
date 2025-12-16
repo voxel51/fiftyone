@@ -354,6 +354,16 @@ export const MediaTypeFo3dComponent = () => {
         );
       }
 
+      const defaultCameraPosition = foScene?.cameraProps.position;
+
+      if (defaultCameraPosition) {
+        return new Vector3(
+          defaultCameraPosition[0],
+          defaultCameraPosition[1],
+          defaultCameraPosition[2]
+        );
+      }
+
       if (
         !ignoreLastSavedCameraPosition &&
         lastSavedCameraPosition &&
@@ -363,16 +373,6 @@ export const MediaTypeFo3dComponent = () => {
           lastSavedCameraPosition[0],
           lastSavedCameraPosition[1],
           lastSavedCameraPosition[2]
-        );
-      }
-
-      const defaultCameraPosition = foScene?.cameraProps.position;
-
-      if (defaultCameraPosition) {
-        return new Vector3(
-          defaultCameraPosition[0],
-          defaultCameraPosition[1],
-          defaultCameraPosition[2]
         );
       }
 
