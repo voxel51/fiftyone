@@ -28,7 +28,7 @@ pydata-sphinx-theme==0.16.1
 sphinx-autobuild==2025.8.25
 sphinx-tabs==3.4.7
 sphinx-design==0.6.1
-# myst parser does not support yet Sphinx > 9.0: https://github.com/streamlink/streamlink/issues/6748
+# myst parser does not support yet Sphinx > 9.0: https://github.com/executablebooks/MyST-Parser/issues/1077
 Sphinx==8.2.3
 sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
