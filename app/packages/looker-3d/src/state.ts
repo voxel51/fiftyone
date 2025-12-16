@@ -398,19 +398,24 @@ export const isCreatingCuboidAtom = atom<boolean>({
 });
 
 /**
- * State for tracking cuboid creation drag interaction.
+ * State for tracking cuboid creation with 3-click interaction.
+ * Step 0: waiting for first click (center position)
+ * Step 1: waiting for second click (orientation/yaw and length)
+ * Step 2: waiting for third click (width)
  */
-export interface CuboidCreationDragState {
-  isDragging: boolean;
-  startPosition: [number, number, number] | null;
+export interface CuboidCreationState {
+  step: 0 | 1 | 2;
+  centerPosition: [number, number, number] | null;
+  orientationPoint: [number, number, number] | null;
   currentPosition: [number, number, number] | null;
 }
 
-export const cuboidCreationDragStateAtom = atom<CuboidCreationDragState>({
-  key: "fo3d-cuboidCreationDragState",
+export const cuboidCreationStateAtom = atom<CuboidCreationState>({
+  key: "fo3d-cuboidCreationState",
   default: {
-    isDragging: false,
-    startPosition: null,
+    step: 0,
+    centerPosition: null,
+    orientationPoint: null,
     currentPosition: null,
   },
 });

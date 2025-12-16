@@ -1,4 +1,4 @@
-import * as fos from "@fiftyone/state";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { useEmptyCanvasInteraction } from "../hooks/use-empty-canvas-interaction";
 import {
   annotationPlaneAtom,
-  cuboidCreationDragStateAtom,
+  cuboidCreationStateAtom,
   currentActiveAnnotationField3dAtom,
   isCreatingCuboidAtom,
   isCreatingCuboidPointerDownAtom,
@@ -27,7 +27,6 @@ const DEFAULT_HEIGHT = 1;
 export const CreateCuboidRenderer = ({
   color = "#00ff00",
 }: CreateCuboidRendererProps) => {
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const [isCreatingCuboid, setIsCreatingCuboid] =
     useRecoilState(isCreatingCuboidAtom);
@@ -38,15 +37,19 @@ export const CreateCuboidRenderer = ({
     stagedCuboidTransformsAtom
   );
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const [dragState, setDragState] = useRecoilState(cuboidCreationDragStateAtom);
+  const [creationState, setCreationState] = useRecoilState(
+    cuboidCreationStateAtom
+  );
   const setIsCreatingCuboidPointerDown = useSetRecoilState(
     isCreatingCuboidPointerDownAtom
   );
 
   const setEditingToNewCuboid = useSetEditingToNewCuboid();
 
-  // Track whether pointer is currently down (to differentiate move vs drag)
-  const isPointerDownRef = useRef(false);
+  const annotationEventBus = useAnnotationEventBus();
+
+  // Track whether we're actively creating (to differentiate from hovering)
+  const isActiveRef = useRef(false);
 
   // Get the plane's local axes from its quaternion
   const planeAxes = useMemo(() => {
@@ -70,64 +73,124 @@ export const CreateCuboidRenderer = ({
     };
   }, [annotationPlane.position, annotationPlane.quaternion]);
 
-  // Calculate preview cuboid properties during drag
+  // Calculate preview cuboid properties based on creation state
   const previewCuboid = useMemo(() => {
-    if (
-      !dragState.isDragging ||
-      !dragState.startPosition ||
-      !dragState.currentPosition
-    ) {
+    const { step, centerPosition, orientationPoint, currentPosition } =
+      creationState;
+
+    if (!centerPosition || !currentPosition) {
       return null;
     }
 
-    const start = new THREE.Vector3(...dragState.startPosition);
-    const current = new THREE.Vector3(...dragState.currentPosition);
+    const center = new THREE.Vector3(...centerPosition);
+    const current = new THREE.Vector3(...currentPosition);
 
-    // Calculate drag vector
-    const dragVector = current.clone().sub(start);
+    if (step === 1) {
+      // Step 1: Show preview with orientation line from center to current position
+      // Length is the distance from center to current, width is MIN_DIMENSION
+      const directionVector = current.clone().sub(center);
+      const length = Math.max(directionVector.length(), MIN_DIMENSION);
 
-    // Project onto plane's local axes to get width and height
-    const width = Math.abs(dragVector.dot(planeAxes.localX));
-    const height = Math.abs(dragVector.dot(planeAxes.localY));
+      // Calculate yaw rotation from direction vector (in plane's local space)
+      const localDirection = new THREE.Vector2(
+        directionVector.dot(planeAxes.localX),
+        directionVector.dot(planeAxes.localY)
+      );
+      const yaw = Math.atan2(localDirection.y, localDirection.x);
 
-    // Ensure minimum dimensions
-    const finalWidth = Math.max(width, MIN_DIMENSION);
-    const finalHeight = Math.max(height, MIN_DIMENSION);
+      // Create rotation quaternion combining plane orientation with yaw
+      const planeQuaternion = new THREE.Quaternion(
+        ...annotationPlane.quaternion
+      );
+      const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
+        planeAxes.normal,
+        yaw
+      );
+      const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
 
-    // Calculate center position (midpoint of start and current)
-    const center = start.clone().add(current).multiplyScalar(0.5);
+      // Position center at midpoint between center and current
+      const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
+      // Offset by half height along plane normal
+      cuboidCenter.add(
+        planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2)
+      );
 
-    // Offset center by half depth along the plane normal (so cuboid sits on the plane)
-    center.add(planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2));
+      return {
+        location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+        dimensions: [
+          length,
+          MIN_DIMENSION,
+          DEFAULT_HEIGHT,
+        ] as THREE.Vector3Tuple,
+        quaternion: finalQuaternion.toArray() as [
+          number,
+          number,
+          number,
+          number
+        ],
+      };
+    }
 
-    return {
-      location: center.toArray() as THREE.Vector3Tuple,
-      dimensions: [
-        finalWidth,
-        finalHeight,
-        DEFAULT_HEIGHT,
-      ] as THREE.Vector3Tuple,
-      quaternion: annotationPlane.quaternion as [
-        number,
-        number,
-        number,
-        number
-      ],
-    };
-  }, [dragState, planeAxes, DEFAULT_HEIGHT, annotationPlane.quaternion]);
+    if (step === 2 && orientationPoint) {
+      // Step 2: Show preview with length fixed, width based on perpendicular distance
+      const orientation = new THREE.Vector3(...orientationPoint);
+      const directionVector = orientation.clone().sub(center);
+      const length = Math.max(directionVector.length(), MIN_DIMENSION);
 
-  // Handle pointer down - mark that we're ready to start dragging
-  const handlePointerDown = useCallback(() => {
-    isPointerDownRef.current = true;
-    setIsCreatingCuboidPointerDown(true);
-  }, [setIsCreatingCuboidPointerDown]);
+      // Calculate yaw rotation
+      const localDirection = new THREE.Vector2(
+        directionVector.dot(planeAxes.localX),
+        directionVector.dot(planeAxes.localY)
+      );
+      const yaw = Math.atan2(localDirection.y, localDirection.x);
 
-  // Handle pointer move - update drag state only if pointer is down
-  const handlePointerMove = useCallback(
+      // Create rotation quaternion
+      const planeQuaternion = new THREE.Quaternion(
+        ...annotationPlane.quaternion
+      );
+      const yawQuaternion = new THREE.Quaternion().setFromAxisAngle(
+        planeAxes.normal,
+        yaw
+      );
+      const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
+
+      // Calculate width as perpendicular distance from current to the orientation line
+      const centerToOrientation = directionVector.clone().normalize();
+      const centerToCurrent = current.clone().sub(center);
+      // Project centerToCurrent onto centerToOrientation
+      const projection = centerToOrientation
+        .clone()
+        .multiplyScalar(centerToCurrent.dot(centerToOrientation));
+      // Perpendicular component
+      const perpendicular = centerToCurrent.clone().sub(projection);
+      const width = Math.max(perpendicular.length() * 2, MIN_DIMENSION); // *2 because width extends both sides
+
+      // Position center at midpoint between center and orientation
+      const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
+      // Offset by half height along plane normal
+      cuboidCenter.add(
+        planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2)
+      );
+
+      return {
+        location: cuboidCenter.toArray() as THREE.Vector3Tuple,
+        dimensions: [length, width, DEFAULT_HEIGHT] as THREE.Vector3Tuple,
+        quaternion: finalQuaternion.toArray() as [
+          number,
+          number,
+          number,
+          number
+        ],
+      };
+    }
+
+    return null;
+  }, [creationState, planeAxes, annotationPlane.quaternion]);
+
+  // Handle click - progress through creation steps
+  const handleClick = useCallback(
     (worldPos: THREE.Vector3) => {
-      if (!isCreatingCuboid) return;
-      // Only track drag if pointer is actually down (user clicked on canvas)
-      if (!isPointerDownRef.current) return;
+      if (!isCreatingCuboid || !currentActiveField) return;
 
       const position: [number, number, number] = [
         worldPos.x,
@@ -135,38 +198,77 @@ export const CreateCuboidRenderer = ({
         worldPos.z,
       ];
 
-      setDragState((prev) => {
-        // If we don't have a start position yet, set it now (first move after click)
-        if (!prev.startPosition) {
+      // Handle side effects before state update based on current step
+      if (creationState.step === 0) {
+        isActiveRef.current = true;
+        setIsCreatingCuboidPointerDown(true);
+        // Dispatch event to focus side panel cameras on the creation location
+        annotationEventBus.dispatch("annotation:cuboidCreationStarted", {
+          position,
+        });
+      }
+
+      setCreationState((prev) => {
+        if (prev.step === 0) {
+          // First click: set center position
           return {
-            isDragging: true,
-            startPosition: position,
+            step: 1,
+            centerPosition: position,
+            orientationPoint: null,
             currentPosition: position,
           };
         }
 
-        // Update current position
-        return {
-          ...prev,
-          isDragging: true,
-          currentPosition: position,
-        };
+        if (prev.step === 1) {
+          // Second click: set orientation point
+          return {
+            ...prev,
+            step: 2,
+            orientationPoint: position,
+            currentPosition: position,
+          };
+        }
+
+        // Step 2 click is handled separately to commit the cuboid
+        return prev;
       });
     },
-    [isCreatingCuboid, setDragState]
+    [
+      isCreatingCuboid,
+      currentActiveField,
+      creationState.step,
+      setCreationState,
+      setIsCreatingCuboidPointerDown,
+      annotationEventBus,
+    ]
   );
 
-  // Handle pointer up - commit the cuboid
+  // Handle pointer move - update current position for preview
+  const handlePointerMove = useCallback(
+    (worldPos: THREE.Vector3) => {
+      if (!isCreatingCuboid) return;
+      if (creationState.step === 0) return; // No preview until first click
+
+      const position: [number, number, number] = [
+        worldPos.x,
+        worldPos.y,
+        worldPos.z,
+      ];
+
+      setCreationState((prev) => ({
+        ...prev,
+        currentPosition: position,
+      }));
+    },
+    [isCreatingCuboid, creationState.step, setCreationState]
+  );
+
+  // Handle final click (step 2) - commit the cuboid
   const handlePointerUp = useCallback(
     (intersectionPoint: THREE.Vector3) => {
-      // Always reset pointer down state
-      isPointerDownRef.current = false;
-      setIsCreatingCuboidPointerDown(false);
-
       if (!isCreatingCuboid || !currentActiveField) return;
 
-      // If we have a valid drag with dimensions, commit it
-      if (dragState.isDragging && dragState.startPosition && previewCuboid) {
+      if (creationState.step === 2 && previewCuboid) {
         const labelId = objectId();
 
         const location: THREE.Vector3Tuple = [
@@ -214,40 +316,49 @@ export const CreateCuboidRenderer = ({
 
         // Exit create mode after creating one cuboid
         setIsCreatingCuboid(false);
-      }
 
-      // Reset drag state
-      setDragState({
-        isDragging: false,
-        startPosition: null,
-        currentPosition: null,
-      });
+        // Reset creation state
+        isActiveRef.current = false;
+        setIsCreatingCuboidPointerDown(false);
+        setCreationState({
+          step: 0,
+          centerPosition: null,
+          orientationPoint: null,
+          currentPosition: null,
+        });
+      } else if (creationState.step < 2) {
+        // Handle clicks for steps 0 and 1
+        handleClick(intersectionPoint);
+      }
     },
     [
       isCreatingCuboid,
       currentActiveField,
-      dragState,
+      creationState.step,
       previewCuboid,
       setStagedCuboidTransforms,
       setSelectedLabelForAnnotation,
       setIsCreatingCuboid,
       setIsCreatingCuboidPointerDown,
-      setDragState,
+      setCreationState,
+      setEditingToNewCuboid,
+      handleClick,
     ]
   );
 
-  // Reset drag state when create mode is disabled
+  // Reset creation state when create mode is disabled
   useEffect(() => {
     if (!isCreatingCuboid) {
-      isPointerDownRef.current = false;
+      isActiveRef.current = false;
       setIsCreatingCuboidPointerDown(false);
-      setDragState({
-        isDragging: false,
-        startPosition: null,
+      setCreationState({
+        step: 0,
+        centerPosition: null,
+        orientationPoint: null,
         currentPosition: null,
       });
     }
-  }, [isCreatingCuboid, setDragState, setIsCreatingCuboidPointerDown]);
+  }, [isCreatingCuboid, setCreationState, setIsCreatingCuboidPointerDown]);
 
   // Set cursor to crosshair when in create mode
   useEffect(() => {
@@ -260,15 +371,24 @@ export const CreateCuboidRenderer = ({
   }, [isCreatingCuboid]);
 
   useEmptyCanvasInteraction({
-    onPointerDown: isCreatingCuboid ? handlePointerDown : undefined,
     onPointerMove: isCreatingCuboid ? handlePointerMove : undefined,
     onPointerUp: isCreatingCuboid ? handlePointerUp : undefined,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
   });
 
-  // Render preview cuboid during drag
+  // Render preview cuboid
   if (!previewCuboid) {
+    // Show center point indicator after first click
+    if (creationState.step >= 1 && creationState.centerPosition) {
+      const center = creationState.centerPosition;
+      return (
+        <mesh position={center}>
+          <sphereGeometry args={[0.1, 16, 16]} />
+          <meshBasicMaterial color={color} />
+        </mesh>
+      );
+    }
     return null;
   }
 

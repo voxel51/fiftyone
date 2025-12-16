@@ -535,6 +535,8 @@ function findByUserData(
   return result;
 }
 
+const DEFAULT_CUBOID_CREATION_SIZE = 5;
+
 const BoundsSideEffectsComponent = () => {
   const api = useBounds();
 
@@ -574,6 +576,28 @@ const BoundsSideEffectsComponent = () => {
         api.refresh(object).reset().fit();
       }
     }
+  });
+
+  // Focus camera on cuboid creation location when user starts creating
+  useAnnotationEventHandler("annotation:cuboidCreationStarted", (payload) => {
+    const { position } = payload;
+
+    const boxGeometry = new THREE.BoxGeometry(
+      DEFAULT_CUBOID_CREATION_SIZE,
+      DEFAULT_CUBOID_CREATION_SIZE,
+      DEFAULT_CUBOID_CREATION_SIZE
+    );
+    const helperMesh = new THREE.Mesh(boxGeometry);
+    helperMesh.position.set(position[0], position[1], position[2]);
+    helperMesh.visible = false;
+    scene.add(helperMesh);
+
+    api.refresh(helperMesh).reset().fit();
+
+    setTimeout(() => {
+      scene.remove(helperMesh);
+      boxGeometry.dispose();
+    }, 0);
   });
 
   return null;

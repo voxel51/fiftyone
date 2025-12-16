@@ -125,15 +125,15 @@ export const Cuboid = ({
   // (gimbal lock, precision loss). We convert to euler only on final save.
   // Priority: tempTransforms.quaternion > effectiveQuaternion (staged) > euler fallback
   const combinedQuaternion = useMemo(() => {
-    if (transformMode !== "rotate") {
-      return null;
+    // During active rotation, prefer temp transforms quaternion
+    if (transformMode === "rotate" && tempTransforms?.quaternion) {
+      return new THREE.Quaternion(...tempTransforms.quaternion);
     }
-    const quaternionToUse = tempTransforms?.quaternion ?? effectiveQuaternion;
-    if (!quaternionToUse) {
-      return null;
+    // Otherwise use effective (staged) quaternion if available
+    if (effectiveQuaternion) {
+      return new THREE.Quaternion(...effectiveQuaternion);
     }
-
-    return new THREE.Quaternion(...quaternionToUse);
+    return null;
   }, [
     tempTransforms?.quaternion,
     effectiveQuaternion,
