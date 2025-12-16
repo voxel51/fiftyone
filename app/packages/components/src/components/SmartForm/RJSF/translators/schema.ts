@@ -1,6 +1,7 @@
 import type { RJSFSchema } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { addWarning, type TranslationContext } from "./utils";
+import { SmartFormInputs } from "../../types";
 
 /**
  * Translates SchemaIO type to JSON Schema
@@ -17,24 +18,24 @@ export function translateToJSONSchema(
 
   // Handle basic types
   switch (type) {
-    case "string":
+    case SmartFormInputs.String:
       schema.type = "string";
       break;
-    case "number":
-    case "integer":
+    case SmartFormInputs.Number:
+    case SmartFormInputs.Integer:
       schema.type = "number";
       if (schemaIO.min !== undefined) schema.minimum = schemaIO.min;
       if (schemaIO.max !== undefined) schema.maximum = schemaIO.max;
       if (schemaIO.multipleOf !== undefined)
         schema.multipleOf = schemaIO.multipleOf;
       break;
-    case "boolean":
+    case SmartFormInputs.Boolean:
       schema.type = "boolean";
       break;
-    case "null":
+    case SmartFormInputs.Null:
       schema.type = "null";
       break;
-    case "object":
+    case SmartFormInputs.Object:
       schema.type = "object";
       if (schemaIO.properties) {
         schema.properties = {};
@@ -70,7 +71,7 @@ export function translateToJSONSchema(
         );
       }
       break;
-    case "array":
+    case SmartFormInputs.Array:
       schema.type = "array";
       if (schemaIO.items) {
         // Handle tuple-style arrays (items is an array)
@@ -94,7 +95,7 @@ export function translateToJSONSchema(
         }
       }
       break;
-    case "oneOf":
+    case SmartFormInputs.OneOf:
       if (schemaIO.types && Array.isArray(schemaIO.types)) {
         schema.oneOf = schemaIO.types.map((typeSchema: any, index: number) => {
           const oneOfContext = {
