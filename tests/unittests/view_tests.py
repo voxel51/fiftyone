@@ -726,7 +726,7 @@ class ViewExpressionTests(unittest.TestCase):
         view = dataset.match(F("tags").contains(tag))
         self.assertListEqual([sample.id for sample in view], manual_ids)
         view = dataset.match(F("predictions.tags").contains(tag))
-        assert len(view) == 1
+        self.assertEqual(len(view), 1)
 
         # test is_in
         my_ints = [6, 7, 8]
