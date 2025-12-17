@@ -10,7 +10,7 @@ including annotation, evaluation, model training, and deployment.
 
 .. note::
 
-    `Learn more <https://voxel51.com/enterprise>`_ about FiftyOne Enterprise and
+    `Learn more <https://voxel51.com/fiftyone/why-upgrade>`_ about FiftyOne Enterprise and
     `contact us <https://voxel51.com/talk-to-sales>`_ to try it!
 
 .. _fiftyone-vs-fiftyone-enterprise:
