@@ -2415,7 +2415,10 @@ class ViewExpression(object):
             if isinstance(values, ViewExpression) or not etau.is_container(
                 values
             ):
-                return ViewExpression({"$in": [values, self]})
+                # The second value must always resolve to an array
+                return ViewExpression(
+                    {"$in": [values, {"$ifNull": [self, []]}]}
+                )
 
         if not all:
             return self.intersection(values).length() > 0
