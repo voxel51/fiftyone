@@ -45,7 +45,7 @@ def validate_label_schemas(
         fields = sorted(label_schema.keys())
 
     all_fields = sample_collection.get_field_schema(flat=True)
-    supported_fields = foau.get_all_supported_fields(
+    supported_fields = foau.list_valid_annotation_fields(
         sample_collection, flatten=True
     )
     exceptions = []

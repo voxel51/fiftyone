@@ -19,12 +19,9 @@ const selectSchemas = (
 };
 
 export interface AnnotationSchema {
-  active?: boolean;
-  config?: {
-    attributes: Record<string, any>;
-    classes?: string[];
-  };
+  [key: string]: any;
 }
+
 export interface AnnotationSchemas {
   [key: string]: AnnotationSchema | null;
 }
@@ -100,6 +97,7 @@ export const schemaConfig = atomFamily((path: string) =>
     },
     (get, set, config?: object) => {
       const next = get(schema(path)) ?? { active: false };
+      console.log(next);
       set(schema(path), { ...next, config });
     }
   )

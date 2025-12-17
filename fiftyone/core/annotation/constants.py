@@ -129,7 +129,7 @@ FIELD_TYPE_TO_TYPES = {
     fof.FloatField: FLOAT,
     fof.FrameNumberField: INT,
     fof.IntField: INT,
-    fol.Label: STR,
+    fol.Label: LABEL,
     fof.ListField: {
         fof.BooleanField: BOOL_LIST,
         fof.FloatField: FLOAT_LIST,

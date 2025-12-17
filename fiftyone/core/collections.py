@@ -3536,7 +3536,8 @@ class SampleCollection(object):
         :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
         Currently supported  media types for the collection are ``image`` and
-        ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
+        ``3d``. See
+        :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
         **Primitives and components**
 
@@ -3602,8 +3603,9 @@ class SampleCollection(object):
             -   ``text``: the default if ``0`` values or ``>1000`` values are
                 scanned, or ``scan_samples`` is ``False``
 
-        ``float`` types support a ``precision`` setting when a ``text`` component
-        is configured  for the number of digits to allow after the decimal.
+        ``float`` types support a ``precision`` setting when a ``text``
+        component is configured  for the number of digits to allow after the
+        decimal.
 
         All types support a ``read_only`` flag. ``id`` types must be
         ``read_only``. If a field is ``read_only`` in the field schema, then
@@ -3623,18 +3625,23 @@ class SampleCollection(object):
         and support the same settings as a ``str`` type. See the example output
         below for ``detections`` fields in the quickstart dataset. If the label
         type has a visual representation, that field is handled by the App's
-        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
-        attributes of label types are configured via the ``attributes`` setting.
+        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
+        Primitive attributes of label types are configured via the
+        ``attributes`` setting.
 
         When a label is marked is ``read_only``, all its attributes inherit the
         setting as well.
+
 
         All :class:`fiftyone.core.labels.Label` types are resolved by this
         method except :class:`fiftyone.core.labels.GeoLocation`,
         :class:`fiftyone.core.labels.GeoLocations`,
         :class:`fiftyone.core.labels.TemporalDetection`, and
-        :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
-        by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
+        :class:`fiftyone.core.labels.TemporalDetections` when provided
+        in the ``fields`` argument, otherwise only App supported fields are
+        resolved. For label types supported
+        by the App for annotation, see
+        :func:`fiftyone.core.annotation.utils.get_supported_app_annotation_fields`.
 
         All attributes and the label class itself support a ``default`` setting
         that applies when creating a new label.
@@ -3642,8 +3649,8 @@ class SampleCollection(object):
         **Embedded documents**
 
         One level of nesting is supported via ``dot.notation`` for
-        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the default
-        ``metadata`` field and the
+        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the
+        default ``metadata`` field and the
         :class:`fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument``
         document type. All label and primitive types are supported. See
         :ref:`here <dynamic-attributes>` for more details on adding dynamic
@@ -3739,8 +3746,8 @@ class SampleCollection(object):
 
         Args:
             sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` to generate the
-                schema with
+                :class:`fiftyone.core.collections.SampleCollection` to generate
+                the schema with
             fields (None): a field name, ``embedded.field.name`` or iterable of
                 such values
             scan_samples (False): whether to scan the collection to populate

@@ -2,11 +2,10 @@ import { MuiButton } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { activeSchemaTab, showModal } from "../state";
-import EditAnnotationFieldSchema from "./EditAnnotationFieldSchema";
 import FieldsTabs from "./FieldsTabs";
 import GUIView, {
   selectedActiveFields,
@@ -15,6 +14,7 @@ import GUIView, {
   useDeactivateFields,
 } from "./GUIView";
 import JSONView from "./JSONView";
+import LabelSchemaEditor from "./LabelSchemaEditor";
 import { currentField } from "./state";
 import {
   BackButton,
@@ -70,7 +70,7 @@ const Page = () => {
   const tab = useAtomValue(activeSchemaTab);
 
   if (field) {
-    return <EditAnnotationFieldSchema path={field} />;
+    return <LabelSchemaEditor field={field} />;
   }
 
   if (tab === "gui") {

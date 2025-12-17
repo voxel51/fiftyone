@@ -31,6 +31,7 @@ from .annotation import (
     GetLabelSchemas,
     GenerateLabelSchemas,
     UpdateLabelSchema,
+    ValidateLabelSchemas,
 )
 
 logger = logging.getLogger(__name__)
@@ -3430,3 +3431,4 @@ def register(p):
     p.register(GenerateLabelSchemas)
     p.register(GetLabelSchemas)
     p.register(UpdateLabelSchema)
+    p.register(ValidateLabelSchemas)

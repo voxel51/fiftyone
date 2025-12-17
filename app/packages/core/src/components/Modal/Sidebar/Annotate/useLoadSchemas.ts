@@ -1,77 +1,34 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { State, activeFields, fieldSchema, mediaType } from "@fiftyone/state";
-import {
-  CLASSIFICATIONS_FIELD,
-  CLASSIFICATION_FIELD,
-  DETECTIONS_FIELD,
-  DETECTION_FIELD,
-  POLYLINES_FIELD,
-  POLYLINE_FIELD,
-} from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
-import { useEffect } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useCallback, useEffect } from "react";
+import { schemaData } from "./SchemaManager/state";
 import { fieldTypes, schemas } from "./state";
 
-const IMAGE = "image";
-const THREE_D = "3d";
-
-const SUPPORTED_ANNOTATION_TYPES = {
-  [IMAGE]: new Set([
-    CLASSIFICATION_FIELD,
-    CLASSIFICATIONS_FIELD,
-    DETECTION_FIELD,
-    DETECTIONS_FIELD,
-  ]),
-  [THREE_D]: new Set([
-    CLASSIFICATION_FIELD,
-    CLASSIFICATIONS_FIELD,
-    POLYLINE_FIELD,
-    POLYLINES_FIELD,
-  ]),
-};
 export default function useLoadSchemas() {
   const setSchema = useSetAtom(schemas);
   const setTypes = useSetAtom(fieldTypes);
+  const setData = useSetAtom(schemaData);
   const get = useOperatorExecutor("get_label_schemas");
-  const type = useRecoilValue(mediaType);
-  const paths = useRecoilValue(activeFields({ modal: true }));
 
   useEffect(() => {
     if (!get.result) {
       return;
     }
 
+    const types = {};
+
     const schemas = {};
     for (const path in get.result.label_schemas) {
-      if (!paths.includes(path)) continue;
-
       schemas[path] = get.result.label_schemas[path];
+      types[path] = get.result.label_schemas[path].type;
     }
 
+    setData(get.result.label_schemas);
     setSchema(schemas);
-  }, [get.result, paths, setSchema]);
+    setTypes(types);
+  }, [get.result, setSchema, setTypes]);
 
-  return useRecoilCallback(
-    ({ snapshot }) =>
-      async () => {
-        const schema = await snapshot.getPromise(
-          fieldSchema({ space: State.SPACE.SAMPLE })
-        );
-        const types = {};
-
-        const paths: string[] = [];
-        for (const path in schema) {
-          const doc = schema[path].embeddedDocType;
-          if (doc && SUPPORTED_ANNOTATION_TYPES[type ?? ""]?.has(doc)) {
-            paths.push(path);
-            types[path] = doc?.split(".").slice(-1)[0];
-          }
-        }
-
-        get.execute({ fields: paths });
-        setTypes(types);
-      },
-    [type, setTypes]
-  );
+  return useCallback(() => {
+    get.execute({});
+  }, []);
 }

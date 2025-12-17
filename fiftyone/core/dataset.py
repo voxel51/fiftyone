@@ -39,6 +39,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.annotation as foa
+import fiftyone.core.annotation.constants as foac
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
@@ -1127,8 +1128,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def label_schemas(self):
-        """
-        The dataset's :ref:`label schemas <annotation-label-schema>` that
+        """The dataset's :ref:`label schemas <annotation-label-schema>` that
         define its App annotation UX and constraints.
 
         See
@@ -2661,11 +2661,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             if self._is_label_field(parent):
                 if parent not in label_schemas:
+                    # this is a label list field
+                    # e.g. remove "detections" from "ground_truth.detections"
                     parent = ".".join(parent.split(".")[:-1])
 
                 if parent in label_schemas:
                     attributes = new_label_schemas[parent].get(
-                        "attributes", {}
+                        foac.ATTRIBUTES, {}
                     )
                     name = keys[-1]
                     if name in attributes:

@@ -17,47 +17,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
-def get_supported_app_annotation_fields(sample_collection):
-    """
-    Gets the supported App annotation fields for a
-    :class:`fiftyone.core.collections.SampleCollection`.
-
-    Currently supported  media types for the collection are ``image`` and
-    ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
-
-    All supported primitive and ``embedded.document`` primitives are supported
-    as documented in :func:`generate_label_schemas`
-
-    The below :class:`fiftyone.core.labels.Label` types are also resolved.
-
-    Supported ``image`` :class:`fiftyone.core.labels.Label` types are:
-        -   ``classification``:
-            :class:`fiftyone.core.labels.Classification`
-        -   ``classifications``:
-            :class:`fiftyone.core.labels.Classifications`
-        -   ``detection``: :class:`fiftyone.core.labels.Detection`
-        -   ``detections``: :class:`fiftyone.core.labels.Detections`
-
-    Supported ``3d`` label types are:
-        -   ``classification``:
-            :class:`fiftyone.core.labels.Classification`
-        -   ``classifications``:
-            :class:`fiftyone.core.labels.Classifications`
-        -   ``polyline``: :class:`fiftyone.core.labels.Polyline`
-        -   ``polylines``: :class:`fiftyone.core.labels.Polylines`
-
-    Args:
-        sample_collection: a
-            :class:`fiftyone.core.collections.SampleCollection`
-
-    Returns:
-        a list of supported fields
-    """
-    foau.ensure_collection_is_supported(sample_collection)
-    fields = foau.get_all_supported_fields(sample_collection)
-    return foau.flatten_fields(sample_collection, fields)
-
-
 def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     """Generates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.
@@ -167,8 +126,11 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     except :class:`fiftyone.core.labels.GeoLocation`,
     :class:`fiftyone.core.labels.GeoLocations`,
     :class:`fiftyone.core.labels.TemporalDetection`, and
-    :class:`fiftyone.core.labels.TemporalDetections`. For label types supported
-    by the App for annotation, see :meth:`get_supported_app_annotation_fields`.
+    :class:`fiftyone.core.labels.TemporalDetections` when provided
+    in the ``fields`` argument, otherwise only App supported fields are
+    resolved. For label types supported
+    by the App for annotation, see
+    :func:`fiftyone.core.annotation.utils.get_supported_app_annotation_fields`.
 
     All attributes and the label class itself support a ``default`` setting
     that applies when creating a new label.
@@ -291,14 +253,15 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     """
     original_fields = fields
     is_scalar = etau.is_str(fields)
-    all_fields = foau.get_all_supported_fields(sample_collection)
+    all_fields = foau.list_valid_annotation_fields(
+        sample_collection, require_app_support=True, flatten=True
+    )
     if is_scalar:
         fields = [fields]
     elif fields is None:
         fields = all_fields
 
     fields = list(fields)
-    fields = foau.flatten_fields(sample_collection, fields)
     is_scalar = is_scalar and len(fields) == 1 and fields[0] == original_fields
 
     schema = {}
@@ -326,12 +289,15 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
 def _generate_field_label_schema(collection, field_name, scan_samples):
     field = collection.get_field(field_name)
     read_only = field.read_only
+    _type = foau.get_type(field)
+
+    if _type == foac.LABEL:
+        # classes are essentially a 'str' type
+        _type = foac.STR
 
     is_list = isinstance(field, fof.ListField)
     if is_list:
         field = field.field
-
-    _type = _get_type(field, is_list)
 
     settings = {
         foac.TYPE: _type,
@@ -413,26 +379,6 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
         result[foac.CLASSES] = classes
 
     return {k: result[k] for k in sorted(result)}
-
-
-def _get_type(field, is_list):
-    field_type = (
-        fol.Label
-        if isinstance(field, fof.EmbeddedDocumentField)
-        and issubclass(field.document_type, fol.Label)
-        else type(field)
-    )
-
-    _types = (
-        foac.FIELD_TYPE_TO_TYPES[fof.ListField]
-        if is_list
-        else foac.FIELD_TYPE_TO_TYPES
-    )
-
-    if field_type not in _types:
-        raise ValueError(f"field {field} is not supported")
-
-    return _types[field_type]
 
 
 def _handle_bool(collection, field_name, is_list, settings, scan_samples):
