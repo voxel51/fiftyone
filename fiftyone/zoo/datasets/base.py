@@ -1513,7 +1513,6 @@ class FIWDataset(FiftyOneDataset):
         num_samples, classes = fouf.parse_fiw_dataset(
             self.source_dir,
             dataset_dir,
-            scratch_dir,
             split,
         )
 

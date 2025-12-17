@@ -286,13 +286,12 @@ def _parse_identifier(identifier):
     return "/".join(id_parts[:2])
 
 
-def parse_fiw_dataset(source_dir, dataset_dir, scratch_dir, split):
+def parse_fiw_dataset(source_dir, dataset_dir, split):
     """Parses the manually downloaded FIW dataset.
 
     Args:
         source_dir: the directory containing the manually downloaded FIW files
         dataset_dir: the directory to output the final dataset
-        scratch_dir: a scratch directory for temporary files
         split: the split to prepare
 
     Returns:
@@ -304,7 +303,7 @@ def parse_fiw_dataset(source_dir, dataset_dir, scratch_dir, split):
     return _get_dataset_info(dataset_dir, split)
 
 
-def download_fiw_dataset(dataset_dir, split, source_dir=None, scratch_dir=None, cleanup=False):
+def download_fiw_dataset(dataset_dir, split, source_dir=None):
     """Downloads and extracts the Families in the Wild dataset.
 
     Note:
@@ -317,14 +316,11 @@ def download_fiw_dataset(dataset_dir, split, source_dir=None, scratch_dir=None, 
         split: the split being loaded
         source_dir (None): the directory containing the manually downloaded
             FIW files
-        scratch_dir (None): a scratch directory to use to store temporary files
-        cleanup (True): whether to cleanup the scratch directory after
-            extraction
 
     Returns:
         a tuple of (num_samples, classes)
     """
-    return parse_fiw_dataset(source_dir, dataset_dir, scratch_dir, split)
+    return parse_fiw_dataset(source_dir, dataset_dir, split)
 
 
 def _validate_source_dir(source_dir):
@@ -348,6 +344,24 @@ def _validate_source_dir(source_dir):
     if "train_relationships.csv" not in contents:
         _raise_fiw_error(
             "Required file 'train_relationships.csv' not found in '%s'." % source_dir
+        )
+
+    test_faces_found = (
+        "test-public-faces" in contents
+        or os.path.isdir(os.path.join(source_dir, "test-public-faces", "test-public-faces"))
+    )
+    if not test_faces_found:
+        _raise_fiw_error(
+            "Required directory 'test-public-faces' not found in '%s'." % source_dir
+        )
+
+    test_lists_found = (
+        "test-public-lists" in contents
+        or os.path.isdir(os.path.join(source_dir, "test-public-lists", "test-public-lists"))
+    )
+    if not test_lists_found:
+        _raise_fiw_error(
+            "Required directory 'test-public-lists' not found in '%s'." % source_dir
         )
 
 
@@ -536,7 +550,7 @@ def _generate_mid_csv(family_dir, family_id, member_gender, member_rels):
     mids.sort()
 
     rows = []
-    for row_idx, mid in enumerate(mids):
+    for mid in mids:
         identifier = "%s/MID%d" % (family_id, mid)
         gender = member_gender.get(identifier, "U")
         row = {"MID": mid}
