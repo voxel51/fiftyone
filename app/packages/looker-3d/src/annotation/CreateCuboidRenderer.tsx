@@ -135,6 +135,8 @@ export const CreateCuboidRenderer = ({
 
     if (step === 2 && orientationPoint) {
       // Step 2: Show preview with length fixed, width based on perpendicular distance
+      // The orientation line (center -> orientationPoint) represents one bound/edge of the cuboid
+      // The current mouse position sets the opposite bound for width
       const orientation = new THREE.Vector3(...orientationPoint);
       const directionVector = orientation.clone().sub(center);
       const length = Math.max(directionVector.length(), MIN_DIMENSION);
@@ -156,19 +158,25 @@ export const CreateCuboidRenderer = ({
       );
       const finalQuaternion = yawQuaternion.multiply(planeQuaternion);
 
-      // Calculate width as perpendicular distance from current to the orientation line
+      // Calculate width as perpendicular distance from current position to the orientation line
+      // This directly represents one bound to the other (no doubling needed)
       const centerToOrientation = directionVector.clone().normalize();
       const centerToCurrent = current.clone().sub(center);
       // Project centerToCurrent onto centerToOrientation
       const projection = centerToOrientation
         .clone()
         .multiplyScalar(centerToCurrent.dot(centerToOrientation));
-      // Perpendicular component
+      // Perpendicular component - this is the vector from the orientation line to current position
       const perpendicular = centerToCurrent.clone().sub(projection);
-      const width = Math.max(perpendicular.length() * 2, MIN_DIMENSION); // *2 because width extends both sides
+      const width = Math.max(perpendicular.length(), MIN_DIMENSION);
 
-      // Position center at midpoint between center and orientation
+      // Position center at midpoint between center and orientation (along the length axis)
       const cuboidCenter = center.clone().add(orientation).multiplyScalar(0.5);
+      // Offset by half width perpendicular to the orientation line (toward the current position)
+      if (perpendicular.length() > 0.001) {
+        const perpendicularDirection = perpendicular.clone().normalize();
+        cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
+      }
       // Offset by half height along plane normal
       cuboidCenter.add(
         planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2)
