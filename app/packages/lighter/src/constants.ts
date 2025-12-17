@@ -17,8 +17,16 @@ export const DEFAULT_TEXT_PADDING = 4;
  * Default gap between stacked text boxes
  */
 export const TAB_GAP_DEFAULT = 2;
+
+/**
+ * Default lengths of dashes
+ */
 export const TAB_DASH_SELECTED = 6;
 export const TAB_DASH_HOVERED = 3;
+
+/**
+ * Default width of dashed border
+ */
 export const TAB_DASH_WIDTH = 2;
 
 /**
