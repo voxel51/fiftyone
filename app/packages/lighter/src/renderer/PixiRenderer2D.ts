@@ -477,8 +477,6 @@ export class PixiRenderer2D implements Renderer2D {
     });
 
     const pixiText = new PIXI.Text({ text, style: textStyle });
-    pixiText.x = position.x;
-    pixiText.y = position.y;
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
