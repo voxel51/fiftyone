@@ -152,6 +152,12 @@ export interface Renderer2D {
   getViewportPosition(): { x: number; y: number };
 
   /**
+   * Check if the renderer is initialized and ready to use.
+   * @returns True if the renderer is ready.
+   */
+  isReady(): boolean;
+
+  /**
    * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;

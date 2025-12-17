@@ -724,7 +724,7 @@ export class PixiRenderer2D implements Renderer2D {
    * Check if the renderer is initialized
    */
   isReady(): boolean {
-    return sharedPixiApp.isReady();
+    return sharedPixiApp.isReady() && this.viewport !== undefined;
   }
 
   /**
