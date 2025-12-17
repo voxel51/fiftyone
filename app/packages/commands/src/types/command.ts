@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { Action, getActionManager } from "../actions";
+import { Action, ActionManager, getActionManager } from "../actions";
 
 export type CommandFunction = ()=> Promise<Action | void | undefined>;
 
@@ -18,17 +18,20 @@ export class Command {
   //Used to notify listeners on a change.
   private _enabled = false;
   private enablementListeners = new Set<() => void>();
+  private actionManager: ActionManager;
   constructor(
     public readonly id: string,
     private readonly executeFunc: CommandFunction,
     private enablementFunc: () => boolean,
     public readonly label?: string,
-    public readonly description?: string
+    public readonly description?: string,
+    actionManager?: ActionManager
   ) {
     //We don't fire listeners for initial
     //enablement, assuming the call is in process
     //of creating it and its local state is enough
     this._enabled = this.enablementFunc();
+    this.actionManager = actionManager ? actionManager : getActionManager();
   }
 
   /**
@@ -40,7 +43,7 @@ export class Command {
     }
     const result = await this.executeFunc();
     if(result){
-      getActionManager().execute(result);
+      this.actionManager.execute(result);
     }
   }
 

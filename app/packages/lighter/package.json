@@ -28,8 +28,8 @@
         "typescript": "^5.8.3"
     },
     "peerDependencies": {
-        "@fiftyone/events": "*",
         "@fiftyone/commands": "*",
+        "@fiftyone/events": "*",
         "jotai": "*",
         "react": "^18.0.0",
         "react-dom": "^18.0.0"

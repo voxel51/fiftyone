@@ -14,9 +14,10 @@ export interface Undoable extends Action {
  */
 export class DelegatingUndoable extends DelegatingAction implements Undoable {
     private _undoFn: () => Promise<void>;
-    constructor(execFn: () => Promise<void>,
+    constructor(id: string,
+        execFn: () => Promise<void>,
         undoFn: () => Promise<void>) {
-        super(execFn);
+        super(id, execFn);
         this._undoFn = undoFn;
     }
 

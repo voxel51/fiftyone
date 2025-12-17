@@ -34,10 +34,14 @@ import type { Undoable } from "./Undoable";
  * 2. The action's execute() method is called
  * 3. The action is pushed onto undoStack
  */
+
+export type ActionManagerListener = (undoEnabled: boolean, redoEnabled: boolean, undoCount: number, redoCount: number) => void;
+
 export class ActionManager {
   private undoStack: Undoable[] = [];
   private redoStack: Undoable[] = [];
   private maxStackSize = 100;
+  private listeners = new Set<ActionManagerListener>();
 
   /**
    * Pushes an undoable action onto the undo stack.
@@ -51,6 +55,7 @@ export class ActionManager {
     if (this.undoStack.length > this.maxStackSize) {
       this.undoStack.shift();
     }
+    this.fireListeners();
   }
 
   /**
@@ -62,6 +67,7 @@ export class ActionManager {
     if (undoable) {
       await undoable.undo();
       this.redoStack.push(undoable);
+      this.fireListeners();
       return undoable;
     }
     return undefined;
@@ -76,6 +82,7 @@ export class ActionManager {
     if (undoable) {
       await undoable.execute();
       this.undoStack.push(undoable);
+      this.fireListeners();
       return undoable;
     }
     return undefined;
@@ -103,6 +110,7 @@ export class ActionManager {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
+    this.fireListeners();
   }
 
   /**
@@ -113,9 +121,9 @@ export class ActionManager {
     return this.undoStack.length;
   }
 
-  async execute(action: Action): Promise<void>{
+  async execute(action: Action): Promise<void> {
     await action.execute();
-    if("undo" in action && typeof action.undo === 'function'){
+    if ("undo" in action && typeof action.undo === 'function') {
       this.push(action as Undoable);
     }
   }
@@ -125,6 +133,19 @@ export class ActionManager {
    */
   getRedoStackSize(): number {
     return this.redoStack.length;
+  }
+
+  public subscribe(listener: ActionManagerListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    }
+  }
+
+  private fireListeners() {
+    this.listeners.forEach((listener) => {
+      listener(this.canUndo(), this.canRedo(), this.getUndoStackSize(), this.getRedoStackSize()); ß
+    });
   }
 }
 

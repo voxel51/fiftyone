@@ -46,7 +46,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { getActionManager} from "@fiftyone/commands";
+import { Action, getActionManager, Undoable} from "@fiftyone/commands";
 
 export const TypeGuards = {
   isSelectable: (
@@ -1163,54 +1163,13 @@ export class Scene2D {
    * @param command - The command to execute.
    * @param isUndoable - Whether the command is undoable.
    */
-  executeCommand(command: Command, isUndoable = true): void {
-    command.execute();
-
-    if (isUndoable) {
-      getActionManager().push(command);
-    }
-
+  executeCommand(command: Action, isUndoable = true): void {
+    getActionManager().execute(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
       command,
     });
-  }
-
-  /**
-   * Undoes the last command.
-   */
-  undo(): void {
-    const command = getActionManager().undo();
-    if (command) {
-      this.eventBus.dispatch("lighter:undo", { commandId: command.id });
-    }
-  }
-
-  /**
-   * Redoes the last undone command.
-   */
-  redo(): void {
-    const command = getActionManager().redo();
-    if (command) {
-      this.eventBus.dispatch("lighter:redo", { commandId: command.id });
-    }
-  }
-
-  /**
-   * Checks if undo is available.
-   * @returns True if undo is available.
-   */
-  canUndo(): boolean {
-    return getActionManager().canUndo();
-  }
-
-  /**
-   * Checks if redo is available.
-   * @returns True if redo is available.
-   */
-  canRedo(): boolean {
-    return getActionManager().canRedo();
   }
 
   /**

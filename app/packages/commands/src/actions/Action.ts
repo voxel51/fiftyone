@@ -5,6 +5,7 @@
  * Undable extension of the interface.
  */
 export interface Action {
+    id: string;
     execute(): Promise<void>;
 }
 
@@ -14,6 +15,7 @@ export interface Action {
 export class DelegatingAction implements Action {
     private _execFn;
     constructor(
+        public readonly id: string,
         execFn: () => Promise<void>
     ) {
         this._execFn = execFn;
