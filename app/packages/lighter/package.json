@@ -29,6 +29,7 @@
     },
     "peerDependencies": {
         "@fiftyone/events": "*",
+        "@fiftyone/commands": "*",
         "jotai": "*",
         "react": "^18.0.0",
         "react-dom": "^18.0.0"

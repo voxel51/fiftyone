@@ -9,7 +9,6 @@ import {
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import type { Command } from "../commands/Command";
 import {
   MoveOverlayCommand,
   type Movable,
@@ -19,7 +18,6 @@ import {
   TransformOverlayCommand,
   type TransformOptions,
 } from "../commands/TransformOverlayCommand";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
@@ -48,6 +46,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import { getActionManager} from "@fiftyone/commands";
 
 export const TypeGuards = {
   isSelectable: (
@@ -146,7 +145,6 @@ export class Scene2D {
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
-  private undoRedo = new UndoRedoManager();
   private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
@@ -169,7 +167,6 @@ export class Scene2D {
     this.selectionManager = new SelectionManager(this.sceneId);
     this.interactionManager = new InteractionManager(
       config.canvas,
-      this.undoRedo,
       this.selectionManager,
       config.renderer,
       this.sceneId
@@ -227,7 +224,7 @@ export class Scene2D {
           relativeBounds
         );
 
-        this.undoRedo.push(addCommand);
+        getActionManager().push(addCommand);
       }
     });
 
@@ -247,7 +244,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          this.undoRedo.push(moveCommand);
+          getActionManager().push(moveCommand);
         }
       }
     });
@@ -270,7 +267,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          this.undoRedo.push(moveCommand);
+          getActionManager().push(moveCommand);
         }
       }
     });
@@ -1170,7 +1167,7 @@ export class Scene2D {
     command.execute();
 
     if (isUndoable) {
-      this.undoRedo.push(command);
+      getActionManager().push(command);
     }
 
     this.eventBus.dispatch("lighter:command-executed", {
@@ -1184,7 +1181,7 @@ export class Scene2D {
    * Undoes the last command.
    */
   undo(): void {
-    const command = this.undoRedo.undo();
+    const command = getActionManager().undo();
     if (command) {
       this.eventBus.dispatch("lighter:undo", { commandId: command.id });
     }
@@ -1194,7 +1191,7 @@ export class Scene2D {
    * Redoes the last undone command.
    */
   redo(): void {
-    const command = this.undoRedo.redo();
+    const command = getActionManager().redo();
     if (command) {
       this.eventBus.dispatch("lighter:redo", { commandId: command.id });
     }
@@ -1205,7 +1202,7 @@ export class Scene2D {
    * @returns True if undo is available.
    */
   canUndo(): boolean {
-    return this.undoRedo.canUndo();
+    return getActionManager().canUndo();
   }
 
   /**
@@ -1213,7 +1210,7 @@ export class Scene2D {
    * @returns True if redo is available.
    */
   canRedo(): boolean {
-    return this.undoRedo.canRedo();
+    return getActionManager().canRedo();
   }
 
   /**
@@ -1243,7 +1240,7 @@ export class Scene2D {
    * Clears the undo/redo stack
    */
   clearUndoRedoStack() {
-    this.undoRedo.clear();
+    getActionManager().clear();
   }
 
   /**
@@ -1282,7 +1279,7 @@ export class Scene2D {
     // Destroy managers
     this.interactionManager.destroy();
     this.selectionManager.destroy();
-    this.undoRedo.clear();
+    getActionManager().clear();
 
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();

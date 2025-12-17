@@ -2,7 +2,8 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { Command } from "../types";
+import { ActionManager, getActionManager } from "../actions";
+import { Command, CommandFunction } from "../types";
 
 /**
  * Manages a map of registered commands.
@@ -13,6 +14,15 @@ import { Command } from "../types";
 export class CommandRegistry {
   private commands = new Map<string, Command>();
   private listeners = new Set<() => void>();
+  private actionManger: ActionManager;
+  constructor(actionManager?: ActionManager){
+    if(!actionManager){
+      this.actionManger = getActionManager();
+    }
+    else{
+      this.actionManger = actionManager;
+    }
+  }
   /**
    * 
    * @param id The command id.  Use the "fo." prefix for our commands.  Plugins may register them as well.
@@ -27,9 +37,8 @@ export class CommandRegistry {
    */
   public registerCommand(
     id: string,
-    execute: () => Promise<void>,
+    execute: CommandFunction,
     enablement: () => boolean,
-    undo?: () => Promise<void>,
     label?: string,
     description?: string,
 
@@ -37,7 +46,7 @@ export class CommandRegistry {
     if (this.getCommand(id)) {
       throw new Error(`The command id ${id} is already registered`);
     }
-    const cmd = new Command(id, execute, enablement, undo, label, description);
+    const cmd = new Command(id, execute, enablement, label, description);
     this.commands.set(id, cmd);
     this.fireListeners();
     return cmd;
@@ -61,7 +70,11 @@ export class CommandRegistry {
   public async executeCommand(id: string): Promise<boolean> {
     const command = this.getCommand(id);
     if (command && command.isEnabled()) {
-      await command.execute();
+      const result = await command.execute();
+      if(result){
+        //enable undo/redo
+        this.actionManger.push(result);
+      }
       return true;
     }
     return false;

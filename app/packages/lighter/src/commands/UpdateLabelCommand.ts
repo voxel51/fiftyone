@@ -2,14 +2,14 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Undoable } from "@fiftyone/commands";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { RawLookerLabel } from "../types";
-import type { Command } from "./Command";
 
 /**
  * Command for transforming an overlay with undo/redo support.
  */
-export class UpdateLabelCommand implements Command {
+export class UpdateLabelCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 
@@ -25,11 +25,11 @@ export class UpdateLabelCommand implements Command {
     this.nextLabel = nextLabel;
   }
 
-  execute(): void {
+  async execute(): Promise<void> {
     update(this.overlay, this.nextLabel);
   }
 
-  undo(): void {
+  async undo(): Promise<void> {
     update(this.overlay, this.currentLabel);
   }
 }

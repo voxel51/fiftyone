@@ -3,7 +3,6 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -14,6 +13,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { ActionManager, getActionManager } from "@fiftyone/commands";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -203,16 +203,17 @@ export class InteractionManager {
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
-
+  private actionManager: ActionManager;
   constructor(
     private canvas: HTMLCanvasElement,
-    private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string
+    sceneId: string,
+    actionManager?: ActionManager
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
+    this.actionManager = actionManager !== undefined ? actionManager : getActionManager();
   }
 
   /**
@@ -488,7 +489,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.undoRedoManager.undo();
+      this.actionManager.undo();
       return;
     }
 
@@ -500,7 +501,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.undoRedoManager.redo();
+      this.actionManager.redo();
       return;
     }
 

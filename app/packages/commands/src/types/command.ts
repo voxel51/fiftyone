@@ -2,6 +2,10 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { Action, getActionManager } from "../actions";
+
+export type CommandFunction = ()=> Promise<Action | void | undefined>;
+
 /**
  * Class to handle command style invocation.  It delegates
  * execution, undo, and enablement to lambdas vs a subclass
@@ -11,13 +15,13 @@
  */
 export class Command {
   //The current enabled state based on last evaluation
+  //Used to notify listeners on a change.
   private _enabled = false;
   private enablementListeners = new Set<() => void>();
   constructor(
     public readonly id: string,
-    private readonly executeFunc: () => Promise<void>,
+    private readonly executeFunc: CommandFunction,
     private enablementFunc: () => boolean,
-    private readonly undoFunc?: () => Promise<void>,
     public readonly label?: string,
     public readonly description?: string
   ) {
@@ -27,27 +31,16 @@ export class Command {
     this._enabled = this.enablementFunc();
   }
 
-  private canUndo(): boolean {
-    return this.undoFunc !== undefined;
-  }
   /**
    * Executes the executeFunc for this command.
    */
-  public async execute(): Promise<void> {
+  public async execute(): Promise<Action | undefined | void> {
     if (!this.enablementFunc()) {
       return;
     }
-    await this.executeFunc();
-    if (this.canUndo()) {
-      //TODO: UndoManager
-    }
-  }
-  /**
-   * Undo, should only be called from UndoManager
-   */
-  public async undo(): Promise<void> {
-    if (this.undoFunc !== undefined) {
-      await this.undoFunc();
+    const result = await this.executeFunc();
+    if(result){
+      getActionManager().execute(result);
     }
   }
 
@@ -55,7 +48,12 @@ export class Command {
    * Evaluates the enablement function and returns the result.
    */
   public isEnabled(): boolean {
-    return this.enablementFunc();
+    const newEnabled = this.enablementFunc();
+    if(newEnabled != this._enabled){
+      this._enabled = newEnabled;
+      this.fireListeners();
+    }
+    return this._enabled;
   }
 
   /**
