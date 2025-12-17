@@ -5,9 +5,9 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import {
-  stagedPolylineTransformsAtom,
-  stagedCuboidTransformsAtom,
   selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
@@ -115,5 +115,6 @@ export default function useExit(revertLabel = true) {
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
+    setStagedCuboidTransforms,
   ]);
 }

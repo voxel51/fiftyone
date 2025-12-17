@@ -29,9 +29,9 @@ import { usePathFilter } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
+  current3dAnnotationModeAtom,
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
-  current3dAnnotationModeAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
@@ -80,7 +80,7 @@ export const ThreeDLabels = ({
     polylineLabelLineWidthAtom
   );
   const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
-  const cuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
+  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -298,7 +298,8 @@ export const ThreeDLabels = ({
         overlay.dimensions &&
         overlay.location
       ) {
-        const maybeExistingCuboidTransform = cuboidTransforms?.[overlay._id];
+        const maybeExistingCuboidTransform =
+          stagedCuboidTransforms?.[overlay._id];
 
         const cuboidCombined = {
           ...overlay,
@@ -432,7 +433,7 @@ export const ThreeDLabels = ({
     );
 
     for (const [labelId, transformData] of Object.entries(
-      cuboidTransforms ?? {}
+      stagedCuboidTransforms ?? {}
     )) {
       if (!transformData.location || !transformData.dimensions) {
         continue;
@@ -447,6 +448,7 @@ export const ThreeDLabels = ({
         _cls: "Detection",
         type: "Detection",
         path: currentActiveField || "",
+        ...coerceStringBooleans(transformData ?? {}),
         location: transformData.location,
         dimensions: transformData.dimensions,
         rotation: transformData.rotation ?? [0, 0, 0],
@@ -493,7 +495,7 @@ export const ThreeDLabels = ({
     settings,
     transformMode,
     stagedPolylineTransforms,
-    cuboidTransforms,
+    stagedCuboidTransforms,
     polylineWidth,
     cuboidLineWidth,
     currentSampleId,
