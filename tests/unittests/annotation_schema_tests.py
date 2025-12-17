@@ -28,6 +28,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             {
                 "default": None,
                 "type": "input",
+                "ftype": "date",
             },
         )
 
@@ -42,6 +43,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             {
                 "default": None,
                 "type": "input",
+                "ftype": "datetime",
             },
         )
 
@@ -54,6 +56,8 @@ class AnnotationSchemaTests(unittest.TestCase):
             {
                 "default": None,
                 "type": "input",
+                "ftype": "float",
+                "multipleOf": 0.01,
             },
         )
 
@@ -66,6 +70,7 @@ class AnnotationSchemaTests(unittest.TestCase):
             {
                 "default": None,
                 "type": "input",
+                "ftype": "int",
             },
         )
 
