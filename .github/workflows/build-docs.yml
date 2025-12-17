@@ -123,6 +123,11 @@ jobs:
           echo "Installing fiftyone"
           pip install .
 
+      - name: Setup node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
