@@ -5220,6 +5220,24 @@ class ViewStageTests(unittest.TestCase):
         self.assertTrue(clips is not also_clips)
         self.assertEqual(clips._dataset.name, also_clips._dataset.name)
 
+    def test_make_optimized_select_view_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg"),
+                fo.Sample(filepath="image2.jpg"),
+                fo.Sample(filepath="image3.jpg"),
+                fo.Sample(filepath="image4.jpg"),
+            ]
+        )
+
+        ids = dataset[1:-1].values("id")
+        view = dataset[:-1] + dataset[1:]
+
+        optimized_view = fov.make_optimized_select_view(view, ids)
+
+        self.assertEqual(optimized_view._stages, [fosg.Select(ids)])
+
     def test_make_optimized_select_view_group_dataset(self):
         dataset, sample_ids = self._make_group_dataset()
 

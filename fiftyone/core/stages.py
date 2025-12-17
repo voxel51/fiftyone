@@ -9339,6 +9339,7 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     SortBySimilarity,
     Shuffle,
     # View stages that only select documents
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeGroupSlices,
