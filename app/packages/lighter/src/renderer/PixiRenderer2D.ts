@@ -91,7 +91,12 @@ export class PixiRenderer2D implements Renderer2D {
         this.eventBus.dispatch("lighter:zoomed", {
           scale: this.viewport.scaled,
         });
+        this.emitViewportMoved();
       }
+    });
+
+    this.viewport.on("moved", () => {
+      this.emitViewportMoved();
     });
 
     this.foregroundContainer = new PIXI.Container();
@@ -689,6 +694,30 @@ export class PixiRenderer2D implements Renderer2D {
    */
   getScale(): number {
     return this.viewport?.scaled ?? 1;
+  }
+
+  /**
+   * Returns the current viewport position (pan offset).
+   * @returns The viewport position { x, y }.
+   */
+  getViewportPosition(): { x: number; y: number } {
+    return {
+      x: this.viewport?.x ?? 0,
+      y: this.viewport?.y ?? 0,
+    };
+  }
+
+  /**
+   * Emits a viewport-moved event with current position and scale.
+   */
+  private emitViewportMoved(): void {
+    if (this.viewport) {
+      this.eventBus.dispatch("lighter:viewport-moved", {
+        x: this.viewport.x,
+        y: this.viewport.y,
+        scale: this.viewport.scaled,
+      });
+    }
   }
 
   /**
