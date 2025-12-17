@@ -9,8 +9,6 @@ Utilities for working with the
 import logging
 import os
 import shutil
-import subprocess
-import zipfile
 import random
 from collections import Counter, defaultdict
 
@@ -288,97 +286,100 @@ def _parse_identifier(identifier):
     return "/".join(id_parts[:2])
 
 
-def download_fiw_dataset(dataset_dir, split, scratch_dir=None, cleanup=False):
+def parse_fiw_dataset(source_dir, dataset_dir, scratch_dir, split):
+    """Parses the manually downloaded FIW dataset.
+
+    Args:
+        source_dir: the directory containing the manually downloaded FIW files
+        dataset_dir: the directory to output the final dataset
+        scratch_dir: a scratch directory for temporary files
+        split: the split to prepare
+
+    Returns:
+        a tuple of (num_samples, classes)
+    """
+    _validate_source_dir(source_dir)
+    etau.ensure_dir(dataset_dir)
+    _organize_fiw_data(source_dir, dataset_dir)
+    return _get_dataset_info(dataset_dir, split)
+
+
+def download_fiw_dataset(dataset_dir, split, source_dir=None, scratch_dir=None, cleanup=False):
     """Downloads and extracts the Families in the Wild dataset.
 
-    This function downloads data from Kaggle (thesistime/fiwdata) and generates
-    metadata files. Requires the Kaggle CLI to be installed and configured.
-
-    Any existing files are not re-downloaded.
+    Note:
+        This dataset requires manual download. You must register at
+        https://fulab.sites.northeastern.edu/fiw-download/ and download
+        the data before using this function.
 
     Args:
         dataset_dir: the directory to output the final dataset
         split: the split being loaded
+        source_dir (None): the directory containing the manually downloaded
+            FIW files
         scratch_dir (None): a scratch directory to use to store temporary files
         cleanup (True): whether to cleanup the scratch directory after
             extraction
+
+    Returns:
+        a tuple of (num_samples, classes)
     """
-    etau.ensure_dir(dataset_dir)
-
-    if scratch_dir is None:
-        scratch_dir = os.path.join(dataset_dir, "scratch")
-        etau.ensure_dir(scratch_dir)
-
-    _download_and_organize_kaggle_data(dataset_dir, scratch_dir)
-
-    if cleanup:
-        logger.info("Cleaning up %s", scratch_dir)
-        etau.delete_dir(scratch_dir)
-
-    num_samples, classes = _get_dataset_info(dataset_dir, split)
-
-    return num_samples, classes
+    return parse_fiw_dataset(source_dir, dataset_dir, scratch_dir, split)
 
 
-def _download_and_organize_kaggle_data(dataset_dir, scratch_dir):
-    """Downloads FIW data from Kaggle and organizes it."""
-    if not _is_missing_images(dataset_dir) and not _is_missing_labels(
-        dataset_dir
-    ):
+def _validate_source_dir(source_dir):
+    if source_dir is None:
+        _raise_fiw_error(
+            "You must provide a `source_dir` in order to load the FIW dataset."
+        )
+
+    if not os.path.isdir(source_dir):
+        _raise_fiw_error(
+            "Source directory '%s' does not exist." % source_dir
+        )
+
+    contents = os.listdir(source_dir)
+
+    if "train-faces" not in contents:
+        _raise_fiw_error(
+            "Required directory 'train-faces' not found in '%s'." % source_dir
+        )
+
+    if "train_relationships.csv" not in contents:
+        _raise_fiw_error(
+            "Required file 'train_relationships.csv' not found in '%s'." % source_dir
+        )
+
+
+def _raise_fiw_error(msg):
+    raise OSError(
+        "\n\n"
+        + msg
+        + "\n\n"
+        + "You must download the FIW dataset manually from the official source.\n\n"
+        + "1. Register at: https://docs.google.com/forms/d/e/1FAIpQLSd5_hbg-7QlrqE9V4MJShgww308yCxHlj6VOLctETX6aYLQgg/viewform\n"
+        + "2. Download and extract the dataset\n"
+        + "3. Pass the extraction directory as `source_dir`\n\n"
+        + "More info: https://fulab.sites.northeastern.edu/fiw-download/\n"
+        + "Run `fiftyone zoo datasets info fiw` for more information"
+    )
+
+
+def _organize_fiw_data(source_dir, dataset_dir):
+    """Organizes FIW source data into fiftyone expected structure."""
+    if not _is_missing_images(dataset_dir) and not _is_missing_labels(dataset_dir):
         return
 
-    zip_path = os.path.join(scratch_dir, "fiwdata.zip")
-    extracted_dir = os.path.join(scratch_dir, "extracted")
-
-    if not os.path.exists(zip_path):
-        logger.info("Downloading FIW dataset from Kaggle...")
-        try:
-            subprocess.run(
-                [
-                    "kaggle",
-                    "datasets",
-                    "download",
-                    "-d",
-                    _KAGGLE_DATASET,
-                    "-p",
-                    scratch_dir,
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except FileNotFoundError:
-            raise RuntimeError(
-                "Kaggle CLI not found. Install it with 'pip install kaggle' "
-                "and configure your API credentials. See "
-                "https://github.com/Kaggle/kaggle-api#api-credentials"
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(
-                "Failed to download FIW dataset from Kaggle: %s" % e.stderr
-            )
-
-    if not os.path.isdir(extracted_dir):
-        logger.info("Extracting dataset...")
-        with zipfile.ZipFile(zip_path, "r") as z:
-            z.extractall(extracted_dir)
-
-    _organize_kaggle_data(extracted_dir, dataset_dir)
-
-
-def _organize_kaggle_data(extracted_dir, dataset_dir):
-    """Organizes Kaggle data into fiftyone expected structure."""
-    test_public_lists = os.path.join(
-        extracted_dir, "test-public-lists", "test-public-lists"
-    )
+    test_public_lists = os.path.join(source_dir, "test-public-lists")
+    if os.path.isdir(os.path.join(test_public_lists, "test-public-lists")):
+        test_public_lists = os.path.join(test_public_lists, "test-public-lists")
 
     logger.info("Building member metadata from typed pairs...")
     pair_to_type, member_gender, member_rels = _build_member_metadata(
         test_public_lists
     )
 
-    # Read train relationships to determine train/val split
-    relationships_csv = os.path.join(extracted_dir, "train_relationships.csv")
+    relationships_csv = os.path.join(source_dir, "train_relationships.csv")
     train_rels_df = (
         pd.read_csv(relationships_csv)
         if os.path.exists(relationships_csv)
@@ -392,8 +393,7 @@ def _organize_kaggle_data(extracted_dir, dataset_dir):
             for val in train_rels_df[col]:
                 families_with_rels.add(val.split("/")[0])
 
-    # Get all train families
-    train_faces_src = os.path.join(extracted_dir, "train-faces")
+    train_faces_src = os.path.join(source_dir, "train-faces")
     all_train_families = (
         set(os.listdir(train_faces_src))
         if os.path.isdir(train_faces_src)
@@ -454,10 +454,9 @@ def _organize_kaggle_data(extracted_dir, dataset_dir):
         labels_path = os.path.join(dataset_dir, "val", "labels.csv")
         _generate_labels_csv(val_pairs, labels_path, pair_to_type)
 
-    # Organize test data
-    test_faces_src = os.path.join(
-        extracted_dir, "test-public-faces", "test-public-faces"
-    )
+    test_faces_src = os.path.join(source_dir, "test-public-faces")
+    if os.path.isdir(os.path.join(test_faces_src, "test-public-faces")):
+        test_faces_src = os.path.join(test_faces_src, "test-public-faces")
     if os.path.isdir(test_faces_src):
         test_data_dest = os.path.join(dataset_dir, "test", "data")
         etau.ensure_dir(test_data_dest)
@@ -646,8 +645,6 @@ def _get_dataset_info(dataset_dir, split):
 
 
 _SPLITS = ["train", "test", "val"]
-
-_KAGGLE_DATASET = "thesistime/fiwdata"
 
 _TYPE_TO_GENDER = {
     "fs": ("M", "M"),
