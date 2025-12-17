@@ -21,14 +21,9 @@ export function translateToUISchema(
 
   switch (component) {
     case SmartFormComponents.FieldView:
-      if (view.placeholder) {
-        uiSchema["ui:placeholder"] = view.placeholder;
-      }
-
-      if (view.read_only || view.readOnly) {
-        uiSchema["ui:readonly"] = true;
-      }
-
+      // handled by post-processing below
+      // i.e. uiSchema["ui:readonly"] = true;
+      // i.e. uiSchema["ui:placeholder"] = view.placeholder;
       break;
 
     case SmartFormComponents.CheckboxView:

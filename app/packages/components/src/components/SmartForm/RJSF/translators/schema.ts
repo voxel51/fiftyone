@@ -149,14 +149,13 @@ export function addChoicesToSchema(
 
     // For array types (multi-select AutocompleteView), add items definition
     if (schema.type === "array") {
-      // Create items schema with enum values from choices
-      schema.items = {
-        type: "string",
-        enum: enumValues.length > 0 ? enumValues : undefined,
-        enumNames: enumNames.length > 0 ? enumNames : undefined,
-      };
-      // Store choices in examples for the AutoComplete widget to use
       if (enumValues.length > 0) {
+        schema.items = {
+          type: "string",
+          enum: enumValues,
+          enumNames: enumNames,
+        };
+
         schema.examples = enumValues;
       }
     } else {
