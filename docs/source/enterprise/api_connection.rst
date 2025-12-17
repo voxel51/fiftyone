@@ -13,11 +13,6 @@ All actions taken via API connections are authenticated based on the user
 associated with the API key, which means that concepts like user roles and
 dataset permissions *are enforced*.
 
-.. note::
-
-   The recommended stable solution is to use your Enterprise deployment's
-   :ref:`MongoDB connection <configuring-mongodb-connection>`.
-
 .. _configuring-an-api-connection:
 
 Configuring an API connection
