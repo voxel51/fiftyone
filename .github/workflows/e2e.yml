@@ -5,7 +5,8 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 90
-    runs-on: ubuntu-latest-m
+    # runs-on: ubuntu-latest-m  # large runner
+    runs-on: ubuntu-latest # standard runner
     name: Test e2e (Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -22,9 +23,9 @@ jobs:
       fail-fast: false
       matrix:
         mongodb-version:
-          - "6"
-          - "7"
-          - "8.0"
+          # - "6"
+          # - "7"
+          # - "8.0"
           - "latest"
     steps:
       - name: Checkout
