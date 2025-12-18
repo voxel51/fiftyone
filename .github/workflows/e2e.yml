@@ -82,6 +82,8 @@ jobs:
           df -h
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false
       - name: Get free space
         run: |
           df -h
@@ -89,7 +91,9 @@ jobs:
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
           pip install -r requirements/e2e.txt
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Cache Node Modules
         id: app-node-cache
         uses: actions/cache@v5
@@ -98,25 +102,35 @@ jobs:
             app/node_modules
             app/.yarn/cache
           key: node-modules-${{ hashFiles('app/yarn.lock') }}
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Install app
         if: steps.app-node-cache.outputs.cache-hit != 'true'
         run: yarn install
         working-directory: app
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Build app
         run: make app
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Install fiftyone
         run: |
           pip install .
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Configure
         id: test_config
         run: |
           python tests/utils/setup_config.py
           python tests/utils/github_actions_flags.py
-
+      - name: Get free space
+        run: |
+          df -h
       # - name: Setup FFmpeg (with retries)
       #   uses: FedericoCarboni/setup-ffmpeg@v3
 
@@ -124,7 +138,9 @@ jobs:
       # is merged or the maintainer addresses the root issue.
       - name: Setup FFmpeg (with retries)
         uses: afoley587/setup-ffmpeg@main
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Cache E2E Node Modules
         id: e2e-node-cache
         uses: actions/cache@v5
@@ -132,7 +148,9 @@ jobs:
           path: |
             e2e-pw/node_modules
           key: node-modules-${{ hashFiles('e2e-pw/yarn.lock') }}
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Install E2E dependencies if not cached
         run: yarn install
         if: steps.e2e-node-cache.outputs.cache-hit != 'true'
@@ -155,11 +173,15 @@ jobs:
         run: yarn playwright install
         if: steps.playwright-browser-cache.outputs.cache-hit != 'true'
         working-directory: e2e-pw
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Run Playwright tests
         run: yarn e2e
         working-directory: e2e-pw
-
+      - name: Get free space
+        run: |
+          df -h
       - name: Lint Playwright tests
         run: yarn lint
         working-directory: e2e-pw
