@@ -28,26 +28,44 @@ jobs:
           # - "8.0"
           - "latest"
     steps:
+      - name: Get free space
+        run: |
+          df -h
       - name: Checkout
         uses: actions/checkout@v6
         with:
           submodules: true
 
+      - name: Get free space
+        run: |
+          df -h
       - name: Setup node 22
         uses: actions/setup-node@v6
         with:
           node-version: 22
 
+      - name: Get free space
+        run: |
+          df -h
       - name: Enable corepack
         run: corepack enable
+      - name: Get free space
+        run: |
+          df -h
       - name: Prepare yarn 4
         run: corepack prepare yarn@4.9.1 --activate
 
+      - name: Get free space
+        run: |
+          df -h
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.1
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
 
+      - name: Get free space
+        run: |
+          df -h
       - name: Setup
         uses: actions/setup-python@v6
         id: pip-cache
@@ -59,6 +77,14 @@ jobs:
             requirements/github.txt
             requirements/test.txt
             requirements/e2e.txt
+      - name: Get free space
+        run: |
+          df -h
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@v1.3.1
+      - name: Get free space
+        run: |
+          df -h
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
