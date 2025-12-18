@@ -269,37 +269,25 @@ class SaveContext(object):
             with self.samples_lock:
                 sample_ops = self._sample_ops.copy()
                 self._sample_ops.clear()
-            try:
-                res = foo.bulk_write(
-                    sample_ops,
-                    self._sample_coll,
-                    ordered=False,
-                    batcher=False,
-                )[0]
-                encoded_size += res.bulk_api_result.get("nBytes", 0)
-            except Exception:
-                # requeue to avoid data loss
-                with self.samples_lock:
-                    self._sample_ops.extend(sample_ops)
-                raise
+            res = foo.bulk_write(
+                sample_ops,
+                self._sample_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
 
         if self._frame_ops:
             with self.frames_lock:
                 frame_ops = self._frame_ops.copy()
                 self._frame_ops.clear()
-            try:
-                res = foo.bulk_write(
-                    frame_ops,
-                    self._frame_coll,
-                    ordered=False,
-                    batcher=False,
-                )[0]
-                encoded_size += res.bulk_api_result.get("nBytes", 0)
-            except Exception:
-                # requeue to avoid data loss
-                with self.frames_lock:
-                    self._frame_ops.extend(frame_ops)
-                raise
+            res = foo.bulk_write(
+                frame_ops,
+                self._frame_coll,
+                ordered=False,
+                batcher=False,
+            )[0]
+            encoded_size += res.bulk_api_result.get("nBytes", 0)
 
         self._encoding_ratio = (
             self._curr_batch_size_bytes / encoded_size
