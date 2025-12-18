@@ -102,6 +102,22 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def _preprocess_img(self, img):
         if isinstance(img, np.ndarray):
             img = Image.fromarray(img)
+        elif isinstance(img, torch.Tensor):
+            t = img.detach().cpu()
+            if t.ndim == 3:
+                # If first dim is not a valid channel count, assume HWC and permute to CHW
+                if t.shape[0] not in (1, 3, 4):
+                    t = t.permute(2, 0, 1)
+            elif t.ndim == 2:
+                # HxW -> 1xHxW
+                t = t.unsqueeze(0)
+            else:
+                raise ValueError(
+                    f"Expected 2D/3D tensor, got shape {tuple(t.shape)}"
+                )
+
+            img = torchvision.transforms.functional.to_pil_image(t)
+
         return self._clip_preprocess(img)
 
     def _load_model(self, config):
