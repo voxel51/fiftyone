@@ -106,6 +106,8 @@ class TestSAM2BackwardCompatibility:
 
     def test_video_model_without_negative_prompts(self):
         """Test that video model works without negative_prompt_field"""
+        pytest.importorskip("sam2")
+
         config = mock.MagicMock()
         config.device = "cpu"
 
