@@ -206,7 +206,13 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 negative_field = negative_field[len("frames."):]
 
         if negative_field and samples is not None:
-            _, negative_prompts, _ = self._parse_samples(samples, negative_field)
+            negative_prompts = []
+            for sample in samples:
+                try:
+                    value = sample.get_field(negative_field)
+                except AttributeError:
+                    value = None
+                negative_prompts.append(value)
             self._curr_negative_prompts = negative_prompts
         else:
             self._curr_negative_prompts = None
