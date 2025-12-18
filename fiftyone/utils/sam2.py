@@ -264,33 +264,17 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
             if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
                 neg_detections = self._curr_negative_prompts[idx]
                 if neg_detections and len(neg_detections.detections) > 0:
-                    for mask_idx, pos_det in enumerate(detections.detections):
-                        pos_box = pos_det.bounding_box
-                        pos_x1, pos_y1 = int(pos_box[0] * w), int(pos_box[1] * h)
-                        pos_x2 = int((pos_box[0] + pos_box[2]) * w)
-                        pos_y2 = int((pos_box[1] + pos_box[3]) * h)
-                        pos_w, pos_h = pos_x2 - pos_x1, pos_y2 - pos_y1
-                        if pos_w <= 0 or pos_h <= 0:
-                            continue
-                        if masks.ndim == 3:
-                            mask_h, mask_w = masks[mask_idx].shape
-                        else:
-                            mask_h, mask_w = masks[mask_idx, 0].shape
-                        for neg_det in neg_detections.detections:
-                            neg_box = neg_det.bounding_box
-                            neg_x1, neg_y1 = int(neg_box[0] * w), int(neg_box[1] * h)
-                            neg_x2 = int((neg_box[0] + neg_box[2]) * w)
-                            neg_y2 = int((neg_box[1] + neg_box[3]) * h)
-                            # Map negative box to mask coordinates
-                            m_x1 = max(0, int((neg_x1 - pos_x1) / pos_w * mask_w))
-                            m_y1 = max(0, int((neg_y1 - pos_y1) / pos_h * mask_h))
-                            m_x2 = min(mask_w, int((neg_x2 - pos_x1) / pos_w * mask_w))
-                            m_y2 = min(mask_h, int((neg_y2 - pos_y1) / pos_h * mask_h))
-                            if m_x2 > m_x1 and m_y2 > m_y1:
-                                if masks.ndim == 3:
-                                    masks[mask_idx, m_y1:m_y2, m_x1:m_x2] = 0
-                                else:
-                                    masks[mask_idx, 0, m_y1:m_y2, m_x1:m_x2] = 0
+                    for neg_det in neg_detections.detections:
+                        neg_box = neg_det.bounding_box
+                        nx1 = max(0, int(neg_box[0] * w))
+                        ny1 = max(0, int(neg_box[1] * h))
+                        nx2 = min(w, int((neg_box[0] + neg_box[2]) * w))
+                        ny2 = min(h, int((neg_box[1] + neg_box[3]) * h))
+                        if nx2 > nx1 and ny2 > ny1:
+                            if masks.ndim == 3:
+                                masks[:, ny1:ny2, nx1:nx2] = 0
+                            else:
+                                masks[:, 0, ny1:ny2, nx1:nx2] = 0
             if masks.ndim == 3:
                 masks = np.expand_dims(masks, axis=1)
             outputs.append(
