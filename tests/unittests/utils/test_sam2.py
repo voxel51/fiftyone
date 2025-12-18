@@ -69,8 +69,8 @@ class TestSAM2NegativePromptFieldExtraction:
 class TestSAM2NegativePromptLogic:
     """Test negative prompt conversion logic"""
 
-    def test_negative_boxes_convert_to_corner_points(self):
-        """Test that negative boxes are converted to 4 corner points with label=0"""
+    def test_negative_box_region_subtraction(self):
+        """Test that negative box regions are correctly mapped to mask coordinates"""
         box = [0.1, 0.2, 0.3, 0.4]
         width, height = 640, 480
 
@@ -80,16 +80,15 @@ class TestSAM2NegativePromptLogic:
         box_abs = np.round(box_xyxy.squeeze(axis=0)).astype(int)
         x1, y1, x2, y2 = box_abs
 
-        neg_points = np.array([[x1, y1], [x2, y1], [x1, y2], [x2, y2]])
-        neg_labels = np.array([0, 0, 0, 0])
+        assert x1 == 64   # 0.1 * 640
+        assert y1 == 96   # 0.2 * 480
+        assert x2 == 256  # (0.1 + 0.3) * 640
+        assert y2 == 288  # (0.2 + 0.4) * 480
 
-        assert neg_points.shape == (4, 2)
-        assert neg_labels.shape == (4,)
-        assert np.all(neg_labels == 0)
-        assert x1 == 64  # 0.1 * 640
-        assert y1 == 96  # 0.2 * 480
-        assert x2 == 256 # (0.1 + 0.3) * 640
-        assert y2 == 288 # (0.2 + 0.4) * 480
+        # Test mask region subtraction
+        mask = np.ones((480, 640), dtype=np.uint8)
+        mask[y1:y2, x1:x2] = 0
+        assert np.sum(mask) == (480 * 640) - ((y2 - y1) * (x2 - x1))
 
     def test_negative_keypoints_have_label_zero(self):
         """Test that negative keypoints are assigned label=0"""

@@ -253,48 +253,44 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 device=sam2_predictor.device,
             )
 
-            neg_points = None
-            neg_labels = None
-            if self._curr_negative_prompts:
-                if idx < len(self._curr_negative_prompts):
-                    neg_detections = self._curr_negative_prompts[idx]
-                    if neg_detections and len(neg_detections.detections) > 0:
-                        neg_points_list = []
-                        neg_labels_list = []
+            masks, scores, _ = sam2_predictor.predict(
+                point_coords=None,
+                point_labels=None,
+                box=sam_boxes[None, :],
+                multimask_output=False,
+            )
+
+            # Subtract negative prompt regions from masks
+            if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
+                neg_detections = self._curr_negative_prompts[idx]
+                if neg_detections and len(neg_detections.detections) > 0:
+                    for mask_idx, pos_det in enumerate(detections.detections):
+                        pos_box = pos_det.bounding_box
+                        pos_x1, pos_y1 = int(pos_box[0] * w), int(pos_box[1] * h)
+                        pos_x2 = int((pos_box[0] + pos_box[2]) * w)
+                        pos_y2 = int((pos_box[1] + pos_box[3]) * h)
+                        pos_w, pos_h = pos_x2 - pos_x1, pos_y2 - pos_y1
+                        if pos_w <= 0 or pos_h <= 0:
+                            continue
+                        if masks.ndim == 3:
+                            mask_h, mask_w = masks[mask_idx].shape
+                        else:
+                            mask_h, mask_w = masks[mask_idx, 0].shape
                         for neg_det in neg_detections.detections:
                             neg_box = neg_det.bounding_box
-                            neg_box_xyxy = fosam._to_abs_boxes(np.array([neg_box]), w, h)
-                            neg_box_abs = np.round(neg_box_xyxy.squeeze(axis=0)).astype(int)
-                            x1, y1, x2, y2 = neg_box_abs
-                            neg_points_list.extend([[x1, y1], [x2, y1], [x1, y2], [x2, y2]])
-                            neg_labels_list.extend([0, 0, 0, 0])
-                        neg_points = np.array(neg_points_list)
-                        neg_labels = np.array(neg_labels_list)
-
-            if neg_points is not None and len(sam_boxes) > 1:
-                all_masks = []
-                all_scores = []
-                for box in sam_boxes:
-                    box_masks, box_scores, _ = sam2_predictor.predict(
-                        point_coords=neg_points[None, :],
-                        point_labels=neg_labels[None, :],
-                        box=box[None, :],
-                        multimask_output=False,
-                    )
-                    all_masks.append(box_masks)
-                    all_scores.append(box_scores)
-                masks = np.concatenate(all_masks, axis=0)
-                scores = np.concatenate(all_scores, axis=0)
-            else:
-                if neg_points is not None:
-                    neg_points = neg_points[None, :]
-                    neg_labels = neg_labels[None, :]
-                masks, scores, _ = sam2_predictor.predict(
-                    point_coords=neg_points,
-                    point_labels=neg_labels,
-                    box=sam_boxes[None, :],
-                    multimask_output=False,
-                )
+                            neg_x1, neg_y1 = int(neg_box[0] * w), int(neg_box[1] * h)
+                            neg_x2 = int((neg_box[0] + neg_box[2]) * w)
+                            neg_y2 = int((neg_box[1] + neg_box[3]) * h)
+                            # Map negative box to mask coordinates
+                            m_x1 = max(0, int((neg_x1 - pos_x1) / pos_w * mask_w))
+                            m_y1 = max(0, int((neg_y1 - pos_y1) / pos_h * mask_h))
+                            m_x2 = min(mask_w, int((neg_x2 - pos_x1) / pos_w * mask_w))
+                            m_y2 = min(mask_h, int((neg_y2 - pos_y1) / pos_h * mask_h))
+                            if m_x2 > m_x1 and m_y2 > m_y1:
+                                if masks.ndim == 3:
+                                    masks[mask_idx, m_y1:m_y2, m_x1:m_x2] = 0
+                                else:
+                                    masks[mask_idx, 0, m_y1:m_y2, m_x1:m_x2] = 0
             if masks.ndim == 3:
                 masks = np.expand_dims(masks, axis=1)
             outputs.append(
@@ -536,28 +532,6 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     box=box,
                 )
 
-                if self._curr_negative_prompts and frame_idx < len(self._curr_negative_prompts):
-                    neg_frame_detections = self._curr_negative_prompts[frame_idx]
-                    if neg_frame_detections and len(neg_frame_detections.detections) > 0:
-                        for neg_detection in neg_frame_detections.detections:
-                            neg_box_xyxy = fosam._to_abs_boxes(
-                                np.array([neg_detection.bounding_box]),
-                                self._curr_frame_width,
-                                self._curr_frame_height,
-                                chunk_size=1,
-                            )
-                            neg_box = np.round(neg_box_xyxy.squeeze(axis=0)).astype(int)
-                            x1, y1, x2, y2 = neg_box
-                            neg_points = np.array([[x1, y1], [x2, y1], [x1, y2], [x2, y2]])
-                            neg_labels = np.array([0, 0, 0, 0])
-                            _, _, _ = self.model.add_new_points_or_box(
-                                inference_state=inference_state,
-                                frame_idx=frame_idx,
-                                obj_id=ann_obj_id,
-                                points=neg_points,
-                                labels=neg_labels,
-                            )
-
         sample_detections = {}
         for (
             out_frame_idx,
@@ -569,6 +543,19 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 mask = np.squeeze(
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
+
+                # Subtract negative prompt regions from mask
+                if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
+                    neg_frame_detections = self._curr_negative_prompts[out_frame_idx]
+                    if neg_frame_detections and len(neg_frame_detections.detections) > 0:
+                        for neg_det in neg_frame_detections.detections:
+                            neg_box = neg_det.bounding_box
+                            nx1 = int(neg_box[0] * self._curr_frame_width)
+                            ny1 = int(neg_box[1] * self._curr_frame_height)
+                            nx2 = int((neg_box[0] + neg_box[2]) * self._curr_frame_width)
+                            ny2 = int((neg_box[1] + neg_box[3]) * self._curr_frame_height)
+                            mask[ny1:ny2, nx1:nx2] = 0
+
                 box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
