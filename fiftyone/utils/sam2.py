@@ -290,7 +290,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                     multimask_output=False,
                 )
             if masks.ndim == 3:
-                masks = np.expand_dims(masks, axis=0)
+                masks = np.expand_dims(masks, axis=1)
             outputs.append(
                 {
                     "boxes": torch.tensor(boxes_xyxy),
