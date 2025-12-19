@@ -2016,6 +2016,9 @@ class SampleCollection(object):
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
+
+        Returns:
+            AggregatedBulkWriteResult: A summary of the updates that were applied.
         """
         agg_result = AggregatedBulkWriteResult()
 
@@ -2083,6 +2086,9 @@ class SampleCollection(object):
             label_fields (None): an optional name or iterable of names of
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
+
+        Returns:
+            AggregatedBulkWriteResult: A summary of the updates that were applied.
         """
         agg_result = AggregatedBulkWriteResult()
 
