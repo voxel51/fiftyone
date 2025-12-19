@@ -56,7 +56,7 @@ def validate_frame_number(value):
         )
 
 
-class FrameError(Exception):
+class FrameError(ValueError):
     """Exception raised when an invalid frame number is encountered."""
 
     pass
