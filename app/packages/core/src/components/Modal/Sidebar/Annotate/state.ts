@@ -3,112 +3,54 @@ import { atomFamily } from "jotai/utils";
 
 export const activeSchemaTab = atom<"gui" | "json">("gui");
 
-const selectSchemas = (
-  schemas: AnnotationSchemas,
-  condition: (schema: AnnotationSchema | null) => boolean
-) => {
-  const result = {};
+export const currentField = atom<null | string>();
 
-  for (const path in schemas) {
-    if (condition(schemas[path])) {
-      result[path] = schemas[path];
+export const labelSchemasData = atom(null);
+
+export const labelSchemaData = atomFamily((field) => {
+  return atom(
+    (get) => get(labelSchemasData)[field],
+    (get, set, value) => {
+      set(labelSchemasData, { ...get(labelSchemasData), [field]: value });
     }
-  }
+  );
+});
 
-  return result;
-};
+export const activeLabelSchemas = atom<string[] | null>(null);
 
-export interface AnnotationSchema {
-  active?: boolean;
-  config?: {
-    attributes: Record<string, any>;
-    classes?: string[];
-  };
-}
-export interface AnnotationSchemas {
-  [key: string]: AnnotationSchema | null;
-}
-
-export const activePaths = atom((get) =>
-  Object.keys(get(activeSchemas) ?? {}).sort()
+export const inactiveLabelSchemas = atom((get) =>
+  Object.keys(get(labelSchemasData) ?? {})
+    .sort()
+    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field))
 );
 
-export const activeSchemas = atom<AnnotationSchemas>((get) =>
-  selectSchemas(get(schemas) ?? {}, (schema) => !!schema?.active)
+export const fieldType = atomFamily((field: string) =>
+  atom((get) => {
+    return get(labelSchemaData(field)).type;
+  })
 );
+
+export const fieldTypes = atom((get) => {
+  return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
+    acc[cur] = get(fieldType(cur));
+    return acc;
+  }, {});
+});
 
 export const addToActiveSchemas = atom(null, (get, set, add: Set<string>) => {
-  for (const path of add) {
-    set(schema(path), { ...get(schema(path)), active: true });
-  }
+  const current: string[] = get(activeLabelSchemas) ?? [];
+  set(activeLabelSchemas, [...current, ...add]);
 });
 
 export const removeFromActiveSchemas = atom(
   null,
   (get, set, remove: Set<string>) => {
-    for (const path of remove) {
-      set(schema(path), { ...get(schema(path)), active: false });
-    }
+    const current: string[] = get(activeLabelSchemas) ?? [];
+    set(
+      activeLabelSchemas,
+      current.filter((field) => !remove.has(field))
+    );
   }
 );
-
-export const inactivePaths = atom((get) =>
-  Object.keys(get(inactiveSchemas) ?? {}).sort()
-);
-export const inactiveSchemas = atom((get) =>
-  selectSchemas(get(schemas) ?? {}, (schema) => !schema?.active)
-);
-
-export const schemas = atom<AnnotationSchemas | null>(null);
-
-export const fieldTypes = atom<{ [key: string]: string }>({});
-export const fieldType = atomFamily((path: string) =>
-  atom((get) => {
-    const types = get(fieldTypes);
-    const result = types[path];
-
-    if (!result) {
-      return types[path.split(".").slice(0, -1).join(".")];
-    }
-
-    return result;
-  })
-);
-
-export const schema = atomFamily((path: string) =>
-  atom(
-    (get) => {
-      return get(schemas)?.[path];
-    },
-    (get, set, schema: AnnotationSchema | null) => {
-      if (!schema) {
-        const s = { ...get(schemas) };
-        delete s[path];
-
-        set(schemas, s);
-        return;
-      }
-      set(schemas, { ...get(schemas), [path]: schema });
-    }
-  )
-);
-
-export const schemaConfig = atomFamily((path: string) =>
-  atom(
-    (get) => {
-      return get(schema(path))?.config;
-    },
-    (get, set, config?: object) => {
-      const next = get(schema(path)) ?? { active: false };
-      set(schema(path), { ...next, config });
-    }
-  )
-);
-
-export const deleteSchemas = atom(null, (_, set, paths: string[]) => {
-  for (const path of paths) {
-    set(schemaConfig(path), undefined);
-  }
-});
 
 export const showModal = atom(false);
