@@ -155,11 +155,13 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset.set_label_schemas(
             {"test": {"type": "int", "component": "text"}}
         )
+        dataset.activate_label_schemas()
         dataset.rename_sample_field("test", "renamed")
         self.assertEqual(
             dataset.label_schemas,
             {"renamed": {"type": "int", "component": "text"}},
         )
+        self.assertEqual(dataset.active_label_schemas, ["renamed"])
 
         dataset.add_sample_field(
             "test_label",

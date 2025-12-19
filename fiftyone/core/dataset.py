@@ -1222,17 +1222,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         elif etau.is_str(fields):
             fields = [fields]
 
+        label_schemas = self.label_schemas
         for field in fields:
-            if field not in self._doc.label_schemas:
+            if field not in label_schemas:
                 raise ValueError(
                     f"field '{field}' is not in the dataset's label schema"
                 )
 
-            del self._doc.label_schemas[field]
-            if field in self._doc.active_label_schemas:
-                self._doc.active_label_schemas.remove(field)
+            del label_schemas[field]
 
-        self._doc.save()
+        self.set_label_schemas(label_schemas)
 
     def activate_label_schemas(self, fields=None):
         """Activate :meth:`label_schemas`. If no fields are provided, all
@@ -2643,7 +2642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
 
         label_schemas = self.label_schemas
-        new_label_schemas = copy.deepcopy(label_schemas)
+        new_label_schemas = self.label_schemas
         active_label_schemas = self.active_label_schemas
         for path, new_path in zip(paths, new_paths):
             if path in label_schemas:
@@ -2676,8 +2675,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         new_name = new_path.split(".")[-1]
                         attributes[new_name] = attributes.pop(name)
 
-        self.set_label_schemas(new_label_schemas)
-
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -2685,6 +2682,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
+        self.set_label_schemas(new_label_schemas)
+        self.active_label_schemas = active_label_schemas
 
     def _rename_frame_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
@@ -2998,7 +2997,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, _ = _parse_fields(field_names)
 
         label_schemas = self.label_schemas
-        new_label_schemas = copy.deepcopy(label_schemas)
+        new_label_schemas = self.label_schemas
 
         for path in field_names:
             if path in label_schemas:
@@ -3027,12 +3026,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     if name in attributes:
                         del attributes[name]
 
-        self.set_label_schemas(new_label_schemas)
         if fields:
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
+        self.set_label_schemas(new_label_schemas)
 
     def _remove_dynamic_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
