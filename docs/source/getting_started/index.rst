@@ -35,6 +35,13 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. Add guide cards below
 
 .. customcarditem::
+    :header: Auto Labeling Guide
+    :description: Bootstrap datasets rapidly with FiftyOne Auto Labeling. Generate auto labels with foundation models and systematically review predictions with confidence-based filtering and embeddings.
+    :link: auto_labeling/index.html
+    :image: https://cdn.voxel51.com/getting_started_val/notebook3/val_review_ui.webp
+    :tags: FiftyOne-Enterprise,Annotation
+
+.. customcarditem::
     :header: Object Detection Guide
     :description: Master object detection workflows with COCO, YOLOv8, and comprehensive model evaluation. Learn dataset curation, mistake analysis, and performance assessment through hands-on practice.
     :link: object_detection/index.html
@@ -115,6 +122,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :maxdepth: 1
    :hidden:
 
+   Auto Labeling Guide <auto_labeling/index>
    Object Detection Guide <object_detection/index>
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>
