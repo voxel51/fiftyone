@@ -196,7 +196,7 @@ class FramesView(fov.DatasetView):
         )
 
         frame_field = self._source_collection._FRAMES_PREFIX + label_field
-        self._source_collection._tag_labels(
+        return self._source_collection._tag_labels(
             tags, frame_field, ids=ids, label_ids=label_ids
         )
 
@@ -206,7 +206,7 @@ class FramesView(fov.DatasetView):
         )
 
         frame_field = self._source_collection._FRAMES_PREFIX + label_field
-        self._source_collection._untag_labels(
+        return self._source_collection._untag_labels(
             tags, frame_field, ids=ids, label_ids=label_ids
         )
 

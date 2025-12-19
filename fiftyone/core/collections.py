@@ -2041,7 +2041,8 @@ class SampleCollection(object):
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
             res = view._tag_labels(tags, label_field)
-            agg_result.add(res.bulk_write_result)
+            if res and hasattr(res, "bulk_write_result"):
+                agg_result.add(res.bulk_write_result)
         return agg_result
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
@@ -2108,7 +2109,8 @@ class SampleCollection(object):
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
             res = view._untag_labels(tags, label_field)
-            agg_result.add(res.bulk_write_result)
+            if res and hasattr(res, "bulk_write_result"):
+                agg_result.add(res.bulk_write_result)
         return agg_result
 
     def _untag_labels(self, tags, label_field, ids=None, label_ids=None):

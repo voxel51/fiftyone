@@ -191,7 +191,7 @@ class ClipsView(fov.DatasetView):
 
         if label_field == self._classification_field:
             ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
-            self._source_collection._tag_labels(
+            return self._source_collection._tag_labels(
                 tags, label_field, ids=ids, label_ids=label_ids
             )
 
@@ -205,7 +205,7 @@ class ClipsView(fov.DatasetView):
 
         if label_field == self._classification_field:
             ids, label_ids = self._to_source_ids(label_field, _ids, label_ids)
-            self._source_collection._untag_labels(
+            return self._source_collection._untag_labels(
                 tags, label_field, ids=ids, label_ids=label_ids
             )
 
