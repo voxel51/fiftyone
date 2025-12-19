@@ -34,6 +34,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.map as focm
@@ -12637,6 +12638,7 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
             id_map[(_id, fn)] = _fid
 
         for fn in set(_vals.keys()) - set(_fns):
+            fofu.validate_frame_number(fn)
             dicts.append(
                 {
                     "_sample_id": ObjectId(_id),
