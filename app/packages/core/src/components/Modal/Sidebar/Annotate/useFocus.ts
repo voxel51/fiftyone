@@ -7,7 +7,7 @@ import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
-import { current, currentOverlay, hasChanges, savedLabel } from "./Edit/state";
+import { current, hasChanges, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
@@ -15,7 +15,7 @@ import { labelMap } from "./useLabels";
 const STORE = getDefaultStore();
 
 export default function useFocus() {
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const useEventHandler = useLighterEventHandler(
     scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -46,19 +46,18 @@ export default function useFocus() {
           return;
         }
 
-        const current = STORE.get(currentOverlay)?.id;
+        const id = STORE.get(current)?.overlay?.id;
 
-        if (!current || !STORE.get(hasChanges)) {
-          // no unsaved changes, allow the exit
+        // no unsaved changes, allow the exit
+        if (!id || !STORE.get(hasChanges)) {
           onExit();
-
           return;
         }
 
         // there are unsaved changes, ask for confirmation
         scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
         confirmExit(() => {
-          scene?.deselectOverlay(current, {
+          scene?.deselectOverlay(id, {
             ignoreSideEffects: true,
           });
 
@@ -79,8 +78,15 @@ export default function useFocus() {
         selectId.current = payload.id;
 
         if (STORE.get(editing)) {
-          // skip for new labels
-          if (STORE.get(current)?.isNew) return;
+          // if it's a new label with no changes, discard it and allow the selection
+          const currentLabel = STORE.get(current);
+          if (currentLabel?.isNew && !STORE.get(hasChanges)) {
+            removeOverlay(currentLabel.overlay.id);
+            scene?.exitInteractiveMode();
+            onExit();
+            select();
+            return;
+          }
 
           // a label is already being edited, let the DESELECT event handle it
           scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
@@ -89,7 +95,7 @@ export default function useFocus() {
 
         select();
       },
-      [scene, select]
+      [scene, select, onExit, removeOverlay]
     )
   );
 }

@@ -196,6 +196,7 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        key={overlay.id}
         smartForm={true}
         schema={schema}
         data={data}
