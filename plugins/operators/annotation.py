@@ -6,12 +6,13 @@ Compute annotation schema operator
 |
 """
 
+from exceptiongroup import ExceptionGroup
+
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
-import fiftyone.core.fields as fof
 import fiftyone.operators as foo
 
 
@@ -133,9 +134,9 @@ class UpdateLabelSchema(foo.Operator):
         )
 
     def execute(self, ctx):
-        path = ctx.params.get("field", None)
+        field = ctx.params.get("field", None)
         label_schema = ctx.params.get("label_schema", None)
-        ctx.dataset.update_label_schema(path, label_schema)
+        ctx.dataset.update_label_schema(field, label_schema)
         return {"label_schema": label_schema}
 
 
@@ -149,4 +150,18 @@ class ValidateLabelSchemas(foo.Operator):
         )
 
     def execute(self, ctx):
-        validate_label_schemas(ctx.dataset, ctx.params.get("label_schemas"))
+        errors = []
+        try:
+            validate_label_schemas(
+                ctx.dataset, ctx.params.get("label_schemas")
+            )
+        except ExceptionGroup as exceptions:
+            for exception in exceptions.exceptions:
+                if isinstance(exception, ExceptionGroup):
+                    for subexception in exception.exceptions:
+                        errors.append(str(subexception))
+                    continue
+
+                errors.append(str(exception))
+
+        return {"errors": errors}

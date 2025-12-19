@@ -5,17 +5,14 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
-import { activeSchemaTab, showModal } from "../state";
-import FieldsTabs from "./FieldsTabs";
+import { currentField, showModal } from "../state";
+import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView, {
   selectedActiveFields,
   selectedHiddenFields,
   useActivateFields,
   useDeactivateFields,
 } from "./GUIView";
-import JSONView from "./JSONView";
-import LabelSchemaEditor from "./LabelSchemaEditor";
-import { currentField } from "./state";
 import {
   BackButton,
   CloseButton,
@@ -53,36 +50,24 @@ const Subheading = () => {
   }
 
   return (
-    <>
-      <Typography color="secondary" padding="1rem 0">
-        Manage your annotation schemas
-      </Typography>
-      <ModalHeader style={{ margin: "1rem 0" }}>
-        <FieldsTabs />
-        <MuiButton variant="contained">New field</MuiButton>
-      </ModalHeader>
-    </>
+    <Typography color="secondary" padding="1rem 0">
+      Manage your label schemas
+    </Typography>
   );
 };
 
 const Page = () => {
-  const field = useAtomValue(currentField);
-  const tab = useAtomValue(activeSchemaTab);
+  const [field, setField] = useAtom(currentField);
 
   if (field) {
-    return <LabelSchemaEditor field={field} />;
+    return <EditFieldLabelSchema field={field} setField={setField} />;
   }
 
-  if (tab === "gui") {
-    return <GUIView />;
-  }
-
-  return <JSONView />;
+  return <GUIView />;
 };
 
 const SchemaManagerFooter = () => {
   const field = useAtomValue(currentField);
-  const tab = useAtomValue(activeSchemaTab);
   const activeSelectedCount = useAtomValue(selectedActiveFields).size;
   const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
   const activateFields = useActivateFields();
@@ -92,8 +77,6 @@ const SchemaManagerFooter = () => {
   if (field) {
     return null;
   }
-
-  const isGUIView = tab === "gui";
 
   const hasSelection = hiddenSelectedCount > 0 || activeSelectedCount > 0;
   const isMovingToVisible = hiddenSelectedCount > 0;
@@ -105,7 +88,7 @@ const SchemaManagerFooter = () => {
   return (
     <ModalFooter>
       <FooterLeft>
-        {isGUIView && hasSelection && (
+        {hasSelection && (
           <MuiButton
             variant="outlined"
             startIcon={

@@ -12,8 +12,7 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import type { LabelType } from "./Edit/state";
-import type { AnnotationSchemas } from "./state";
-import { schemas } from "./state";
+import { activeLabelSchemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
@@ -29,13 +28,13 @@ const handleSample = async ({
   getFieldType: (path: string) => Promise<LabelType>;
   paths: { [key: string]: string };
   sample: ModalSample;
-  schemas: AnnotationSchemas;
+  schemas: string[];
 }) => {
   const data = sample.sample;
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {
-    if (!schemas[path]?.active) {
+    if (!schemas.includes(path)) {
       continue;
     }
 
@@ -113,7 +112,7 @@ export default function useLabels() {
   const modalSampleData = useRecoilValueLoadable(modalSample);
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
-  const schemaMap = useAtomValue(schemas);
+  const active = useAtomValue(activeLabelSchemas);
   const addLabel = useAddAnnotationLabel();
   const { scene } = useLighter();
 
@@ -138,7 +137,7 @@ export default function useLabels() {
   useEffect(() => {
     if (
       modalSampleData.state !== "loading" &&
-      schemaMap &&
+      active &&
       loadingState === LabelsState.UNSET
     ) {
       setLoading(LabelsState.LOADING);
@@ -147,20 +146,20 @@ export default function useLabels() {
         paths,
         sample: modalSampleData.contents,
         getFieldType,
-        schemas: schemaMap,
+        schemas: active,
       }).then((result) => {
         setLoading(LabelsState.COMPLETE);
         setLabels(result);
       });
     }
   }, [
+    active,
     addLabel,
     getFieldType,
     loadingState,
     modalSampleData,
 
     paths,
-    schemaMap,
 
     setLabels,
     setLoading,
