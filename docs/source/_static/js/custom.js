@@ -528,6 +528,8 @@ const initKapaAI = () => {
       "How can I import my data?,How can I compute embeddings?, How can I create my own plugin?, How can I evaluate my model?",
     modalDisclaimer:
       "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).\n\nNeed team collaboration, cloud storage, flexible deployment, and advanced workflows for production? [Get Enterprise](https://link.voxel51.com/docs-search-sales)",
+    mcpEnabled: "true",
+    mcpServerUrl: "https://voxel51.mcp.kapa.ai",
   });
 
   document.head.appendChild(script);
@@ -624,7 +626,7 @@ const addEnterpriseBanner = () => {
 
     footer.parentNode.insertBefore(banner, footer);
     requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event("resize"));
     });
     observer.disconnect();
   });

@@ -1766,6 +1766,47 @@ class VideoTests(unittest.TestCase):
         self.assertIsNone(dataset.last().frames.last()["foo"])
 
     @drop_datasets
+    def test_set_values_frame_numbers(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[2] = fo.Frame()
+
+        dataset.add_samples([sample1, sample2])
+
+        # Use integers to refer to frame numbers
+        values = {sample1.filepath: {2: "spam"}, sample2.filepath: {1: "eggs"}}
+        dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
+
+        # Cannot use strings to refer to existing frame numbers
+        with self.assertRaises(ValueError):
+            values = {sample1.filepath: {"1": "not allowed"}}
+            dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
+
+        # Cannot use strings to refer to new frame numbers either
+        with self.assertRaises(ValueError):
+            values = {sample2.filepath: {"100": "not allowed"}}
+            dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
+
+    @drop_datasets
     def test_to_clips(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("support", fo.FrameSupportField)
