@@ -76,6 +76,47 @@ class DatasetAnnotationTests(unittest.TestCase):
         self.assertNotIn("test", dataset.active_label_schemas)
         self.assertNotIn("test", dataset.label_schemas)
 
+        dataset.add_sample_field(
+            "detections",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        dataset.add_sample_field("detections.detections.int", fo.IntField)
+        dataset.set_label_schemas(
+            {
+                "detections": {
+                    "attributes": {
+                        "int": {"component": "text", "type": "int"}
+                    },
+                    "type": "detections",
+                },
+            }
+        )
+
+        dataset.delete_sample_field("detections.detections.int")
+        self.assertEqual(
+            {
+                "detections": {
+                    "attributes": {},
+                    "type": "detections",
+                },
+            },
+            dataset.label_schemas,
+        )
+
+        dataset.add_sample_field(
+            "doc",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+        dataset.add_sample_field("doc.int", fo.IntField)
+        dataset.set_label_schemas(
+            {"doc.int": {"component": "text", "type": "int"}}
+        )
+
+        dataset.delete_sample_field("doc")
+        self.assertNotIn("doc.int", dataset.label_schemas)
+
     @drop_datasets
     def test_update_label_schema(self):
         dataset = fo.Dataset()
@@ -207,6 +248,7 @@ class DatasetAnnotationTests(unittest.TestCase):
         )
         dataset.rename_sample_field("dynamic", "dynamic_renamed")
         self.assertNotIn("dynamic.subfield", dataset.label_schemas)
+        self.assertIn("dynamic_renamed.subfield", dataset.label_schemas)
 
     @drop_datasets
     def test_set_label_schemas(self):

@@ -3745,7 +3745,7 @@ class SampleCollection(object):
                 the schema with
             fields (None): a field name, ``embedded.field.name`` or iterable of
                 such values
-            scan_samples (False): whether to scan the collection to populate
+            scan_samples (True): whether to scan the collection to populate
                 component settings based on actual field values (ranges,
                 values, etc). By default, the label schema is generated from
                 *only* the statically available information in the dataset's

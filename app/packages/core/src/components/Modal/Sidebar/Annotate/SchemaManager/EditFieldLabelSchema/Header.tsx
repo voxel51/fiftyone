@@ -2,22 +2,22 @@ import { MenuItem, Select, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { activeLabelSchemas, inactiveLabelSchemas } from "../../state";
-import FieldRow from "../FieldRow";
-import { FieldColumn, Label } from "../styled";
 
-export default function ({
+import { FieldColumn, FieldRow, Label } from "../styled";
+
+export default function Header({
   field,
   setField,
 }: {
   field: string;
-  setField: () => void;
+  setField: (field: string) => void;
 }) {
   const activeFields = useAtomValue(activeLabelSchemas);
   const hiddenFields = useAtomValue(inactiveLabelSchemas);
 
   // All fields for the dropdown
   const allFields = useMemo(
-    () => [...activeFields, ...hiddenFields].sort(),
+    () => [...(activeFields ?? []), ...hiddenFields].sort(),
     [activeFields, hiddenFields]
   );
 

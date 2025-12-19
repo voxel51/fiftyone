@@ -1145,7 +1145,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         that defines its App annotation UX and constraints.
 
         See
-        :meth:`generate_label_schema` for ways in which to generate a label
+        :meth:`generate_label_schemas` for ways in which to generate a label
         schema.
 
         Example::
@@ -1206,7 +1206,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.save()
 
     def delete_label_schemas(self, fields=None):
-        """Delete one or more
+        """Deletes one or more
         :ref:`label schemas <annotation-label-schema>`. If no fields are
         provided, all label schemas are deleted.
 
@@ -1219,6 +1219,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if fields is None:
             fields = list(self.label_schemas)
+        elif etau.is_str(fields):
+            fields = [fields]
 
         for field in fields:
             if field not in self._doc.label_schemas:
@@ -2996,13 +2998,36 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fields, _ = _parse_fields(field_names)
 
         label_schemas = self.label_schemas
-        delete_schemas = []
-        for field in fields:
-            if field in label_schemas:
-                delete_schemas.append(field)
+        new_label_schemas = copy.deepcopy(label_schemas)
 
-        self.delete_label_schemas(delete_schemas)
+        for path in field_names:
+            if path in label_schemas:
+                del new_label_schemas[path]
+                continue
 
+            for field in label_schemas:
+                if field.startswith(f"{path}."):
+                    del new_label_schemas[field]
+
+            keys = path.split(".")
+            parent = ".".join(keys[:-1])
+
+            if self._is_label_field(parent):
+                if parent not in label_schemas:
+                    # this is a label list field
+                    # e.g. remove "detections" from
+                    # "ground_truth.detections"
+                    parent = ".".join(parent.split(".")[:-1])
+
+                if parent in label_schemas:
+                    attributes = new_label_schemas[parent].get(
+                        foac.ATTRIBUTES, {}
+                    )
+                    name = keys[-1]
+                    if name in attributes:
+                        del attributes[name]
+
+        self.set_label_schemas(new_label_schemas)
         if fields:
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 

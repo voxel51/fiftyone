@@ -34,7 +34,7 @@ def validate_label_schemas(
             such values
 
     Raises:
-        ExceptionGroup: if the label schema(s) are invalidp
+        ExceptionGroup: if the label schema(s) are invalid
     """
     is_scalar = etau.is_str(fields)
 
@@ -170,7 +170,7 @@ def _validate_bool_list_field_label_schema(
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
     if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, bool)
+        _validate_values_setting(field_name, values, bool, key=foac.CLASSES)
         settings = settings.union({foac.VALUES})
 
     for key, value in label_schema.items():
@@ -621,33 +621,33 @@ def _validate_read_only(field_name, value, require=False):
         )
 
 
-def _validate_values_setting(field_name, value, _type):
+def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
-            f"'values' setting for field '{field_name}' must be a list"
+            f"'{key}' setting for field '{field_name}' must be a list"
         )
 
     if not value:
         raise ValueError(
-            f"'values' setting for field '{field_name}' must have at least "
+            f"'{key}' setting for field '{field_name}' must have at least "
             f"one value "
         )
 
     if len(value) > foac.VALUES_THRESHOLD:
         raise ValueError(
-            f"'values' setting for field '{field_name}' has more than "
+            f"'{key}' setting for field '{field_name}' has more than "
             f"{foac.VALUES_THRESHOLD} values"
         )
 
     if len(value) > len(set(value)):
         raise ValueError(
-            f"'values' setting for field '{field_name}' has duplicates"
+            f"'{key}' setting for field '{field_name}' has duplicates"
         )
 
     for v in value:
         if not isinstance(v, _type):
             raise ValueError(
-                f"invalid value '{v}' in 'values' setting for field "
+                f"invalid value '{v}' in '{key}' setting for field "
                 f"'{field_name}'"
             )
 

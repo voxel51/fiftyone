@@ -1,26 +1,20 @@
 import styled from "styled-components";
 
 const ErrorContainer = styled.div`
-  margin-top: 1rem;
+  align-items: flex-start;
+  align-self: stretch;
+  background: #441817;
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  border: 1px solid rgba(212, 64, 64, 0.4);
+  border-radius: 4px;
+  color: var(--voxel-danger, #d44040);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 12px;
-  align-self: stretch;
-  max-height: 300px;
-
-  border-radius: 4px;
-
-  /* Shadow/xs */
-  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
-
-  border-radius: 4px;
-  border: 1px solid rgba(212, 64, 64, 0.4);
-
-  background: #441817;
-  color: var(--voxel-danger, #d44040);
   font-weight: bold;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 1rem;
+  max-height: 300px;
 `;
 
 const ErrorsList = ({ errors }: { errors: string[] }) => {
@@ -35,8 +29,9 @@ const ErrorsList = ({ errors }: { errors: string[] }) => {
 
 const Errors = ({ errors }: { errors: string[] }) => {
   if (!errors.length) {
-    return;
+    return null;
   }
+
   return (
     <ErrorContainer>
       <ErrorsList errors={errors} />

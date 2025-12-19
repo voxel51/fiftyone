@@ -153,7 +153,7 @@ class ValidateLabelSchemas(foo.Operator):
         errors = []
         try:
             validate_label_schemas(
-                ctx.dataset, ctx.params.get("label_schemas")
+                ctx.dataset, ctx.params.get("label_schemas", {})
             )
         except ExceptionGroup as exceptions:
             for exception in exceptions.exceptions:

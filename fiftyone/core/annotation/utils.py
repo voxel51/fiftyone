@@ -76,13 +76,13 @@ def list_valid_annotation_fields(
     A field may be valid, but not yet supported by the App for human
     annotation.
 
-    Args::
-        sample_colection: a
+    Args:
+        sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        app_support (False): whether to only include fields supported by the
-            App for annotation
-        flatten (False): whether to flatten embedded documents with dot
-            notation
+        require_app_support (False): whether to only include fields supported
+            by the App for annotation
+        flatten (False): whether to flatten embedded documents with
+            ``dot.notation``
     """
     fields = sample_collection.get_field_schema()
     media_type = sample_collection.media_type
@@ -151,7 +151,6 @@ def get_type(field):
 
     Args:
         field: the field instance
-        is_list: whether the field instance is within a list field
 
     Returns:
         a label schema ``type``

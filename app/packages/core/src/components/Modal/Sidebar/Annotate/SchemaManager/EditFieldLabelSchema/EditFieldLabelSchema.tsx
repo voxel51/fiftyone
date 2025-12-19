@@ -6,12 +6,7 @@ import Errors from "./Errors";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 
-const EditFieldLabelSchema = ({
-  field,
-}: {
-  field: string;
-  setField: (field: string) => void;
-}) => {
+const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   return (
     <EditContainer>

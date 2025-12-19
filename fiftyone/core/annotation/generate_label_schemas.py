@@ -239,7 +239,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             schema with
         fields (None): a field name, ``embedded.field.name`` or iterable of
             such values
-        scan_samples (False): whether to scan the collection to populate
+        scan_samples (True): whether to scan the collection to populate
             component settings based on actual field values (ranges,
             values, etc). By default, the label schema is generated from *only*
             the statically available information in the dataset's field schema
@@ -413,7 +413,7 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
             values = None
 
         if values:
-            if values and len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+            if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
                 settings[foac.COMPONENT] = (
                     foac.CHECKBOXES if is_list else foac.RADIO
                 )
@@ -424,7 +424,7 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
             if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
                 settings[foac.VALUES] = values
 
-    except:
+    except Exception:
         # too many distinct values
         pass
 

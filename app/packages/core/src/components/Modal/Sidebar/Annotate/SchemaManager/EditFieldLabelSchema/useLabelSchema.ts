@@ -45,7 +45,7 @@ const useHasChanges = (one, two) => {
 };
 
 const useReadOnly = (field: string) => {
-  const data = useAtom(labelSchemaData(field));
+  const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
     isReadOnly: current.read_only,
