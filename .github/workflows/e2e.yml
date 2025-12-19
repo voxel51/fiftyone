@@ -5,7 +5,7 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 90
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
     name: Test e2e (Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
@@ -58,6 +58,10 @@ jobs:
             requirements/github.txt
             requirements/test.txt
             requirements/e2e.txt
+      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false # e2e test failed when `true`
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
