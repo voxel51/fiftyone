@@ -54,6 +54,7 @@ import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.core.types import AggregatedBulkWriteResult
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -3624,7 +3625,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         else:
             coll = self._sample_collection
 
-        foo.bulk_write(ops, coll, ordered=ordered, progress=progress)
+        bulk_write_results = foo.bulk_write(
+            ops, coll, ordered=ordered, progress=progress
+        )
 
         if frames:
             fofr.Frame._reload_docs(self._frame_collection_name, frame_ids=ids)
@@ -3632,6 +3635,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             fos.Sample._reload_docs(
                 self._sample_collection_name, sample_ids=ids
             )
+
+        return AggregatedBulkWriteResult.from_results(bulk_write_results)
 
     def _merge_doc(
         self,

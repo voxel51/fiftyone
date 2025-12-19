@@ -45,6 +45,7 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
+from fiftyone.core.types import AggregatedBulkWriteResult, EditLabelTagsResult
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -2016,6 +2017,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        agg_result = AggregatedBulkWriteResult()
+
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
@@ -2034,7 +2037,10 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that are missing a tag of interest
             view = self.filter_labels(label_field, match_expr)
-            view._tag_labels(tags, label_field)
+            res = view._tag_labels(tags, label_field)
+            agg_result.add(res.bulk_write_result)
+        print(agg_result)
+        return agg_result
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if etau.is_str(tags):
@@ -2079,6 +2085,8 @@ class SampleCollection(object):
                 :class:`fiftyone.core.labels.Label` fields. By default, all
                 label fields are used
         """
+        agg_result = AggregatedBulkWriteResult()
+
         if label_fields is None:
             label_fields = self._get_label_fields()
         elif etau.is_str(label_fields):
@@ -2094,7 +2102,9 @@ class SampleCollection(object):
         for label_field in label_fields:
             # We only need to process labels that have a tag of interest
             view = self.select_labels(tags=tags, fields=label_field)
-            view._untag_labels(tags, label_field)
+            res = view._untag_labels(tags, label_field)
+            agg_result.add(res.bulk_write_result)
+        return agg_result
 
     def _untag_labels(self, tags, label_field, ids=None, label_ids=None):
         if etau.is_str(tags):
@@ -2120,6 +2130,7 @@ class SampleCollection(object):
         _root, is_frame_field = self._handle_frame_field(root)
 
         ops = []
+        bulk_write_result = None
 
         if is_list_field:
             id_path = root + "._id"
@@ -2167,9 +2178,13 @@ class SampleCollection(object):
                 ops.append(UpdateOne({"_id": _id}, update))
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
+            bulk_write_result = self._dataset._bulk_write(
+                ops, ids=ids, frames=is_frame_field
+            )
 
-        return ids, label_ids
+        return EditLabelTagsResult(
+            ids=ids, label_ids=label_ids, bulk_write_result=bulk_write_result
+        )
 
     def _get_selected_labels(
         self,
