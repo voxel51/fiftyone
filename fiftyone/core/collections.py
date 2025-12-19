@@ -2039,7 +2039,6 @@ class SampleCollection(object):
             view = self.filter_labels(label_field, match_expr)
             res = view._tag_labels(tags, label_field)
             agg_result.add(res.bulk_write_result)
-        print(agg_result)
         return agg_result
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
