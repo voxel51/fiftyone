@@ -266,10 +266,14 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 if neg_detections and len(neg_detections.detections) > 0:
                     for neg_det in neg_detections.detections:
                         neg_box = neg_det.bounding_box
-                        nx1 = max(0, int(neg_box[0] * w))
-                        ny1 = max(0, int(neg_box[1] * h))
-                        nx2 = min(w, int((neg_box[0] + neg_box[2]) * w))
-                        ny2 = min(h, int((neg_box[1] + neg_box[3]) * h))
+                        box_xyxy = fosam._to_abs_boxes(
+                            np.array([neg_box]), w, h, chunk_size=1
+                        )
+                        box_abs = np.round(box_xyxy.squeeze()).astype(int)
+                        nx1 = max(0, box_abs[0])
+                        ny1 = max(0, box_abs[1])
+                        nx2 = min(w, box_abs[2])
+                        ny2 = min(h, box_abs[3])
                         if nx2 > nx1 and ny2 > ny1:
                             if masks.ndim == 3:
                                 masks[:, ny1:ny2, nx1:nx2] = 0
@@ -534,11 +538,19 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     if neg_frame_detections and len(neg_frame_detections.detections) > 0:
                         for neg_det in neg_frame_detections.detections:
                             neg_box = neg_det.bounding_box
-                            nx1 = int(neg_box[0] * self._curr_frame_width)
-                            ny1 = int(neg_box[1] * self._curr_frame_height)
-                            nx2 = int((neg_box[0] + neg_box[2]) * self._curr_frame_width)
-                            ny2 = int((neg_box[1] + neg_box[3]) * self._curr_frame_height)
-                            mask[ny1:ny2, nx1:nx2] = 0
+                            box_xyxy = fosam._to_abs_boxes(
+                                np.array([neg_box]),
+                                self._curr_frame_width,
+                                self._curr_frame_height,
+                                chunk_size=1,
+                            )
+                            box_abs = np.round(box_xyxy.squeeze()).astype(int)
+                            nx1 = max(0, box_abs[0])
+                            ny1 = max(0, box_abs[1])
+                            nx2 = min(self._curr_frame_width, box_abs[2])
+                            ny2 = min(self._curr_frame_height, box_abs[3])
+                            if nx2 > nx1 and ny2 > ny1:
+                                mask[ny1:ny2, nx1:nx2] = 0
 
                 box = fosam._mask_to_box(mask)
                 if box is None:
