@@ -241,7 +241,7 @@ def apply_model(
                 progress,
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size, model)
 
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
@@ -845,6 +845,8 @@ def _make_data_loader(
     skip_failures,
     field_mapping,
 ):
+    if batch_size is None:
+        raise ValueError("batch_size cannot be None")
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
     # functionality
@@ -863,9 +865,6 @@ def _make_data_loader(
         use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
-
-    if batch_size is None:
-        batch_size = 1
 
     if isinstance(model, SupportsGetItem):
         get_item = model.build_get_item(field_mapping=field_mapping)
@@ -1040,7 +1039,7 @@ def compute_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size, model)
 
         if process_video_frames:
             if batch_size is not None:
@@ -1632,7 +1631,7 @@ def compute_patch_embeddings(
 
         context.enter_context(model)
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size, model)
 
         if process_video_frames:
             return _embed_frame_patches(
@@ -1994,15 +1993,12 @@ def _patch_collate_fn(batch):
     return batch[0]  # return patches directly
 
 
-def _parse_batch_size(batch_size, model, use_data_loader):
+def _parse_batch_size(batch_size, model):
     if batch_size is None:
-        batch_size = fo.config.default_batch_size
+        batch_size = fo.config.default_model_batch_size
 
-    if batch_size is not None and batch_size > 1 and model.ragged_batches:
+    if batch_size > 1 and model.ragged_batches:
         logger.warning("Model does not support batching")
-        batch_size = None
-
-    if use_data_loader and batch_size is None:
         batch_size = 1
 
     return batch_size
