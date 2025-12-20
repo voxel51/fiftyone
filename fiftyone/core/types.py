@@ -9,6 +9,8 @@ Core type definitions and result containers.
 from typing import Optional, Union
 from pymongo.results import BulkWriteResult
 
+from fiftyone.core.expressions import ObjectId
+
 
 class AggregatedBulkWriteResult:
     """Aggregated result from multiple bulk write operations."""
@@ -50,21 +52,24 @@ class AggregatedBulkWriteResult:
         return self
 
 
-class EditLabelTagsResult:
-    """Result of label tag edit operations."""
+class _EditLabelTagsResult:
+    """Internal result of label tag edit operations used to pass state."""
 
     def __init__(
         self,
         *,
-        ids: Optional[list[str]] = None,
-        label_ids: Optional[list[str]] = None,
+        ids: Optional[list[ObjectId]] = None,
+        label_ids: Optional[list[Union[list[ObjectId], ObjectId]]] = None,
         bulk_write_result: Optional[
             Union[BulkWriteResult, AggregatedBulkWriteResult]
         ] = None,
     ):
+        # ids and label_ids are parallel arrays used primarily to propagate
+        # tag operations from generated views to their source collections.
         self.ids = ids
         self.label_ids = label_ids
         self.bulk_write_result = bulk_write_result
 
     def __iter__(self):
+        """Allows unpacking: ids, label_ids = result"""
         return iter((self.ids, self.label_ids))

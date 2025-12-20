@@ -45,7 +45,7 @@ import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
-from fiftyone.core.types import AggregatedBulkWriteResult, EditLabelTagsResult
+from fiftyone.core.types import AggregatedBulkWriteResult, _EditLabelTagsResult
 
 fod = fou.lazy_import("fiftyone.core.dataset")
 fos = fou.lazy_import("fiftyone.core.stages")
@@ -2189,7 +2189,7 @@ class SampleCollection(object):
                 ops, ids=ids, frames=is_frame_field
             )
 
-        return EditLabelTagsResult(
+        return _EditLabelTagsResult(
             ids=ids, label_ids=label_ids, bulk_write_result=bulk_write_result
         )
 
