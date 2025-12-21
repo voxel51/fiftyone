@@ -211,6 +211,9 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 try:
                     value = sample.get_field(negative_field)
                 except AttributeError:
+                    logger.warning(
+                        "Sample %s has no field '%s'", sample.id, negative_field
+                    )
                     value = None
                 negative_prompts.append(value)
             self._curr_negative_prompts = negative_prompts
