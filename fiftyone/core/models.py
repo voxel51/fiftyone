@@ -890,6 +890,7 @@ def _make_data_loader(
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
+        prefetch_factor=1,
     )
 
 
