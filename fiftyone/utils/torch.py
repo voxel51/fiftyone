@@ -13,7 +13,8 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
+from collections.abc import Sequence
+from typing import Any, Dict, Optional, List, Union, Tuple
 import warnings
 
 import cv2
@@ -848,6 +849,64 @@ class TorchImageModel(
         """The keypoint skeleton for the model, if any."""
         return self._skeleton
 
+    def _handles_structured_inputs(self) -> bool:
+        """Whether this model handles structured dict inputs from GetItem.
+
+        Override to return True if your model's GetItem returns dicts
+        that should be processed by :meth:`_predict_all_structured` rather
+        than the standard image-based :meth:`_predict_all`.
+
+        This is useful for models that need additional context beyond raw
+        images, such as:
+
+        -   Detection-aware models that process person crops from bounding boxes
+        -   Models that need prompts or conditioning inputs
+        -   Multi-modal models that combine images with other data
+
+        Returns:
+            False by default (standard image processing)
+        """
+        return False
+
+    def _predict_all_structured(
+        self,
+        batch_data: List[Dict[str, Any]],
+    ) -> List[Any]:
+        """Process structured inputs from GetItem.
+
+        Override this method when :meth:`_handles_structured_inputs` returns
+        True. This is called instead of :meth:`_predict_all` when inputs are
+        dicts.
+
+        Args:
+            batch_data: list of dicts from ``GetItem.__call__()``. The dict
+                structure depends on your GetItem implementation.
+
+        Returns:
+            list of predictions (Labels or dicts of Labels)
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} sets _handles_structured_inputs()=True "
+            "but does not implement _predict_all_structured()"
+        )
+
+    def _predict_single_structured(self, img) -> Any:
+        """Process a single image through the structured input path.
+
+        Override to customize how single images are wrapped for structured
+        processing. Default wraps in a minimal dict with just the image.
+
+        This is called by :meth:`predict` when
+        :meth:`_handles_structured_inputs` returns True.
+
+        Args:
+            img: the image to process (PIL, numpy, or Tensor)
+
+        Returns:
+            a prediction (Label or dict of Labels)
+        """
+        return self._predict_all_structured([{"image": img}])[0]
+
     def predict(self, img):
         """Performs prediction on the given image.
 
@@ -863,6 +922,9 @@ class TorchImageModel(
             :class:`fiftyone.core.labels.Label` instances containing the
             predictions
         """
+        if self._handles_structured_inputs():
+            return self._predict_single_structured(img)
+
         if isinstance(img, torch.Tensor):
             imgs = img.unsqueeze(0)
         else:
@@ -882,12 +944,22 @@ class TorchImageModel(
                 - A list of Torch tensors (CHW)
                 - A uint8 numpy tensor (NHWC)
                 - A Torch tensor (NCHW)
+                - A list of dicts (for models with structured inputs)
 
         Returns:
             a list of :class:`fiftyone.core.labels.Label` instances or a list
             of dicts of :class:`fiftyone.core.labels.Label` instances
             containing the predictions
         """
+        # Check if this model handles structured dict inputs
+        if (
+            self._handles_structured_inputs()
+            and isinstance(imgs, Sequence)
+            and len(imgs) > 0
+            and isinstance(imgs[0], dict)
+        ):
+            return self._predict_all_structured(imgs)
+
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
@@ -1082,7 +1154,47 @@ class TorchImageModel(
         kwargs = config.transforms_args or {}
         return transforms_fcn(**kwargs)
 
-    def _build_output_processor(self, config):
+    def _get_output_processor_runtime_args(self) -> Dict[str, Any]:
+        """Get runtime arguments to inject into the output processor.
+
+        Override this to provide non-serializable resources (loaded models,
+        device objects, etc.) that the output processor needs but can't be
+        stored in config.
+
+        This is called by :meth:`_build_output_processor` after resolving
+        the output processor class.
+
+        This separation allows:
+
+        -   Config to remain serializable to JSON
+        -   Runtime resources (loaded models, devices) to be passed to processor
+        -   Clean separation between config parameters and runtime state
+
+        Returns:
+            dict of additional kwargs for ``output_processor_cls()``
+        """
+        return {}
+
+    def _build_output_processor(self, config=None):
+        """Build the output processor for this model.
+
+        This method:
+
+        1. Checks for a pre-built output_processor in config
+        2. Resolves output_processor_cls (class or string)
+        3. Merges config.output_processor_args with runtime args from
+           :meth:`_get_output_processor_runtime_args`
+        4. Instantiates the processor
+
+        Args:
+            config: optional config (defaults to self.config)
+
+        Returns:
+            an :class:`OutputProcessor` instance, or None
+        """
+        if config is None:
+            config = self.config
+
         if config.output_processor is not None:
             return config.output_processor
 
@@ -1094,7 +1206,11 @@ class TorchImageModel(
         if etau.is_str(output_processor_cls):
             output_processor_cls = etau.get_class(output_processor_cls)
 
-        kwargs = config.output_processor_args or {}
+        # Start with config args, then merge runtime args
+        kwargs = dict(config.output_processor_args or {})
+        runtime_args = self._get_output_processor_runtime_args()
+        kwargs.update(runtime_args)
+
         return output_processor_cls(classes=self._classes, **kwargs)
 
 
@@ -1123,6 +1239,356 @@ class ToPILImage(object):
             return img
 
         return F.to_pil_image(img)
+
+
+def to_numpy_image(
+    img: Union[Image.Image, np.ndarray, torch.Tensor]
+) -> np.ndarray:
+    """Convert image to numpy array in HWC format.
+
+    Handles PIL.Image, torch.Tensor, and numpy array inputs.
+    Automatically handles CHW→HWC conversion for tensors and
+    normalized [0,1] → uint8 [0,255] scaling for tensors.
+
+    **Important dtype/range assumptions:**
+    - PIL.Image: Always converted to HWC numpy array (typically uint8)
+    - torch.Tensor: Assumed to be in [0, 1] range if max value <= 1.0,
+      scaled to [0, 255] and converted to uint8. Tensors with max > 1.0
+      are returned as-is (dtype preserved).
+    - np.ndarray: Returned as-is without any dtype or range conversion.
+      If you need guaranteed uint8 output, check dtype after calling.
+
+    Args:
+        img: image as PIL.Image, numpy array, or torch.Tensor
+
+    Returns:
+        numpy array in HWC format. For PIL and normalized tensors, returns
+        uint8 [0, 255]. For numpy arrays and non-normalized tensors, returns
+        original dtype.
+
+    Example::
+
+        import numpy as np
+        from PIL import Image
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # From PIL Image (returns uint8)
+        pil_img = Image.open("image.jpg")
+        np_img = fout.to_numpy_image(pil_img)
+
+        # From torch tensor (CHW format, normalized [0,1]) (returns uint8)
+        tensor_img = torch.rand(3, 256, 256)
+        np_img = fout.to_numpy_image(tensor_img)
+
+        # From numpy array (passthrough - dtype/scale NOT enforced)
+        np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
+        result = fout.to_numpy_image(np_img)  # Unchanged
+    """
+    if isinstance(img, Image.Image):
+        return np.array(img)
+    elif isinstance(img, torch.Tensor):
+        img_np = img.cpu().numpy()
+        # Convert CHW to HWC if needed
+        if img_np.ndim == 3 and img_np.shape[0] in (1, 3, 4):
+            img_np = img_np.transpose(1, 2, 0)
+        # Scale to 0-255 if normalized
+        if img_np.max() <= 1.0:
+            img_np = (img_np * 255).astype(np.uint8)
+        return img_np
+    elif isinstance(img, np.ndarray):
+        return img
+    else:
+        raise ValueError(f"Unsupported image type: {type(img)}")
+
+
+def ensure_rgb_numpy(img_np: np.ndarray) -> np.ndarray:
+    """Ensure numpy image is in RGB format (HWC uint8).
+
+    Handles grayscale, single-channel, and RGBA inputs by converting
+    to 3-channel RGB format.
+
+    Args:
+        img_np: numpy array (HWC uint8)
+
+    Returns:
+        numpy array in RGB format (HWC uint8, 3 channels)
+
+    Example::
+
+        import numpy as np
+        import fiftyone.utils.torch as fout
+
+        # Convert grayscale to RGB
+        gray_img = np.random.randint(0, 255, (256, 256), dtype=np.uint8)
+        rgb_img = fout.ensure_rgb_numpy(gray_img)
+        print(rgb_img.shape)  # (256, 256, 3)
+
+        # Strip alpha channel
+        rgba_img = np.random.randint(0, 255, (256, 256, 4), dtype=np.uint8)
+        rgb_img = fout.ensure_rgb_numpy(rgba_img)
+        print(rgb_img.shape)  # (256, 256, 3)
+    """
+    if img_np.ndim == 2:
+        return np.repeat(img_np[..., None], 3, axis=2)
+    elif img_np.shape[2] == 1:
+        return np.repeat(img_np, 3, axis=2)
+    elif img_np.shape[2] == 4:
+        return img_np[..., :3]
+    return img_np
+
+
+def convert_to_tensor_chw(
+    img: Union[Image.Image, np.ndarray, torch.Tensor]
+) -> torch.Tensor:
+    """Convert various image formats to CHW tensor in [0, 1] range.
+
+    Handles PIL Images, numpy arrays (HWC/CHW), and torch tensors.
+    Automatically converts grayscale to RGB and strips alpha channels.
+
+    **Important dtype/range assumptions:**
+    - PIL.Image: Converted to numpy, then treated as uint8 [0, 255]
+    - np.ndarray: **Assumed to be uint8 in [0, 255] range**. Divided by 255
+      to normalize to [0, 1]. Passing float images already in [0, 1] will
+      silently rescale to [0, ~0.004].
+    - torch.Tensor: Assumed to already be in [0, 1] range, returned as-is
+      (after channel/dimension adjustments)
+
+    Args:
+        img: input image in various formats (PIL.Image, np.ndarray, or
+            torch.Tensor). For np.ndarray, must be uint8 [0, 255].
+
+    Returns:
+        torch.Tensor in CHW format, float, range [0, 1], 3 channels
+
+    Example::
+
+        import numpy as np
+        from PIL import Image
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # From PIL Image
+        pil_img = Image.open("image.jpg")
+        tensor = fout.convert_to_tensor_chw(pil_img)
+        print(tensor.shape)  # torch.Size([3, H, W])
+
+        # From numpy array (HWC uint8 [0, 255] - REQUIRED)
+        np_img = np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8)
+        tensor = fout.convert_to_tensor_chw(np_img)
+        print(tensor.shape)  # torch.Size([3, 256, 256])
+
+        # WARNING: Do NOT pass float arrays already in [0, 1]
+        # float_img = np.random.rand(256, 256, 3)  # WRONG - will rescale!
+    """
+    # Convert PIL to numpy first
+    if isinstance(img, Image.Image):
+        img = np.array(img)
+
+    if isinstance(img, np.ndarray):
+        # Ensure HWC uint8, strip alpha channel if present
+        if img.ndim == 2:
+            img = np.repeat(img[..., None], 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 1:
+            img = np.repeat(img, 3, axis=2)
+        elif img.ndim == 3 and img.shape[2] == 4:
+            # Strip alpha channel (RGBA -> RGB)
+            img = img[..., :3]
+        elif img.ndim == 3 and img.shape[2] == 3:
+            pass  # Already RGB
+        else:
+            raise ValueError(
+                f"Unsupported numpy array shape: {img.shape}. "
+                f"Expected 2D (H, W) for grayscale or 3D (H, W, C) where C is 1, 3, or 4. "
+                f"Got array with {img.ndim} dimensions."
+            )
+        img_t = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
+    elif isinstance(img, torch.Tensor):
+        # Only accept single-image tensors: 2D (H, W) or 3D (C, H, W) or (H, W, C)
+        # Reject batched tensors (4D) or other dimensionalities
+        if img.ndim == 2:
+            # 2D grayscale (H, W) -> expand to (3, H, W)
+            img_t = img.unsqueeze(0).repeat(3, 1, 1).float()
+        elif img.ndim == 3:
+            # Distinguish CHW vs HWC format
+            if img.shape[0] in (1, 3, 4):
+                # CHW format: (C, H, W)
+                img_t = img.float().clone()
+                # Handle different channel counts
+                if img_t.shape[0] == 1:
+                    img_t = img_t.repeat(3, 1, 1)
+                elif img_t.shape[0] == 4:
+                    # Strip alpha channel (RGBA -> RGB)
+                    img_t = img_t[:3, :, :]
+            elif img.shape[2] in (1, 3, 4):
+                # HWC format: (H, W, C) -> permute to CHW
+                img_t = img.permute(2, 0, 1).float().clone()
+                # Handle different channel counts
+                if img_t.shape[0] == 1:
+                    img_t = img_t.repeat(3, 1, 1)
+                elif img_t.shape[0] == 4:
+                    # Strip alpha channel (RGBA -> RGB)
+                    img_t = img_t[:3, :, :]
+            else:
+                raise ValueError(
+                    f"Unsupported 3D tensor shape: {img.shape}. "
+                    f"Expected CHW with C in {{1, 3, 4}} or HWC with C in {{1, 3, 4}}. "
+                    f"Got shape[0]={img.shape[0]}, shape[2]={img.shape[2]}"
+                )
+        else:
+            raise ValueError(
+                f"Unsupported tensor dimensionality: {img.ndim}D with shape {img.shape}. "
+                f"Expected 2D (H, W) for grayscale or 3D (C, H, W) or (H, W, C) for single images. "
+                f"Batched 4D tensors are not supported - process images individually."
+            )
+    else:
+        raise ValueError(
+            f"Unsupported image type: {type(img)}. "
+            f"Expected PIL.Image, np.ndarray, or torch.Tensor"
+        )
+
+    return img_t
+
+
+def resize_tensor(
+    img_t: torch.Tensor, target_h: int, target_w: int
+) -> torch.Tensor:
+    """Resize tensor to target dimensions using bilinear interpolation.
+
+    Args:
+        img_t: input tensor (CHW, float)
+        target_h: target height
+        target_w: target width
+
+    Returns:
+        resized tensor (CHW, float)
+
+    Example::
+
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # Resize a CHW tensor
+        img = torch.rand(3, 256, 256)
+        resized = fout.resize_tensor(img, 512, 512)
+        print(resized.shape)  # torch.Size([3, 512, 512])
+    """
+    return torch.nn.functional.interpolate(
+        img_t.unsqueeze(0),
+        size=(target_h, target_w),
+        mode="bilinear",
+        align_corners=False,
+    )[0]
+
+
+def normalize_tensor(
+    img_t: torch.Tensor,
+    mean: Union[List[float], np.ndarray, torch.Tensor],
+    std: Union[List[float], np.ndarray, torch.Tensor],
+) -> torch.Tensor:
+    """Normalize tensor using provided mean and std values.
+
+    Args:
+        img_t: input tensor (CHW, float, range [0, 1])
+        mean: mean values for each channel (list or array of 3 values)
+        std: standard deviation values for each channel (list or array of 3
+            values)
+
+    Returns:
+        normalized tensor (CHW, float, normalized)
+
+    Example::
+
+        import torch
+        import fiftyone.utils.torch as fout
+
+        # Normalize with ImageNet mean and std
+        img = torch.rand(3, 256, 256)
+        mean = [0.485, 0.456, 0.406]
+        std = [0.229, 0.224, 0.225]
+        normalized = fout.normalize_tensor(img, mean, std)
+    """
+    mean_t = torch.tensor(mean, dtype=img_t.dtype, device=img_t.device)
+    std_t = torch.tensor(std, dtype=img_t.dtype, device=img_t.device)
+    return (img_t - mean_t.view(3, 1, 1)) / std_t.view(3, 1, 1)
+
+
+def get_target_size(
+    image_size: Union[int, List[int], Tuple[int, int]]
+) -> Tuple[int, int]:
+    """Get target image size as (height, width) tuple.
+
+    Handles both single integer values and (height, width) tuples/lists.
+
+    Args:
+        image_size: target image size, either a single integer (for square
+            images) or a (height, width) tuple/list
+
+    Returns:
+        tuple of (height, width) for model input
+
+    Example::
+
+        import fiftyone.utils.torch as fout
+
+        # Square size
+        h, w = fout.get_target_size(256)
+        print(h, w)  # 256 256
+
+        # Non-square size
+        h, w = fout.get_target_size([384, 512])
+        print(h, w)  # 384 512
+    """
+    if isinstance(image_size, (list, tuple)):
+        return int(image_size[0]), int(image_size[1])
+    else:
+        return int(image_size), int(image_size)
+
+
+def detections_to_boxes(detections, img_shape):
+    """Convert FiftyOne Detections to bounding boxes in absolute coordinates.
+
+    Converts FiftyOne's relative bounding box format [x, y, w, h] (normalized 0-1)
+    to absolute pixel coordinates [x1, y1, x2, y2].
+
+    Args:
+        detections: a :class:`fiftyone.core.labels.Detections` or None
+        img_shape: (height, width) tuple, or image object (PIL/numpy/torch)
+
+    Returns:
+        numpy array of boxes [[x1, y1, x2, y2], ...] in absolute pixel
+        coordinates, or None if no detections
+    """
+    if detections is None or len(detections.detections) == 0:
+        return None
+
+    # Get image dimensions from various input types
+    if isinstance(img_shape, tuple):
+        img_h, img_w = img_shape
+    elif isinstance(img_shape, Image.Image):
+        img_w, img_h = img_shape.size
+    elif isinstance(img_shape, np.ndarray):
+        img_h, img_w = img_shape.shape[:2]
+    elif isinstance(img_shape, torch.Tensor):
+        if img_shape.ndim == 3 and img_shape.shape[0] in (1, 3, 4):  # CHW
+            img_h, img_w = img_shape.shape[1], img_shape.shape[2]
+        else:  # HWC
+            img_h, img_w = img_shape.shape[:2]
+    else:
+        raise ValueError(f"Unsupported image type: {type(img_shape)}")
+
+    boxes = []
+    for detection in detections.detections:
+        # FiftyOne format: [x, y, w, h] in relative coordinates [0, 1]
+        x, y, w, h = detection.bounding_box
+        # Convert to absolute coordinates [x1, y1, x2, y2]
+        x1 = x * img_w
+        y1 = y * img_h
+        x2 = (x + w) * img_w
+        y2 = (y + h) * img_h
+        boxes.append([x1, y1, x2, y2])
+
+    return np.array(boxes)
 
 
 class MinResize(object):
