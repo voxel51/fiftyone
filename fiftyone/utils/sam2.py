@@ -266,7 +266,7 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
             # Subtract negative prompt regions from masks
             if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
                 neg_detections = self._curr_negative_prompts[idx]
-                if neg_detections and len(neg_detections.detections) > 0:
+                if neg_detections and isinstance(neg_detections, fol.Detections) and len(neg_detections.detections) > 0:
                     for neg_det in neg_detections.detections:
                         neg_box = neg_det.bounding_box
                         box_xyxy = fosam._to_abs_boxes(
