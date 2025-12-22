@@ -252,7 +252,12 @@ export class ImageOverlay
     _renderMeta: RenderMeta
   ): Promise<void> {
     // The image is rendered via the HTML <img> element, not through Pixi.
-    if (!isRectNonEmpty(this.currentBounds)) {
+    if (
+      this.imgElement &&
+      this.isImageLoaded &&
+      renderer.isReady() &&
+      (!this.currentBounds || !isRectNonEmpty(this.currentBounds))
+    ) {
       const dims = renderer.getContainerDimensions();
       this.handleResize(dims.width, dims.height);
     }
