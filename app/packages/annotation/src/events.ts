@@ -1,5 +1,4 @@
-import { OverlayLabel } from "@fiftyone/looker-3d/src/labels/loader";
-import { Archetype3d } from "@fiftyone/looker-3d/src/types";
+import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
 
 export const AnnotationChannelId = "default";
@@ -83,7 +82,7 @@ export type AnnotationEventGroup = {
   "annotation:3dLabelSelected": {
     id: string;
     archetype: Archetype3d;
-    label: OverlayLabel;
+    label: Looker3dOverlayLabel;
   };
   /**
    * Notification event emitted when a label is unselected for annotation.
