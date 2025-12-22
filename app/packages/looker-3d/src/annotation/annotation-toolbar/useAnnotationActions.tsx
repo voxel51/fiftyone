@@ -356,7 +356,7 @@ export const useAnnotationActions = () => {
             icon: <AddBoxIcon />,
             tooltip: isCreatingCuboid
               ? "Exit create mode"
-              : "Click in the 3D scene to create a unit cuboid",
+              : "First click to set the center position, then click again to set the orientation point, and finally click again to commit the width",
             isActive: isCreatingCuboid,
             onClick: handleToggleCreateCuboid,
           },
