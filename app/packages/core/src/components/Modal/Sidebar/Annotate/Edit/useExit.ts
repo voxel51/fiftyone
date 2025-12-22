@@ -4,6 +4,7 @@ import {
   UpdateLabelCommand,
   useLighter,
 } from "@fiftyone/lighter";
+import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
   selectedLabelForAnnotationAtom,
   stagedCuboidTransformsAtom,
@@ -46,7 +47,9 @@ export default function useExit(revertLabel = true) {
 
     if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      overlay.onHoverLeave();
+      if (TypeGuards.isHoverable(overlay)) {
+        overlay.onHoverLeave?.();
+      }
     }
 
     const label = store.get(savedLabel);
