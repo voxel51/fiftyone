@@ -9,6 +9,7 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
+import os
 
 import numpy as np
 
@@ -882,6 +883,9 @@ def _make_data_loader(
 
     pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
 
+    # temp for testing
+    prefetch = int(os.getenv("FIFTYONE_TORCH_PREFETCH_FACTOR", 1))
+
     return tud.DataLoader(
         dataset,
         batch_size=batch_size,
@@ -890,7 +894,7 @@ def _make_data_loader(
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
-        prefetch_factor=1,
+        prefetch_factor=prefetch,
     )
 
 

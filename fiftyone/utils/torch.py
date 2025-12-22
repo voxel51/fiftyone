@@ -13,8 +13,6 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
-import warnings
 
 import cv2
 import numpy as np
@@ -27,12 +25,11 @@ import eta.core.utils as etau
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
-import fiftyone.core.collections as focol
 import fiftyone.core.view as fov
+from fiftyone.core.utils import get_cpu_count
 
 fou.ensure_torch()
 
@@ -1813,7 +1810,7 @@ def recommend_num_workers(num_workers=None):
         return 0
 
     try:
-        default = multiprocessing.cpu_count() // 2
+        default = get_cpu_count() // 2
     except Exception:
         default = 4
 
@@ -1958,6 +1955,8 @@ class FiftyOneTorchDataset(Dataset):
                 "should not happen!"
             )
 
+        torch.set_num_threads(get_cpu_count() // 2)
+
         torch_dataset._load_samples()
 
     @staticmethod
@@ -2034,7 +2033,6 @@ class FiftyOneTorchDataset(Dataset):
                     break
 
             batch.append(d)
-
         return batch
 
     def _prepare_batch_vectorized(self, indices):
