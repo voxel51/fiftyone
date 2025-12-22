@@ -26,6 +26,13 @@ export interface ImageOptions {
   field?: string;
 }
 
+const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
+  if (!bounds) return false;
+  return (
+    bounds.width > 0 && bounds.height > 0 && bounds.x >= 0 && bounds.y >= 0
+  );
+};
+
 /**
  * Image overlay implementation for displaying sample images.
  * Uses an HTML <img> element instead of Pixi textures to avoid CORS requirements.
@@ -241,14 +248,12 @@ export class ImageOverlay
   }
 
   protected async renderImpl(
-    _renderer: Renderer2D,
+    renderer: Renderer2D,
     _renderMeta: RenderMeta
   ): Promise<void> {
     // The image is rendered via the HTML <img> element, not through Pixi.
-    // This method just ensures bounds are updated and callbacks are notified.
-
-    if (!this.currentBounds && this.renderer) {
-      const dims = this.renderer.getContainerDimensions();
+    if (!isRectNonEmpty(this.currentBounds)) {
+      const dims = renderer.getContainerDimensions();
       this.handleResize(dims.width, dims.height);
     }
 
