@@ -147,7 +147,7 @@ export const Cuboid = ({
       return undefined;
     }
     return effectiveRotation;
-  }, [combinedQuaternion, effectiveRotation, rotation]);
+  }, [combinedQuaternion, effectiveRotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -160,7 +160,7 @@ export const Cuboid = ({
 
   const complementaryColor = useMemo(
     () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
-    [displayDimensions, actualRotation, loc, strokeAndFillColor]
+    [strokeAndFillColor]
   );
 
   const material = useMemo(
