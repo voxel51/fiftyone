@@ -177,10 +177,6 @@ export const CreateCuboidRenderer = ({
         const perpendicularDirection = perpendicular.clone().normalize();
         cuboidCenter.add(perpendicularDirection.multiplyScalar(width / 2));
       }
-      // Offset by half height along plane normal
-      cuboidCenter.add(
-        planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2)
-      );
 
       return {
         location: cuboidCenter.toArray() as THREE.Vector3Tuple,
