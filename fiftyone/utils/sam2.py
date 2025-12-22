@@ -538,7 +538,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 # Subtract negative prompt regions from mask
                 if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
                     neg_frame_detections = self._curr_negative_prompts[out_frame_idx]
-                    if neg_frame_detections and len(neg_frame_detections.detections) > 0:
+                    if neg_frame_detections and isinstance(neg_frame_detections, fol.Detections) and len(neg_frame_detections.detections) > 0:
                         for neg_det in neg_frame_detections.detections:
                             neg_box = neg_det.bounding_box
                             box_xyxy = fosam._to_abs_boxes(
@@ -617,7 +617,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
                 if self._curr_negative_prompts and frame_idx < len(self._curr_negative_prompts):
                     neg_frame_keypoints = self._curr_negative_prompts[frame_idx]
-                    if neg_frame_keypoints and len(neg_frame_keypoints.keypoints) > 0:
+                    if neg_frame_keypoints and isinstance(neg_frame_keypoints, fol.Keypoints) and len(neg_frame_keypoints.keypoints) > 0:
                         for neg_keypoint in neg_frame_keypoints.keypoints:
                             neg_points, _ = fosam._to_sam_points(
                                 neg_keypoint.points,
