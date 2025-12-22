@@ -16,9 +16,9 @@ import { useFo3dContext } from "../../fo3d/context";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
+  current3dAnnotationModeAtom,
   currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
-  current3dAnnotationModeAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidAtom,
