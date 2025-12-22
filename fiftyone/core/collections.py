@@ -162,9 +162,7 @@ class SaveContext(object):
         self.reloading_lock = threading.Lock()
 
         self.executor = (
-            # Using more than one worker will introduce race conditions in the state preserved between DB writes, but
-            # with DB writes done on even just one background thread, the GPU becomes the bottleneck and DB writes have
-            # ample time to complete before the next batch is ready, so multiple workers are unnecessary.
+            # Using more than one worker will introduce race conditions in the state preserved between DB writes
             ThreadPoolExecutor(max_workers=1)
             if async_writes
             else _DummyExecutor()
