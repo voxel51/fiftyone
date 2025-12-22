@@ -358,7 +358,7 @@ const LighterSampleRenderer = ({ sample, width, height, options }) => {
     useLighterSetup(canvasRef, options);
 
     // Access scene functionality
-    const { scene, isReady, addOverlay, undo, redo } = useLighter();
+    const { scene, isReady, addOverlay } = useLighter();
     const { selectedOverlayIds } = useSceneSelectionState(scene);
 
     // Sample loading and overlay creation
