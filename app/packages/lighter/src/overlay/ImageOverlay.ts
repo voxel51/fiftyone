@@ -28,9 +28,7 @@ export interface ImageOptions {
 
 const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
   if (!bounds) return false;
-  return (
-    bounds.width > 0 && bounds.height > 0 && bounds.x >= 0 && bounds.y >= 0
-  );
+  return bounds.width > 0 && bounds.height > 0;
 };
 
 /**
