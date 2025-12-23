@@ -163,6 +163,8 @@ export type LighterEventGroup = {
   "lighter:scene-interactive-mode-changed": { interactiveMode: boolean };
   /** Emitted when the viewport is zoomed (via wheel, pinch, or programmatic zoom) */
   "lighter:zoomed": { scale: number };
+  /** Emitted when the viewport is panned/moved */
+  "lighter:viewport-moved": { x: number; y: number; scale: number };
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
