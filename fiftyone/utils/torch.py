@@ -1795,7 +1795,7 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
-def recommend_num_workers(num_workers=None):
+def recommend_num_workers(num_workers=None, gpu_available=False):
     """Recommend a number of workers for running a
     :class:`torch:torch.utils.data.DataLoader`.
 
@@ -1813,6 +1813,11 @@ def recommend_num_workers(num_workers=None):
         default = get_cpu_count() // 2
     except Exception:
         default = 4
+
+    if not gpu_available:
+        # If model is on cpu, limit the number of data-loading processes.
+        # There is diminishing returns compared to increase in memory past 4.
+        default = min(default, 4)
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default
