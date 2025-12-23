@@ -69,7 +69,7 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
 
   const handleMouseEnter = useMemo(() => {
     return () => {
-      annotationEventBus.dispatch("annotation:notification:sidebarLabelHover", {
+      annotationEventBus.dispatch("annotation:sidebarLabelHover", {
         id: label.overlay.id,
         tooltip: false,
       });
@@ -78,12 +78,9 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
 
   const handleMouseLeave = useMemo(() => {
     return () => {
-      annotationEventBus.dispatch(
-        "annotation:notification:sidebarLabelUnhover",
-        {
-          id: label.overlay.id,
-        }
-      );
+      annotationEventBus.dispatch("annotation:sidebarLabelUnhover", {
+        id: label.overlay.id,
+      });
     };
   }, [annotationEventBus, label.overlay.id]);
 
@@ -93,14 +90,11 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         const store = getDefaultStore();
         scene?.selectOverlay(store.get(atom).overlay.id);
 
-        annotationEventBus.dispatch(
-          "annotation:notification:sidebarLabelSelected",
-          {
-            id: label.overlay.id,
-            type: label.type,
-            data: label.data,
-          }
-        );
+        annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
+          id: label.overlay.id,
+          type: label.type,
+          data: label.data,
+        });
 
         setEditing(atom);
 
