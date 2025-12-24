@@ -885,10 +885,10 @@ def _make_data_loader(
 
     pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
 
-    # Avoid CPU oversubscription:
+    # Avoid CPU oversubscription when using multiple DataLoader workers:
     # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
-
-    torch.set_num_threads(max(floor(fou.get_cpu_count() / num_workers), 1))
+    if num_workers > 0:
+        torch.set_num_threads(max(floor(fou.get_cpu_count() / num_workers), 1))
 
     return tud.DataLoader(
         dataset,
