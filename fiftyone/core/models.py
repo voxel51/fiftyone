@@ -9,6 +9,7 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
+from math import floor
 
 import numpy as np
 
@@ -886,7 +887,8 @@ def _make_data_loader(
 
     # Avoid CPU oversubscription:
     # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
-    torch.set_num_threads(fou.get_cpu_count() / num_workers)
+
+    torch.set_num_threads(max(floor(fou.get_cpu_count() / num_workers), 1))
 
     return tud.DataLoader(
         dataset,
