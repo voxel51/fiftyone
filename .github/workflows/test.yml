@@ -55,28 +55,36 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Setup
+        with:
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
+      - name: Setup Python
         uses: actions/setup-python@v6
-        id: pip-cache
         with:
           python-version: ${{ matrix.python }}
-          cache: "pip"
-          cache-dependency-path: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
       - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
         uses: jlumbroso/free-disk-space@v1.3.1
         with:
           large-packages: false # e2e test failed when `true`
-      - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
+      - name: Setup (UV)
+        uses: astral-sh/setup-uv@v7
+        id: uv-cache
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: |
+            requirements/common.txt
+            requirements/github.txt
+            requirements/test.txt
+      - name: Install requirements (UV)
         run: |
-          pip install -U wheel setuptools
-          pip install -r requirements/github.txt
+          uv pip install --system -U wheel setuptools
+          uv pip install --system -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          pip install .
+          uv pip install --system .
       - name: Configure
         id: test_config
         run: |
@@ -96,13 +104,14 @@ jobs:
       # this workflow
       - name: Run tests
         run: |
-          python tests/utils/pytest_wrapper.py tests/ --verbose \
+          python tests/utils/pytest_wrapper.py -n 4 tests/ --verbose \
             --cov --cov-report xml \
             --ignore tests/benchmarking/ \
             --ignore tests/isolated/ \
             --ignore tests/utils/ \
             --ignore tests/intensive/ \
-            --ignore tests/no_wrapper
+            --ignore tests/no_wrapper \
+            --ignore tests/session_tests.py
       - name: Upload
         if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.11' }}
         uses: codecov/codecov-action@v5
@@ -112,7 +121,7 @@ jobs:
           flags: python
       - name: Run no wrapper tests
         run: |
-          pytest tests/no_wrapper --verbose
+          pytest tests/no_wrapper tests/session_tests.py --verbose
       # Intended to run even if the tests above failed
       - name: Run isolated tests
         if: success() || failure()
