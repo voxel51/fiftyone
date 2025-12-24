@@ -9,7 +9,6 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
-import os
 
 import numpy as np
 
@@ -848,6 +847,8 @@ def _make_data_loader(
     skip_failures,
     field_mapping,
 ):
+    import torch
+
     if batch_size is None:
         raise ValueError("batch_size cannot be None")
     # This function supports DataLoaders that emit numpy arrays that can
@@ -882,6 +883,10 @@ def _make_data_loader(
         worker_init_fn = None
 
     pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
+
+    # Avoid CPU oversubscription:
+    # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
+    torch.set_num_threads(fou.get_cpu_count() / num_workers)
 
     return tud.DataLoader(
         dataset,

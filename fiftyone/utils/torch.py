@@ -1795,7 +1795,7 @@ class SemanticSegmenterOutputProcessor(OutputProcessor):
         return [fol.Segmentation(mask=mask) for mask in masks]
 
 
-def recommend_num_workers(num_workers=None, gpu_available=False):
+def recommend_num_workers(num_workers=None):
     """Recommend a number of workers for running a
     :class:`torch:torch.utils.data.DataLoader`.
 
@@ -1808,16 +1808,11 @@ def recommend_num_workers(num_workers=None, gpu_available=False):
         # https://github.com/voxel51/fiftyone/issues/1531
         # https://stackoverflow.com/q/20222534
         return 0
-
     try:
-        default = get_cpu_count() // 2
+        # >4 workers adds significant memory overhead without meaningful speedup
+        default = min(get_cpu_count() // 2, 4)
     except Exception:
         default = 4
-
-    if not gpu_available:
-        # If model is on cpu, limit the number of data-loading processes.
-        # There is diminishing returns compared to increase in memory past 4.
-        default = min(default, 4)
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default
@@ -1959,8 +1954,6 @@ class FiftyOneTorchDataset(Dataset):
                 "worker_init() called after samples have been loaded. This "
                 "should not happen!"
             )
-
-        torch.set_num_threads(get_cpu_count() // 2)
 
         torch_dataset._load_samples()
 
