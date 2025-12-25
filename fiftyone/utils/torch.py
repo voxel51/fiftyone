@@ -29,7 +29,6 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
 import fiftyone.core.view as fov
-from fiftyone.core.utils import get_cpu_count
 
 fou.ensure_torch()
 
@@ -1810,7 +1809,7 @@ def recommend_num_workers(num_workers=None):
         return 0
     try:
         # >4 workers adds significant memory overhead without meaningful speedup
-        default = min(get_cpu_count() // 2, 4)
+        default = min(fou.get_cpu_count() // 2, 4)
     except Exception:
         default = 4
 
@@ -2031,6 +2030,7 @@ class FiftyOneTorchDataset(Dataset):
                     break
 
             batch.append(d)
+
         return batch
 
     def _prepare_batch_vectorized(self, indices):

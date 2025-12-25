@@ -9,7 +9,6 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
-from math import floor
 
 import numpy as np
 
@@ -242,9 +241,7 @@ def apply_model(
                 progress,
             )
 
-        batch_size, num_workers = _parse_batch_size_and_num_workers(
-            batch_size=batch_size, model=model, num_workers=num_workers
-        )
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
 
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
@@ -857,6 +854,15 @@ def _make_data_loader(
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
+    num_workers = fout.recommend_num_workers(num_workers)
+    # Avoid CPU oversubscription when using multiple DataLoader workers:
+    # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
+    if num_workers > 0:
+        num_threads = torch.get_num_threads()
+        torch.set_num_threads(
+            min(max(fou.get_cpu_count() // num_workers, 1), num_threads)
+        )
+
     if model.has_collate_fn:
         user_collate_fn = model.collate_fn
     else:
@@ -884,11 +890,6 @@ def _make_data_loader(
         worker_init_fn = None
 
     pin_memory = isinstance(model, fout.TorchImageModel) and model._using_gpu
-
-    # Avoid CPU oversubscription when using multiple DataLoader workers:
-    # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
-    if num_workers > 0:
-        torch.set_num_threads(max(floor(fou.get_cpu_count() / num_workers), 1))
 
     return tud.DataLoader(
         dataset,
@@ -1047,9 +1048,7 @@ def compute_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
             )
 
-        batch_size, num_workers = _parse_batch_size_and_num_workers(
-            batch_size=batch_size, model=model, num_workers=num_workers
-        )
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
 
         if process_video_frames:
             if batch_size is not None:
@@ -1641,9 +1640,7 @@ def compute_patch_embeddings(
 
         context.enter_context(model)
 
-        batch_size, num_workers = _parse_batch_size_and_num_workers(
-            batch_size=batch_size, model=model, num_workers=num_workers
-        )
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
 
         if process_video_frames:
             return _embed_frame_patches(
@@ -2003,12 +2000,7 @@ def _patch_collate_fn(batch):
     return batch[0]  # return patches directly
 
 
-def _parse_batch_size_and_num_workers(*, batch_size, model, num_workers):
-    gpu_available = getattr(model, "_using_gpu", False)
-    num_workers = fout.recommend_num_workers(
-        num_workers, gpu_available=gpu_available
-    )
-
+def _parse_batch_size(*, batch_size, model):
     if batch_size is None:
         batch_size = fo.config.default_model_batch_size
 
@@ -2016,7 +2008,7 @@ def _parse_batch_size_and_num_workers(*, batch_size, model, num_workers):
         logger.warning("Model does not support batching")
         batch_size = 1
 
-    return batch_size, num_workers
+    return batch_size
 
 
 def _select_fields_for_patch_embeddings(samples, patches_field):
