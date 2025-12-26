@@ -855,8 +855,6 @@ def _make_data_loader(
     field_mapping,
     prefetch_factor=None,
 ):
-    import torch
-
     if batch_size is None:
         raise ValueError("batch_size cannot be None")
     # This function supports DataLoaders that emit numpy arrays that can
@@ -865,13 +863,6 @@ def _make_data_loader(
     use_numpy = not isinstance(model, TorchModelMixin)
 
     num_workers = fout.recommend_num_workers(num_workers)
-    # Avoid CPU oversubscription when using multiple DataLoader workers:
-    # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
-    if num_workers > 0:
-        num_threads = torch.get_num_threads()
-        torch.set_num_threads(
-            min(max(fou.get_cpu_count() // num_workers, 1), num_threads)
-        )
 
     if model.has_collate_fn:
         user_collate_fn = model.collate_fn
