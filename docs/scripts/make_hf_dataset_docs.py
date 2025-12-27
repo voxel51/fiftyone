@@ -215,6 +215,11 @@ class HFDatasetDocGenerator:
                 and isinstance(metadata.get("task_categories"), list)
                 else []
             )
+            custom_tags = (
+                metadata.get("tags", [])
+                if metadata and isinstance(metadata.get("tags"), list)
+                else []
+            )
             license_info = metadata.get("license", "") if metadata else ""
 
             readme = self._process_readme(clean_content, dataset.id)
@@ -241,7 +246,8 @@ This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>
                 if dataset.downloads > 0
                 else display_name
             )
-            tags = ["huggingface"] + [t.replace("_", "-") for t in tasks]
+            all_tags = ["huggingface", *tasks, *custom_tags]
+            tags = sorted({t.replace("_", "-").lower() for t in all_tags if t})
 
             hf_badge = '<span class="card-subtitle text-muted" style="background-color: #FFC107; color: black !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">Hugging Face</span><br/>'
             base_description = self._make_description(
