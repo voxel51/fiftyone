@@ -63,6 +63,7 @@ def apply_model(
     output_dir=None,
     rel_dir=None,
     progress=None,
+    prefetch_factor=None,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -108,6 +109,9 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        prefetch_factor: number of batches to prefetch across all workers. Only
+            applicable for Torch-based models. By default, this is set to
+            ``fiftyone.config.default_dataloader_prefetch_factor``
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -241,7 +245,9 @@ def apply_model(
                 progress,
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
+        if not prefetch_factor:
+            prefetch_factor = fo.config.default_dataloader_prefetch_factor
 
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
@@ -283,9 +289,10 @@ def apply_model(
                 filename_maker,
                 progress,
                 field_mapping,
+                prefetch_factor=prefetch_factor,
             )
 
-        if batch_size is not None:
+        if batch_size > 1:
             return _apply_image_model_batch(
                 samples,
                 model,
@@ -455,6 +462,7 @@ def _apply_image_model_data_loader(
     filename_maker,
     progress,
     field_mapping,
+    prefetch_factor=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -465,6 +473,7 @@ def _apply_image_model_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        prefetch_factor=prefetch_factor,
     )
 
     samples = _select_fields_for_inference(samples, model)
@@ -844,7 +853,10 @@ def _make_data_loader(
     num_workers,
     skip_failures,
     field_mapping,
+    prefetch_factor=None,
 ):
+    if batch_size is None:
+        raise ValueError("batch_size cannot be None")
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
     # functionality
@@ -863,9 +875,6 @@ def _make_data_loader(
         use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
-
-    if batch_size is None:
-        batch_size = 1
 
     if isinstance(model, SupportsGetItem):
         get_item = model.build_get_item(field_mapping=field_mapping)
@@ -891,6 +900,7 @@ def _make_data_loader(
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
+        prefetch_factor=prefetch_factor,
     )
 
 
@@ -902,6 +912,7 @@ def compute_embeddings(
     num_workers=None,
     skip_failures=True,
     progress=None,
+    prefetch_factor=None,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -936,6 +947,9 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        prefetch_factor (None): number of batches to prefetch across all
+            workers. Only applicable for Torch-based models. By default, this
+            is set to ``fiftyone.config.default_dataloader_prefetch_factor``
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -1040,7 +1054,7 @@ def compute_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
 
         if process_video_frames:
             if batch_size is not None:
@@ -1067,6 +1081,7 @@ def compute_embeddings(
                 skip_failures,
                 progress,
                 field_mapping,
+                prefetch_factor=prefetch_factor,
             )
 
         if batch_size is not None:
@@ -1189,6 +1204,7 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
     field_mapping,
+    prefetch_factor=None,
 ):
     data_loader = _make_data_loader(
         samples,
@@ -1197,6 +1213,7 @@ def _compute_image_embeddings_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        prefetch_factor=prefetch_factor,
     )
 
     samples = _select_fields_for_embeddings(samples, embeddings_field)
@@ -1632,7 +1649,7 @@ def compute_patch_embeddings(
 
         context.enter_context(model)
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
+        batch_size = _parse_batch_size(batch_size=batch_size, model=model)
 
         if process_video_frames:
             return _embed_frame_patches(
@@ -1967,8 +1984,6 @@ def _make_patch_data_loader(
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
-    num_workers = fout.recommend_num_workers(num_workers)
-
     dataset = fout.TorchImagePatchesDataset(
         samples=samples,
         patches_field=patches_field,
@@ -1994,16 +2009,15 @@ def _patch_collate_fn(batch):
     return batch[0]  # return patches directly
 
 
-def _parse_batch_size(batch_size, model, use_data_loader):
-    if batch_size is None:
-        batch_size = fo.config.default_batch_size
+def _parse_batch_size(*, batch_size, model):
 
-    if batch_size is not None and batch_size > 1 and model.ragged_batches:
-        logger.warning("Model does not support batching")
-        batch_size = None
-
-    if use_data_loader and batch_size is None:
+    if model.ragged_batches:
+        if batch_size and batch_size > 1:
+            logger.warning("Model does not support batching.")
         batch_size = 1
+
+    elif batch_size is None:
+        batch_size = fo.config.default_model_batch_size
 
     return batch_size
 

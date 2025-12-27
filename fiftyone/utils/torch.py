@@ -13,8 +13,6 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
-import warnings
 
 import cv2
 import numpy as np
@@ -27,11 +25,9 @@ import eta.core.utils as etau
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.image as foui
-import fiftyone.core.collections as focol
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -1811,9 +1807,9 @@ def recommend_num_workers(num_workers=None):
         # https://github.com/voxel51/fiftyone/issues/1531
         # https://stackoverflow.com/q/20222534
         return 0
-
     try:
-        default = multiprocessing.cpu_count() // 2
+        # >4 workers adds significant memory overhead without meaningful speedup
+        default = min(fou.get_cpu_count() // 2, 4)
     except Exception:
         default = 4
 
