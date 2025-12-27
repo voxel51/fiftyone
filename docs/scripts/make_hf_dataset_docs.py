@@ -246,8 +246,8 @@ This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>
                 if dataset.downloads > 0
                 else display_name
             )
-            all_tags = ["huggingface"] + tasks + custom_tags
-            tags = sorted(set(t.replace("_", "-").lower() for t in all_tags))
+            all_tags = ["huggingface", *tasks, *custom_tags]
+            tags = sorted({t.replace("_", "-").lower() for t in all_tags if t})
 
             hf_badge = '<span class="card-subtitle text-muted" style="background-color: #FFC107; color: black !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">Hugging Face</span><br/>'
             base_description = self._make_description(
