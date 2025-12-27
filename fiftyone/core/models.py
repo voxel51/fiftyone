@@ -483,7 +483,7 @@ def _apply_image_model_data_loader(
         ctx = context.enter_context(foc.SaveContext(samples))
 
         for sample_batch, imgs in zip(
-            fou.iter_batches(samples, batch_size * prefetch_factor),
+            fou.iter_batches(samples, batch_size),
             data_loader,
         ):
             try:
