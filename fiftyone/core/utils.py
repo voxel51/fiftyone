@@ -2872,7 +2872,7 @@ def get_multiprocessing_context():
 
 def get_cpu_count():
     """Get available CPU count, respecting container limits."""
-
+    # Must check cgroups first so container CPU limits are respected
     # cgroups v2 (modern Docker/K8s)
     try:
         with open("/sys/fs/cgroup/cpu.max", "r") as f:
@@ -2893,14 +2893,16 @@ def get_cpu_count():
     except (FileNotFoundError, ValueError, PermissionError):
         pass
 
-    # CPU affinity (Linux, respects taskset/cpuset)
+    # CPU affinity to get total number of CPUs usable by the current process
     try:
         return len(os.sched_getaffinity(0))
     except (AttributeError, OSError):
         pass  # Not available on macOS/Windows
 
-    # Fallback
-    return os.cpu_count() or 1
+    # Fallback to total CPUs in system.
+    # Use multiprocessing.cpu_count() instead of os.cpu_count() so that we throw an error
+    # if the CPU count cannot be determined and allow upstream handling of this case.
+    return multiprocessing.cpu_count()
 
 
 def recommend_thread_pool_workers(num_workers=None):

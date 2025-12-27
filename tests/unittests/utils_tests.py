@@ -9,7 +9,7 @@ FiftyOne utilities unit tests.
 from datetime import datetime
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, mock_open
 
 from bson import ObjectId
 from bson import json_util
@@ -951,6 +951,116 @@ class RecommendProcessPoolWorkersTests(unittest.TestCase):
             # Number is capped by config
             with patch.object(fo.config, "max_process_pool_workers", 2):
                 self.assertEqual(fou.recommend_process_pool_workers(), 2)
+
+
+class TestGetCpuCount(unittest.TestCase):
+
+    # =============================================================
+    # cpu counts in containers
+    # =============================================================
+
+    @patch("builtins.open", mock_open(read_data="200000 100000"))
+    def test_cgroups_v2_returns_quota_divided_by_period(self):
+        result = fou.get_cpu_count()
+        self.assertEqual(result, 2)
+
+    @patch("builtins.open", mock_open(read_data="50000 100000"))
+    def test_cgroups_v2_returns_minimum_of_1(self):
+        result = fou.get_cpu_count()
+        self.assertEqual(result, 1)
+
+    @patch("builtins.open", mock_open(read_data="max 100000"))
+    @patch("os.sched_getaffinity", return_value={0, 1, 2, 3}, create=True)
+    def test_cgroups_v2_max_falls_through(self, mock_affinity):
+        result = fou.get_cpu_count()
+        self.assertEqual(result, 4)
+
+    # =============================================================
+    # cgroups v1 tests (older Linux systems)
+    # =============================================================
+
+    @patch("os.sched_getaffinity", return_value={0, 1, 2, 3}, create=True)
+    def test_cgroups_v1_returns_quota_divided_by_period(self, mock_affinity):
+        def mock_open_v1(path, *args, **kwargs):
+            mock = MagicMock()
+            if "cpu.max" in path:
+                raise FileNotFoundError
+            elif "cfs_quota_us" in path:
+                mock.read.return_value = "400000"
+                mock.__enter__ = lambda s: mock
+                mock.__exit__ = MagicMock(return_value=False)
+                return mock
+            elif "cfs_period_us" in path:
+                mock.read.return_value = "100000"
+                mock.__enter__ = lambda s: mock
+                mock.__exit__ = MagicMock(return_value=False)
+                return mock
+            raise FileNotFoundError
+
+        with patch("builtins.open", mock_open_v1):
+            result = fou.get_cpu_count()
+            self.assertEqual(result, 4)
+
+    @patch(
+        "os.sched_getaffinity", return_value={0, 1, 2, 3, 4, 5}, create=True
+    )
+    def test_cgroups_v1_negative_quota_falls_through(self, mock_affinity):
+        def mock_open_v1(path, *args, **kwargs):
+            mock = MagicMock()
+            if "cpu.max" in path:
+                raise FileNotFoundError
+            elif "cfs_quota_us" in path:
+                mock.read.return_value = "-1"
+                mock.__enter__ = lambda s: mock
+                mock.__exit__ = MagicMock(return_value=False)
+                return mock
+            elif "cfs_period_us" in path:
+                mock.read.return_value = "100000"
+                mock.__enter__ = lambda s: mock
+                mock.__exit__ = MagicMock(return_value=False)
+                return mock
+            raise FileNotFoundError
+
+        with patch("builtins.open", mock_open_v1):
+            result = fou.get_cpu_count()
+            self.assertEqual(result, 6)
+
+    # =============================================================
+    # test available CPUs on linux
+    # =============================================================
+
+    @patch("builtins.open", side_effect=FileNotFoundError)
+    @patch(
+        "os.sched_getaffinity",
+        return_value={0, 1, 2, 3, 4, 5, 6, 7},
+        create=True,
+    )
+    def test_sched_getaffinity_returns_cpu_count(
+        self, mock_affinity, mock_cgroups_file
+    ):
+        result = fou.get_cpu_count()
+        self.assertEqual(result, 8)
+
+    # =============================================================
+    # test multiprocessing.cpu_count fallback (mac/windows/other)
+    # =============================================================
+    @patch("builtins.open", side_effect=FileNotFoundError)
+    @patch("os.sched_getaffinity", side_effect=OSError, create=True)
+    @patch("multiprocessing.cpu_count", return_value=16)
+    def test_fallback_to_cpu_count(
+        self, mock_cpu, mock_affinity, mock_cgroups_file
+    ):
+        result = fou.get_cpu_count()
+        self.assertEqual(result, 16)
+
+    @patch("builtins.open", side_effect=FileNotFoundError)
+    @patch("os.sched_getaffinity", side_effect=OSError, create=True)
+    @patch("multiprocessing.cpu_count", side_effect=NotImplementedError)
+    def test_exception_if_cannot_be(
+        self, mock_cpu, mock_affinity, mock_cgroups_file
+    ):
+        with self.assertRaises(NotImplementedError):
+            fou.get_cpu_count()
 
 
 if __name__ == "__main__":
