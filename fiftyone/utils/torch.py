@@ -373,8 +373,22 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         if self._as_feature_extractor:
             return self._predict_all(args)
 
-        self._predict_all(args)
-        return self.get_embeddings()
+        # Check if sub-batching needed
+        if (
+            hasattr(self, "_model_batch_size")
+            and self._model_batch_size
+            and len(args) > self._model_batch_size
+        ):
+            all_embeddings = []
+            for i in range(0, len(args), self._model_batch_size):
+                mini_batch = args[i : i + self._model_batch_size]
+                self._predict_all(mini_batch)
+                embeddings = self.get_embeddings()
+                all_embeddings.append(embeddings)
+            return np.concatenate(all_embeddings)
+        else:
+            self._predict_all(args)
+            return self.get_embeddings()
 
     def get_embeddings(self):
         if not self.has_embeddings:
@@ -688,6 +702,7 @@ class TorchImageModel(
         self._transforms = transforms
         self._ragged_batches = ragged_batches
         self._preprocess = True
+        self._model_batch_size = None  # Set by apply_model() for sub-batching
         if self.has_collate_fn and self.ragged_batches:
             raise ValueError(
                 "Cannot use collate_fn while ragged_batches is True. "
@@ -807,6 +822,19 @@ class TorchImageModel(
         self._preprocess = value
 
     @property
+    def model_batch_size(self):
+        """The batch size for model forward passes.
+
+        When set, this enables sub-batching where DataLoader batches larger
+        than this value are split into smaller mini-batches for inference.
+        """
+        return self._model_batch_size
+
+    @model_batch_size.setter
+    def model_batch_size(self, value):
+        self._model_batch_size = value
+
+    @property
     def using_gpu(self):
         """Whether the model is using GPU."""
         return self._using_gpu
@@ -884,7 +912,74 @@ class TorchImageModel(
             of dicts of :class:`fiftyone.core.labels.Label` instances
             containing the predictions
         """
-        return self._predict_all(imgs)
+        # Check if sub-batching is needed
+        # Do this before transforms are applied, so subclasses that override
+        # _predict_all() still benefit from sub-batching
+
+        # Detect number of images - handle various input formats
+        num_images = None
+        if isinstance(imgs, (list, tuple)):
+            num_images = len(imgs)
+        elif isinstance(imgs, np.ndarray):
+            num_images = imgs.shape[0]
+        elif isinstance(imgs, torch.Tensor):
+            num_images = imgs.shape[0]
+        elif isinstance(imgs, dict):
+            # Handle custom collate functions (e.g., Ultralytics YOLO)
+            # Try common keys that contain the batch
+            for key in ["images", "imgs", "image", "img"]:
+                if key in imgs:
+                    batch = imgs[key]
+                    if isinstance(batch, torch.Tensor):
+                        num_images = batch.shape[0]
+                        break
+                    elif isinstance(batch, (list, tuple)):
+                        num_images = len(batch)
+                        break
+
+        # If we couldn't determine the count, assume no sub-batching needed
+        if num_images is None:
+            num_images = 1
+
+        needs_sub_batching = (
+            self._model_batch_size is not None
+            and num_images > self._model_batch_size
+        )
+
+        if needs_sub_batching:
+            # Split into mini-batches and process each
+            all_results = []
+            for i in range(0, num_images, self._model_batch_size):
+                if isinstance(imgs, (list, tuple)):
+                    mini_batch = imgs[i : i + self._model_batch_size]
+                elif isinstance(imgs, np.ndarray):
+                    mini_batch = imgs[i : i + self._model_batch_size]
+                elif isinstance(imgs, torch.Tensor):
+                    mini_batch = imgs[i : i + self._model_batch_size]
+                elif isinstance(imgs, dict):
+                    # Handle custom collate functions - slice all tensor/list values
+                    mini_batch = {}
+                    for key, value in imgs.items():
+                        if isinstance(value, torch.Tensor):
+                            mini_batch[key] = value[
+                                i : i + self._model_batch_size
+                            ]
+                        elif isinstance(value, (list, tuple)):
+                            mini_batch[key] = value[
+                                i : i + self._model_batch_size
+                            ]
+                        else:
+                            # Keep scalar values as-is
+                            mini_batch[key] = value
+                else:
+                    mini_batch = imgs
+
+                batch_results = self._predict_all(mini_batch)
+                all_results.extend(batch_results)
+
+            return all_results
+        else:
+            return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
         if self._preprocess and self._transforms is not None:

@@ -517,6 +517,19 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         super().__init__(config)
 
     @property
+    def recommended_batch_size(self):
+        """Recommended batch size for optimal performance.
+
+        YOLO's GPU forward pass doesn't benefit from batching due to its
+        complex multi-scale processing and sequential NMS operations.
+        Testing shows batch_size=1 provides best performance.
+
+        Returns:
+            1 for sequential processing
+        """
+        return 1
+
+    @property
     def has_collate_fn(self):
         return True
 
