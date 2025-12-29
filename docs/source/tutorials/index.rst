@@ -34,6 +34,20 @@ your datasets and turn your good models into *great models*.
 .. Add tutorial cards below
 
 .. customcarditem::
+    :header: MNIST Curation: Generalist vs Specialist Models __SUB_NEW__
+    :description: Compare CLIP zero-shot classification with custom CNN training on MNIST. Learn to find label errors, compute embeddings, and curate datasets with FiftyOne.
+    :link: generalist_vs_specialist_mnist_curation.html
+    :image: https://cdn.voxel51.com/getting_started_mnist_curation/notebook1/pca_lenet_embeddings.webp
+    :tags: Dataset-Curation,Model-Evaluation,Embeddings,Brain
+
+.. customcarditem::
+    :header: Google Colab Tips and Tricks __SUB_NEW__
+    :description: Master FiftyOne in Google Colab with fast installation, persistent storage, dataset sharing, GPU acceleration, and app control techniques.
+    :link: google_colab_tips_and_tricks.html
+    :image: https://cdn.voxel51.com/getting_started_colab_tips/notebook2/full_window_view.webp
+    :tags: Dataset-Evaluation,Visualization
+
+.. customcarditem::
     :header: Integrating Cosmos-Transfer with FiftyOne __SUB_NEW__
     :description: Learn how to integrate NVIDIA Cosmos-Transfer 2.5, a world foundation model for Physical AI, with FiftyOne to curate, visualize, and process multimodal datasets for robotics and autonomous systems.
     :link: cosmos-transfer-integration.html
@@ -41,14 +55,14 @@ your datasets and turn your good models into *great models*.
     :tags: Dataset-Curation,Visualization,Model-Evaluation
 
 .. customcarditem::
-    :header: Google Gemini Vision in FiftyOne __SUB_NEW__
+    :header: Google Gemini Vision in FiftyOne
     :description: Leverage Google Gemini Vision's multimodal AI to analyze datasets, detect biases, generate synthetic images, and improve data quality with FiftyOne.
     :link: gemini_vision.html
     :image: https://cdn.voxel51.com/tutorial_gemini_vision/editing_images.webp
     :tags: Dataset-Evaluation,Dataset-Curation,Model-Evaluation,Brain,Plugins
 
 .. customcarditem::
-    :header: Exploring Kaputt Dataset __SUB_NEW__
+    :header: Exploring Kaputt Dataset
     :description: Learn how to work with the Kaputt dataset in FiftyOne.
     :link: kaputt_dataset.html
     :image: https://cdn.voxel51.com/kaputt_overview.webp
@@ -232,9 +246,11 @@ your datasets and turn your good models into *great models*.
    :maxdepth: 1
    :hidden:
 
+   MNIST Curation: Generalist vs Specialist Models __SUB_NEW__ <generalist_vs_specialist_mnist_curation.ipynb>
+   Google Colab Tips and Tricks __SUB_NEW__ <google_colab_tips_and_tricks.ipynb>
    Integrating NVIDIA Cosmos-Transfer with FiftyOne __SUB_NEW__ <cosmos-transfer-integration.ipynb>
-   Google Gemini Vision in FiftyOne __SUB_NEW__ <gemini_vision.ipynb>
-   Exploring Kaputt Dataset __SUB_NEW__ <kaputt_dataset.ipynb>
+   Google Gemini Vision in FiftyOne <gemini_vision.ipynb>
+   Exploring Kaputt Dataset <kaputt_dataset.ipynb>
    DINOv3 visual search <dinov3.ipynb>
    pandas and FiftyOne <pandas_comparison.ipynb>
    Evaluating object detections <evaluate_detections.ipynb>
