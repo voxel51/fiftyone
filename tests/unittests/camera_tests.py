@@ -6,6 +6,7 @@ FiftyOne Camera data model unit tests.
 |
 """
 
+import math
 import unittest
 
 import numpy as np
@@ -289,7 +290,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
     def test_compose(self):
         """Test composition of transformations."""
-        # T1: translate by [1, 0, 0]
+        # T1: A->B, translate by [1, 0, 0]
         t1 = SensorExtrinsics(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -297,7 +298,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
             target_frame="B",
         )
 
-        # T2: translate by [0, 2, 0]
+        # T2: B->C, translate by [0, 2, 0]
         t2 = SensorExtrinsics(
             translation=[0.0, 2.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -305,23 +306,33 @@ class SensorExtrinsicsTests(unittest.TestCase):
             target_frame="C",
         )
 
-        # Composed: A -> B -> C = translate by [1, 2, 0]
+        # Compose: A->B then B->C should give A->C
+        # X_C = T_BC @ X_B = T_BC @ (T_AB @ X_A)
+        # So T_AC = T_BC @ T_AB
         composed = t1.compose(t2)
 
-        self.assertEqual(composed.source_frame, "B")
-        self.assertEqual(composed.target_frame, "B")
+        self.assertEqual(composed.source_frame, "A")
+        self.assertEqual(composed.target_frame, "C")
 
-        # Check transformation matrix
-        T1 = t1.extrinsic_matrix
-        T2 = t2.extrinsic_matrix
-        expected = T1 @ T2
+        # Check transformation matrix: T_AC = T_BC @ T_AB
+        T1 = t1.extrinsic_matrix  # T_AB
+        T2 = t2.extrinsic_matrix  # T_BC
+        expected = T2 @ T1  # T_AC
         nptest.assert_array_almost_equal(composed.extrinsic_matrix, expected)
+
+        # Verify the composed transform does the right thing:
+        # A point at origin in frame A should end up at [1, 2, 0] in frame C
+        point_A = np.array([0, 0, 0, 1])
+        point_C = composed.extrinsic_matrix @ point_A
+        nptest.assert_array_almost_equal(point_C[:3], [1.0, 2.0, 0.0])
 
     def test_extrinsics_serialization(self):
         """Test serialization and deserialization of extrinsics."""
+        # Use exact unit quaternion: [0, 0, sin(45°), cos(45°)]
+        sqrt2_2 = 0.7071067811865476
         extrinsics = SensorExtrinsics(
             translation=[1.0, 2.0, 3.0],
-            quaternion=[0.0, 0.0, 0.707, 0.707],
+            quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],
             source_frame="camera",
             target_frame="ego",
             timestamp=1234567890,
@@ -343,6 +354,94 @@ class SensorExtrinsicsTests(unittest.TestCase):
     def test_camera_extrinsics_alias(self):
         """Test that CameraExtrinsics is an alias for SensorExtrinsics."""
         self.assertIs(CameraExtrinsics, SensorExtrinsics)
+
+    def test_compose_with_rotation(self):
+        """Test composition with rotations, not just translations."""
+        # T1: A->B, 90 degree rotation around z-axis
+        sqrt2_2 = 0.7071067811865476
+        t1 = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],  # 90 deg around z
+            source_frame="A",
+            target_frame="B",
+        )
+
+        # T2: B->C, translation only
+        t2 = SensorExtrinsics(
+            translation=[0.0, 1.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="B",
+            target_frame="C",
+        )
+
+        composed = t1.compose(t2)
+
+        self.assertEqual(composed.source_frame, "A")
+        self.assertEqual(composed.target_frame, "C")
+
+        # Verify a point transform: point at origin in A
+        point_A = np.array([0, 0, 0, 1])
+        point_C = composed.extrinsic_matrix @ point_A
+        # First rotate 90deg (x->y, y->-x) then translate by [1,0,0] -> [1,0,0]
+        # Then translate by [0,1,0] in B frame -> [1,1,0]
+        nptest.assert_array_almost_equal(point_C[:3], [1.0, 1.0, 0.0])
+
+    def test_compose_frame_mismatch_raises(self):
+        """Test that composing mismatched frames raises ValueError."""
+        t1 = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="A",
+            target_frame="B",
+        )
+
+        t2 = SensorExtrinsics(
+            translation=[0.0, 1.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="C",  # Mismatch! Should be "B"
+            target_frame="D",
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            t1.compose(t2)
+
+        self.assertIn("Cannot compose", str(cm.exception))
+
+    def test_compose_unspecified_frames_allowed(self):
+        """Test that composition works when frames are unspecified."""
+        t1 = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            # No source_frame or target_frame
+        )
+
+        t2 = SensorExtrinsics(
+            translation=[0.0, 1.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+        )
+
+        # Should not raise - frames are unspecified
+        composed = t1.compose(t2)
+        self.assertIsNone(composed.source_frame)
+        self.assertIsNone(composed.target_frame)
+
+    def test_covariance_validation(self):
+        """Test that covariance must have 6 elements."""
+        # Valid covariance
+        extrinsics = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            covariance=[0.01, 0.01, 0.01, 0.001, 0.001, 0.001],
+        )
+        # Should not raise - validation happens in __init__
+
+        # Invalid covariance (wrong length) - should raise during construction
+        with self.assertRaises(ValueError):
+            SensorExtrinsics(
+                translation=[1.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                covariance=[0.01, 0.01],  # Only 2 elements
+            )
 
 
 class CameraProjectorTests(unittest.TestCase):
@@ -481,6 +580,108 @@ class CameraProjectorTests(unittest.TestCase):
 
         nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
 
+    def test_fisheye_projection_not_implemented(self):
+        """Test that fisheye projection raises NotImplementedError."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.1,
+            k2=-0.05,
+        )
+
+        projector = CameraProjector(intrinsics)
+        points_3d = np.array([[0.0, 0.0, 10.0]])
+
+        with self.assertRaises(NotImplementedError):
+            projector.project(points_3d, in_camera_frame=True)
+
+    def test_fisheye_unprojection_not_implemented(self):
+        """Test that fisheye unprojection raises NotImplementedError."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.1,
+            k2=-0.05,
+        )
+
+        projector = CameraProjector(intrinsics)
+        points_2d = np.array([[320.0, 240.0]])
+        depth = np.array([10.0])
+
+        with self.assertRaises(NotImplementedError):
+            projector.unproject(points_2d, depth, in_camera_frame=True)
+
+    def test_rational_model_undistortion_not_implemented(self):
+        """Test that undistortion with rational coeffs raises NotImplementedError."""
+        # Intrinsics with rational model (k4, k5, k6 nonzero)
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+            k1=-0.1,
+            k2=0.05,
+            p1=0.001,
+            p2=-0.001,
+            k3=0.01,
+            k4=0.001,  # Rational model coefficient
+            k5=0.0,
+            k6=0.0,
+        )
+
+        projector = CameraProjector(intrinsics)
+        points_2d = np.array([[960.0, 540.0]])
+        depth = np.array([10.0])
+
+        with self.assertRaises(NotImplementedError) as cm:
+            projector.unproject(points_2d, depth, in_camera_frame=True)
+
+        self.assertIn("rational", str(cm.exception).lower())
+
+    def test_nontrivial_extrinsics_projection(self):
+        """Test projection with translation, verifying hand-computed result."""
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+
+        # Camera-to-world: camera is at (0, 0, -5) in world, looking at +z
+        # (no rotation - identity quaternion)
+        cam_to_world = SensorExtrinsics(
+            translation=[0.0, 0.0, -5.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],  # identity
+            source_frame="camera",
+            target_frame="world",
+        )
+
+        projector = CameraProjector(intrinsics, cam_to_world)
+
+        # A point at world (0, 0, 5) - 10 units in front of camera
+        # In camera frame: world_to_cam inverts cam_to_world
+        # cam_to_world: X_world = X_cam + [0,0,-5]
+        # So world_to_cam: X_cam = X_world - [0,0,-5] = X_world + [0,0,5]
+        # Point (0,0,5) in world -> (0,0,10) in camera frame
+        world_point = np.array([[0.0, 0.0, 5.0]])
+
+        points_2d = projector.project(world_point, in_camera_frame=False)
+
+        # Point is on optical axis at z=10, should project to principal point
+        nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
+
+        # Test a point offset from optical axis
+        # Point at (1, 0, 5) in world -> (1, 0, 10) in camera frame
+        # u = fx * (x/z) + cx = 1000 * (1/10) + 960 = 1060
+        # v = fy * (y/z) + cy = 1000 * (0/10) + 540 = 540
+        world_point2 = np.array([[1.0, 0.0, 5.0]])
+        points_2d2 = projector.project(world_point2, in_camera_frame=False)
+        nptest.assert_array_almost_equal(points_2d2, [[1060.0, 540.0]])
+
 
 class ReferenceTests(unittest.TestCase):
     """Tests for CameraIntrinsicsRef and SensorExtrinsicsRef."""
@@ -561,9 +762,11 @@ class DatasetIntegrationTests(unittest.TestCase):
             cy=540.0,
             k1=-0.1,
         )
+        # Use exact unit quaternion: [0, 0, sin(45°), cos(45°)]
+        sqrt2_2 = 0.7071067811865476
         extrinsics = SensorExtrinsics(
             translation=[1.0, 2.0, 3.0],
-            quaternion=[0.0, 0.0, 0.707, 0.707],
+            quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],
             source_frame="camera",
             target_frame="world",
         )
@@ -739,9 +942,11 @@ class DatasetIntegrationTests(unittest.TestCase):
             source_frame="camera",
             target_frame="ego",
         )
+        # Use exact unit quaternion for small rotation around z-axis
+        norm = math.sqrt(0.1**2 + 0.995**2)
         ego_to_world = SensorExtrinsics(
             translation=[100.0, 200.0, 0.0],
-            quaternion=[0.0, 0.0, 0.1, 0.995],
+            quaternion=[0.0, 0.0, 0.1 / norm, 0.995 / norm],
             source_frame="ego",
             target_frame="world",
         )
@@ -787,9 +992,11 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
 
         # Dynamic ego to world pose stored inline on sample
+        # Use exact unit quaternion for small rotation around z-axis
+        norm = math.sqrt(0.1**2 + 0.995**2)
         ego_to_world = SensorExtrinsics(
             translation=[100.0, 200.0, 0.0],
-            quaternion=[0.0, 0.0, 0.1, 0.995],
+            quaternion=[0.0, 0.0, 0.1 / norm, 0.995 / norm],
             source_frame="ego",
             target_frame="world",
         )

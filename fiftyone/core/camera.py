@@ -124,7 +124,10 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
         pre-corrected in the image.
 
         Args:
-            extrinsics: optional extrinsics to combine with intrinsics
+            extrinsics: optional extrinsics defining the world-to-camera
+                transformation (i.e., source_frame=world, target_frame=camera).
+                If your extrinsics are camera-to-world, call
+                ``extrinsics.inverse()`` first.
 
         Returns:
             a (3, 4) numpy array
@@ -134,7 +137,11 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
             return K @ np.hstack([np.eye(3), np.zeros((3, 1))])
         else:
             R = extrinsics.rotation_matrix
-            t = np.asarray(extrinsics.translation).reshape(3, 1)
+            t = extrinsics.translation
+            if t is None:
+                t = np.zeros((3, 1))
+            else:
+                t = np.asarray(t).reshape(3, 1)
             return K @ np.hstack([R, t])
 
 
@@ -312,6 +319,8 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
             "world")
         timestamp (None): optional timestamp in nanoseconds for interpolation
         covariance (None): optional 6-element diagonal pose uncertainty
+            [σx, σy, σz, σroll, σpitch, σyaw] where translations are in
+            metric and rotations are in radians
 
     Attributes:
         rotation_matrix: the 3x3 rotation matrix R
@@ -342,8 +351,13 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
     timestamp = fof.IntField(default=None)
     covariance = fof.ListField(fof.FloatField(), default=None)
 
-    def _validate(self):
-        """Validates the extrinsics data."""
+    def validate(self, clean=True):
+        """Validates the extrinsics data.
+
+        This method is called by mongoengine during save/validation.
+        """
+        super().validate(clean=clean)
+
         if self.translation is not None and len(self.translation) != 3:
             raise ValueError(
                 f"Translation must have 3 elements, got {len(self.translation)}"
@@ -359,6 +373,11 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
                 raise ValueError(
                     f"Quaternion must be unit quaternion, got norm={norm}"
                 )
+        if self.covariance is not None and len(self.covariance) != 6:
+            raise ValueError(
+                f"Covariance must have 6 elements (diagonal pose uncertainty "
+                f"[σx, σy, σz, σroll, σpitch, σyaw]), got {len(self.covariance)}"
+            )
 
     @property
     def rotation_matrix(self) -> np.ndarray:
@@ -460,24 +479,48 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         )
 
     def compose(self, other: "SensorExtrinsics") -> "SensorExtrinsics":
-        """Composes this transform with another: self @ other.
+        """Composes this transform with another.
 
         If self is A->B and other is B->C, the result is A->C.
 
+        Mathematically:
+            X_C = T_BC @ X_B = T_BC @ (T_AB @ X_A)
+            So T_AC = T_BC @ T_AB (other @ self)
+
         Args:
-            other: another :class:`SensorExtrinsics` to compose with
+            other: another :class:`SensorExtrinsics` to compose with.
+                The source_frame of ``other`` should match target_frame of
+                ``self`` for the frames to chain correctly.
 
         Returns:
             a :class:`SensorExtrinsics` representing the composed transform
+
+        Raises:
+            ValueError: if the frames don't chain (self.target_frame !=
+                other.source_frame when both are specified)
         """
-        T1 = self.extrinsic_matrix
-        T2 = other.extrinsic_matrix
-        T_composed = T1 @ T2
+        # Validate frame chainability if both frames are specified
+        if (
+            self.target_frame
+            and other.source_frame
+            and self.target_frame != other.source_frame
+        ):
+            raise ValueError(
+                f"Cannot compose transforms: self.target_frame "
+                f"({self.target_frame!r}) != other.source_frame "
+                f"({other.source_frame!r}). Transforms must chain: "
+                f"A->B composed with B->C gives A->C."
+            )
+
+        T_self = self.extrinsic_matrix  # A->B
+        T_other = other.extrinsic_matrix  # B->C
+        # T_AC = T_BC @ T_AB
+        T_composed = T_other @ T_self
 
         return SensorExtrinsics.from_matrix(
             T_composed,
-            source_frame=other.source_frame,
-            target_frame=self.target_frame,
+            source_frame=self.source_frame,  # A
+            target_frame=other.target_frame,  # C
         )
 
 
@@ -549,9 +592,11 @@ class CameraProjector:
             camera-to-world (or camera-to-reference) transformation. If
             provided, 3D points are assumed to be in the target frame and
             will be transformed to camera frame before projection
-        camera_convention ("opencv"): coordinate convention, either "opencv"
-            (z-forward, x-right, y-down) or "opengl" (z-backward, x-right,
-            y-up)
+        camera_convention ("opencv"): 3D camera axis convention, either
+            "opencv" (z-forward, x-right, y-down) or "opengl" (z-backward,
+            x-right, y-up). Note: This only affects the 3D coordinate axes.
+            Pixel coordinates always follow image-space convention with
+            +x right, +y down, origin at top-left
 
     Example::
 
@@ -647,6 +692,12 @@ class CameraProjector:
         # Apply distortion if available
         distortion = self.intrinsics.get_distortion_coeffs()
         if distortion is not None and np.any(distortion != 0):
+            # Check for fisheye - not yet supported
+            if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
+                raise NotImplementedError(
+                    "Fisheye distortion model projection is not yet implemented. "
+                    "Use cv2.fisheye.projectPoints() for fisheye cameras."
+                )
             points_2d = self._project_with_distortion(points, distortion)
         else:
             points_2d = self._project_pinhole(points)
@@ -682,6 +733,12 @@ class CameraProjector:
             k1, k2, p1, p2, k3, k4, k5, k6 = distortion[:8]
             radial_num = 1 + k1 * r2 + k2 * r4 + k3 * r6
             radial_den = 1 + k4 * r2 + k5 * r4 + k6 * r6
+            # Guard against division by near-zero with safe sign fallback
+            eps = 1e-10
+            sign = np.where(radial_den >= 0, 1.0, -1.0)
+            radial_den = np.where(
+                np.abs(radial_den) < eps, sign * eps, radial_den
+            )
             radial = radial_num / radial_den
         elif len(distortion) >= 5:
             k1, k2, p1, p2, k3 = distortion[:5]
@@ -746,20 +803,20 @@ class CameraProjector:
         # Undistort points if distortion is present
         distortion = self.intrinsics.get_distortion_coeffs()
         if distortion is not None and np.any(distortion != 0):
+            # Check for fisheye - not yet supported
+            if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
+                raise NotImplementedError(
+                    "Fisheye distortion model unprojection is not yet implemented. "
+                    "Use cv2.fisheye.undistortPoints() for fisheye cameras."
+                )
             # For simplicity, use iterative undistortion
             # In production, you'd use cv2.undistortPoints
             points_normalized = self._undistort_iterative(points, distortion)
         else:
-            # Apply inverse intrinsics
-            u = points[:, 0]
-            v = points[:, 1]
-            x = (
-                u
-                - self._K[0, 2]
-                - self._K[0, 1] * (v - self._K[1, 2]) / self._K[1, 1]
-            ) / self._K[0, 0]
-            y = (v - self._K[1, 2]) / self._K[1, 1]
-            points_normalized = np.column_stack([x, y])
+            # Apply inverse intrinsics using K_inv for proper handling of skew
+            ones = np.ones((points.shape[0], 1))
+            points_h = np.hstack([points, ones])  # (N, 3)
+            points_normalized = (self._K_inv @ points_h.T).T[:, :2]
 
         # Scale by depth
         x_cam = points_normalized[:, 0] * depth
@@ -785,12 +842,29 @@ class CameraProjector:
     def _undistort_iterative(
         self, points: np.ndarray, distortion: np.ndarray, iterations: int = 10
     ) -> np.ndarray:
-        """Iteratively undistort points (approximate)."""
-        # Initial guess: apply inverse intrinsics without distortion
-        u = points[:, 0]
-        v = points[:, 1]
-        x = (u - self._K[0, 2]) / self._K[0, 0]
-        y = (v - self._K[1, 2]) / self._K[1, 1]
+        """Iteratively undistort points (approximate).
+
+        Uses K_inv for initial normalization to properly handle skew.
+
+        Note: This only supports the 5-coeff model (k1, k2, p1, p2, k3).
+        The rational model coefficients k4-k6 are not supported.
+        """
+        # Check for unsupported rational model coefficients
+        if len(distortion) >= 8:
+            k4, k5, k6 = distortion[5:8]
+            if k4 != 0 or k5 != 0 or k6 != 0:
+                raise NotImplementedError(
+                    "Iterative undistortion does not support the rational "
+                    "distortion model (k4, k5, k6 coefficients). Use "
+                    "cv2.undistortPoints() for rational model undistortion."
+                )
+
+        # Initial guess: apply inverse intrinsics (handles skew properly)
+        ones = np.ones((points.shape[0], 1))
+        points_h = np.hstack([points, ones])
+        normalized = (self._K_inv @ points_h.T).T
+        x = normalized[:, 0]
+        y = normalized[:, 1]
 
         x0, y0 = x.copy(), y.copy()
 
