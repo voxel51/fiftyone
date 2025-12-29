@@ -85,6 +85,18 @@ from .core.fields import (
     MaskTargetsField,
     VectorField,
 )
+from .core.camera import (
+    CameraIntrinsics,
+    PinholeCameraIntrinsics,
+    OpenCVCameraIntrinsics,
+    OpenCVFisheyeCameraIntrinsics,
+    SensorExtrinsics,
+    CameraExtrinsics,
+    CameraIntrinsicsRef,
+    SensorExtrinsicsRef,
+    CameraExtrinsicsRef,
+    CameraProjector,
+)
 from .core.frame import Frame
 from .core.groups import Group
 from .core.labels import (
