@@ -580,8 +580,8 @@ class CameraProjectorTests(unittest.TestCase):
 
         nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
 
-    def test_fisheye_projection_not_implemented(self):
-        """Test that fisheye projection raises NotImplementedError."""
+    def test_fisheye_projection(self):
+        """Test fisheye projection using cv2.fisheye."""
         intrinsics = OpenCVFisheyeCameraIntrinsics(
             fx=500.0,
             fy=500.0,
@@ -592,13 +592,15 @@ class CameraProjectorTests(unittest.TestCase):
         )
 
         projector = CameraProjector(intrinsics)
+
+        # Point on optical axis should project to principal point
         points_3d = np.array([[0.0, 0.0, 10.0]])
+        points_2d = projector.project(points_3d, in_camera_frame=True)
 
-        with self.assertRaises(NotImplementedError):
-            projector.project(points_3d, in_camera_frame=True)
+        nptest.assert_array_almost_equal(points_2d, [[320.0, 240.0]])
 
-    def test_fisheye_unprojection_not_implemented(self):
-        """Test that fisheye unprojection raises NotImplementedError."""
+    def test_fisheye_unprojection(self):
+        """Test fisheye unprojection using cv2.fisheye."""
         intrinsics = OpenCVFisheyeCameraIntrinsics(
             fx=500.0,
             fy=500.0,
@@ -609,14 +611,49 @@ class CameraProjectorTests(unittest.TestCase):
         )
 
         projector = CameraProjector(intrinsics)
+
+        # Principal point should unproject to optical axis
         points_2d = np.array([[320.0, 240.0]])
         depth = np.array([10.0])
+        points_3d = projector.unproject(points_2d, depth, in_camera_frame=True)
 
-        with self.assertRaises(NotImplementedError):
-            projector.unproject(points_2d, depth, in_camera_frame=True)
+        nptest.assert_array_almost_equal(points_3d, [[0.0, 0.0, 10.0]])
 
-    def test_rational_model_undistortion_not_implemented(self):
-        """Test that undistortion with rational coeffs raises NotImplementedError."""
+    def test_fisheye_roundtrip(self):
+        """Test fisheye project/unproject roundtrip."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.1,
+            k2=-0.05,
+            k3=0.01,
+            k4=-0.005,
+        )
+
+        projector = CameraProjector(intrinsics)
+
+        # Original 3D points in camera frame
+        original_3d = np.array(
+            [
+                [0.0, 0.0, 10.0],
+                [1.0, 0.5, 10.0],
+                [-0.5, 1.0, 10.0],
+            ]
+        )
+
+        # Project to 2D then unproject back
+        points_2d = projector.project(original_3d, in_camera_frame=True)
+        depths = original_3d[:, 2]
+        recovered_3d = projector.unproject(
+            points_2d, depths, in_camera_frame=True
+        )
+
+        nptest.assert_array_almost_equal(recovered_3d, original_3d, decimal=5)
+
+    def test_rational_model_roundtrip(self):
+        """Test rational distortion model (k4-k6) project/unproject roundtrip."""
         # Intrinsics with rational model (k4, k5, k6 nonzero)
         intrinsics = OpenCVCameraIntrinsics(
             fx=1000.0,
@@ -629,18 +666,29 @@ class CameraProjectorTests(unittest.TestCase):
             p2=-0.001,
             k3=0.01,
             k4=0.001,  # Rational model coefficient
-            k5=0.0,
-            k6=0.0,
+            k5=0.0002,
+            k6=0.0001,
         )
 
         projector = CameraProjector(intrinsics)
-        points_2d = np.array([[960.0, 540.0]])
-        depth = np.array([10.0])
 
-        with self.assertRaises(NotImplementedError) as cm:
-            projector.unproject(points_2d, depth, in_camera_frame=True)
+        # Original 3D points
+        original_3d = np.array(
+            [
+                [0.0, 0.0, 10.0],
+                [1.0, 0.5, 10.0],
+                [-0.5, 1.0, 10.0],
+            ]
+        )
 
-        self.assertIn("rational", str(cm.exception).lower())
+        # Project to 2D then unproject back
+        points_2d = projector.project(original_3d, in_camera_frame=True)
+        depths = original_3d[:, 2]
+        recovered_3d = projector.unproject(
+            points_2d, depths, in_camera_frame=True
+        )
+
+        nptest.assert_array_almost_equal(recovered_3d, original_3d, decimal=5)
 
     def test_nontrivial_extrinsics_projection(self):
         """Test projection with translation, verifying hand-computed result."""
@@ -841,6 +889,55 @@ class DatasetIntegrationTests(unittest.TestCase):
         resolved = dataset.resolve_intrinsics(sample)
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved.fx, 1200.0)  # Sample override
+
+    @drop_datasets
+    def test_resolve_intrinsics_by_sensor_name(self):
+        """Test resolving intrinsics using explicit sensor_name parameter."""
+        dataset = fo.Dataset()
+
+        intrinsics_front = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+        intrinsics_rear = PinholeCameraIntrinsics(
+            fx=800.0,
+            fy=800.0,
+            cx=640.0,
+            cy=480.0,
+        )
+        dataset.camera_intrinsics = {
+            "camera_front": intrinsics_front,
+            "camera_rear": intrinsics_rear,
+        }
+
+        # Sample without camera_intrinsics field
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        # Should return None without sensor_name
+        resolved = dataset.resolve_intrinsics(sample)
+        self.assertIsNone(resolved)
+
+        # Should resolve with explicit sensor_name
+        resolved_front = dataset.resolve_intrinsics(
+            sample, sensor_name="camera_front"
+        )
+        self.assertIsNotNone(resolved_front)
+        self.assertEqual(resolved_front.fx, 1000.0)
+
+        resolved_rear = dataset.resolve_intrinsics(
+            sample, sensor_name="camera_rear"
+        )
+        self.assertIsNotNone(resolved_rear)
+        self.assertEqual(resolved_rear.fx, 800.0)
+
+        # Non-existent sensor returns None
+        resolved_none = dataset.resolve_intrinsics(
+            sample, sensor_name="camera_side"
+        )
+        self.assertIsNone(resolved_none)
 
     @drop_datasets
     def test_resolve_extrinsics(self):

@@ -1231,8 +1231,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Resolves sensor extrinsics for the given sample.
 
         Resolution precedence:
+
             1. If sample has a ``camera_extrinsics`` or ``sensor_extrinsics``
                field with matching source/target frames, use it
+
             2. Look up in ``dataset.sensor_extrinsics`` using the key format
                ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
                target is ``"world"``)
@@ -1247,8 +1249,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
             found
         """
-        import fiftyone.core.camera as foc
-
         if target_frame is None:
             target_frame = "world"
 
