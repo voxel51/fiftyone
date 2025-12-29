@@ -1114,6 +1114,90 @@ class DatasetIntegrationTests(unittest.TestCase):
             resolved_ego.translation, [100.0, 200.0, 0.0]
         )
 
+    @drop_datasets
+    def test_resolve_intrinsics_from_group_slice(self):
+        """Test resolving intrinsics by inferring from group slice name."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="camera_front")
+
+        # Set up intrinsics keyed by slice names
+        intrinsics_front = PinholeCameraIntrinsics(
+            fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
+        )
+        intrinsics_rear = PinholeCameraIntrinsics(
+            fx=800.0, fy=800.0, cx=640.0, cy=480.0
+        )
+        dataset.camera_intrinsics = {
+            "camera_front": intrinsics_front,
+            "camera_rear": intrinsics_rear,
+        }
+
+        # Create grouped samples
+        group = fo.Group()
+        samples = [
+            fo.Sample(
+                filepath="front.jpg",
+                group=group.element("camera_front"),
+            ),
+            fo.Sample(
+                filepath="rear.jpg",
+                group=group.element("camera_rear"),
+            ),
+        ]
+        dataset.add_samples(samples)
+
+        # Get sample from camera_front slice (default)
+        dataset.group_slice = "camera_front"
+        sample_front = dataset.first()
+
+        # Should resolve intrinsics by inferring from group slice name
+        resolved_front = dataset.resolve_intrinsics(sample_front)
+        self.assertIsNotNone(resolved_front)
+        self.assertEqual(resolved_front.fx, 1000.0)
+
+        # Get sample from camera_rear slice
+        dataset.group_slice = "camera_rear"
+        sample_rear = dataset.first()
+
+        # Should resolve intrinsics by inferring from group slice name
+        resolved_rear = dataset.resolve_intrinsics(sample_rear)
+        self.assertIsNotNone(resolved_rear)
+        self.assertEqual(resolved_rear.fx, 800.0)
+
+    @drop_datasets
+    def test_resolve_intrinsics_group_slice_not_found(self):
+        """Test that resolve_intrinsics returns None if slice not in intrinsics."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="camera_front")
+
+        # Set up intrinsics for only camera_front
+        intrinsics_front = PinholeCameraIntrinsics(
+            fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
+        )
+        dataset.camera_intrinsics = {"camera_front": intrinsics_front}
+
+        # Create grouped samples
+        group = fo.Group()
+        samples = [
+            fo.Sample(
+                filepath="front.jpg",
+                group=group.element("camera_front"),
+            ),
+            fo.Sample(
+                filepath="side.jpg",
+                group=group.element("camera_side"),  # No intrinsics for this
+            ),
+        ]
+        dataset.add_samples(samples)
+
+        # Get sample from camera_side slice (no intrinsics defined)
+        dataset.group_slice = "camera_side"
+        sample_side = dataset.first()
+
+        # Should return None since camera_side not in camera_intrinsics
+        resolved = dataset.resolve_intrinsics(sample_side)
+        self.assertIsNone(resolved)
+
 
 class SensorExtrinsicsValidationTests(unittest.TestCase):
     """Tests for sensor_extrinsics key/field validation."""
