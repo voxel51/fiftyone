@@ -4669,6 +4669,93 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
     @drop_datasets
+    def test_camera_intrinsics(self):
+        dataset = fo.Dataset()
+
+        # Test setting camera intrinsics
+        intrinsics = fo.PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+        dataset.camera_intrinsics = {"camera_front": intrinsics}
+
+        dataset.reload()
+        self.assertIn("camera_front", dataset.camera_intrinsics)
+        self.assertEqual(dataset.camera_intrinsics["camera_front"].fx, 1000.0)
+
+        # Test updating intrinsics
+        dataset.camera_intrinsics["camera_front"].fx = 1200.0
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(dataset.camera_intrinsics["camera_front"].fx, 1200.0)
+
+        # Test multiple cameras
+        intrinsics2 = fo.OpenCVCameraIntrinsics(
+            fx=800.0,
+            fy=800.0,
+            cx=640.0,
+            cy=480.0,
+            k1=-0.1,
+        )
+        dataset.camera_intrinsics["camera_rear"] = intrinsics2
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(len(dataset.camera_intrinsics), 2)
+        self.assertAlmostEqual(
+            dataset.camera_intrinsics["camera_rear"].k1, -0.1
+        )
+
+    @drop_datasets
+    def test_sensor_extrinsics(self):
+        dataset = fo.Dataset()
+
+        # Test setting sensor extrinsics
+        extrinsics = fo.SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+        dataset.reload()
+        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+        self.assertEqual(
+            dataset.sensor_extrinsics["camera_front::ego"].source_frame,
+            "camera_front",
+        )
+
+        # Test updating extrinsics
+        dataset.sensor_extrinsics["camera_front::ego"].translation = [
+            2.0,
+            0.0,
+            1.5,
+        ]
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(
+            dataset.sensor_extrinsics["camera_front::ego"].translation[0], 2.0
+        )
+
+        # Test multiple transforms
+        extrinsics2 = fo.SensorExtrinsics(
+            translation=[0.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+        dataset.sensor_extrinsics["ego::world"] = extrinsics2
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(len(dataset.sensor_extrinsics), 2)
+
+    @drop_datasets
     def test_dataset_info_import_export(self):
         dataset = fo.Dataset()
 

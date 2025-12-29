@@ -10,8 +10,10 @@ multi-sensor fusion workflows.
 |
 """
 
+import warnings
 from typing import Optional, Union
 
+import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -660,6 +662,7 @@ class CameraProjector:
         Returns:
             (N, 2) array of 2D pixel coordinates
         """
+
         points = np.atleast_2d(points_3d).astype(np.float64)
         if points.shape[1] != 3:
             raise ValueError(
@@ -682,83 +685,63 @@ class CameraProjector:
         # Check for points behind camera
         z = points[:, 2]
         if np.any(z <= 0):
-            import warnings
-
             warnings.warn(
                 "Some points are at or behind the camera (z <= 0). "
                 "Results for these points may be invalid."
             )
 
-        # Apply distortion if available
+        # Get distortion coefficients
         distortion = self.intrinsics.get_distortion_coeffs()
-        if distortion is not None and np.any(distortion != 0):
-            # Check for fisheye - not yet supported
-            if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
-                raise NotImplementedError(
-                    "Fisheye distortion model projection is not yet implemented. "
-                    "Use cv2.fisheye.projectPoints() for fisheye cameras."
-                )
-            points_2d = self._project_with_distortion(points, distortion)
+
+        # Use cv2 for projection
+        if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
+            points_2d = self._project_fisheye(points, distortion)
         else:
-            points_2d = self._project_pinhole(points)
+            points_2d = self._project_opencv(points, distortion)
 
         return points_2d
 
-    def _project_pinhole(self, points: np.ndarray) -> np.ndarray:
-        """Simple pinhole projection without distortion."""
-        # Normalize by z
-        x = points[:, 0] / points[:, 2]
-        y = points[:, 1] / points[:, 2]
-
-        # Apply intrinsics
-        u = self._K[0, 0] * x + self._K[0, 1] * y + self._K[0, 2]
-        v = self._K[1, 1] * y + self._K[1, 2]
-
-        return np.column_stack([u, v])
-
-    def _project_with_distortion(
-        self, points: np.ndarray, distortion: np.ndarray
+    def _project_opencv(
+        self, points: np.ndarray, distortion: Optional[np.ndarray]
     ) -> np.ndarray:
-        """Projection with OpenCV distortion model."""
-        # Normalize by z
-        x = points[:, 0] / points[:, 2]
-        y = points[:, 1] / points[:, 2]
+        """Project points using OpenCV's standard camera model."""
+        # cv2.projectPoints expects (N, 1, 3) or (N, 3) object points
+        # and returns (N, 1, 2) image points
+        # With identity rvec/tvec since points are already in camera frame
+        rvec = np.zeros(3, dtype=np.float64)
+        tvec = np.zeros(3, dtype=np.float64)
 
-        r2 = x * x + y * y
-        r4 = r2 * r2
-        r6 = r4 * r2
+        if distortion is None:
+            distortion = np.zeros(5, dtype=np.float64)
 
-        # Radial distortion
-        if len(distortion) >= 8:
-            k1, k2, p1, p2, k3, k4, k5, k6 = distortion[:8]
-            radial_num = 1 + k1 * r2 + k2 * r4 + k3 * r6
-            radial_den = 1 + k4 * r2 + k5 * r4 + k6 * r6
-            # Guard against division by near-zero with safe sign fallback
-            eps = 1e-10
-            sign = np.where(radial_den >= 0, 1.0, -1.0)
-            radial_den = np.where(
-                np.abs(radial_den) < eps, sign * eps, radial_den
-            )
-            radial = radial_num / radial_den
-        elif len(distortion) >= 5:
-            k1, k2, p1, p2, k3 = distortion[:5]
-            radial = 1 + k1 * r2 + k2 * r4 + k3 * r6
-        else:
-            k1, k2, p1, p2 = distortion[:4]
-            radial = 1 + k1 * r2 + k2 * r4
-
-        x_distorted = x * radial + 2 * p1 * x * y + p2 * (r2 + 2 * x * x)
-        y_distorted = y * radial + p1 * (r2 + 2 * y * y) + 2 * p2 * x * y
-
-        # Apply intrinsics
-        u = (
-            self._K[0, 0] * x_distorted
-            + self._K[0, 1] * y_distorted
-            + self._K[0, 2]
+        points_2d, _ = cv2.projectPoints(
+            points.reshape(-1, 1, 3),
+            rvec,
+            tvec,
+            self._K,
+            distortion,
         )
-        v = self._K[1, 1] * y_distorted + self._K[1, 2]
+        return points_2d.reshape(-1, 2)
 
-        return np.column_stack([u, v])
+    def _project_fisheye(
+        self, points: np.ndarray, distortion: Optional[np.ndarray]
+    ) -> np.ndarray:
+        """Project points using OpenCV's fisheye camera model."""
+        # cv2.fisheye.projectPoints expects (1, N, 3) object points
+        rvec = np.zeros(3, dtype=np.float64)
+        tvec = np.zeros(3, dtype=np.float64)
+
+        if distortion is None:
+            distortion = np.zeros(4, dtype=np.float64)
+
+        points_2d, _ = cv2.fisheye.projectPoints(
+            points.reshape(1, -1, 3),
+            rvec,
+            tvec,
+            self._K,
+            distortion,
+        )
+        return points_2d.reshape(-1, 2)
 
     def unproject(
         self,
@@ -800,23 +783,14 @@ class CameraProjector:
                 f"points length {points.shape[0]}"
             )
 
-        # Undistort points if distortion is present
+        # Get distortion coefficients
         distortion = self.intrinsics.get_distortion_coeffs()
-        if distortion is not None and np.any(distortion != 0):
-            # Check for fisheye - not yet supported
-            if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
-                raise NotImplementedError(
-                    "Fisheye distortion model unprojection is not yet implemented. "
-                    "Use cv2.fisheye.undistortPoints() for fisheye cameras."
-                )
-            # For simplicity, use iterative undistortion
-            # In production, you'd use cv2.undistortPoints
-            points_normalized = self._undistort_iterative(points, distortion)
+
+        # Use cv2 for undistortion and normalization
+        if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
+            points_normalized = self._undistort_fisheye(points, distortion)
         else:
-            # Apply inverse intrinsics using K_inv for proper handling of skew
-            ones = np.ones((points.shape[0], 1))
-            points_h = np.hstack([points, ones])  # (N, 3)
-            points_normalized = (self._K_inv @ points_h.T).T[:, :2]
+            points_normalized = self._undistort_opencv(points, distortion)
 
         # Scale by depth
         x_cam = points_normalized[:, 0] * depth
@@ -839,48 +813,38 @@ class CameraProjector:
 
         return points_3d
 
-    def _undistort_iterative(
-        self, points: np.ndarray, distortion: np.ndarray, iterations: int = 10
+    def _undistort_opencv(
+        self, points: np.ndarray, distortion: Optional[np.ndarray]
     ) -> np.ndarray:
-        """Iteratively undistort points (approximate).
+        """Undistort points using OpenCV's standard camera model.
 
-        Uses K_inv for initial normalization to properly handle skew.
-
-        Note: This only supports the 5-coeff model (k1, k2, p1, p2, k3).
-        The rational model coefficients k4-k6 are not supported.
+        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
         """
-        # Check for unsupported rational model coefficients
-        if len(distortion) >= 8:
-            k4, k5, k6 = distortion[5:8]
-            if k4 != 0 or k5 != 0 or k6 != 0:
-                raise NotImplementedError(
-                    "Iterative undistortion does not support the rational "
-                    "distortion model (k4, k5, k6 coefficients). Use "
-                    "cv2.undistortPoints() for rational model undistortion."
-                )
+        # cv2.undistortPoints expects (N, 1, 2) input
+        # Returns normalized coordinates when P is not provided
+        if distortion is None:
+            distortion = np.zeros(5, dtype=np.float64)
 
-        # Initial guess: apply inverse intrinsics (handles skew properly)
-        ones = np.ones((points.shape[0], 1))
-        points_h = np.hstack([points, ones])
-        normalized = (self._K_inv @ points_h.T).T
-        x = normalized[:, 0]
-        y = normalized[:, 1]
+        undistorted = cv2.undistortPoints(
+            points.reshape(-1, 1, 2),
+            self._K,
+            distortion,
+        )
+        return undistorted.reshape(-1, 2)
 
-        x0, y0 = x.copy(), y.copy()
+    def _undistort_fisheye(
+        self, points: np.ndarray, distortion: Optional[np.ndarray]
+    ) -> np.ndarray:
+        """Undistort points using OpenCV's fisheye camera model.
 
-        k1, k2, p1, p2 = distortion[:4]
-        k3 = distortion[4] if len(distortion) > 4 else 0
+        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
+        """
+        if distortion is None:
+            distortion = np.zeros(4, dtype=np.float64)
 
-        for _ in range(iterations):
-            r2 = x * x + y * y
-            r4 = r2 * r2
-            r6 = r4 * r2
-
-            radial = 1 + k1 * r2 + k2 * r4 + k3 * r6
-            dx = 2 * p1 * x * y + p2 * (r2 + 2 * x * x)
-            dy = p1 * (r2 + 2 * y * y) + 2 * p2 * x * y
-
-            x = (x0 - dx) / radial
-            y = (y0 - dy) / radial
-
-        return np.column_stack([x, y])
+        undistorted = cv2.fisheye.undistortPoints(
+            points.reshape(-1, 1, 2),
+            self._K,
+            distortion,
+        )
+        return undistorted.reshape(-1, 2)
