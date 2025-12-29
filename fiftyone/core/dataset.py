@@ -1179,8 +1179,49 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @sensor_extrinsics.setter
     def sensor_extrinsics(self, extrinsics):
+        self._validate_sensor_extrinsics(extrinsics)
         self._doc.sensor_extrinsics = extrinsics
         self.save()
+
+    def _validate_sensor_extrinsics(self, extrinsics):
+        """Validates that extrinsics dict keys match object fields.
+
+        Args:
+            extrinsics: a dict mapping keys to SensorExtrinsics instances
+
+        Raises:
+            ValueError: if a key doesn't match the object's source_frame and
+                target_frame fields
+        """
+        import fiftyone.core.camera as foc
+
+        if extrinsics is None:
+            return
+
+        for key, value in extrinsics.items():
+            if not isinstance(value, foc.SensorExtrinsics):
+                continue
+
+            # Parse key to get expected frames
+            parts = key.split("::", 1)
+            expected_source = parts[0]
+            expected_target = parts[1] if len(parts) > 1 else "world"
+
+            # Validate source_frame
+            if value.source_frame is not None:
+                if value.source_frame != expected_source:
+                    raise ValueError(
+                        f"Key '{key}' expects source_frame='{expected_source}' "
+                        f"but got source_frame='{value.source_frame}'"
+                    )
+
+            # Validate target_frame
+            if value.target_frame is not None:
+                if value.target_frame != expected_target:
+                    raise ValueError(
+                        f"Key '{key}' expects target_frame='{expected_target}' "
+                        f"but got target_frame='{value.target_frame}'"
+                    )
 
     def resolve_intrinsics(self, sample, sensor_name=None):
         """Resolves camera intrinsics for the given sample.

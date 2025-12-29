@@ -1115,6 +1115,180 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
 
+class SensorExtrinsicsValidationTests(unittest.TestCase):
+    """Tests for sensor_extrinsics key/field validation."""
+
+    @drop_datasets
+    def test_sensor_extrinsics_valid_matching_key_and_fields(self):
+        """Test that valid extrinsics with matching key and fields passes."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+
+        # Should not raise
+        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+
+    @drop_datasets
+    def test_sensor_extrinsics_valid_implied_world_target(self):
+        """Test that key without :: implies world target."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[0.0, 0.0, 2.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar",
+            target_frame="world",
+        )
+
+        # Should not raise - key "lidar" implies target_frame="world"
+        dataset.sensor_extrinsics = {"lidar": extrinsics}
+
+        self.assertIn("lidar", dataset.sensor_extrinsics)
+
+    @drop_datasets
+    def test_sensor_extrinsics_valid_none_fields(self):
+        """Test that extrinsics with None fields skips validation."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            # source_frame and target_frame are None
+        )
+
+        # Should not raise - no validation when fields are None
+        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+
+    @drop_datasets
+    def test_sensor_extrinsics_mismatched_source_frame(self):
+        """Test that mismatched source_frame raises ValueError."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="wrong_source",  # Doesn't match key
+            target_frame="ego",
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+        self.assertIn("source_frame", str(cm.exception))
+        self.assertIn("camera_front", str(cm.exception))
+        self.assertIn("wrong_source", str(cm.exception))
+
+    @drop_datasets
+    def test_sensor_extrinsics_mismatched_target_frame(self):
+        """Test that mismatched target_frame raises ValueError."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="wrong_target",  # Doesn't match key
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+        self.assertIn("target_frame", str(cm.exception))
+        self.assertIn("ego", str(cm.exception))
+        self.assertIn("wrong_target", str(cm.exception))
+
+    @drop_datasets
+    def test_sensor_extrinsics_mismatched_implied_world(self):
+        """Test that mismatched target_frame with implied world raises."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[0.0, 0.0, 2.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar",
+            target_frame="ego",  # Key "lidar" implies "world", not "ego"
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            dataset.sensor_extrinsics = {"lidar": extrinsics}
+
+        self.assertIn("target_frame", str(cm.exception))
+        self.assertIn("world", str(cm.exception))
+        self.assertIn("ego", str(cm.exception))
+
+    @drop_datasets
+    def test_sensor_extrinsics_multiple_valid(self):
+        """Test multiple valid extrinsics in one assignment."""
+        dataset = fo.Dataset()
+
+        extrinsics_dict = {
+            "camera_front::ego": SensorExtrinsics(
+                translation=[1.5, 0.0, 1.2],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera_front",
+                target_frame="ego",
+            ),
+            "lidar::ego": SensorExtrinsics(
+                translation=[0.0, 0.0, 2.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="lidar",
+                target_frame="ego",
+            ),
+            "ego": SensorExtrinsics(
+                translation=[100.0, 200.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
+        # Should not raise
+        dataset.sensor_extrinsics = extrinsics_dict
+
+        self.assertEqual(len(dataset.sensor_extrinsics), 3)
+
+    @drop_datasets
+    def test_sensor_extrinsics_partial_fields_source_only(self):
+        """Test validation with only source_frame set."""
+        dataset = fo.Dataset()
+
+        # source_frame matches, target_frame is None (skip target validation)
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            # target_frame is None
+        )
+
+        # Should not raise
+        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+    @drop_datasets
+    def test_sensor_extrinsics_partial_fields_target_only(self):
+        """Test validation with only target_frame set."""
+        dataset = fo.Dataset()
+
+        # source_frame is None (skip source validation), target_frame matches
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            # source_frame is None
+            target_frame="ego",
+        )
+
+        # Should not raise
+        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+
+
 class PolymorphicIntrinsicsTests(unittest.TestCase):
     """Tests for polymorphic intrinsics storage."""
 
