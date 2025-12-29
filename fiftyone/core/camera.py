@@ -335,7 +335,8 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         # Camera to ego transformation
         extrinsics = fo.SensorExtrinsics(
             translation=[1.5, 0.0, 1.2],
-            quaternion=[0.0, 0.0, 0.0, 1.0],  # identity rotation
+            # identity rotation
+            quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
@@ -443,7 +444,6 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         R = matrix[:3, :3]
         t = matrix[:3, 3]
 
-        # Convert rotation matrix to quaternion (scalar-last)
         quat = Rotation.from_matrix(R).as_quat()
 
         return cls(
@@ -514,19 +514,23 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
                 f"A->B composed with B->C gives A->C."
             )
 
-        T_self = self.extrinsic_matrix  # A->B
-        T_other = other.extrinsic_matrix  # B->C
+        # A->B
+        T_self = self.extrinsic_matrix
+        # B->C
+        T_other = other.extrinsic_matrix
         # T_AC = T_BC @ T_AB
         T_composed = T_other @ T_self
 
         return SensorExtrinsics.from_matrix(
             T_composed,
-            source_frame=self.source_frame,  # A
-            target_frame=other.target_frame,  # C
+            # A
+            source_frame=self.source_frame,
+            # C
+            target_frame=other.target_frame,
         )
 
 
-# Alias for backward compatibility and generality
+# Alias for generality
 CameraExtrinsics = SensorExtrinsics
 
 
@@ -578,7 +582,7 @@ class SensorExtrinsicsRef(EmbeddedDocument):
     ref = fof.StringField(required=True)
 
 
-# Alias for backward compatibility
+# Alias for generality
 CameraExtrinsicsRef = SensorExtrinsicsRef
 
 
@@ -690,10 +694,8 @@ class CameraProjector:
                 "Results for these points may be invalid."
             )
 
-        # Get distortion coefficients
         distortion = self.intrinsics.get_distortion_coeffs()
 
-        # Use cv2 for projection
         if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
             points_2d = self._project_fisheye(points, distortion)
         else:
@@ -783,23 +785,19 @@ class CameraProjector:
                 f"points length {points.shape[0]}"
             )
 
-        # Get distortion coefficients
         distortion = self.intrinsics.get_distortion_coeffs()
 
-        # Use cv2 for undistortion and normalization
         if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
             points_normalized = self._undistort_fisheye(points, distortion)
         else:
             points_normalized = self._undistort_opencv(points, distortion)
 
-        # Scale by depth
         x_cam = points_normalized[:, 0] * depth
         y_cam = points_normalized[:, 1] * depth
         z_cam = depth
 
         points_3d = np.column_stack([x_cam, y_cam, z_cam])
 
-        # Handle OpenGL convention
         if self.camera_convention == "opengl":
             points_3d[:, 1] = -points_3d[:, 1]
             points_3d[:, 2] = -points_3d[:, 2]

@@ -1207,7 +1207,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expected_source = parts[0]
             expected_target = parts[1] if len(parts) > 1 else "world"
 
-            # Validate source_frame
             if value.source_frame is not None:
                 if value.source_frame != expected_source:
                     raise ValueError(
@@ -1215,7 +1214,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         f"but got source_frame='{value.source_frame}'"
                     )
 
-            # Validate target_frame
             if value.target_frame is not None:
                 if value.target_frame != expected_target:
                     raise ValueError(
