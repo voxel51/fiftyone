@@ -47,6 +47,7 @@ from .utils import create_field
 from .views import SavedViewDocument
 from .workspace import WorkspaceDocument
 
+foc = fou.lazy_import("fiftyone.core.camera")
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
@@ -937,6 +938,8 @@ class DatasetDocument(Document):
     default_mask_targets = MaskTargetsField()
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
+    camera_intrinsics = DictField()
+    sensor_extrinsics = DictField()
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
