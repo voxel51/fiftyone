@@ -1101,6 +1101,266 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
+    def camera_intrinsics(self):
+        """A dict mapping sensor/camera names to
+        :class:`fiftyone.core.camera.CameraIntrinsics` instances that define
+        the intrinsic parameters for each camera in the dataset.
+
+        Intrinsics are keyed by sensor name (typically matching group slice
+        names for grouped datasets).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set intrinsics for cameras
+            dataset.camera_intrinsics = {
+                "camera_front": fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+                "camera_rear": fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            }
+
+            # Edit existing intrinsics
+            dataset.camera_intrinsics["camera_front"].k1 = -0.12
+            dataset.save()  # must save after edits
+        """
+        return self._doc.camera_intrinsics
+
+    @camera_intrinsics.setter
+    def camera_intrinsics(self, intrinsics):
+        self._doc.camera_intrinsics = intrinsics
+        self.save()
+
+    @property
+    def sensor_extrinsics(self):
+        """A dict mapping frame relationships to
+        :class:`fiftyone.core.camera.SensorExtrinsics` instances that define
+        the extrinsic parameters (poses) for sensors in the dataset.
+
+        Extrinsics are keyed by ``"source_frame::target_frame"`` (e.g.,
+        ``"camera_front::ego"``) or just ``"source_frame"`` which implies
+        transformation to the ``"world"`` frame.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set extrinsics for sensors
+            dataset.sensor_extrinsics = {
+                "camera_front::ego": fo.SensorExtrinsics(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                ),
+                "lidar::ego": fo.SensorExtrinsics(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                    target_frame="ego",
+                ),
+            }
+
+            # Edit existing extrinsics
+            dataset.sensor_extrinsics["camera_front::ego"].translation[0] = 1.6
+            dataset.save()  # must save after edits
+        """
+        return self._doc.sensor_extrinsics
+
+    @sensor_extrinsics.setter
+    def sensor_extrinsics(self, extrinsics):
+        self._doc.sensor_extrinsics = extrinsics
+        self.save()
+
+    def resolve_intrinsics(self, sample, sensor_name=None):
+        """Resolves camera intrinsics for the given sample.
+
+        Resolution precedence:
+            1. If sample has a ``camera_intrinsics`` field with a
+               :class:`fiftyone.core.camera.CameraIntrinsics` value, use it
+            2. If sample has a ``camera_intrinsics`` field with a
+               :class:`fiftyone.core.camera.CameraIntrinsicsRef`, look up in
+               ``dataset.camera_intrinsics[ref]``
+            3. If ``sensor_name`` is provided, look up in
+               ``dataset.camera_intrinsics[sensor_name]``
+            4. If sample is from a grouped dataset, infer from group slice name
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            sensor_name (None): optional sensor name to use for lookup
+
+        Returns:
+            a :class:`fiftyone.core.camera.CameraIntrinsics`, or None if not
+            found
+        """
+        import fiftyone.core.camera as foc
+
+        # Check for sample-level intrinsics
+        if sample.has_field("camera_intrinsics"):
+            value = sample.get_field("camera_intrinsics")
+            if isinstance(value, foc.CameraIntrinsics):
+                return value
+            elif isinstance(value, foc.CameraIntrinsicsRef):
+                return self.camera_intrinsics.get(value.ref)
+
+        # Try explicit sensor name
+        if sensor_name is not None:
+            return self.camera_intrinsics.get(sensor_name)
+
+        # Try to infer from group slice
+        if self.media_type == fom.GROUP and hasattr(sample, "group"):
+            try:
+                slice_name = sample.group.name
+                return self.camera_intrinsics.get(slice_name)
+            except (AttributeError, KeyError):
+                pass
+
+        return None
+
+    def resolve_extrinsics(self, sample, source_frame, target_frame=None):
+        """Resolves sensor extrinsics for the given sample.
+
+        Resolution precedence:
+            1. If sample has a ``camera_extrinsics`` or ``sensor_extrinsics``
+               field with matching source/target frames, use it
+            2. Look up in ``dataset.sensor_extrinsics`` using the key format
+               ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
+               target is ``"world"``)
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            source_frame: the source coordinate frame name
+            target_frame (None): the target coordinate frame name. If None,
+                defaults to ``"world"``
+
+        Returns:
+            a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
+            found
+        """
+        import fiftyone.core.camera as foc
+
+        if target_frame is None:
+            target_frame = "world"
+
+        # Check for sample-level extrinsics
+        for field_name in ("camera_extrinsics", "sensor_extrinsics"):
+            if sample.has_field(field_name):
+                value = sample.get_field(field_name)
+                if isinstance(value, list):
+                    for item in value:
+                        ext = self._resolve_single_extrinsics(
+                            item, source_frame, target_frame
+                        )
+                        if ext is not None:
+                            return ext
+                else:
+                    ext = self._resolve_single_extrinsics(
+                        value, source_frame, target_frame
+                    )
+                    if ext is not None:
+                        return ext
+
+        # Look up in dataset-level extrinsics
+        key = f"{source_frame}::{target_frame}"
+        if key in self.sensor_extrinsics:
+            return self.sensor_extrinsics[key]
+
+        # Try without target frame (implies world)
+        if target_frame == "world" and source_frame in self.sensor_extrinsics:
+            return self.sensor_extrinsics[source_frame]
+
+        return None
+
+    def _resolve_single_extrinsics(self, value, source_frame, target_frame):
+        """Helper to resolve a single extrinsics value."""
+        import fiftyone.core.camera as foc
+
+        if isinstance(value, foc.SensorExtrinsics):
+            if (
+                value.source_frame == source_frame
+                and value.target_frame == target_frame
+            ):
+                return value
+        elif isinstance(value, foc.SensorExtrinsicsRef):
+            # Look up the reference
+            ref_value = self.sensor_extrinsics.get(value.ref)
+            if ref_value is not None:
+                # Parse the ref to check frames
+                parts = value.ref.split("::", 1)
+                ref_source = parts[0]
+                ref_target = parts[1] if len(parts) > 1 else "world"
+                if ref_source == source_frame and ref_target == target_frame:
+                    return ref_value
+
+        return None
+
+    def get_transform_chain(
+        self, source_frame, target_frame, intermediate_frames=None
+    ):
+        """Computes a composed transformation between coordinate frames.
+
+        This method chains multiple extrinsics transforms to compute the
+        transformation from ``source_frame`` to ``target_frame``, optionally
+        through intermediate frames.
+
+        Args:
+            source_frame: the source coordinate frame name
+            target_frame: the target coordinate frame name
+            intermediate_frames (None): optional list of intermediate frame
+                names to chain through (e.g., ["ego"])
+
+        Returns:
+            a :class:`fiftyone.core.camera.SensorExtrinsics` representing the
+            composed transformation, or None if the chain cannot be resolved
+
+        Example::
+
+            # Get transform from camera_front to world via ego
+            transform = dataset.get_transform_chain(
+                "camera_front", "world", intermediate_frames=["ego"]
+            )
+        """
+        import fiftyone.core.camera as foc
+
+        if intermediate_frames is None:
+            intermediate_frames = []
+
+        frames = [source_frame] + intermediate_frames + [target_frame]
+
+        result = None
+        for i in range(len(frames) - 1):
+            src = frames[i]
+            tgt = frames[i + 1]
+
+            # Try direct lookup
+            key = f"{src}::{tgt}"
+            transform = self.sensor_extrinsics.get(key)
+
+            # Try with implied world target
+            if transform is None and tgt == "world":
+                transform = self.sensor_extrinsics.get(src)
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
