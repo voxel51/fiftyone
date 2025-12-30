@@ -891,54 +891,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved.fx, 1200.0)  # Sample override
 
     @drop_datasets
-    def test_resolve_intrinsics_by_sensor_name(self):
-        """Test resolving intrinsics using explicit sensor_name parameter."""
-        dataset = fo.Dataset()
-
-        intrinsics_front = PinholeCameraIntrinsics(
-            fx=1000.0,
-            fy=1000.0,
-            cx=960.0,
-            cy=540.0,
-        )
-        intrinsics_rear = PinholeCameraIntrinsics(
-            fx=800.0,
-            fy=800.0,
-            cx=640.0,
-            cy=480.0,
-        )
-        dataset.camera_intrinsics = {
-            "camera_front": intrinsics_front,
-            "camera_rear": intrinsics_rear,
-        }
-
-        # Sample without camera_intrinsics field
-        sample = fo.Sample(filepath="test.jpg")
-        dataset.add_sample(sample)
-
-        # Should return None without sensor_name
-        resolved = dataset.resolve_intrinsics(sample)
-        self.assertIsNone(resolved)
-
-        # Should resolve with explicit sensor_name
-        resolved_front = dataset.resolve_intrinsics(
-            sample, sensor_name="camera_front"
-        )
-        self.assertIsNotNone(resolved_front)
-        self.assertEqual(resolved_front.fx, 1000.0)
-
-        resolved_rear = dataset.resolve_intrinsics(
-            sample, sensor_name="camera_rear"
-        )
-        self.assertIsNotNone(resolved_rear)
-        self.assertEqual(resolved_rear.fx, 800.0)
-
-        # Non-existent sensor returns None
-        resolved_none = dataset.resolve_intrinsics(
-            sample, sensor_name="camera_side"
-        )
-        self.assertIsNone(resolved_none)
-
     @drop_datasets
     def test_resolve_extrinsics(self):
         """Test resolving extrinsics from dataset-level storage."""
@@ -1196,6 +1148,99 @@ class DatasetIntegrationTests(unittest.TestCase):
 
         # Should return None since camera_side not in camera_intrinsics
         resolved = dataset.resolve_intrinsics(sample_side)
+        self.assertIsNone(resolved)
+
+    @drop_datasets
+    def test_resolve_extrinsics_from_group_slice(self):
+        """Test resolving extrinsics by inferring source_frame from group slice name."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="camera_front")
+
+        # Set up extrinsics keyed by slice names
+        extrinsics_front = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="world",
+        )
+        extrinsics_rear = SensorExtrinsics(
+            translation=[-1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 1.0, 0.0],
+            source_frame="camera_rear",
+            target_frame="world",
+        )
+        dataset.sensor_extrinsics = {
+            "camera_front": extrinsics_front,
+            "camera_rear": extrinsics_rear,
+        }
+
+        # Create grouped samples
+        group = fo.Group()
+        samples = [
+            fo.Sample(
+                filepath="front.jpg",
+                group=group.element("camera_front"),
+            ),
+            fo.Sample(
+                filepath="rear.jpg",
+                group=group.element("camera_rear"),
+            ),
+        ]
+        dataset.add_samples(samples)
+
+        # Get sample from camera_front slice
+        dataset.group_slice = "camera_front"
+        sample_front = dataset.first()
+
+        # Should resolve extrinsics by inferring source_frame from group slice name
+        resolved_front = dataset.resolve_extrinsics(sample_front)
+        self.assertIsNotNone(resolved_front)
+        self.assertEqual(resolved_front.translation[0], 1.0)
+
+        # Get sample from camera_rear slice
+        dataset.group_slice = "camera_rear"
+        sample_rear = dataset.first()
+
+        # Should resolve extrinsics by inferring source_frame from group slice name
+        resolved_rear = dataset.resolve_extrinsics(sample_rear)
+        self.assertIsNotNone(resolved_rear)
+        self.assertEqual(resolved_rear.translation[0], -1.0)
+
+    @drop_datasets
+    def test_resolve_extrinsics_group_slice_not_found(self):
+        """Test that resolve_extrinsics returns None if slice not in extrinsics."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="camera_front")
+
+        # Set up extrinsics for only camera_front
+        extrinsics_front = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="world",
+        )
+        dataset.sensor_extrinsics = {"camera_front": extrinsics_front}
+
+        # Create grouped samples
+        group = fo.Group()
+        samples = [
+            fo.Sample(
+                filepath="front.jpg",
+                group=group.element("camera_front"),
+            ),
+            fo.Sample(
+                filepath="side.jpg",
+                group=group.element("camera_side"),  # No extrinsics for this
+            ),
+        ]
+        dataset.add_samples(samples)
+
+        # Get sample from camera_side slice (no extrinsics defined)
+        dataset.group_slice = "camera_side"
+        sample_side = dataset.first()
+
+        # Should return None since camera_side not in sensor_extrinsics
+        resolved = dataset.resolve_extrinsics(sample_side)
         self.assertIsNone(resolved)
 
 

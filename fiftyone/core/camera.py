@@ -547,8 +547,8 @@ class CameraIntrinsicsRef(EmbeddedDocument):
 
         import fiftyone as fo
 
-        # Reference dataset-level intrinsics
-        sample["camera_intrinsics"] = fo.CameraIntrinsicsRef(ref="camera_front")
+        # Reference dataset-level intrinsics (field name can be anything)
+        sample["intrinsics"] = fo.CameraIntrinsicsRef(ref="camera_front")
     """
 
     meta = {"strict": False}
@@ -571,8 +571,8 @@ class SensorExtrinsicsRef(EmbeddedDocument):
 
         import fiftyone as fo
 
-        # Reference dataset-level extrinsics
-        sample["camera_extrinsics"] = [
+        # Reference dataset-level extrinsics (field name can be anything)
+        sample["extrinsics"] = [
             fo.SensorExtrinsicsRef(ref="camera_front::ego"),
         ]
     """
