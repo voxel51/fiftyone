@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         mongodb-version:
-          - "6.0.27-ubi8"
+          - "6"
           - "7"
           - "8.0"
           - "latest"
@@ -46,11 +46,6 @@ jobs:
         uses: supercharge/mongodb-github-action@1.12.1
         with:
           mongodb-version: ${{ matrix.mongodb-version }}
-          # mongo:6 will not patch 
-          # https://nvd.nist.gov/vuln/detail/CVE-2025-14847
-          # because it's EOL.
-          # If this is 6.0.27, use the mongodb community edition images
-          mongodb-image: ${{ matrix.mongodb-version == '6.0.27-ubi8' && 'mongodb/mongodb-community-server' || 'mongo' }}
 
       - name: Setup
         uses: actions/setup-python@v6
