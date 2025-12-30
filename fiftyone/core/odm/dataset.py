@@ -8,11 +8,12 @@ Documents that track datasets and their sample schemas in the database.
 
 import logging
 
+import eta.core.utils as etau
 from bson import DBRef, ObjectId
 from mongoengine.errors import ValidationError
 
-import eta.core.utils as etau
-
+import fiftyone.core.utils as fou
+from fiftyone.core.camera import CameraIntrinsics, SensorExtrinsics
 from fiftyone.core.fields import (
     BooleanField,
     ClassesField,
@@ -30,7 +31,6 @@ from fiftyone.core.fields import (
     ReferenceField,
     StringField,
 )
-import fiftyone.core.utils as fou
 
 from .database import (
     patch_annotation_runs,
@@ -938,8 +938,8 @@ class DatasetDocument(Document):
     default_mask_targets = MaskTargetsField()
     skeletons = DictField(EmbeddedDocumentField(KeypointSkeleton))
     default_skeleton = EmbeddedDocumentField(KeypointSkeleton)
-    camera_intrinsics = DictField()
-    sensor_extrinsics = DictField()
+    camera_intrinsics = DictField(EmbeddedDocumentField(CameraIntrinsics))
+    sensor_extrinsics = DictField(EmbeddedDocumentField(SensorExtrinsics))
     sample_fields = EmbeddedDocumentListField(SampleFieldDocument)
     frame_fields = EmbeddedDocumentListField(SampleFieldDocument)
     saved_views = ListField(ReferenceField(SavedViewDocument))
