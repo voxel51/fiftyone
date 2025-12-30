@@ -691,7 +691,8 @@ class CameraProjector:
         if np.any(z <= 0):
             warnings.warn(
                 "Some points are at or behind the camera (z <= 0). "
-                "Results for these points may be invalid."
+                "Results for these points may be invalid.",
+                stacklevel=2,
             )
 
         distortion = self.intrinsics.get_distortion_coeffs()

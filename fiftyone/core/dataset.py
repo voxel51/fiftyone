@@ -6,10 +6,7 @@ FiftyOne datasets.
 |
 """
 
-from collections import defaultdict
-from functools import partial
 import contextlib
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -17,43 +14,39 @@ import numbers
 import os
 import random
 import string
+from collections import defaultdict
+from datetime import datetime
+from functools import partial
 
-from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
-import mongoengine.errors as moe
-from pymongo import (
-    DeleteMany,
-    InsertOne,
-    ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-)
-from pymongo.collection import Collection
-from pymongo.errors import CursorNotFound, BulkWriteError
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+import mongoengine.errors as moe
+from bson import DBRef, ObjectId, json_util
+from deprecated import deprecated
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.collection import Collection
+from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import DatasetAppConfig
-import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
-from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.migrations as fomi
+from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.singletons import DatasetSingleton
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -1242,20 +1235,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         import fiftyone.core.camera as foc
 
+        intrinsics_map = dict(self.camera_intrinsics or {})
+
         # Check for sample-level intrinsics by matching type
         for _, value in sample.iter_fields():
             if isinstance(value, foc.CameraIntrinsics):
                 return value
             elif isinstance(value, foc.CameraIntrinsicsRef):
-                return self.camera_intrinsics.get(value.ref)
+                return intrinsics_map.get(value.ref)
 
         # Try to infer from group slice
-        if self.media_type == fom.GROUP and hasattr(sample, "group"):
-            try:
-                slice_name = sample.group.name
-                return self.camera_intrinsics.get(slice_name)
-            except (AttributeError, KeyError):
-                pass
+        if self.media_type == fom.GROUP:
+            group = None
+            if self.group_field is not None:
+                group = getattr(sample, self.group_field, None)
+            if group is None and self.group_field == "group":
+                group = getattr(sample, "group", None)
+
+            if group is not None:
+                try:
+                    slice_name = group.name
+                    return intrinsics_map.get(slice_name)
+                except (AttributeError, KeyError):
+                    pass
 
         return None
 
@@ -1290,16 +1292,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         import fiftyone.core.camera as foc
 
+        extrinsics = self.sensor_extrinsics or {}
+
         if target_frame is None:
             target_frame = "world"
 
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
-            if self.media_type == fom.GROUP and hasattr(sample, "group"):
-                try:
-                    source_frame = sample.group.name
-                except (AttributeError, KeyError):
-                    pass
+            if self.media_type == fom.GROUP:
+                group = None
+                if self.group_field is not None:
+                    group = getattr(sample, self.group_field, None)
+                if group is None and self.group_field == "group":
+                    group = getattr(sample, "group", None)
+
+                if group is not None:
+                    try:
+                        source_frame = group.name
+                    except (AttributeError, KeyError):
+                        pass
 
         # Check for sample-level extrinsics by matching type
         for _, value in sample.iter_fields():
@@ -1327,18 +1338,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Look up in dataset-level extrinsics
         key = f"{source_frame}::{target_frame}"
-        if key in self.sensor_extrinsics:
-            return self.sensor_extrinsics[key]
+        if key in extrinsics:
+            return extrinsics[key]
 
         # Try without target frame (implies world)
-        if target_frame == "world" and source_frame in self.sensor_extrinsics:
-            return self.sensor_extrinsics[source_frame]
+        if target_frame == "world" and source_frame in extrinsics:
+            return extrinsics[source_frame]
 
         return None
 
     def _resolve_single_extrinsics(self, value, source_frame, target_frame):
         """Helper to resolve a single extrinsics value."""
         import fiftyone.core.camera as foc
+
+        extrinsics = self.sensor_extrinsics or {}
 
         if isinstance(value, foc.SensorExtrinsics):
             if (
@@ -1348,7 +1361,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 return value
         elif isinstance(value, foc.SensorExtrinsicsRef):
             # Look up the reference
-            ref_value = self.sensor_extrinsics.get(value.ref)
+            ref_value = extrinsics.get(value.ref)
             if ref_value is not None:
                 # Parse the ref to check frames
                 parts = value.ref.split("::", 1)
@@ -1385,7 +1398,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "camera_front", "world", intermediate_frames=["ego"]
             )
         """
-        import fiftyone.core.camera as foc
+        extrinsics = self.sensor_extrinsics or {}
 
         if intermediate_frames is None:
             intermediate_frames = []
@@ -1393,17 +1406,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frames = [source_frame] + intermediate_frames + [target_frame]
 
         result = None
-        for i in range(len(frames) - 1):
-            src = frames[i]
-            tgt = frames[i + 1]
-
+        for src, tgt in zip(frames, frames[1:]):
             # Try direct lookup
             key = f"{src}::{tgt}"
-            transform = self.sensor_extrinsics.get(key)
+            transform = extrinsics.get(key)
 
             # Try with implied world target
             if transform is None and tgt == "world":
-                transform = self.sensor_extrinsics.get(src)
+                transform = extrinsics.get(src)
 
             if transform is None:
                 return None
