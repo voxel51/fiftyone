@@ -47,7 +47,6 @@ from .utils import create_field
 from .views import SavedViewDocument
 from .workspace import WorkspaceDocument
 
-foc = fou.lazy_import("fiftyone.core.camera")
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
