@@ -24,21 +24,22 @@ except ImportError:
 
 
 MONGODB_DOWNLOAD_URLS = {
-    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-6.0.24.tgz",
+    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-6.0.27.tgz",
     "linux-i686": None,
-    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-6.0.24.tgz",
-    "mac-arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.24.tgz",
-    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.24.tgz",
+    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-6.0.27.tgz",
+    "mac-arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.27.tgz",
+    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.27.tgz",
     "win-32": None,
-    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.24.zip",
+    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.27.zip",
     "debian9": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",  # No longer supported, keep at 5.
+        # No longer supported, keep at 5.
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.32.tgz",
     },
     "rhel7": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-6.0.24.tgz",
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-6.0.27.tgz",
     },
     "ubuntu2004": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.24.tgz",
+        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-6.0.27.tgz",
     },
 }
 
@@ -46,7 +47,7 @@ MONGODB_DOWNLOAD_URLS = {
 MONGODB_BINARIES = ["mongod"]
 LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
-VERSION = "0.4.4"
+VERSION = "0.4.5"
 
 
 def get_version():
