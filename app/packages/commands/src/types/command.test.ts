@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Command } from "./Command";
+import { Command } from "./command";
 
 let execFn : ()=>Promise<void>
 
