@@ -119,7 +119,7 @@ class LLMSTxtGenerator:
             url = (
                 path
                 if external
-                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/{path}.html"
+                else f"{self.app.config.llms_txt_base_url.rstrip('/')}/{path}.md"
             )
 
             if url in processed:
