@@ -1,5 +1,9 @@
 /**
- * Provides a unit of execution.  The can
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
+/**
+ * Provides a unit of execution.  This can
  * be executed by the ActionManager to optionally
  * support automatic undo/redo by implementing the
  * Undable extension of the interface.
@@ -13,15 +17,13 @@ export interface Action {
  * Delegates execution to a lambda
  */
 export class DelegatingAction implements Action {
-    private _execFn;
     constructor(
         public readonly id: string,
-        execFn: () => Promise<void>
+        private readonly execFn: () => Promise<void>
     ) {
-        this._execFn = execFn;
     }
     execute(): Promise<void> {
-        return this._execFn();
+        return this.execFn();
     }
 }
 

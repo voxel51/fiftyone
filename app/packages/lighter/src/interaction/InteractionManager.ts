@@ -13,7 +13,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
-import { ActionManager, getActionManager } from "@fiftyone/commands";
+import { CommandContextManager } from "@fiftyone/commands";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -203,17 +203,14 @@ export class InteractionManager {
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
-  private actionManager: ActionManager;
   constructor(
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
     sceneId: string,
-    actionManager?: ActionManager
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
-    this.actionManager = actionManager !== undefined ? actionManager : getActionManager();
   }
 
   /**
@@ -469,7 +466,7 @@ export class InteractionManager {
    * Handles keyboard events for undo/redo shortcuts and shift modifier to maintain aspect ratio.
    * @param event - The keyboard event.
    */
-  private handleKeyDown = (event: KeyboardEvent): void => {
+  private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
     const activeElement = document.activeElement;
     if (
@@ -489,7 +486,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.actionManager.undo();
+      await CommandContextManager.instance().getActiveContext().undo();
       return;
     }
 
@@ -501,7 +498,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.actionManager.redo();
+      await CommandContextManager.instance().getActiveContext().redo();
       return;
     }
 

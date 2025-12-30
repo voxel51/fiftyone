@@ -3,14 +3,15 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { CommandRegistry } from "./registry";
+import { CommandRegistry } from "./CommandRegistry";
+import { ActionManager } from "../actions";
 
 describe("CommandRegistry", () => {
     let registry: CommandRegistry;
     const cmdOne = "fo.test.command";
     const cmdTwo = "fo.test.command2";
     beforeEach(() => {
-        registry = new CommandRegistry();
+        registry = new CommandRegistry(new ActionManager());
     });
 
     it("can register commands", () => {

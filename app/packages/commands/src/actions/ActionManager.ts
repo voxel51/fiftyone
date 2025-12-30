@@ -35,13 +35,15 @@ import type { Undoable } from "./Undoable";
  * 3. The action is pushed onto undoStack
  */
 
-export type ActionManagerListener = (undoEnabled: boolean, redoEnabled: boolean, undoCount: number, redoCount: number) => void;
+export type UndoStateListener = (undoEnabled: boolean, redoEnabled: boolean) => void;
+export type ActionListener = (actionId: string, isUndo: boolean) => void;
 
 export class ActionManager {
   private undoStack: Undoable[] = [];
   private redoStack: Undoable[] = [];
   private maxStackSize = 100;
-  private listeners = new Set<ActionManagerListener>();
+  private undoListeners = new Array<WeakRef<UndoStateListener>>();
+  private actionListeners = new Array<WeakRef<ActionListener>>();
 
   /**
    * Pushes an undoable action onto the undo stack.
@@ -55,7 +57,7 @@ export class ActionManager {
     if (this.undoStack.length > this.maxStackSize) {
       this.undoStack.shift();
     }
-    this.fireListeners();
+    this.fireUndoListeners();
   }
 
   /**
@@ -67,7 +69,8 @@ export class ActionManager {
     if (undoable) {
       await undoable.undo();
       this.redoStack.push(undoable);
-      this.fireListeners();
+      this.fireActionListeners(undoable.id, true);
+      this.fireUndoListeners();
       return undoable;
     }
     return undefined;
@@ -82,7 +85,8 @@ export class ActionManager {
     if (undoable) {
       await undoable.execute();
       this.undoStack.push(undoable);
-      this.fireListeners();
+      this.fireActionListeners(undoable.id, false);
+      this.fireUndoListeners();
       return undoable;
     }
     return undefined;
@@ -110,7 +114,7 @@ export class ActionManager {
   clear(): void {
     this.undoStack = [];
     this.redoStack = [];
-    this.fireListeners();
+    this.fireUndoListeners();
   }
 
   /**
@@ -126,6 +130,7 @@ export class ActionManager {
     if ("undo" in action && typeof action.undo === 'function') {
       this.push(action as Undoable);
     }
+    this.fireActionListeners(action.id, false);
   }
   /**
    * Gets the current redo stack size.
@@ -135,25 +140,53 @@ export class ActionManager {
     return this.redoStack.length;
   }
 
-  public subscribe(listener: ActionManagerListener): () => void {
-    this.listeners.add(listener);
+  public subscribeUndo(listener: UndoStateListener): () => void {
+    const ref = new WeakRef(listener);
+    this.undoListeners.push(ref);
     return () => {
-      this.listeners.delete(listener);
+      this.undoListeners = this.undoListeners.filter((ref) => {
+        const deref = ref.deref();
+        if (!deref || listener === deref) {
+          return false;
+        }
+      });
+      return true;
     }
   }
 
-  private fireListeners() {
-    this.listeners.forEach((listener) => {
-      listener(this.canUndo(), this.canRedo(), this.getUndoStackSize(), this.getRedoStackSize()); ß
+  public subscribeActions(listener: ActionListener): () => void {
+    const ref = new WeakRef(listener);
+    this.actionListeners.push(ref);
+    return () => {
+      this.actionListeners = this.actionListeners.filter((ref) => {
+        const deref = ref.deref();
+        if (!deref || listener === deref) {
+          return false;
+        }
+      });
+      return true;
+    }
+  }
+
+  private fireUndoListeners() {
+    this.undoListeners = this.undoListeners.filter((ref) => {
+      const deref = ref.deref();
+      if (!deref) {
+        return false;
+      }
+      deref(this.canUndo(), this.canRedo());
+      return true;
     });
   }
-}
 
-let undoManager: ActionManager | undefined;
-
-export function getActionManager(): ActionManager {
-  if (!undoManager) {
-    undoManager = new ActionManager();
+  private fireActionListeners(id: string, isUndo: boolean) {
+    this.actionListeners = this.actionListeners.filter((ref) => {
+      const deref = ref.deref();
+      if (!deref) {
+        return false;
+      }
+      deref(id, isUndo);
+      return true;
+    })
   }
-  return undoManager;
 }

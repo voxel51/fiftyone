@@ -1,5 +1,9 @@
-import { useCallback, useEffect, useState } from "react"
-import { getActionManager } from "../actions";
+/**
+ * Copyright 2017-2025, Voxel51, Inc.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { CommandContext, CommandContextManager } from "../context";
 
 /**
  * Hook to access undo and redo.  Provides undo/redo methods and the
@@ -7,32 +11,36 @@ import { getActionManager } from "../actions";
  * @returns the undo/redo state...enabled, disabled, undoCount, redoCount
  * and the undo/redo functions
  */
-export const useUndoRedo = (): {
+export const useUndoRedo = (context?: CommandContext): {
     undoEnabled: boolean,
     redoEnabled: boolean,
     undo: () => Promise<void>,
     redo: () => Promise<void>,
-    undoCount: number,
-    redoCount: number
 } => {
-    const [undoEnabled, setUndoEnabled] = useState(false);
-    const [redoEnabled, setRedoEnabled] = useState(false);
-    const [undoCount, setUndoCount] = useState(0);
-    const [redoCount, setRedoCount] = useState(0);
+    const boundContext = useMemo(()=>{
+        if(context){
+            return context;
+        }
+        context = CommandContextManager.instance().getActiveContext();
+        return context;
+    }, [context]);
 
-    const undo = useCallback(async () => {
-        await getActionManager().undo();
-    }, []);
-    const redo = useCallback(async () => {
-        await getActionManager().redo();
-    }, []);
-    useEffect(() => {
-        getActionManager().subscribe((undoEnabled, redoEnabled, undoCount, redoCount) => {
+    const [undoEnabled, setUndoEnabled] = useState(boundContext.canUndo());
+    const [redoEnabled, setRedoEnabled] = useState(boundContext.canRedo());
+
+    useEffect(()=>{
+        return boundContext.subscribeUndoState((undoEnabled, redoEnabled)=>{
             setUndoEnabled(undoEnabled);
             setRedoEnabled(redoEnabled);
-            setUndoCount(undoCount);
-            setRedoCount(redoCount);
         });
-    });
-    return { undoEnabled, redoEnabled, undo, redo, undoCount, redoCount }
+    }, [boundContext]);
+
+    const undo = useCallback(async () => {
+        await boundContext.undo();
+    }, []);
+
+    const redo = useCallback(async () => {
+        await boundContext.redo();
+    }, []);
+    return { undoEnabled, redoEnabled, undo, redo }
 }

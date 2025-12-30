@@ -1,2 +1,2 @@
-export * from "./manager"
-export * from "./parser"
+export * from "./KeyManager"
+export * from "./KeyParser"

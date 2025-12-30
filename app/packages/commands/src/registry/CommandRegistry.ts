@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { ActionManager, getActionManager } from "../actions";
+import { ActionManager, Undoable } from "../actions";
 import { Command, CommandFunction } from "../types";
 
 /**
@@ -14,14 +14,8 @@ import { Command, CommandFunction } from "../types";
 export class CommandRegistry {
   private commands = new Map<string, Command>();
   private listeners = new Set<() => void>();
-  private actionManger: ActionManager;
-  constructor(actionManager?: ActionManager){
-    if(!actionManager){
-      this.actionManger = getActionManager();
-    }
-    else{
-      this.actionManger = actionManager;
-    }
+
+  constructor(private readonly actionManager: ActionManager) {
   }
   /**
    * 
@@ -71,9 +65,9 @@ export class CommandRegistry {
     const command = this.getCommand(id);
     if (command && command.isEnabled()) {
       const result = await command.execute();
-      if(result){
+      if (result && "undo" in result && typeof result.undo === "function") {
         //enable undo/redo
-        this.actionManger.push(result);
+        this.actionManager.push(result as Undoable);
       }
       return true;
     }
@@ -107,9 +101,4 @@ export class CommandRegistry {
     this.listeners.delete(listener);
   }
 }
-//global
-const commandRegistry = new CommandRegistry();
 
-export function getCommandRegistry(): CommandRegistry {
-  return commandRegistry;
-}

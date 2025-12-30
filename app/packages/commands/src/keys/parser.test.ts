@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { KeyParser } from "./parser";
+import { KeyParser } from "./KeyParser";
 
 describe("KeyParser", () => {
   it("can parse simple valid single sequence bindings", () => {

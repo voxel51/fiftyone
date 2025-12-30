@@ -46,7 +46,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { Action, getActionManager, Undoable} from "@fiftyone/commands";
+import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
   isSelectable: (
@@ -223,8 +223,7 @@ export class Scene2D {
           absoluteBounds,
           relativeBounds
         );
-
-        getActionManager().push(addCommand);
+        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
       }
     });
 
@@ -244,7 +243,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          getActionManager().push(moveCommand);
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
       }
     });
@@ -267,7 +266,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          getActionManager().push(moveCommand);
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
       }
     });
@@ -1164,7 +1163,7 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   executeCommand(command: Action, isUndoable = true): void {
-    getActionManager().execute(command);
+    CommandContextManager.instance().getActiveContext().executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
@@ -1193,13 +1192,6 @@ export class Scene2D {
     this.eventBus.dispatch("lighter:selection-cleared", {
       previouslySelectedIds: [],
     });
-  }
-
-  /**
-   * Clears the undo/redo stack
-   */
-  clearUndoRedoStack() {
-    getActionManager().clear();
   }
 
   /**
@@ -1238,7 +1230,6 @@ export class Scene2D {
     // Destroy managers
     this.interactionManager.destroy();
     this.selectionManager.destroy();
-    getActionManager().clear();
 
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
