@@ -29,8 +29,28 @@ export interface AnnotationSchemas {
   [key: string]: AnnotationSchema | null;
 }
 
-export const activePaths = atom((get) =>
-  Object.keys(get(activeSchemas) ?? {}).sort()
+// Custom order for active paths (null means use default sorted order)
+export const activePathsOrder = atom<string[] | null>(null);
+
+export const activePaths = atom(
+  (get) => {
+    const customOrder = get(activePathsOrder);
+    const paths = Object.keys(get(activeSchemas) ?? {});
+
+    if (customOrder) {
+      // Use custom order, but filter to only include paths that exist
+      const existingPaths = new Set(paths);
+      const orderedPaths = customOrder.filter((p) => existingPaths.has(p));
+      // Add any new paths that aren't in the custom order
+      const newPaths = paths.filter((p) => !customOrder.includes(p));
+      return [...orderedPaths, ...newPaths.sort()];
+    }
+
+    return paths.sort();
+  },
+  (get, set, newOrder: string[]) => {
+    set(activePathsOrder, newOrder);
+  }
 );
 
 export const activeSchemas = atom<AnnotationSchemas>((get) =>

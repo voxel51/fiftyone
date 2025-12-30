@@ -1,5 +1,20 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
 import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -14,6 +29,7 @@ import {
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
+import SortableFieldRow from "./SortableFieldRow";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
 
 // Selection state for active fields
@@ -100,7 +116,28 @@ export const useDeactivateFields = () => {
 };
 
 const ActiveFieldsSection = () => {
-  const fields = useAtomValue(activePaths);
+  const [fields, setFields] = useAtom(activePaths);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        const oldIndex = fields.findIndex((path) => path === active.id);
+        const newIndex = fields.findIndex((path) => path === over.id);
+        const newOrder = arrayMove(fields, oldIndex, newIndex);
+        setFields(newOrder);
+      }
+    },
+    [fields, setFields]
+  );
 
   if (!fields.length) {
     return (
@@ -132,15 +169,23 @@ const ActiveFieldsSection = () => {
         </Tooltip>
         <Chip label={fields.length} size="small" />
       </GUISectionHeader>
-      {fields.map((path) => (
-        <FieldRow
-          key={path}
-          path={path}
-          isSelected={isActiveFieldSelected(path)}
-          showDragHandle={true}
-          hasSchema={true}
-        />
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={fields} strategy={verticalListSortingStrategy}>
+          {fields.map((path) => (
+            <SortableFieldRow
+              key={path}
+              id={path}
+              path={path}
+              isSelected={isActiveFieldSelected(path)}
+              hasSchema={true}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
     </>
   );
 };

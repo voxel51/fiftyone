@@ -1,6 +1,7 @@
 import { Tooltip } from "@fiftyone/components";
 import { EditOutlined } from "@mui/icons-material";
 import { ListItem, Pill, Clickable, Size } from "@voxel51/voodo";
+import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
@@ -21,6 +22,7 @@ interface FieldRowProps {
   showDragHandle?: boolean;
   hasSchema?: boolean;
   isReadOnly?: boolean;
+  dragHandleListeners?: SyntheticListenerMap;
 }
 
 // Bridge component to connect jotai atom with ListItem's selection
@@ -29,11 +31,13 @@ const FieldRowWithSelection = ({
   isSelected,
   showDragHandle,
   isReadOnly,
+  dragHandleListeners,
 }: {
   path: string;
   isSelected: SelectedAtom;
   showDragHandle: boolean;
   isReadOnly: boolean;
+  dragHandleListeners?: SyntheticListenerMap;
 }) => {
   const [checked, setChecked] = useAtom(isSelected);
   const setField = useSetAtom(currentField);
@@ -71,6 +75,7 @@ const FieldRowWithSelection = ({
       selected={checked}
       onSelected={setChecked}
       canDrag={showDragHandle}
+      dragHandleListeners={dragHandleListeners}
       primaryContent={path}
       secondaryContent={fType}
       actions={actions}
@@ -83,10 +88,12 @@ const FieldRowWithoutSelection = ({
   path,
   showDragHandle,
   isReadOnly,
+  dragHandleListeners,
 }: {
   path: string;
   showDragHandle: boolean;
   isReadOnly: boolean;
+  dragHandleListeners?: SyntheticListenerMap;
 }) => {
   const setField = useSetAtom(currentField);
   const fType = useAtomValue(fieldType(path));
@@ -120,6 +127,7 @@ const FieldRowWithoutSelection = ({
   return (
     <ListItem
       canDrag={showDragHandle}
+      dragHandleListeners={dragHandleListeners}
       primaryContent={path}
       secondaryContent={fType}
       actions={actions}
@@ -133,6 +141,7 @@ const FieldRow = ({
   showDragHandle = false,
   hasSchema = false,
   isReadOnly = false,
+  dragHandleListeners,
 }: FieldRowProps) => {
   // If hasSchema and isSelected atom is provided, use the selectable version
   if (hasSchema && isSelected) {
@@ -142,6 +151,7 @@ const FieldRow = ({
         isSelected={isSelected}
         showDragHandle={showDragHandle}
         isReadOnly={isReadOnly}
+        dragHandleListeners={dragHandleListeners}
       />
     );
   }
@@ -152,6 +162,7 @@ const FieldRow = ({
       path={path}
       showDragHandle={showDragHandle}
       isReadOnly={isReadOnly}
+      dragHandleListeners={dragHandleListeners}
     />
   );
 };
