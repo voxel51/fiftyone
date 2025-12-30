@@ -1221,22 +1221,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         f"but got target_frame='{value.target_frame}'"
                     )
 
-    def resolve_intrinsics(self, sample, sensor_name=None):
+    def resolve_intrinsics(self, sample):
         """Resolves camera intrinsics for the given sample.
 
         Resolution precedence:
-            1. If sample has a ``camera_intrinsics`` field with a
+            1. If sample has a field with a
                :class:`fiftyone.core.camera.CameraIntrinsics` value, use it
-            2. If sample has a ``camera_intrinsics`` field with a
+            2. If sample has a field with a
                :class:`fiftyone.core.camera.CameraIntrinsicsRef`, look up in
                ``dataset.camera_intrinsics[ref]``
-            3. If ``sensor_name`` is provided, look up in
-               ``dataset.camera_intrinsics[sensor_name]``
-            4. If sample is from a grouped dataset, infer from group slice name
+            3. If sample is from a grouped dataset, infer from group slice name
+               and look up in ``dataset.camera_intrinsics[slice_name]``
 
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            sensor_name (None): optional sensor name to use for lookup
 
         Returns:
             a :class:`fiftyone.core.camera.CameraIntrinsics`, or None if not
@@ -1244,17 +1242,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         import fiftyone.core.camera as foc
 
-        # Check for sample-level intrinsics
-        if sample.has_field("camera_intrinsics"):
-            value = sample.get_field("camera_intrinsics")
+        # Check for sample-level intrinsics by matching type
+        for _, value in sample.iter_fields():
             if isinstance(value, foc.CameraIntrinsics):
                 return value
             elif isinstance(value, foc.CameraIntrinsicsRef):
                 return self.camera_intrinsics.get(value.ref)
-
-        # Try explicit sensor name
-        if sensor_name is not None:
-            return self.camera_intrinsics.get(sensor_name)
 
         # Try to infer from group slice
         if self.media_type == fom.GROUP and hasattr(sample, "group"):
@@ -1266,21 +1259,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return None
 
-    def resolve_extrinsics(self, sample, source_frame, target_frame=None):
+    def resolve_extrinsics(self, sample, source_frame=None, target_frame=None):
         """Resolves sensor extrinsics for the given sample.
 
         Resolution precedence:
 
-            1. If sample has a ``camera_extrinsics`` or ``sensor_extrinsics``
-               field with matching source/target frames, use it
+            1. If sample has a field with a
+               :class:`fiftyone.core.camera.SensorExtrinsics` or
+               :class:`fiftyone.core.camera.SensorExtrinsicsRef` value (or a
+               list of them) with matching source/target frames, use it
 
             2. Look up in ``dataset.sensor_extrinsics`` using the key format
                ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
                target is ``"world"``)
 
+            3. If sample is from a grouped dataset and ``source_frame`` is None,
+               infer source_frame from group slice name and look up in
+               ``dataset.sensor_extrinsics``
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
-            source_frame: the source coordinate frame name
+            source_frame (None): the source coordinate frame name. If None and
+                sample is from a grouped dataset, inferred from group slice name
             target_frame (None): the target coordinate frame name. If None,
                 defaults to ``"world"``
 
@@ -1288,26 +1288,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
             found
         """
+        import fiftyone.core.camera as foc
+
         if target_frame is None:
             target_frame = "world"
 
-        # Check for sample-level extrinsics
-        for field_name in ("camera_extrinsics", "sensor_extrinsics"):
-            if sample.has_field(field_name):
-                value = sample.get_field(field_name)
-                if isinstance(value, list):
-                    for item in value:
+        # Try to infer source_frame from group slice if not provided
+        if source_frame is None:
+            if self.media_type == fom.GROUP and hasattr(sample, "group"):
+                try:
+                    source_frame = sample.group.name
+                except (AttributeError, KeyError):
+                    pass
+
+        # Check for sample-level extrinsics by matching type
+        for _, value in sample.iter_fields():
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(
+                        item, (foc.SensorExtrinsics, foc.SensorExtrinsicsRef)
+                    ):
                         ext = self._resolve_single_extrinsics(
                             item, source_frame, target_frame
                         )
                         if ext is not None:
                             return ext
-                else:
-                    ext = self._resolve_single_extrinsics(
-                        value, source_frame, target_frame
-                    )
-                    if ext is not None:
-                        return ext
+            elif isinstance(
+                value, (foc.SensorExtrinsics, foc.SensorExtrinsicsRef)
+            ):
+                ext = self._resolve_single_extrinsics(
+                    value, source_frame, target_frame
+                )
+                if ext is not None:
+                    return ext
+
+        if source_frame is None:
+            return None
 
         # Look up in dataset-level extrinsics
         key = f"{source_frame}::{target_frame}"
