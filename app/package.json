@@ -52,16 +52,23 @@
     ],
     "packageManager": "yarn@4.9.1+sha512.f95ce356460e05be48d66401c1ae64ef84d163dd689964962c6888a9810865e39097a5e9de748876c2e0bf89b232d583c33982773e9903ae7a76257270986538",
     "dependencies": {
+        "@dnd-kit/core": "^6.3.1",
+        "@dnd-kit/sortable": "^10.0.0",
+        "@dnd-kit/utilities": "^3.2.2",
+        "@headlessui/react": "^2.2.9",
         "@rjsf/core": "^6.0.2",
         "@rjsf/mui": "^6.0.2",
         "@rjsf/utils": "^6.0.2",
         "@rjsf/validator-ajv8": "^6.0.2",
+        "clsx": "^2.1.1",
         "colormap": "^2.3.2",
         "pixi-viewport": "^6.0.3",
         "react-player": "^2.16.0",
-        "react-plotly.js": "^2.6.0"
+        "react-plotly.js": "^2.6.0",
+        "tailwind-merge": "^3.4.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.2"
+        "brace-expansion": "^2.0.2",
+        "@voxel51/voodo": "portal:/Users/lanny/code/design-system"
     }
 }

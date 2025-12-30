@@ -25,6 +25,17 @@ async function loadConfig() {
       alias: {
         path: "path-browserify",
       },
+      dedupe: ["react", "react-dom", "react/jsx-runtime"],
+    },
+    optimizeDeps: {
+      include: [
+        "clsx",
+        "@headlessui/react",
+        "tailwind-merge",
+        "@dnd-kit/core",
+        "@dnd-kit/sortable",
+        "@dnd-kit/utilities",
+      ],
     },
     build: {
       rollupOptions: {
