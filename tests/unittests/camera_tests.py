@@ -428,12 +428,12 @@ class SensorExtrinsicsTests(unittest.TestCase):
     def test_covariance_validation(self):
         """Test that covariance must have 6 elements."""
         # Valid covariance
-        extrinsics = SensorExtrinsics(
+        # Should not raise - validation happens in __init__
+        SensorExtrinsics(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             covariance=[0.01, 0.01, 0.01, 0.001, 0.001, 0.001],
         )
-        # Should not raise - validation happens in __init__
 
         # Invalid covariance (wrong length) - should raise during construction
         with self.assertRaises(ValueError):
@@ -890,7 +890,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved.fx, 1200.0)  # Sample override
 
-    @drop_datasets
     @drop_datasets
     def test_resolve_extrinsics(self):
         """Test resolving extrinsics from dataset-level storage."""
