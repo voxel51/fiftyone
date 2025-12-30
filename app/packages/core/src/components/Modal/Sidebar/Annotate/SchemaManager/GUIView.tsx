@@ -1,35 +1,30 @@
+import { Tooltip } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
-import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
+import {
+  Chip,
+  Collapse,
+  Tooltip as MuiTooltip,
+  Typography,
+} from "@mui/material";
+import { RichList, Clickable, Pill, Size } from "@voxel51/voodo";
+import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { EditOutlined } from "@mui/icons-material";
 import {
   activePaths,
   addToActiveSchemas,
   inactivePaths,
   removeFromActiveSchemas,
   schema,
+  fieldType,
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
-import SortableFieldRow from "./SortableFieldRow";
+import { currentField } from "./state";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
 
 // Selection state for active fields
@@ -115,28 +110,62 @@ export const useDeactivateFields = () => {
   ]);
 };
 
+// Helper to build actions for a field row
+const FieldActions = ({ path }: { path: string }) => {
+  const setField = useSetAtom(currentField);
+
+  return (
+    <Tooltip placement="top-center" text="Configure annotation schema">
+      <Clickable
+        style={{ padding: 4, height: 29, width: 29 }}
+        onClick={() => setField(path)}
+      >
+        <EditOutlined fontSize="small" />
+      </Clickable>
+    </Tooltip>
+  );
+};
+
 const ActiveFieldsSection = () => {
   const [fields, setFields] = useAtom(activePaths);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+  const [selected, setSelected] = useAtom(selectedActiveFields);
+  const fieldTypes = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
+        ),
+      [fields]
+    )
   );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
+  const listItems = useMemo(
+    () =>
+      fields.map((path) => ({
+        id: path,
+        data: {
+          canSelect: true,
+          canDrag: true,
+          primaryContent: path,
+          secondaryContent: fieldTypes[path],
+          actions: <FieldActions path={path} />,
+        } as ListItemProps,
+      })),
+    [fields, fieldTypes]
+  );
 
-      if (over && active.id !== over.id) {
-        const oldIndex = fields.findIndex((path) => path === active.id);
-        const newIndex = fields.findIndex((path) => path === over.id);
-        const newOrder = arrayMove(fields, oldIndex, newIndex);
-        setFields(newOrder);
-      }
+  const handleOrderChange = useCallback(
+    (newItems: { id: string; data: ListItemProps }[]) => {
+      setFields(newItems.map((item) => item.id));
     },
-    [fields, setFields]
+    [setFields]
+  );
+
+  const handleSelected = useCallback(
+    (selectedIds: string[]) => {
+      setSelected(new Set(selectedIds));
+    },
+    [setSelected]
   );
 
   if (!fields.length) {
@@ -146,9 +175,9 @@ const ActiveFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
-          <Tooltip title="Fields currently active and available for dataset annotation">
+          <MuiTooltip title="Fields currently active and available for dataset annotation">
             <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-          </Tooltip>
+          </MuiTooltip>
           <Chip label="0" size="small" />
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
@@ -164,28 +193,17 @@ const ActiveFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
-        <Tooltip title="Fields currently active and available for dataset annotation">
+        <MuiTooltip title="Fields currently active and available for dataset annotation">
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-        </Tooltip>
+        </MuiTooltip>
         <Chip label={fields.length} size="small" />
       </GUISectionHeader>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={fields} strategy={verticalListSortingStrategy}>
-          {fields.map((path) => (
-            <SortableFieldRow
-              key={path}
-              id={path}
-              path={path}
-              isSelected={isActiveFieldSelected(path)}
-              hasSchema={true}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
+      <RichList
+        listItems={listItems}
+        draggable={true}
+        onOrderChange={handleOrderChange}
+        onSelected={handleSelected}
+      />
     </>
   );
 };
