@@ -2870,6 +2870,41 @@ def get_multiprocessing_context():
     return multiprocessing.get_context()
 
 
+def get_cpu_count():
+    """Get available CPU count, respecting container limits."""
+    # Must check cgroups first so container CPU limits are respected
+    # cgroups v2 (modern Docker/K8s)
+    try:
+        with open("/sys/fs/cgroup/cpu.max", "r") as f:
+            quota, period = f.read().strip().split()
+            if quota != "max":
+                return max(1, int(int(quota) / int(period)))
+    except (FileNotFoundError, ValueError, PermissionError):
+        pass
+
+    # cgroups v1 (older Docker/K8s)
+    try:
+        with open("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", "r") as f:
+            quota = int(f.read().strip())
+        with open("/sys/fs/cgroup/cpu/cpu.cfs_period_us", "r") as f:
+            period = int(f.read().strip())
+        if quota > 0:
+            return max(1, int(quota / period))
+    except (FileNotFoundError, ValueError, PermissionError):
+        pass
+
+    # CPU affinity to get total number of CPUs usable by the current process
+    try:
+        return len(os.sched_getaffinity(0))
+    except (AttributeError, OSError):
+        pass  # Not available on macOS/Windows
+
+    # Fallback to total CPUs in system.
+    # Use multiprocessing.cpu_count() instead of os.cpu_count() so that we throw an error
+    # if the CPU count cannot be determined and allow upstream handling of this case.
+    return multiprocessing.cpu_count()
+
+
 def recommend_thread_pool_workers(num_workers=None):
     """Recommends a number of workers for a thread pool.
 
@@ -2882,7 +2917,7 @@ def recommend_thread_pool_workers(num_workers=None):
         a number of workers
     """
     if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+        num_workers = get_cpu_count()
 
     if fo.config.max_thread_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_thread_pool_workers)
@@ -2930,7 +2965,7 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
                 else (
                     default_num_workers
                     if default_num_workers is not None
-                    else multiprocessing.cpu_count()
+                    else get_cpu_count()
                 )
             )
     except Exception:

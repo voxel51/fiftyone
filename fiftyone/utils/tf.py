@@ -23,6 +23,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
+from fiftyone.core.utils import get_cpu_count
 
 fou.ensure_tf(eager=True)
 import tensorflow as tf
@@ -189,7 +190,7 @@ def from_tf_records(
         a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos
     """
     if num_parallel_reads is not None and num_parallel_reads < 0:
-        num_parallel_reads = multiprocessing.cpu_count()
+        num_parallel_reads = get_cpu_count()
 
     return tf.data.TFRecordDataset(
         tf.data.Dataset.list_files(tf_records_patt),
