@@ -191,7 +191,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         """Test rotation matrix for identity quaternion."""
         extrinsics = SensorExtrinsics(
             translation=[0.0, 0.0, 0.0],
-            quaternion=[0.0, 0.0, 0.0, 1.0],  # identity
+            quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
         R = extrinsics.rotation_matrix
@@ -317,9 +317,12 @@ class SensorExtrinsicsTests(unittest.TestCase):
         self.assertEqual(composed.target_frame, "C")
 
         # Check transformation matrix: T_AC = T_BC @ T_AB
-        T1 = t1.extrinsic_matrix  # T_AB
-        T2 = t2.extrinsic_matrix  # T_BC
-        expected = T2 @ T1  # T_AC
+        # T_AB
+        T1 = t1.extrinsic_matrix
+        # T_BC
+        T2 = t2.extrinsic_matrix
+        # T_AC
+        expected = T2 @ T1
         nptest.assert_array_almost_equal(composed.extrinsic_matrix, expected)
 
         # Verify the composed transform does the right thing:
@@ -414,7 +417,6 @@ class SensorExtrinsicsTests(unittest.TestCase):
         t1 = SensorExtrinsics(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
-            # No source_frame or target_frame
         )
 
         t2 = SensorExtrinsics(
@@ -422,27 +424,23 @@ class SensorExtrinsicsTests(unittest.TestCase):
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
-        # Should not raise - frames are unspecified
         composed = t1.compose(t2)
         self.assertIsNone(composed.source_frame)
         self.assertIsNone(composed.target_frame)
 
     def test_covariance_validation(self):
         """Test that covariance must have 6 elements."""
-        # Valid covariance
-        # Should not raise - validation happens in __init__
         SensorExtrinsics(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             covariance=[0.01, 0.01, 0.01, 0.001, 0.001, 0.001],
         )
 
-        # Invalid covariance (wrong length) - should raise during construction
         with self.assertRaises(ValueError):
             SensorExtrinsics(
                 translation=[1.0, 0.0, 0.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
-                covariance=[0.01, 0.01],  # Only 2 elements
+                covariance=[0.01, 0.01],
             )
 
 
@@ -489,8 +487,10 @@ class CameraProjectorTests(unittest.TestCase):
         expected = np.array(
             [
                 [960.0, 540.0],
-                [960.0 + 100.0, 540.0],  # fx * (1/10) = 100
-                [960.0, 540.0 + 100.0],  # fy * (1/10) = 100
+                # fx * (1/10) = 100
+                [960.0 + 100.0, 540.0],
+                # fy * (1/10) = 100
+                [960.0, 540.0 + 100.0],
             ]
         )
         nptest.assert_array_almost_equal(points_2d, expected)
@@ -667,7 +667,8 @@ class CameraProjectorTests(unittest.TestCase):
             p1=0.001,
             p2=-0.001,
             k3=0.01,
-            k4=0.001,  # Rational model coefficient
+            # Rational model coefficient
+            k4=0.001,
             k5=0.0002,
             k6=0.0001,
         )
@@ -705,7 +706,7 @@ class CameraProjectorTests(unittest.TestCase):
         # (no rotation - identity quaternion)
         cam_to_world = SensorExtrinsics(
             translation=[0.0, 0.0, -5.0],
-            quaternion=[0.0, 0.0, 0.0, 1.0],  # identity
+            quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
@@ -825,7 +826,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.sensor_extrinsics = {"camera": extrinsics}
         dataset.save()
 
-        # Reload the dataset
         dataset2 = fo.load_dataset(name)
 
         self.assertIn("camera", dataset2.camera_intrinsics)
@@ -840,7 +840,6 @@ class DatasetIntegrationTests(unittest.TestCase):
             retrieved_extrinsics.translation, [1.0, 2.0, 3.0]
         )
 
-        # Cleanup
         dataset2.delete()
 
     @drop_datasets
@@ -890,7 +889,8 @@ class DatasetIntegrationTests(unittest.TestCase):
 
         resolved = dataset.resolve_intrinsics(sample)
         self.assertIsNotNone(resolved)
-        self.assertEqual(resolved.fx, 1200.0)  # Sample override
+        # Sample override
+        self.assertEqual(resolved.fx, 1200.0)
 
     @drop_datasets
     def test_resolve_extrinsics(self):
@@ -929,11 +929,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         sample = fo.Sample(filepath="test.pcd")
         dataset.add_sample(sample)
 
-        # Should find with explicit world target
         resolved = dataset.resolve_extrinsics(sample, "lidar", "world")
         self.assertIsNotNone(resolved)
 
-        # Should also find with implied world target (None)
         resolved2 = dataset.resolve_extrinsics(sample, "lidar")
         self.assertIsNotNone(resolved2)
 
@@ -962,7 +960,6 @@ class DatasetIntegrationTests(unittest.TestCase):
             "ego::world": ego_to_world,
         }
 
-        # Get camera -> world via ego
         transform = dataset.get_transform_chain(
             "camera", "world", intermediate_frames=["ego"]
         )
@@ -1006,21 +1003,18 @@ class DatasetIntegrationTests(unittest.TestCase):
         }
 
         sample = fo.Sample(filepath="test.jpg")
-        # Use list of references (all same type for mongoengine compatibility)
         sample["sensor_extrinsics"] = [
             SensorExtrinsicsRef(ref="camera::ego"),
             SensorExtrinsicsRef(ref="ego::world"),
         ]
         dataset.add_sample(sample)
 
-        # Should resolve camera -> ego from dataset via ref
         resolved_cam = dataset.resolve_extrinsics(sample, "camera", "ego")
         self.assertIsNotNone(resolved_cam)
         nptest.assert_array_almost_equal(
             resolved_cam.translation, [1.0, 0.0, 0.0]
         )
 
-        # Should resolve ego -> world from dataset via ref
         resolved_ego = dataset.resolve_extrinsics(sample, "ego", "world")
         self.assertIsNotNone(resolved_ego)
         nptest.assert_array_almost_equal(
@@ -1042,7 +1036,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
 
         # Dynamic ego to world pose stored inline on sample
-        # Use exact unit quaternion for small rotation around z-axis
         norm = math.sqrt(0.1**2 + 0.995**2)
         ego_to_world = SensorExtrinsics(
             translation=[100.0, 200.0, 0.0],
@@ -1052,15 +1045,12 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
         sample = fo.Sample(filepath="test.jpg")
-        # Store dynamic extrinsics directly (list of same type)
         sample["sensor_extrinsics"] = [ego_to_world]
         dataset.add_sample(sample)
 
-        # Should resolve camera -> ego from dataset level
         resolved_cam = dataset.resolve_extrinsics(sample, "camera", "ego")
         self.assertIsNotNone(resolved_cam)
 
-        # Should resolve ego -> world from sample's inline extrinsics
         resolved_ego = dataset.resolve_extrinsics(sample, "ego", "world")
         self.assertIsNotNone(resolved_ego)
         nptest.assert_array_almost_equal(
@@ -1085,7 +1075,6 @@ class DatasetIntegrationTests(unittest.TestCase):
             "camera_rear": intrinsics_rear,
         }
 
-        # Create grouped samples
         group = fo.Group()
         samples = [
             fo.Sample(
@@ -1099,20 +1088,16 @@ class DatasetIntegrationTests(unittest.TestCase):
         ]
         dataset.add_samples(samples)
 
-        # Get sample from camera_front slice (default)
         dataset.group_slice = "camera_front"
         sample_front = dataset.first()
 
-        # Should resolve intrinsics by inferring from group slice name
         resolved_front = dataset.resolve_intrinsics(sample_front)
         self.assertIsNotNone(resolved_front)
         self.assertEqual(resolved_front.fx, 1000.0)
 
-        # Get sample from camera_rear slice
         dataset.group_slice = "camera_rear"
         sample_rear = dataset.first()
 
-        # Should resolve intrinsics by inferring from group slice name
         resolved_rear = dataset.resolve_intrinsics(sample_rear)
         self.assertIsNotNone(resolved_rear)
         self.assertEqual(resolved_rear.fx, 800.0)
@@ -1123,13 +1108,11 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="camera_front")
 
-        # Set up intrinsics for only camera_front
         intrinsics_front = PinholeCameraIntrinsics(
             fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
         )
         dataset.camera_intrinsics = {"camera_front": intrinsics_front}
 
-        # Create grouped samples
         group = fo.Group()
         samples = [
             fo.Sample(
@@ -1138,16 +1121,15 @@ class DatasetIntegrationTests(unittest.TestCase):
             ),
             fo.Sample(
                 filepath="side.jpg",
-                group=group.element("camera_side"),  # No intrinsics for this
+                # No intrinsics for this
+                group=group.element("camera_side"),
             ),
         ]
         dataset.add_samples(samples)
 
-        # Get sample from camera_side slice (no intrinsics defined)
         dataset.group_slice = "camera_side"
         sample_side = dataset.first()
 
-        # Should return None since camera_side not in camera_intrinsics
         resolved = dataset.resolve_intrinsics(sample_side)
         self.assertIsNone(resolved)
 
@@ -1175,7 +1157,6 @@ class DatasetIntegrationTests(unittest.TestCase):
             "camera_rear": extrinsics_rear,
         }
 
-        # Create grouped samples
         group = fo.Group()
         samples = [
             fo.Sample(
@@ -1189,20 +1170,16 @@ class DatasetIntegrationTests(unittest.TestCase):
         ]
         dataset.add_samples(samples)
 
-        # Get sample from camera_front slice
         dataset.group_slice = "camera_front"
         sample_front = dataset.first()
 
-        # Should resolve extrinsics by inferring source_frame from group slice name
         resolved_front = dataset.resolve_extrinsics(sample_front)
         self.assertIsNotNone(resolved_front)
         self.assertEqual(resolved_front.translation[0], 1.0)
 
-        # Get sample from camera_rear slice
         dataset.group_slice = "camera_rear"
         sample_rear = dataset.first()
 
-        # Should resolve extrinsics by inferring source_frame from group slice name
         resolved_rear = dataset.resolve_extrinsics(sample_rear)
         self.assertIsNotNone(resolved_rear)
         self.assertEqual(resolved_rear.translation[0], -1.0)
@@ -1213,7 +1190,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="camera_front")
 
-        # Set up extrinsics for only camera_front
         extrinsics_front = SensorExtrinsics(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -1222,7 +1198,6 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
         dataset.sensor_extrinsics = {"camera_front": extrinsics_front}
 
-        # Create grouped samples
         group = fo.Group()
         samples = [
             fo.Sample(
@@ -1236,11 +1211,9 @@ class DatasetIntegrationTests(unittest.TestCase):
         ]
         dataset.add_samples(samples)
 
-        # Get sample from camera_side slice (no extrinsics defined)
         dataset.group_slice = "camera_side"
         sample_side = dataset.first()
 
-        # Should return None since camera_side not in sensor_extrinsics
         resolved = dataset.resolve_extrinsics(sample_side)
         self.assertIsNone(resolved)
 
@@ -1260,7 +1233,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             target_frame="ego",
         )
 
-        # Should not raise
         dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
 
         self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
@@ -1277,7 +1249,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             target_frame="world",
         )
 
-        # Should not raise - key "lidar" implies target_frame="world"
         dataset.sensor_extrinsics = {"lidar": extrinsics}
 
         self.assertIn("lidar", dataset.sensor_extrinsics)
@@ -1293,7 +1264,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             # source_frame and target_frame are None
         )
 
-        # Should not raise - no validation when fields are None
         dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
 
         self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
@@ -1345,7 +1315,8 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             translation=[0.0, 0.0, 2.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="lidar",
-            target_frame="ego",  # Key "lidar" implies "world", not "ego"
+            # Key "lidar" implies "world", not "ego"
+            target_frame="ego",
         )
 
         with self.assertRaises(ValueError) as cm:
@@ -1381,7 +1352,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             ),
         }
 
-        # Should not raise
         dataset.sensor_extrinsics = extrinsics_dict
 
         self.assertEqual(len(dataset.sensor_extrinsics), 3)
@@ -1399,7 +1369,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             # target_frame is None
         )
 
-        # Should not raise
         dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
 
     @drop_datasets
@@ -1415,7 +1384,6 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             target_frame="ego",
         )
 
-        # Should not raise
         dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
 
 
@@ -1625,6 +1593,104 @@ class CustomDerivationTests(unittest.TestCase):
         points_2d = projector.project(points_3d, in_camera_frame=True)
 
         nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
+
+
+class CameraPersistenceTests(unittest.TestCase):
+    """Tests for camera data model persistence through database round-trips.
+
+    These tests verify that camera_intrinsics and sensor_extrinsics are
+    properly re-instantiated as their correct class types
+    after loading a dataset from the database.
+    """
+
+    @drop_datasets
+    def test_intrinsics_type_preserved_after_reload(self):
+        """Test that camera_intrinsics values are CameraIntrinsics instances after reload."""
+        dataset = fo.Dataset()
+        dataset.persistent = True
+        name = dataset.name
+
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+        dataset.camera_intrinsics = {"camera_front": intrinsics}
+        dataset.save()
+
+        dataset2 = fo.load_dataset(name)
+
+        retrieved = dataset2.camera_intrinsics["camera_front"]
+
+        self.assertIsInstance(retrieved, CameraIntrinsics)
+        self.assertNotIsInstance(retrieved, dict)
+
+        dataset2.delete()
+
+    @drop_datasets
+    def test_intrinsics_polymorphism_preserved_after_reload(self):
+        """Test that CameraIntrinsics subclasses are correctly restored after reload."""
+        dataset = fo.Dataset()
+        dataset.persistent = True
+        name = dataset.name
+
+        pinhole = PinholeCameraIntrinsics(
+            fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
+        )
+        opencv = OpenCVCameraIntrinsics(
+            fx=1200.0, fy=1200.0, cx=640.0, cy=480.0, k1=-0.1, k2=0.05
+        )
+        fisheye = OpenCVFisheyeCameraIntrinsics(
+            fx=500.0, fy=500.0, cx=320.0, cy=240.0, k1=0.1, k2=-0.05
+        )
+
+        dataset.camera_intrinsics = {
+            "pinhole": pinhole,
+            "opencv": opencv,
+            "fisheye": fisheye,
+        }
+        dataset.save()
+
+        dataset2 = fo.load_dataset(name)
+
+        self.assertIsInstance(
+            dataset2.camera_intrinsics["pinhole"], PinholeCameraIntrinsics
+        )
+        self.assertIsInstance(
+            dataset2.camera_intrinsics["opencv"], OpenCVCameraIntrinsics
+        )
+        self.assertIsInstance(
+            dataset2.camera_intrinsics["fisheye"],
+            OpenCVFisheyeCameraIntrinsics,
+        )
+
+        dataset2.delete()
+
+    @drop_datasets
+    def test_extrinsics_type_preserved_after_reload(self):
+        """Test that sensor_extrinsics values are SensorExtrinsics instances after reload."""
+        dataset = fo.Dataset()
+        dataset.persistent = True
+        name = dataset.name
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.0, 2.0, 3.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="world",
+        )
+        dataset.sensor_extrinsics = {"camera": extrinsics}
+        dataset.save()
+
+        dataset2 = fo.load_dataset(name)
+
+        retrieved = dataset2.sensor_extrinsics["camera"]
+
+        self.assertIsInstance(retrieved, SensorExtrinsics)
+        self.assertNotIsInstance(retrieved, dict)
+
+        dataset2.delete()
 
 
 if __name__ == "__main__":
