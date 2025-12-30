@@ -2693,10 +2693,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@fiftyone/fiftyone@workspace:."
   dependencies:
-    "@dnd-kit/core": "npm:^6.3.1"
-    "@dnd-kit/sortable": "npm:^10.0.0"
-    "@dnd-kit/utilities": "npm:^3.2.2"
-    "@headlessui/react": "npm:^2.2.9"
     "@rjsf/core": "npm:^6.0.2"
     "@rjsf/mui": "npm:^6.0.2"
     "@rjsf/utils": "npm:^6.0.2"
@@ -2708,7 +2704,6 @@ __metadata:
     "@typescript-eslint/parser": "npm:^5.44.0"
     "@vitest/coverage-v8": "npm:^3.0.8"
     "@vitest/ui": "npm:^2.0.5"
-    clsx: "npm:^2.1.1"
     colormap: "npm:^2.3.2"
     concurrently: "npm:^7.2.1"
     eslint: "npm:^8.28.0"
@@ -2724,7 +2719,6 @@ __metadata:
     react-plotly.js: "npm:^2.6.0"
     relay-compiler: "npm:^14.1.0"
     relay-runtime: "npm:^14.1.0"
-    tailwind-merge: "npm:^3.4.0"
     typedoc: "npm:^0.23.21"
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.0.2"
