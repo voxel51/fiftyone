@@ -1261,7 +1261,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return None
 
-    def resolve_extrinsics(self, sample, source_frame=None, target_frame=None):
+    def resolve_extrinsics(
+        self, sample, source_frame=None, target_frame=None, chain_via=None
+    ):
         """Resolves sensor extrinsics for the given sample.
 
         Resolution precedence:
@@ -1279,16 +1281,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                infer source_frame from group slice name and look up in
                ``dataset.sensor_extrinsics``
 
+            4. If ``chain_via`` is provided and no direct match is found,
+               chain transforms through the intermediate frames
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
             source_frame (None): the source coordinate frame name. If None and
                 sample is from a grouped dataset, inferred from group slice name
             target_frame (None): the target coordinate frame name. If None,
                 defaults to ``"world"``
+            chain_via (None): optional list of intermediate frame names to
+                chain through if a direct transform is not found. For example,
+                ``chain_via=["ego"]`` would attempt to resolve
+                ``source_frame -> ego -> target_frame`` by composing individual
+                transforms
 
         Returns:
             a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
             found
+
+        Example::
+
+            # Direct lookup
+            transform = dataset.resolve_extrinsics(sample, "camera", "world")
+
+            # Chain through intermediate frame
+            transform = dataset.resolve_extrinsics(
+                sample, "camera", "world", chain_via=["ego"]
+            )
         """
         import fiftyone.core.camera as foc
 
@@ -1311,6 +1331,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         source_frame = group.name
                     except (AttributeError, KeyError):
                         pass
+
+        # Try direct resolution first
+        result = self._resolve_extrinsics_direct(
+            sample, source_frame, target_frame, extrinsics
+        )
+        if result is not None:
+            return result
+
+        # If chain_via is provided, try chaining through intermediate frames
+        if chain_via is not None and source_frame is not None:
+            return self._resolve_extrinsics_chain(
+                sample, source_frame, target_frame, chain_via, extrinsics
+            )
+
+        return None
+
+    def _resolve_extrinsics_direct(
+        self, sample, source_frame, target_frame, extrinsics
+    ):
+        """Directly resolve extrinsics without chaining."""
+        import fiftyone.core.camera as foc
 
         # Check for sample-level extrinsics by matching type
         for _, value in sample.iter_fields():
@@ -1346,6 +1387,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return extrinsics[source_frame]
 
         return None
+
+    def _resolve_extrinsics_chain(
+        self, sample, source_frame, target_frame, chain_via, extrinsics
+    ):
+        """Resolve extrinsics by chaining through intermediate frames."""
+        frames = [source_frame] + list(chain_via) + [target_frame]
+
+        result = None
+        for src, tgt in zip(frames, frames[1:]):
+            transform = self._resolve_extrinsics_direct(
+                sample, src, tgt, extrinsics
+            )
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
 
     def _resolve_single_extrinsics(self, value, source_frame, target_frame):
         """Helper to resolve a single extrinsics value."""

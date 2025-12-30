@@ -914,6 +914,80 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved.target_frame, "ego")
 
     @drop_datasets
+    def test_resolve_extrinsics_sample_override(self):
+        """Test that sample-level extrinsics override dataset-level."""
+        dataset = fo.Dataset()
+
+        dataset_extrinsics = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+        dataset.sensor_extrinsics = {"camera_front::ego": dataset_extrinsics}
+
+        sample_extrinsics = SensorExtrinsics(
+            translation=[99.0, 88.0, 77.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+
+        sample = fo.Sample(filepath="test.jpg")
+        sample["sensor_extrinsics"] = sample_extrinsics
+        dataset.add_sample(sample)
+
+        resolved = dataset.resolve_extrinsics(sample, "camera_front", "ego")
+        self.assertIsNotNone(resolved)
+        # Sample-level should take precedence over dataset-level
+        nptest.assert_array_almost_equal(
+            resolved.translation, [99.0, 88.0, 77.0]
+        )
+
+    @drop_datasets
+    def test_resolve_extrinsics_sample_override_in_group(self):
+        """Test that sample-level extrinsics override dataset-level in grouped datasets."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="camera_front")
+
+        # Dataset-level extrinsics keyed by slice name (group inference would find this)
+        dataset_extrinsics = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="world",
+        )
+        dataset.sensor_extrinsics = {"camera_front": dataset_extrinsics}
+
+        # Sample-level extrinsics should take precedence
+        sample_extrinsics = SensorExtrinsics(
+            translation=[99.0, 88.0, 77.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="world",
+        )
+
+        group = fo.Group()
+        sample = fo.Sample(
+            filepath="front.jpg",
+            group=group.element("camera_front"),
+        )
+        sample["sensor_extrinsics"] = sample_extrinsics
+        dataset.add_sample(sample)
+
+        dataset.group_slice = "camera_front"
+        sample_front = dataset.first()
+
+        # Even without specifying source_frame (letting it infer from group),
+        # sample-level extrinsics should take precedence
+        resolved = dataset.resolve_extrinsics(sample_front)
+        self.assertIsNotNone(resolved)
+        # Sample-level should take precedence over dataset-level/group inference
+        nptest.assert_array_almost_equal(
+            resolved.translation, [99.0, 88.0, 77.0]
+        )
+
+    @drop_datasets
     def test_resolve_extrinsics_implied_world(self):
         """Test resolving extrinsics with implied world target."""
         dataset = fo.Dataset()
@@ -977,6 +1051,202 @@ class DatasetIntegrationTests(unittest.TestCase):
 
         result = dataset.get_transform_chain("camera", "world")
         self.assertIsNone(result)
+
+    @drop_datasets
+    def test_resolve_extrinsics_chain_via_dataset_level(self):
+        """Test resolve_extrinsics with chain_via using dataset-level transforms."""
+        dataset = fo.Dataset()
+
+        # camera -> ego (dataset level)
+        cam_to_ego = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+        )
+        # ego -> world (dataset level)
+        ego_to_world = SensorExtrinsics(
+            translation=[0.0, 10.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+
+        dataset.sensor_extrinsics = {
+            "camera::ego": cam_to_ego,
+            "ego::world": ego_to_world,
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        # Direct lookup should fail (no camera::world)
+        resolved_direct = dataset.resolve_extrinsics(sample, "camera", "world")
+        self.assertIsNone(resolved_direct)
+
+        # Chain via ego should work
+        resolved_chain = dataset.resolve_extrinsics(
+            sample, "camera", "world", chain_via=["ego"]
+        )
+        self.assertIsNotNone(resolved_chain)
+
+        # Composed transform: [1, 0, 0] + [0, 10, 0] = [1, 10, 0]
+        nptest.assert_array_almost_equal(
+            resolved_chain.translation, [1.0, 10.0, 0.0]
+        )
+        self.assertEqual(resolved_chain.source_frame, "camera")
+        self.assertEqual(resolved_chain.target_frame, "world")
+
+    @drop_datasets
+    def test_resolve_extrinsics_chain_via_mixed_levels(self):
+        """Test resolve_extrinsics with chain_via mixing sample and dataset levels."""
+        dataset = fo.Dataset()
+
+        # camera -> ego (dataset level, static calibration)
+        cam_to_ego = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+        )
+        dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
+
+        # ego -> world (sample level, dynamic pose)
+        ego_to_world = SensorExtrinsics(
+            translation=[100.0, 50.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+
+        sample = fo.Sample(filepath="test.jpg")
+        sample["ego_pose"] = ego_to_world
+        dataset.add_sample(sample)
+
+        # Chain via ego: dataset-level camera->ego + sample-level ego->world
+        resolved = dataset.resolve_extrinsics(
+            sample, "camera", "world", chain_via=["ego"]
+        )
+        self.assertIsNotNone(resolved)
+
+        # Composed transform: [1, 0, 0] + [100, 50, 0] = [101, 50, 0]
+        nptest.assert_array_almost_equal(
+            resolved.translation, [101.0, 50.0, 0.0]
+        )
+
+    @drop_datasets
+    def test_resolve_extrinsics_chain_via_missing_hop(self):
+        """Test that chain_via returns None if any hop is missing."""
+        dataset = fo.Dataset()
+
+        # Only camera -> ego, missing ego -> world
+        cam_to_ego = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+        )
+        dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        # Chain should fail because ego->world is missing
+        resolved = dataset.resolve_extrinsics(
+            sample, "camera", "world", chain_via=["ego"]
+        )
+        self.assertIsNone(resolved)
+
+    @drop_datasets
+    def test_resolve_extrinsics_chain_via_in_group(self):
+        """Test resolve_extrinsics with chain_via in a grouped dataset."""
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="left")
+
+        # left -> ego (dataset level, static calibration)
+        left_to_ego = SensorExtrinsics(
+            translation=[1.5, 0.5, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="left",
+            target_frame="ego",
+        )
+        dataset.sensor_extrinsics = {"left::ego": left_to_ego}
+
+        # ego -> world (sample level, dynamic pose)
+        ego_to_world = SensorExtrinsics(
+            translation=[100.0, 50.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+
+        group = fo.Group()
+        sample = fo.Sample(
+            filepath="left.jpg",
+            group=group.element("left"),
+        )
+        sample["ego_pose"] = ego_to_world
+        dataset.add_sample(sample)
+
+        dataset.group_slice = "left"
+        sample_left = dataset.first()
+
+        # Without source_frame (inferred from group slice), chain via ego
+        resolved = dataset.resolve_extrinsics(
+            sample_left, target_frame="world", chain_via=["ego"]
+        )
+        self.assertIsNotNone(resolved)
+
+        # Composed: [1.5, 0.5, 1.2] + [100, 50, 0] = [101.5, 50.5, 1.2]
+        nptest.assert_array_almost_equal(
+            resolved.translation, [101.5, 50.5, 1.2]
+        )
+
+    @drop_datasets
+    def test_resolve_extrinsics_direct_takes_priority_over_chain(self):
+        """Test that direct match is returned even when chain_via is provided."""
+        dataset = fo.Dataset()
+
+        # Direct camera -> world
+        cam_to_world_direct = SensorExtrinsics(
+            translation=[999.0, 888.0, 777.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="world",
+        )
+        # Also have camera -> ego -> world path
+        cam_to_ego = SensorExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+        )
+        ego_to_world = SensorExtrinsics(
+            translation=[0.0, 10.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+
+        dataset.sensor_extrinsics = {
+            "camera::world": cam_to_world_direct,
+            "camera::ego": cam_to_ego,
+            "ego::world": ego_to_world,
+        }
+
+        sample = fo.Sample(filepath="test.jpg")
+        dataset.add_sample(sample)
+
+        # Even with chain_via, direct match should be returned
+        resolved = dataset.resolve_extrinsics(
+            sample, "camera", "world", chain_via=["ego"]
+        )
+        self.assertIsNotNone(resolved)
+
+        # Should get the direct transform, not the chained one
+        nptest.assert_array_almost_equal(
+            resolved.translation, [999.0, 888.0, 777.0]
+        )
 
     @drop_datasets
     def test_sample_with_multiple_extrinsics_refs(self):
