@@ -14,9 +14,11 @@ import numpy.testing as nptest
 from decorators import drop_datasets
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 from fiftyone.core.camera import (
     CameraExtrinsics,
     CameraExtrinsicsRef,
+    CameraIntrinsics,
     CameraIntrinsicsRef,
     CameraProjector,
     OpenCVCameraIntrinsics,
@@ -1454,6 +1456,175 @@ class PolymorphicIntrinsicsTests(unittest.TestCase):
             dataset.camera_intrinsics["camera_fisheye"],
             OpenCVFisheyeCameraIntrinsics,
         )
+
+
+class CustomDerivationTests(unittest.TestCase):
+    """Tests for custom classes derived from CameraIntrinsics and CameraExtrinsics."""
+
+    def test_custom_camera_intrinsics_derivation(self):
+        """Test that customers can derive custom classes from CameraIntrinsics."""
+
+        class CustomIntrinsics(CameraIntrinsics):
+            """Custom intrinsics with additional field."""
+
+            custom_field = fof.StringField(default="custom_value")
+
+        intrinsics = CustomIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+            custom_field="test_value",
+        )
+
+        self.assertEqual(intrinsics.fx, 1000.0)
+        self.assertEqual(intrinsics.fy, 1000.0)
+        self.assertEqual(intrinsics.cx, 960.0)
+        self.assertEqual(intrinsics.cy, 540.0)
+        self.assertEqual(intrinsics.custom_field, "test_value")
+
+        K = intrinsics.intrinsic_matrix
+        self.assertEqual(K.shape, (3, 3))
+        self.assertEqual(K[0, 0], 1000.0)
+        self.assertEqual(K[1, 1], 1000.0)
+
+    def test_custom_camera_intrinsics_serialization(self):
+        """Test serialization of custom CameraIntrinsics subclass."""
+
+        class CustomIntrinsics(CameraIntrinsics):
+            custom_field = fof.StringField(default="default")
+
+        intrinsics = CustomIntrinsics(
+            fx=1000.0, fy=1000.0, cx=960.0, cy=540.0, custom_field="test"
+        )
+
+        d = intrinsics.to_dict()
+        intrinsics2 = CustomIntrinsics.from_dict(d)
+
+        self.assertEqual(intrinsics2.fx, 1000.0)
+        self.assertEqual(intrinsics2.custom_field, "test")
+
+    def test_custom_camera_extrinsics_derivation(self):
+        """Test that customers can derive custom classes from CameraExtrinsics."""
+
+        class CustomExtrinsics(SensorExtrinsics):
+            """Custom extrinsics with additional field."""
+
+            custom_field = fof.StringField(default="custom_value")
+
+        extrinsics = CustomExtrinsics(
+            translation=[1.0, 2.0, 3.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            custom_field="test_value",
+        )
+
+        self.assertEqual(extrinsics.translation, [1.0, 2.0, 3.0])
+        self.assertEqual(extrinsics.quaternion, [0.0, 0.0, 0.0, 1.0])
+        self.assertEqual(extrinsics.custom_field, "test_value")
+
+        R = extrinsics.rotation_matrix
+        nptest.assert_array_almost_equal(R, np.eye(3))
+
+        T = extrinsics.extrinsic_matrix
+        self.assertEqual(T.shape, (4, 4))
+
+    def test_custom_camera_extrinsics_alias_derivation(self):
+        """Test that customers can derive from CameraExtrinsics alias."""
+
+        class CustomExtrinsics(CameraExtrinsics):
+            custom_field = fof.StringField(default="default")
+
+        extrinsics = CustomExtrinsics(
+            translation=[1.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            custom_field="test",
+        )
+
+        self.assertEqual(extrinsics.translation, [1.0, 0.0, 0.0])
+        self.assertEqual(extrinsics.custom_field, "test")
+
+    def test_custom_extrinsics_serialization(self):
+        """Test serialization of custom CameraExtrinsics subclass."""
+
+        class CustomExtrinsics(SensorExtrinsics):
+            custom_field = fof.StringField(default="default")
+
+        extrinsics = CustomExtrinsics(
+            translation=[1.0, 2.0, 3.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            custom_field="test",
+        )
+
+        d = extrinsics.to_dict()
+        extrinsics2 = CustomExtrinsics.from_dict(d)
+
+        nptest.assert_array_almost_equal(
+            extrinsics2.translation, [1.0, 2.0, 3.0]
+        )
+        self.assertEqual(extrinsics2.custom_field, "test")
+
+    @drop_datasets
+    def test_custom_intrinsics_with_dataset(self):
+        """Test using custom CameraIntrinsics subclass with dataset."""
+
+        class CustomIntrinsics(CameraIntrinsics):
+            sensor_id = fof.StringField(default="unknown")
+
+        dataset = fo.Dataset()
+
+        intrinsics = CustomIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+            sensor_id="camera_001",
+        )
+
+        dataset.camera_intrinsics = {"custom_camera": intrinsics}
+
+        retrieved = dataset.camera_intrinsics["custom_camera"]
+        self.assertIsInstance(retrieved, CustomIntrinsics)
+        self.assertEqual(retrieved.fx, 1000.0)
+        self.assertEqual(retrieved.sensor_id, "camera_001")
+
+    @drop_datasets
+    def test_custom_extrinsics_with_dataset(self):
+        """Test using custom CameraExtrinsics subclass with dataset."""
+
+        class CustomExtrinsics(SensorExtrinsics):
+            sensor_id = fof.StringField(default="unknown")
+
+        dataset = fo.Dataset()
+
+        extrinsics = CustomExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+            sensor_id="camera_001",
+        )
+
+        dataset.sensor_extrinsics = {"camera::ego": extrinsics}
+
+        retrieved = dataset.sensor_extrinsics["camera::ego"]
+        self.assertIsInstance(retrieved, CustomExtrinsics)
+        self.assertEqual(retrieved.source_frame, "camera")
+        self.assertEqual(retrieved.sensor_id, "camera_001")
+
+    def test_custom_intrinsics_with_projector(self):
+        """Test using custom CameraIntrinsics with CameraProjector."""
+
+        class CustomIntrinsics(CameraIntrinsics):
+            pass
+
+        intrinsics = CustomIntrinsics(fx=1000.0, fy=1000.0, cx=960.0, cy=540.0)
+
+        projector = CameraProjector(intrinsics)
+
+        points_3d = np.array([[0.0, 0.0, 10.0]])
+        points_2d = projector.project(points_3d, in_camera_frame=True)
+
+        nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
 
 
 if __name__ == "__main__":

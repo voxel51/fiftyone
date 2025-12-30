@@ -54,8 +54,6 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
         K = intrinsics.intrinsic_matrix
     """
 
-    meta = {"allow_inheritance": True}
-
     fx = fof.FloatField(required=True)
     fy = fof.FloatField(required=True)
     cx = fof.FloatField(required=True)
@@ -345,8 +343,6 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         T = extrinsics.extrinsic_matrix
     """
 
-    meta = {"allow_inheritance": True}
-
     translation = fof.ListField(fof.FloatField(), default=None)
     quaternion = fof.ListField(fof.FloatField(), default=None)
     source_frame = fof.StringField(default=None)
@@ -551,8 +547,6 @@ class CameraIntrinsicsRef(EmbeddedDocument):
         sample["intrinsics"] = fo.CameraIntrinsicsRef(ref="camera_front")
     """
 
-    meta = {"strict": False}
-
     ref = fof.StringField(required=True)
 
 
@@ -576,8 +570,6 @@ class SensorExtrinsicsRef(EmbeddedDocument):
             fo.SensorExtrinsicsRef(ref="camera_front::ego"),
         ]
     """
-
-    meta = {"strict": False}
 
     ref = fof.StringField(required=True)
 
