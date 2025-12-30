@@ -31,6 +31,7 @@ const ImportSchema = (
 ) => {
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
+
   return (
     <Container>
       <MuiIconFont

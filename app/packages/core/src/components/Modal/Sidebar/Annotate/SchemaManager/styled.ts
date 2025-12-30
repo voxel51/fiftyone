@@ -1,4 +1,4 @@
-import { Close as CloseIcon, West as BackIcon } from "@mui/icons-material";
+import { West as BackIcon, Close as CloseIcon } from "@mui/icons-material";
 import { Box, Typography } from "@mui/material";
 import styled from "styled-components";
 
@@ -32,7 +32,7 @@ export const EditContainer = styled.div`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin-bottom: 64px;
+  margin-bottom: 2rem;
 `;
 
 export const EditSectionHeader = styled.div`
@@ -194,7 +194,7 @@ export const ModalContainer = styled.div`
   width: 800px;
   max-width: 90%;
   height: 90%;
-  padding: 2rem;
+  padding: 2rem 2rem 3rem 2rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
   border-radius: 4px;

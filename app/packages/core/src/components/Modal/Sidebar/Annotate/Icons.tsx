@@ -6,7 +6,6 @@ import {
   VisibilityOffOutlined,
   VisibilityOutlined,
 } from "@mui/icons-material";
-import React from "react";
 import styled from "styled-components";
 
 export const Container = styled.div`
@@ -87,10 +86,10 @@ export const Shown = ({ on }: { on: boolean }) => {
 };
 
 export const ICONS = {
-  Classification: Classification,
-  Classifications: Classification,
-  Detection: Detection,
-  Detections: Detection,
-  Polyline: Polyline,
-  Polylines: Polyline,
+  classification: Classification,
+  classifications: Classification,
+  detection: Detection,
+  detections: Detection,
+  polyline: Polyline,
+  polylines: Polyline,
 };
