@@ -8195,6 +8195,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_skeleton", None)
         )
 
+        dataset._doc.camera_intrinsics = dataset._parse_camera_intrinsics(
+            d.get("camera_intrinsics", {})
+        )
+        dataset._doc.sensor_extrinsics = dataset._parse_sensor_extrinsics(
+            d.get("sensor_extrinsics", {})
+        )
+
         dataset.save()
 
         def parse_sample(sd):
