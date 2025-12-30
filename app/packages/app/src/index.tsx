@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import Network from "./Network";
 import "./index.css";
+import "@voxel51/voodo/theme.css";
 import { useRouter } from "./routing";
 
 const App: React.FC = () => {
