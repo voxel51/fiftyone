@@ -40,7 +40,7 @@ datasets and use this to query your data is as follows:
     a model to use to generate embeddings
 
 3)  Use the :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
-    methodto generate a Milvus similarity index for the samples or object
+    method to generate a Milvus similarity index for the samples or object
     patches in a dataset by setting the parameter `backend="milvus"` and
     specifying a `brain_key` of your choice
 
@@ -184,7 +184,7 @@ variety of ways.
 **Environment variables (recommended)**
 
 The recommended way to configure your Milvus credentials is to store them
-in the environment variables shown below, which are  automatically accessed by
+in the environment variables shown below, which are automatically accessed by
 FiftyOne whenever a connection to Milvus is made.
 
 .. code-block:: shell
