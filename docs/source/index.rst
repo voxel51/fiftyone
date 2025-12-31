@@ -568,6 +568,7 @@ us at support@voxel51.com.
    Integrations <integrations/index>
    CLI <cli/index>
    API Reference <api/fiftyone>
+   Contribute <contribute/index>
    Release Notes <release-notes>
    Deprecation Notices <deprecation>
    FAQ <faq/index>
