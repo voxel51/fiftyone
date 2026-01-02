@@ -146,6 +146,18 @@ export interface Renderer2D {
   getScale(): number;
 
   /**
+   * Returns the current viewport position (pan offset).
+   * @returns The viewport position { x, y }.
+   */
+  getViewportPosition(): { x: number; y: number };
+
+  /**
+   * Check if the renderer is initialized and ready to use.
+   * @returns True if the renderer is ready.
+   */
+  isReady(): boolean;
+
+  /**
    * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
