@@ -106,7 +106,9 @@ development environment:
 
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-    Tip: add this to your shell profile to make it permanent.
+    .. tip::
+
+        Add this to your shell profile to make it permanent.
 
     **Step 4: Create a branch and make changes**
 
@@ -165,7 +167,9 @@ development environment:
 
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-    Tip: add this to your shell profile to make it permanent.
+    .. tip::
+
+        Add this to your shell profile to make it permanent.
 
     **Step 4: Create a branch and make changes**
 
@@ -249,7 +253,9 @@ development environment:
 
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-    Tip: add this to your shell profile to make it permanent.
+    .. tip::
+
+        Add this to your shell profile to make it permanent.
 
     **Step 4: Create a branch and make changes**
 
