@@ -298,7 +298,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean {
+  onHoverLeave?(point?: Point, event?: PointerEvent): boolean {
     this.isHoveredState = false;
     this.markDirty();
     return true;
@@ -311,7 +311,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove(point: Point, event: PointerEvent): boolean {
+  onHoverMove(point?: Point, event?: PointerEvent): boolean {
     return true;
   }
 

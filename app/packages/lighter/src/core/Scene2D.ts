@@ -34,6 +34,7 @@ import type {
   CanonicalMedia,
   CoordinateSystem,
   DrawStyle,
+  Hoverable,
   Point,
   Rect,
   Spatial,
@@ -52,6 +53,13 @@ import {
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 
 export const TypeGuards = {
+  isHoverable: (
+    body: Partial<BaseOverlay & Hoverable>
+  ): body is BaseOverlay & Hoverable =>
+    "getTooltipInfo" in body &&
+    "onHoverEnter" in body &&
+    "onHoverLeave" in body &&
+    "onHoverMove" in body,
   isSelectable: (
     body: BaseOverlay | InteractionHandler
   ): body is BaseOverlay & InteractionHandler & Selectable =>

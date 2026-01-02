@@ -6,6 +6,8 @@ const DEFAULT_EPSILON = 1e-4;
 const DEFAULT_HARD_TIMEOUT_MS = 5000;
 
 type Options = {
+  // If the number of primary assets is 0, we don't compute bounds
+  numPrimaryAssets?: number;
   // Consecutive identical reads required
   stableSamples?: number;
   // Equality tolerance
@@ -46,7 +48,10 @@ export function useFo3dBounds(
     stableSamples = DEFAULT_STABLE_SAMPLES,
     epsilon = DEFAULT_EPSILON,
     hardTimeoutMs = DEFAULT_HARD_TIMEOUT_MS,
+    numPrimaryAssets = 1,
   } = opts;
+
+  const skip = numPrimaryAssets === 0;
 
   const [boundingBox, setBoundingBox] = useState<Box3 | null>(null);
   const [isComputing, setIsComputing] = useState(false);
@@ -120,19 +125,23 @@ export function useFo3dBounds(
   }, [computeOnce, hardTimeoutMs, epsilon, stableSamples]);
 
   const recomputeBounds = useCallback(() => {
+    if (skip) return;
     // Invalidate current run; next startLoop will own a new token
     runToken.current++;
     startLoop();
-  }, [startLoop]);
+  }, [startLoop, skip]);
 
   useLayoutEffect(() => {
+    // Fast path: no assets means no bounds to compute
+    if (skip) return;
+
     const cancel = startLoop();
     return () => {
       // Cancel any in-flight loop
       runToken.current++;
       cancel?.();
     };
-  }, [startLoop]);
+  }, [startLoop, skip]);
 
   return { boundingBox, recomputeBounds, isComputing };
 }

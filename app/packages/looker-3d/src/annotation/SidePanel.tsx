@@ -1,12 +1,16 @@
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalSample } from "@fiftyone/state";
-import { MenuItem, Select } from "@mui/material";
+import FitScreenIcon from "@mui/icons-material/FitScreen";
+import { IconButton, MenuItem, Select } from "@mui/material";
 import {
   Bounds,
   MapControls,
   OrthographicCamera,
+  useBounds,
   View,
 } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
@@ -16,7 +20,9 @@ import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
+import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
+import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
@@ -38,6 +44,10 @@ const SidePanelContainer = styled.div<{ $area: string }>`
 
 const ViewSelectorWrapper = styled.div`
   position: absolute;
+  width: 95%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   top: 10px;
   left: 10px;
   z-index: 1000;
@@ -373,10 +383,16 @@ export const SidePanel = ({
   // But turn it off so that users can pan/zoom and work with a stable scene
   const [observe, setObserve] = useState(true);
 
+  const [resetKey, setResetKey] = useState(0);
+
   useEffect(() => {
-    const timer = setTimeout(() => setObserve(false), 1000);
+    setObserve(true);
+    const timer = setTimeout(() => {
+      setObserve(false);
+    }, 750);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, [resetKey]);
 
   // Update camera to look at the scene center and use correct up vector
   useEffect(() => {
@@ -408,6 +424,7 @@ export const SidePanel = ({
         </ImageSliceContainer>
       ) : (
         <View
+          key={`${which}-${view}-${resetKey}`}
           style={{
             position: "absolute",
             top: 0,
@@ -429,7 +446,8 @@ export const SidePanel = ({
             enableRotate={false}
             zoomSpeed={0.8}
           />
-          <Bounds fit clip observe={observe} margin={1.25}>
+          <Bounds fit clip observe={observe} margin={1.25} maxDuration={0.001}>
+            <BoundsSideEffectsComponent />
             <Gizmos isGridVisible={false} isGizmoHelperVisible={false} />
             <group visible={isSceneInitialized}>
               <FoSceneComponent scene={foScene} />
@@ -454,6 +472,7 @@ export const SidePanel = ({
               }
             />
             <SegmentPolylineRenderer ignoreEffects />
+            <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D />
           </Bounds>
           <Lights lights={foScene?.lights} />
@@ -490,7 +509,98 @@ export const SidePanel = ({
               </MenuItem>
             ))}
         </Select>
+        <IconButton
+          color="secondary"
+          onClick={() => {
+            setResetKey((prev) => prev + 1);
+          }}
+          title="Reset and fit"
+        >
+          <FitScreenIcon />
+        </IconButton>
       </ViewSelectorWrapper>
     </SidePanelContainer>
   );
+};
+
+function findByUserData(
+  scene: THREE.Scene,
+  key: string,
+  value: unknown
+): THREE.Object3D | null {
+  let result: THREE.Object3D | null = null;
+  scene.traverse((o) => {
+    if (o.userData?.[key] === value) {
+      result = o as THREE.Object3D;
+    }
+  });
+  return result;
+}
+
+const DEFAULT_CUBOID_CREATION_MARGIN = 50;
+
+const BoundsSideEffectsComponent = () => {
+  const api = useBounds();
+
+  const { scene } = useThree();
+
+  useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
+    const { label } = payload;
+
+    const object = findByUserData(scene, "labelId", label._id);
+
+    if (object) {
+      const objectBox = new Box3().setFromObject(object);
+
+      if (!objectBox.isEmpty()) {
+        const expandedBox = expandBoundingBox(objectBox, 2.5);
+
+        const expandedSize = expandedBox.getSize(new Vector3());
+        const expandedCenter = expandedBox.getCenter(new Vector3());
+        const boxGeometry = new THREE.BoxGeometry(
+          expandedSize.x,
+          expandedSize.y,
+          expandedSize.z
+        );
+        const helperMesh = new THREE.Mesh(boxGeometry);
+        helperMesh.position.copy(expandedCenter);
+        helperMesh.visible = false;
+        scene.add(helperMesh);
+
+        api.refresh(helperMesh).reset().fit();
+
+        // Remove helper mesh after a short delay to ensure the bounds are updated
+        setTimeout(() => {
+          scene.remove(helperMesh);
+          boxGeometry.dispose();
+        }, 0);
+      } else {
+        api.refresh(object).reset().fit();
+      }
+    }
+  });
+
+  // Focus camera on cuboid creation location when user starts creating
+  useAnnotationEventHandler("annotation:cuboidCreationStarted", (payload) => {
+    const { position } = payload;
+
+    const boxGeometry = new THREE.BoxGeometry(
+      DEFAULT_CUBOID_CREATION_MARGIN,
+      DEFAULT_CUBOID_CREATION_MARGIN,
+      DEFAULT_CUBOID_CREATION_MARGIN
+    );
+    const helperMesh = new THREE.Mesh(boxGeometry);
+    helperMesh.position.set(position[0], position[1], position[2]);
+    helperMesh.visible = false;
+    scene.add(helperMesh);
+
+    api.refresh(helperMesh).reset().fit();
+
+    setTimeout(() => {
+      scene.remove(helperMesh);
+      boxGeometry.dispose();
+    }, 0);
+  });
+
+  return null;
 };
