@@ -15,7 +15,6 @@
         "eslint": "^9.21.0",
         "eslint-plugin-playwright": "^2.2.0",
         "jimp": "^1.6.0",
-        "mongodb": "^6.14.2",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.8.2",
