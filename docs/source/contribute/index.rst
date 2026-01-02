@@ -54,7 +54,7 @@ documentation. Choose the path that best matches your skills and interests:
 
 .. customcalloutitem::
     :header: Contribute to the App
-    :description: Help improve the FiftyOne App, our React/TypeScript frontend. Enhance the user interface, add new visualizations, or improve performance.
+    :description: Help improve the FiftyOne App, our TypeScript frontend. Enhance the user interface, add new visualizations, or improve performance.
     :button_text: App Contributing Guide
     :button_link: https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md
 
@@ -79,15 +79,17 @@ development environment:
 
 .. tabs::
 
-  .. group-tab:: Code
+  .. group-tab:: SDK
 
-    Contribute to the FiftyOne Python library.
+    Follow these steps to contribute to the FiftyOne SDK (Python):
 
     **Step 1: Fork and clone**
 
     .. code-block:: shell
 
-        # Fork https://github.com/voxel51/fiftyone on GitHub, then:
+        # Fork https://github.com/voxel51/fiftyone on GitHub...
+
+        # Then clone it locally
         git clone https://github.com/YOUR_USERNAME/fiftyone.git
         cd fiftyone
 
@@ -95,122 +97,214 @@ development environment:
 
     .. code-block:: shell
 
-        bash install.bash -d
+        # Install FiftyOne as an editable package with pre-commit hooks
+        bash install.sh -d
 
-    This installs FiftyOne in editable mode with pre-commit hooks.
-
-    **Step 3: Create a branch and make changes**
-
-    .. code-block:: shell
-
-        git checkout -b feature/my-feature develop
-        # Make your changes
-        pytest tests/unittests/  # Run tests
-
-    **Step 4: Submit a pull request**
+    **Step 3: Add FiftyOne to your PYTHONPATH**
 
     .. code-block:: shell
 
-        git push origin feature/my-feature
-        # Open a PR targeting the develop branch
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-    For complete guidelines, see the
-    `Contributing Guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md>`_
-    and `Style Guide <https://github.com/voxel51/fiftyone/blob/develop/STYLE_GUIDE.md>`_.
+    .. tip::
 
-  .. group-tab:: Documentation
+        Add this to your shell profile to make it permanent.
 
-    Improve the FiftyOne documentation.
-
-    **Step 1: Set up your environment**
+    **Step 4: Create a branch and make changes**
 
     .. code-block:: shell
 
-        git clone https://github.com/YOUR_USERNAME/fiftyone.git
-        cd fiftyone
-        bash install.bash
-        pip install -r docs/requirements/docs.txt
+        # Create a branch from develop
+        git checkout develop
+        git checkout -b feature/my-feature-branch
 
-    .. note::
+        # Make changes...
 
-        Use a separate virtual environment for docs. Do **not** use the
-        same environment as development mode (`-d` flag).
-
-    **Step 2: Set PYTHONPATH**
+    **Step 5: Run unit tests locally**
 
     .. code-block:: shell
 
-        export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+        # Run tests locally to verify your changes
+        pytest tests/unittests
 
-    Add this to your shell profile to make it permanent.
-
-    **Step 3: Build the docs**
+    **Step 6: Submit a pull request**
 
     .. code-block:: shell
 
-        bash docs/generate_docs.bash
+        git push -u origin feature/my-feature-branch
 
-    Notable flags: `-c` (clean build), `-f` (fast build), `-s` (static only)
+        # Open a PR targeting the develop branch on github.com...
 
-    **Step 4: Make changes and submit PR**
-
-    Edit files in `docs/source/`, rebuild to preview, then submit a PR.
-
-    For complete guidelines, see the
-    `Docs README <https://github.com/voxel51/fiftyone/blob/develop/docs/README.md>`_.
+    Refer to the
+    `contributing guide <https://github.com/voxel51/fiftyone/blob/develop/CONTRIBUTING.md>`_
+    and `style guide <https://github.com/voxel51/fiftyone/blob/develop/STYLE_GUIDE.md>`_
+    for complete guidelines.
 
   .. group-tab:: App
 
-    Contribute to the FiftyOne App (React/TypeScript).
+    Follow these steps to contribute to the FiftyOne App (TypeScript):
 
-    **Step 1: Set up Node.js**
-
-    .. code-block:: shell
-
-        nvm install v17.9.0
-        nvm use v17.9.0
-        npm install -g yarn
-
-    **Step 2: Install dependencies**
+    **Step 1: Fork and clone**
 
     .. code-block:: shell
 
+        # Fork https://github.com/voxel51/fiftyone on GitHub...
+
+        # Then clone it locally
         git clone https://github.com/YOUR_USERNAME/fiftyone.git
-        cd fiftyone/app
-        yarn install
+        cd fiftyone
 
-    **Step 3: Start development server**
+    **Step 2: Install in development mode**
 
     .. code-block:: shell
 
+        # Install FiftyOne as an editable package with pre-commit hooks
+        bash install.sh -d
+
+    **Step 3: Add FiftyOne to your PYTHONPATH**
+
+    .. code-block:: shell
+
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+
+    .. tip::
+
+        Add this to your shell profile to make it permanent.
+
+    **Step 4: Create a branch and make changes**
+
+    .. code-block:: shell
+
+        # Create a branch from develop
+        git checkout develop
+        git checkout -b feature/my-feature-branch
+
+        # Make changes...
+
+    **Step 5: Test changes locally**
+
+    Start the App server in development mode:
+
+    .. code-block:: shell
+
+        # Start client server with hot reloading
+        cd app
         yarn dev
 
-    **Step 4: Run tests**
+        # Start backend server manually (so you have access to stack traces)
+        python fiftyone/server/main.py
+
+    Then launch the App via Python SDK:
+
+    .. code-block:: python
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart")
+        session = fo.launch_app(dataset)
+
+    Run App tests locally:
 
     .. code-block:: shell
 
         yarn test
 
-    For complete guidelines, see the
-    `App Contributing Guide <https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md>`_.
+    **Step 6: Submit a pull request**
+
+    .. code-block:: shell
+
+        git push -u origin feature/my-feature-branch
+
+        # Open a PR targeting the develop branch on github.com...
+
+    Refer to the
+    `App contributing guide <https://github.com/voxel51/fiftyone/blob/develop/app/CONTRIBUTING.md>`_
+    for more information.
+
+  .. group-tab:: Docs
+
+    Follow these steps to contribute to the
+    `FiftyOne documentation <https://docs.voxel51.com>`_:
+
+    **Step 1: Fork and clone**
+
+    .. code-block:: shell
+
+        # Fork https://github.com/voxel51/fiftyone on GitHub...
+
+        # Then clone it locally
+        git clone https://github.com/YOUR_USERNAME/fiftyone.git
+        cd fiftyone
+
+    **Step 2: Install with docs dependencies**
+
+    .. code-block:: shell
+
+        # Install FiftyOne as an editable package with pre-commit hooks
+        bash install.sh -d
+
+        # Install docs dependencies
+        pip install -r requirements/docs.txt
+
+    **Step 3: Add FiftyOne to your PYTHONPATH**
+
+    .. code-block:: shell
+
+        export PYTHONPATH=$PYTHONPATH:$(pwd)
+
+    .. tip::
+
+        Add this to your shell profile to make it permanent.
+
+    **Step 4: Create a branch and make changes**
+
+    .. code-block:: shell
+
+        # Create a branch from develop
+        git checkout develop
+        git checkout -b docs/my-docs-branch
+
+        # Make changes in docs/source folder...
+
+    **Step 5: Build the docs locally**
+
+    .. code-block:: shell
+
+        bash docs/generate_docs.bash
+
+    Notable flags: `-c` (clean build), `-f` (fast build), `-s` (static only).
+
+    **Step 6: Submit a pull request**
+
+    .. code-block:: shell
+
+        git push -u origin docs/my-docs-branch
+
+        # Open a PR targeting the develop branch on github.com...
+
+    Refer to the
+    `Docs README <https://github.com/voxel51/fiftyone/blob/develop/docs/README.md>`_
+    for more information.
 
   .. group-tab:: Plugins
 
-    Build and share FiftyOne plugins.
+    Follow these instructions to build and share
+    :ref:`FiftyOne Plugins <plugins-ecosystem>`:
 
-    **Step 1: Create a new plugin**
+    **Step 1: Initialize a new plugin**
 
     .. code-block:: shell
 
         fiftyone plugins create my-plugin
 
-    This creates a new plugin in your plugins directory
-    (`~/fiftyone/__plugins__` by default).
+    This creates a new directory for your plugin within your plugins directory
+    (default `~/fiftyone/__plugins__`).
 
     **Step 2: Develop your plugin**
 
-    Edit `fiftyone.yml` (manifest) and `__init__.py` (operators) in your
-    plugin directory.
+    Edit `fiftyone.yml` (manifest) and `__init__.py` (code) in your
+    plugin's directory.
 
     **Step 3: Test your plugin**
 
@@ -218,12 +312,13 @@ development environment:
 
     **Step 4: Share with the community**
 
-    Publish to GitHub and submit to the
-    `Plugins Ecosystem <https://github.com/voxel51/fiftyone-plugins>`_.
+    Publish your plugin to your own GitHub repository and then
+    :ref:`publish it <plugins-ecosystem-submission>` to the
+    :ref:`Plugins Ecosystem <plugins-ecosystem>`.
 
-    For complete guidelines, see the
-    :ref:`Plugin Development Guide <developing-plugins>` and
-    :ref:`Contributing Plugins <contributing-plugins>`.
+    Refer to the :ref:`developing plugins <developing-plugins>` and
+    :ref:`contributing plugins <contributing-plugins>` guides for more
+    information.
 
 .. _contributing-good-first-issues:
 
@@ -232,12 +327,12 @@ _________________
 
 Looking for something to work on? These issues are great for newcomers:
 
--   `good first issue <https://github.com/voxel51/fiftyone/labels/good%20first%20issue>`_ -
-    Perfect for first-time contributors
--   `help wanted <https://github.com/voxel51/fiftyone/labels/help%20wanted>`_ -
-    We'd love your help on these
--   `documentation <https://github.com/voxel51/fiftyone/labels/documentation>`_ -
-    Help make FiftyOne easier to use
+-   `Good first issues <https://github.com/voxel51/fiftyone/labels/good%20first%20issue>`_ -
+    perfect for first-time contributors
+-   `Help wanted <https://github.com/voxel51/fiftyone/labels/help%20wanted>`_ -
+    we'd love your help on these
+-   `Documentation <https://github.com/voxel51/fiftyone/labels/documentation>`_ -
+    help make FiftyOne easier to use
 
 .. _contributing-contributors:
 
@@ -263,8 +358,8 @@ __________
 Don't hesitate to ask for help! The FiftyOne community is friendly and
 welcoming:
 
--   **Discord**: Join our `Discord community <https://community.voxel51.com/>`_
+-   **Discord**: join our `Discord community <https://community.voxel51.com>`_
     for real-time chat with maintainers and other contributors
--   **GitHub Discussions**: Ask questions on
+-   **GitHub Discussions**: ask questions on
     `GitHub Discussions <https://github.com/voxel51/fiftyone/discussions>`_
--   **Email**: Reach out to us at support@voxel51.com
+-   **Email**: reach out to us at support@voxel51.com
