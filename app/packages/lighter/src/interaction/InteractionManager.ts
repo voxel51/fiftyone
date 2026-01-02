@@ -3,7 +3,6 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -14,6 +13,7 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
+import { CommandContextManager } from "@fiftyone/commands";
 
 /**
  * Interface for objects that can handle interaction events.
@@ -203,13 +203,11 @@ export class InteractionManager {
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
-
   constructor(
     private canvas: HTMLCanvasElement,
-    private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string
+    sceneId: string,
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
@@ -468,7 +466,7 @@ export class InteractionManager {
    * Handles keyboard events for undo/redo shortcuts and shift modifier to maintain aspect ratio.
    * @param event - The keyboard event.
    */
-  private handleKeyDown = (event: KeyboardEvent): void => {
+  private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
     const activeElement = document.activeElement;
     if (
@@ -488,7 +486,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.undoRedoManager.undo();
+      await CommandContextManager.instance().getActiveContext().undo();
       return;
     }
 
@@ -500,7 +498,7 @@ export class InteractionManager {
     ) {
       event.preventDefault();
       event.stopPropagation();
-      this.undoRedoManager.redo();
+      await CommandContextManager.instance().getActiveContext().redo();
       return;
     }
 

@@ -6,12 +6,12 @@ import { Scene2D } from "../core/Scene2D";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import { Rect } from "../types";
-import type { Command } from "./Command";
+import type { Undoable } from "@fiftyone/commands";
 
 /**
  * Command for adding an overlay to the scene with undo/redo support.
  */
-export class AddOverlayCommand implements Command {
+export class AddOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 
@@ -21,11 +21,12 @@ export class AddOverlayCommand implements Command {
     private absoluteBounds?: Rect,
     private relativeBounds?: Rect
   ) {
+    
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Add overlay ${overlay.id}`;
   }
 
-  execute(): void {
+  async execute(): Promise<void> {
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();
@@ -43,7 +44,7 @@ export class AddOverlayCommand implements Command {
     }
   }
 
-  undo(): void {
+  async undo(): Promise<void> {
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();

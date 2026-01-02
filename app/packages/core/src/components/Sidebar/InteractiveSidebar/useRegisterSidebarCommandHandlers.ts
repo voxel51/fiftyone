@@ -2,7 +2,7 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
-import { useRegisterCommandHandler } from "@fiftyone/commands";
+import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
