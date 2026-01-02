@@ -389,6 +389,22 @@ class DatasetView(foc.SampleCollection):
     def default_skeleton(self, skeleton):
         self._root_dataset.default_skeleton = skeleton
 
+    @property
+    def camera_intrinsics(self):
+        return self._root_dataset.camera_intrinsics
+
+    @camera_intrinsics.setter
+    def camera_intrinsics(self, intrinsics):
+        self._root_dataset.camera_intrinsics = intrinsics
+
+    @property
+    def sensor_extrinsics(self):
+        return self._root_dataset.sensor_extrinsics
+
+    @sensor_extrinsics.setter
+    def sensor_extrinsics(self, extrinsics):
+        self._root_dataset.sensor_extrinsics = extrinsics
+
     def summary(self):
         """Returns a string summary of the view.
 

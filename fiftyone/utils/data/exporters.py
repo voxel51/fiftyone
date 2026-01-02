@@ -1930,6 +1930,16 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
                 "default_skeleton"
             ] = sample_collection._serialize_default_skeleton()
 
+        if sample_collection.camera_intrinsics:
+            info[
+                "camera_intrinsics"
+            ] = sample_collection._serialize_camera_intrinsics()
+
+        if sample_collection.sensor_extrinsics:
+            info[
+                "sensor_extrinsics"
+            ] = sample_collection._serialize_sensor_extrinsics()
+
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(
                 extended=True
