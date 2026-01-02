@@ -102,6 +102,8 @@ development environment:
 
     **Step 3: Add FiftyOne to your PYTHONPATH**
 
+    .. code-block:: shell
+
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
     Tip: add this to your shell profile to make it permanent.
@@ -116,7 +118,7 @@ development environment:
 
         # Make changes...
 
-    **Step 5: Run unit tests locally***
+    **Step 5: Run unit tests locally**
 
     .. code-block:: shell
 
@@ -158,6 +160,8 @@ development environment:
         bash install.sh -d
 
     **Step 3: Add FiftyOne to your PYTHONPATH**
+
+    .. code-block:: shell
 
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
@@ -231,6 +235,8 @@ development environment:
 
     **Step 2: Install with docs dependencies**
 
+    .. code-block:: shell
+
         # Install FiftyOne as an editable package with pre-commit hooks
         bash install.sh -d
 
@@ -238,6 +244,8 @@ development environment:
         pip install -r requirements/docs.txt
 
     **Step 3: Add FiftyOne to your PYTHONPATH**
+
+    .. code-block:: shell
 
         export PYTHONPATH=$PYTHONPATH:$(pwd)
 
@@ -285,7 +293,7 @@ development environment:
         fiftyone plugins create my-plugin
 
     This creates a new directory for your plugin within your plugins directory
-    (`~/fiftyone/__plugins__` by default).
+    (default `~/fiftyone/__plugins__`).
 
     **Step 2: Develop your plugin**
 
