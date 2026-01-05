@@ -115,6 +115,7 @@ function calculateLayoutDimensions(
     ROW_HEIGHT,
     MIN_ITEM_HEIGHT,
     GRID_HEIGHT,
+    GRID_WIDTH,
   };
 }
 
@@ -206,7 +207,7 @@ function useClipboardData() {
   };
 }
 
-const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
+const AddItemCTA = ({ onAdd, onPaste, view, clipboardData, schema }) => {
   const header = view?.cta_title || "No items yet";
   const body =
     view?.cta_body ||
@@ -260,7 +261,7 @@ const AddItemCTA = ({ onAdd, onPaste, view, clipboardData }) => {
               onAdd
             )}
           />
-          {onPaste && hasClipboardData && (
+          {onPaste && hasClipboardData && schema.view.on_duplicate_item && (
             <ButtonView
               {...createButtonViewProps(
                 {
@@ -405,6 +406,7 @@ const ControlContainer = ({
   selectedItemIds,
   clipboardData,
   hasMultipleItems,
+  schema,
 }) => {
   const { hasClipboardData, clipboardPermissionError } = clipboardData;
   if (!isEditMode) {
@@ -448,21 +450,23 @@ const ControlContainer = ({
           onEditLayoutClick
         )}
       />
-      {hasClipboardData && !clipboardPermissionError && (
-        <ButtonView
-          {...createButtonViewProps(
-            {
-              type: "object",
-              view: {
-                icon: "content_paste",
-                label: `Paste`,
-                variant: "square",
+      {hasClipboardData &&
+        !clipboardPermissionError &&
+        schema.view.on_duplicate_item && (
+          <ButtonView
+            {...createButtonViewProps(
+              {
+                type: "object",
+                view: {
+                  icon: "content_paste",
+                  label: `Paste`,
+                  variant: "square",
+                },
               },
-            },
-            onPasteClick
-          )}
-        />
-      )}
+              onPasteClick
+            )}
+          />
+        )}
       {clipboardPermissionError && (
         <ButtonView
           {...createButtonViewProps(
@@ -676,6 +680,11 @@ export default function DashboardView(props: ViewPropsType) {
 
   // Unified paste handler that works in both edit mode and when dashboard is empty
   const handlePaste = useCallback(async () => {
+    // Check if duplicate operator is available
+    if (!schema.view.on_duplicate_item) {
+      return;
+    }
+
     setIsPasting(true);
 
     try {
@@ -1179,7 +1188,8 @@ export default function DashboardView(props: ViewPropsType) {
         (event.metaKey || event.ctrlKey) &&
         event.key === "c" &&
         isEditMode &&
-        selectedItemIds.size > 0
+        selectedItemIds.size > 0 &&
+        schema.view.on_duplicate_item
       ) {
         event.preventDefault();
 
@@ -1190,8 +1200,11 @@ export default function DashboardView(props: ViewPropsType) {
 
       // Check if Cmd+V (Mac) or Ctrl+V (Windows/Linux) is pressed
       if ((event.metaKey || event.ctrlKey) && event.key === "v") {
-        // Allow paste in both edit mode and when dashboard is empty
-        if (isEditMode || propertiesAsArray.length === 0) {
+        // Allow paste in both edit mode and when dashboard is empty, but only if duplicate operator is available
+        if (
+          (isEditMode || propertiesAsArray.length === 0) &&
+          schema.view.on_duplicate_item
+        ) {
           event.preventDefault();
           handlePaste();
         }
@@ -1250,7 +1263,7 @@ export default function DashboardView(props: ViewPropsType) {
   const theme = useTheme();
 
   const NUM_ITEMS = propertiesAsArray.length;
-  const { COLS, ROWS, ROW_HEIGHT, MIN_ITEM_HEIGHT, GRID_HEIGHT } =
+  const { COLS, ROWS, ROW_HEIGHT, MIN_ITEM_HEIGHT, GRID_HEIGHT, GRID_WIDTH } =
     calculateLayoutDimensions(
       NUM_ITEMS,
       layout,
@@ -1439,6 +1452,7 @@ export default function DashboardView(props: ViewPropsType) {
         onPaste={handlePaste}
         view={schema.view}
         clipboardData={clipboardData}
+        schema={schema}
       />
     );
   }
@@ -1473,6 +1487,7 @@ export default function DashboardView(props: ViewPropsType) {
           selectedItemIds={selectedItemIds}
           clipboardData={clipboardData}
           hasMultipleItems={propertiesAsArray.length > 1}
+          schema={schema}
         />
         <LayoutPopover
           anchorEl={anchorEl}
@@ -1586,32 +1601,39 @@ export default function DashboardView(props: ViewPropsType) {
                             </IconButton>
                           </Tooltip>
                         )}
-                        <Tooltip title="Duplicate" placement="top" arrow>
-                          <IconButton
-                            size="small"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDuplicateItem({ id, path: getPath(path, id) });
-                            }}
-                            sx={{ color: theme.text.secondary }}
-                          >
-                            <FileCopyIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Copy" placement="top" arrow>
-                          <IconButton
-                            size="small"
-                            onMouseDown={(e) => e.stopPropagation()}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCopyItem({ id, path: getPath(path, id) });
-                            }}
-                            sx={{ color: theme.text.secondary }}
-                          >
-                            <ContentCopyIcon />
-                          </IconButton>
-                        </Tooltip>
+                        {schema.view.on_duplicate_item && (
+                          <Tooltip title="Duplicate" placement="top" arrow>
+                            <IconButton
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDuplicateItem({
+                                  id,
+                                  path: getPath(path, id),
+                                });
+                              }}
+                              sx={{ color: theme.text.secondary }}
+                            >
+                              <FileCopyIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {schema.view.on_duplicate_item && (
+                          <Tooltip title="Copy" placement="top" arrow>
+                            <IconButton
+                              size="small"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onCopyItem({ id, path: getPath(path, id) });
+                              }}
+                              sx={{ color: theme.text.secondary }}
+                            >
+                              <ContentCopyIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
                         {allow_deletion && (
                           <Tooltip title="Remove" placement="top" arrow>
                             <IconButton

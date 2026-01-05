@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -167,6 +167,12 @@ class FiftyOneConfig(EnvConfig):
             "default_batcher",
             env_var="FIFTYONE_DEFAULT_BATCHER",
             default="latency",
+        )
+        self.delegated_operation_monitor_interval = self.parse_int(
+            d,
+            "delegated_operation_monitor_interval",
+            env_var="FIFTYONE_DELEGATED_OPERATION_MONITOR_INTERVAL",
+            default=60,
         )
         self.batcher_static_size = self.parse_int(
             d,

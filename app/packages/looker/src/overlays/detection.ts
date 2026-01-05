@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 import { NONFINITES } from "@fiftyone/utilities";
 
@@ -68,7 +68,7 @@ const getIndexIdFromInstanceIdForLabel = (
 export interface DetectionLabel extends RegularLabel {
   mask?: LabelMask;
   mask_path?: string;
-  bounding_box: BoundingBox;
+  bounding_box?: BoundingBox;
 
   // valid for 3D bounding boxes
   dimensions?: [number, number, number];

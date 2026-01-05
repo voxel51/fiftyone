@@ -69,6 +69,12 @@ pages on this site apply to Enterprise deployments as well.
     :button_link: installation.html
 
 .. customcalloutitem::
+    :header: Getting Started
+    :description: Learn how to upload your first dataset to FiftyOne Enterprise.
+    :button_text: Upload your first dataset
+    :button_link: getting_started.html
+
+.. customcalloutitem::
     :header: Cloud-backed media
     :description: Integrate FiftyOne Enterprise with your media stored in the cloud.
     :button_text: Get started with cloud media
@@ -91,6 +97,12 @@ pages on this site apply to Enterprise deployments as well.
     :description: See how you can collaboratively work on datasets in the FiftyOne Enterprise App.
     :button_text: Explore the Enterprise App
     :button_link: app.html
+
+.. customcalloutitem::
+    :header: Auto-Labeling  __SUB_NEW__
+    :description: Use FiftyOne Enterprise to annotate your data at a fraction of the cost.
+    :button_text: Annotate your data at scale
+    :button_link: verified_auto_labeling.html
 
 .. customcalloutitem::
     :header: Data Lens  __SUB_NEW__
@@ -161,11 +173,13 @@ pages on this site apply to Enterprise deployments as well.
 
     Overview <overview>
     Installation <installation>
+    Getting Started <getting_started>
     API connection <api_connection>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
     App <app>
+    Auto-Labeling __SUB_NEW__ <verified_auto_labeling>
     Data Lens __SUB_NEW__ <data_lens>
     Data Quality __SUB_NEW__ <data_quality>
     Query Performance __SUB_NEW__ <query_performance>

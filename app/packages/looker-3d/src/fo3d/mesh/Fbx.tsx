@@ -1,15 +1,16 @@
-import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { AnimationMixer, type Quaternion, type Vector3 } from "three";
 import { FBXLoader } from "three-stdlib";
 import type { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { usePercolateMaterial } from "../../hooks/use-set-scene-transparency";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
+import { SkeletonUtils } from "three-stdlib";
 
 export const Fbx = ({
   name,
@@ -27,6 +28,7 @@ export const Fbx = ({
   children: React.ReactNode;
 }) => {
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const fbxUrl = useMemo(
     () =>
@@ -42,9 +44,19 @@ export const Fbx = ({
 
   const { material } = useMeshMaterialControls(name, defaultMaterial, true);
 
-  const fbx = useFoLoader(FBXLoader, fbxUrl, (loader) => {
+  const fbx_ = useFoLoader(FBXLoader, fbxUrl, (loader) => {
     loader.setResourcePath(resourcePath);
   });
+
+  // Deep clone mesh when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const fbx = useMemo(() => {
+    if (isInMultiPanelView && fbx_) {
+      // Use SkeletonUtils otherwise skeletons might de-bind
+      return SkeletonUtils.clone(fbx_);
+    }
+    return fbx_;
+  }, [fbx_, isInMultiPanelView]);
 
   usePercolateMaterial(fbx, material);
 

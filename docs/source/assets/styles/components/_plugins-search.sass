@@ -1,0 +1,28 @@
+.plugins-search-container
+  margin: 1rem 0
+  display: flex
+  justify-content: center
+
+.plugins-search-box
+  position: relative
+  width: 100%
+  max-width: 500px
+
+  input#plugin-search, input#model-search, input#dataset-search
+    width: 100%
+    padding: 12px 16px
+    border: 2px solid #e0e0e0
+    border-radius: 8px
+    font-size: 16px
+    outline: none
+    transition: border-color 0.3s ease
+
+    &:focus
+      border-color: var(--pst-color-primary)
+
+.plugins-search-icon
+  position: absolute
+  right: 12px
+  top: 50%
+  transform: translateY(-50%)
+  color: #666

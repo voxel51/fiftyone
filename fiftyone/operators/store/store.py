@@ -1,16 +1,19 @@
 """
 Execution store class.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from bson import ObjectId
 
+from fiftyone.operators.message import MessageData
+from fiftyone.operators.store.notification_service import (
+    default_notification_service,
+)
 from fiftyone.operators.store.service import ExecutionStoreService
 
 
@@ -41,11 +44,33 @@ class ExecutionStore(object):
         default_policy: str = "persist",
         collection_name: Optional[str] = None,
     ) -> "ExecutionStore":
+        """Creates a new execution store.
+
+        Args:
+            store_name: the name of the store
+            dataset_id: an optional dataset ID to scope the store to
+
+        Returns:
+            an ExecutionStore instance
+        """
+        from fiftyone.factory.repos.execution_store import (
+            MongoExecutionStoreRepo,
+        )
+
+        # Create store service with notification service
+        store_service = ExecutionStoreService(
+            dataset_id=dataset_id,
+            collection_name=(
+                collection_name
+                if collection_name
+                else MongoExecutionStoreRepo.COLLECTION_NAME
+            ),
+            notification_service=default_notification_service,
+        )
+
         return ExecutionStore(
             store_name,
-            ExecutionStoreService(
-                dataset_id=dataset_id, collection_name=collection_name
-            ),
+            store_service,
             default_policy,
         )
 
@@ -184,3 +209,25 @@ class ExecutionStore(object):
             a list of keys in the store
         """
         return self._store_service.list_keys(self.store_name)
+
+    def subscribe(self, callback: Callable[[MessageData], None]) -> str:
+        """Subscribes to changes in the store.
+
+        Args:
+            callback: a function that will be called when a change occurs in the store
+
+        Returns:
+            a subscription ID
+        """
+        return self._store_service.subscribe(self.store_name, callback)
+
+    def unsubscribe(self, subscription_id: str) -> bool:
+        """Unsubscribes from changes in the store.
+
+        Args:
+            subscription_id: the subscription ID to unsubscribe from
+
+        Returns:
+            True if the subscription was removed, False otherwise
+        """
+        return self._store_service.unsubscribe(subscription_id)

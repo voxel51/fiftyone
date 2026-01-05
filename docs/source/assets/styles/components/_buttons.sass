@@ -44,12 +44,12 @@
 
   &:hover
     .arrow
-      transform: translate3d(116.22px, 0px, 0px)
+      transform: translate3d(var(--cta-arrow-shift, 116.22px), 0px, 0px)
     .text
-      transform: translate3d(-42px, 0px, 0px)
+      transform: translate3d(var(--cta-text-shift, -42px), 0px, 0px)
 
       @media (min-width: 960px)
-        transform: translate3d(-34px, 0px, 0px)
+        transform: translate3d(var(--cta-text-shift, -34px), 0px, 0px)
 
 .arrow 
   svg

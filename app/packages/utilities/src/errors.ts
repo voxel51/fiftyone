@@ -96,6 +96,12 @@ export class NetworkError extends AppError {
   }
 }
 
+export class MalformedRequestError extends AppError {
+  constructor(message?: string) {
+    super({ name: "Malformed Request Error" }, message);
+  }
+}
+
 export class NotFoundError extends AppError {
   readonly path: string;
 

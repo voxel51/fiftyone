@@ -1,23 +1,23 @@
+import { NumberKeyObjectType } from "@fiftyone/utilities";
 import { Add, Delete } from "@mui/icons-material";
 import { Avatar, Box, Grid, IconButton } from "@mui/material";
-import { set } from "lodash";
-import React, { useEffect, useState } from "react";
+import { cloneDeep, set, throttle } from "lodash";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getComponentProps, getEmptyValue } from "../utils";
+import { ViewPropsType } from "../utils/types";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";
 import EmptyState from "./EmptyState";
 import HeaderView from "./HeaderView";
-import { NumberKeyObjectType } from "@fiftyone/utilities";
 
-export default function ListView(props) {
+export default function ListView(props: ViewPropsType) {
   const { schema, onChange, path, data, errors } = props;
-  const { actualState, state, addItem, deleteItem, updateItem, size } =
-    useListState(data ?? schema.default ?? []);
-
-  useEffect(() => {
-    onChange(path, actualState);
-  }, [state]);
+  const { state, addItem, deleteItem, updateItem, size } = useListState(
+    data ?? schema.default ?? DEFAULT_LIST_STATE,
+    path,
+    onChange
+  );
 
   const { items, view = {} } = schema;
   const { items: itemsView = {}, collapsible, readOnly } = view;
@@ -160,39 +160,66 @@ function DeleteButton(props) {
   );
 }
 
-function useListState(initialState: Array<unknown>) {
-  let initialNextId = 0;
+function useListState(
+  initialState: Array<unknown>,
+  path: ViewPropsType["path"],
+  onChange: ViewPropsType["onChange"]
+) {
+  const nextIdRef = useRef(0);
 
   const [state, setState] = useState<NumberKeyObjectType>(() => {
     const initialStateById: NumberKeyObjectType = {};
     for (const item of initialState) {
-      initialStateById[initialNextId++] = item;
+      initialStateById[nextIdRef.current++] = item;
     }
     return initialStateById;
   });
-  const [nextId, setNextId] = useState(initialNextId);
+  const onListChange = useMemo(() => {
+    const throttledOnChange = throttle(
+      (updatedState: NumberKeyObjectType) => {
+        onChange(path, Object.values(updatedState));
+      },
+      LIST_CHANGE_THROTTLE,
+      { leading: false, trailing: true }
+    );
+    return throttledOnChange;
+  }, [onChange, path]);
+
+  useEffect(() => {
+    return () => {
+      onListChange.cancel();
+    };
+  }, [onListChange]);
 
   function addItem(item: unknown) {
-    setState((state) => ({ ...state, [nextId]: item }));
-    setNextId((nextId) => nextId + 1);
+    setState((state) => {
+      const updatedState = { ...state, [nextIdRef.current]: item };
+      onListChange(updatedState);
+      return updatedState;
+    });
+    nextIdRef.current++;
   }
 
   function deleteItem(id: number) {
     setState((state) => {
       const updatedState = { ...state };
       delete updatedState[id];
+      onListChange(updatedState);
       return updatedState;
     });
   }
   function updateItem(path: string, value: unknown) {
     setState((state) => {
-      const updatedState = { ...state };
+      const updatedState = cloneDeep(state);
       set(updatedState, path, value);
+      onListChange(updatedState);
       return updatedState;
     });
   }
   const size = Object.keys(state).length;
-  const actualState = Object.values(state);
 
-  return { actualState, size, state, addItem, deleteItem, updateItem };
+  return { size, state, addItem, deleteItem, updateItem };
 }
+
+const LIST_CHANGE_THROTTLE = 100; // ms
+const DEFAULT_LIST_STATE = [] as Array<unknown>;

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
@@ -7,6 +7,7 @@ export * from "./cache";
 export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export type { PointInfo } from "./overlays";
+export type { DetectionLabel } from "./overlays/detection";
 export * from "./selective-rendering-events";
 export type {
   BaseState,

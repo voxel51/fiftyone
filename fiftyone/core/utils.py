@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,6 +15,8 @@ from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 from functools import partial
+from starlette.responses import Response
+from json import JSONEncoder
 import glob
 import hashlib
 import importlib
@@ -1652,6 +1654,8 @@ class ContentSizeBatcher(Batcher):
             ``len(iterable)``, if possible
     """
 
+    _SENTINEL = object()
+
     def __init__(
         self,
         iterable,
@@ -1676,7 +1680,7 @@ class ContentSizeBatcher(Batcher):
         self.target_size = target_size
         self.max_batch_size = max_batch_size
         self.size_calc_fn = size_calc_fn
-        self._next_element = None
+        self._next_element = self._SENTINEL
         self._last_batch_content_size = None
         self._encoding_ratio = 1.0
 
@@ -1687,14 +1691,14 @@ class ContentSizeBatcher(Batcher):
         except StopIteration:
             # If iterable is empty, we want to throw StopIteration at the first
             #   call to next(), not here.
-            self._next_element = None
+            self._next_element = self._SENTINEL
         return self
 
     def __next__(self):
         if self._render_progress and self._last_batch_size:
             self._pb.update(count=self._last_batch_size)
 
-        if self._next_element is None:
+        if self._next_element is self._SENTINEL:
             raise StopIteration
 
         # Must have at least 1 element in a batch
@@ -1726,7 +1730,7 @@ class ContentSizeBatcher(Batcher):
                 # If we get StopIteration, it just means we are done and can
                 #   end this batch. On the following call to __next__(), we'll
                 #   raise our StopIteration
-                self._next_element = None
+                self._next_element = self._SENTINEL
                 break
 
         self._last_batch_size = len(curr_batch)
@@ -2142,6 +2146,19 @@ class UniqueFilenameMaker(object):
 
         count = self._filename_counts[key]
         if count > 1:
+            # Handle existing filenames that use `-%d` suffix
+            if not self.ignore_existing:
+                while True:
+                    _key = name + ("-%d" % count)
+                    if not self.ignore_exts:
+                        _key += ext
+
+                    if _key in self._filename_counts:
+                        self._filename_counts[key] += 1
+                        count += 1
+                    else:
+                        break
+
             filename = name + ("-%d" % count) + ext
 
         if self.chunk_size is not None:
@@ -3062,7 +3079,7 @@ class ResponseStream(object):
 
 _SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
 _HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
-_NAME_LENGTH_RANGE = (1, 100)
+_NAME_LENGTH_RANGE = (1, 1551)
 
 
 def _sanitize_char(c):
@@ -3085,7 +3102,7 @@ def to_slug(name):
         -   All other characters are omitted
         -   All consecutive ``-`` characters are reduced to a single ``-``
         -   All leading and trailing ``-`` are stripped
-        -   Both the input name and the resulting string must be ``[1, 100]``
+        -   Both the input name and the resulting string must be ``[1, 1551]``
             characters in length
 
     Examples::
@@ -3179,46 +3196,25 @@ def validate_hex_color(value):
         )
 
 
+class Encoder(JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+
+    def default(self, o):
+        if isinstance(o, np.floating):
+            return float(o)
+
+        if isinstance(o, np.integer):
+            return int(o)
+
+        return JSONEncoder.default(self, o)
+
+
+async def create_response(response: dict):
+    """Creates a JSON response from the given dictionary."""
+    return Response(
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        headers={"Content-Type": "application/json"},
+    )
+
+
 fos = lazy_import("fiftyone.core.storage")
-
-
-@contextmanager
-def async_executor(
-    *, max_workers, skip_failures=False, warning="Async failure"
-):
-    """
-    Context manager that provides a function for submitting tasks to a thread
-    pool executor. All tasks are joined when the context is exited.
-
-    Example::
-
-        with async_executor(max_workers=4) as submit:
-            for item in items:
-                submit(process_item, item)
-
-    Args:
-        max_workers: the maximum number of workers to use
-        skip_failures (False): whether to skip exceptions raised by tasks
-        warning ("Async failure"): the warning message to log if a task
-            raises an exception and ``skip_failures == True``
-
-    Raises:
-        Exception: if a task raises an exception and ``skip_failures == False``
-    """
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        _futures = []
-
-        def submit(*args, **kwargs):
-            future = executor.submit(*args, **kwargs)
-            _futures.append(future)
-            return future
-
-        yield submit
-
-        for future in _futures:
-            try:
-                future.result()
-            except Exception as e:
-                if not skip_failures:
-                    raise e
-                logger.warning(warning, exc_info=True)

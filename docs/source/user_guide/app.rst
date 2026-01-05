@@ -685,7 +685,7 @@ For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
 applies to all fields still present in the schema.
 
 :class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` is query
-performant. Expect optimal performan when all slices are included in the
+performant. Expect optimal performance when all slices are included in the
 flattened view.
 
 The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant

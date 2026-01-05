@@ -4274,6 +4274,140 @@ new field on your dataset:
         mask_targets={1: "cat", 2: "dog"},
     )
 
+.. _projecting-3d-detections:
+
+Projecting 3D detections to 2D
+------------------------------
+
+FiftyOne provides functionality through 
+:meth:`detections_3d_to_cuboids_2d <fiftyone.utils.labels.detections_3d_to_cuboids_2d>` 
+to project 3D object detections into 2D images as polylines. This functionality
+is specific to grouped datasets with multiple modalities such as images and
+point clouds. 
+
+The 3D detections (``in_field``) should be stored in a field of type
+:ref:`Detection <3d-detections>` with the necessary attributes such as
+``location``, ``dimensions``, and ``rotation`` populated. You need to provide
+the following additional information for the projections:
+
+- **Coordinate transformation data** used to convert 3D bounding boxes from the
+  point cloud coordinate system into the camera coordinate system.
+  
+  - Represented as a dictionary mapping the key field (defaults to sample id) of
+    the spatial slice to a list of transformation tuples.
+  - Each transformation is a ``(translation, rotation)`` tuple, where:
+  
+    - ``translation``: a 3-element vector (``list[float]`` or ``np.ndarray``)
+      specifying the translation in 3D space
+    - ``rotation``: a 3x3 rotation matrix (``list[float]`` or ``np.ndarray``)
+      specifying the orientation 
+
+- **[Optional] Forward flags** indicating whether to apply the corresponding
+  transformation in the forward direction (from point cloud to camera) or in the
+  inverse direction (from camera to point cloud).
+  
+  - Represented as a dictionary mapping the key field (defaults to sample id) of
+    the spatial slice to a list of boolean flags. The length of the list must
+    match the number of transformations for the sample.
+  - If not provided, all transformations are assumed to be applied in the
+    forward direction.
+
+- **Camera model** used to account for camera intrinsics and lens distortion
+  during 3D-to-2D projection.
+  
+  - Specified via the ``camera_model`` argument, which accepts a projection
+    function with the signature:
+  
+    .. code-block:: python
+
+       projection_function(points3d: np.ndarray, camera_params: dict) -> np.ndarray
+
+    - ``points3d``: an ``(N, 3)`` NumPy array of 3D points to be projected
+    - ``camera_params``: a dictionary of camera parameters required by the
+      projection function
+
+  FiftyOne provides a pinhole camera model via the
+  :meth:`utils3d.pinhole_projector <fiftyone.utils.utils3d.pinhole_projector>`
+  function, which is used by default if no camera model is specified.
+
+  .. note::
+
+     For the pinhole camera model, the following orientation is assumed:
+     - x axis points to the right in the image plane
+     - y axis points down in the image plane
+     - z axis points forward from the camera
+
+     To use the pinhole camera model, you must ensure that your 3D boxes are
+     oriented in the same way, likely by applying an additional rotation
+     transformation.
+
+- **Camera parameter data** to project the 3D boxes onto the 2D image plane.
+  
+  - Represented as a dictionary mapping key field of the camera slice to dicts
+    with the keys required by the camera model you are using.
+  - For example, for the default pinhole camera model, the dictionary should
+    contain the key ``intrinsics``, which is a 3x3 ``np.ndarray`` camera
+    intrinsics matrix of the form::
+
+       [[fx,  0, cx],
+        [ 0, fy, cy],
+        [ 0,  0,  1]]
+
+
+The example code below demonstrates how to perform this projection using
+FiftyOne:
+
+.. code-block:: python
+   :linenos:
+
+   import fiftyone as fo
+   from fiftyone.utils.labels import detections_3d_to_cuboids_2d
+   import numpy as np
+
+   dataset = fo.load_dataset("your_grouped_dataset")
+
+   # Example transformation: Assume that for all samples, the same
+   # transformation is applied. A 90 degree rotation around the x axis to align
+   # the point cloud and camera coordinate systems with 0 translation
+   dataset.group_slice = "spatial_slice"
+   rotation = np.array([[1, 0, 0],
+                        [0, 0, -1],
+                        [0, 1, 0]])
+   translation = np.array([0, 0, 0])
+
+   # Example camera parameters: Assume that for all samples, the same camera
+   # intrinsics are used. Note that camera_params has to use camera slice fields
+   # as keys
+   intrinsics = np.array([[1000, 0, 512],
+                          [0, 1000, 384],
+                          [0, 0, 1]])
+
+   transformations = {}
+   camera_params = {}
+   for group in dataset.iter_groups(): 
+      lidar_sample = group["spatial_slice"]
+      transformations[lidar_sample.id] = [(translation, rotation)]
+      camera_sample = group["camera_slice"]
+      camera_params[camera_sample.id] = {
+          "intrinsics": intrinsics
+      }
+
+   # Assuming a grouped dataset with image and point cloud modalities
+   # - image slice named "camera_slice"
+   # - point cloud slice named "spatial_slice"
+   # - 3D detections stored in the "detections_3d" field
+   # The projected 2D cuboids will be stored in the "cuboids_2d" field
+
+   detections_3d_to_cuboids_2d(
+       dataset,
+       spatial_slice_name="spatial_slice",
+       camera_slice_name="camera_slice",
+       in_field="detections_3d",
+       out_field="cuboids_2d",
+       transformations=transformations,
+       camera_params=camera_params,
+   )
+
 .. _dynamic-attributes:
 
 Dynamic attributes
@@ -5438,6 +5572,12 @@ Refer to the
 :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
 documentation for available parameters to customize the projections.
 
+.. note::
+
+    Did you know? You can use the :ref:`inbuilt projection <projecting-3d-detections>`
+    capabilities in FiftyOne to visualize 3D bounding boxes of 3D slices in grouped 
+    datasets on 2D images.
+
 .. _example-3d-datasets:
 
 Example 3D datasets
@@ -5629,7 +5769,7 @@ In turn, each |SampleView| represents a view into the content of the underlying
 |Sample| in the dataset. For example, a |SampleView| may represent the contents
 of a sample with |Detections| below a specified threshold filtered out.
 
-.. custombutton::
+.. customanimatedcta::
     :button_text: Learn more about DatasetViews
     :button_link: using_views.html
 

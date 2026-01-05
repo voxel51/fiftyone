@@ -1,25 +1,20 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
-import {
-  INFO_COLOR,
-  SELECTED_AND_HOVERED_COLOR,
-  TOLERANCE,
-} from "../constants";
+import { TOLERANCE } from "../constants";
 import { BaseState, Coordinates } from "../state";
 import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { t } from "./util";
-import { getInstanceStrokeStyles } from "./util";
+import { getInstanceStrokeStyles, t } from "./util";
 
-interface PolylineLabel extends RegularLabel {
-  points: Coordinates[][];
-  closed: boolean;
-  filled: boolean;
-}
-
+export type PolylineLabel = RegularLabel & {
+  points?: Coordinates[][];
+  points3d?: Coordinates[][];
+  closed?: boolean;
+  filled?: boolean;
+} & Record<string, unknown>;
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {
@@ -37,7 +32,7 @@ export default class PolylineOverlay<
 
     if (
       (this.label.closed || this.label.filled) &&
-      this.label.points.some((path) => this.isPointInPath(state, path))
+      (this.label.points || []).some((path) => this.isPointInPath(state, path))
     ) {
       return CONTAINS.CONTENT;
     }
@@ -59,7 +54,7 @@ export default class PolylineOverlay<
         dashLength: state.dashLength,
       });
 
-    for (const path of this.label.points) {
+    for (const path of this.label.points || []) {
       if (path.length < 2) {
         continue;
       }
@@ -83,7 +78,7 @@ export default class PolylineOverlay<
     const distances = [];
     const [w, h] = state.dimensions;
     const xy = state.pixelCoordinates;
-    for (const shape of this.label.points) {
+    for (const shape of this.label.points || []) {
       for (let i = 0; i < shape.length - 1; i++) {
         distances.push(
           distanceFromLineSegment(
@@ -179,7 +174,7 @@ export default class PolylineOverlay<
 export const getPolylinePoints = (labels: PolylineLabel[]): Coordinates[] => {
   let points = [];
   labels.forEach((label) => {
-    label.points.forEach((line) => {
+    (label.points || []).forEach((line) => {
       points = [...points, ...line];
     });
   });

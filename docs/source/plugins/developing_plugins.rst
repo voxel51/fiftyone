@@ -9,10 +9,8 @@ This page describes how to write your own FiftyOne plugins.
 
 .. note::
 
-    Check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of plugins that you can use as examples
-    when developing your own.
+    Check out the :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing
+    collection of plugins that you can use as examples when developing your own.
 
 .. _plugins-design-overview:
 
@@ -193,7 +191,7 @@ exposes, and declare any :ref:`secrets <plugins-secrets>` that it may require.
 The following fields are available:
 
 .. table::
-    :widths: 20,10,70
+    :widths: 20,11,69
 
     +------------------------------+-----------+-----------------------------------------------------------------------------+
     | Field                        | Required? | Description                                                                 |
@@ -342,7 +340,7 @@ Example plugin
 --------------
 
 The
-`Hello World plugin <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hello-world>`_
+`Hello World plugin <https://github.com/voxel51/hello-world-plugin-js>`_
 defines both a JS Panel and a Python operator:
 
 .. tabs::
@@ -755,6 +753,9 @@ subsequent sections.
                 allow_delegated_execution=True/False,    # default False
                 default_choice_to_delegated=True/False,  # default False
                 resolve_execution_options_on_change=None,
+
+                # Whether the operator supports distributed execution
+                allow_distributed_execution=True/False,  # default False
             )
 
         def resolve_placement(self, ctx):
@@ -954,7 +955,7 @@ execution:
             default_choice_to_delegated=True/False,  # default False
             resolve_execution_options_on_change=None,
 
-            # If delegated, whether the operator supports distributed execution
+            # Whether the operator supports distributed execution
             allow_distributed_execution=True/False,  # default False
         )
 
@@ -1000,6 +1001,8 @@ contains the following properties:
     instance that you can use to read and write the :ref:`state <panel-state>`
     and :ref:`data <panel-data>` of the current panel, if the operator was
     invoked from a panel
+-   `ctx.pipeline` - information about execution state of the pipeline, if
+    applicable. See :ref:`this section <execution-context-for-stages>`
 -   `ctx.delegated` - whether the operation was delegated
 -   `ctx.requesting_delegated_execution` - whether delegated execution was
     requested for the operation
@@ -1114,79 +1117,100 @@ the property will automatically be marked as `invalid=True`. The operator's
     As the example above shows, you can manually set a property to invalid by
     setting its `invalid` property.
 
+.. _operator-caching-expensive-inputs:
+
+Caching expensive inputs
+------------------------
+
+Some operators may need to perform expensive computations in
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+to collect user inputs. In such cases, the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator
+can be used to optimize the operator's runtime by caching these expensive
+computations so that they are not re-computed unnecessarily. Input caching can
+be particularly important for operators that declare `dynamic=True`, as their
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+is called after each user interaction in the prompt modal.
+
+To use the
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator,
+simply isolate any expensive computations in a dedicated method and configure
+the caching strategy according to your needs:
+
+.. code-block:: python
+    :linenos:
+
+    from operator import itemgetter
+    import fiftyone.operators as foo
+
+    class ExpensiveInputsOperator(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="expensive_inputs_operator",
+                label="Example view operator",
+                dynamic=True,
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+
+            inputs.str("path", ...)
+            path = ctx.params["path"]
+
+            # An expensive computation that we don't want to repeat unnecessarily
+            counts = count_values(ctx, path)
+
+            choices = types.DropdownView()
+            for value, count in sorted(counts.items(), key=itemgetter(1), reverse=True):
+                choices.add_choice(value, label=f"{value} ({count})")
+
+            ...
+
+    # Option 1
+    # Cache for all dataset users for 90 seconds
+    @execution_cache(ttl=90)
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Option 2
+    # Cache in-memory and only for the life of the current prompt modal
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def count_values(ctx, path):
+        return ctx.dataset.count_values(path)
+
 .. note::
 
-    Avoid expensive computations in
-    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
-    or else the form may take too long to render, especially for dynamic inputs
-    where the method is called after every user input.
+    Refer to :ref:`this section <panel-execution-cache>` for more information
+    about using the execution cache.
 
 .. _operator-target-view:
 
-Operator inputs: target view
-----------------------------
+Target view __SUB_NEW__
+-----------------------
 
 .. versionadded:: 1.8.0
 
-A common pattern is to allow users to choose whether an operator should be
-applied to the entire dataset, just the current view, or some other subset of
-samples. As of v1.8.0, FiftyOne has a builtin utility for applying this
+A common pattern when defining operators is to allow users to choose whether an
+operator should be applied to the entire dataset, just the current view, or
+some other subset of samples. FiftyOne has a builtin utility for applying this
 pattern to your operators.
 
-The input form element for choosing the target view
-can be created via the
+To use this feature, call the
 :meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`
-function, which you can call from within your operator's
-:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>`
-function.
+function within your operator's
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` method.
+This will add a radio button group to your operator's input form that presents
+the set of possible view targets to the user. The resolved target view can then
+be accessed in the operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method via
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
 
-The resolved target view can be accessed in the operator's
-:meth:`execute() <fiftyone.operators.Operator.execute>` method
-via :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`.
-
-The available choices the user will have for the target view depend on the
-current context and the provided flags.
-
-The choices include:
-
-+--------------------------+----------------------------------------------------------------------------------+
-| Choice                   | Description                                                                      |
-+==========================+==================================================================================+
-| DATASET                  | The entire dataset, if the current view is not a generated view                  |
-+--------------------------+----------------------------------------------------------------------------------+
-| BASE_VIEW                | The base view, if the current view is a generated view such as                   |
-|                          | :class:`fiftyone.core.clips.ClipsView`, :class:`fiftyone.core.video.FramesView`, |
-|                          | or :class:`fiftyone.core.patches.PatchesView`. Base view is the semantic         |
-|                          | equivalent of "entire dataset" for these views. The base view is the view from   |
-|                          | which the generated view was created. For example,                               |
-|                          | ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a base view of     |
-|                          | ``dataset.limit(51).to_frames("ground_truth")``                                  |
-+--------------------------+----------------------------------------------------------------------------------+
-| DATASET_VIEW             | The dataset view (``ctx.dataset.view()``), if ``allow_dataset_view`` is ``True`` |
-|                          | . Note this is unlikely to be useful in the average case, so it defaults to off  |
-+--------------------------+----------------------------------------------------------------------------------+
-| CURRENT_VIEW             | The current view, if the current view is different from the dataset view         |
-+--------------------------+----------------------------------------------------------------------------------+
-| SELECTED_SAMPLES         | The currently selected samples, if ``allow_selected_samples`` is ``True`` and    |
-|                          | there are selected samples                                                       |
-+--------------------------+----------------------------------------------------------------------------------+
-| SELECTED_LABELS          | The currently selected labels, if ``allow_selected_labels`` is ``True`` and      |
-|                          | there are selected labels                                                        |
-+--------------------------+----------------------------------------------------------------------------------+
-
-If there's no view or selected items, the only option is entire dataset,
-so no choice is presented to the user.
-
-The target view descriptions are generated based on the provided
-``action_description`` and the various description parameters. If a
-description parameter is not ``None``, it will be used as the description
-for the corresponding target view choice. Otherwise, a default description
-will be generated such as ``f"{action_description} the entire dataset"``.
-
-Here is a simple example of an operator that uses the target view pattern to
-give the user the choice of target view:
+Here's a simple example of an operator that uses the target view pattern to
+give the user the choice of target view to process:
 
 .. code-block:: python
+    :linenos:
 
     import fiftyone.operators as foo
 
@@ -1195,28 +1219,258 @@ give the user the choice of target view:
         def config(self):
             return foo.OperatorConfig(
                 name="target_view_operator",
-                label="Testing Target View Operator",
+                label="Target view operator",
                 dynamic=True,
             )
 
         def resolve_input(self, ctx):
             inputs = types.Object()
+
+            # Prompt user to select the target view to process
             inputs.view_target(ctx)
 
             return types.Property(
-                inputs, view=types.View(label="Target View Operator")
+                inputs, view=types.View(label="Target view operator")
             )
 
         def execute(self, ctx):
-            target_view = ctx.target_view()
             # Do something with the target view
+            target_view = ctx.target_view()
             print("Sample collection size", len(target_view))
 
-And here is a screenshot of the target view input in the FiftyOne app when
-applied to a compute metadata operator:
+And here's a screenshot of a typical target view radio group in an operator's
+input form:
 
 .. image:: /images/plugins/operators/examples/operator-target-view.png
     :align: center
+
+The available choices the user will have for the target view at runtime depend
+on the current execution context and the values of any optional parameters you
+pass to :meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`.
+
+The full set of possible view targets are:
+
++--------------------------+----------------------------------------------------------------------------------+
+| Choice                   | Description                                                                      |
++==========================+==================================================================================+
+| DATASET                  | The current dataset loaded in the App. Always presented as an option unless the  |
+|                          | current view is a generated view                                                 |
++--------------------------+----------------------------------------------------------------------------------+
+| BASE_VIEW                | The current base view in the App. Always presented as an option in place of      |
+|                          | ``DATASET`` when the current view is a generated view (eg                        |
+|                          | :ref:`patches <object-patches-views>`, :ref:`frames <frame-views>`, or           |
+|                          | :ref:`clips <clip-views>`).                                                      |
+|                          |                                                                                  |
+|                          | Base view is the semantic equivalent of "entire dataset" for generated views.    |
+|                          | For example, ``dataset.limit(51).to_frames("ground_truth").limit(10)`` has a     |
+|                          | base view of ``dataset.limit(51).to_frames("ground_truth")``                     |
++--------------------------+----------------------------------------------------------------------------------+
+| CURRENT_VIEW             | The current view loaded in the App. Always presented as an option unless the     |
+|                          | full dataset is currently loaded                                                 |
++--------------------------+----------------------------------------------------------------------------------+
+| DATASET_VIEW             | A full view of the current dataset (ie ``ctx.dataset.view()``). Only presented   |
+|                          | as an option if ``allow_dataset_view=True``                                      |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_SAMPLES         | The currently selected samples in the App. Only presented as an option if        |
+|                          | ``allow_selected_samples=True`` and the user has samples selected                |
++--------------------------+----------------------------------------------------------------------------------+
+| SELECTED_LABELS          | The currently selected labels in the App, Only presented as an option if         |
+|                          | ``allow_selected_labels=True`` and the user has labels selected                  |
++--------------------------+----------------------------------------------------------------------------------+
+
+At runtime, the target view radio group is dynamically generated to only show
+the valid view targets given the current state of the user's App.
+
+For example, if the user is currently viewing the entire dataset in the App and
+no samples are currently selected, the `DATASET_VIEW` and `SELECTED_SAMPLES`
+options are automatically omitted from the radio group, since they do not apply.
+If there is only one valid choice, the radio group is omitted completely.
+
+The target view descriptions in the input form can be configured by passing the
+optional ``action_description`` and various other description parameters to
+:meth:`inputs.view_target() <fiftyone.operators.types.Object.view_target>`.
+If a description parameter is not ``None``, it will be used as the description
+for the corresponding target view choice. Otherwise, a default description
+will be generated such as ``f"{action_description} the entire dataset"``.
+
+.. _operator-execution:
+
+Operator execution
+------------------
+
+All operators must implement
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>`, which is
+where their main actions are performed.
+
+The :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
+takes an :ref:`execution context <operator-execution-context>` as input whose
+`ctx.params` dict has been hydrated with parameters provided either by the
+user by filling out the operator's :ref:`input form <operator-inputs>` or
+directly provided by the operation that triggered it. The method can optionally
+return a dict of results values that will be made available via `ctx.results`
+when the operator's :ref:`output form <operator-outputs>` is rendered.
+
+Synchronous execution
+~~~~~~~~~~~~~~~~~~~~~
+
+Your execution method is free to make use of the full power of the FiftyOne SDK
+and any external dependencies that it needs.
+
+For example, you might perform inference on a model:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+        label_field = ctx.params["label_field"]
+        confidence_thresh = ctx.params.get("confidence_thresh", None)
+
+        model = foz.load_zoo_model(name)
+        ctx.view.apply_model(
+            model, label_field=label_field, confidence_thresh=confidence_thresh
+        )
+
+        num_predictions = ctx.view.count(f"{label_field}.detections")
+        return {"num_predictions": num_predictions}
+
+.. note::
+
+    When an operator’s
+    :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
+    throws an error it will be displayed to the user in the browser.
+
+Asynchronous execution
+~~~~~~~~~~~~~~~~~~~~~~
+
+The :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
+can also be `async`:
+
+.. code-block:: python
+    :linenos:
+
+    import aiohttp
+
+    async def execute(self, ctx):
+        # do something async
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                r = await resp.json()
+
+Operator composition
+~~~~~~~~~~~~~~~~~~~~
+
+Many operators are designed to be composed with other operators to build up
+more complex behaviors. You can trigger other operations from within an
+operator's :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
+method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
+:meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`.
+
+The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
+execution context exposes all builtin :mod:`Python <plugins.operators>` and
+`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+operators in a conveniently documented functional interface. For example, many
+operations involve updating the current state of the App:
+
+.. code-block:: python
+    :linenos:
+
+    def execute(self, ctx):
+        # Dataset
+        ctx.ops.open_dataset("...")
+        ctx.ops.reload_dataset()
+
+        # View/sidebar
+        ctx.ops.set_view(name="...")  # saved view by name
+        ctx.ops.set_view(view=view)  # arbitrary view
+        ctx.ops.clear_view()
+        ctx.ops.clear_sidebar_filters()
+
+        # Selected samples
+        ctx.ops.set_selected_samples([...])
+        ctx.ops.clear_selected_samples()
+
+        # Selected labels
+        ctx.ops.set_selected_labels([...])
+        ctx.ops.clear_selected_labels()
+
+        # Panels
+        ctx.ops.open_panel("Embeddings")
+        ctx.ops.close_panel("Embeddings")
+
+The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
+property is a lower-level function that allows you to invoke arbitrary
+operations by providing their URI and parameters, including all builtin
+operations as well as any operations installed via custom plugins. For example,
+here's how to trigger the same App-related operations from above:
+
+.. code-block:: python
+    :linenos:
+
+    def execute(self, ctx):
+        # Dataset
+        ctx.trigger("open_dataset", params=dict(name="..."))
+        ctx.trigger("reload_dataset")  # refreshes the App
+
+        # View/sidebar
+        ctx.trigger("set_view", params=dict(name="..."))  # saved view by name
+        ctx.trigger("set_view", params=dict(view=view._serialize()))  # arbitrary view
+        ctx.trigger("clear_view")
+        ctx.trigger("clear_sidebar_filters")
+
+        # Selected samples
+        ctx.trigger("set_selected_samples", params=dict(samples=[...]))
+        ctx.trigger("clear_selected_samples")
+
+        # Selected labels
+        ctx.trigger("set_selected_labels", params=dict(labels=[...]))
+        ctx.trigger("clear_selected_labels")
+
+        # Panels
+        ctx.trigger("open_panel", params=dict(name="Embeddings"))
+        ctx.trigger("close_panel", params=dict(name="Embeddings"))
+
+Generator execution
+~~~~~~~~~~~~~~~~~~~
+
+If your :ref:`operator's config <operator-config>` declares that it is a
+generator via `execute_as_generator=True`, then its
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method should
+`yield` calls to
+:meth:`ctx.ops <fiftyone.operators.operations.Operations>` methods or
+:meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`,
+both of which trigger another operation and return a
+:class:`GeneratedMessage <fiftyone.operators.message.GeneratedMessage>`
+instance containing the result of the invocation.
+
+For example, a common generator pattern is to use the builtin `set_progress`
+operator to render a progress bar tracking the progress of an operation:
+
+.. code-block:: python
+    :linenos:
+
+    def execute(self, ctx):
+        # render a progress bar tracking the execution
+        for i in range(n):
+            # [process a chunk here]
+
+            # Option 1: ctx.ops
+            yield ctx.ops.set_progress(progress=i/n, label=f"Processed {i}/{n}")
+
+            # Option 2: ctx.trigger
+            yield ctx.trigger(
+                "set_progress",
+                dict(progress=i/n, label=f"Processed {i}/{n}"),
+            )
+
+.. note::
+
+    Check out the
+    `VoxelGPT plugin <https://github.com/voxel51/voxelgpt/blob/dfe23093485081fb889dbe18685587f4358a4438/__init__.py#L133>`_
+    for a more sophisticated example of using generator execution to stream an
+    LLM's response to a panel.
 
 .. _operator-delegated-execution:
 
@@ -1237,9 +1491,9 @@ executed in the background while you continue to use the App.
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments come out of
-    the box with a connected compute cluster for executing delegated operations
-    at scale.
+    :ref:`FiftyOne Enterprise <enterprise-delegated-operations>` deployments
+    come out of the box with a connected compute cluster for executing
+    delegated operations at scale.
 
     In FiftyOne Open Source, you can use delegated operations at small scale
     by :ref:`running them locally <delegated-orchestrator-open-source>`.
@@ -1380,9 +1634,9 @@ on their execution context from within
 
 .. note::
 
-    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current progress
-    of their delegated operations from the
-    :ref:`Runs page <enterprise-managing-delegated-operations>` of the Enterprise App!
+    :ref:`FiftyOne Enterprise <fiftyone-enterprise>` users can view the current
+    progress of their delegated operations from the
+    :ref:`Runs page <enterprise-managing-delegated-operations>`.
 
 For your convenience, all builtin methods of the FiftyOne SDK that support
 rendering progress bars provide an optional `progress` method that you can use
@@ -1435,31 +1689,28 @@ as `label` values using the pattern shown below:
 
 .. _writing-distributed-operators:
 
-Distributed execution
-~~~~~~~~~~~~~~~~~~~~~
+Distributed execution __SUB_NEW__
+---------------------------------
 
 .. versionadded:: 1.8.0
 
-In FiftyOne Enterprise, delegated operations can be executed in a
-:ref:`distributed <enterprise-do-distributed-execution>` fashion across
-multiple workers to speed up execution on large datasets. This is not
-supported in FiftyOne Open Source, but operator authors can still utilize
-the distributed execution paradigm so that their operators can be run in
-a distributed fashion when deployed in Enterprise.
+In FiftyOne Enterprise, delegated operations can be
+:ref:`distributed across multiple workers <enterprise-distributed-execution>`
+to accelerate computation on large datasets.
 
-.. note::
-    In FiftyOne Open Source, the ``allow_distributed_execution`` flag is
-    ignored at runtime. Use it to declare intent in your operator, and the
-    capability will be honored when the operator runs in Enterprise
+Distributed execution is not available in FiftyOne Open Source, but plugin
+authors can still utilize the distributed execution paradigm described here so
+that their operators can be executed in a distributed fashion when used in
+FiftyOne Enterprise. When an operator that supports distributed execution is
+used in FiftyOne Open Source, its
+:meth:`execute() <fiftyone.operators.Operator.execute>` method will simply be
+called exactly once with the full target view on which the operator was invoked.
 
-There are really two requirements for supporting distributed execution and
-they are both quite simple!
+Supporting distributed execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Allow distributed
-^^^^^^^^^^^^^^^^^
-
-To allow your operator to be executed in a distributed fashion, you must set
-the `allow_distributed_execution` flag to `True` in the
+To declare that an operator supports distributed execution, simply set
+`allow_distributed_execution=True` in the
 :ref:`operator's config <operator-config>`:
 
 .. code-block:: python
@@ -1469,241 +1720,309 @@ the `allow_distributed_execution` flag to `True` in the
     def config(self):
         return foo.OperatorConfig(
             name="my_distributed_operator",
-            label="My Distributed Operator",
+            label="My distributed operator",
+            ...
+
+            # Declare support for distributed execution
             allow_delegated_execution=True,
-            allow_immediate_execution=True,
-            default_choice_to_delegated=True,
-            dynamic=True,
             allow_distributed_execution=True,
         )
 
-Utilize distributed execution
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+At runtime, a distributed operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method is called one or
+more times, each with a different ``ctx.view`` that encodes the specific
+samples that should be processed in that batch:
 
-To utilize distributed execution, you must ensure the operator is using the
-proper dataset view in its
-:meth:`execute() <fiftyone.operators.Operator.execute>` method. This way, the
-task splits will be respected by child tasks, while non-distributed execution
-will also work as expected.
+.. code-block:: python
+   :linenos:
 
-This can be achieved via one of two ways:
+    def execute(self, ctx):
+        # Use `ctx.view` as the basis for your computation
+        for sample in ctx.view:
+            ...
 
-1.  Always use ``ctx.view`` within ``execute()``. This is the simplest
-    approach and works well if your operator only ever uses the user's current
-    view.
-
-    For example:
-
-    .. code-block:: python
-       :linenos:
-
-       def execute(self, ctx):
-           # Use ctx.view as the basis for your computation
-           num_samples = len(ctx.view)
-           ...
-2.  **[Recommended]** Use
-    :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
-    if your operator is using the :ref:`target view pattern <operator-target-view>`.
-    This is the recommended approach since it is likely that your users will
-    want to choose the target view when executing the operator.
-
-    For example:
-
-    .. code-block:: python
-       :linenos:
-
-       def execute(self, ctx):
-           # Use ctx.target_view() as the basis for your computation
-           target_view = ctx.target_view()
-           num_samples = len(target_view)
-           ...
+The number of batches is
+:ref:`chosen <enterprise-distributed-execution>` by the user who schedules
+a distributed execution. The user may also opt *not* to use distributed
+execution, in which case
+:meth:`execute() <fiftyone.operators.Operator.execute>` is called exactly once.
+Any necessary batching is automatically handled by FiftyOne's scheduling engine.
 
 .. warning::
 
-    Since the operator may be executed multiple times, each on a subset of
-    the data, in any order, the operator cannot perform any pre or post
-    processing outside of the ``ctx.view``. That is, the operator execution
-    must be a so-called
-    `embarrassingly parallel problem <https://en.wikipedia.org/wiki/Embarrassingly_parallel>`_.
+    Since distributed operators are executed multiple times, each on a subset
+    of the data, in any order, the operator cannot perform any pre or post
+    processing outside of the current batch. To do this you must use an
+    :ref:`operator pipeline<writing-operator-pipelines>`.
 
-.. _operator-execution:
+Supporting target views
+~~~~~~~~~~~~~~~~~~~~~~~
 
-Operator execution
-------------------
-
-All operators must implement
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>`, which is
-where their main actions are performed.
-
-The :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
-takes an :ref:`execution context <operator-execution-context>` as input whose
-`ctx.params` dict has been hydrated with parameters provided either by the
-user by filling out the operator's :ref:`input form <operator-inputs>` or
-directly provided by the operation that triggered it. The method can optionally
-return a dict of results values that will be made available via `ctx.results`
-when the operator's :ref:`output form <operator-outputs>` is rendered.
-
-Synchronous execution
-~~~~~~~~~~~~~~~~~~~~~
-
-Your execution method is free to make use of the full power of the FiftyOne SDK
-and any external dependencies that it needs.
-
-For example, you might perform inference on a model:
+If your operator uses the :ref:`target view pattern <operator-target-view>`,
+then you should use
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+instead of ``ctx.view`` in the operator's
+:meth:`execute() <fiftyone.operators.Operator.execute>` method to ensure that
+non-distributed execution continues to work as expected:
 
 .. code-block:: python
-    :linenos:
-
-    import fiftyone.zoo as foz
+   :linenos:
 
     def execute(self, ctx):
-        name = ctx.params["name"]
-        label_field = ctx.params["label_field"]
-        confidence_thresh = ctx.params.get("confidence_thresh", None)
+        # Use `ctx.target_view()` as the basis for your computation
+        for sample in ctx.target_view():
+            ...
 
-        model = foz.load_zoo_model(name)
-        ctx.view.apply_model(
-            model, label_field=label_field, confidence_thresh=confidence_thresh
-        )
+Why is this? When the user chooses distribution execution,
+:meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+and ``ctx.view`` are equivalent; both encode the specific samples to process in
+the current batch. However, if the user opts for non-distributed execution,
+then :meth:`ctx.target_view() <fiftyone.operators.ExecutionContext.target_view>`
+must be used as the user may have chosen a target view other than the current
+``ctx.view``.
 
-        num_predictions = ctx.view.count(f"{label_field}.detections")
-        return {"num_predictions": num_predictions}
+.. _writing-operator-pipelines:
+
+Operator pipelines __SUB_NEW__
+------------------------------
+
+.. versionadded:: 1.10.0
+
+In addition to developing individual operators,
+:ref:`FiftyOne Enterprise <fiftyone-enterprise>` allows you to define a linear
+composition of regular operators into a single **operator pipeline**. An
+operator pipeline acts as a single, higher-level operation composed of
+multiple discrete **stages**, where each stage is a call to another operator.
 
 .. note::
 
-    When an operator’s
-    :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
-    throws an error it will be displayed to the user in the browser.
+    Currently, **Operator Pipelines** are only supported for **delegated**
+    **execution** within FiftyOne Enterprise. Immediate execution or use
+    in FiftyOne Open Source is not supported for this feature.
 
-Asynchronous execution
-~~~~~~~~~~~~~~~~~~~~~~
+.. _pipeline-operator-interface:
 
-The :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method
-can also be `async`:
+Defining a pipeline operator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. code-block:: python
-    :linenos:
+To define an operator that executes a pipeline, you must subclass
+:class:`PipelineOperator <fiftyone.operators.PipelineOperator>` instead of the
+typical base :class:`Operator <fiftyone.operators.Operator>`.
 
-    import aiohttp
+A `PipelineOperator` is structured similarly to a regular operator, but
+replaces the standard :meth:`execute() <fiftyone.operators.Operator.execute>`
+method with a required method in which you define the pipeline's stages:
+:meth:`resolve_pipeline() <fiftyone.operators.PipelineOperator.resolve_pipeline>`.
 
-    async def execute(self, ctx):
-        # do something async
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                r = await resp.json()
+:meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` can also be
+implemented to define user inputs for the pipeline operator. In this case, any
+inputs defined will be available to the `resolve_pipeline()` method via
+`ctx.params`, for configuring the pipeline's stages.
 
-Operator composition
-~~~~~~~~~~~~~~~~~~~~
+Additionally, any stage can be a
+:ref:`distributed operator <writing-distributed-operators>` to provide fan-out
+capability to the pipeline.
 
-Many operators are designed to be composed with other operators to build up
-more complex behaviors. You can trigger other operations from within an
-operator's :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
-method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
-:meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`.
+This diagram shows an example of an operator pipeline with three stages:
 
-The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
-execution context exposes all builtin :mod:`Python <plugins.operators>` and
-`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-operators in a conveniently documented functional interface. For example, many
-operations involve updating the current state of the App:
+1. Initialization
+2. Distributed processing of data
+3. Finalization/cleanup
 
-.. code-block:: python
-    :linenos:
+Note that if Stage 1 or Stage 2 fails, Stage 3 will still run because it is
+marked with `always_run=True`.
 
-    def execute(self, ctx):
-        # Dataset
-        ctx.ops.open_dataset("...")
-        ctx.ops.reload_dataset()
+.. image:: /images/plugins/operators/pipeline-operator.png
+    :align: center
 
-        # View/sidebar
-        ctx.ops.set_view(name="...")  # saved view by name
-        ctx.ops.set_view(view=view)  # arbitrary view
-        ctx.ops.clear_view()
-        ctx.ops.clear_sidebar_filters()
+.. _pipeline-components:
 
-        # Selected samples
-        ctx.ops.set_selected_samples([...]))
-        ctx.ops.clear_selected_samples()
-
-        # Selected labels
-        ctx.ops.set_selected_labels([...])
-        ctx.ops.clear_selected_labels()
-
-        # Panels
-        ctx.ops.open_panel("Embeddings")
-        ctx.ops.close_panel("Embeddings")
-
-The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
-property is a lower-level function that allows you to invoke arbitrary
-operations by providing their URI and parameters, including all builtin
-operations as well as any operations installed via custom plugins. For example,
-here's how to trigger the same App-related operations from above:
-
-.. code-block:: python
-    :linenos:
-
-    def execute(self, ctx):
-        # Dataset
-        ctx.trigger("open_dataset", params=dict(name="..."))
-        ctx.trigger("reload_dataset")  # refreshes the App
-
-        # View/sidebar
-        ctx.trigger("set_view", params=dict(name="..."))  # saved view by name
-        ctx.trigger("set_view", params=dict(view=view._serialize()))  # arbitrary view
-        ctx.trigger("clear_view")
-        ctx.trigger("clear_sidebar_filters")
-
-        # Selected samples
-        ctx.trigger("set_selected_samples", params=dict(samples=[...]))
-        ctx.trigger("clear_selected_samples")
-
-        # Selected labels
-        ctx.trigger("set_selected_labels", params=dict(labels=[...]))
-        ctx.trigger("clear_selected_labels")
-
-        # Panels
-        ctx.trigger("open_panel", params=dict(name="Embeddings"))
-        ctx.trigger("close_panel", params=dict(name="Embeddings"))
-
-Generator execution
+Pipeline components
 ~~~~~~~~~~~~~~~~~~~
 
-If your :ref:`operator's config <operator-config>` declares that it is a
-generator via `execute_as_generator=True`, then its
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method should
-`yield` calls to
-:meth:`ctx.ops <fiftyone.operators.operations.Operations>` methods or
-:meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`,
-both of which trigger another operation and return a
-:class:`GeneratedMessage <fiftyone.operators.message.GeneratedMessage>`
-instance containing the result of the invocation.
+The pipeline is constructed using core classes from
+:mod:`fiftyone.operators.types`.
 
-For example, a common generator pattern is to use the builtin `set_progress`
-operator to render a progress bar tracking the progress of an operation:
+:class:`fiftyone.operators.types.Pipeline`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The top-level container for the stages, which `resolve_pipeline()` must return.
+The two ways to create a pipeline are:
+
+1. Instantiate an empty pipeline and add stages via
+   :meth:`stage() <fiftyone.operators.types.Pipeline.stage>`
+2. Instantiate a pipeline with an initial list of stages via the
+   :class:`Pipeline <fiftyone.operators.types.Pipeline>` constructor
+
+
+:class:`fiftyone.operators.types.PipelineStage`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Represents a single step in the pipeline, which is an invocation of a regular
+operator.
+
+.. _pipeline-operator-examples:
+
+Example pipeline operators
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This example code shows how to define the pipeline operator
+:ref:`shown and described above.<pipeline-operator-interface>`
 
 .. code-block:: python
-    :linenos:
 
-    def execute(self, ctx):
-        # render a progress bar tracking the execution
-        for i in range(n):
-            # [process a chunk here]
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
 
-            # Option 1: ctx.ops
-            yield ctx.ops.set_progress(progress=i/n, label=f"Processed {i}/{n}")
-
-            # Option 2: ctx.trigger
-            yield ctx.trigger(
-                "set_progress",
-                dict(progress=i/n, label=f"Processed {i}/{n}"),
+    class PipelineOp(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="my_pipeline_op",
+                label="My Example Pipeline",
+                # Must allow delegation, immediate is not supported for pipelines
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
             )
 
-.. note::
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.str(name="a_str", label="A string input", default="default")
+            return types.Property(inputs)
 
-    Check out the
-    `VoxelGPT plugin <https://github.com/voxel51/voxelgpt/blob/dfe23093485081fb889dbe18685587f4358a4438/__init__.py#L133>`_
-    for a more sophisticated example of using generator execution to stream an
-    LLM's response to a panel.
+        def resolve_pipeline(self, ctx):
+            """
+            Required method that defines the pipeline's stages.
+            Returns:
+                a `types.Pipeline` instance.
+            """
+            pipeline = types.Pipeline([
+                # Stage 1: Initialization
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage1",
+                    name="Initialization",
+                    params=ctx.params,  # pass top-level inputs straight through
+                )
+
+                # Stage 2: Distributed work, leveraging ctx.num_distributed_tasks
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage2_distr",
+                    name="Process Data",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params={"some_param": "some_value"}, # custom params for stage 2
+                )
+
+                # Stage 3: Finalization/Cleanup
+                types.PipelineStage(
+                    operator_uri="@my-plugin/my_stage3_cleanup",
+                    name="Finalization",
+                    always_run=True, # Runs even if Stage 1 or 2 fails
+                    # no params passed
+                )
+            ])
+
+            return pipeline
+
+We can even dynamically configure the pipeline's stages based on user inputs
+or other aspects of the execution context. For example, this is a pipeline
+approximating the functionality of
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`. It
+also showcases the alternative pipeline creation syntax.
+
+.. code-block:: python
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ComputeVisualizationPipeline(foo.PipelineOperator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="compute_viz_pipeline",
+                label="Compute Visualization Pipeline",
+                allow_delegated_execution=True,
+                allow_immediate_execution=False,
+                allow_distributed_execution=True,
+            )
+
+        def resolve_input(self, ctx):
+            # Define inputs for the top-level pipeline operator
+            inputs = types.Object()
+            inputs.view_target(ctx)
+            inputs.bool(
+                name="force_compute_embeddings",
+                label="Force compute embeddings?",
+                default=False
+            )
+
+            ... # other inputs
+
+            return types.Property(inputs)
+
+        def resolve_pipeline(self, ctx):
+            pipeline = types.Pipeline()
+            view = ctx.target_view()
+
+            # Compute embeddings first if the view doesn't have them or
+            #   user told us to force it
+            if ctx.params.get(
+                "force_compute_embeddings", False
+            ) or not has_embeddings(view):
+                pipeline.stage(
+                    operator_uri="@my-plugin/compute_embeddings",
+                    name="Compute Embeddings",
+                    num_distributed_tasks=ctx.num_distributed_tasks,
+                    params=_get_compute_embeddings_params(ctx.params),
+                )
+
+            # Perform dimensionality reduction on embeddings
+            pipeline.stage(
+                operator_uri="@my-plugin/dimensionality_reduction",
+                name="Reduce to 2 Dimensions",
+                num_distributed_tasks=ctx.num_distributed_tasks,
+                params=_get_dimensionality_reduction_params(ctx.params),
+            )
+
+            # Create a plot from the viz field and upload to a cloud bucket
+            pipeline.stage(
+                operator_uri="@my-plugin/generate_plot",
+                name="Generate Plot and Upload",
+                params={
+                    "visualization_field": ctx.params.get("visualization_field"),
+                    "cloud_path": ctx.params.get("cloud_path"),
+                },
+            )
+
+            return pipeline
+
+.. _execution-context-for-stages:
+
+Execution context for stages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a standard operator is executed as a stage within a pipeline, its
+:ref:`execution context <operator-execution-context>` is augmented with the
+**`ctx.pipeline`** property.
+
+This field is an instance of
+:class:`PipelineExecutionContext <fiftyone.operators.executor.PipelineExecutionContext>`
+which provides information about the overall pipeline execution to the current
+stage operator.
+
+The stage operator can use this context for conditional logic, such as
+performing a cleanup action:
+
+.. code-block:: python
+
+    def execute(self, ctx):
+        if not ctx.pipeline.active:
+            # This stage is running because an earlier stage failed
+            print(f"Running cleanup after failure: {ctx.pipeline.error or 'unknown error'}")
+
+        # ... normal stage logic
 
 .. _operator-secrets:
 
@@ -2691,30 +3010,37 @@ for avoiding repeated computations in dynamic operators or persisting
 long-lived values across panel instances and App sessions.
 
 Cached entries are stored in a dataset-scoped or global
-:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>`, and can be
-customized with TTLs, user scoping, operator scoping, and more.
+:class:`ExecutionStore <fiftyone.operators.store.ExecutionStore>` and can be
+customized with TTLs, user scoping, operator prompt modal scoping, and more.
 
-To cache a function's result scoped to the current ``ctx.dataset``, use the
-:func:`execution_cache <fiftyone.operators.cache.execution_cache>` decorator:
+Use the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+decorator to cache a function's result:
 
 .. code-block:: python
     :linenos:
 
-    from fiftyone.operators.cache import execution_cache
+    from fiftyone.operators import execution_cache
 
-    # Default usage: cache is scoped to the dataset
+    # Default behavior: cache for the life of a dataset
     @execution_cache
     def expensive_query(ctx, path):
         return ctx.dataset.count_values(path)
 
-    # Method with custom TTL and store name
+    # Cache in-memory, and only while the current operator prompt modal is open
+    @execution_cache(prompt_scoped=True, residency="ephemeral")
+    def expensive_query(ctx, path):
+        return ctx.dataset.count_values(path)
+
+    # Cache with a custom TTL and store name
     class Processor:
         @execution_cache(ttl=60, store_name="processor_cache")
         def expensive_query(self, ctx, path):
             return ctx.dataset.count_values(path)
 
-    # Using a custom key function with user-level scoping
-    # NOTE: must return a tuple or list
+    #
+    # Cache at the user-level
+    #
+
     def custom_key_fn(ctx, path):
         return path, ctx.user_id
 
@@ -2722,10 +3048,9 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
     def user_specific_query(ctx, path):
         return ctx.dataset.match(F("creator_id") == ctx.user_id).count_values(path)
 
-    @execution_cache(residency="ephemeral")
-    def example_custom_residency(ctx, path):
-        # this value will only be cached in memory
-        return ctx.dataset.count_values(path)
+    #
+    # You can manually bypass/modify the cache if necessary
+    #
 
     # Bypass the cache
     result = expensive_query.uncached(ctx, path)
@@ -2738,37 +3063,34 @@ To cache a function's result scoped to the current ``ctx.dataset``, use the
 
     # Clear all cache entries for the function
     expensive_query.clear_all_caches()
-
-    # NOTE: dataset_id is required if link_to_dataset=True
     expensive_query.clear_all_caches(dataset_id=dataset._doc.id)
 
 .. note::
 
-    When ``link_to_dataset=True`` (the default), cached entries are associated
-    with the current dataset and will be automatically deleted when the dataset
-    is deleted.
+    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
+    documentation for more information about customizing the caching behavior.
+
+The function being cached must:
+
+-   accept a :class:`ctx <fiftyone.operators.executor.ExecutionContext>` as the
+    first parameter
+-   be idempotent, i.e., same inputs produce the same outputs
+-   have serializable function arguments and return values
+-   have no side effects
+
+By default, cached entries are associated with the current dataset and will be
+automatically deleted when the dataset is deleted, but you can customize this
+behavior, including setting an explicit time-to-live in seconds for cached
+entries, by passing optional keyword arguments like ``ttl`` to
+:func:`execution_cache <fiftyone.operators.cache.execution_cache>`.
 
 .. warning::
 
-    Cached values must be JSON-serializable. Use the ``serialize`` and
-    ``deserialize`` arguments to handle custom types like NumPy arrays or
-    FiftyOne Samples.
-
-Advanced options for scoping and serialization are supported through arguments
-to the decorator:
-
-- ``ttl``: time-to-live (in seconds) for the cached entry
-- ``key_fn``: custom function to generate the cache key
-- ``link_to_dataset``: when ``True``, the cache is dropped when the dataset is
-  deleted (default is ``True``)
-- ``store_name``: custom store name (default is based on function name)
-- ``version``: optional version tag to isolate changes in function behavior
-- ``operator_scoped``: cache is tied to the current operator URI
-- ``user_scoped``: cache is tied to the current user
-- ``prompt_scoped``: cache is tied to the current prompt ID
-- ``jwt_scoped``: cache is tied to the current user's JWT
-- ``serialize`` / ``deserialize``: custom (de)serialization functions
-- ``residency``: cache residency policy (default is ``hybrid``)
+    When ``residency != "ephemeral"``, cached values must be coerced to
+    JSON safe types in order to be stored. By default, a default JSON
+    converter is used that can handle many common types, but you can
+    override this behavior if necessary by providing custom ``serialize``
+    and ``deserialize`` functions.
 
 Here's an example of caching a sample using custom serialization:
 
@@ -2776,6 +3098,7 @@ Here's an example of caching a sample using custom serialization:
     :linenos:
 
     import fiftyone as fo
+    from fiftyone.operators import execution_cache
 
     def serialize_sample(sample):
         return sample.to_dict()
@@ -2790,11 +3113,6 @@ Here's an example of caching a sample using custom serialization:
     )
     def get_first_sample(ctx):
         return ctx.dataset.first()
-
-.. note::
-
-    See the :func:`execution_cache <fiftyone.operators.cache.execution_cache>`
-    documentation for more details.
 
 .. _panel-saved-workspaces:
 
@@ -2869,6 +3187,19 @@ and programmatically modify the current state.
     :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
     via their `ctx` argument and can use it to get/update panel state and
     trigger other operations.
+
+.. warning::
+
+    The return value of all panel events—including builtin events (such as 
+    `on_load`, `on_unload`, `on_change_ctx`, etc.) and custom events (such as
+    `on_change_brain_key`, `on_click_start`, etc.)—must be JSON-serializable.
+
+    If your panel event returns a value of a custom type (for example, a NumPy
+    array or a FiftyOne Sample or custom class), you must first convert it to a
+    JSON-serializable format (such as a Python list or dictionary).
+
+    Returning non-serializable objects will cause errors and prevent your panel
+    from functioning correctly.
 
 .. code-block:: python
     :linenos:

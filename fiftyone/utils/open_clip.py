@@ -1,7 +1,7 @@
 """
 CLIP model wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,6 +15,9 @@ import fiftyone.zoo.models as fozm
 
 fou.ensure_torch()
 import torch
+import torchvision
+from PIL import Image
+import numpy as np
 
 open_clip = fou.lazy_import(
     "open_clip", callback=lambda: fou.ensure_package("open_clip_torch")
@@ -58,7 +61,6 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     def __init__(self, config):
         super().__init__(config)
         self._text_features = None
-        self.preprocess = self._preprocess_aux
 
     @property
     def can_embed_prompts(self):
@@ -86,16 +88,49 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         """
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
+    def _build_transforms(self, config):
+        if config.ragged_batches is not None:
+            ragged_batches = config.ragged_batches
+        else:
+            ragged_batches = False
+
+        transforms = [self._preprocess_img]
+        transforms = torchvision.transforms.Compose(transforms)
+
+        return transforms, ragged_batches
+
+    def _preprocess_img(self, img):
+        if isinstance(img, np.ndarray):
+            img = Image.fromarray(img)
+        elif isinstance(img, torch.Tensor):
+            t = img.detach().cpu()
+            if t.ndim == 3:
+                # If first dim is not a valid channel count, assume HWC and permute to CHW
+                if t.shape[0] not in (1, 3, 4):
+                    t = t.permute(2, 0, 1)
+            elif t.ndim == 2:
+                # HxW -> 1xHxW
+                t = t.unsqueeze(0)
+            else:
+                raise ValueError(
+                    f"Expected 2D/3D tensor, got shape {tuple(t.shape)}"
+                )
+
+            img = torchvision.transforms.functional.to_pil_image(t)
+
+        return self._clip_preprocess(img)
+
     def _load_model(self, config):
         (
             self._model,
             _,
-            self._preprocess_aux,
+            self._clip_preprocess,
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
             device=self.device,
         )
+
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         self._model.eval()
         return self._model
@@ -135,8 +170,9 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         return logits_per_image, logits_per_text
 
     def _predict_all(self, imgs):
+
         if self._preprocess:
-            imgs = [self._preprocess(img) for img in imgs]
+            imgs = [self._transforms(img) for img in imgs]
 
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
@@ -162,5 +198,8 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
                 self._output_processor.store_logits = self.store_logits
 
         return self._output_processor(
-            output, frame_size, confidence_thresh=self.config.confidence_thresh
+            output,
+            frame_size,
+            confidence_thresh=self.config.confidence_thresh,
+            classes=self.config.filter_classes,
         )

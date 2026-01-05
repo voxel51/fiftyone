@@ -1,8 +1,10 @@
-import { IconButton, InfoIcon } from "@fiftyone/components";
+import { IconButton, InfoIcon, useTheme } from "@fiftyone/components";
+import { isInMultiPanelViewAtom } from "@fiftyone/state";
 import { Close } from "@mui/icons-material";
 import BubbleChartIcon from "@mui/icons-material/BubbleChart";
 import CallSplitIcon from "@mui/icons-material/CallSplit";
 import CodeIcon from "@mui/icons-material/Code";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import LayersIcon from "@mui/icons-material/Layers";
 import SpeedIcon from "@mui/icons-material/Speed";
 import TextureIcon from "@mui/icons-material/Texture";
@@ -12,25 +14,163 @@ import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
 import { getPerf, PerfHeadless } from "r3f-perf";
 import {
-  CSSProperties,
   type RefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
-import type { PerspectiveCamera, Vector3 } from "three";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import styled from "styled-components";
+import type { OrthographicCamera, PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
+import { AnnotationTips } from "./AnnotationTips";
 import { StatusBarContainer } from "./containers";
-import { activeNodeAtom, isStatusBarOnAtom } from "./state";
+import {
+  activeNodeAtom,
+  activeSegmentationStateAtom,
+  cameraViewStatusAtom,
+  isStatusBarOnAtom,
+} from "./state";
+
+const PerfContainer = styled.div`
+  position: fixed;
+  bottom: 0;
+  right: 2em;
+  background: rgba(40, 44, 52, 0.85);
+  opacity: 0.6;
+  border-radius: 8px;
+  padding: 16px 24px 12px 24px;
+  min-width: 240px;
+  box-shadow: none;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1000;
+  color: #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  align-items: stretch;
+`;
+
+const StatRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  width: 100%;
+  min-height: 28px;
+`;
+
+const StatLabel = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 400;
+  opacity: 0.85;
+  font-size: 14px;
+`;
+
+const StatValue = styled.span`
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #bdbdbd;
+  font-size: 14px;
+  min-width: 60px;
+  text-align: right;
+`;
+
+const StatBarTrack = styled.div`
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  overflow: hidden;
+`;
+
+const FpsHeader = styled(StatRow)<{ $color: string }>`
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: ${(p) => p.$color};
+`;
+
+const SegmentHint = styled.div<{ $border: string; $text: string }>`
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0.6;
+  color: ${(p) => p.$text};
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  z-index: 1000;
+  border: 1px solid ${(p) => p.$border};
+  max-width: 340px;
+  user-select: none;
+  pointer-events: none;
+`;
+
+const SegmentHintRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+`;
+
+const CloseBar = styled.div<{ $bg: string }>`
+  display: flex;
+  width: 100%;
+  justify-content: right;
+  background-color: ${(p) => p.$bg};
+`;
+
+const PerfPanel = styled.div<{ $bg: string }>`
+  display: flex;
+  flex-direction: column;
+  padding-left: 1em;
+  justify-content: space-between;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background-color: ${(p) => p.$bg};
+`;
+
+const MutedIconButton = styled(IconButton)`
+  opacity: 0.5;
+`;
+
+const ViewStatusMessage = styled.div<{ $color: string; $multiview: boolean }>`
+  position: fixed;
+  top: 1em;
+  left: ${(p) => (p.$multiview ? "35%" : "50%")};
+  transform: translateX(-50%);
+  color: ${(p) => p.$color};
+  opacity: 0.6;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+  pointer-events: none;
+`;
 
 export const StatusTunnel = tunnel();
 
 const CameraInfo = ({
   cameraRef,
 }: {
-  cameraRef: RefObject<PerspectiveCamera>;
+  cameraRef: RefObject<PerspectiveCamera | OrthographicCamera>;
 }) => {
   const [cameraPosition, setCameraPosition] = useState<Vector3>();
 
@@ -101,66 +241,6 @@ const PerfStats = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const containerStyle: CSSProperties = {
-    position: "fixed",
-    bottom: "0",
-    right: "2em",
-    background: "rgba(40, 44, 52, 0.85)",
-    opacity: 0.6,
-    borderRadius: "8px",
-    padding: "16px 24px 12px 24px",
-    minWidth: "240px",
-    boxShadow: "none",
-    backdropFilter: "blur(4px)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    zIndex: 1000,
-    color: "#e0e0e0",
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    // fontFamily: "'Inter', 'Roboto', 'Arial', sans-serif",
-    fontSize: "12px",
-    letterSpacing: "0.01em",
-    alignItems: "stretch",
-  };
-
-  const statRowStyle: CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "0.5em",
-    width: "100%",
-    minHeight: 28,
-  };
-
-  const statLabelStyle: CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.4em",
-    fontWeight: 400,
-    opacity: 0.85,
-    fontSize: "14px",
-  };
-
-  const statValueStyle: CSSProperties = {
-    fontWeight: 600,
-    fontVariantNumeric: "tabular-nums",
-    color: "#bdbdbd",
-    fontSize: "14px",
-    minWidth: 60,
-    textAlign: "right" as const,
-  };
-
-  const statBarContainer: CSSProperties = {
-    width: "100%",
-    height: 6,
-    background: "rgba(255,255,255,0.07)",
-    borderRadius: 3,
-    marginTop: 2,
-    marginBottom: 2,
-    overflow: "hidden",
-  };
-
   const statBarColors = {
     // blue
     calls: "#38bdf8",
@@ -190,7 +270,7 @@ const PerfStats = () => {
   const fpsColor =
     perfStats.fps > 50 ? "#4ade80" : perfStats.fps > 30 ? "#facc15" : "#f87171";
 
-  const StatRow = ({
+  const StatRowItem = ({
     icon,
     label,
     value,
@@ -202,14 +282,14 @@ const PerfStats = () => {
     barKey: keyof typeof statBarColors;
   }) => (
     <div style={{ width: "100%" }}>
-      <div style={statRowStyle}>
-        <span style={statLabelStyle}>
+      <StatRow>
+        <StatLabel>
           {icon}
           {label}
-        </span>
-        <span style={statValueStyle}>{value.toLocaleString()}</span>
-      </div>
-      <div style={statBarContainer}>
+        </StatLabel>
+        <StatValue>{value.toLocaleString()}</StatValue>
+      </StatRow>
+      <StatBarTrack>
         <div
           style={{
             width: `${Math.min(100, (value / statMax[barKey]) * 100)}%`,
@@ -219,27 +299,19 @@ const PerfStats = () => {
             transition: "width 0.4s cubic-bezier(.4,2,.6,1)",
           }}
         />
-      </div>
+      </StatBarTrack>
     </div>
   );
 
   return (
-    <div style={containerStyle}>
-      <div
-        style={{
-          ...statRowStyle,
-          justifyContent: "center",
-          fontSize: "15px",
-          fontWeight: 700,
-          color: fpsColor,
-        }}
-      >
+    <PerfContainer>
+      <FpsHeader $color={fpsColor}>
         <SpeedIcon style={{ marginRight: 6, fontSize: 20, color: fpsColor }} />
         FPS{" "}
-        <span style={{ ...statValueStyle, color: fpsColor }}>
+        <StatValue style={{ color: fpsColor }}>
           {perfStats.fps.toFixed(1)}
-        </span>
-      </div>
+        </StatValue>
+      </FpsHeader>
       <hr
         style={{
           border: "none",
@@ -248,7 +320,7 @@ const PerfStats = () => {
           margin: "4px 0 2px 0",
         }}
       />
-      <StatRow
+      <StatRowItem
         icon={
           <CallSplitIcon
             fontSize="small"
@@ -259,7 +331,7 @@ const PerfStats = () => {
         value={perfStats.calls}
         barKey="calls"
       />
-      <StatRow
+      <StatRowItem
         icon={
           <TimelineIcon
             fontSize="small"
@@ -270,7 +342,7 @@ const PerfStats = () => {
         value={perfStats.triangles}
         barKey="triangles"
       />
-      <StatRow
+      <StatRowItem
         icon={
           <BubbleChartIcon
             fontSize="small"
@@ -281,7 +353,7 @@ const PerfStats = () => {
         value={perfStats.points}
         barKey="points"
       />
-      <StatRow
+      <StatRowItem
         icon={
           <LayersIcon
             fontSize="small"
@@ -292,7 +364,7 @@ const PerfStats = () => {
         value={perfStats.geometries}
         barKey="geometries"
       />
-      <StatRow
+      <StatRowItem
         icon={
           <TextureIcon
             fontSize="small"
@@ -303,7 +375,7 @@ const PerfStats = () => {
         value={perfStats.textures}
         barKey="textures"
       />
-      <StatRow
+      <StatRowItem
         icon={
           <CodeIcon
             fontSize="small"
@@ -314,18 +386,22 @@ const PerfStats = () => {
         value={perfStats.programs}
         barKey="programs"
       />
-    </div>
+    </PerfContainer>
   );
 };
 
 export const StatusBar = ({
   cameraRef,
 }: {
-  cameraRef: RefObject<PerspectiveCamera>;
+  cameraRef: RefObject<PerspectiveCamera | OrthographicCamera>;
 }) => {
+  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPerfStatus, setShowPerfStatus] = useRecoilState(isStatusBarOnAtom);
   const setActiveNode = useSetRecoilState(activeNodeAtom);
+  const segmentState = useRecoilValue(activeSegmentationStateAtom);
+  const cameraViewStatus = useRecoilValue(cameraViewStatusAtom);
+  const isMultiviewOn = useRecoilValue(isInMultiPanelViewAtom);
 
   const springProps = useSpring({
     transform: showPerfStatus ? "translateY(10%)" : "translateY(0%)",
@@ -336,47 +412,58 @@ export const StatusBar = ({
     setActiveNode(null);
   }, []);
 
+  const shouldShowViewStatus =
+    cameraViewStatus.viewName &&
+    cameraViewStatus.timestamp &&
+    Date.now() - cameraViewStatus.timestamp < 1000;
+
   return (
     <animated.div ref={containerRef} style={{ ...springProps }}>
       {!showPerfStatus && (
-        <IconButton style={{ opacity: 0.5 }} onClick={onClickHandler}>
+        <MutedIconButton onClick={onClickHandler}>
           <InfoIcon />
-        </IconButton>
+        </MutedIconButton>
+      )}
+
+      {shouldShowViewStatus && (
+        <ViewStatusMessage
+          $color={theme.primary.main}
+          $multiview={isMultiviewOn}
+        >
+          {cameraViewStatus.viewName}
+        </ViewStatusMessage>
+      )}
+
+      {segmentState.isActive && (
+        <SegmentHint $border={theme.primary.main} $text={"#e0e0e0"}>
+          <SegmentHintRow>
+            <InfoOutlinedIcon
+              style={{ fontSize: 12, color: theme.primary.main }}
+            />
+            Double click to finish • Del to undo last vertex • Escape to cancel
+          </SegmentHintRow>
+        </SegmentHint>
+      )}
+
+      {!segmentState.isActive && (
+        <AnnotationTips isMultiviewOn={isMultiviewOn} />
       )}
 
       {showPerfStatus && (
         <>
           <PerfStats />
           <StatusBarContainer>
-            <div
-              style={{
-                display: "flex",
-                width: "100%",
-                justifyContent: "right",
-                backgroundColor: "rgb(255 109 5 / 6%)",
-              }}
-            >
+            <CloseBar $bg={`rgba(255, 109, 5, 0.06)`}>
               <IconButton onClick={onClickHandler}>
                 <Close />
               </IconButton>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                paddingLeft: "1em",
-                justifyContent: "space-between",
-                position: "relative",
-                height: "100%",
-                width: "100%",
-                backgroundColor: "hsl(208.46deg 87% 53% / 20%)",
-              }}
-            >
+            </CloseBar>
+            <PerfPanel $bg={`hsla(208.46, 87%, 53%, 0.20)`}>
               <CameraInfo cameraRef={cameraRef} />
               <StatusTunnel.In>
                 <PerfHeadless />
               </StatusTunnel.In>
-            </div>
+            </PerfPanel>
           </StatusBarContainer>
         </>
       )}

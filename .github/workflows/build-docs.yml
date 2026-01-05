@@ -39,20 +39,21 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
       DOCSEARCH_API_KEY: ${{ secrets.DOCSEARCH_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.FIFTYONE_GITHUB_TOKEN }}
     steps:
       - name: Clone fiftyone for tag builds
         if: github.ref_type == 'tag'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Fetch full history for rev-parse to work
           fetch-depth: 0
       - name: Clone fiftyone for branch builds
         if: github.ref_type == 'branch'
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Get Branch Name
         id: get_branch
         run: |
@@ -90,7 +91,7 @@ jobs:
             esac
           fi
       - name: Checkout fiftyone-teams
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
@@ -100,6 +101,10 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.11"
+      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false # e2e test failed when `true`
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip setuptools wheel build
@@ -122,6 +127,11 @@ jobs:
           echo "Installing fiftyone"
           pip install .
 
+      - name: Setup node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
@@ -129,7 +139,7 @@ jobs:
 
       - name: Cache Node Modules
         id: node-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             app/node_modules
@@ -142,7 +152,7 @@ jobs:
         run: |
           ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           path: docs/build/html/
@@ -157,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: docs
           path: docs-download/
@@ -178,7 +188,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: docs
           path: docs-download/

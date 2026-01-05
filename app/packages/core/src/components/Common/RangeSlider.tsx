@@ -19,7 +19,7 @@ const SliderContainer = styled.div`
 interface SliderStyledProps {
   // if true, min value thumb label will appear below the slider,
   // and max value thumb label will appear above the slider
-  alternateThumbLabelDirection?: boolean;
+  $alternateThumbLabelDirection?: boolean;
 }
 
 const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
@@ -83,8 +83,8 @@ const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
     text-align: center;
   }
 
-  ${({ alternateThumbLabelDirection }) =>
-    alternateThumbLabelDirection &&
+  ${({ $alternateThumbLabelDirection }) =>
+    $alternateThumbLabelDirection &&
     `
     .valueLabel {
       font-size: 12px;
@@ -252,7 +252,7 @@ const BaseSlider = <T extends Range | number>({
               primary: { ...theme.primary, plainColor: color },
             },
           }}
-          alternateThumbLabelDirection={alternateThumbLabelDirection}
+          $alternateThumbLabelDirection={alternateThumbLabelDirection}
         />
         {showBounds && formatter(bounds[1])}
       </SliderContainer>

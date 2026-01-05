@@ -1,7 +1,7 @@
 """
 ODM package declaration.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,12 +14,15 @@ from .database import (
     establish_db_conn,
     get_db_client,
     get_db_conn,
+    get_db_version,
     get_async_db_client,
     get_async_db_conn,
     drop_database,
     sync_database,
     list_datasets,
+    load_dataset,
     patch_saved_views,
+    patch_workspaces,
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
@@ -27,6 +30,8 @@ from .database import (
     delete_dataset,
     delete_saved_view,
     delete_saved_views,
+    delete_workspace,
+    delete_workspaces,
     delete_evaluation,
     delete_evaluations,
     delete_brain_run,
@@ -36,7 +41,10 @@ from .database import (
     drop_collection,
     drop_orphan_collections,
     drop_orphan_saved_views,
+    drop_orphan_generated_datasets,
+    drop_orphan_workspaces,
     drop_orphan_runs,
+    drop_orphan_delegated_ops,
     drop_orphan_stores,
     list_collections,
     get_collection_stats,

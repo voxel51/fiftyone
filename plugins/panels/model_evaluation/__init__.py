@@ -1,7 +1,7 @@
 """
 Model evaluation panel.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,20 +9,18 @@ Model evaluation panel.
 import os
 import traceback
 
-import fiftyone.utils.eval as foue
 import numpy as np
-import fiftyone.operators.types as types
-import fiftyone.core.view as fov
 
-from bson import ObjectId
-from collections import Counter, defaultdict
-import fiftyone as fo
 import fiftyone.core.view as fov
 import fiftyone.operators.types as types
 import fiftyone.server.utils as fosu
 import fiftyone.utils.eval as foue
+
+from collections import defaultdict
+from bson import ObjectId
+
 from fiftyone import ViewField as F
-from fiftyone.core.plots.plotly import _to_log_colorscale
+from fiftyone.core.plots.plotly import _get_colorscale, _to_log_colorscale
 from fiftyone.operators.cache import execution_cache
 from fiftyone.operators.categories import Categories
 from fiftyone.operators.panel import Panel, PanelConfig
@@ -32,6 +30,12 @@ from plugins.utils.model_evaluation import (
     get_store,
     get_subsets_from_custom_code,
     set_scenarios,
+)
+from .utils import (
+    compress_and_serialize,
+    decompress_and_deserialize,
+    compress_and_serialize_scenario,
+    decompress_and_deserialize_scenario,
 )
 
 STORE_NAME = "model_evaluation_panel_builtin"
@@ -47,7 +51,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v2.0.0"
+CACHE_VERSION = "v3.0.0"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -386,101 +390,43 @@ class EvaluationPanel(Panel):
                 per_class_metrics[c]["support"] = c_report["support"]
         return per_class_metrics
 
-    def get_confusion_matrix_colorscale(self, matrix, colorscale_name=None):
+    def get_confusion_matrix_colorscale(
+        self, matrix, colorscale_name, *, logarithmic=False
+    ):
         maxval = matrix.max()
-        colorscale = _to_log_colorscale(colorscale_name or "oranges", maxval)
+        colorscale = (
+            _to_log_colorscale(colorscale_name, maxval)
+            if logarithmic
+            else _get_colorscale(colorscale_name)
+        )
         return colorscale
 
-    def get_confusion_matrices(self, results, colorscale_name=None):
-        default_classes = results.classes.tolist()
-        freq = Counter(results.ytrue)
-        if results.missing in freq:
-            freq.pop(results.missing)
-        az_classes = sorted(default_classes)
-        za_classes = sorted(default_classes, reverse=True)
-        mc_classes = sorted(freq, key=freq.get, reverse=True)
-        lc_classes = sorted(freq, key=freq.get)
-        default_matrix, _default_classes, _ = results._confusion_matrix(
+    def get_confusion_matrix(self, results):
+        default_matrix, default_classes, _ = results._confusion_matrix(
             include_other=False,
             include_missing=True,
             tabulate_ids=False,
         )
-        az_matrix, _az_classes, _ = results._confusion_matrix(
-            classes=az_classes,
-            include_other=False,
-            include_missing=True,
-            tabulate_ids=False,
+        primary_colorscale = self.get_confusion_matrix_colorscale(
+            default_matrix, "oranges"
         )
-        za_matrix, _za_classes, _ = results._confusion_matrix(
-            classes=za_classes,
-            include_other=False,
-            include_missing=True,
-            tabulate_ids=False,
+        oranges_logarithmic_colorscale = self.get_confusion_matrix_colorscale(
+            default_matrix, "oranges", logarithmic=True
         )
-        mc_matrix, _mc_classes, _ = results._confusion_matrix(
-            classes=mc_classes,
-            include_other=False,
-            include_missing=True,
-            tabulate_ids=False,
-        )
-        lc_matrix, _lc_classes, _ = results._confusion_matrix(
-            classes=lc_classes,
-            include_other=False,
-            include_missing=True,
-            tabulate_ids=False,
-        )
-        default_colorscale = self.get_confusion_matrix_colorscale(
-            default_matrix, colorscale_name
-        )
-        az_colorscale = self.get_confusion_matrix_colorscale(
-            az_matrix, colorscale_name
-        )
-        za_colorscale = self.get_confusion_matrix_colorscale(
-            za_matrix, colorscale_name
-        )
-        mc_colorscale = self.get_confusion_matrix_colorscale(
-            mc_matrix, colorscale_name
-        )
-        lc_colorscale = self.get_confusion_matrix_colorscale(
-            lc_matrix, colorscale_name
-        )
-        default_colorscale_blues = self.get_confusion_matrix_colorscale(
+        secondary_colorscale = self.get_confusion_matrix_colorscale(
             default_matrix, "blues"
         )
-        az_colorscale_blues = self.get_confusion_matrix_colorscale(
-            az_matrix, "blues"
-        )
-        za_colorscale_blues = self.get_confusion_matrix_colorscale(
-            za_matrix, "blues"
-        )
-        mc_colorscale_blues = self.get_confusion_matrix_colorscale(
-            mc_matrix, "blues"
-        )
-        lc_colorscale_blues = self.get_confusion_matrix_colorscale(
-            lc_matrix, "blues"
+        blues_logarithmic_colorscale = self.get_confusion_matrix_colorscale(
+            default_matrix, "blues", logarithmic=True
         )
 
         return {
-            "default_classes": _default_classes,
-            "az_classes": _az_classes,
-            "za_classes": _za_classes,
-            "mc_classes": _mc_classes,
-            "lc_classes": _lc_classes,
-            "default_matrix": default_matrix.tolist(),
-            "az_matrix": az_matrix.tolist(),
-            "za_matrix": za_matrix.tolist(),
-            "mc_matrix": mc_matrix.tolist(),
-            "lc_matrix": lc_matrix.tolist(),
-            "default_colorscale": default_colorscale,
-            "az_colorscale": az_colorscale,
-            "za_colorscale": za_colorscale,
-            "mc_colorscale": mc_colorscale,
-            "lc_colorscale": lc_colorscale,
-            "default_colorscale_blues": default_colorscale_blues,
-            "az_colorscale_blues": az_colorscale_blues,
-            "za_colorscale_blues": za_colorscale_blues,
-            "mc_colorscale_blues": mc_colorscale_blues,
-            "lc_colorscale_blues": lc_colorscale_blues,
+            "matrix": default_matrix,
+            "classes": default_classes,
+            "primary_colorscale": primary_colorscale,
+            "oranges_logarithmic_colorscale": oranges_logarithmic_colorscale,
+            "secondary_colorscale": secondary_colorscale,
+            "blues_logarithmic_colorscale": blues_logarithmic_colorscale,
         }
 
     def get_correct_incorrect(self, results):
@@ -542,7 +488,7 @@ class EvaluationPanel(Panel):
             "metrics": metrics,
             "custom_metrics": self.get_custom_metrics(results),
             "info": serialized_info,
-            "confusion_matrices": self.get_confusion_matrices(results),
+            "confusion_matrix": self.get_confusion_matrix(results),
             "per_class_metrics": per_class_metrics,
             "mask_targets": mask_targets,
             "missing": results.missing,
@@ -558,6 +504,8 @@ class EvaluationPanel(Panel):
         store_name=STORE_NAME,
         key_fn=get_evaluation_data_cache_key_fn,
         ttl=CACHE_TTL,
+        serialize=compress_and_serialize,
+        deserialize=decompress_and_deserialize,
     )
     def get_evaluation_data_cacheable(self, ctx):
         return self.get_evaluation_data(ctx)
@@ -704,10 +652,11 @@ class EvaluationPanel(Panel):
             subset_def = subsets.get(subset, None)
 
             if error:
-                return ctx.ops.notify(
+                ctx.ops.notify(
                     f"Failed to load custom code subsets: {error}",
                     variant="error",
                 )
+                return
 
         if subset_def is not None:
             eval_view = foue.get_subset_view(eval_view, gt_field, subset_def)
@@ -934,7 +883,7 @@ class EvaluationPanel(Panel):
             return {
                 "metrics": metrics,
                 "distribution": len(results.ytrue_ids),
-                "confusion_matrices": self.get_confusion_matrices(results),
+                "confusion_matrix": self.get_confusion_matrix(results),
                 "confidences": confidences,
                 "confidence_distribution": self.get_confidence_distribution(
                     confidences
@@ -1051,7 +1000,13 @@ class EvaluationPanel(Panel):
             CACHE_VERSION,
         ]
 
-    @execution_cache(key_fn=get_subset_def_data_for_eval_key)
+    @execution_cache(
+        key_fn=get_subset_def_data_for_eval_key,
+        serialize=compress_and_serialize_scenario,
+        deserialize=decompress_and_deserialize_scenario,
+        store_name=STORE_NAME,
+        ttl=CACHE_TTL,
+    )
     def get_scenario_data_cacheable(self, ctx, scenario):
         return self.get_scenario_data(ctx, scenario)
 
@@ -1195,10 +1150,11 @@ class EvaluationPanel(Panel):
 
     def delete_scenario(self, ctx):
         if not self.can_delete_scenario(ctx):
-            return ctx.ops.notify(
+            ctx.ops.notify(
                 "You do not have permission to delete scenarios",
                 variant="error",
             )
+            return
         scenario_id = ctx.params.get("id", None)
         scenarios = get_scenarios(ctx)
         scenarios.pop(scenario_id, None)
@@ -1276,8 +1232,8 @@ def _init_segmentation_results(dataset, results, gt_field):
     for ytrue, ypred, ytrue_id, ypred_id in zip(
         results.ytrue, results.ypred, results.ytrue_ids, results.ypred_ids
     ):
-        i = classes_map[ytrue]
-        j = classes_map[ypred]
+        j = classes_map[ytrue]
+        i = classes_map[ypred]
         index = (i, j)
 
         if index not in ytrue_ids_dict:

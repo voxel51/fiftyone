@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
 import mime from "mime";
@@ -13,14 +13,15 @@ import {
   Coordinates,
   Dimensions,
   DispatchEvent,
+  Sample,
 } from "./state";
 
 import {
   AppError,
+  getFetchParameters,
   GraphQLError,
   NetworkError,
   ServerError,
-  getFetchParameters,
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker/index.ts?worker&inline";
 
@@ -621,4 +622,18 @@ export const isNativeMediaType = (mediaType: string): boolean => {
     "point_cloud",
     "group",
   ].includes(mediaType);
+};
+
+// list of required attributes for arbitrary data to be "sample-like."
+const sampleTypeKeys = ["_id", "_media_type", "filepath"] as const;
+
+/**
+ * Returns `true` if the provided data looks like a {@link Sample}.
+ *
+ * @param data Sample data
+ */
+export const isSampleIsh = (data: Record<string, unknown>): data is Sample => {
+  return sampleTypeKeys.every(
+    (key) => key in data && data[key] !== undefined && data[key] !== null
+  );
 };

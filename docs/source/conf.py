@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -22,6 +22,7 @@ from custom_directives import (
     CustomCardItemDirective,
     CustomImageLinkDirective,
     CustomGuidesCardDirective,
+    CustomAnimatedCTADirective,
 )
 from redirects import generate_redirects
 
@@ -74,6 +75,7 @@ extensions = [
     "autodocsumm",
     "myst_parser",
     "llms_txt",
+    "sphinx_remove_toctrees",
 ]
 
 # Types of class members to generate documentation for.
@@ -97,7 +99,11 @@ source_suffix = [".rst", ".md"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_includes"]
+exclude_patterns = [
+    "_includes",
+    "model_zoo/models/model_cards.rst",
+    "dataset_zoo/datasets/dataset_cards.rst",
+]
 
 # A string of reStructuredText that will be included at the beginning of every
 # source file that is read
@@ -114,7 +120,7 @@ nbsphinx_requirejs_path = ""
 nbsphinx_execute = "never"
 
 # Adds helpful external links to the built HTML
-ref = os.getenv("FO_DOCS_REF", f"v{foc.VERSION}")
+ref = "main"
 nbsphinx_prolog = """
 
 .. raw:: html
@@ -175,12 +181,20 @@ html_theme_options = {
     "navbar_start": ["navbar-logo"],
     "navbar_center": ["navbar-links"],
     "navbar_end": ["book-a-demo"],
+    "navbar_align": "left",
     "navbar_persistent": [],
     "footer_start": ["copyright"],
     "footer_end": ["footer-links"],
 }
 
 html_sidebars = {"**": ["algolia.html", "sidebar-nav"]}
+
+remove_from_toctrees = [
+    "plugins/plugins_ecosystem/*",
+    "model_zoo/models/*",
+    "dataset_zoo/datasets/*",
+    "dataset_zoo/datasets_hf/*",
+]
 
 html_favicon = "_static/favicon/favicon.ico"
 
@@ -196,6 +210,7 @@ html_js_files = [
     "https://cdn.jsdelivr.net/npm/list.js@2.3.1/dist/list.min.js",
     "js/custom.js",
     "js/tutorial-filters.js",
+    "js/search.js",
 ]
 
 # Prevent RST source files from being included in output
@@ -273,3 +288,4 @@ def setup(app):
     app.add_directive("customcarditem", CustomCardItemDirective)
     app.add_directive("customimagelink", CustomImageLinkDirective)
     app.add_directive("customguidescard", CustomGuidesCardDirective)
+    app.add_directive("customanimatedcta", CustomAnimatedCTADirective)

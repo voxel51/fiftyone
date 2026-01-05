@@ -2,7 +2,7 @@
 Utilities for working with the
 `HMDB51 dataset <https://serre-lab.clps.brown.edu/resource/hmdb-a-large-human-motion-database>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -79,12 +79,11 @@ def download_hmdb51_dataset(
 
 
 _VIDEOS_DOWNLOAD_LINK = (
-    "http://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/hmdb51_org.rar"
+    "https://drive.usercontent.google.com/download?id=17anw5Oxp7lmp9cMwXPOyOpL5olDLmPpj&export=download&confirm=t"
 )
 
 _SPLITS_DOWNLOAD_LINK = (
-    "http://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/"
-    "test_train_splits.rar"
+    "https://drive.usercontent.google.com/download?id=1NQxJWJSYWefyNS-LFYCenFih4gRDUPCX&export=download&confirm=t"
 )
 
 

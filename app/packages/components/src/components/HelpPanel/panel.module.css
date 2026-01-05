@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2022, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 .lookerPanel {
@@ -23,6 +23,7 @@
   background: transparent;
   display: none;
 }
+
 .lookerPanel::-webkit-scrollbar-thumb {
   width: 0px;
   display: none;
@@ -81,10 +82,6 @@
   flex-direction: column;
 }
 
-/**
- * Copyright 2017-2022, Voxel51, Inc.
- */
-
 .lookerHelpPanelItems {
   padding: 1rem 0;
   margin: 0;
@@ -125,4 +122,19 @@
 .lookerShortcutDetail {
   font-weight: normal;
   color: var(--fo-palette-text-secondary);
+}
+
+.lookerSectionHeader {
+  grid-column: 1 / -1;
+  font-weight: bold;
+  font-size: 14px;
+  padding-top: 1rem;
+  padding-bottom: 0.5rem;
+  border-top: 1px solid var(--fo-palette-primary-softBorder);
+  margin-top: 1rem;
+}
+
+.lookerSectionHeaderFirst {
+  border-top: none;
+  margin-top: 0;
 }

@@ -19,27 +19,23 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: [build, test]
+    environment: release # For trusted publishing. See below.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download dist
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
-      - name: Install dependencies
-        run: |
-          pip3 install -U twine packaging
-      - name: Set environment
-        env:
-          RELEASE_TAG: ${{ github.ref }}
-        run: |
-          echo "TWINE_PASSWORD=${{ secrets.FIFTYONE_PYPI_TOKEN }}" >> $GITHUB_ENV
-          echo "TWINE_REPOSITORY=pypi" >> $GITHUB_ENV
-      - name: Upload to pypi
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_NON_INTERACTIVE: 1
-        run: |
-          python3 -m twine upload dist/*
+      # Utilize
+      # [trusted publishers](https://docs.pypi.org/trusted-publishers/)
+      # This will use OIDC to publish the dists/ package to pypi.
+      # See
+      # [fiftyone](https://pypi.org/manage/project/fiftyone/settings/publishing)
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@v1.13.0
 
   publish-docker-images:
     needs: [publish]
@@ -53,7 +49,7 @@ jobs:
           - "3.12"
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set Env Vars
         run: |

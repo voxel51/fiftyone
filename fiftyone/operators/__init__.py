@@ -1,11 +1,11 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .operator import Operator, OperatorConfig
+from .operator import Operator, OperatorConfig, PipelineOperator
 from .registry import (
     OperatorRegistry,
     get_operator,
@@ -24,6 +24,7 @@ from .panel import Panel, PanelConfig
 from .store import ExecutionStore
 from .categories import Categories
 from .cache import execution_cache
+from .sse import SseOperator, SseOperatorConfig
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]

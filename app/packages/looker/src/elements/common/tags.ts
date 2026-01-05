@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 import type { COLOR_BY } from "@fiftyone/utilities";
 import {
@@ -324,8 +324,35 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       values: { [key: string]: unknown }
     ) => {
       const results = [];
+
+      const pathParts = path.split(".");
+      const requestedField = pathParts[pathParts.length - 1];
+
       for (const [k, v] of Object.entries(values || {})) {
-        const field = getField([...path.split("."), k], fieldSchema);
+        // Skip internal fields of embedded document
+        if (k === "_cls" || k === "_id") {
+          continue;
+        }
+        // If path references a specific field in the embedded doc,
+        // only render that field's value
+        if (requestedField in values && k !== requestedField) {
+          continue;
+        }
+
+        const field = getField([...pathParts, k], fieldSchema);
+
+        // Handle dynamic embedded document fields that don't define an explicit ftype
+        if (!field) {
+          if (
+            typeof v === "number" ||
+            typeof v === "string" ||
+            typeof v === "boolean"
+          ) {
+            // Render the value of the embedded doc field
+            results.push(String(v));
+          }
+          continue;
+        }
         const renderer = PRIMITIVE_RENDERERS[field.ftype];
 
         if (!renderer) {

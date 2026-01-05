@@ -1,11 +1,15 @@
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { Controller } from "@react-spring/web";
+import type { Controller } from "@react-spring/web";
 import React, { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import MainSpace from "./MainSpace";
-import Sidebar, { Entries } from "./Sidebar";
+import SchemaSettings from "./Schema/SchemaSettings";
+import { Entries, default as RenderSidebar } from "./Sidebar";
+import { Filter } from "./Sidebar/Entries";
+import SidebarContainer from "./Sidebar/SidebarContainer";
+import ViewSelection from "./Sidebar/ViewSelection";
 
 const Container = styled.div`
   display: flex;
@@ -15,11 +19,17 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.header};
 `;
 
-function SamplesContainer() {
-  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
-  const disabled = useRecoilValue(fos.disabledCheckboxPaths);
-  const isModalOpen = useRecoilValue(fos.isModalActive);
+const TopContainer = styled.div`
+  padding: 1rem 1rem 0.5rem 1rem;
+  background: ${({ theme }) => theme.background.mediaSpace};
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.5rem;
+  border-radius: 0 6px 0 0;
+`;
 
+const Sidebar = () => {
+  const disabled = useRecoilValue(fos.disabledCheckboxPaths);
   const renderGridEntry = useCallback(
     (
       key: string,
@@ -97,14 +107,39 @@ function SamplesContainer() {
           throw new Error("invalid entry");
       }
     },
-    []
+    [disabled]
   );
+
+  return (
+    <SidebarContainer modal={false}>
+      <SchemaSettings />
+
+      <TopContainer>
+        <ViewSelection />
+        <Filter />
+      </TopContainer>
+
+      <RenderSidebar
+        isDisabled={() => false}
+        useEntries={fos.useGridEntries}
+        render={renderGridEntry}
+        modal={false}
+      />
+    </SidebarContainer>
+  );
+};
+
+function SamplesContainer() {
+  const showSidebar = useRecoilValue(fos.sidebarVisible(false));
+
+  const isModalOpen = useRecoilValue(fos.isModalActive);
+
   return (
     <Container>
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
       )}
-      {showSidebar && <Sidebar render={renderGridEntry} modal={false} />}
+      {showSidebar && <Sidebar />}
       <MainSpace />
       {!isModalOpen && (
         <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
