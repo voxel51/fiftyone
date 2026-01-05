@@ -37,8 +37,6 @@ from .annotation import (
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 class EditFieldInfo(foo.Operator):
     @property
