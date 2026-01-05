@@ -3,7 +3,7 @@ Utilities for working with the
 `Caltech 101 <https://data.caltech.edu/records/mzrjq-6wc02>` and
 `Caltech 256 <https://data.caltech.edu/records/nyy15-4j048>` datasets.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

@@ -39,6 +39,7 @@ const useCreateAnnotationLabel = () => {
           label: data,
         });
         addOverlay(overlay);
+        scene?.selectOverlay(id, { ignoreSideEffects: true });
         store.set(savedLabel, data);
         return { data, overlay, path: field, type };
       }

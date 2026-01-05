@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import {
@@ -26,6 +26,7 @@ import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { ClassificationOverlay } from "../overlay/ClassificationOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -34,6 +35,7 @@ import type {
   CoordinateSystem,
   DrawStyle,
   Point,
+  Rect,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
@@ -1010,6 +1012,8 @@ export class Scene2D {
     const overlay = this.overlays.get(id);
 
     if (overlay) {
+      const overlayType = overlay.getOverlayType();
+
       this.interactionManager.removeHandler(overlay);
       this.selectionManager.removeSelectable(id);
 
@@ -1024,6 +1028,13 @@ export class Scene2D {
         (overlayId) => overlayId !== id
       );
       this.renderingState.clear(id);
+
+      // make sure we don't leave a gap in our stack of Classifications
+      if (overlayType === "ClassificationOverlay") {
+        [...this.overlays.values()]
+          .filter((sibling) => sibling.getOverlayType() === overlayType)
+          .forEach((sibling) => sibling.markDirty());
+      }
     }
 
     this.eventBus.dispatch("lighter:overlay-removed", { id });
@@ -1394,8 +1405,8 @@ export class Scene2D {
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 
-        // Update all spatial overlays
         this.updateAllSpatialOverlays();
+        this.updateClassifications();
       }
     );
 
@@ -1470,6 +1481,17 @@ export class Scene2D {
   }
 
   /**
+   * Marks Classifications as dirty to be redrawn
+   */
+  private updateClassifications(): void {
+    this.overlays.forEach((overlay) => {
+      if (overlay instanceof ClassificationOverlay) {
+        overlay.markDirty();
+      }
+    });
+  }
+
+  /**
    * Updates coordinates for a single spatial overlay.
    */
   private updateSpatialOverlayCoordinates(
@@ -1538,8 +1560,15 @@ export class Scene2D {
       }
     }
 
+    const overlayIndexes: Record<string, number> = {};
+
     for (const overlayId of this.overlayOrder) {
-      this.renderOverlay(overlayId);
+      const overlayType = this.overlays.get(overlayId)!.getOverlayType();
+      const currentIndex = overlayIndexes[overlayType] ?? -1;
+      const overlayIndex = currentIndex + 1;
+      overlayIndexes[overlayType] = overlayIndex;
+
+      this.renderOverlay(overlayId, overlayIndex);
     }
 
     // Execute after-render callbacks
@@ -1549,8 +1578,9 @@ export class Scene2D {
   /**
    * Renders a specific overlay if it's pending.
    * @param overlayId - The ID of the overlay to render.
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private renderOverlay(overlayId: string): void {
+  private renderOverlay(overlayId: string, overlayIndex: number): void {
     const overlay = this.overlays.get(overlayId);
 
     if (!overlay) {
@@ -1560,7 +1590,7 @@ export class Scene2D {
     const status = this.renderingState.getStatus(overlayId);
 
     if (overlay && this.shouldRenderOverlay(overlay, status)) {
-      this.executeOverlayRender(overlayId, overlay);
+      this.executeOverlayRender(overlayId, overlay, overlayIndex);
     }
 
     if (this.shouldShowOverlay(overlay)) {
@@ -1610,15 +1640,33 @@ export class Scene2D {
    * Executes the rendering of an overlay with proper error handling.
    * @param overlayId - The ID of the overlay being rendered.
    * @param overlay - The overlay to render.
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private executeOverlayRender(overlayId: string, overlay: BaseOverlay): void {
+  private executeOverlayRender(
+    overlayId: string,
+    overlay: BaseOverlay,
+    overlayIndex: number
+  ): void {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
 
     try {
+      const canonicalMediaBounds: Rect =
+        this.getCanonicalMedia()?.getRenderedBounds() || {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+        };
+
       const ret = overlay.render(
         this.config.renderer,
-        this.createOverlayStyle(overlay)
+        this.createOverlayStyle(overlay),
+        {
+          canonicalMediaBounds,
+          overlayIndex,
+        }
       );
+
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
