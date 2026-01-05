@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def _ensure_depth_anything_3():
     try:
         fou.ensure_package("depth-anything-3")
-    except Exception:
+    except (ImportError, ModuleNotFoundError):
         logger.info("Installing depth-anything-3 from GitHub...")
         fou.install_package(
             "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
@@ -122,13 +122,19 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             img_array = np.array(img.convert("RGB"))
             return img_array, (img_array.shape[1], img_array.shape[0])
         elif isinstance(img, torch.Tensor):
-            if img.dim() == 4:
+            if img.dim() == 4 and img.size(0) == 1:
                 img = img.squeeze(0)
-            if img.shape[0] == 3:
+            elif img.dim() == 4:
+                raise ValueError(
+                    "Batch size > 1 not supported, got shape %s" % (tuple(img.shape),)
+                )
+            if img.dim() == 3 and img.shape[0] == 3:
                 img = img.permute(1, 2, 0)
             img_array = img.cpu().numpy()
-            if img_array.max() <= 1.0:
-                img_array = (img_array * 255).astype(np.uint8)
+            if img_array.dtype in (np.float32, np.float64):
+                if img_array.max() <= 1.0:
+                    img_array = img_array * 255
+                img_array = np.clip(img_array, 0, 255).astype(np.uint8)
             return img_array, (img_array.shape[1], img_array.shape[0])
         elif isinstance(img, np.ndarray):
             if img.ndim != 3 or img.shape[2] != 3:
@@ -160,7 +166,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             with torch.no_grad():
                 prediction = self._model.inference(images)
         except Exception as e:
-            raise RuntimeError("Depth Anything V3 inference failed: %s" % e)
+            raise RuntimeError("Depth Anything V3 inference failed: %s" % e) from e
 
         outputs = []
         depth_maps = prediction.depth
