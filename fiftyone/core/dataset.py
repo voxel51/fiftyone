@@ -1417,9 +1417,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         extrinsics = self.sensor_extrinsics or {}
 
         if isinstance(value, foc.SensorExtrinsics):
+            val_target = value.target_frame or "world"
             if (
                 value.source_frame == source_frame
-                and value.target_frame == target_frame
+                and val_target == target_frame
             ):
                 return value
         elif isinstance(value, foc.SensorExtrinsicsRef):
