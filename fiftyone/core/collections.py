@@ -88,6 +88,9 @@ class _DummyFuture:
     def result(self):
         return self.value
 
+    def done(self):
+        return True
+
 
 class _DummyExecutor:
     def __enter__(self):
@@ -308,6 +311,17 @@ class SaveContext(object):
                 sample._reload_parents()
 
     def _save_batch(self):
+        pending = []
+        for future in self.futures:
+            if not future.done():
+                pending.append(future)
+            else:
+                try:
+                    future.result()
+                except Exception:
+                    pending.append(future)  # re-raise in __exit__
+        self.futures = pending
+
         future = self.executor.submit(self._do_save_batch)
         self.futures.append(future)
 
