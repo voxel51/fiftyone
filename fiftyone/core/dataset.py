@@ -10045,6 +10045,11 @@ def _merge_dataset_doc(
         curr_doc.mask_targets.update(doc.mask_targets)
         curr_doc.skeletons.update(doc.skeletons)
 
+        if doc.camera_intrinsics is not None:
+            curr_doc.camera_intrinsics.update(doc.camera_intrinsics)
+        if doc.sensor_extrinsics is not None:
+            curr_doc.sensor_extrinsics.update(doc.sensor_extrinsics)
+
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
@@ -10058,6 +10063,15 @@ def _merge_dataset_doc(
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
         _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
+
+        if doc.camera_intrinsics is not None:
+            _update_no_overwrite(
+                curr_doc.camera_intrinsics, doc.camera_intrinsics
+            )
+        if doc.sensor_extrinsics is not None:
+            _update_no_overwrite(
+                curr_doc.sensor_extrinsics, doc.sensor_extrinsics
+            )
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
