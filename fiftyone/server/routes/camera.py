@@ -89,7 +89,11 @@ class CameraIntrinsics(HTTPEndpoint):
 
         dataset = _get_dataset(dataset_id)
         sample = _get_sample(dataset, sample_id)
-        intrinsics = dataset.resolve_intrinsics(sample)
+
+        try:
+            intrinsics = dataset.resolve_intrinsics(sample)
+        except ValueError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
 
         if intrinsics is None:
             return utils.json.JSONResponse({"intrinsics": None})
@@ -138,12 +142,16 @@ class CameraExtrinsics(HTTPEndpoint):
 
         dataset = _get_dataset(dataset_id)
         sample = _get_sample(dataset, sample_id)
-        extrinsics = dataset.resolve_extrinsics(
-            sample,
-            source_frame=source_frame,
-            target_frame=target_frame,
-            chain_via=chain_via,
-        )
+
+        try:
+            extrinsics = dataset.resolve_extrinsics(
+                sample,
+                source_frame=source_frame,
+                target_frame=target_frame,
+                chain_via=chain_via,
+            )
+        except ValueError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
 
         if extrinsics is None:
             return utils.json.JSONResponse({"extrinsics": None})
