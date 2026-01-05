@@ -5,7 +5,7 @@ This module provides first-class data models for camera intrinsics and
 extrinsics, enabling 3D-to-2D projection, 2D-to-3D unprojection, and
 multi-sensor fusion workflows.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
