@@ -94,13 +94,6 @@ namespace at the developer's discretion.
 For example, an import block might look like this:
 
 ```py
-"""
-Module docstring.
-
-| Copyright 2017-2026, Voxel51, Inc.
-| `voxel51.com <https://voxel51.com/>`_
-|
-"""
 import os
 import sys
 
