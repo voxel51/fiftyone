@@ -7,13 +7,14 @@ FiftyOne Server camera endpoints.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
-import fiftyone.core.odm.utils as fou
+import fiftyone.core.odm as foo
 from fiftyone.server import utils
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ def _get_dataset(dataset_id: str):
         The dataset
     """
     try:
-        return fou.load_dataset(id=dataset_id)
+        return foo.load_dataset(id=dataset_id)
     except ValueError as err:
         raise HTTPException(
             status_code=404,
@@ -66,7 +67,7 @@ def _get_sample(dataset, sample_id: str):
 class CameraIntrinsics(HTTPEndpoint):
     """Camera intrinsics endpoint."""
 
-    async def get(self, request: Request) -> Dict[str, Any]:
+    async def get(self, request: Request) -> JSONResponse:
         """Retrieves camera intrinsics for a sample.
 
         Args:
@@ -74,7 +75,7 @@ class CameraIntrinsics(HTTPEndpoint):
                 params
 
         Returns:
-            A dictionary containing the intrinsics data, or null if not found
+            JSON response containing the intrinsics data, or null if not found
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
@@ -88,7 +89,6 @@ class CameraIntrinsics(HTTPEndpoint):
 
         dataset = _get_dataset(dataset_id)
         sample = _get_sample(dataset, sample_id)
-
         intrinsics = dataset.resolve_intrinsics(sample)
 
         if intrinsics is None:
@@ -102,7 +102,7 @@ class CameraIntrinsics(HTTPEndpoint):
 class CameraExtrinsics(HTTPEndpoint):
     """Camera extrinsics endpoint."""
 
-    async def get(self, request: Request) -> Dict[str, Any]:
+    async def get(self, request: Request) -> JSONResponse:
         """Retrieves camera/sensor extrinsics for a sample.
 
         Args:
@@ -111,7 +111,7 @@ class CameraExtrinsics(HTTPEndpoint):
                 query params
 
         Returns:
-            A dictionary containing the extrinsics data, or null if not found
+            JSON response containing the extrinsics data, or null if not found
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
@@ -138,7 +138,6 @@ class CameraExtrinsics(HTTPEndpoint):
 
         dataset = _get_dataset(dataset_id)
         sample = _get_sample(dataset, sample_id)
-
         extrinsics = dataset.resolve_extrinsics(
             sample,
             source_frame=source_frame,
