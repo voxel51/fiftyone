@@ -1251,6 +1251,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     @processor.setter
     def processor(self, processor):
         self._processor = processor
+        self._is_grounded = False
         if self._processor is not None:
             if hasattr(self._processor, "post_process_object_detection"):
                 self._objection_detection_processor = (
@@ -1262,6 +1263,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._objection_detection_processor = (
                     self._processor.post_process_grounded_object_detection
                 )
+                self._is_grounded = True
             else:
                 raise ValueError(
                     "Processor does not have a post_process_object_detection "
@@ -1269,9 +1271,15 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 )
 
     def __call__(self, output, image_sizes, confidence_thresh=None):
-        output = self._objection_detection_processor(
-            output, target_sizes=image_sizes, threshold=confidence_thresh or 0
-        )
+        if self._is_grounded:
+            output = self._objection_detection_processor(
+                output, output.get("input_ids"),
+                threshold=confidence_thresh or 0, target_sizes=image_sizes,
+            )
+        else:
+            output = self._objection_detection_processor(
+                output, target_sizes=image_sizes, threshold=confidence_thresh or 0
+            )
         res = []
         for o, img_sz in zip(output, image_sizes):
             res.append(
@@ -1282,6 +1290,28 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 )
             )
         return res
+
+    def _parse_output(self, output, frame_size, confidence_thresh):
+        width, height = frame_size
+
+        boxes = output["boxes"].detach().cpu().numpy()
+        scores = output["scores"].detach().cpu().numpy()
+        labels = output.get("text_labels", output["labels"])
+        if hasattr(labels, "detach"):
+            labels = labels.detach().cpu().numpy()
+
+        detections = []
+        for box, label, score in zip(boxes, labels, scores):
+            if confidence_thresh is not None and score < confidence_thresh:
+                continue
+
+            x1, y1, x2, y2 = box
+            bounding_box = [x1 / width, y1 / height, (x2 - x1) / width, (y2 - y1) / height]
+            label = label if self._is_grounded else self.classes[label]
+
+            detections.append(fol.Detection(label=label, bounding_box=bounding_box, confidence=score))
+
+        return fol.Detections(detections=detections)
 
 
 class TransformersSemanticSegmentatorOutputProcessor(
