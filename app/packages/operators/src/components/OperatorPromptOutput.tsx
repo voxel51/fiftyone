@@ -7,13 +7,19 @@ export default function OperatorPromptOutput({ operatorPrompt, outputFields }) {
   const executorError = operatorPrompt?.executorError;
   const resolveError = operatorPrompt?.resolveError;
   const error = resolveError || executorError;
+
   if (!outputFields && !executorError && !resolveError) return null;
+
   const { result } = operatorPrompt.executor;
+  const defaultMsg = "Error occurred during operator execution";
+  const message = error?.bodyResponse?.error;
+  const reason = message ? defaultMsg + ". " + message : defaultMsg;
 
   return (
     <Box p={2}>
       {outputFields && (
         <OperatorIO
+          id={operatorPrompt.id}
           type="output"
           data={result}
           schema={operatorPrompt.outputFields}
@@ -24,7 +30,7 @@ export default function OperatorPromptOutput({ operatorPrompt, outputFields }) {
           schema={{ view: { detailed: true } }}
           data={[
             {
-              reason: "Error occurred during operator execution",
+              reason,
               details: stringifyError(error),
             },
           ]}

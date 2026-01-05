@@ -10,12 +10,18 @@ export const Box = styled.div`
 `;
 
 export const TextContainer = styled.div`
-  display: inline-block;
-  overflow: hidden;
-  white-space: nowrap;
+  display: flex;
+  align-items: flex-start;
   width: 100%;
-  text-overflow: ellipsis;
   color: ${({ theme }) => theme.text.primary};
+`;
+
+export const LabelText = styled.span<{ wrap?: boolean }>`
+  overflow: ${({ wrap }) => (wrap ? "visible" : "hidden")};
+  white-space: ${({ wrap }) => (wrap ? "normal" : "nowrap")};
+  word-break: ${({ wrap }) => (wrap ? "break-word" : "normal")};
+  text-overflow: ${({ wrap }) => (wrap ? "unset" : "ellipsis")};
+  flex: 1;
 `;
 
 export const EditBox = styled(Box)<{
@@ -106,7 +112,6 @@ export const LastOption = styled(MuiBox)<{ disabled: boolean }>`
   width: 100%;
   background: ${({ disabled, theme }) =>
     disabled ? theme.background.body : theme.background.level1} !important;
-  z-index: 999;
   display: flex;
 
   &:hover {

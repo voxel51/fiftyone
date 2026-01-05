@@ -322,13 +322,13 @@ export function usePanelStateCallback<T>(
 
 /**
  * Get a callback function that can be used to update the panel state.
- * 
+ *
  * @param callback - A function that takes a panelId, panelState, and args.
  * @param local - Whether the panel state is local to the panel.
  * @param scope - The scope of the panel.
  * @returns A callback function that can be used to update the panel state. The
  * callback is called with the panelId, panelState, and args.
- * 
+ *
  * Example:
  * ```ts
  * const resolvePanelState = (panelId, panelState, args) => {

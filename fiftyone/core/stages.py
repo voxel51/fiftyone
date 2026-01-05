@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -28,6 +28,7 @@ import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
 from fiftyone.core.odm.document import MongoEngineBaseDocument
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
@@ -238,7 +239,7 @@ class ViewStage(object):
         """
         return None
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         """Loads the :class:`fiftyone.core.view.DatasetView` containing the
         output of the stage.
 
@@ -248,6 +249,8 @@ class ViewStage(object):
             sample_collection: the
                 :class:`fiftyone.core.collections.SampleCollection` to which
                 the stage is being applied
+            saved_view (False): whether this view stage is being loaded in the
+                context of loading a saved view
             reload (False): whether to force reload generated collections, if
                 necessary
 
@@ -462,9 +465,8 @@ class Concat(ViewStage):
         if sample_collection._dataset != self._view._dataset:
             if sample_collection._root_dataset == self._view._root_dataset:
                 raise ValueError(
-                    "When concatenating samples from generated views (e.g. "
-                    "patches or frames), all views must be derived from the "
-                    "same root generated view"
+                    "When concatenating samples from generated views, all "
+                    "views must be derived from the same root generated view"
                 )
             else:
                 raise ValueError(
@@ -501,12 +503,15 @@ class Concat(ViewStage):
 
     def _serialize_view(self, view):
         return {
-            "dataset": view._root_dataset.name,
+            "dataset_id": str(view._root_dataset._doc.id),
             "stages": view._serialize(include_uuids=False),
         }
 
     def _load_view(self, d):
-        dataset = fod.load_dataset(d["dataset"])
+        dataset = foo.load_dataset(
+            id=d.get("dataset_id", None),
+            name=d.get("dataset", None),  # back compatability for saved views
+        )
         return fov.DatasetView._build(dataset, d["stages"])
 
 
@@ -3089,7 +3094,7 @@ def _extract_filter_field(val):
 
 
 class _GeoStage(ViewStage):
-    def __init__(self, location_field=None, create_index=True):
+    def __init__(self, location_field=None, create_index=False):
         self._location_field = location_field
         self._location_key = None
         self._create_index = create_index
@@ -3101,7 +3106,7 @@ class _GeoStage(ViewStage):
 
     @property
     def create_index(self):
-        """Whether to create the required spherical index, if necessary."""
+        """Whether to create the relevant spherical index, if necessary."""
         return self._create_index
 
     def validate(self, sample_collection):
@@ -3118,7 +3123,6 @@ class _GeoStage(ViewStage):
             self._location_key = self._location_field
 
         if self._create_index:
-            # These operations require a spherical index
             sample_collection.create_index([(self._location_key, "2dsphere")])
 
 
@@ -3129,7 +3133,8 @@ class GeoNear(_GeoStage):
     .. note::
 
         This stage must be the **first stage** in any
-        :class:`fiftyone.core.view.DatasetView` in which it appears.
+        :class:`fiftyone.core.view.DatasetView` in which it appears, and it
+        **requires** a spherical index on the specified location field.
 
     Examples::
 
@@ -3144,7 +3149,7 @@ class GeoNear(_GeoStage):
         # Sort the samples by their proximity to Times Square
         #
 
-        stage = fo.GeoNear(TIMES_SQUARE)
+        stage = fo.GeoNear(TIMES_SQUARE, create_index=True)
         view = dataset.add_stage(stage)
 
         #
@@ -3152,7 +3157,11 @@ class GeoNear(_GeoStage):
         # include samples within 5km
         #
 
-        stage = fo.GeoNear(TIMES_SQUARE, max_distance=5000)
+        stage = fo.GeoNear(
+            TIMES_SQUARE,
+            max_distance=5000,
+            create_index=True,
+        )
         view = dataset.add_stage(stage)
 
         #
@@ -3176,7 +3185,10 @@ class GeoNear(_GeoStage):
         )
 
         stage = fo.GeoNear(
-            TIMES_SQUARE, location_field="location", query=in_manhattan
+            TIMES_SQUARE,
+            location_field="location",
+            query=in_manhattan,
+            create_index=True,
         )
         view = dataset.add_stage(stage)
 
@@ -3207,7 +3219,7 @@ class GeoNear(_GeoStage):
         query (None): an optional dict defining a
             `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
             that samples must match in order to be included in this view
-        create_index (True): whether to create the required spherical index,
+        create_index (False): whether to create the required spherical index,
             if necessary
     """
 
@@ -3218,7 +3230,7 @@ class GeoNear(_GeoStage):
         min_distance=None,
         max_distance=None,
         query=None,
-        create_index=True,
+        create_index=False,
     ):
         super().__init__(
             location_field=location_field,
@@ -3314,8 +3326,8 @@ class GeoNear(_GeoStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 
@@ -3367,8 +3379,8 @@ class GeoWithin(_GeoStage):
         strict (True): whether a sample's location data must strictly fall
             within boundary (True) in order to match, or whether any
             intersection suffices (False)
-        create_index (True): whether to create the required spherical index,
-            if necessary
+        create_index (False): whether to create a spherical index, if
+            necessary, to optimize the query
     """
 
     def __init__(
@@ -3376,7 +3388,7 @@ class GeoWithin(_GeoStage):
         boundary,
         location_field=None,
         strict=True,
-        create_index=True,
+        create_index=False,
     ):
         super().__init__(
             location_field=location_field,
@@ -3432,8 +3444,8 @@ class GeoWithin(_GeoStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 
@@ -3503,7 +3515,7 @@ class GroupBy(ViewStage):
             that defines how to sort the groups in the output view. If
             provided, this expression will be evaluated on the list of samples
             in each group. Only applicable when ``flat=True``
-        create_index (True): whether to create an index, if necessary, to
+        create_index (False): whether to create an index, if necessary, to
             optimize the grouping. Only applicable when grouping by field(s),
             not expressions
         order_by_key (None): an optional fixed ``order_by`` value representing
@@ -3520,7 +3532,7 @@ class GroupBy(ViewStage):
         flat=False,
         match_expr=None,
         sort_expr=None,
-        create_index=True,
+        create_index=False,
         order_by_key=None,
     ):
         self._field_or_expr = field_or_expr
@@ -3799,8 +3811,8 @@ class GroupBy(ViewStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
             {
                 "name": "order_by_key",
@@ -7548,12 +7560,12 @@ class SortBy(ViewStage):
                 with "a" for ascending order, or -1 or any string starting with
                 "d" for descending order
         reverse (False): whether to return the results in descending order
-        create_index (True): whether to create an index, if necessary, to
+        create_index (False): whether to create an index, if necessary, to
             optimize the sort. Only applicable when sorting by field(s), not
             expressions
     """
 
-    def __init__(self, field_or_expr, reverse=False, create_index=True):
+    def __init__(self, field_or_expr, reverse=False, create_index=False):
         self._field_or_expr = field_or_expr
         self._reverse = reverse
         self._create_index = create_index
@@ -7669,8 +7681,8 @@ class SortBy(ViewStage):
             {
                 "name": "create_index",
                 "type": "bool",
-                "default": "True",
-                "placeholder": "create_index (default=True)",
+                "default": "False",
+                "placeholder": "create_index (default=False)",
             },
         ]
 
@@ -7896,7 +7908,7 @@ class SortBySimilarity(ViewStage):
 
     def validate(self, sample_collection):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "query": self._query_kwarg,
             "k": self._k,
@@ -7911,12 +7923,12 @@ class SortBySimilarity(ViewStage):
         else:
             pipeline = None
 
-        if state != last_state or pipeline is None:
+        if pipeline is None or state != last_state:
             pipeline = self._make_pipeline(sample_collection)
 
-            state["pipeline"] = pipeline
-            self._state = state
+        state["pipeline"] = pipeline
 
+        self._state = state
         self._pipeline = pipeline
 
     def _make_pipeline(self, sample_collection):
@@ -8153,9 +8165,9 @@ class ToPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
             "config": self._config,
@@ -8174,7 +8186,11 @@ class ToPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8190,16 +8206,16 @@ class ToPatches(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 patches_dataset.name = name
-
-            state["name"] = patches_dataset.name
-            self._state = state
         else:
             patches_dataset = last_dataset
+
+        state["name"] = patches_dataset.name
+        self._state = state
 
         return fop.PatchesView(sample_collection, self, patches_dataset)
 
@@ -8315,9 +8331,9 @@ class ToEvaluationPatches(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "eval_key": self._eval_key,
             "config": self._config,
@@ -8336,7 +8352,11 @@ class ToEvaluationPatches(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8352,16 +8372,16 @@ class ToEvaluationPatches(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 eval_patches_dataset.name = name
-
-            state["name"] = eval_patches_dataset.name
-            self._state = state
         else:
             eval_patches_dataset = last_dataset
+
+        state["name"] = eval_patches_dataset.name
+        self._state = state
 
         return fop.EvaluationPatchesView(
             sample_collection, self, eval_patches_dataset
@@ -8490,9 +8510,9 @@ class ToClips(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field_or_expr": self._get_mongo_field_or_expr(),
             "config": self._config,
@@ -8511,7 +8531,11 @@ class ToClips(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8527,16 +8551,16 @@ class ToClips(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 clips_dataset.name = name
-
-            state["name"] = clips_dataset.name
-            self._state = state
         else:
             clips_dataset = last_dataset
+
+        state["name"] = clips_dataset.name
+        self._state = state
 
         return focl.ClipsView(sample_collection, self, clips_dataset)
 
@@ -8642,9 +8666,9 @@ class ToTrajectories(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "field": self._field,
             "config": self._config,
@@ -8663,7 +8687,11 @@ class ToTrajectories(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8680,16 +8708,16 @@ class ToTrajectories(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 clips_dataset.name = name
-
-            state["name"] = clips_dataset.name
-            self._state = state
         else:
             clips_dataset = last_dataset
+
+        state["name"] = clips_dataset.name
+        self._state = state
 
         return focl.TrajectoriesView(sample_collection, self, clips_dataset)
 
@@ -8851,9 +8879,9 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
-    def load_view(self, sample_collection, reload=False):
+    def load_view(self, sample_collection, saved_view=False, reload=False):
         state = {
-            "dataset": sample_collection.dataset_name,
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
             "stages": sample_collection.view()._serialize(include_uuids=False),
             "config": self._config,
         }
@@ -8871,7 +8899,11 @@ class ToFrames(ViewStage):
         except:
             last_dataset = None
 
-        if reload or state != last_state or last_dataset is None:
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
             kwargs = deepcopy(self._config) or {}
 
             # Recreate same indexes from existing dataset
@@ -8886,16 +8918,16 @@ class ToFrames(ViewStage):
 
             # Other views may use the same generated dataset, so reuse the old
             # name if possible
-            if name is not None and state == last_state:
+            if name is not None and (saved_view or state == last_state):
                 if last_dataset is not None:
-                    last_dataset.delete()
+                    last_dataset._delete()
 
                 frames_dataset.name = name
-
-            state["name"] = frames_dataset.name
-            self._state = state
         else:
             frames_dataset = last_dataset
+
+        state["name"] = frames_dataset.name
+        self._state = state
 
         return fovi.FramesView(sample_collection, self, frames_dataset)
 
@@ -9307,6 +9339,7 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     SortBySimilarity,
     Shuffle,
     # View stages that only select documents
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeGroupSlices,

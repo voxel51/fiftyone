@@ -1,6 +1,19 @@
 FiftyOne
 ========
 
+.. raw:: html
+
+  <div class="responsive-banner">
+    <a href="https://link.voxel51.com/docs-search-sales" target="_blank" aria-label="Get enterprise features for team collaboration and production workflows">
+      <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
+        <source src="https://cdn.voxel51.com/banner/cta_sales_1200x200.webm" type="video/webm">
+      </video>
+      <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
+        <source src="https://cdn.voxel51.com/banner/cta_sales_2400x400.webm" type="video/webm">
+      </video>
+    </a>
+  </div>
+
 .. Social links ---------------------------------------------------------------
 
 .. raw:: html
@@ -53,17 +66,24 @@ most impactful ways to boost the performance of your model.
 FiftyOne provides the building blocks for optimizing your dataset analysis
 pipeline. Use it to get hands-on with your data, including visualizing complex
 labels, evaluating your models, exploring scenarios of interest, identifying
-failure modes, finding annotation mistakes, and much more!
+failure modes, finding annotation mistakes, and much more.
 
-.. custombutton::
-    :button_text: Install FiftyOne!
-    :button_link: getting_started/install.html
+.. note::
 
-Where to Begin?
-===============
+  FiftyOne is growing!
+  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
+  to learn about new features as they come out.
 
-Ready to dive into FiftyOne? Choose a guided learning experience tailored 
-to your use case:
+Where to Begin
+______________
+
+Get up and running in a couple minutes by installing FiftyOne:
+
+.. customanimatedcta::
+    :button_text: Install FiftyOne
+    :button_link: installation/index.html
+
+Then check out a guided learning experience tailored to your use case:
 
 .. raw:: html
 
@@ -74,45 +94,287 @@ to your use case:
     :description: Explore medical imaging workflows with DICOM, CT scans, and volumetric data.
     :level: Beginner
     :time: 15-25 min
-    :link: getting_started_guides/medical_imaging/index.html
+    :link: getting_started/medical_imaging/index.html
+
 .. customguidescard::
     :title: Self-Driving Guide
     :description: Dive into autonomous vehicle data workflows with sensor fusion and trajectory analysis.
     :level: Beginner
     :time: 20-30 min
-    :link: getting_started_guides/self_driving/index.html
+    :link: getting_started/self_driving/index.html
+
 .. customguidescard::
     :title: Model Evaluation Guide
     :description: Comprehensive model evaluation workflows with advanced analysis techniques.
     :level: Beginner
     :time: 15-25 min
-    :link: getting_started_guides/model_evaluation/index.html
+    :link: getting_started/model_evaluation/index.html
 
 .. raw:: html
 
     </div>
 
+None of those guides seem quite right? Here are some more options:
+
+**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started/object_detection/index>`
+
+**Have medical imaging data?** → :doc:`Check out the Medical Imaging Guide <getting_started/medical_imaging/index>`
+
+**Working on autonomous vehicles?** → :doc:`Jump into the Self-Driving Guide <getting_started/self_driving/index>`
+
+**Need 3D computer vision?** → :doc:`Explore the 3D Visual AI Guide <getting_started/threed_visual_ai/index>`
+
+**Want to evaluate model performance?** → :doc:`Follow the Model Evaluation Guide <getting_started/model_evaluation/index>`
+
+.. customanimatedcta::
+    :button_text: Explore all getting started guides
+    :button_link: getting_started/index.html
+
+Ready to dive deeper into FiftyOne? Check out these resources:
+
+* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
+  capabilities of FiftyOne
+* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
+  your current ML workflows
+* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
+  want to master quickly
+* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
+  how to accomplish various tasks with FiftyOne
+
+.. _core-capabilities:
+
+Core Capabilities
+_________________
+
+.. Callout items --------------------------------------------------------------
+
 .. raw:: html
 
-    <div class="text-center" style="margin: 1rem 0 2rem 0;">
-        <a href="getting_started_guides/index.html" class="sd-btn sd-btn-primary" style="font-size: 1rem; padding: 12px 24px;">
-            Explore All Getting Started Guides
-        </a>
+    <div class="tutorials-callout-container">
+        <div class="row">
+
+.. Add callout items below this line
+
+.. customcalloutitem::
+    :header: Curating datasets
+    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
+    :button_text: Learn how to import data into FiftyOne
+    :button_link: user_guide/import_datasets.html
+    :image: _static/images/homepage_curate.gif
+
+.. customcalloutitem::
+    :header: Evaluating models
+    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
+    :button_text: See how to evaluate models with FiftyOne
+    :button_link: tutorials/evaluate_detections.html
+    :image: _static/images/homepage_evaluate.gif
+
+.. customcalloutitem::
+    :header: Visualizing embeddings
+    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
+    :button_text: Experience the power of embeddings
+    :button_link: tutorials/image_embeddings.html
+    :image: _static/images/homepage_embeddings.gif
+
+.. customcalloutitem::
+    :header: Working with geolocation
+    :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
+    :button_text: Visualize your location data
+    :button_link: user_guide/plots.html#geolocation-plots
+    :image: _static/images/homepage_location.gif
+
+.. customcalloutitem::
+    :header: Finding annotation mistakes
+    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
+    :button_text: Check out the label mistakes tutorial
+    :button_link: tutorials/classification_mistakes.html
+    :image: _static/images/homepage_mistakes.gif
+
+.. customcalloutitem::
+    :header: Removing redundant images
+    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
+    :button_text: Try the image uniqueness tutorial
+    :button_link: tutorials/uniqueness.html
+    :image: _static/images/homepage_redundant.gif
+
+.. End callouts ---------------------------------------------------------------
+
+.. raw:: html
+
+        </div>
     </div>
 
+.. End of callout items -------------------------------------------------------
 
-Not sure where to start? Take our quick assessment:
+Core Concepts
+_____________
 
-**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started_guides/object_detection/index>`
+.. _fiftyone-library:
 
-**Have medical imaging data?** → :doc:`Begin with Medical Imaging Guide <getting_started_guides/medical_imaging/index>`
+FiftyOne Library
+----------------
 
-**Working on autonomous vehicles?** → :doc:`Jump to Self-Driving Guide <getting_started_guides/self_driving/index>`
+FiftyOne's core library provides a structured yet dynamic representation to
+explore your datasets. You can efficiently query and manipulate your dataset by
+adding custom tags, model predictions and more.
 
-**Need 3D computer vision?** → :doc:`Explore 3D Visual AI Guide <getting_started_guides/threed_visual_ai/index>`
+.. customanimatedcta::
+    :button_text: Explore the library
+    :button_link: user_guide/basics.html
 
-**Want to evaluate model performance?** → :doc:`Start with Model Evaluation Guide <getting_started_guides/model_evaluation/index>`
+.. code-block:: python
+    :linenos:
 
+    import fiftyone as fo
+
+    dataset = fo.Dataset("my_dataset")
+
+    sample = fo.Sample(filepath="/path/to/image.png")
+    sample.tags.append("train")
+    sample["custom_field"] = 51
+
+    dataset.add_sample(sample)
+
+    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
+
+    for sample in view:
+        print(sample)
+
+.. note::
+
+    FiftyOne is designed to be lightweight and flexible, making it easy to load
+    your datasets. FiftyOne supports loading datasets in a variety of common
+    formats out-of-the-box, and it also provides the extensibility to load
+    datasets in custom formats.
+
+    Check out :doc:`importing datasets <user_guide/import_datasets>` to see
+    how to load your data into FiftyOne.
+
+FiftyOne App
+------------
+
+The FiftyOne App is a graphical user interface that makes it easy to explore
+and rapidly gain intuition into your datasets. You can visualize labels like
+bounding boxes and segmentations overlaid on the samples; sort, query and
+slice your dataset into any subset of interest; and more.
+
+.. customanimatedcta::
+    :button_text: See more of the App
+    :button_link: user_guide/app.html
+
+.. image:: images/homepage_app.png
+   :alt: fiftyone-app
+   :align: center
+
+FiftyOne Brain
+--------------
+
+The FiftyOne Brain is a library of powerful machine learning-powered
+capabilities that provide insights into your datasets and recommend ways to
+modify your datasets that will lead to measurably better performance of your
+models.
+
+.. customanimatedcta::
+    :button_text: Learn more about the Brain
+    :button_link: brain.html
+
+.. code-block:: python
+   :linenos:
+
+   import fiftyone.brain as fob
+
+   fob.compute_uniqueness(dataset)
+   rank_view = dataset.sort_by("uniqueness")
+
+FiftyOne Plugins
+----------------
+
+FiftyOne provides a powerful plugin framework that allows for extending and
+customizing the functionality of the tool to suit your specific needs.
+
+With plugins, you can add new functionality to the FiftyOne App, create
+integrations with other tools and APIs, render custom panels, and add custom
+buttons to menus.
+
+With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even write
+plugins that allow users to execute long-running tasks from within the App that
+run on a connected compute cluster.
+
+.. customanimatedcta::
+    :button_text: Install some plugins!
+    :button_link: plugins/index.html
+
+.. image:: images/plugins/operators/examples/embeddings.gif
+   :alt: fiftyone-plugins
+   :align: center
+
+Dataset Zoo
+-----------
+
+The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
+and loading them into FiftyOne.
+
+It provides native access to dozens of popular benchmark datasets, and it als
+supports downloading arbitrary public or private datasets whose
+download/preparation methods are provided via GitHub repositories or URLs.
+
+.. customanimatedcta::
+    :button_text: Check out the Dataset Zoo
+    :button_link: dataset_zoo/index.html
+
+.. code-block:: python
+   :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
+
+    session = fo.launch_app(dataset)
+
+.. image:: images/dataset_zoo_coco_2017.png
+   :alt: dataset-zoo
+   :align: center
+
+Model Zoo
+---------
+
+The FiftyOne Model Zoo provides a powerful interface for downloading models and
+applying them to your FiftyOne datasets.
+
+It provides native access to hundreds of pre-trained models, and it also
+supports downloading arbitrary public or private models whose definitions are
+provided via GitHub repositories or URLs.
+
+.. customanimatedcta::
+    :button_text: Check out the Model Zoo
+    :button_link: model_zoo/index.html
+
+.. code-block:: python
+   :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        max_samples=50,
+        shuffle=True,
+    )
+
+    model = foz.load_zoo_model(
+        "clip-vit-base32-torch",
+        text_prompt="A photo of a",
+        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
+    )
+
+    dataset.apply_model(model, label_field="zero_shot_predictions")
+
+    session = fo.launch_app(dataset)
+
+Integrations
+____________
 
 FiftyOne integrates naturally with your favorite tools. Click on a logo to
 learn how:
@@ -280,259 +542,6 @@ learn how:
 
     </div>
 
-.. note::
-
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
-
-.. _core-capabilities:
-
-Core Capabilities
-_________________
-
-.. Callout items --------------------------------------------------------------
-
-.. raw:: html
-
-    <div class="tutorials-callout-container">
-        <div class="row">
-
-.. Add callout items below this line
-
-.. customcalloutitem::
-    :header: Curating datasets
-    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
-    :button_text: Learn how to import data into FiftyOne
-    :button_link: user_guide/import_datasets.html
-    :image: _static/images/homepage_curate.gif
-
-.. customcalloutitem::
-    :header: Evaluating models
-    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
-    :button_text: See how to evaluate models with FiftyOne
-    :button_link: tutorials/evaluate_detections.html
-    :image: _static/images/homepage_evaluate.gif
-
-.. customcalloutitem::
-    :header: Visualizing embeddings
-    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
-    :button_text: Experience the power of embeddings
-    :button_link: tutorials/image_embeddings.html
-    :image: _static/images/homepage_embeddings.gif
-
-.. customcalloutitem::
-    :header: Working with geolocation
-    :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
-    :button_text: Visualize your location data
-    :button_link: user_guide/plots.html#geolocation-plots
-    :image: _static/images/homepage_location.gif
-
-.. customcalloutitem::
-    :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
-    :button_text: Check out the label mistakes tutorial
-    :button_link: tutorials/classification_mistakes.html
-    :image: _static/images/homepage_mistakes.gif
-
-.. customcalloutitem::
-    :header: Removing redundant images
-    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
-    :button_text: Try the image uniqueness tutorial
-    :button_link: tutorials/uniqueness.html
-    :image: _static/images/homepage_redundant.gif
-
-.. End callouts ---------------------------------------------------------------
-
-.. raw:: html
-
-        </div>
-    </div>
-
-.. End of callout items -------------------------------------------------------
-
-Core Concepts
-_____________
-
-.. _fiftyone-library:
-
-FiftyOne Library
-----------------
-
-FiftyOne's core library provides a structured yet dynamic representation to
-explore your datasets. You can efficiently query and manipulate your dataset by
-adding custom tags, model predictions and more.
-
-.. custombutton::
-    :button_text: Explore the library
-    :button_link: user_guide/basics.html
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    dataset = fo.Dataset("my_dataset")
-
-    sample = fo.Sample(filepath="/path/to/image.png")
-    sample.tags.append("train")
-    sample["custom_field"] = 51
-
-    dataset.add_sample(sample)
-
-    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
-
-    for sample in view:
-        print(sample)
-
-.. note::
-
-    FiftyOne is designed to be lightweight and flexible, making it easy to load
-    your datasets. FiftyOne supports loading datasets in a variety of common
-    formats out-of-the-box, and it also provides the extensibility to load
-    datasets in custom formats.
-
-    Check out :doc:`importing datasets <user_guide/import_datasets>` to see
-    how to load your data into FiftyOne.
-
-FiftyOne App
-------------
-
-The FiftyOne App is a graphical user interface that makes it easy to explore
-and rapidly gain intuition into your datasets. You can visualize labels like
-bounding boxes and segmentations overlaid on the samples; sort, query and
-slice your dataset into any subset of interest; and more.
-
-.. custombutton::
-    :button_text: See more of the App
-    :button_link: user_guide/app.html
-
-.. image:: images/homepage_app.png
-   :alt: fiftyone-app
-   :align: center
-
-FiftyOne Brain
---------------
-
-The FiftyOne Brain is a library of powerful machine learning-powered
-capabilities that provide insights into your datasets and recommend ways to
-modify your datasets that will lead to measurably better performance of your
-models.
-
-.. custombutton::
-    :button_text: Learn more about the Brain
-    :button_link: brain.html
-
-.. code-block:: python
-   :linenos:
-
-   import fiftyone.brain as fob
-
-   fob.compute_uniqueness(dataset)
-   rank_view = dataset.sort_by("uniqueness")
-
-FiftyOne Plugins
-----------------
-
-FiftyOne provides a powerful plugin framework that allows for extending and
-customizing the functionality of the tool to suit your specific needs.
-
-With plugins, you can add new functionality to the FiftyOne App, create
-integrations with other tools and APIs, render custom panels, and add custom
-buttons to menus.
-
-With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even write
-plugins that allow users to execute long-running tasks from within the App that
-run on a connected compute cluster.
-
-.. custombutton::
-    :button_text: Install some plugins!
-    :button_link: plugins/index.html
-
-.. image:: images/plugins/operators/examples/embeddings.gif
-   :alt: fiftyone-plugins
-   :align: center
-
-Dataset Zoo
------------
-
-The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
-and loading them into FiftyOne.
-
-It provides native access to dozens of popular benchmark datasets, and it als
-supports downloading arbitrary public or private datasets whose
-download/preparation methods are provided via GitHub repositories or URLs.
-
-.. custombutton::
-    :button_text: Check out the Dataset Zoo
-    :button_link: dataset_zoo/index.html
-
-.. code-block:: python
-   :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-    session = fo.launch_app(dataset)
-
-.. image:: images/dataset_zoo_coco_2017.png
-   :alt: dataset-zoo
-   :align: center
-
-Model Zoo
----------
-
-The FiftyOne Model Zoo provides a powerful interface for downloading models and
-applying them to your FiftyOne datasets.
-
-It provides native access to hundreds of pre-trained models, and it also
-supports downloading arbitrary public or private models whose definitions are
-provided via GitHub repositories or URLs.
-
-.. custombutton::
-    :button_text: Check out the Model Zoo
-    :button_link: model_zoo/index.html
-
-.. code-block:: python
-   :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model(
-        "clip-vit-base32-torch",
-        text_prompt="A photo of a",
-        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
-    )
-
-    dataset.apply_model(model, label_field="zero_shot_predictions")
-
-    session = fo.launch_app(dataset)
-
-What's Next?
-____________
-
-Where should you go from here? You could...
-
-* :ref:`Install FiftyOne <installing-fiftyone>`
-* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne
-* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
-  your current ML workflows
-* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
-  want to master quickly
-* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne
-
 Need Support?
 _____________
 
@@ -546,9 +555,8 @@ us at support@voxel51.com.
 
    Overview <self>
    FiftyOne Enterprise 🚀 <enterprise/index>
-   Installation <getting_started/install>
-   Environments <environments/index>
-   Getting Started Guides <getting_started_guides/index>
+   Installation <installation/index>
+   Getting Started <getting_started/index>
    Tutorials <tutorials/index>
    Recipes <recipes/index>
    Cheat Sheets <cheat_sheets/index>
@@ -556,8 +564,8 @@ us at support@voxel51.com.
    Dataset Zoo <dataset_zoo/index>
    Model Zoo <model_zoo/index>
    FiftyOne Brain <brain>
-   Integrations <integrations/index>
    Plugins <plugins/index>
+   Integrations <integrations/index>
    CLI <cli/index>
    API Reference <api/fiftyone>
    Release Notes <release-notes>

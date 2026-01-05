@@ -1,0 +1,108 @@
+import { MuiButton } from "@fiftyone/components";
+import { Typography } from "@mui/material";
+import { atom, getDefaultStore, useAtom, useSetAtom } from "jotai";
+import { useCallback, useMemo, useRef } from "react";
+import styled from "styled-components";
+import { hasChanges } from "../Edit/state";
+import Modal from "./Modal";
+
+const showUnsavedChangesConfirmation = atom<(() => void) | false>(false);
+
+const Row = styled.div`
+  padding-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+`;
+
+function ExitChangesModal({
+  exit,
+  save,
+}: {
+  exit: () => void;
+  save: () => void | Promise<void>;
+}) {
+  const [shown, show] = useAtom(showUnsavedChangesConfirmation);
+
+  const close = useCallback(() => show(false), [show]);
+
+  return shown ? (
+    <Modal close={close} title={"You have unsaved changes"}>
+      <Typography color="secondary" padding="1rem 0">
+        You edited annotations for this label but haven’t saved them yet.
+        Unsaved changes will be lost if you discard them.
+      </Typography>
+
+      <Row>
+        <MuiButton color="secondary" onClick={close} variant="outlined">
+          Cancel
+        </MuiButton>
+
+        <div style={{ display: "flex", columnGap: "0.5rem" }}>
+          <MuiButton
+            color="error"
+            onClick={() => {
+              close();
+              exit();
+              shown();
+            }}
+            variant="contained"
+          >
+            Discard changes
+          </MuiButton>
+          <MuiButton
+            color="success"
+            onClick={async () => {
+              try {
+                await save();
+              } catch (error) {
+                console.error("Failed to save annotations:", error);
+              }
+
+              close();
+              shown();
+            }}
+            variant="contained"
+          >
+            Save and continue
+          </MuiButton>
+        </div>
+      </Row>
+    </Modal>
+  ) : null;
+}
+
+export default function useConfirmExit(
+  exit: () => void,
+  saveAnnotation?: () => void | Promise<void>
+) {
+  const setShowConfirmation = useSetAtom(showUnsavedChangesConfirmation);
+
+  const exitRef = useRef(exit);
+  exitRef.current = exit;
+
+  const saveAnnotationRef = useRef(saveAnnotation);
+  saveAnnotationRef.current = saveAnnotation;
+
+  const confirmExit = useCallback((callback) => {
+    if (getDefaultStore().get(hasChanges)) {
+      setShowConfirmation(() => callback);
+      return;
+    }
+
+    callback();
+    exitRef.current();
+  }, []);
+
+  return useMemo(
+    () => ({
+      confirmExit,
+      ExitChangesModal: () => (
+        <ExitChangesModal
+          exit={exitRef.current}
+          save={saveAnnotationRef.current ?? (() => {})}
+        />
+      ),
+    }),
+    [confirmExit]
+  );
+}

@@ -1,7 +1,7 @@
 """
 Validation utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -143,6 +143,28 @@ def validate_video_collection(sample_collection):
             "Expected collection to have media type %s; found %s"
             % (fom.VIDEO, sample_collection.media_type)
         )
+
+
+def validate_grouped_non_dynamic_collection(sample_collection):
+    """Validates that the provided samples are a grouped
+    :class:`fiftyone.core.collections.SampleCollection`.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if the provided samples are not grouped
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    validate_collection(sample_collection)
+
+    if sample_collection.media_type != fom.GROUP:
+        raise ValueError(
+            "Expected collection to have media type %s; found %s"
+            % (fom.GROUP, sample_collection.media_type)
+        )
+    if sample_collection._is_dynamic_groups:
+        raise ValueError("This method does not support dynamic group views")
 
 
 def validate_non_grouped_collection(sample_collection):

@@ -1,7 +1,7 @@
 """
 FiftyOne video-related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -12,6 +12,7 @@ from datetime import date, datetime
 from bson import ObjectId
 import numpy as np
 import unittest
+from unittest import mock
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
@@ -50,26 +51,26 @@ class VideoTests(unittest.TestCase):
         self.assertFalse(4 in frames)
         self.assertTrue(5 in frames)
 
-        self.assertTrue(list(frames.keys()), [1, 3, 5])
+        self.assertEqual(list(frames.keys()), [1, 3, 5])
 
         frame_numbers = []
         for frame_number, frame in frames.items():
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 3, 5])
+        self.assertEqual(frame_numbers, [1, 3, 5])
 
         del frames[3]
 
         self.assertFalse(3 in frames)
-        self.assertTrue(list(frames.keys()), [1, 5])
+        self.assertEqual(list(frames.keys()), [1, 5])
 
         frame_numbers = []
         for frame_number, frame in frames.items():
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 5])
+        self.assertEqual(frame_numbers, [1, 5])
 
         dataset = fo.Dataset()
         dataset.add_sample(sample)
@@ -82,7 +83,7 @@ class VideoTests(unittest.TestCase):
         self.assertIsInstance(frame1.sample_id, str)
         self.assertIsInstance(frame1._sample_id, ObjectId)
 
-        self.assertTrue(len(sample.frames), 2)
+        self.assertEqual(len(sample.frames), 2)
 
         self.assertTrue(1 in sample.frames)
         self.assertFalse(2 in sample.frames)
@@ -95,7 +96,7 @@ class VideoTests(unittest.TestCase):
             frame_numbers.append(frame_number)
             self.assertEqual(frame_number, frame.frame_number)
 
-        self.assertTrue(frame_numbers, [1, 5])
+        self.assertEqual(frame_numbers, [1, 5])
 
     @drop_datasets
     def test_video_dataset_frames_init(self):
@@ -148,11 +149,28 @@ class VideoTests(unittest.TestCase):
         dataset.create_index("frames.id", unique=True)  # already exists
         dataset.create_index("frames.id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("frames.id")  # can't drop default
+            dataset.drop_index("frames.id")  # can't drop default index
+
+        with self.assertRaises(ValueError):
+            dataset.drop_index("frames.created_at")  # can't drop default index
 
         name = dataset.create_index("frames.field")
         self.assertEqual(name, "frames.field")
         self.assertIn("frames.field", dataset.list_indexes())
+
+        dataset.create_index("frames.field", unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["frames.field"]["unique"])
+
+        dataset.create_index("frames.field", unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["frames.field"]["unique"])  # still unique
+
+        dataset.create_index("frames.field", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["frames.field"].get("unique", False)
+        )  # now non-unique
 
         dataset.drop_index("frames.field")
         self.assertNotIn("frames.field", dataset.list_indexes())
@@ -164,13 +182,61 @@ class VideoTests(unittest.TestCase):
         dataset.drop_index("frames.cls.label")
         self.assertNotIn("frames.cls.label", dataset.list_indexes())
 
-        compound_index_name = dataset.create_index(
-            [("frames.id", 1), ("frames.field", 1)]
-        )
-        self.assertIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("frames.field", -1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["frames.field"]["key"], [("field", -1)])
 
-        dataset.drop_index(compound_index_name)
-        self.assertNotIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("frames.field", 1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(
+            indexes["frames.field"]["key"], [("field", -1)]
+        )  # still -1
+
+        dataset.create_index([("frames.field", 1)], force=True)
+        indexes = dataset.get_index_information()
+        self.assertEqual(
+            indexes["frames.field"]["key"], [("field", 1)]
+        )  # now 1
+
+        dataset.create_index([("frames.field", 1), ("frames.id", 1)])
+        self.assertIn("frames.field_1__id_1", dataset.list_indexes())
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertTrue(
+            indexes["frames.field_1__id_1"]["unique"]
+        )  # now unique
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=False
+        )
+        indexes = dataset.get_index_information()
+        self.assertTrue(
+            indexes["frames.field_1__id_1"]["unique"]
+        )  # still unique
+
+        dataset.create_index(
+            [("frames.field", 1), ("frames.id", 1)], unique=False, force=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["frames.field_1__id_1"].get("unique", False)
+        )  # now non-unique
+
+        dataset.create_index([("frames.field", -1), ("frames.id", 1)])
+        self.assertTrue("frames.field_1__id_1" in dataset.list_indexes())
+        self.assertFalse("frames.field_-1__id_1" in dataset.list_indexes())
+
+        dataset.create_index(
+            [("frames.field", -1), ("frames.id", 1)], force=True
+        )
+        self.assertFalse("frames.field_1__id_1" in dataset.list_indexes())
+        self.assertTrue("frames.field_-1__id_1" in dataset.list_indexes())
+
+        dataset.drop_index("frames.field_-1__id_1")
+        self.assertNotIn("frames.field_-1__id_1", dataset.list_indexes())
 
         with self.assertRaises(ValueError):
             dataset.create_index("frames.non_existent_field")
@@ -1099,8 +1165,8 @@ class VideoTests(unittest.TestCase):
 
         sample1_view = view.first()
 
-        self.assertTrue(len(sample1_view.frames), 2)
-        self.assertTrue(list(sample1_view.frames.keys()), [1, 2])
+        self.assertEqual(len(sample1_view.frames), 2)
+        self.assertEqual(list(sample1_view.frames.keys()), [1, 2])
 
         frame_numbers = []
         for frame_number, frame in sample1_view.frames.items():
@@ -1156,14 +1222,33 @@ class VideoTests(unittest.TestCase):
         self.assertTrue(dataset2.has_frame_field("field2"))
 
         dataset3 = fo.Dataset()
+        dataset3.media_type = "video"
+
+        indexes1_before = dataset1.get_index_information()
+        indexes2_before = dataset2.get_index_information()
+        indexes3_before = dataset3.get_index_information()
+
+        self.assertFalse(indexes1_before["filepath"].get("unique", False))
+        self.assertFalse(indexes2_before["filepath"].get("unique", False))
+        self.assertFalse(indexes3_before["filepath"].get("unique", False))
+
         dataset3.merge_samples(dataset1)
         dataset3.merge_samples(dataset2)
         frame3 = dataset3.first().frames.first()
+        indexes1_after = dataset1.get_index_information()
+        indexes2_after = dataset2.get_index_information()
+        indexes3_after = dataset3.get_index_information()
 
         self.assertTrue(dataset3.has_frame_field("field1"))
         self.assertTrue(dataset3.has_frame_field("field2"))
         self.assertEqual(frame3["field1"], "a")
         self.assertEqual(frame3["field2"], "b")
+        self.assertTrue(indexes1_after["filepath"]["unique"])
+        self.assertTrue(indexes2_after["filepath"]["unique"])
+        self.assertTrue(indexes3_after["filepath"]["unique"])
+        self.assertSetEqual(set(indexes1_before), set(indexes1_after))
+        self.assertSetEqual(set(indexes2_before), set(indexes2_after))
+        self.assertSetEqual(set(indexes3_before), set(indexes3_after))
 
         dataset4 = fo.Dataset()
         dataset4.merge_samples(view1)
@@ -1679,6 +1764,47 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(dataset.first().frames.first()["foo"], "bar")
         self.assertIsNone(dataset.last()["foo"])
         self.assertIsNone(dataset.last().frames.last()["foo"])
+
+    @drop_datasets
+    def test_set_values_frame_numbers(self):
+        dataset = fo.Dataset()
+
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame()
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[2] = fo.Frame()
+
+        dataset.add_samples([sample1, sample2])
+
+        # Use integers to refer to frame numbers
+        values = {sample1.filepath: {2: "spam"}, sample2.filepath: {1: "eggs"}}
+        dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
+
+        # Cannot use strings to refer to existing frame numbers
+        with self.assertRaises(ValueError):
+            values = {sample1.filepath: {"1": "not allowed"}}
+            dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
+
+        # Cannot use strings to refer to new frame numbers either
+        with self.assertRaises(ValueError):
+            values = {sample2.filepath: {"100": "not allowed"}}
+            dataset.set_values("frames.foo", values, key_field="filepath")
+
+        self.assertListEqual(
+            dataset.values("frames.frame_number", unwind=True),
+            [1, 2, 1, 2],
+        )
 
     @drop_datasets
     def test_to_clips(self):
@@ -2427,6 +2553,98 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(view), 1)
         self.assertEqual(dataset.count("events.detections"), 1)
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 0)
+
+    @drop_datasets
+    @mock.patch(
+        "fiftyone.core.stages.focl.make_clips_dataset",
+        wraps=foc.make_clips_dataset,
+    )
+    def test_to_clips_saved_view(self, make_clips_dataset):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            events=fo.TemporalDetections(
+                detections=[
+                    fo.TemporalDetection(label="meeting", support=[1, 3]),
+                    fo.TemporalDetection(label="party", support=[2, 4]),
+                ]
+            ),
+        )
+
+        dataset.add_sample(sample)
+
+        view = dataset.to_clips("events").limit(1)
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(view._dataset.persistent)
+        self.assertEqual(view.name, "test")
+        self.assertEqual(make_clips_dataset.call_count, 1)
+
+        name = view._dataset.name
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+
+        sample.events.detections[0].label = "nap"
+        sample.save()
+
+        # Reloading saved view should cause backing dataset to be regenerated
+        # and `last_modified_at` to be incremented
+        view.reload()
+
+        self.assertEqual(view.values("events.label"), ["nap"])
+        self.assertTrue(view._dataset.persistent)
+        self.assertEqual(view.name, "test")
+        self.assertEqual(make_clips_dataset.call_count, 2)
+
+        view_doc2 = dataset._get_saved_view_doc("test")
+        view_doc2.reload()  # avoid microsecond issues
+        last_modified_at2 = view_doc2.last_modified_at
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
+
+        # Loading a saved view without changes should not cause backing dataset
+        # to be regenerated nor `last_modified_at` to be incremented
+        also_view = dataset.load_saved_view("test")
+
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
+        self.assertEqual(last_modified_at2, last_modified_at3)
+        self.assertEqual(make_clips_dataset.call_count, 2)
+
+        # Loading saved view should cause non-existent backing dataset to be
+        # automatically regenerated
+        also_view._dataset.delete()
+        still_view = dataset.load_saved_view("test")
+
+        view_doc4 = dataset._get_saved_view_doc("test")
+        last_modified_at4 = view_doc4.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(still_view._dataset.persistent)
+        self.assertEqual(last_modified_at2, last_modified_at4)
+        self.assertEqual(make_clips_dataset.call_count, 3)
+
+        # Renaming dataset should not cause backing dataset to be regenerated
+        dataset.name = fo.get_default_dataset_name()
+
+        still_view = dataset.load_saved_view("test")
+
+        self.assertEqual(make_clips_dataset.call_count, 3)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(still_view._dataset.persistent)
 
     @drop_datasets
     def test_to_frames(self):
@@ -3246,6 +3464,101 @@ class VideoTests(unittest.TestCase):
         self.assertEqual(len(view), 3)
         self.assertEqual(view.count("ground_truth.detections"), 2)
         self.assertEqual(dataset.count("frames.ground_truth.detections"), 2)
+
+    @drop_datasets
+    @mock.patch(
+        "fiftyone.core.stages.fovi.make_frames_dataset",
+        wraps=fov.make_frames_dataset,
+    )
+    def test_to_frames_saved_view(self, make_frames_dataset):
+        dataset = fo.Dataset()
+
+        sample = fo.Sample(
+            filepath="video.mp4",
+            metadata=fo.VideoMetadata(size_bytes=51, total_frame_count=2),
+        )
+        sample.frames[1] = fo.Frame(filepath="frame1.jpg", field="foo")
+        sample.frames[2] = fo.Frame(
+            filepath="frame1.jpg",
+            ground_truth=fo.Detections(detections=[fo.Detection(label="cat")]),
+        )
+
+        dataset.add_sample(sample)
+
+        view = dataset.to_frames().skip(1)
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(view._dataset.persistent)
+        self.assertEqual(view.name, "test")
+        self.assertEqual(make_frames_dataset.call_count, 1)
+
+        name = view._dataset.name
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+
+        sample.frames[2].ground_truth.detections[0].label = "dog"
+        sample.save()
+
+        # Reloading saved view should cause backing dataset to be regenerated
+        # and `last_modified_at` to be incremented
+        view.reload()
+
+        self.assertEqual(
+            view.values("ground_truth.detections.label", unwind=True),
+            ["dog"],
+        )
+        self.assertTrue(view._dataset.persistent)
+        self.assertEqual(view.name, "test")
+        self.assertEqual(make_frames_dataset.call_count, 2)
+
+        view_doc2 = dataset._get_saved_view_doc("test")
+        view_doc2.reload()  # avoid microsecond issues
+        last_modified_at2 = view_doc2.last_modified_at
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(last_modified_at1 < last_modified_at2)
+
+        # Loading a saved view without changes should not cause backing dataset
+        # to be regenerated nor `last_modified_at` to be incremented
+        also_view = dataset.load_saved_view("test")
+
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertEqual(also_view.name, "test")
+        self.assertEqual(also_view._dataset.name, name)
+        self.assertEqual(last_modified_at2, last_modified_at3)
+        self.assertEqual(make_frames_dataset.call_count, 2)
+
+        # Loading saved view should cause non-existent backing dataset to be
+        # automatically regenerated
+        also_view._dataset.delete()
+        still_view = dataset.load_saved_view("test")
+
+        view_doc4 = dataset._get_saved_view_doc("test")
+        last_modified_at4 = view_doc4.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(still_view._dataset.persistent)
+        self.assertEqual(last_modified_at2, last_modified_at4)
+        self.assertEqual(make_frames_dataset.call_count, 3)
+
+        # Renaming dataset should not cause backing dataset to be regenerated
+        dataset.name = fo.get_default_dataset_name()
+
+        still_view = dataset.load_saved_view("test")
+
+        self.assertEqual(make_frames_dataset.call_count, 3)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(still_view._dataset.persistent)
 
     @drop_datasets
     def test_to_clip_frames(self):

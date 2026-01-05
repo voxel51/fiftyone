@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { getCls, sizeBytesEstimate } from "@fiftyone/utilities";
@@ -16,11 +16,12 @@ export enum CONTAINS {
 }
 
 export interface BaseLabel {
-  id: string;
+  id?: string;
   frame_number?: number;
-  tags: string[];
+  tags?: string[];
   index?: number;
   _renderStatus?: DenseLabelRenderStatus;
+  path?: string;
 
   /**
    * Unlike id, instanceId is not guaranteed to be unique across samples.
@@ -67,7 +68,7 @@ export type LabelMask = {
 };
 
 export interface RegularLabel extends BaseLabel {
-  _id?: string;
+  _id: string;
   label?: string;
   confidence?: number | NONFINITE;
 }

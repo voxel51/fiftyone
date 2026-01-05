@@ -1,5 +1,5 @@
 """
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -40,33 +40,6 @@ class TestCreate:
         """Patch method"""
         with mock.patch.object(fou, "recommend_process_pool_workers") as m:
             yield m
-
-    @pytest.mark.parametrize(
-        "num_workers",
-        (
-            pytest.param(None, id="worker-is-unset"),
-            pytest.param(5, id="worker-is-set"),
-        ),
-    )
-    def test_force_one_worker(
-        self,
-        config,
-        num_workers,
-        current_process,
-        recommend_process_pool_workers,
-    ):
-        """test worker value"""
-        current_process.daemon = True
-
-        #####
-        mapper = fomp.ProcessMapper.create(
-            config=config, batch_cls=mock.Mock(), num_workers=num_workers
-        )
-        #####
-
-        assert not recommend_process_pool_workers.called
-
-        assert mapper.num_workers == 1
 
     @pytest.mark.parametrize(
         "max_workers",

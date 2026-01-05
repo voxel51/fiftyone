@@ -5,19 +5,19 @@ FiftyOne Enterprise Installation
 
 .. default-role:: code
 
-FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App and
-database that allows your entire team to collaborate securely on the same
+FiftyOne Enterprise deployments come with a centralized FiftyOne Enterprise App
+and database that allows your entire team to collaborate securely on the same
 datasets. FiftyOne Enterprise is deployed entirely into your environment, either
 on-premises or in a private cloud. Your data never leaves your environment.
 
-FiftyOne Enterprise can be deployed on a wide variety of infrastructure solutions,
-including Kubernetes and Docker.
+FiftyOne Enterprise can be deployed on a wide variety of infrastructure
+solutions, including Kubernetes and Docker.
 
 .. note::
 
-    Detailed instructions for the initial FiftyOne Enterprise deployment, along with
-    all necessary components, are made available by your Voxel51 CS engineer
-    during the onboarding process.
+    Detailed instructions for the initial FiftyOne Enterprise deployment, along
+    with all necessary components, are made available by your Voxel51 support
+    team during the onboarding process.
 
 .. _enterprise-python-sdk:
 
@@ -254,10 +254,11 @@ here is an example configuration:
 
     [
         {
-            "origin": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
-            "method": ["GET", "HEAD"],
-            "responseHeader": ["*"],
-            "maxAgeSeconds": 86400
+            "AllowedHeaders": ["*"],
+            "AllowedMethods": ["GET", "HEAD"],
+            "AllowedOrigins": ["https://fiftyone-enterprise-deployment.yourcompany.com"],
+            "ExposeHeaders": [],
+            "MaxAgeSeconds": 86400
         }
     ]
 

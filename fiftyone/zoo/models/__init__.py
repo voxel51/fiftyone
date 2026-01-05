@@ -1,7 +1,7 @@
 """
 The FiftyOne Model Zoo.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -502,6 +502,7 @@ class ZooModel(etam.Model):
         default_deployment_config_dict (None): a
             :class:`fiftyone.core.models.ModelConfig` dict describing the
             recommended settings for deploying the model
+        training_data (None): the training data information for the model, if applicable
     """
 
     _REQUIREMENT_ERROR_SUFFIX = (

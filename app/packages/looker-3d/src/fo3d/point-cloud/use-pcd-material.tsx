@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
-import type { BufferGeometry } from "three";
+import type { BufferGeometry, Quaternion } from "three";
 import {
+  DEFAULT_BOUNDING_BOX,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -58,11 +59,13 @@ export const usePcdMaterial = (
   name: string,
   geometry: BufferGeometry,
   defaultMaterial: PcdAsset["defaultMaterial"],
-  pcdContainerRef: React.RefObject<any>
+  pcdContainerRef: React.RefObject<any>,
+  quaternion?: Quaternion,
+  vertexColorsAvailable: boolean = false
 ) => {
   const { upVector, pluginSettings } = useFo3dContext();
 
-  const pcdBoundingBox = useFo3dBounds(
+  const { boundingBox: pcdBoundingBox } = useFo3dBounds(
     pcdContainerRef,
     useCallback(() => {
       return !!geometry;
@@ -70,17 +73,18 @@ export const usePcdMaterial = (
   );
 
   const minMaxCoordinates = useMemo(() => {
-    if (!pcdBoundingBox) {
-      return null;
-    }
+    const effectiveBoundingBox = pcdBoundingBox || DEFAULT_BOUNDING_BOX;
 
     // note: we should deprecate minZ in the plugin settings, since it doesn't account for non-z up vectors
-    if (pluginSettings?.pointCloud?.minZ) {
-      return [pluginSettings.pointCloud.minZ, pcdBoundingBox.max.z];
+    if (
+      pluginSettings?.pointCloud?.minZ !== null &&
+      pluginSettings?.pointCloud?.minZ !== undefined
+    ) {
+      return [pluginSettings.pointCloud.minZ, effectiveBoundingBox.max.z];
     }
 
-    const min = pcdBoundingBox.min.dot(upVector);
-    const max = pcdBoundingBox.max.dot(upVector);
+    const min = effectiveBoundingBox.min.dot(upVector);
+    const max = effectiveBoundingBox.max.dot(upVector);
 
     return [min, max] as const;
   }, [upVector, pcdBoundingBox, pluginSettings]);
@@ -138,23 +142,27 @@ export const usePcdMaterial = (
   const pointsMaterial = useMemo(() => {
     // to trigger rerender
     const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}-${
-      colorMap ? JSON.stringify(colorMap) : ""
-    }-${activeThreshold ? JSON.stringify(activeThreshold) : ""}`;
+      quaternion
+        ? JSON.stringify([
+            quaternion.x,
+            quaternion.y,
+            quaternion.z,
+            quaternion.w,
+          ])
+        : ""
+    }-${colorMap ? JSON.stringify(colorMap) : ""}-${
+      activeThreshold ? JSON.stringify(activeThreshold) : ""
+    }`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
-        /**
-         * FIX ME: while `pointsMaterial` respects `upVector` in shade-by-height, it disregards rotation / translation / scale
-         * applied to the pcd. This is because the shader is applied to the points, not the pcd container.
-         *
-         * The behavior is undefined if the pcd is rotated / translated / scaled.
-         */
         return (
           <ShadeByHeight
             colorMap={colorMap}
             min={minMaxCoordinates?.at(0) ?? 0}
             max={minMaxCoordinates?.at(1) ?? 100}
             upVector={upVector}
+            quaternion={quaternion}
             key={key}
             pointSize={pointSize}
             opacity={opacity}
@@ -206,6 +214,7 @@ export const usePcdMaterial = (
             size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
             opacity={opacity}
             sizeAttenuation={isPointSizeAttenuated}
+            vertexColors={Boolean(vertexColorsAvailable)}
           />
         );
 
@@ -251,6 +260,7 @@ export const usePcdMaterial = (
     maxIntensity,
     geometry,
     upVector,
+    quaternion,
     opacity,
     name,
     colorMap,

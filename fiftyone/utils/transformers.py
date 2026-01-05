@@ -2,7 +2,7 @@
 Utilities for working with
 `Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -21,8 +21,10 @@ from fiftyone.core.models import EmbeddingsMixin, PromptMixin
 from fiftyone.zoo.models import HasZooModel
 import fiftyone.utils.torch as fout
 
+
 fou.ensure_torch()
 import torch
+
 
 fou.ensure_package("transformers")
 import transformers
@@ -36,6 +38,7 @@ DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
+DEFAULT_POSE_ESTIMATION_PATH = "usyd-community/vitpose-base-simple"
 
 
 def convert_transformers_model(model, task=None, **kwargs):
@@ -46,7 +49,7 @@ def convert_transformers_model(model, task=None, **kwargs):
         model: a ``transformers`` model
         task (None): the task of the model. Supported values are
             ``"image-classification"``, ``"object-detection"``,
-            ``"semantic-segmentation"``, and ``"depth-estimation"``.
+            ``"semantic-segmentation"``, ``"depth-estimation"``, and ``"pose-estimation"``.
             If not specified, the task is automatically inferred from the model
 
     Returns:
@@ -100,6 +103,7 @@ def get_model_type(model, task=None):
         "object-detection",
         "semantic-segmentation",
         "depth-estimation",
+        "pose-estimation",
     )
     if task is not None and task not in supported_tasks:
         raise ValueError(
@@ -122,6 +126,8 @@ def get_model_type(model, task=None):
             task = "semantic-segmentation"
         elif _is_transformer_for_depth_estimation(model):
             task = "depth-estimation"
+        elif _is_transformer_for_pose_estimation(model):
+            task = "pose-estimation"
         elif _is_transformer_base_model(model):
             task = "base-model"
         else:
@@ -678,8 +684,8 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
+                classes=self.config.filter_classes,
             )
-
         else:
             return output
 
@@ -706,9 +712,14 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             # the transforms batch processed the input
             # no need to collate
             return batch
-        keys = batch[0].keys()
+        bkeys = list(batch[0].keys())
+        non_tensor_keys = [
+            k for k in bkeys if not isinstance(batch[0][k], torch.Tensor)
+        ]
         res = {}
-        for k in keys:
+        for k in bkeys:
+            if k in non_tensor_keys:
+                continue
             # Gather shapes for dimension analysis
             shapes = [b[k].shape for b in batch]
             # Find the max size in each dimension
@@ -721,13 +732,19 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
             for bdict in batch:
                 t = bdict[k]
                 pad_amounts = []
-                for d in reversed(range(len(t.shape))):
+                for d in reversed(range(1, len(t.shape))):
                     diff = max_dims[d] - t.shape[d]
                     pad_amounts.extend([0, diff])  # (left_pad, right_pad)
                 padded_tensors.append(torch.nn.functional.pad(t, pad_amounts))
 
             # Concatenate along the first dimension
             res[k] = torch.cat(padded_tensors, dim=0)
+
+        for k in non_tensor_keys:
+            vals = []
+            for b in batch:
+                vals.extend(b[k])
+            res[k] = vals
 
         return res
 
@@ -770,11 +787,8 @@ class FiftyOneZeroShotTransformer(
         return self._text_prompts
 
     def _get_text_prompts(self):
-        if self.classes is None and self.config.classes is None:
-            return None
-
         if self.classes is None:
-            self.classes = self.config.classes
+            return None
 
         text_prompt = (
             self.config.text_prompt if self.config.text_prompt else None
@@ -1070,6 +1084,188 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         self.transforms.return_image_sizes = True
 
 
+class FiftyOneTransformerForPoseEstimationConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneTransformerForPoseEstimation`.
+
+    Args:
+        model (None): a ``transformers`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        dataset_index (0):  dataset index to use in the Mixture-of-Experts (MoE) blocks of the backbone.
+    """
+
+    def __init__(self, d):
+        if (
+            d.get("name_or_path", None) is None
+            and d.get("model", None) is None
+        ):
+            d["name_or_path"] = DEFAULT_POSE_ESTIMATION_PATH
+        super().__init__(d)
+        self.dataset_index = self.parse_int(d, "dataset_index", default=0)
+
+
+class PoseEstimationGetItem(fout.GetItem):
+    """A :class:`GetItem` that loads images and bounding boxes to feed to
+    :class:`FiftyOneTransformerForPoseEstimation` instances.
+
+    Args:
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset that contain
+            the required values
+        transform (None): a ``_HFTransformsHandler`` instance to apply
+        use_numpy (False): whether to use numpy arrays rather than PIL images
+            and Torch tensors when loading data
+    """
+
+    def __init__(
+        self, field_mapping=None, transform=None, use_numpy=None, **kwargs
+    ):
+        super().__init__(field_mapping=field_mapping, **kwargs)
+
+        self.transform = transform
+        self.use_numpy = use_numpy
+
+    def __call__(self, d):
+        img = fout._load_image(
+            d["filepath"],
+            use_numpy=self.use_numpy,
+            force_rgb=True,
+        )
+
+        height, width = _get_image_size(img)
+        detections = d["prompt_field"]
+        img_boxes = _get_image_boxes((height, width), detections.detections)
+
+        if len(img_boxes) == 0:
+            raise ValueError(
+                "At least one box prompt is required for each image."
+            )
+        if self.transform is None:
+            raise ValueError(
+                "Transform cannot be None for PoseEstimationGetItem."
+            )
+
+        return self.transform(
+            {
+                "images": img,
+                "boxes": [img_boxes],
+            }
+        )
+
+    @property
+    def required_keys(self):
+        return ["filepath", "prompt_field"]
+
+
+class FiftyOneTransformerForPoseEstimation(
+    fout.TorchSamplesMixin, FiftyOneTransformer
+):
+    """FiftyOne wrapper around a ``transformers`` model for pose estimation.
+
+    VitPose models require person detection as a first step, then estimate
+    keypoints within each detected person.
+
+    Args:
+        config: a :class:`FiftyOneTransformerForPoseEstimationConfig`
+    """
+
+    def __init__(self, config):
+        if config.entrypoint_fcn is None:
+            config.entrypoint_fcn = (
+                "transformers.VitPoseForPoseEstimation.from_pretrained"
+            )
+
+        if config.output_processor_cls is None:
+            config.output_processor_cls = "fiftyone.utils.transformers.TransformersPoseEstimationOutputProcessor"
+
+        fout.TorchSamplesMixin.__init__(self)
+        FiftyOneTransformer.__init__(self, config)
+
+        self._output_processor.processor = self.transforms.processor
+
+        self.transforms.return_image_sizes = True
+        self._box_prompts = None
+
+    def predict_all(self, imgs, samples=None):
+        self._box_prompts = None
+        if self.preprocess and samples is not None:
+            # Only required when preprocessing
+            field_name = self._get_field()
+            self._box_prompts = self._get_box_prompts(samples, field_name)
+        return self._predict_all(imgs)
+
+    def _get_box_prompts(self, samples, field_name):
+        prompts = []
+        for sample in samples:
+            detections = sample.get_field(field_name)
+            if not isinstance(detections, fol.Detections):
+                raise ValueError("Only Detections can be used as box prompts")
+            if detections is not None:
+                prompts.append(detections)
+            else:
+                raise ValueError(
+                    "Sample %s is missing a prompt in field '%s'"
+                    % (sample.id, field_name)
+                )
+
+        return prompts
+
+    def _get_field(self):
+        if "prompt_field" in self.needs_fields:
+            prompt_field = self.needs_fields["prompt_field"]
+        else:
+            prompt_field = next(iter(self.needs_fields.values()), None)
+
+        return prompt_field
+
+    def _predict_all(self, args):
+        if self.preprocess:
+            images_hw = [_get_image_size(img) for img in args]
+            images_boxes = []
+            for detections, img_hw in zip(self._box_prompts, images_hw):
+                images_boxes.append(
+                    _get_image_boxes(img_hw, detections.detections)
+                )
+            args = {
+                "images": args,
+                "boxes": images_boxes,
+            }
+            args = self.collate_fn(self.transforms(args))
+
+        image_sizes = args.pop("fo_image_size", [(None, None)])
+        boxes = args.pop("boxes", None)
+
+        args["dataset_index"] = torch.tensor(
+            [self.config.dataset_index] * len(args["pixel_values"])
+        )
+
+        for k, v in args.items():
+            args[k] = v.to(self.device)
+
+        output = self._forward_pass(args)
+
+        if self._output_processor is not None:
+            return self._output_processor(
+                output,
+                image_sizes,
+                confidence_thresh=self.config.confidence_thresh,
+                box_prompts=boxes,
+            )
+        return output
+
+    def build_get_item(self, field_mapping=None):
+        if (
+            isinstance(field_mapping, dict)
+            and "prompt_field" not in field_mapping
+        ):
+            # TODO: remove this when GetItem is used in SAM for box prompts.
+            field_mapping["prompt_field"] = self._get_field()
+        return PoseEstimationGetItem(
+            transform=self._transforms,
+            use_numpy=False,
+            field_mapping=field_mapping,
+        )
+
+
 class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
 
@@ -1170,6 +1366,10 @@ def _is_transformer_for_depth_estimation(model):
     return "ForDepthEstimation" in _get_model_type_string(model)
 
 
+def _is_transformer_for_pose_estimation(model):
+    return "ForPoseEstimation" in _get_model_type_string(model)
+
+
 def _is_transformer_base_model(model):
     model_type = _get_model_type_string(model)
     return "Model" in model_type and "For" not in model_type
@@ -1191,16 +1391,21 @@ class _HFTransformsHandler:
         self.text_per_image = False  # passed in by model after init
 
     def __call__(self, args):
+        image_size = None
         if isinstance(args, dict):
             # multiple inputs
             if self.return_image_sizes:
-                if args.get("images", None) is not None:
+                if not image_size and args.get("images", None) is not None:
                     image_size = (
                         [_get_image_size(img) for img in args["images"]]
                         if isinstance(args["images"], list)
                         else [_get_image_size(args["images"])]
                     )
+
             res = self.processor(**args, **self.kwargs)
+            # only attach boxes if explicitly provided
+            if "boxes" in args:
+                res["boxes"] = args["boxes"]
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1
@@ -1221,7 +1426,7 @@ class _HFTransformsHandler:
             else:
                 res = self.processor(images=args, **self.kwargs)
 
-        if self.return_image_sizes:
+        if self.return_image_sizes and image_size:
             res.update({"fo_image_size": torch.tensor(image_size)})
 
         return res
@@ -1270,7 +1475,14 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                     "or post_process_grounded_object_detection method."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         if self._is_grounded:
             output = self._objection_detection_processor(
                 output, output.get("input_ids"),
@@ -1286,12 +1498,14 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._parse_output(
                     o,
                     (img_sz[1], img_sz[0]),
-                    confidence_thresh=confidence_thresh,
+                    confidence_thresh,
+                    classes,
                 )
             )
+
         return res
 
-    def _parse_output(self, output, frame_size, confidence_thresh):
+    def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
         width, height = frame_size
 
         boxes = output["boxes"].detach().cpu().numpy()
@@ -1309,6 +1523,9 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
             bounding_box = [x1 / width, y1 / height, (x2 - x1) / width, (y2 - y1) / height]
             label = label if self._is_grounded else self.classes[label]
 
+            if classes is not None and label not in classes:
+                continue
+
             detections.append(fol.Detection(label=label, bounding_box=bounding_box, confidence=score))
 
         return fol.Detections(detections=detections)
@@ -1321,13 +1538,21 @@ class TransformersSemanticSegmentatorOutputProcessor(
         self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         return super().__call__(
             {
                 "out": output[self.logits_key]
             },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
+            classes=classes,
         )
 
 
@@ -1358,13 +1583,79 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                     "Processor does not have a post_process_depth_estimation."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(self, output, image_sizes, **kwargs):
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
         )
         output = output / np.max(output, axis=(1, 2), keepdims=True)
         return [fol.Heatmap(map=o) for o in output]
+
+
+class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
+    """Output processor for pose estimation models."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._processor = None
+        self._pose_estimation_post_processor = None
+
+    @property
+    def processor(self):
+        if self._processor is None:
+            raise ValueError(
+                "Processor not set. Please make sure the processor is set."
+            )
+        return self._processor
+
+    @processor.setter
+    def processor(self, processor):
+        self._processor = processor
+        if self._processor is not None:
+            if hasattr(self._processor, "post_process_pose_estimation"):
+                self._pose_estimation_post_processor = (
+                    self._processor.post_process_pose_estimation
+                )
+            else:
+                raise ValueError(
+                    "Processor does not have a post_process_pose_estimation."
+                )
+
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        box_prompts=None,
+        **kwargs,
+    ):
+        """Process pose estimation outputs to FiftyOne format."""
+        output.heatmaps = output.heatmaps.detach()
+        output = self._pose_estimation_post_processor(
+            output, boxes=box_prompts
+        )
+        results = []
+        for idx, im_out in enumerate(output):
+            result = {"keypoints": [], "keypoints_scores": []}
+            for d in im_out:
+                if len(d["keypoints"]):
+                    result["keypoints"].append(d["keypoints"])
+                    result["keypoints_scores"].append(d["scores"])
+            if len(result["keypoints"]):
+                result["keypoints"] = torch.stack(result["keypoints"])
+                result["keypoints_scores"] = torch.stack(
+                    result["keypoints_scores"]
+                )
+                height, width = image_sizes[idx]
+                keypoints = self._parse_output(
+                    result,
+                    (int(width), int(height)),
+                    confidence_thresh,
+                )
+            else:
+                keypoints = fol.Keypoints(keypoints=[])
+            results.append(keypoints)
+        return results
 
 
 def _get_image_size(img):
@@ -1378,6 +1669,18 @@ def _get_image_size(img):
     return height, width
 
 
+def _get_image_boxes(img_sz, detections):
+    height, width = img_sz
+    img_boxes = np.array([d.bounding_box for d in detections])
+    if len(img_boxes) == 0:
+        return []
+    img_boxes[:, 0] *= width
+    img_boxes[:, 1] *= height
+    img_boxes[:, 2] *= width
+    img_boxes[:, 3] *= height
+    return img_boxes.tolist()
+
+
 MODEL_TYPE_TO_CONFIG_CLASS = {
     "base-model": FiftyOneTransformerConfig,
     "image-classification": FiftyOneTransformerForImageClassificationConfig,
@@ -1387,6 +1690,7 @@ MODEL_TYPE_TO_CONFIG_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassificationConfig,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetectionConfig,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentationConfig,
+    "pose-estimation": FiftyOneTransformerForPoseEstimationConfig,
 }
 
 MODEL_TYPE_TO_MODEL_CLASS = {
@@ -1398,4 +1702,5 @@ MODEL_TYPE_TO_MODEL_CLASS = {
     "zero-shot-image-classification": FiftyOneZeroShotTransformerForImageClassification,
     "zero-shot-object-detection": FiftyOneZeroShotTransformerForObjectDetection,
     "zero-shot-semantic-segmentation": FiftyOneZeroShotTransformerForSemanticSegmentation,
+    "pose-estimation": FiftyOneTransformerForPoseEstimation,
 }

@@ -1,7 +1,7 @@
 """
 Definition of the `fiftyone` command-line interface (CLI).
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -37,6 +37,7 @@ import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
 import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
+import fiftyone.plugins.utils as fopu
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
 import fiftyone.utils.quickstart as fouq
@@ -104,6 +105,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
+        _register_command(subparsers, "labs", LabsCommand)
 
     @staticmethod
     def execute(parser, args):
@@ -3156,6 +3158,7 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "output", DelegatedOutputCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
@@ -3184,8 +3187,25 @@ class DelegatedLaunchCommand(Command):
             help="the type of service to launch. The default is 'local'",
         )
 
+        parser.add_argument(
+            "-m",
+            "--monitor",
+            action="store_true",
+            dest="monitor",
+            help="whether to monitor the state of the operation with a parent process",
+        )
+
+        parser.add_argument(
+            "--monitor-interval",
+            type=int,
+            default=fo.config.delegated_operation_monitor_interval,
+            help="the interval in seconds at which to monitor the operation status (default: %(default)s)",
+        )
+
     @staticmethod
     def execute(parser, args):
+        if args.monitor_interval < 1:
+            raise ValueError("monitor interval must be at least 1 second")
         supported_types = ("local",)
         if args.type not in supported_types:
             raise ValueError(
@@ -3194,10 +3214,12 @@ class DelegatedLaunchCommand(Command):
             )
 
         if args.type == "local":
-            _launch_delegated_local()
+            _launch_delegated_local(
+                monitor=args.monitor, monitor_interval=args.monitor_interval
+            )
 
 
-def _launch_delegated_local():
+def _launch_delegated_local(monitor=False, monitor_interval=60):
     from fiftyone.core.session.session import _WELCOME_MESSAGE
 
     try:
@@ -3207,7 +3229,12 @@ def _launch_delegated_local():
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
-            dos.execute_queued_operations(limit=1, log=True)
+            dos.execute_queued_operations(
+                limit=1,
+                log=True,
+                monitor=monitor,
+                check_interval_seconds=monitor_interval,
+            )
             time.sleep(0.5)
     except KeyboardInterrupt:
         pass
@@ -3247,6 +3274,16 @@ class DelegatedListCommand(Command):
             help="only list operations for this dataset",
         )
         parser.add_argument(
+            "-m",
+            "--match",
+            default=None,
+            metavar="MATCH",
+            help=(
+                "only list operations whose operator or label contain this "
+                "string"
+            ),
+        )
+        parser.add_argument(
             "-s",
             "--state",
             default=None,
@@ -3260,7 +3297,7 @@ class DelegatedListCommand(Command):
             default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
-                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
+                "('SCHEDULED_AT', 'QUEUED_AT', 'STARTED_AT', 'COMPLETED_AT', 'FAILED_AT', 'OPERATOR', 'LABEL')"
             ),
         )
         parser.add_argument(
@@ -3282,6 +3319,7 @@ class DelegatedListCommand(Command):
         dos = food.DelegatedOperationService()
 
         state = _parse_state(args.state)
+        search = _parse_search(args.match)
         paging = _parse_paging(
             sort_by=args.sort_by, reverse=args.reverse, limit=args.limit
         )
@@ -3290,6 +3328,7 @@ class DelegatedListCommand(Command):
             operator=args.operator,
             dataset_name=args.dataset,
             run_state=state,
+            search=search,
             paging=paging,
         )
 
@@ -3301,6 +3340,13 @@ def _parse_state(state):
         return None
 
     return state.lower()
+
+
+def _parse_search(match):
+    if match is None:
+        return None
+
+    return {".*" + match + ".*": ["operator", "label"]}
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):
@@ -3329,6 +3375,7 @@ def _parse_reverse(reverse):
 def _print_delegated_list(ops):
     headers = [
         "id",
+        "label",
         "operator",
         "dataset",
         "queued_at",
@@ -3351,6 +3398,7 @@ def _print_delegated_list(ops):
         rows.append(
             {
                 "id": op.id,
+                "label": op.label,
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
@@ -3383,6 +3431,36 @@ class DelegatedInfoCommand(Command):
         dos = food.DelegatedOperationService()
         op = dos.get(ObjectId(args.id))
         fo.pprint(op._doc)
+
+
+class DelegatedOutputCommand(Command):
+    """Prints the output for a delegated operation.
+
+    Examples::
+
+        # Print the output for a delegated operation
+        fiftyone delegated output <id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        op = dos.get(ObjectId(args.id))
+        if op.run_state == fooe.ExecutionRunState.COMPLETED:
+            result = op._doc.get("result", None)
+            if result:
+                result = result.get("result", None)
+            if result:
+                _print_dict_as_table(result)
+        else:
+            print(
+                "Cannot get output for operation %s in state %s"
+                % (args.id, op.run_state)
+            )
 
 
 class DelegatedFailCommand(Command):
@@ -3599,6 +3677,7 @@ class PluginsCommand(Command):
         _register_command(subparsers, "list", PluginsListCommand)
         _register_command(subparsers, "info", PluginsInfoCommand)
         _register_command(subparsers, "download", PluginsDownloadCommand)
+        _register_command(subparsers, "search", PluginsSearchCommand)
         _register_command(
             subparsers, "requirements", PluginsRequirementsCommand
         )
@@ -3620,6 +3699,9 @@ class PluginsListCommand(Command):
         # List all available plugins
         fiftyone plugins list
 
+        # List plugins whose name matches the given glob pattern
+        fiftyone plugins list --glob-patt '@voxel51/*'
+
         # List enabled plugins
         fiftyone plugins list --enabled
 
@@ -3632,6 +3714,12 @@ class PluginsListCommand(Command):
 
     @staticmethod
     def setup(parser):
+        parser.add_argument(
+            "-g",
+            "--glob-patt",
+            metavar="PATT",
+            help="only show plugins whose name matches the glob pattern",
+        )
         parser.add_argument(
             "-e",
             "--enabled",
@@ -3683,13 +3771,26 @@ class PluginsListCommand(Command):
         else:
             builtin = "all"
 
-        _print_plugins_list(enabled, builtin, args.names_only)
+        _print_plugins_list(
+            glob_patt=args.glob_patt,
+            enabled=enabled,
+            builtin=builtin,
+            names_only=args.names_only,
+        )
 
 
-def _print_plugins_list(enabled, builtin, names_only):
+def _print_plugins_list(
+    glob_patt=None, enabled="all", builtin="all", names_only=False
+):
     plugin_definitions = fop.list_plugins(
         enabled=enabled, builtin=builtin, shadowed="all"
     )
+
+    if glob_patt is not None:
+        regex = re.compile(fnmatch.translate(glob_patt))
+        plugin_definitions = [
+            pd for pd in plugin_definitions if regex.match(pd.name)
+        ]
 
     if names_only:
         for pd in plugin_definitions:
@@ -3833,6 +3934,65 @@ class PluginsDownloadCommand(Command):
             plugin_names=args.plugin_names,
             overwrite=args.overwrite,
         )
+
+
+class PluginsSearchCommand(Command):
+    """Search for available plugins in a GitHub repository.
+
+    When searching for plugins, you can provide any of the following
+    formats:
+
+    -   a GitHub repo URL like ``https://github.com/<user>/<repo>``
+    -   a GitHub ref like ``https://github.com/<user>/<repo>/tree/<branch>`` or
+        ``https://github.com/<user>/<repo>/commit/<commit>``
+    -   a GitHub ref string like ``<user>/<repo>[/<ref>]``
+
+    .. note::
+
+        To read from a private GitHub repository that you have access to,
+        provide your GitHub personal access token by setting the
+        ``GITHUB_TOKEN`` environment variable.
+
+    Examples::
+
+        # Search for plugins by specifying a GitHub repository URL
+        fiftyone plugins search <github-repo-url>
+
+        # Search for plugins by specifying the GitHub repository details
+        fiftyone plugins search <user>/<repo>[/<ref>]
+
+        # Search for plugins by specifying a path inside the repository
+        fiftyone plugins search <github-repo-url> --path path/to/dir
+        fiftyone plugins search <user>/<repo>[/<ref>] --path path/to/dir
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "url_or_gh_repo",
+            metavar="URL_OR_GH_REPO",
+            help="A URL or <user>/<repo>[/<ref>] of a GitHub repository",
+        )
+        parser.add_argument(
+            "--path",
+            default=None,
+            metavar="PATH",
+            help="path inside the GitHub repository for plugins search",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        plugins = fopu.find_plugins(
+            args.url_or_gh_repo, path=args.path, info=True
+        )
+        if not plugins:
+            msg = f"No plugins found in {args.url_or_gh_repo}"
+            if args.path:
+                msg += f"-- path {args.path} "
+            print(msg)
+        else:
+            for p in plugins:
+                print(p.get("name"))
 
 
 class PluginsRequirementsCommand(Command):
@@ -4116,6 +4276,226 @@ class PluginsDeleteCommand(Command):
 
         for name in names:
             fop.delete_plugin(name)
+
+
+class LabsCommand(Command):
+    """Tools for working with FiftyOne Labs."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "install", LabsInstallCommand)
+        _register_command(subparsers, "uninstall", LabsUninstallCommand)
+        _register_command(subparsers, "list", LabsListCommand)
+        _register_command(subparsers, "search", LabsSearchCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class LabsInstallCommand(Command):
+    """Install FiftyOne Labs features on your local machine.
+
+    Examples::
+
+        # Install specific FiftyOne labs feature(s)
+        fiftyone labs install <name1> <name2> ...
+
+        # Install all FiftyOne Labs features
+        fiftyone labs install --all
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the Labs feature(s) to install",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to install all Labs features",
+        )
+        parser.add_argument(
+            "-o",
+            "--overwrite",
+            action="store_true",
+            help="whether to reinstall existing Labs features",
+        )
+        parser.add_argument(
+            "--branch",
+            default=None,
+            metavar="BRANCH",
+            help="a Labs repository branch from which to install features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_url = "https://github.com/voxel51/labs"
+
+        if args.branch:
+            labs_url = f"{labs_url}/tree/{args.branch}"
+
+        if args.all:
+            names = None
+        elif args.name:
+            names = args.name
+        else:
+            return
+
+        fop.download_plugin(
+            labs_url,
+            plugin_names=names,
+            overwrite=args.overwrite,
+        )
+
+
+class LabsUninstallCommand(Command):
+    """Uninstall FiftyOne Labs features from your local machine.
+
+    Examples::
+
+        # Uninstall specific Labs feature(s)
+        fiftyone labs uninstall <name1> <name2> ...
+
+        # Uninstall all Labs features
+        fiftyone labs uninstall --all
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="*",
+            help="the Labs feature(s) to uninstall",
+        )
+        parser.add_argument(
+            "-a",
+            "--all",
+            action="store_true",
+            help="whether to uninstall all Labs features",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_prefix = "@51labs/"
+
+        if args.all:
+            names = fop.list_downloaded_plugins()
+        elif args.name:
+            names = args.name
+        else:
+            return
+
+        for name in names:
+            if name.startswith(labs_prefix):
+                fop.delete_plugin(name)
+            elif not args.all:
+                print(
+                    f"Skipping non-Labs feature '{name}'. "
+                    "Use `fiftyone plugins delete` to uninstall this plugin"
+                )
+
+
+class LabsListCommand(Command):
+    """List installed FiftyOne Labs features on your local machine.
+
+    Examples::
+
+        # List installed Labs features
+        fiftyone labs list
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_glob_patt = "@51labs/*"
+
+        _print_plugins_list(
+            glob_patt=labs_glob_patt,
+            names_only=args.names_only,
+        )
+
+
+class LabsSearchCommand(Command):
+    """Search for available FiftyOne Labs features.
+
+    Examples::
+
+        # List available Labs features
+        fiftyone labs search
+
+        # List available Labs features in a specific Labs repository branch
+        fiftyone labs search --branch <branch_name>
+
+        # List available Labs features in a specific Labs repository directory
+        fiftyone labs search --path path/to/dir
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "--branch",
+            default=None,
+            metavar="BRANCH",
+            help="a Labs repository branch from which to install features",
+        )
+        parser.add_argument(
+            "--path",
+            default=None,
+            metavar="PATH",
+            help="path inside the Labs repository for plugins search",
+        )
+        parser.add_argument(
+            "-n",
+            "--names-only",
+            action="store_true",
+            help="only show names",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        labs_url = "https://github.com/voxel51/labs"
+
+        if args.branch:
+            labs_url = f"{labs_url}/tree/{args.branch}"
+
+        plugins = fopu.find_plugins(labs_url, path=args.path, info=True)
+        if plugins:
+            if args.names_only:
+                for p in plugins:
+                    print(p.get("name"))
+            else:
+                _print_labs_table(plugins)
+        else:
+            msg = f"No Labs features found in {labs_url}"
+            if args.path:
+                msg += f"/{args.path}"
+            print(msg)
+
+
+def _print_labs_table(plugins):
+    records = [
+        (p.get("name"), p.get("version"), p.get("description"))
+        for p in plugins
+    ]
+    headers = ["name", "version", "description"]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
 
 
 class MigrateCommand(Command):

@@ -127,7 +127,7 @@ COCO-2014 and COCO-2017 by passing them to
 
 -   **image_ids** (*None*): a list of specific image IDs to load. The IDs can
     be specified either as ``<split>/<image-id>`` strings or ``<image-id>``
-    ints of strings. Alternatively, you can provide the path to a TXT
+    ints or strings. Alternatively, you can provide the path to a TXT
     (newline-separated), JSON, or CSV file containing the list of image IDs to
     load in either of the first two formats
 
@@ -376,7 +376,7 @@ When you specify an ``eval_key`` parameter, a number of helpful fields will be
 populated on each sample and its predicted/ground truth objects:
 
 -   True positive (TP), false positive (FP), and false negative (FN) counts
-    for the each sample are saved in top-level fields of each sample::
+    for each sample are saved in top-level fields of each sample::
 
         TP: sample.<eval_key>_tp
         FP: sample.<eval_key>_fp

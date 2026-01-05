@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,6 +15,7 @@ import itertools
 import logging
 import operator
 import os
+from packaging.version import Version
 import random
 import string
 import timeit
@@ -33,6 +34,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.map as focm
@@ -252,10 +254,13 @@ class SampleCollection(object):
         return self.summary()
 
     def __bool__(self):
-        return len(self) > 0
+        if self._is_full_collection():
+            return self.count() > 0
+        else:
+            return self.limit(1).count() > 0
 
     def __len__(self):
-        raise NotImplementedError("Subclass must implement __len__()")
+        return self.count()
 
     def __contains__(self, sample_id):
         try:
@@ -1464,7 +1469,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            while isinstance(field, fof.ListField):
+            while isinstance(field, (fof.ListField, fof.DictField)):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1641,7 +1646,11 @@ class SampleCollection(object):
 
         unwind_cache = []
         dynamic_schema = self._do_get_dynamic_field_schema(
-            schema, unwind_cache, frames=frames, fields=fields
+            schema,
+            unwind_cache,
+            frames=frames,
+            fields=fields,
+            recursive=recursive,
         )
 
         # Recurse into new dynamic fields
@@ -1649,7 +1658,11 @@ class SampleCollection(object):
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(
-                    s, unwind_cache, frames=frames, new=True
+                    s,
+                    unwind_cache,
+                    frames=frames,
+                    recursive=recursive,
+                    new=True,
                 )
                 if s:
                     dynamic_schema.update(s)
@@ -1683,7 +1696,13 @@ class SampleCollection(object):
         return dynamic_schema
 
     def _do_get_dynamic_field_schema(
-        self, schema, unwind_cache, frames=False, fields=None, new=False
+        self,
+        schema,
+        unwind_cache,
+        frames=False,
+        fields=None,
+        recursive=True,
+        new=False,
     ):
         if frames:
             prefix = self._FRAMES_PREFIX
@@ -1696,7 +1715,10 @@ class SampleCollection(object):
             schema = {
                 k: v
                 for k, v in schema.items()
-                if any(f == k or f.startswith(k + ".") for f in fields)
+                if any(
+                    f == k or recursive and k.startswith(f + ".")
+                    for f in fields
+                )
             }
 
         aggs = []
@@ -2126,30 +2148,24 @@ class SampleCollection(object):
                     )
                 )
         else:
-            _id_path = _root + "._id"
             id_path = root + "._id"
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
             update["$set"] = {"last_modified_at": now}
 
-            if label_ids is None:
+            if ids is None or label_ids is None:
                 if is_frame_field:
-                    label_ids = self.values(id_path, unwind=True)
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
                 else:
-                    label_ids = self.values(id_path)
+                    ids, label_ids = self.values(["_id", id_path])
 
-            batch_size = fou.recommend_batch_size_for_value(
-                ObjectId(), max_size=100000
-            )
-            for _label_ids in fou.iter_batches(label_ids, batch_size):
-                _label_ids = [_id for _id in _label_ids if _id is not None]
-                if _label_ids:
-                    ops.append(
-                        UpdateMany(
-                            {_id_path: {"$in": _label_ids}},
-                            update,
-                        )
-                    )
+            for _id, _label_id in zip(ids, label_ids):
+                if _label_id is None:
+                    continue
+
+                ops.append(UpdateOne({"_id": _id}, update))
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
@@ -2200,6 +2216,8 @@ class SampleCollection(object):
 
         if has_frame_fields:
             frame_numbers = results.pop(0)
+        else:
+            frame_numbers = None
 
         sample_ids = results[0]
         all_label_ids = results[1:]
@@ -3472,7 +3490,7 @@ class SampleCollection(object):
         overwrite=False,
         num_workers=None,
         skip_failures=True,
-        warn_failures=False,
+        warn_failures=True,
         progress=None,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
@@ -3485,7 +3503,7 @@ class SampleCollection(object):
             num_workers (None): a suggested number of threads to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
-            warn_failures (False): whether to log a warning if metadata cannot
+            warn_failures (True): whether to log a warning if metadata cannot
                 be computed for a sample
             progress (None): whether to render a progress bar (True/False), use
                 the default value ``fiftyone.config.show_progress_bars``
@@ -3500,11 +3518,41 @@ class SampleCollection(object):
             progress=progress,
         )
 
+    def compute_annotation_schema(self, field_name, scan_samples=True):
+        """Compute the annotation schema for a collection's field
+
+        An annotation schema is defined by a type. A field type and an annotation
+        type informs the annotation form type and allowed values
+
+        Annotation types are:
+            - checkbox
+            - input
+            - select
+            - radio
+            - text
+            - tags
+
+        Args:
+            collection: a :class:`fiftyone.core.collections.SampleCollection`
+            field_name: a field name or ``embedded.field.name`` to process
+
+        Raises:
+            ValueError: if the field does not exists or annotation for its
+            field type is not supported
+
+        Returns:
+            an annotation schema dictionary
+        """
+        return foan.compute_annotation_schema(
+            self, field_name, scan_samples=scan_samples
+        )
+
     def apply_model(
         self,
         model,
         label_field="predictions",
         confidence_thresh=None,
+        classes=None,
         store_logits=False,
         batch_size=None,
         num_workers=None,
@@ -3531,6 +3579,8 @@ class SampleCollection(object):
                 frames, the "frames." prefix is optional
             confidence_thresh (None): an optional confidence threshold to apply
                 to any applicable labels generated by the model
+            classes (None): an optional iterable of classes to which to
+                restrict any applicable labels generated by the model
             store_logits (False): whether to store logits for the model
                 predictions. This is only supported when the provided ``model``
                 has logits, ``model.has_logits == True``
@@ -3565,6 +3615,7 @@ class SampleCollection(object):
             model,
             label_field=label_field,
             confidence_thresh=confidence_thresh,
+            classes=classes,
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -5791,7 +5842,7 @@ class SampleCollection(object):
         min_distance=None,
         max_distance=None,
         query=None,
-        create_index=True,
+        create_index=False,
     ):
         """Sorts the samples in the collection by their proximity to a
         specified geolocation.
@@ -5799,7 +5850,8 @@ class SampleCollection(object):
         .. note::
 
             This stage must be the **first stage** in any
-            :class:`fiftyone.core.view.DatasetView` in which it appears.
+            :class:`fiftyone.core.view.DatasetView` in which it appears, and it
+            **requires** a spherical index on the specified location field.
 
         Examples::
 
@@ -5814,14 +5866,18 @@ class SampleCollection(object):
             # Sort the samples by their proximity to Times Square
             #
 
-            view = dataset.geo_near(TIMES_SQUARE)
+            view = dataset.geo_near(TIMES_SQUARE, create_index=True)
 
             #
             # Sort the samples by their proximity to Times Square, and only
             # include samples within 5km
             #
 
-            view = dataset.geo_near(TIMES_SQUARE, max_distance=5000)
+            view = dataset.geo_near(
+                TIMES_SQUARE,
+                max_distance=5000,
+                create_index=True,
+            )
 
             #
             # Sort the samples by their proximity to Times Square, and only
@@ -5844,7 +5900,10 @@ class SampleCollection(object):
             )
 
             view = dataset.geo_near(
-                TIMES_SQUARE, location_field="location", query=in_manhattan
+                TIMES_SQUARE,
+                location_field="location",
+                query=in_manhattan,
+                create_index=True,
             )
 
         Args:
@@ -5874,7 +5933,7 @@ class SampleCollection(object):
             query (None): an optional dict defining a
                 `MongoDB read query <https://docs.mongodb.com/manual/tutorial/query-documents/#read-operations-query-argument>`_
                 that samples must match in order to be included in this view
-            create_index (True): whether to create the required spherical
+            create_index (False): whether to create the required spherical
                 index, if necessary
 
         Returns:
@@ -5897,7 +5956,7 @@ class SampleCollection(object):
         boundary,
         location_field=None,
         strict=True,
-        create_index=True,
+        create_index=False,
     ):
         """Filters the samples in this collection to only include samples whose
         geolocation is within a specified boundary.
@@ -5944,8 +6003,8 @@ class SampleCollection(object):
             strict (True): whether a sample's location data must strictly fall
                 within boundary (True) in order to match, or whether any
                 intersection suffices (False)
-            create_index (True): whether to create the required spherical
-                index, if necessary
+            create_index (False): whether to create a spherical index, if
+                necessary, to optimize the query
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5968,7 +6027,7 @@ class SampleCollection(object):
         flat=False,
         match_expr=None,
         sort_expr=None,
-        create_index=True,
+        create_index=False,
         order_by_key=None,
     ):
         """Creates a view that groups the samples in the collection by a
@@ -6034,7 +6093,7 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
-            create_index (True): whether to create an index, if necessary, to
+            create_index (False): whether to create an index, if necessary, to
                 optimize the grouping. Only applicable when grouping by
                 field(s), not expressions
             order_by_key (None): an optional fixed ``order_by`` value
@@ -7518,7 +7577,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Skip(skip))
 
     @view_stage
-    def sort_by(self, field_or_expr, reverse=False, create_index=True):
+    def sort_by(self, field_or_expr, reverse=False, create_index=False):
         """Sorts the samples in the collection by the given field(s) or
         expression(s).
 
@@ -7582,7 +7641,7 @@ class SampleCollection(object):
                     any string starting with "a" for ascending order, or -1 or
                     any string starting with "d" for descending order
             reverse (False): whether to return the results in descending order
-            create_index (True): whether to create an index, if necessary, to
+            create_index (False): whether to create an index, if necessary, to
                 optimize the sort. Only applicable when sorting by field(s),
                 not expressions
 
@@ -9580,7 +9639,6 @@ class SampleCollection(object):
         _field=None,
         _enforce_natural_order=True,
     ):
-
         if (
             field := self._field_for_covered_index_query_or_none(
                 field_or_expr,
@@ -9633,7 +9691,6 @@ class SampleCollection(object):
     def _field_for_covered_index_query_or_none(
         self, field_or_expr, expr=None, _enforce_natural_order=True
     ):
-
         if expr is not None or _enforce_natural_order:
             return None
 
@@ -10441,7 +10498,14 @@ class SampleCollection(object):
 
         return index_info
 
-    def create_index(self, field_or_spec, unique=False, wait=True, **kwargs):
+    def create_index(
+        self,
+        field_or_spec,
+        unique=False,
+        force=False,
+        wait=True,
+        **kwargs,
+    ):
         """Creates an index on the given field or with the given specification,
         if necessary.
 
@@ -10452,22 +10516,18 @@ class SampleCollection(object):
 
         .. note::
 
-            If an index with the same field(s) but different order(s) already
-            exists, no new index will be created.
+            If a matching non-unique index exists and you request a unique
+            index, the existing index will be converted to a unique index.
 
-            Use :meth:`drop_index` to drop an existing index first if you wish
-            to replace an existing index with new properties.
+            If a matching unique index exists and you request a non-unique
+            index, the existing index will **only** be converted to a
+            non-unique index if you specify ``force=True``.
 
         .. note::
 
-            If you are indexing a single field and it already has a unique
-            constraint, it will be retained regardless of the ``unique`` value
-            you specify. Conversely, if the given field already has a
-            non-unique index but you requested a unique index, the existing
-            index will be replaced with a unique index.
-
-            Use :meth:`drop_index` to drop an existing index first if you wish
-            to replace an existing index with new properties.
+            If an index with the same field(s) but different order(s) already
+            exists, the existing index will **only** be replaced with a new
+            index if you specify ``force=True``.
 
         Args:
             field_or_spec: the field name, ``embedded.field.name``, or index
@@ -10475,6 +10535,10 @@ class SampleCollection(object):
                 :meth:`pymongo:pymongo.collection.Collection.create_index` for
                 supported values
             unique (False): whether to add a uniqueness constraint to the index
+            force (False): whether to convert an existing unique index to a
+                non-unique index or replace an existing index with different
+                orderings with a new index. By default, existing indexes will
+                not be modified in these cases
             wait (True): whether to wait for index creation to finish
             **kwargs: optional keyword arguments for
                 :meth:`pymongo:pymongo.collection.Collection.create_index`
@@ -10487,49 +10551,16 @@ class SampleCollection(object):
         else:
             input_spec = list(field_or_spec)
 
-        single_field_index = len(input_spec) == 1
-        index_info = self.get_index_information()
-
-        # For single field indexes, provide special handling based on `unique`
-        # constraint
-        if single_field_index:
-            field = input_spec[0][0]
-
-            if field in index_info:
-                _unique = index_info[field].get("unique", False)
-                if _unique or (unique == _unique):
-                    # Satisfactory index already exists
-                    return field
-
-                _field, is_frame_field = self._handle_frame_field(field)
-
-                if _field == "id":
-                    # For some reason ID indexes are not reported by
-                    # `get_index_information()` as being unique like other
-                    # manually created indexes, but they are, so nothing needs
-                    # to be done here
-                    return field
-
-                if _field in self._get_default_indexes(frames=is_frame_field):
-                    raise ValueError(
-                        "Cannot modify default index '%s'" % field
-                    )
-
-                # We need to drop existing index and replace with a unique one
-                self.drop_index(field)
-
+        has_frames = self._has_frame_fields()
         is_frame_fields = []
         index_spec = []
         for field, option in input_spec:
-            has_frames = self._has_frame_fields()
-            if field != "$**" and (
-                not has_frames or field != "frames.$**"
-            ):  # global wildcard indexes
+            if field != "$**" and (not has_frames or field != "frames.$**"):
                 self._validate_root_field(field, include_private=True)
 
             _field, _, _ = self._handle_id_fields(field)
-            _field, is_frame_field = self._handle_frame_field(_field)
-            is_frame_fields.append(is_frame_field)
+            _field, _is_frame_field = self._handle_frame_field(_field)
+            is_frame_fields.append(_is_frame_field)
             index_spec.append((_field, option))
 
         if len(set(is_frame_fields)) > 1:
@@ -10538,42 +10569,136 @@ class SampleCollection(object):
                 "or all frame-level fields"
             )
 
-        is_frame_index = all(is_frame_fields)
+        to_db_name = lambda spec: "_".join("%s_%s" % (f, o) for f, o in spec)
+        normalize = lambda name: name.replace("-1", "1")
 
-        if single_field_index:
+        is_frame_index = all(is_frame_fields)
+        db_name = to_db_name(index_spec)
+
+        if len(input_spec) == 1:
+            # We use field name, not pymongo name, for single field indexes
             index_name = input_spec[0][0]
         else:
-            index_name = "_".join("%s_%s" % (f, o) for f, o in index_spec)
+            index_name = db_name
+            if is_frame_index:
+                index_name = self._FRAMES_PREFIX + index_name
+
+        _index_name, _ = self._handle_frame_field(index_name)
 
         if is_frame_index:
-            index_name = self._FRAMES_PREFIX + index_name
-
-        normalize = lambda name: name.replace("-1", "1")
-        _index_name = normalize(index_name)
-        if any(_index_name == normalize(name) for name in index_info.keys()):
-            # Satisfactory index already exists
-            return index_name
-
-        # Setting `w=0` sets `acknowledged=False` in pymongo
-        write_concern = None if wait else WriteConcern(w=0)
-
-        if is_frame_index:
-            coll = self._dataset._get_frame_collection(
-                write_concern=write_concern
-            )
+            coll = self._dataset._frame_collection
+            coll_name = self._dataset._frame_collection_name
         else:
-            coll = self._dataset._get_sample_collection(
-                write_concern=write_concern
+            coll = self._dataset._sample_collection
+            coll_name = self._dataset._sample_collection_name
+
+        # Check for existing indexes
+        _existing_name = None
+        _existing_db_name = None
+        _existing_unique = None
+        for _name, _info in self.get_index_information().items():
+            if normalize(_name) == normalize(index_name):
+                _existing_name = _name
+                _existing_db_name = to_db_name(_info["key"])
+                _existing_unique = _info.get("unique", False)
+
+        if _index_name == "id":
+            # ID indexes are not reported by `get_index_information()` as being
+            # unique like other manually created indexes, but they are
+            _existing_unique = True
+
+        # Handle existing indexes
+        convert_to_unique = False
+        replace_existing = False
+        if _existing_name is not None:
+            if db_name != _existing_db_name and force:
+                # Replace existing index with different orderings
+                replace_existing = True
+            elif unique and not _existing_unique:
+                # Upgrade existing index to unique
+                convert_to_unique = True
+            elif _existing_unique and not unique and force:
+                # Downgrade existing index to non-unique
+                replace_existing = True
+            elif _existing_unique or (unique == _existing_unique):
+                # Satisfactory index already exists
+                return _existing_name
+
+            # Handle default indexes
+            if (
+                _index_name in self._get_default_indexes(frames=is_frame_index)
+                and index_name != "filepath"  # allow 'filepath' to be modified
+            ):
+                raise ValueError(f"Cannot modify default index '{index_name}'")
+
+        # Convert existing index to unique, if necessary
+        if convert_to_unique:
+            logger.info(
+                f"Converting existing index '{index_name}' to unique "
+                f"on dataset '{self._dataset.name}'"
             )
 
-        name = coll.create_index(index_spec, unique=unique, **kwargs)
+            db = foo.get_db_conn()
 
-        if single_field_index:
-            name = input_spec[0][0]
-        elif is_frame_index:
-            name = self._FRAMES_PREFIX + name
+            try:
+                # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
+                db.command(
+                    "collMod",
+                    coll_name,
+                    index={"name": _existing_db_name, "prepareUnique": True},
+                )
+                db.command(
+                    "collMod",
+                    coll_name,
+                    index={"name": _existing_db_name, "unique": True},
+                )
 
-        return name
+                return _existing_name
+            except:
+                if foo.get_db_version() < Version("6"):
+                    # index conversion was introduced in MongoDB 6
+                    replace_existing = True
+                else:
+                    db.command(
+                        "collMod",
+                        coll_name,
+                        index={
+                            "name": _existing_db_name,
+                            "prepareUnique": False,
+                        },
+                    )
+
+                    raise
+
+        # Drop existing index, if necessary
+        if replace_existing:
+            if not convert_to_unique:
+                logger.info(
+                    f"Replacing existing index '{index_name}' "
+                    f"on dataset '{self._dataset.name}'"
+                )
+
+            coll.drop_index(_existing_db_name)
+
+        # Create new index, if necessary
+        if not wait:
+            # Setting `w=0` sets `acknowledged=False` in pymongo
+            if is_frame_index:
+                coll = self._dataset._get_frame_collection(
+                    write_concern=WriteConcern(w=0)
+                )
+            else:
+                coll = self._dataset._get_sample_collection(
+                    write_concern=WriteConcern(w=0)
+                )
+
+        logger.debug(
+            f"Creating index '{index_name}': "
+            f"index_spec={index_spec}, unique={unique}, kwargs={kwargs}"
+        )
+        coll.create_index(index_spec, unique=unique, **kwargs)
+
+        return index_name
 
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name, if necessary.
@@ -10973,7 +11098,6 @@ class SampleCollection(object):
 
         # Parse facet-able results
         for idx, aggregation in compiled_facet_aggs.items():
-
             result = list(_results[idx_map[idx]])
             data = self._parse_faceted_result(aggregation, result)
             if (
@@ -10987,7 +11111,6 @@ class SampleCollection(object):
         return results[0] if scalar_result else results
 
     def _iter_and_parse_agg_results(self, parsed_aggs, cursor):
-
         result_fields = [agg._big_field for agg in parsed_aggs.values()]
 
         # Non-batchable big aggregations will result a cursor per aggregation
@@ -12515,6 +12638,7 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
             id_map[(_id, fn)] = _fid
 
         for fn in set(_vals.keys()) - set(_fns):
+            fofu.validate_frame_number(fn)
             dicts.append(
                 {
                     "_sample_id": ObjectId(_id),

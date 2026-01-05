@@ -1,7 +1,7 @@
 """
 FiftyOne execution store related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -413,8 +413,10 @@ class ExecutionStoreServiceDatasetIdTests(unittest.TestCase):
         """Test that creating a MongoExecutionStoreRepo with a string dataset_id raises an exception."""
         mock_collection = MagicMock()
         string_dataset_id = "507f1f77bcf86cd799439011"
-        
+
         with self.assertRaises(ValueError) as context:
-            MongoExecutionStoreRepo(mock_collection, dataset_id=string_dataset_id)
-        
+            MongoExecutionStoreRepo(
+                mock_collection, dataset_id=string_dataset_id
+            )
+
         self.assertIn("dataset_id must be an ObjectId", str(context.exception))

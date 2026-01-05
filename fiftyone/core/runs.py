@@ -1,7 +1,7 @@
 """
 Dataset runs framework.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -538,16 +538,17 @@ class BaseRun(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load info for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
-                "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "Failed to load info for %s with key '%s'. This may be because"
+                " the %s used fiftyone==%s but you are currently using "
+                "fiftyone==%s. We recommend that you re-run the method with "
+                "your current FiftyOne version. \nThe original error is %s."
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
                     foc.VERSION,
+                    repr(e),
                 )
             ) from e
 
@@ -717,16 +718,17 @@ class BaseRun(Configurable):
                 raise e
 
             raise ValueError(
-                "Failed to load results for %s with key '%s'. The %s used "
-                "fiftyone==%s but you are currently using fiftyone==%s. We "
-                "recommend that you re-run the method with your current "
-                "FiftyOne version"
+                "Failed to load results for %s with key '%s'. This may be because"
+                " the %s used fiftyone==%s but you are currently using "
+                "fiftyone==%s. We recommend that you re-run the method with "
+                "your current FiftyOne version. \nThe original error is %s."
                 % (
                     cls._run_str(),
                     key,
                     cls._run_str(),
                     run_doc.version or "????",
                     foc.VERSION,
+                    repr(e),
                 )
             ) from e
 

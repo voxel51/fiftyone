@@ -67,7 +67,7 @@ test.describe.serial("quickstart", () => {
     );
     await sidebar.clickFieldDropdown("id");
     await expanded;
-    await sidebar.asserter.assertFilterIsVisibile("id", "categorical");
+    await sidebar.asserter.assertFilterIsVisible("id", "categorical");
 
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
@@ -80,7 +80,16 @@ test.describe.serial("quickstart", () => {
     await modal.assert.isClosed();
 
     // id filter should still be open
-    await sidebar.asserter.assertFilterIsVisibile("id", "categorical");
+    await sidebar.asserter.assertFilterIsVisible("id", "categorical");
+  });
+
+  test("selection bookmark", async ({ page, grid }) => {
+    await grid.toggleSelectFirstSample();
+    await grid.actionsRow.assert.hasFiltersBookmark();
+    const gridRefresh = grid.getWaitForGridRefreshPromise();
+    await grid.actionsRow.bookmarkFilters();
+    await gridRefresh;
+    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
   });
 
   test("entry counts text when toPatches then groupedBy", async ({
@@ -98,17 +107,6 @@ test.describe.serial("quickstart", () => {
     });
 
     await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
-  });
-
-  test("selection bookmark", async ({ page, grid }) => {
-    await grid.toggleSelectFirstSample();
-    await grid.actionsRow.assert.hasFiltersBookmark();
-    const gridRefresh = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.bookmarkFilters();
-    await gridRefresh;
-    await expect(page.getByTestId("entry-counts")).toHaveText(
-      "1 group of patch"
-    );
   });
 
   test("sidebar persistence", async ({ grid, modal, sidebar }) => {

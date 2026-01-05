@@ -1,18 +1,24 @@
 """
 Label utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import eta.core.utils as etau
+from typing import Any, Callable, Dict, List, Optional
+import logging
 
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.iou as foui
+import fiftyone.utils.utils3d as fou3d
 from fiftyone import ViewField as F
+from fiftyone.core.collections import SampleCollection
+
+logger = logging.getLogger(__name__)
 
 
 def objects_to_segmentations(
@@ -61,8 +67,8 @@ def objects_to_segmentations(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         save_mask_targets (False): whether to store the ``mask_targets`` on the
             dataset
         progress (None): whether to render a progress bar (True/False), use the
@@ -93,12 +99,12 @@ def objects_to_segmentations(
 
     samples = sample_collection.select_fields(in_field)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -189,8 +195,8 @@ def export_segmentations(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         update (True): whether to delete the arrays from the database
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -211,11 +217,11 @@ def export_segmentations(
 
     samples = sample_collection.select_fields(select_fields)
 
-    if overwrite:
-        etau.delete_dir(output_dir)
-
     filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+        output_dir=output_dir,
+        rel_dir=rel_dir,
+        ignore_existing=overwrite,
+        idempotent=False,
     )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -373,8 +379,8 @@ def transform_segmentations(
         update (True): whether to update the mask paths on the instances
         update_mask_targets (False): whether to update the mask targets on the
             dataset to reflect the transformed targets
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -398,11 +404,11 @@ def transform_segmentations(
     samples = sample_collection.select_fields(select_fields)
 
     if output_dir is not None:
-        if overwrite:
-            etau.delete_dir(output_dir)
-
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -502,8 +508,8 @@ def segmentations_to_detections(
             subdirectories in ``output_dir`` that match the shape of the input
             paths. The path is converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -529,12 +535,12 @@ def segmentations_to_detections(
 
     samples = sample_collection.select_fields(select_fields)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -594,8 +600,8 @@ def binarize_instances(
             subdirectories in ``output_dir`` that match the shape of the input
             paths. The path is converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        overwrite (False): whether to delete ``output_dir`` prior to exporting
-            if it exists
+        overwrite (False): whether to overwrite any existing files in
+            ``output_dir``
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -620,12 +626,12 @@ def binarize_instances(
 
     samples = sample_collection.select_fields(in_field)
 
-    if overwrite and output_dir is not None:
-        etau.delete_dir(output_dir)
-
     if output_dir is not None:
         filename_maker = fou.UniqueFilenameMaker(
-            output_dir=output_dir, rel_dir=rel_dir, idempotent=False
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            ignore_existing=overwrite,
+            idempotent=False,
         )
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
@@ -1198,3 +1204,207 @@ def _get_filepath(sample_or_frame, sample):
         return sample_or_frame.filepath
     except:
         return sample.filepath
+
+
+def detections_3d_to_cuboids_2d(
+    sample_collection: SampleCollection,
+    spatial_slice_name: str,
+    camera_slice_name: str,
+    in_field: str,
+    out_field: str,
+    transformations: Dict[str, fou3d.TransformationType],
+    camera_params: Dict[str, Dict[str, Any]],
+    forward_transform_flags: Optional[Dict[str, List[bool]]] = None,
+    camera_model: Callable = fou3d.pinhole_projector,
+    transformation_key_field: str = "id",
+    camera_key_field: str = "id",
+    progress=None,
+):
+    """High-level orchestration of 3D → 2D label conversion. Processes the
+    `in_field` on the `spatial_slice_name` slice of a grouped sample
+    collection, uses the transformations and camera parameters to convert the
+    labels to 2D polylines, and saves them to the `out_field` on the
+    `camera_slice_name` slice.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        spatial_slice_name: the name of the spatial slice in the sample_collection
+        camera_slice_name: the name of the camera slice in the sample_collection
+        in_field: the name of the :class:`fiftyone.core.labels.Detection` field
+            containing 3D labels to convert
+        out_field: the name of the :class:`fiftyone.core.labels.Polylines`
+            field to populate with 2D cuboids
+        transformations: a dict mapping `transformation_key_field` to a list of
+            transformation tuples (translation, rotation) for each sample in the
+            sample_collection. Translation is a 3-element list or np.ndarray,
+            and rotation is a (3, 3) list of lists or np.ndarray representing a
+            rotation matrix.
+        camera_params: a dict mapping `camera_key_field` to per-camera
+            parameter dicts required by `camera_model`. Each dict must include
+            an ``"intrinsics"`` 3x3 (or 4x4) matrix if using the default pinhole
+            camera model; additional keys such as distortion parameters may be
+            provided depending on the model
+        forward_transform_flags: an optional dict mapping
+            `transformation_key_field` to lists of booleans indicating whether
+            to apply forward or inverse transformations for each transform in
+            the list of transformations for each sample
+        camera_model (fou3d.pinhole_projector): a callable that takes 3D points
+            in the camera coordinate system and the camera parameters dict and
+            returns the projected 2D points in pixel coordinates
+        transformation_key_field ("id"): the key field to use for looking up
+            transformations for each sample
+        camera_key_field ("id"): the key field to use for looking up camera
+            parameters for each camera sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_grouped_non_dynamic_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Detections
+    )
+
+    camera_slice = sample_collection.select_group_slices(camera_slice_name)
+    camera_slice.compute_metadata(progress=progress)
+
+    for group in sample_collection.select_fields(in_field).iter_groups(
+        group_slices=[spatial_slice_name, camera_slice_name],
+        progress=progress,
+        autosave=True,
+    ):
+        spatial_sample = group[spatial_slice_name]
+        camera_sample = group[camera_slice_name]
+        spatial_key = spatial_sample[transformation_key_field]
+        camera_key = camera_sample[camera_key_field]
+        transforms = transformations.get(spatial_key)
+        forward_flags = (
+            forward_transform_flags.get(spatial_key)
+            if forward_transform_flags
+            else None
+        )
+        cam_params = camera_params.get(camera_key)
+
+        if transforms is None:
+            logger.warning(
+                f"Skipping sample {spatial_sample.id} because transformations are missing"
+            )
+            continue
+        if cam_params is None:
+            logger.warning(
+                f"Skipping camera sample {camera_sample.id} because camera parameters are missing"
+            )
+            continue
+
+        width, height = (
+            camera_sample.metadata.width,
+            camera_sample.metadata.height,
+        )
+
+        if width is None or height is None:
+            logger.warning(
+                f"Skipping camera sample {camera_sample.id} because camera metadata is missing."
+                "Please compute metadata for this sample first."
+            )
+            continue
+
+        polylines = _process_3d_sample(
+            spatial_sample,
+            in_field,
+            transforms,
+            forward_flags,
+            cam_params,
+            camera_model,
+            width,
+            height,
+        )
+        if polylines:
+            camera_sample[out_field] = fol.Polylines(polylines=polylines)
+
+
+def _process_3d_sample(
+    sample,
+    in_field: str,
+    transforms: fou3d.TransformationType,
+    forward_flags: Optional[List[bool]],
+    cam_params: Dict[str, Any],
+    camera_model: Callable,
+    width: int,
+    height: int,
+):
+    """
+    Process all 3D detections in a single sample and return polylines.
+    Returns: List[Polyline]
+    """
+    detections_3d = sample[in_field]
+
+    if detections_3d is None:
+        return []
+    if len(detections_3d.detections) == 0:
+        return []
+
+    polylines = []
+
+    for det in detections_3d.detections:
+        polyline_result = _process_detection_to_polyline(
+            det,
+            transforms,
+            forward_flags,
+            cam_params,
+            camera_model,
+            width,
+            height,
+            sample,
+        )
+        if polyline_result:
+            polylines.append(polyline_result)
+
+    return polylines
+
+
+def _process_detection_to_polyline(
+    det,
+    transforms: fou3d.TransformationType,
+    forward_flags: Optional[List[bool]],
+    cam_params: Dict[str, Any],
+    camera_model: Callable,
+    width: int,
+    height: int,
+    sample,
+):
+    """Convert a single 3D detection to a 2D Polyline."""
+
+    if any(v is None for v in [det.location, det.rotation, det.dimensions]):
+        logger.warning(
+            f"Skipping detection (id={det.id}) in sample {sample.id} "
+            "because location, rotation, or dimensions is missing"
+        )
+        return None
+
+    points_cam, rotation_cam = fou3d.multiple_coordinate_transform(
+        det.location, det.rotation, transforms, forward_flags
+    )
+    if getattr(det, "instance", None) is None:
+        det.instance = fol.Instance()
+
+    corners_3d_cam = fou3d.corners_from_euler(
+        points_cam, rotation_cam, det.dimensions
+    )
+    corners_2d_cam = camera_model(corners_3d_cam, cam_params)
+
+    if not fou3d.point_in_front_of_camera(
+        corners_2d_cam, corners_3d_cam, (width, height)
+    ):
+        return None
+    polyline_corners = [
+        (corners_2d_cam[0][i] / width, corners_2d_cam[1][i] / height)
+        for i in range(8)
+    ]
+
+    return fol.Polyline.from_cuboid(
+        vertices=polyline_corners,
+        label=det.label,
+        confidence=det.confidence,
+        instance=det.instance,
+        index=det.index,
+    )

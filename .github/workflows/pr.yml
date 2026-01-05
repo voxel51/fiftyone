@@ -3,11 +3,6 @@ name: Pull Request
 on:
   pull_request:
     types: [opened, synchronize]
-    branches:
-      - develop
-      - feat/*
-      - main
-      - release/v[0-9]+.[0-9]+.[0-9]+
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,7 +16,7 @@ jobs:
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v3
         id: filter
         with:

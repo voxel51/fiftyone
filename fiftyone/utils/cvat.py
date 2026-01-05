@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `CVAT format <https://github.com/opencv/cvat>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -6495,15 +6495,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     continue
 
                 if self._server_version >= Version("2.3"):
+                    mask = det.get_mask()
                     x, y, w, h = det.bounding_box
                     frame_width, frame_height = frame_size
-                    mask_height, mask_width = det.mask.shape
+                    mask_height, mask_width = mask.shape
                     xtl, ytl = round(x * frame_width), round(y * frame_height)
                     w, h = round(w * frame_width), round(h * frame_height)
                     xbr, ybr = xtl + w, ytl + h
 
                     # -1 to convert from CVAT indexing
-                    mask = det.mask
                     if w != mask_width or h != mask_height:
                         mask = etai.resize(
                             mask.astype("uint8"), width=w, height=h

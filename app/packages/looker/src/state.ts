@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { BufferManager } from "@fiftyone/utilities";
@@ -90,9 +90,14 @@ export type Sample = {
   id: string;
   filepath: string;
   frames?: FrameSample[];
+  group?: {
+    _id: string;
+    name: string;
+  };
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud" | "3d";
+  last_modified_at?: { datetime: number };
 } & GenericLabel;
 
 export interface LabelData {
@@ -203,7 +208,7 @@ export interface BaseOptions {
 
 export type BoundingBox = [number, number, number, number];
 
-export type Coordinates = [number, number];
+export type Coordinates = [number, number] | [number, number, number];
 
 export type Dimensions = [number, number];
 
@@ -222,6 +227,7 @@ export interface BaseConfig {
     id: string;
     name: string;
   };
+  isModal?: boolean;
 }
 
 export interface FrameConfig extends BaseConfig {

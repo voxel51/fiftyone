@@ -170,10 +170,10 @@ export default function PlotlyView(props: ViewPropsType) {
       },
       autosize: true,
       margin: {
-        t: 20, // Adjust top margin
-        l: 50, // Adjust left margin for y-axis labels
-        b: 50, // Adjust bottom margin for x-axis labels
-        r: 20, // Adjust right margin
+        t: 8, // Reduce top margin
+        l: 30, // Keep left margin for y-axis labels
+        b: 0, // Reduce bottom margin
+        r: 8, // Keep right margin
         pad: 0,
       },
       paper_bgcolor: theme.background.mediaSpace,
@@ -211,6 +211,9 @@ export default function PlotlyView(props: ViewPropsType) {
     }, 500); // Delay to allow for layout to be animated
   }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
 
+  const plotHeight = view?.height || "100%";
+  const plotWidth = view?.width || "100%";
+
   return (
     <Box
       {...getComponentProps(props, "container")}
@@ -220,7 +223,7 @@ export default function PlotlyView(props: ViewPropsType) {
       <Plot
         revision={revision}
         data={mergedData}
-        style={{ height: "100%", width: "100%", zIndex: 1 }}
+        style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
         config={mergedConfig}
         layout={mergedLayout}
         {...eventHandlers}

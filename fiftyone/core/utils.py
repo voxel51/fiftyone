@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,6 +15,8 @@ from contextlib import contextmanager, suppress
 from copy import deepcopy
 from datetime import date, datetime
 from functools import partial
+from starlette.responses import Response
+from json import JSONEncoder
 import glob
 import hashlib
 import importlib
@@ -1652,6 +1654,8 @@ class ContentSizeBatcher(Batcher):
             ``len(iterable)``, if possible
     """
 
+    _SENTINEL = object()
+
     def __init__(
         self,
         iterable,
@@ -1676,7 +1680,7 @@ class ContentSizeBatcher(Batcher):
         self.target_size = target_size
         self.max_batch_size = max_batch_size
         self.size_calc_fn = size_calc_fn
-        self._next_element = None
+        self._next_element = self._SENTINEL
         self._last_batch_content_size = None
         self._encoding_ratio = 1.0
 
@@ -1687,14 +1691,14 @@ class ContentSizeBatcher(Batcher):
         except StopIteration:
             # If iterable is empty, we want to throw StopIteration at the first
             #   call to next(), not here.
-            self._next_element = None
+            self._next_element = self._SENTINEL
         return self
 
     def __next__(self):
         if self._render_progress and self._last_batch_size:
             self._pb.update(count=self._last_batch_size)
 
-        if self._next_element is None:
+        if self._next_element is self._SENTINEL:
             raise StopIteration
 
         # Must have at least 1 element in a batch
@@ -1726,7 +1730,7 @@ class ContentSizeBatcher(Batcher):
                 # If we get StopIteration, it just means we are done and can
                 #   end this batch. On the following call to __next__(), we'll
                 #   raise our StopIteration
-                self._next_element = None
+                self._next_element = self._SENTINEL
                 break
 
         self._last_batch_size = len(curr_batch)
@@ -2142,6 +2146,19 @@ class UniqueFilenameMaker(object):
 
         count = self._filename_counts[key]
         if count > 1:
+            # Handle existing filenames that use `-%d` suffix
+            if not self.ignore_existing:
+                while True:
+                    _key = name + ("-%d" % count)
+                    if not self.ignore_exts:
+                        _key += ext
+
+                    if _key in self._filename_counts:
+                        self._filename_counts[key] += 1
+                        count += 1
+                    else:
+                        break
+
             filename = name + ("-%d" % count) + ext
 
         if self.chunk_size is not None:
@@ -2873,22 +2890,59 @@ def recommend_thread_pool_workers(num_workers=None):
     return num_workers
 
 
-def recommend_process_pool_workers(num_workers=None):
+def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
     """Recommends a number of workers for a process pool.
 
-    If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
+    If the number is 0, that means no multiprocessing is recommended.
+
+    If this process is a daemon, the number of workers is 0 since child
+    processes are disallowed in this context.
+
+    If ``num_workers`` is None, the following order is used to determine the
+    number of workers:
+
+    - The configured (``fo.config``) default number of workers
+    - The passed-in default number of workers (``default_num_workers``)
+    - The system CPU count
+
+    If ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
         num_workers (None): a suggested number of workers
+        default_num_workers (None): a default number of workers to use if
+            ``num_workers`` is None and no configured default is set
 
     Returns:
-        a number of workers
+        a number of workers. 0 means no multiprocessing
     """
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    try:
+        # "daemonic processes are not allowed to have children"
+        if multiprocessing.current_process().daemon:
+            num_workers = 0
+        elif num_workers is None:
+            # Order:
+            # 1. Configured default
+            # 2. Passed-in default
+            # 3. System CPU count
+            num_workers = (
+                fo.config.default_process_pool_workers
+                if fo.config.default_process_pool_workers is not None
+                else (
+                    default_num_workers
+                    if default_num_workers is not None
+                    else multiprocessing.cpu_count()
+                )
+            )
+    except Exception:
+        logger.debug(
+            "recommend_process_pool_workers: falling back to 4", exc_info=True
+        )
+        num_workers = 4
 
+    num_workers = int(num_workers)
     if fo.config.max_process_pool_workers is not None:
         num_workers = min(num_workers, fo.config.max_process_pool_workers)
+    num_workers = max(num_workers, 0)
 
     return num_workers
 
@@ -3025,7 +3079,7 @@ class ResponseStream(object):
 
 _SAFE_CHARS = set(string.ascii_letters) | set(string.digits)
 _HYPHEN_CHARS = set(string.whitespace) | set("+_.-")
-_NAME_LENGTH_RANGE = (1, 100)
+_NAME_LENGTH_RANGE = (1, 1551)
 
 
 def _sanitize_char(c):
@@ -3048,7 +3102,7 @@ def to_slug(name):
         -   All other characters are omitted
         -   All consecutive ``-`` characters are reduced to a single ``-``
         -   All leading and trailing ``-`` are stripped
-        -   Both the input name and the resulting string must be ``[1, 100]``
+        -   Both the input name and the resulting string must be ``[1, 1551]``
             characters in length
 
     Examples::
@@ -3140,6 +3194,27 @@ def validate_hex_color(value):
         raise ValueError(
             "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )
+
+
+class Encoder(JSONEncoder):
+    """Custom JSON encoder that handles numpy types."""
+
+    def default(self, o):
+        if isinstance(o, np.floating):
+            return float(o)
+
+        if isinstance(o, np.integer):
+            return int(o)
+
+        return JSONEncoder.default(self, o)
+
+
+async def create_response(response: dict):
+    """Creates a JSON response from the given dictionary."""
+    return Response(
+        await run_sync_task(lambda: json_util.dumps(response, cls=Encoder)),
+        headers={"Content-Type": "application/json"},
+    )
 
 
 fos = lazy_import("fiftyone.core.storage")

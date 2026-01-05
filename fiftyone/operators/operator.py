@@ -1,12 +1,12 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from .types import Object, PromptView
+from .types import PromptView
 
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
@@ -343,3 +343,35 @@ class Operator(object):
         if not self._plugin_secrets:
             self._plugin_secrets = []
         self._plugin_secrets.extend(secrets)
+
+
+class PipelineOperator(Operator):
+    """A FiftyOne pipeline operator.
+
+    A pipeline operator represents a linear composition of other operators,
+    containing the details of how to create and execute the
+    :class:`fiftyone.operators.types.Pipeline`
+
+    FiftyOne pipeline operators contain enough information for a user interface
+    to render a form or button allowing a user to execute the operation.
+    """
+
+    def resolve_pipeline(self, ctx):
+        """Returns the resolved pipeline of the operator.
+
+        Subclasses can implement this method to define the pipeline of the
+        operator.
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a :class:`fiftyone.operators.types.Pipeline`,
+        """
+        raise NotImplementedError("subclass must implement resolve_pipeline")
+
+    def execute(self, ctx):
+        """Not used for pipeline operators; pipelines are executed via stages"""
+        raise NotImplementedError(
+            "execute() not implemented for PipelineOperators"
+        )

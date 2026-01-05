@@ -1,14 +1,15 @@
 """
 Execution store repository interface and implementations.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
+import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from bson import ObjectId
 
@@ -17,35 +18,17 @@ from fiftyone.operators.store.models import (
     StoreDocument,
     KeyPolicy,
 )
+from fiftyone.operators.store.notification_service import (
+    ChangeStreamNotificationService,
+    default_notification_service,
+    is_notification_service_disabled,
+)
 
-#
-# TODO: update these doc strings to match fiftyone patterns!
-#
+logger = logging.getLogger(__name__)
 
 
-class ExecutionStoreRepo(ABC):
-    """Abstract base class for execution store repositories.
-
-    Each instance operates in a context:
-    - If a `dataset_id` is provided, it operates on stores associated with that dataset.
-    - If no `dataset_id` is provided, it operates on stores not associated with any dataset.
-
-    To operate on all stores across all contexts, use the ``XXX_global()``
-    methods that this class provides.
-    """
-
-    def __init__(self, dataset_id: Optional[ObjectId] = None, is_cache=False):
-        """Initialize the execution store repository.
-
-        Args:
-            dataset_id (Optional[ObjectId]): the dataset ID to operate on
-            is_cache (False): whether the store is a cache store
-        """
-        if dataset_id is not None and not isinstance(dataset_id, ObjectId):
-            raise ValueError(
-                f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
-            )
-        self._dataset_id = dataset_id
+class AbstractExecutionStoreRepo(ABC):
+    """Abstract base class for execution store repositories."""
 
     @abstractmethod
     def create_store(
@@ -62,16 +45,6 @@ class ExecutionStoreRepo(ABC):
 
         Returns:
             StoreDocument: the created store document
-        """
-        pass
-
-    @abstractmethod
-    def clear_cache(self, store_name=None) -> None:
-        """Clear all keys with either a ``ttl`` or ``policy="eviction"``.
-
-        Args:
-            store_name (str, optional): the name of the store to clear. If None,
-                all stores will be queried for deletion.
         """
         pass
 
@@ -97,6 +70,7 @@ class ExecutionStoreRepo(ABC):
         Returns:
             bool: True if the store exists, False otherwise
         """
+        pass
 
     @abstractmethod
     def list_stores(self) -> List[str]:
@@ -138,6 +112,7 @@ class ExecutionStoreRepo(ABC):
         policy: str = "persist",
     ) -> KeyDocument:
         """Set a key in a store.
+
         Args:
             store_name (str): The name of the store to set the key in.
             key (str): The key to set.
@@ -147,7 +122,6 @@ class ExecutionStoreRepo(ABC):
             policy (str): The eviction policy for the key. One of:
                 - ``"persist"`` (default): Key is persistent until deleted.
                 - ``"evict"``: Key is eligible for eviction or cache clearing.
-
         Returns:
             KeyDocument: The created or updated key document.
         """
@@ -158,13 +132,11 @@ class ExecutionStoreRepo(ABC):
         self, store_name: str, key: str, value: Any, ttl: Optional[int] = None
     ) -> KeyDocument:
         """Set a cache key in a store.
-
         Args:
             store_name (str): the name of the store to set the cache key in
             key (str): the cache key to set
             value (Any): the value to set
             ttl (Optional[int]): the TTL of the cache key
-
         Returns:
             KeyDocument: the created or updated cache key document
         """
@@ -194,6 +166,7 @@ class ExecutionStoreRepo(ABC):
         Returns:
             Optional[KeyDocument]: the key document, or None if the key does not exist
         """
+        pass
 
     @abstractmethod
     def update_ttl(self, store_name: str, key: str, ttl: int) -> bool:
@@ -220,6 +193,7 @@ class ExecutionStoreRepo(ABC):
         Returns:
             bool: True if the key was deleted, False otherwise
         """
+        pass
 
     @abstractmethod
     def list_keys(self, store_name: str) -> List[str]:
@@ -248,6 +222,19 @@ class ExecutionStoreRepo(ABC):
     @abstractmethod
     def cleanup(self) -> int:
         """Delete all stores in the global store collection.
+
+        Returns:
+            int: the number of documents deleted
+        """
+        pass
+
+    @abstractmethod
+    def clear_cache(self, store_name: Optional[str] = None) -> int:
+        """Clear all keys with either a ``ttl`` or ``policy="evict"``.
+
+        Args:
+            store_name (Optional[str]): the name of the store to clear. If None,
+                all stores will be queried for deletion.
 
         Returns:
             int: the number of documents deleted
@@ -297,26 +284,114 @@ class ExecutionStoreRepo(ABC):
         pass
 
 
+class ExecutionStoreRepo(AbstractExecutionStoreRepo):
+    """Base class for execution store repositories.
+
+    Each instance operates in a context:
+    - If a `dataset_id` is provided, it operates on stores associated with that dataset.
+    - If no `dataset_id` is provided, it operates on stores not associated with any dataset.
+
+    To operate on all stores across all contexts, use the ``XXX_global()``
+    methods that this class provides.
+    """
+
+    def __init__(
+        self,
+        dataset_id: Optional[ObjectId] = None,
+        notification_service: Optional[ChangeStreamNotificationService] = None,
+    ):
+        """Initialize the execution store repository.
+
+        Args:
+            dataset_id (Optional[ObjectId]): the dataset ID to operate on
+            notification_service: the notification service to use. If not
+                provided, the default notification service will be used.
+        """
+        if dataset_id is not None and not isinstance(dataset_id, ObjectId):
+            raise ValueError(
+                f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
+            )
+        self._dataset_id = dataset_id
+
+        if not is_notification_service_disabled():
+            if notification_service is None:
+                self._notification_service = default_notification_service
+            else:
+                self._notification_service = notification_service
+        else:
+            logger.warning("Execution store notification service is disabled")
+
+    def subscribe(
+        self,
+        store_name: str,
+        callback: Callable[[str], None],
+    ) -> str:
+        """Subscribe to changes in a store.
+
+        Args:
+            store_name (str): the name of the store to subscribe to
+            callback (Callable[[str], None]): the callback to call when a change occurs
+
+        Returns:
+            str: the subscription ID
+
+        Raises:
+            ValueError: if no notification service is available
+        """
+        if not self._notification_service:
+            raise ValueError(
+                "Cannot subscribe when execution store notification service is disabled"
+            )
+
+        return self._notification_service.subscribe(
+            store_name, callback, str(self._dataset_id)
+        )
+
+    def unsubscribe(self, subscription_id: str) -> bool:
+        """Unsubscribe from changes in a store.
+
+        Args:
+            subscription_id (str): the subscription ID to unsubscribe
+
+        Returns:
+            bool: True if the subscription was removed, False otherwise
+
+        Raises:
+            ValueError: if no notification service is available
+        """
+        if not self._notification_service:
+            raise ValueError(
+                "Cannot unsubscribe without execution store notification service"
+            )
+
+        return self._notification_service.unsubscribe(subscription_id)
+
+
 class MongoExecutionStoreRepo(ExecutionStoreRepo):
     """MongoDB implementation of the execution store repository."""
 
     COLLECTION_NAME = "execution_store"
 
     def __init__(
-        self, collection, dataset_id: Optional[ObjectId] = None, is_cache=False
+        self,
+        collection,
+        dataset_id: Optional[ObjectId] = None,
+        notification_service: Optional[ChangeStreamNotificationService] = None,
     ):
         if dataset_id is not None and not isinstance(dataset_id, ObjectId):
             raise ValueError(
                 f"dataset_id must be an ObjectId, got {type(dataset_id).__name__}"
             )
-        super().__init__(dataset_id, is_cache)
         self._collection = collection
+        super().__init__(dataset_id, notification_service)
+
         self._create_indexes()
 
     def _create_indexes(self):
         indices = [idx["name"] for idx in self._collection.list_indexes()]
         expires_at_name = "expires_at"
         store_name_name = "store_name"
+        updated_at_name = "updated_at"
         key_name = "key"
         full_key_name = "unique_store_index"
         dataset_id_name = "dataset_id"
@@ -332,10 +407,12 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 name=full_key_name,
                 unique=True,
             )
+
         for name in [
             store_name_name,
             key_name,
             dataset_id_name,
+            updated_at_name,
             policy_name,
         ]:
             if name not in indices:
@@ -411,6 +488,9 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
         return result[0]["total_stores"] if result else 0
 
     def delete_store(self, store_name: str) -> int:
+        if self._notification_service:
+            self._notification_service.unsubscribe_all(store_name)
+
         result = self._collection.delete_many(
             {
                 "store_name": store_name,
@@ -446,6 +526,7 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
                 policy=policy,
             )
         )
+
         on_insert_fields = {
             "store_name": store_name,
             "key": key,
@@ -603,8 +684,12 @@ class MongoExecutionStoreRepo(ExecutionStoreRepo):
 class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
     """In-memory implementation of execution store repository."""
 
-    def __init__(self, dataset_id: Optional[ObjectId] = None):
-        super().__init__(dataset_id)
+    def __init__(
+        self,
+        dataset_id: Optional[ObjectId] = None,
+        notification_service: Optional[ChangeStreamNotificationService] = None,
+    ):
+        super().__init__(dataset_id, notification_service)
         self._docs = {}
 
     def _doc_key(self, store_name: str, key: str) -> tuple:
@@ -697,9 +782,11 @@ class InMemoryExecutionStoreRepo(ExecutionStoreRepo):
                 updated_at=now,
                 expires_at=expiration,
                 dataset_id=self._dataset_id,
-                policy="evict"
-                if policy == "evict" or ttl is not None
-                else "persist",
+                policy=(
+                    "evict"
+                    if policy == "evict" or ttl is not None
+                    else "persist"
+                ),
             )
         )
         composite_key = self._doc_key(store_name, key)

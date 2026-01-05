@@ -1,4 +1,11 @@
 import type {
+  BoundingBoxOverlay,
+  ClassificationOverlay,
+} from "@fiftyone/lighter";
+import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
+import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import type {
   frameFieldsFragment$key,
   sampleFieldsFragment$key,
   setSidebarGroupsMutation,
@@ -25,6 +32,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
+import type { PrimitiveAtom } from "jotai";
 import type { VariablesOf } from "react-relay";
 import { commitMutation } from "react-relay";
 import {
@@ -75,8 +83,10 @@ import * as viewAtoms from "./view";
 export enum EntryKind {
   EMPTY = "EMPTY",
   GROUP = "GROUP",
-  PATH = "PATH",
   INPUT = "INPUT",
+  LABEL = "LABEL",
+  LOADING = "LOADING",
+  PATH = "PATH",
 }
 
 export interface EmptyEntry {
@@ -101,7 +111,60 @@ export interface PathEntry {
   shown: boolean;
 }
 
-export type SidebarEntry = EmptyEntry | GroupEntry | PathEntry | InputEntry;
+export interface Label {
+  path: string;
+  isNew?: boolean;
+}
+
+export interface ClassificationAnnotationLabel extends Label {
+  data: ClassificationLabel;
+  overlay: ClassificationOverlay;
+  type: "Classification";
+}
+
+export interface DetectionAnnotationLabel extends Label {
+  data: DetectionLabel;
+  overlay: BoundingBoxOverlay;
+  type: "Detection";
+}
+
+export interface PolylineAnnotationLabel extends Label {
+  data: PolylineLabel;
+  overlay: {
+    id: string;
+    field: string;
+    label: PolylineLabel;
+    getLabel?: () => PolylineLabel;
+    updateField?: (field: string) => void;
+    updateLabel?: (label: PolylineLabel) => void;
+    setSelected?: (selected: boolean) => void;
+  };
+  type: "Polyline";
+}
+
+export type AnnotationLabel =
+  | ClassificationAnnotationLabel
+  | DetectionAnnotationLabel
+  | PolylineAnnotationLabel;
+
+export interface LabelEntry {
+  kind: EntryKind.LABEL;
+  atom: PrimitiveAtom<AnnotationLabel>;
+  id: string;
+}
+
+export interface LoadingEntry {
+  kind: EntryKind.LOADING;
+  id: string;
+}
+
+export type SidebarEntry =
+  | EmptyEntry
+  | GroupEntry
+  | InputEntry
+  | LabelEntry
+  | LoadingEntry
+  | PathEntry;
 
 export const readableTags = selectorFamily<
   string[],
@@ -127,14 +190,32 @@ export const readableTags = selectorFamily<
     },
 });
 
-export const useEntries = (
-  modal: boolean
-): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
+export const useGridEntries = (): [
+  SidebarEntry[],
+  (entries: SidebarEntry[]) => void
+] => {
   const [entries, setEntries] = useRecoilStateLoadable(
-    sidebarEntries({ modal, loading: false, filtered: true })
+    sidebarEntries({ modal: false, loading: false, filtered: true })
   );
   const loadingEntries = useRecoilValueLoadable(
-    sidebarEntries({ modal, loading: true, filtered: true })
+    sidebarEntries({ modal: false, loading: true, filtered: true })
+  );
+
+  return [
+    entries.state === "loading" ? loadingEntries.contents : entries.contents,
+    setEntries,
+  ];
+};
+
+export const useModalExplorEntries = (): [
+  SidebarEntry[],
+  (entries: SidebarEntry[]) => void
+] => {
+  const [entries, setEntries] = useRecoilStateLoadable(
+    sidebarEntries({ modal: true, loading: false, filtered: true })
+  );
+  const loadingEntries = useRecoilValueLoadable(
+    sidebarEntries({ modal: true, loading: true, filtered: true })
   );
 
   return [

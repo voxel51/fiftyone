@@ -1,7 +1,5 @@
 import { getSampleSrc } from "@fiftyone/state";
-import { ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { useRecoilState } from "recoil";
 import type { Quaternion } from "three";
 import { Vector3 } from "three";
 import PcdColormapModal, {
@@ -9,10 +7,10 @@ import PcdColormapModal, {
 } from "../../components/PcdColormapModal";
 import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
+import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
-import { currentHoveredPointAtom } from "../../state";
+import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import { useFo3dContext } from "../context";
-import { HoveredPointMarker } from "../components/HoveredPointMarker";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
 
@@ -31,11 +29,7 @@ export const Pcd = ({
   scale: Vector3;
   children?: React.ReactNode;
 }) => {
-  const { fo3dRoot, pointCloudSettings, setHoverMetadata } = useFo3dContext();
-
-  const [currentHoveredPoint, setCurrentHoveredPoint] = useRecoilState(
-    currentHoveredPointAtom
-  );
+  const { fo3dRoot, setHoverMetadata } = useFo3dContext();
 
   const pcdUrl = useMemo(
     () =>
@@ -64,65 +58,22 @@ export const Pcd = ({
     isColormapModalOpen,
     setIsColormapModalOpen,
     handleColormapSave,
-  } = usePcdMaterial(name, points.geometry, defaultMaterial, pcdContainerRef);
-
-  const pointerMoveHandler = useMemo(
-    () => (e: ThreeEvent<MouseEvent>) => {
-      const idx = e.index;
-      if (idx === undefined) return;
-
-      const md: Record<string, any> = { index: idx };
-
-      if (points.geometry.hasAttribute("rgb")) {
-        const colorAttr = points.geometry.getAttribute("rgb");
-
-        md.rgb = [
-          colorAttr.getX(idx),
-          colorAttr.getY(idx),
-          colorAttr.getZ(idx),
-        ];
-      }
-
-      if (points.geometry.hasAttribute("position")) {
-        const posAttr = points.geometry.getAttribute("position");
-        md.coord = [posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx)];
-        setCurrentHoveredPoint(
-          new Vector3(posAttr.getX(idx), posAttr.getY(idx), posAttr.getZ(idx))
-        );
-      }
-
-      // dynamically handle all other attributes
-      Object.keys(points.geometry.attributes).forEach((attr) => {
-        if (attr === "rgb" || attr === "position") return;
-        md[attr] = points.geometry.attributes[attr].getX(idx);
-      });
-
-      setHoverMetadata({
-        assetName: name,
-        renderModeDescriptor: shadingMode,
-        attributes: md,
-      });
-    },
-    [points, setHoverMetadata, shadingMode]
+  } = usePcdMaterial(
+    name,
+    points.geometry,
+    defaultMaterial,
+    pcdContainerRef,
+    quaternion
   );
 
-  const hoverProps = useMemo(() => {
-    if (!pointCloudSettings.enableTooltip) return {};
-
-    return {
-      // fires on *every* intersected point
-      onPointerMove: pointerMoveHandler,
-      onPointerOut: () => {
-        setCurrentHoveredPoint(null);
-      },
-    };
-  }, [pointCloudSettings.enableTooltip, pointerMoveHandler]);
-
-  useEffect(() => {
-    return () => {
-      setCurrentHoveredPoint(null);
-    };
-  }, [pointerMoveHandler]);
+  const { hoverProps, currentHoveredPoint } = usePointCloudHover({
+    geometry: points.geometry,
+    assetName: name,
+    shadingMode,
+    position,
+    quaternion,
+    scale,
+  });
 
   useEffect(() => {
     setHoverMetadata((prev) => ({

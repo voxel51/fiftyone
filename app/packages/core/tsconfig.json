@@ -3,7 +3,8 @@
         "esModuleInterop": true,
         "jsx": "preserve",
         "lib": ["ES2023"],
-        "types": ["vite/client"]
+        "types": ["vite/client"],
+        "moduleResolution": "bundler"
     },
     "extends": "../../tsconfig.json"
 }

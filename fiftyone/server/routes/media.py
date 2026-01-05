@@ -1,10 +1,11 @@
 """
 FiftyOne Server /media route
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import typing as t
 
@@ -74,6 +75,14 @@ class Media(HTTPEndpoint):
             )
         response.headers["Accept-Ranges"] = "bytes"
 
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+        response.headers[
+            "Access-Control-Allow-Headers"
+        ] = "Range, Content-Type, Authorization"
+        response.headers[
+            "Access-Control-Expose-Headers"
+        ] = "Accept-Ranges, Content-Range, Content-Length"
         return response
 
     async def ranged_file_response(

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import {
@@ -399,5 +399,5 @@ const getText = (_cls: string, label) => {
     return label.value;
   }
 
-  return label.label;
+  return label.label ?? "null";
 };

@@ -7,17 +7,16 @@ FiftyOne Enterprise Plugins
 
 FiftyOne Enterprise provides native support for installing and running
 :ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
-to extend and customize the functionality of your Enterprise deployment to suit your
-needs.
+to extend and customize the functionality of your Enterprise deployment to suit
+your needs.
 
 .. note::
 
     What can you do with plugins? Check out
-    :ref:`delegated operations <enterprise-delegated-operations>` to see some quick
-    examples, then check out the
-    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
-    repository for a growing collection of prebuilt plugins that you can add to
-    your Enterprise deployment!
+    :ref:`delegated operations <enterprise-delegated-operations>` to see some
+    quick examples, then check out the
+    :ref:`Plugins Ecosystem <plugins-ecosystem>` for a growing collection of
+    plugins that you can add to your Enterprise deployment!
 
 .. _enterprise-plugins-page:
 
@@ -357,9 +356,10 @@ FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed in the background on a connected compute cluster.
 
 With FiftyOne Enterprise, your team can
-:ref:`upload and permission <enterprise-plugins-page>` custom operations that your
-users can execute from the Enterprise App, all of which run against a central
-orchestrator :ref:`configured by <enterprise-delegated-orchestrator>` your admins.
+:ref:`upload and permission <enterprise-plugins-page>` custom operations that
+your users can execute from the Enterprise App, all of which run against a
+central orchestrator :ref:`configured by <enterprise-delegated-orchestrator>`
+your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
 enables you to organize and compute on your data. With delegated operations,
@@ -427,6 +427,54 @@ continue with other work. Meanwhile, all datasets have a
 browse a history of all delegated operations that have been run on the dataset
 and their status.
 
+.. _enterprise-distributed-execution:
+
+Distributed execution __SUB_NEW__
+_________________________________
+
+.. versionadded:: 2.11.0
+
+FiftyOne Enterprise supports distributed execution of delegated operations
+across many workers in parallel.
+
+When you schedule a
+:ref:`distributable operation <writing-distributed-operators>` from the App,
+you can choose how many batches to split the operation into. The dataset or
+target view will be split up into that number of tasks, and each task will be
+executed independently on a separate worker, allowing you to scale out the
+execution of large operations across many machines.
+
+If you choose a number of tasks (T) less than the deployment's maximum, the
+operation can complete up to T times faster, if resources are available
+and tasks are balanced!
+
+.. image:: /images/plugins/operators/distributed/selecting-num-tasks.png
+
+.. note::
+
+    Follow :ref:`these simple instructions <writing-distributed-operators>`
+    to update your operators to support distributed execution.
+
+You may want to split an operation into more tasks than can be run
+concurrently based on your deployment's maximum. For example, you may do this
+to limit the runtime of each individual task so that the scheduling engine can
+prioritize other tasks as necessary throughout execution.
+
+In the example below, we have chosen to split a distributable operation into
+100 batches, but the deployment maximum is 9 concurrent tasks, so at most 9
+batches will be processed in parallel at any given time.
+
+.. image:: /images/plugins/operators/distributed/tasks-greater-than-limit.png
+
+Once scheduled, you can monitor the status of a distributed operation,
+including fine-grained details about each individual worker, from the
+:ref:`Runs page <enterprise-runs-page>`.
+
+.. note::
+
+    Contact your Voxel51 support team to increase your deployment's maximum
+    delegated operation capacity.
+
 .. _enterprise-delegated-orchestrator:
 
 Configuring your orchestrator(s)
@@ -435,15 +483,50 @@ ________________________________
 FiftyOne Enterprise offers a builtin orchestrator that is configured as part of
 your team's deployment with a default level of compute capacity.
 
-It is also possible to connect your FiftyOne Enterprise deployment to an externally
-managed workflow orchestration tool (`Airflow <https://airflow.apache.org>`_,
-`Flyte <https://flyte.org>`_,
-`Spark <https://www.databricks.com/product/spark>`_, etc).
+As you scale your usage of FiftyOne, you'll likely want to scale your
+deployment's compute capacity and take advantage of advanced features such as
+configuring an on-demand compute integration with your external compute
+platform such as Databricks or Anyscale.
 
 .. note::
 
     Contact your Voxel51 support team to scale your deployment's compute
-    capacity or if you'd like to use an external orchestrator.
+    capacity, for more information about on-demand compute integrations,
+    or if you'd like to use another external orchestrator.
+
+.. _enterprise-on-demand-compute:
+
+On-demand compute __SUB_NEW__
+-----------------------------
+
+.. versionadded:: 2.11.0
+
+.. note::
+
+    On-demand compute is currently in **beta** and its API or functionality may
+    change in future releases.
+
+FiftyOne Enterprise supports executing delegated operations on-demand in
+your connected external compute platform. With on-demand compute, resources are
+only provisioned and used when they're actually needed, minimizing idle times.
+
+On-demand compute is currently supported on FiftyOne's Kubernetes Orchestrator,
+`Databricks <https://www.databricks.com/>`_, and
+`Anyscale <https://www.anyscale.com/>`_.
+
+Administrators can refer to the
+`deployment guide <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/configuring-on-demand-orchestrator.md>`_
+to learn how to configure on-demand compute for their FiftyOne Enterprise
+deployment.
+
+External orchestrators
+----------------------
+
+It is also possible to connect your FiftyOne Enterprise deployment to other
+externally-managed workflow orchestration tools, such as
+`Airflow <https://airflow.apache.org>`_, `Flyte <https://flyte.org>`_, and
+`Spark <https://spark.apache.org/>`_. Please contact your Voxel51 support team
+for further details.
 
 .. _enterprise-managing-delegated-operations:
 
@@ -496,11 +579,10 @@ Delegated operations can have one of 5 potential statuses:
 
 .. note::
 
-    FiftyOne Enterprise offers a builtin orchestrator that is configured as
-    part of your team's deployment with a default level of execution quota.
+    Distributed operations have a computed status based on the statuses of
+    their individual tasks. For example, a distributed operation is considered
+    "Completed" only when all of its tasks have completed successfully.
 
-    Contact your Voxel51 support team to discuss running more jobs in parallel,
-    or if you'd like to use an external orchestrator.
 
 .. image:: /images/plugins/operators/runs/runs_statuses.png
 
@@ -613,26 +695,26 @@ indicated by “3”:
 
 .. image:: /images/plugins/operators/runs/run_rename.png
 
-.. _enterprise-runs-mark-as-failed:
+.. _enterprise-runs-terminate:
 
-Mark as failed
-^^^^^^^^^^^^^^
+Terminate
+^^^^^^^^^
 
-If a delegated operation run terminates unexpectedly without reporting failure,
-you can manually mark it as failed from the Runs page.
-
-To mark a run as failed, click the three dots indicated by "1". Then, in the
-menu, click "Mark as failed" as indicated by "2". The run status will be
+To terminate a run, click the three dots indicated by "1". Then, in the
+menu, click "Terminate" as indicated by "2". The run status will be
 updated and will now display as failed:
 
-.. image:: /images/plugins/operators/runs/runs_mark_as_failed.png
+.. image:: /images/plugins/operators/runs/runs_terminate.png
 
-.. warning::
+.. version-changed:: 2.12.0
+   The "Terminate" action now actually stops running delegated operations.
 
-    If the delegated operation is, in fact, still in progress in your
-    orchestrator, marking the run as failed **will not** terminate the
-    execution of operation. It will continue executing until completion but the
-    operation will be marked as failed regardless of its outcome.
+.. note::
+
+   If you are running a version older than 2.12.0, the button will say
+   "Mark as Failed" instead of "Terminate", and it **will not** stop the
+   operation on your orchestrator-it will only mark the run as failed
+   while the operation continues executing.
 
 .. _enterprise-runs-monitoring-progress:
 
@@ -663,6 +745,30 @@ delegated operation, including its inputs, outputs, logs, and errors.
 
 You can visit the Run page for a run by clicking on the run in the runs table,
 the Pinned runs section, or the Recent runs widgets.
+
+.. _enterprise-run-page-children:
+
+Children
+^^^^^^^^
+
+.. versionadded:: 2.11.0
+
+If a distributable delegated operation was scheduled with multiple tasks,
+then it's considered to be a "parent". The Run page will include a Children
+tab that allows you to see the status of each individual child task in a
+tabular format similar to the main Runs page:
+
+.. image:: /images/plugins/operators/runs/run_children.png
+
+You are given options to sort, search, and filter the list of tasks as you
+would on the main Runs page. You can also click on any task in the table to
+visit its own Run page.
+
+.. note::
+
+    You can mark a child task as failed, but you cannot re-run or delete a
+    child task individually.
+
 
 .. _enterprise-run-page-input:
 
@@ -761,9 +867,9 @@ two deployment configurations we support for the
 
 .. note::
 
-    If you are using a third-party orchestrator like Airflow, simply configure
-    your orchestrator to store logs to a persistent location and then report
-    this path for each run via the `log_path` argument.
+    If you are using a third-party orchestrator, it can be configured
+    similarly to upload logs, in addition to a ``run_link`` that can be
+    added to each run to link back to the external run details page.
 
 .. _enterprise-run-page-view:
 

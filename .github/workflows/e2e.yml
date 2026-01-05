@@ -5,7 +5,8 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 90
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest # the standard runner's 14GB free disk space is not sufficient.  We create more free space with the `jlumbroso/free-disk-space` action as a step (below).
+    name: Test e2e (Mongo ${{ matrix.mongodb-version }})
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_APP_DEFAULT_QUERY_PERFORMANCE: false
@@ -17,14 +18,22 @@ jobs:
     defaults:
       run:
         shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb-version:
+          - "6"
+          - "7"
+          - "8.0"
+          - "latest"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Setup node 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
 
@@ -34,12 +43,12 @@ jobs:
         run: corepack prepare yarn@4.9.1 --activate
 
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.12.0
+        uses: supercharge/mongodb-github-action@1.12.1
         with:
-          mongodb-version: latest
+          mongodb-version: ${{ matrix.mongodb-version }}
 
       - name: Setup
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         id: pip-cache
         with:
           python-version: 3.10.16
@@ -49,6 +58,10 @@ jobs:
             requirements/github.txt
             requirements/test.txt
             requirements/e2e.txt
+      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false # e2e test failed when `true`
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
@@ -56,7 +69,7 @@ jobs:
 
       - name: Cache Node Modules
         id: app-node-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             app/node_modules
@@ -91,7 +104,7 @@ jobs:
 
       - name: Cache E2E Node Modules
         id: e2e-node-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             e2e-pw/node_modules
@@ -109,12 +122,11 @@ jobs:
         working-directory: e2e-pw
 
       - name: Cache playwright browser
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         id: playwright-browser-cache
         with:
           path: ${{ env.PLAYWRIGHT_BROWSERS_PATH }}
           key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.PLAYWRIGHT_VERSION }}
-          working-directory: e2e-pw
 
       - name: Install Playwright browser if not cached
         run: yarn playwright install
@@ -131,8 +143,8 @@ jobs:
 
       - name: Upload test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: playwright-report
+          name: playwright-report-mongodb-${{ matrix.mongodb-version }}
           path: e2e-pw/playwright-report/
           retention-days: 30

@@ -25,6 +25,7 @@ export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
 export { default as useQueryPerformance } from "./useQueryPerformance";
 export { default as useRefresh } from "./useRefresh";
+export * from "./useRefreshSample";
 export { default as useReset } from "./useReset";
 export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export { default as useSavedViews } from "./useSavedViews";
@@ -46,7 +47,10 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
-export { default as useUnboundState } from "./useUnboundState";
+export {
+  default as useUnboundState,
+  useUnboundStateRef,
+} from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
 export { default as useMutation } from "./useMutation";

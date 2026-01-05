@@ -1,10 +1,11 @@
 """
 FiftyOne 3D Object3D base class.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import uuid
 from typing import List, Optional, Tuple, Union
 
@@ -73,9 +74,15 @@ class Object3D(object):
         return self.__repr__()
 
     def __eq__(self, other):
-        return np.array_equal(
+        if not isinstance(other, Object3D):
+            return False
+        return self.name == other.name and np.array_equal(
             self.local_transform_matrix, other.local_transform_matrix
         )
+
+    def __hash__(self):
+        """Return the hash of this object based on its immutable uuid."""
+        return hash(self._uuid)
 
     def __iter__(self):
         return iter(self.children)
@@ -189,7 +196,8 @@ class Object3D(object):
             ]
         ).as_matrix()
 
-        # extend the rotation matrix to 4x4 by adding a row and column for homogeneous coordinates
+        # extend the rotation matrix to 4x4 by adding a row and column
+        # for homogeneous coordinates
         rotation_matrix_4x4 = np.eye(4)
         rotation_matrix_4x4[:3, :3] = rotation_matrix
 
@@ -222,6 +230,196 @@ class Object3D(object):
     def clear(self) -> None:
         """Remove all children from this object."""
         self.children = []
+
+    def find_and_execute(
+        self,
+        node: "Object3D",
+        predicate,
+        on_match,
+        stop_on_first_match: bool = False,
+    ) -> bool:
+        """Recursively search the scene graph and execute an action on
+        matching nodes.
+
+        This is a generic method for traversing the scene graph and
+        performing operations on nodes that match a given predicate.
+        It can be used for finding and removing nodes, collecting nodes,
+        updating nodes, etc.
+
+        The traversal continues into the subtrees of both matching and
+        non-matching nodes. For matching nodes, the subtree is traversed
+        when on_match returns True and stop_on_first_match is False.
+
+        Args:
+            node: the node to start searching from
+            predicate: a function that takes a child Object3D and returns
+            True if it matches the search criteria
+            on_match: a function called when a match is found, takes
+            (parent, child) and returns True to continue searching, False to
+            stop
+            stop_on_first_match: if True, stop searching after first match
+            is processed
+
+        Returns:
+            True if a match was found and we should stop, False otherwise
+
+        Example:
+            # Find all nodes with a specific name and collect them
+            matches = []
+            def predicate(child):
+                return child.name == "target"
+            def on_match(parent, child):
+                matches.append(child)
+                return True  # continue searching
+            scene.find_and_execute(scene, predicate, on_match)
+        """
+        for child in list(node.children):
+            if predicate(child):
+                should_continue = on_match(node, child)
+                if stop_on_first_match or not should_continue:
+                    return True
+                # Recurse into matching child when on_match returns True
+                # and stop_on_first_match is False
+                if self.find_and_execute(
+                    child, predicate, on_match, stop_on_first_match
+                ):
+                    return True
+            else:
+                if self.find_and_execute(
+                    child, predicate, on_match, stop_on_first_match
+                ):
+                    return True
+        return False
+
+    def _remove_from_children(
+        self, parent: "Object3D", target: "Object3D"
+    ) -> bool:
+        """Remove target from parent's children if it exists there.
+
+        Args:
+            parent: the parent object whose children list to modify
+            target: the child object to remove
+
+        Returns:
+            True if the target was found and removed, False otherwise
+        """
+        for i, child in enumerate(parent.children):
+            if child is target:
+                del parent.children[i]
+                return True
+        return False
+
+    def remove(self, *objs: "Object3D") -> None:
+        """Remove one or more objects from the scene graph recursively.
+
+        This method searches recursively through the entire scene graph starting
+        from this object and removes any matching objects from their parent's
+        children list.
+
+        Args:
+            *objs: one or more Object3D instances to remove
+
+        Raises:
+            ValueError: if any of the objects to remove is this object itself
+            ValueError: if any of the objects is not found in the scene graph
+        """
+        if not objs:
+            return
+
+        if any(o is self for o in objs):
+            raise ValueError("Cannot remove self from the scene graph")
+
+        objs_to_remove = set(objs)
+        removed = set()
+
+        def predicate(child: "Object3D") -> bool:
+            return any(child is obj for obj in objs_to_remove)
+
+        def on_match(parent: "Object3D", child: "Object3D") -> bool:
+            if self._remove_from_children(parent, child):
+                removed.add(child)
+            return True
+
+        self.find_and_execute(self, predicate, on_match)
+
+        not_found = objs_to_remove - removed
+        if not_found:
+            names = [obj.name for obj in not_found]
+            raise ValueError(
+                f"Object(s) not found in scene graph: {', '.join(names)}"
+            )
+
+    def remove_by_name(self, name: str) -> None:
+        """Remove all objects with the given name from the scene graph recursively.
+
+        This method searches recursively through the entire scene graph starting
+        from this object and removes all objects matching the given name from
+        their parent's children lists.
+
+        Args:
+            name: the name of the objects to remove
+
+        Raises:
+            ValueError: if attempting to remove this object itself by name
+            ValueError: if no objects with the given name are found
+        """
+        if self.name == name:
+            raise ValueError("Cannot remove self from the scene graph")
+
+        removed = set()
+
+        def predicate(child: "Object3D") -> bool:
+            return child.name == name
+
+        def on_match(parent: "Object3D", child: "Object3D") -> bool:
+            if self._remove_from_children(parent, child):
+                removed.add(child)
+            return True
+
+        self.find_and_execute(self, predicate, on_match)
+
+        if not removed:
+            raise ValueError(
+                f"Objects with name '{name}' not found in scene graph"
+            )
+
+    def remove_by_uuid(self, target_uuid: str) -> None:
+        """Remove the object with the given UUID from the scene graph recursively.
+
+        This method searches recursively through the entire scene graph starting
+        from this object and removes the object matching the given UUID from its
+        parent's children list. UUIDs should be unique, so only one match is expected.
+
+        Args:
+            target_uuid: the UUID of the object to remove
+
+        Raises:
+            ValueError: if attempting to remove this object itself by UUID
+            ValueError: if no object with the given UUID is found
+        """
+        if self.uuid == target_uuid:
+            raise ValueError("Cannot remove self from the scene graph")
+
+        found = False
+
+        def predicate(child: "Object3D") -> bool:
+            return child.uuid == target_uuid
+
+        def on_match(parent: "Object3D", child: "Object3D") -> bool:
+            nonlocal found
+            if self._remove_from_children(parent, child):
+                found = True
+            # stop searching after first match
+            return False
+
+        self.find_and_execute(
+            self, predicate, on_match, stop_on_first_match=True
+        )
+
+        if not found:
+            raise ValueError(
+                f"Object with UUID '{target_uuid}' not found in scene graph"
+            )
 
     def _get_asset_paths(self) -> List[str]:
         """Get asset paths for this node"""

@@ -1,6 +1,6 @@
-import { getSampleSrc } from "@fiftyone/state";
-import { useLoader } from "@react-three/fiber";
+import { getSampleSrc, isInMultiPanelViewAtom } from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import {
   Mesh,
   MeshStandardMaterial,
@@ -10,11 +10,11 @@ import {
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import type { ObjAsset } from "../../hooks";
+import { useFoLoader } from "../../hooks/use-fo-loaders";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
 import { getColorFromPoolBasedOnHash } from "../../utils";
 import { useFo3dContext } from "../context";
 import { getBasePathForTextures, getResolvedUrlForFo3dAsset } from "../utils";
-import { useFoLoader } from "../../hooks/use-fo-loaders";
 
 const ObjMeshDefaultMaterial = ({
   name,
@@ -28,6 +28,7 @@ const ObjMeshDefaultMaterial = ({
   const { objPath, preTransformedObjPath } = obj;
 
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>
@@ -36,7 +37,16 @@ const ObjMeshDefaultMaterial = ({
     [objPath, preTransformedObjPath, fo3dRoot]
   );
 
-  const mesh = useFoLoader(OBJLoader, objUrl);
+  const mesh_ = useFoLoader(OBJLoader, objUrl);
+
+  // Deep clone mesh when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const mesh = useMemo(() => {
+    if (isInMultiPanelView && mesh_) {
+      return mesh_.clone(true);
+    }
+    return mesh_;
+  }, [mesh_, isInMultiPanelView]);
 
   const { material } = useMeshMaterialControls(name, obj.defaultMaterial);
 
@@ -60,10 +70,15 @@ const ObjMeshDefaultMaterial = ({
     onLoad?.();
   }, [mesh, objUrl, material, onLoad]);
 
+  if (!mesh) {
+    return null;
+  }
+
   return <primitive object={mesh} />;
 };
 
 const ObjMeshWithCustomMaterial = ({
+  name,
   obj,
   onLoad,
 }: {
@@ -75,6 +90,7 @@ const ObjMeshWithCustomMaterial = ({
     obj;
 
   const { fo3dRoot } = useFo3dContext();
+  const isInMultiPanelView = useRecoilValue(isInMultiPanelViewAtom);
 
   const objUrl = useMemo(
     () =>
@@ -100,18 +116,31 @@ const ObjMeshWithCustomMaterial = ({
       loader.setResourcePath(resourcePath);
     }
   });
-  const mesh = useFoLoader(OBJLoader, objUrl, (loader) => {
+  const mesh_ = useFoLoader(OBJLoader, objUrl, (loader) => {
     if (mtlUrl) {
       materials.preload();
       loader.setMaterials(materials);
     }
   });
 
+  // Deep clone mesh when in multipanel view to avoid React Three Fiber caching issues
+  // todo: optimize this with instanced mesh
+  const mesh = useMemo(() => {
+    if (isInMultiPanelView && mesh_) {
+      return mesh_.clone(true);
+    }
+    return mesh_;
+  }, [mesh_, isInMultiPanelView]);
+
   useEffect(() => {
     if (mesh) {
       onLoad?.();
     }
   }, [mesh, onLoad]);
+
+  if (!mesh) {
+    return null;
+  }
 
   return <primitive object={mesh} />;
 };

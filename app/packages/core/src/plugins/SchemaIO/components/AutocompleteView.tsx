@@ -1,5 +1,4 @@
 import { Autocomplete, MenuItem, TextField } from "@mui/material";
-import React from "react";
 import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
@@ -24,7 +23,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data, choices)}
+        value={getDefaultValue(data, choices)}
         freeSolo={allowUserInput}
         size="small"
         onChange={(e, choice) => {

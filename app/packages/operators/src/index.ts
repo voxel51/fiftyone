@@ -28,4 +28,8 @@ export {
   useOperatorPlacements,
 } from "./state";
 export * as types from "./types";
-export { default as usePanelEvent } from "./usePanelEvent";
+export {
+  default as usePanelEvent,
+  useTriggerPanelEvent,
+} from "./usePanelEvent";
+export { validate } from "./validation";

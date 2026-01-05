@@ -1,11 +1,11 @@
-import { usePanelStateByIdCallback } from "@fiftyone/spaces";
+import { usePanelId, usePanelStateByIdCallback } from "@fiftyone/spaces";
 import { useNotification } from "@fiftyone/state";
-import { useState, useEffect } from "react";
-import { useActivePanelEventsCount } from "./hooks";
-import { executeOperator, OperatorResult } from "./operators";
-import { usePromptOperatorInput } from "./state";
-import { ExecutionCallback } from "./types-internal";
 import { PanelEventError } from "@fiftyone/utilities";
+import { useCallback, useEffect, useState } from "react";
+import { useActivePanelEventsCount } from "./hooks";
+import { OperatorResult, executeOperator } from "./operators";
+import { usePromptOperatorInput } from "./state";
+import { ExecutionCallback, ParamsType } from "./types-internal";
 
 type HandlerOptions = {
   params: { [name: string]: unknown };
@@ -26,11 +26,11 @@ type TriggerEventFn = (panelId: string, options: HandlerOptions) => void;
 
 /**
  * A hook that can be used to trigger an operator on a panel.
- * 
+ *
  * @returns A function that can be used to trigger an operator on a panel.
- * 
+ *
  * Example:
- * 
+ *
  * ```ts
  * const panelId = usePanelId();
  * const triggerEvent = usePanelEvent();
@@ -39,13 +39,13 @@ type TriggerEventFn = (panelId: string, options: HandlerOptions) => void;
  *   params: { param1: "value1" },
  * });
  * ```
- */   
+ */
 export default function usePanelEvent(): TriggerEventFn {
   const promptForOperator = usePromptOperatorInput();
   // notify is still used for missing operator
   const notify = useNotification();
   const { increment, decrement } = useActivePanelEventsCount("");
-  const {setPendingError} = usePendingPanelEventError();
+  const { setPendingError } = usePendingPanelEventError();
 
   return usePanelStateByIdCallback((panelId, panelState, args) =>
     handlePanelEvent(
@@ -151,8 +151,10 @@ export function handlePanelEvent(
   }
 }
 
-
-export function usePendingPanelEventError(): {setPendingError: (err: PendingError) => void, pendingError: PendingError} {
+export function usePendingPanelEventError(): {
+  setPendingError: (err: PendingError) => void;
+  pendingError: PendingError;
+} {
   const [pendingError, setPendingError] = useState<PendingError>(null);
 
   useEffect(() => {
@@ -160,9 +162,39 @@ export function usePendingPanelEventError(): {setPendingError: (err: PendingErro
       const { message, error, operator } = pendingError;
       setPendingError(null); // Clear the pending error
       const [operatorUri, eventName] = operator.split("#");
-      throw new PanelEventError(message, error?.stack || error?.message || String(error), operatorUri, eventName);
+      throw new PanelEventError(
+        message,
+        error?.stack || error?.message || String(error),
+        operatorUri,
+        eventName
+      );
     }
   }, [pendingError]);
 
-  return {setPendingError, pendingError};
+  return { setPendingError, pendingError };
+}
+
+export function useTriggerPanelEvent() {
+  const panelId = usePanelId();
+  const handleEvent = usePanelEvent();
+
+  const triggerEvent = useCallback(
+    (
+      event: string,
+      params?: ParamsType,
+      prompt?: boolean,
+      callback?: ExecutionCallback
+    ) => {
+      handleEvent(panelId, {
+        operator: event,
+        params,
+        prompt,
+        callback,
+        panelId,
+      });
+    },
+    [handleEvent, panelId]
+  );
+
+  return triggerEvent;
 }

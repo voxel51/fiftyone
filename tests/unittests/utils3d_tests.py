@@ -1,7 +1,7 @@
 """
 FiftyOne 3D utilities unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -397,6 +397,175 @@ class GetSceneAssetPaths(unittest.TestCase):
                     os.path.join(temp_dir, "relative2.stl"),
                 },
             )
+
+
+class CoordinateTransformationTests(unittest.TestCase):
+    def setUp(self):
+        self.transformation = (
+            np.array([1, 1, 1]),
+            np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]),
+        )
+
+    def test_simple_transforms(self):
+        point = [0, 10, 5]
+        euler_rpy = [0, 1.57, 0]
+
+        (
+            point_transformed,
+            euler_rpy_transformed,
+        ) = fou3d.multiple_coordinate_transform(
+            point, euler_rpy, [self.transformation]
+        )
+        self.assertTrue(np.allclose(point_transformed, [1, -4, 11]))
+        self.assertTrue(
+            np.allclose(euler_rpy_transformed, [1.57, 1.57, 0], rtol=1e-03)
+        )
+
+        (
+            point_transformed,
+            euler_rpy_transformed,
+        ) = fou3d.multiple_coordinate_transform(
+            point, euler_rpy, [self.transformation], [False]
+        )
+        self.assertTrue(np.allclose(point_transformed, [-1, 4, -9]))
+        self.assertTrue(
+            np.allclose(euler_rpy_transformed, [-1.57, 1.57, 0], rtol=1e-03)
+        )
+
+    def test_forward_reverse_coordinate_transformation(self):
+        point = [0, 10, 5]
+        euler_rpy = [0, 0, 0]
+        transformation = [self.transformation, self.transformation]
+        forward_transform_flags = [True, False]
+
+        (
+            point_transformed,
+            euler_rpy_transformed,
+        ) = fou3d.multiple_coordinate_transform(
+            point, euler_rpy, transformation, forward_transform_flags
+        )
+        self.assertTrue(np.allclose(point_transformed, point))
+        self.assertTrue(
+            np.allclose(euler_rpy_transformed, euler_rpy, rtol=1e-03)
+        )
+
+    def test_mismatched_transform_and_flags(self):
+        point = [0, 0, 0]
+        euler_rpy = [0, 0, 0]
+        with self.assertRaises(ValueError):
+            fou3d.multiple_coordinate_transform(
+                point, euler_rpy, [self.transformation], [True, False]
+            )
+
+    def test_identity_transformation(self):
+        point = [1, 2, 3]
+        euler_rpy = [0.1, 0.2, 0.3]
+        identity = (np.zeros(3), np.eye(3))
+
+        result_point, result_euler = fou3d.multiple_coordinate_transform(
+            point, euler_rpy, [identity]
+        )
+        self.assertTrue(np.allclose(result_point, point))
+        self.assertTrue(np.allclose(result_euler, euler_rpy, rtol=1e-6))
+
+    def test_no_transforms(self):
+        point = [1, 2, 3]
+        euler_rpy = [0.1, 0.2, 0.3]
+
+        result_point, result_euler = fou3d.multiple_coordinate_transform(
+            point, euler_rpy, []
+        )
+        self.assertTrue(np.allclose(result_point, point))
+        self.assertTrue(np.allclose(result_euler, euler_rpy, rtol=1e-6))
+
+
+class TestPinholeProjector(unittest.TestCase):
+    def setUp(self):
+        self.intrinsics = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+
+    def test_projection_identity(self):
+        points = np.array([[1, 0, -1], [0, 1, -1], [1, 2, 3]])
+        cam_params = {"intrinsics": self.intrinsics}
+
+        result = fou3d.pinhole_projector(points, cam_params)
+        expected = np.array([[1 / 1, 0 / 2, -1 / 3], [0 / 1, 1 / 2, -1 / 3]])
+        self.assertTrue(np.allclose(result, expected))
+
+    def test_projection_without_normalization(self):
+        points = np.array([[1, 0], [0, 1], [2, 2]])
+        cam_params = {"intrinsics": self.intrinsics}
+
+        result = fou3d.pinhole_projector(points, cam_params, normalize=False)
+        expected = np.array([[1, 0], [0, 1]])
+        self.assertTrue(np.allclose(result, expected))
+
+    def test_missing_intrinsics(self):
+        points = np.zeros((3, 2))
+        with self.assertRaises(ValueError):
+            fou3d.pinhole_projector(points, {})
+
+    def test_wrong_intrinsics_shape(self):
+        points = np.zeros((3, 2))
+        cam_params = {"intrinsics": np.zeros((5, 5))}
+        with self.assertRaises(ValueError):
+            fou3d.pinhole_projector(points, cam_params)
+
+
+class TestPointInFrontOfCamera(unittest.TestCase):
+    def setUp(self):
+        self.imsize = (640, 480)
+
+    def test_all_corners_visible_and_in_front(self):
+        corners_img = np.array(
+            [
+                [100, 200, 300, 400, 100, 200, 300, 400],
+                [100, 200, 300, 400, 150, 250, 350, 450],
+            ]
+        )
+        corners_3d = np.array(
+            [
+                [0, 1, 2, 3, 0, 1, 2, 3],
+                [0, 1, 2, 3, 0, 1, 2, 3],
+                [1, 1, 1, 1, 2, 2, 2, 2],
+            ]
+        )
+        self.assertTrue(
+            fou3d.point_in_front_of_camera(
+                corners_img, corners_3d, self.imsize
+            )
+        )
+
+    def test_corner_outside_image(self):
+        corners_img = np.array(
+            [
+                [100, 700, 300, 400, 100, 200, 300, 400],
+                [100, 200, 300, 400, 150, 250, 350, 450],
+            ]
+        )
+        corners_3d = np.ones((3, 8)) * 2
+        self.assertFalse(
+            fou3d.point_in_front_of_camera(
+                corners_img, corners_3d, self.imsize
+            )
+        )
+
+    def test_corner_behind_camera(self):
+        corners_img = np.array([[100] * 8, [100] * 8])
+        corners_3d = np.array([[0] * 8, [0] * 8, [-1] * 8])
+        self.assertFalse(
+            fou3d.point_in_front_of_camera(
+                corners_img, corners_3d, self.imsize
+            )
+        )
+
+    def test_corner_within_safety_threshold(self):
+        corners_img = np.array([[100] * 8, [100] * 8])
+        corners_3d = np.array([[0] * 8, [0] * 8, [0.05] * 8])
+        self.assertFalse(
+            fou3d.point_in_front_of_camera(
+                corners_img, corners_3d, self.imsize
+            )
+        )
 
 
 class BoxTests(unittest.TestCase):

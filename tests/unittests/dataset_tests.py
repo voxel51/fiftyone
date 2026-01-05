@@ -1,7 +1,7 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ FiftyOne dataset-related unit tests.
 from collections import Counter
 from copy import deepcopy, copy
 from datetime import date, datetime, timedelta
+from functools import partial
 import gc
 import os
 import random
@@ -27,6 +28,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
+import fiftyone.core.utils as fou
 from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
@@ -679,20 +681,47 @@ class DatasetTests(unittest.TestCase):
         dataset.create_index("id", unique=True)  # already exists
         dataset.create_index("id")  # sufficient index exists
         with self.assertRaises(ValueError):
-            dataset.drop_index("id")  # can't drop default
+            dataset.drop_index("id")  # can't drop default index
 
         dataset.create_index("filepath")  # already exists
 
         with self.assertRaises(ValueError):
-            # can't upgrade default index to unique
-            dataset.create_index("filepath", unique=True)
-
-        with self.assertRaises(ValueError):
             dataset.drop_index("filepath")  # can't drop default index
+
+        # converting 'filepath' index to unique *is* allowed
+        dataset.create_index("filepath", unique=True)
+
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["filepath"]["unique"])
+
+        dataset.create_index("filepath")  # sufficient index already exists
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["filepath"]["unique"])  # still unique
+
+        # downgrading 'filepath' to non-unique *is* allowed
+        dataset.create_index("filepath", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["filepath"].get("unique", False)
+        )  # now non-unique
 
         name = dataset.create_index("field")
         self.assertEqual(name, "field")
         self.assertIn("field", dataset.list_indexes())
+
+        dataset.create_index("field", unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field"]["unique"])
+
+        dataset.create_index("field", unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field"]["unique"])  # still unique
+
+        dataset.create_index("field", unique=False, force=True)
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["field"].get("unique", False)
+        )  # now non-unique
 
         dataset.drop_index("field")
         self.assertNotIn("field", dataset.list_indexes())
@@ -704,11 +733,47 @@ class DatasetTests(unittest.TestCase):
         dataset.drop_index("cls.label")
         self.assertNotIn("cls.label", dataset.list_indexes())
 
-        compound_index_name = dataset.create_index([("id", 1), ("field", 1)])
-        self.assertIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("field", -1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", -1)])
 
-        dataset.drop_index(compound_index_name)
-        self.assertNotIn(compound_index_name, dataset.list_indexes())
+        dataset.create_index([("field", 1)])
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", -1)])  # still -1
+
+        dataset.create_index([("field", 1)], force=True)
+        indexes = dataset.get_index_information()
+        self.assertEqual(indexes["field"]["key"], [("field", 1)])  # now 1
+
+        dataset.create_index([("field", 1), ("id", 1)])
+        self.assertIn("field_1__id_1", dataset.list_indexes())
+
+        dataset.create_index([("field", 1), ("id", 1)], unique=True)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field_1__id_1"]["unique"])  # now unique
+
+        dataset.create_index([("field", 1), ("id", 1)], unique=False)
+        indexes = dataset.get_index_information()
+        self.assertTrue(indexes["field_1__id_1"]["unique"])  # still unique
+
+        dataset.create_index(
+            [("field", 1), ("id", 1)], unique=False, force=True
+        )
+        indexes = dataset.get_index_information()
+        self.assertFalse(
+            indexes["field_1__id_1"].get("unique", False)
+        )  # now non-unique
+
+        dataset.create_index([("field", -1), ("id", 1)])
+        self.assertTrue("field_1__id_1" in dataset.list_indexes())
+        self.assertFalse("field_-1__id_1" in dataset.list_indexes())
+
+        dataset.create_index([("field", -1), ("id", 1)], force=True)
+        self.assertFalse("field_1__id_1" in dataset.list_indexes())
+        self.assertTrue("field_-1__id_1" in dataset.list_indexes())
+
+        dataset.drop_index("field_-1__id_1")
+        self.assertNotIn("field_-1__id_1", dataset.list_indexes())
 
         with self.assertRaises(ValueError):
             dataset.create_index("non_existent_field")
@@ -2006,6 +2071,82 @@ class DatasetTests(unittest.TestCase):
             _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
 
     @drop_datasets
+    def test_add_samples_batcher(self):
+        samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
+
+        # No batching
+        dataset = fo.Dataset()
+
+        original_get_default_batcher = fou.get_default_batcher
+
+        # Mock `get_default_batcher` to verify the `batcher` argument
+        with patch(
+            "fiftyone.core.utils.get_default_batcher"
+        ) as mock_get_batcher:
+            mock_get_batcher.side_effect = (
+                lambda *args, **kwargs: original_get_default_batcher(
+                    *args, **kwargs
+                )
+            )
+
+            # Call `add_samples` with no batcher
+            custom_batcher = False
+            dataset.add_samples(samples, batcher=custom_batcher)
+
+            # Verify `get_default_batcher` was called with expected args
+            self.assertEqual(mock_get_batcher.call_count, 1)
+            _, kwargs = mock_get_batcher.call_args
+            self.assertIs(kwargs["batcher"], custom_batcher)
+            self.assertIs(kwargs["total"], samples)
+            tf = kwargs["transform_fn"]
+            self.assertEqual(
+                getattr(tf, "func", None), dataset._transform_sample
+            )
+            self.assertEqual(
+                getattr(tf, "keywords", None),
+                dict(
+                    expand_schema=True, dynamic=False, validate=True, copy=True
+                ),
+            )
+
+        assert len(dataset) == 10
+
+        # Custom batcher
+        dataset = fo.Dataset()
+
+        # Mock `get_default_batcher` to verify the `batcher` argument
+        with patch(
+            "fiftyone.core.utils.get_default_batcher"
+        ) as mock_get_batcher:
+            mock_get_batcher.side_effect = (
+                lambda *args, **kwargs: original_get_default_batcher(
+                    *args, **kwargs
+                )
+            )
+
+            # Call `add_samples` with a custom batcher
+            custom_batcher = partial(fou.StaticBatcher, batch_size=5)
+            dataset.add_samples(samples, batcher=custom_batcher)
+
+            # Verify `get_default_batcher` was called with expected args
+            self.assertEqual(mock_get_batcher.call_count, 1)
+            _, kwargs = mock_get_batcher.call_args
+            self.assertIs(kwargs["batcher"], custom_batcher)
+            self.assertIs(kwargs["total"], samples)
+            tf = kwargs["transform_fn"]
+            self.assertEqual(
+                getattr(tf, "func", None), dataset._transform_sample
+            )
+            self.assertEqual(
+                getattr(tf, "keywords", None),
+                dict(
+                    expand_schema=True, dynamic=False, validate=True, copy=True
+                ),
+            )
+
+        assert len(dataset) == 10
+
+    @drop_datasets
     def test_add_samples_generator(self):
         samples = [fo.Sample(filepath=f"image{i}.jpg") for i in range(10)]
 
@@ -2310,11 +2451,21 @@ class DatasetTests(unittest.TestCase):
         # Standard merge
 
         dataset12 = dataset1.clone()
+
         created_at1 = dataset12.values("created_at")
         last_modified_at1 = dataset12.values("last_modified_at")
+        indexes1_before = dataset12.get_index_information()
+        indexes2_before = dataset2.get_index_information()
+
+        self.assertFalse(indexes1_before["filepath"].get("unique", False))
+        self.assertFalse(indexes2_before["filepath"].get("unique", False))
+
         dataset12.merge_samples(dataset2)
+
         created_at2 = dataset12.values("created_at")
         last_modified_at2 = dataset12.values("last_modified_at")
+        indexes1_after = dataset12.get_index_information()
+        indexes2_after = dataset2.get_index_information()
 
         self.assertEqual(len(dataset12), 3)
         self.assertListEqual(
@@ -2330,6 +2481,10 @@ class DatasetTests(unittest.TestCase):
         )
         self.assertTrue(sample2.created_at < created_at2[2])
         self.assertTrue(sample2.last_modified_at < last_modified_at2[2])
+        self.assertTrue(indexes1_after["filepath"]["unique"])
+        self.assertTrue(indexes2_after["filepath"]["unique"])
+        self.assertSetEqual(set(indexes1_before), set(indexes1_after))
+        self.assertSetEqual(set(indexes2_before), set(indexes2_after))
 
         common12_view = dataset12.match(F("filepath") == common_filepath)
 
@@ -6437,6 +6592,42 @@ class DynamicFieldTests(unittest.TestCase):
         dynamic_schema = dataset.get_dynamic_frame_field_schema()
         self.assertIn("ground_truth.detections.area", dynamic_schema)
 
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        dynamic_schema = dataset.get_dynamic_frame_field_schema(
+            fields="ground_truth.detections"
+        )
+        self.assertIn("ground_truth.detections.area", dynamic_schema)
+
+        # Declare dynamic fields via dict syntax
+
+        dataset2 = dataset.clone()
+
+        dynamic_schema = dataset2.get_dynamic_field_schema()
+        dataset2.add_dynamic_sample_fields(dynamic_schema)
+
+        schema = dataset2.get_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
+        dynamic_schema = dataset2.get_dynamic_frame_field_schema()
+        dataset2.add_dynamic_frame_fields(dynamic_schema)
+
+        schema = dataset2.get_frame_field_schema(flat=True)
+        self.assertIn("ground_truth.detections.area", schema)
+
         # Declare all dynamic fields
 
         dataset.add_dynamic_sample_fields()
@@ -6773,6 +6964,46 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIn("tasks.annotator", schema)
         self.assertIn("tasks.labels", schema)
         self.assertIn("tasks.labels.classifications.label", schema)
+
+    @drop_datasets
+    def test_dynamic_embedded_list_fields(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="dog", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(
+                    animal=fo.Detection(label="cat", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(person=fo.Detection(label="boy")),
+            ],
+        )
+
+        sample2 = fo.Sample(
+            filepath="image2.jpg",
+            test=[
+                fo.DynamicEmbeddedDocument(
+                    person=fo.Detection(label="girl", instance=fo.Instance())
+                ),
+                fo.DynamicEmbeddedDocument(object=fo.Detection(label="chair")),
+            ],
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample1, dynamic=True)
+        dataset.add_sample(sample2, dynamic=True)
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("test.animal", schema)
+        self.assertIn("test.animal.instance", schema)
+        self.assertIn("test.animal.instance.id", schema)
+        self.assertIn("test.person", schema)
+        self.assertIn("test.person.instance", schema)
+        self.assertIn("test.person.instance.id", schema)
+        self.assertIn("test.object", schema)
+        self.assertNotIn("test.object.instance", schema)
+        self.assertNotIn("test.object.instance.id", schema)
 
     @drop_datasets
     def test_dynamic_fields_clone_and_merge(self):

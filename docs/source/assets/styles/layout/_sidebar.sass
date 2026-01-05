@@ -49,10 +49,16 @@
   border: 0
   padding: 1rem 1rem 1rem
 
+  .sidebar-primary-item:has(#searchbox)
+    display: none
 
 /* Secondary Sidebar */
+.bd-sidebar-secondary
+  padding-top: 95px
+
 .sidebar-secondary-item
   border: 0
+  padding-top: 0
 
   .page-toc.tocsection.onthispage
     font-size: 14px
@@ -60,7 +66,7 @@
     margin-bottom: 20px
     line-height: 1
 
-  .page-toc 
+  .page-toc
     ul
       li
         a.nav-link

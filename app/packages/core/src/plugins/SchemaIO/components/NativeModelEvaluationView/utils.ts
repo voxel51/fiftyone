@@ -1,29 +1,7 @@
-import { usePanelEvent } from "@fiftyone/operators";
-import { usePanelId } from "@fiftyone/spaces";
 import { formatValueAsNumber } from "@fiftyone/utilities";
 import { capitalize } from "lodash";
-import { useCallback } from "react";
 import { atom } from "recoil";
 import { NONE_CLASS } from "./constants";
-
-export function useTriggerEvent() {
-  const panelId = usePanelId();
-  const handleEvent = usePanelEvent();
-
-  const triggerEvent = useCallback(
-    (event: string, params?: any, prompt?: boolean, callback?: any) => {
-      handleEvent(panelId, {
-        operator: event,
-        params,
-        prompt,
-        callback,
-      });
-    },
-    [handleEvent, panelId]
-  );
-
-  return triggerEvent;
-}
 
 export function getNumericDifference(
   value,
@@ -40,91 +18,15 @@ export function getNumericDifference(
     }
     return formatValueAsNumber(difference, fractionDigits);
   }
+  return NaN;
 }
 
-export function getMatrix(
-  matrices,
-  config,
-  maskTargets?,
-  compareMaskTargets?,
-  plot?,
-  isCompare?
+export function getClasses(
+  matrixData: MatrixData,
+  maskTargets?: MaskTargets["primary"]
 ) {
-  if (!matrices) return;
-  const { sortBy = "az", limit } = config;
-  const colorscale_key_suffix = isCompare ? "colorscale_blues" : "colorscale";
-  const parsedLimit = typeof limit === "number" ? limit : undefined;
-  const originalClasses = matrices[`${sortBy}_classes`];
-  const originalMatrix = matrices[`${sortBy}_matrix`];
-  const originalColorscale = matrices[`${sortBy}_${colorscale_key_suffix}`];
-  const chosenClasses = config?.classes;
-  const hasChosenClasses =
-    Array.isArray(chosenClasses) && chosenClasses?.length;
-  let classes = originalClasses;
-  let matrix = originalMatrix;
-  let colorscale = originalColorscale;
-  if (hasChosenClasses) {
-    const classIndices = chosenClasses.map((c) => originalClasses.indexOf(c));
-    classes = chosenClasses;
-    matrix = classIndices.map((i) => {
-      return classIndices.map((j) => {
-        return originalMatrix[i][j];
-      });
-    });
-    if (Array.isArray(colorscale)) {
-      colorscale = classIndices.map((i) => originalColorscale[i]);
-    }
-  } else if (parsedLimit) {
-    classes = originalClasses.slice(0, parsedLimit);
-    matrix = originalMatrix.slice(0, parsedLimit);
-    if (Array.isArray(colorscale)) {
-      colorscale = colorscale.slice(0, parsedLimit);
-    }
-  }
-  const labels = classes.map((c) => {
-    return compareMaskTargets?.[c] || maskTargets?.[c] || c;
-  });
-  if (!hasChosenClasses) {
-    const noneIndex = originalClasses.indexOf(NONE_CLASS);
-    if (parsedLimit && parsedLimit < originalClasses.length && noneIndex > -1) {
-      labels.push(
-        compareMaskTargets?.[NONE_CLASS] ||
-          maskTargets?.[NONE_CLASS] ||
-          NONE_CLASS
-      );
-      matrix.push(originalMatrix[noneIndex]);
-    }
-  }
-
-  const baseMatrix = { labels, matrix, colorscale };
-
-  if (plot) {
-    return {
-      ...baseMatrix,
-      plot: {
-        z: matrix,
-        x: labels,
-        y: labels,
-        type: "heatmap",
-        colorscale: config?.log ? colorscale || "viridis" : "viridis",
-        hovertemplate:
-          [
-            "<b>count: %{z:d}</b>",
-            `${config?.gt_field || "truth"}: %{y}`,
-            `${config?.pred_field || "predicted"}: %{x}`,
-          ].join(" <br>") + "<extra></extra>",
-      },
-    };
-  }
-
-  return baseMatrix;
-}
-
-export function getClasses(matrices, maskTargets?) {
-  if (!matrices) return [];
-  const sortBy = "az";
-  const classes = matrices[`${sortBy}_classes`];
-  return classes.map((c) => {
+  if (!matrixData) return [];
+  return matrixData.classes.map((c) => {
     return maskTargets?.[c] || c;
   });
 }
@@ -235,3 +137,160 @@ export function getInapplicableMetrics(evaluation) {
 
   return inapplicableMetrics;
 }
+
+export function getConfusionMatrix(
+  classes: string[],
+  matrix: number[][],
+  masks?: MaskTargets,
+  options?: MatrixOptions
+) {
+  const classesWithCount: ClassWithCount[] = [];
+  const classIndexMap: Record<string, number> = {};
+  const {
+    sortBy,
+    skipZeroCount = true,
+    classes: includedClasses,
+    limit,
+  } = options || {};
+  const { primary: primaryMasks, secondary: secondaryMasks } = masks ?? {};
+  const hasIncludedClasses =
+    Array.isArray(includedClasses) && includedClasses?.length > 0;
+
+  classes.forEach((currentClass, index) => {
+    const count = matrix[index][index];
+    const skipClass =
+      hasIncludedClasses && !includedClasses.includes(currentClass);
+    const isZeroCount = skipZeroCount && count === 0;
+    if (skipClass || isZeroCount) return;
+    classesWithCount.push({ class: currentClass, count });
+    classIndexMap[currentClass] = index;
+  });
+
+  const sortedClassesWithCount = classesWithCount.sort(
+    (a: ClassWithCount, b: ClassWithCount) => {
+      // Ensure (none) class is always at the end
+      if (a.class === NONE_CLASS) {
+        return 1;
+      }
+      if (b.class === NONE_CLASS) {
+        return -1;
+      }
+      // sort alphabetically by a class (az: a to z, za: z to a)
+      if (sortBy === "az") return a.class.localeCompare(b.class);
+      if (sortBy === "za") return b.class.localeCompare(a.class);
+      // sort by number of occurrence of both predicted and actual being same
+      //  (mc: most common, lc: least common)
+      if (sortBy === "mc") return b.count - a.count;
+      if (sortBy === "lc") return a.count - b.count;
+
+      // default to no sorting
+      return 0;
+    }
+  );
+  const sortedClasses = sortedClassesWithCount.map((item) => item.class);
+  const computedClasses = sortedClasses.slice(0, limit || sortedClasses.length);
+
+  // Add (none) class at the end if it exists in the original classes
+  if (
+    classes.includes(NONE_CLASS) &&
+    !computedClasses.includes(NONE_CLASS) &&
+    !hasIncludedClasses
+  ) {
+    computedClasses.push(NONE_CLASS);
+    classIndexMap[NONE_CLASS] = classes.indexOf(NONE_CLASS);
+  }
+
+  const sortedMatrix: number[][] = [];
+  computedClasses.forEach((currentClass) => {
+    const row: number[] = [];
+    const originalRowIndex = classIndexMap[currentClass];
+    computedClasses.forEach((innerClass) => {
+      const originalColIndex = classIndexMap[innerClass];
+      row.push(matrix[originalRowIndex][originalColIndex]);
+    });
+    sortedMatrix.push(row);
+  });
+
+  const maskedClasses =
+    primaryMasks || secondaryMasks
+      ? computedClasses.map((currentClass) => {
+          return (
+            primaryMasks?.[currentClass] ||
+            secondaryMasks?.[currentClass] ||
+            currentClass
+          );
+        })
+      : computedClasses;
+
+  return { classes: maskedClasses, matrix: sortedMatrix };
+}
+
+export function getConfusionMatrixPlotlyData(
+  data: MatrixData,
+  config: MatrixPlotDataConfig
+) {
+  const {
+    classes: originalClasses,
+    matrix: originalMatrix,
+    colorscales,
+    maskTargets,
+  } = data;
+  const { classes, matrix } = getConfusionMatrix(
+    originalClasses,
+    originalMatrix,
+    maskTargets,
+    config
+  );
+  const colorscale = config.log
+    ? colorscales?.logarithmic
+    : colorscales?.default;
+
+  return [
+    {
+      z: matrix,
+      x: classes,
+      y: classes,
+      type: "heatmap",
+      colorscale,
+      hovertemplate:
+        [
+          "<b>count: %{z:d}</b>",
+          `${config?.gtField || "truth"}: %{y}`,
+          `${config?.predField || "predicted"}: %{x}`,
+        ].join(" <br>") + "<extra></extra>",
+    },
+  ];
+}
+
+type MatrixData = {
+  classes: string[];
+  matrix: number[][];
+  colorscales?: {
+    default: Array<[number, string]>;
+    logarithmic: Array<[number, string]>;
+  };
+  maskTargets?: MaskTargets;
+};
+
+type MatrixOptions = {
+  sortBy: "az" | "za" | "mc" | "lc";
+  limit?: number;
+  classes?: string[];
+  skipZeroCount?: boolean;
+};
+
+type MatrixPlotDataConfig = MatrixOptions & {
+  log?: boolean;
+  gtField?: string;
+  predField?: string;
+};
+
+type ClassWithCount = {
+  class: string;
+  count: number;
+};
+
+type MaskTargets = {
+  primary: Record<string, string>;
+  secondary?: Record<string, string>;
+};

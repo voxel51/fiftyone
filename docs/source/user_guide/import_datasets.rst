@@ -180,6 +180,36 @@ give you a sense of the basic workflow for a few tasks.
           dataset = fo.Dataset("my-labeled-video-dataset")
           dataset.add_sample(sample)
 
+    .. tab:: 3D scenes
+
+      .. code:: python
+          :linenos:
+
+          import fiftyone as fo
+
+          # Create a 3D scene with a mesh
+          scene = fo.Scene()
+          scene.add(fo.GltfMesh("mesh", "mesh.gltf"))
+          scene.write("/path/to/scene.fo3d")
+
+          # Define a 3D cuboid
+          detection = fo.Detection(
+              label="vehicle",
+              location=[0.47, 1.49, 69.44],
+              dimensions=[2.85, 2.63, 12.34],
+              rotation=[0, -1.56, 0],
+          )
+
+          # Construct a sample representing the scene
+          sample = fo.Sample(
+              filepath="/path/to/scene.fo3d",
+              ground_truth=fo.Detections(detections=[detection]),
+          )
+
+          # Create dataset
+          dataset = fo.Dataset("my-3d-dataset")
+          dataset.add_sample(sample)
+
 .. note::
 
     Using
@@ -2255,7 +2285,7 @@ to an object in the image of the same name, in one of the following formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -2270,11 +2300,19 @@ The `data/` folder may contain nested subfolders.
 
     By default, all annotations are loaded as |Detections|, converting any
     polylines to tight bounding boxes if necessary. However, you can choose to
-    load YOLO annotations as |Polylines| by passing the optional `label_type`
-    argument to methods like
+    load YOLO annotations as instance segmentations or polygons by passing the
+    optional `label_type` argument to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
+
+        # Load annotations as instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_type="instances",
+            mask_size=(width, height),  # optional size for each dense mask
+            ...
+        )
 
         # Load annotations as polygons
         dataset = fo.Dataset.from_dir(
@@ -2523,7 +2561,7 @@ to an object in the image of the same name, in one of the following formats:
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
-    # Polygons
+    # Instance segmentations or polygons
     <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
 
 where `<target>` is the zero-based integer index of the object class label from
@@ -2541,11 +2579,19 @@ subfolders of parallelly organized images and labels.
 
     By default, all annotations are loaded as |Detections|, converting any
     polylines to tight bounding boxes if necessary. However, you can choose to
-    load YOLO annotations as |Polylines| by passing the optional `label_type`
-    argument to methods like
+    load YOLO annotations as instance segmentations or polygons by passing the
+    optional `label_type` argument to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
 
     .. code-block:: python
+
+        # Load annotations as instance segmentations
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_type="instances",
+            mask_size=(width, height),  # optional size for each dense mask
+            ...
+        )
 
         # Load annotations as polygons
         dataset = fo.Dataset.from_dir(
@@ -5674,6 +5720,331 @@ should implement is determined by the type of dataset that you are importing.
 
 .. tabs::
 
+  .. group-tab:: Generic datasets
+
+    The |GenericSampleDatasetImporter| interface allows you to define
+    importers that emit a sequence of arbitrary |Sample| objects.
+
+    The pseudocode below provides a template for a custom
+    |GenericSampleDatasetImporter|:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.utils.data as foud
+
+        class CustomGenericSampleDatasetImporter(foud.GenericSampleDatasetImporter):
+            """Custom importer for generic sample datasets.
+
+            Args:
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
+                shuffle (False): whether to randomly shuffle the order in which the
+                    samples are imported
+                seed (None): a random seed to use when shuffling
+                max_samples (None): a maximum number of samples to import. By default,
+                    all samples are imported
+                **kwargs: additional keyword arguments for your importer
+            """
+
+            def __init__(
+                self,
+                dataset_dir=None,
+                shuffle=False,
+                seed=None,
+                max_samples=None,
+                **kwargs,
+            ):
+                super().__init__(
+                    dataset_dir=dataset_dir,
+                    shuffle=shuffle,
+                    seed=seed,
+                    max_samples=max_samples
+                )
+                # Your initialization here
+
+            def __len__(self):
+                """The total number of samples that will be imported.
+
+                Raises:
+                    TypeError: if the total number is not known
+                """
+                # Return the total number of samples in the dataset (if known)
+                pass
+
+            def __next__(self):
+                """Returns information about the next sample in the dataset.
+
+                Returns:
+                    a :class:`fiftyone.core.sample.Sample` instance
+
+                Raises:
+                    StopIteration: if there are no more samples to import
+                """
+                # Implement loading the next sample in your dataset here
+                pass
+
+            @property
+            def has_dataset_info(self):
+                """Whether this importer produces a dataset info dictionary."""
+                # Return True or False here
+                pass
+
+            @property
+            def has_sample_field_schema(self):
+                """Whether this importer produces a sample field schema."""
+                # Return True or False here
+                pass
+
+            def setup(self):
+                """Performs any necessary setup before importing the first sample in
+                the dataset.
+
+                This method is called when the importer's context manager interface is
+                entered, :func:`DatasetImporter.__enter__`.
+                """
+                # Your custom setup here
+                pass
+
+            def get_dataset_info(self):
+                """Returns the dataset info for the dataset.
+
+                By convention, this method should be called after all samples in the
+                dataset have been imported.
+
+                Returns:
+                    a dict of dataset info
+                """
+                # Return a dict of dataset info, if supported by your importer
+                pass
+
+            def get_sample_field_schema(self):
+                """Returns a dictionary describing the field schema of the samples
+                loaded by this importer.
+
+                Returns:
+                    a dict mapping field names to :class:`fiftyone.core.fields.Field`
+                    instances or ``str(field)`` representations of them
+                """
+                # Return the sample schema here, if known
+                pass
+
+            def close(self, *args):
+                """Performs any necessary actions after the last sample has been
+                imported.
+
+                This method is called when the importer's context manager interface is
+                exited, :func:`DatasetImporter.__exit__`.
+
+                Args:
+                    *args: the arguments to :func:`DatasetImporter.__exit__`
+                """
+                # Your custom code here to complete the import
+                pass
+
+    When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
+    called with a custom |GenericSampleDatasetImporter|, the import is effectively
+    performed via the pseudocode below:
+
+    .. code-block:: python
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+        importer = CustomGenericSampleDatasetImporter(...)
+
+        with importer:
+            for sample in importer:
+                dataset.add_sample(sample)
+
+            if importer.has_dataset_info:
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
+
+    Note that the importer is invoked via its context manager interface, which
+    automatically calls the
+    :meth:`setup() <fiftyone.utils.data.importers.GenericSampleDatasetImporter.setup>`
+    and
+    :meth:`close() <fiftyone.utils.data.importers.GenericSampleDatasetImporter.close>`
+    methods of the importer to handle setup/completion of the import.
+
+    The samples in the dataset are iteratively loaded by invoking the
+    :meth:`__next__() <fiftyone.utils.data.importers.GenericSampleDatasetImporter.__next__>`
+    method of the importer.
+
+    The
+    :meth:`has_dataset_info <fiftyone.utils.data.importers.GenericSampleDatasetImporter.has_dataset_info>`
+    property of the importer allows it to declare whether its
+    :meth:`get_dataset_info() <fiftyone.utils.data.importers.GenericSampleDatasetImporter.get_dataset_info>`
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne dataset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
+
+  .. group-tab:: Batch imports
+
+    The |BatchDatasetImporter| interface allows you to define importers
+    that load all of their |Sample| objects onto a dataset via a single
+    custom method. This interface allows for greater efficiency for import
+    formats that handle aggregating over the samples themselves.
+
+    The pseudocode below provides a template for a custom
+    |BatchDatasetImporter|:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.utils.data as foud
+
+        class CustomBatchDatasetImporter(foud.BatchDatasetImporter):
+            """Custom batch importer for datasets.
+
+            Args:
+                dataset_dir (None): the dataset directory. This may be optional for
+                    some importers
+                shuffle (False): whether to randomly shuffle the order in which the
+                    samples are imported
+                seed (None): a random seed to use when shuffling
+                max_samples (None): a maximum number of samples to import. By default,
+                    all samples are imported
+                **kwargs: additional keyword arguments for your importer
+            """
+
+            def __init__(
+                self,
+                dataset_dir=None,
+                shuffle=False,
+                seed=None,
+                max_samples=None,
+                **kwargs,
+            ):
+                super().__init__(
+                    dataset_dir=dataset_dir,
+                    shuffle=shuffle,
+                    seed=seed,
+                    max_samples=max_samples
+                )
+                # Your initialization here
+
+            def __len__(self):
+                """The total number of samples that will be imported.
+
+                Raises:
+                    TypeError: if the total number is not known
+                """
+                # Return the total number of samples in the dataset (if known)
+                pass
+
+            def import_samples(self, dataset, tags=None, progress=None):
+                """Imports the samples into the given dataset.
+
+                Args:
+                    dataset: a :class:`fiftyone.core.dataset.Dataset`
+                    tags (None): an optional list of tags to attach to each sample
+                    progress (None): whether to render a progress bar (True/False), use
+                        the default value ``fiftyone.config.show_progress_bars``
+                        (None), or a progress callback function to invoke instead
+
+                Returns:
+                    a list of IDs of the samples that were added to the dataset
+                """
+                # Implement adding the samples to the dataset here
+                pass
+
+            @property
+            def has_dataset_info(self):
+                """Whether this importer produces a dataset info dictionary."""
+                # Return True or False here
+                pass
+
+            @property
+            def has_sample_field_schema(self):
+                """Whether this importer produces a sample field schema."""
+                # Return True or False here
+                pass
+
+            def setup(self):
+                """Performs any necessary setup before importing the first sample in
+                the dataset.
+
+                This method is called when the importer's context manager interface is
+                entered, :func:`DatasetImporter.__enter__`.
+                """
+                # Your custom setup here
+                pass
+
+            def get_dataset_info(self):
+                """Returns the dataset info for the dataset.
+
+                By convention, this method should be called after all samples in the
+                dataset have been imported.
+
+                Returns:
+                    a dict of dataset info
+                """
+                # Return a dict of dataset info, if supported by your importer
+                pass
+
+            def get_sample_field_schema(self):
+                """Returns a dictionary describing the field schema of the samples
+                loaded by this importer.
+
+                Returns:
+                    a dict mapping field names to :class:`fiftyone.core.fields.Field`
+                    instances or ``str(field)`` representations of them
+                """
+                # Return the sample schema here, if known
+                pass
+
+            def close(self, *args):
+                """Performs any necessary actions after the last sample has been
+                imported.
+
+                This method is called when the importer's context manager interface is
+                exited, :func:`DatasetImporter.__exit__`.
+
+                Args:
+                    *args: the arguments to :func:`DatasetImporter.__exit__`
+                """
+                # Your custom code here to complete the import
+                pass
+
+    When :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` is
+    called with a custom |BatchDatasetImporter|, the import is effectively
+    performed via the pseudocode below:
+
+    .. code-block:: python
+
+        import fiftyone as fo
+
+        dataset = fo.Dataset(...)
+        importer = CustomBatchDatasetImporter(...)
+
+        with importer:
+            impoter.import_samples(dataset, ...)
+
+            if importer.has_dataset_info:
+                info = importer.get_dataset_info()
+                parse_info(dataset, info)
+
+    Note that the importer is invoked via its context manager interface, which
+    automatically calls the
+    :meth:`setup() <fiftyone.utils.data.importers.BatchDatasetImporter.setup>`
+    and
+    :meth:`close() <fiftyone.utils.data.importers.BatchDatasetImporter.close>`
+    methods of the importer to handle setup/completion of the import.
+
+    The samples are then imported via a single call to the
+    :meth:`import_samples() <fiftyone.utils.data.importers.BatchDatasetImporter.import_samples>`
+    method of the importer.
+
+    The
+    :meth:`has_dataset_info <fiftyone.utils.data.importers.BatchDatasetImporter.has_dataset_info>`
+    property of the importer allows it to declare whether its
+    :meth:`get_dataset_info() <fiftyone.utils.data.importers.BatchDatasetImporter.get_dataset_info>`
+    method should be called after all samples have been imported to retrieve
+    dataset-level information to store on the FiftyOne dataset. See
+    :ref:`this section <importing-dataset-level-info>` for more information.
+
   .. group-tab:: Unlabeled image datasets
 
     To define a custom importer for unlabeled image datasets, implement the
@@ -6714,6 +7085,47 @@ Custom dataset types can be declared by implementing the |DatasetType| subclass
 corresponding to the type of dataset that you are working with.
 
 .. tabs::
+
+  .. group-tab:: Generic datasets
+
+    The pseudocode below provides a template for a custom |DatasetType|
+    subclass that represents a collection of arbitrary content:
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone.types as fot
+
+        class CustomDataset(fot.Dataset):
+            """Custom dataset type."""
+
+            def get_dataset_importer_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.importers.DatasetImporter`
+                class for importing datasets of this type from disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.importers.DatasetImporter`
+                    class
+                """
+                # Return your custom DatasetImporter class here
+                pass
+
+            def get_dataset_exporter_cls(self):
+                """Returns the
+                :class:`fiftyone.utils.data.exporters.DatasetExporter`
+                class for exporting datasets of this type to disk.
+
+                Returns:
+                    a :class:`fiftyone.utils.data.exporters.DatasetExporter`
+                    class
+                """
+                # Return your custom DatasetExporter class here
+                pass
+
+    Note that, as this type represents a dataset of arbitrary content, its
+    importer should subclass from the base |DatasetImporter|, and its exporter
+    should subclass from the base |DatasetExporter|.
 
   .. group-tab:: Unlabeled image datasets
 

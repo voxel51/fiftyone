@@ -65,6 +65,7 @@ export const ShadeByHeight = ({
   min,
   max,
   upVector,
+  quaternion,
   pointSize,
   opacity,
   isPointSizeAttenuated,
@@ -73,6 +74,12 @@ export const ShadeByHeight = ({
   const upVectorVec3 = useMemo(() => {
     return [upVector.x, upVector.y, upVector.z];
   }, [upVector]);
+
+  const quaternionVec4 = useMemo(() => {
+    return quaternion
+      ? [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
+      : [0, 0, 0, 1];
+  }, [quaternion]);
 
   return (
     <shaderMaterial
@@ -83,6 +90,7 @@ export const ShadeByHeight = ({
           min: { value: min },
           max: { value: max },
           upVector: { value: upVectorVec3 },
+          quaternion: { value: quaternionVec4 },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },

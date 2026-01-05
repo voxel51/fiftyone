@@ -77,8 +77,8 @@ const GradientAutoAwesomeIcon = () => (
   </>
 );
 
-const ButtonContainer = styled.div<{ bgColor: string }>`
-  background-color: ${({ bgColor }) => bgColor};
+const ButtonContainer = styled.div<{ $bgColor: string }>`
+  background-color: ${({ $bgColor }) => $bgColor};
   border-radius: 16px;
 
   &:hover {
@@ -95,8 +95,8 @@ const StyledExternalLink = styled(ExternalLink)`
 `;
 
 const BaseEnterpriseButton = styled(Button)<{
-  borderColor: string;
-  isLightMode?: boolean;
+  $borderColor: string;
+  $isLightMode?: boolean;
 }>`
   background: linear-gradient(45deg, #ff6d04 0%, #b681ff 100%);
   background-clip: text;
@@ -115,7 +115,7 @@ const BaseEnterpriseButton = styled(Button)<{
   font-size: 16px;
   position: relative;
   overflow: hidden;
-  border: 1px solid ${({ borderColor }) => borderColor};
+  border: 1px solid ${({ $borderColor }) => $borderColor};
   outline: none;
   box-shadow: none;
 
@@ -129,16 +129,16 @@ const BaseEnterpriseButton = styled(Button)<{
     position: absolute;
     top: 0;
     left: -100%;
-    width: ${({ isLightMode }) => (isLightMode ? "150%" : "100%")};
+    width: ${({ $isLightMode }) => ($isLightMode ? "150%" : "100%")};
     height: 100%;
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, ${({ isLightMode }) => (isLightMode ? "0.3" : "0.2")})
+      rgba(255, 255, 255, ${({ $isLightMode }) => ($isLightMode ? "0.3" : "0.2")})
         50%,
       rgba(255, 255, 255, 0) 100%
     );
-    transition: all ${({ isLightMode }) => (isLightMode ? "0.8s" : "0.6s")} ease;
+    transition: all ${({ $isLightMode }) => ($isLightMode ? "0.8s" : "0.6s")} ease;
     z-index: 1;
   }
 
@@ -147,7 +147,7 @@ const BaseEnterpriseButton = styled(Button)<{
   &:active {
     transform: scale(1.03);
     text-decoration: none;
-    border: 1px solid ${({ borderColor }) => borderColor} !important;
+    border: 1px solid ${({ $borderColor }) => $borderColor} !important;
     outline: none;
     box-shadow: none;
 
@@ -221,7 +221,7 @@ export default function Teams({
 
     // don't show intro popoverif we're in playwright
     const isPlaywright = window["IS_PLAYWRIGHT"];
-    
+
     if (!hasSeenTooltip && !isPlaywright) {
       setShowPopover(true);
     }
@@ -247,11 +247,11 @@ export default function Teams({
 
   return (
     <>
-      <ButtonContainer bgColor={mode === "light" ? "transparent" : bgColor}>
+      <ButtonContainer $bgColor={mode === "light" ? "transparent" : bgColor}>
         <StyledExternalLink href="https://voxel51.com/why-upgrade?utm_source=FiftyOneApp">
           <BaseEnterpriseButton
-            borderColor={mode === "dark" ? DARK_BG_COLOR : theme.divider}
-            isLightMode={mode === "light"}
+            $borderColor={mode === "dark" ? DARK_BG_COLOR : theme.divider}
+            $isLightMode={mode === "light"}
             id={ENTERPRISE_BUTTON_ID}
           >
             <GradientAutoAwesomeIcon />

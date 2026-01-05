@@ -1,10 +1,11 @@
 """
 FiftyOne delegated operator related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import copy
 import time
 import unittest
@@ -14,7 +15,6 @@ from unittest.mock import patch
 import bson
 import pytest
 
-import fiftyone
 from bson import ObjectId
 
 from fiftyone import Dataset
@@ -23,12 +23,16 @@ from fiftyone.factory import (
     SortDirection,
     SortByField,
 )
+from fiftyone.operators.types import PipelineRunInfo
+from fiftyone.operators import delegated
 from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    PipelineExecutionContext,
 )
+from fiftyone.operators.types import Pipeline, PipelineStage
 from fiftyone.factory.repos import (
     DelegatedOperationDocument,
     delegated_operation,
@@ -195,14 +199,26 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             {"operator": {"$regex": TEST_DO_PREFIX}}
         )
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_delegate_operation(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    name="one",
+                    operator_uri="@test/op1",
+                    num_distributed_tasks=5,
+                    params={"foo": "bar"},
+                ),
+                PipelineStage(
+                    name="two", operator_uri="@test/op2", always_run=True
+                ),
+            ]
+        )
         doc = self.svc.queue_operation(
             operator=f"{TEST_DO_PREFIX}/operator/foo",
             label=mock_get_operator.return_value.config.label,
@@ -210,12 +226,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
             ),
+            pipeline=pipeline,
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
         self.assertEqual(doc.metadata, {})
+        self.assertEqual(doc.pipeline, pipeline)
 
         doc2_metadata = {"inputs_schema": {}}
         doc2 = self.svc.queue_operation(
@@ -405,9 +423,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset.delete()
         dataset2.delete()
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_set_run_states(self, mock_load_dataset, mock_get_operator):
         mock_inputs = MockInputs()
         mock_load_dataset.return_value = MockDataset()
@@ -451,9 +467,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_sets_progress(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockOperator(sets_progress=True)
@@ -470,7 +484,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target",
+            monitor=False,
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -483,9 +498,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_full_run_success(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
@@ -501,7 +514,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -518,9 +531,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(doc.result.result, {"executed": True})
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_generator_run_success(self, mock_load_dataset, mock_get_operator):
         mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator()
@@ -538,7 +549,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target_generator"
+            delegation_target="test_target_generator", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -551,9 +562,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_generator_sets_progress(
         self, mock_load_dataset, mock_get_operator
     ):
@@ -572,7 +581,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -584,9 +593,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_updates_progress(self, mock_load_dataset, mock_get_operator):
         mock_inputs = MockInputs()
         mock_outputs = MockOutputs()
@@ -609,7 +616,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             DelegatedOperationService, "set_progress"
         ) as set_progress:
             self.svc.execute_operation(
-                operation=doc, run_link="http://run.info"
+                operation=doc, run_link="http://run.info", monitor=False
             )
             self.assertEqual(set_progress.call_count, 10)
             for x in range(10):
@@ -644,15 +651,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #   it's running elsewhere.
         self.svc.set_running(doc.id)
 
-        self.svc.execute_operation(doc)
+        self.svc.execute_operation(doc, monitor=False)
         operator.execute.assert_not_called()
 
         doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.RUNNING)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_full_run_fail(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -673,7 +678,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -689,9 +694,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertTrue("Exception: MockOperator failed" in doc.result.error)
         self.assertIsNotNone(doc.failed_at)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_rerun_failed(self, mock_load_dataset, get_op_mock):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -713,7 +716,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -737,7 +740,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(rerun_doc.result)
 
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNone(results[0].error)
@@ -774,7 +777,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # Execute once with original dataset name
         results = self.svc.execute_queued_operations(
-            delegation_target="test_target"
+            delegation_target="test_target", monitor=False
         )
         self.assertEqual(len(results), 1)
         self.assertIsNotNone(results[0].error)
@@ -806,7 +809,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             self.assertIsNone(rerun_doc.result)
 
             results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
+                delegation_target="test_target", monitor=False
             )
             self.assertEqual(len(results), 1)
             self.assertIsNone(results[0].error)
@@ -833,9 +836,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 with pytest.raises(ValueError):
                     _ = self.svc.rerun_operation("abc123")
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_execute_with_already_processing_op(
         self, mock_load_dataset, mock_get_operator
     ):
@@ -850,10 +851,313 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         doc = self.svc.set_running(doc.id)
-        result = self.svc.execute_operation(doc)
+        result = self.svc.execute_operation(doc, monitor=False)
         changed_doc = self.svc.get(doc_id=doc.id)
         self.assertEqual(changed_doc.status, doc.status)
         self.assertIsNone(result)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_success(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+
+        mock_process.is_alive.side_effect = [True, True, True, False, False]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_success",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # First call returns running doc, second call returns completed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        completed_doc = copy.deepcopy(doc)
+        completed_doc.run_state = ExecutionRunState.COMPLETED
+        completed_doc.result = ExecutionResult(result={"executed": True})
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, completed_doc]
+        ), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+            )
+
+            # Verify ping was called with the operation ID
+            mock_ping.assert_called_once_with(doc.id)
+
+        self.assertIsNotNone(result)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.result, {"executed": True})
+
+    @patch("psutil.Process")
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_external_fail(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_psutil_process,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        mock_process.pid = 12345
+
+        mock_process.is_alive.side_effect = [
+            True,  # 1st loop: while condition
+            True,  # 1st loop: after join
+            True,  # 2nd loop: while condition
+            True,  # 2nd loop: after join
+            False,  # after termination
+        ]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        mock_psutil_parent = mock.MagicMock()
+        mock_psutil_process.return_value = mock_psutil_parent
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_external_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # We need two document states for our simulation
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        failed_doc = copy.deepcopy(doc)
+        failed_doc.run_state = ExecutionRunState.FAILED
+        failed_doc.result = ExecutionResult(error="marked as failed by test")
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch("time.sleep", return_value=None), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping:
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+                check_interval_seconds=1,
+            )
+
+            # This assertion will now pass
+            mock_ping.assert_called_once_with(doc.id)
+
+        mock_psutil_process.assert_called_once_with(mock_process.pid)
+        mock_psutil_parent.children.assert_called_once_with(recursive=True)
+        mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Operation marked as FAILED externally", result.error)
+
+        mock_process.start.assert_called_once()
+        self.assertGreaterEqual(mock_process.join.call_count, 2)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_internal_fail(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [
+            True,
+            True,  # Cycle 1
+            True,
+            True,  # Cycle 2
+            False,
+            False,  # Subsequent checks
+        ]
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # First call returns running doc, second call returns failed doc
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        failed_doc = copy.deepcopy(doc)
+        failed_doc.run_state = ExecutionRunState.FAILED
+        failed_doc.result = ExecutionResult(
+            error="MockOperator failed internally"
+        )
+
+        with patch.object(
+            self.svc, "get", side_effect=[running_doc, failed_doc]
+        ), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping"
+        ) as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process:
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc,
+                log=False,
+                monitor=True,
+            )
+
+            # Verify ping was called with the operation ID (before failure detected)
+            mock_ping.assert_called_once_with(doc.id)
+
+        self.assertIsNotNone(result)
+        self.assertIsNotNone(result.error)
+        self.assertIn("Operation FAILED (detected by monitor):", result.error)
+        self.assertIn("MockOperator failed internally", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_ping_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles ping exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_ping_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to return running operation first time, then completed
+        running_doc = copy.deepcopy(doc)
+        running_doc.run_state = ExecutionRunState.RUNNING
+
+        # Mock ping to raise an exception
+        ping_exception = Exception("Database connection failed")
+
+        with patch.object(self.svc, "get", return_value=running_doc), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(
+            self.svc._repo, "ping", side_effect=ping_exception
+        ), patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Should terminate the process due to ping exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Database connection failed", result.error)
+
+    @patch("logging.handlers.QueueListener")
+    @patch("multiprocessing.get_context")
+    def test_execute_operation_monitor_get_exception(
+        self,
+        mock_get_context,
+        mock_listener,
+        mock_get_operator,
+    ):
+        """Test that monitoring handles get operation exceptions gracefully"""
+        mock_process = mock.MagicMock()
+        mock_process.is_alive.side_effect = [True, True, False]
+        mock_process.pid = 12345
+
+        mock_context = mock.MagicMock()
+        mock_context.Process.return_value = mock_process
+        mock_context.Queue.return_value = mock.MagicMock()
+        mock_get_context.return_value = mock_context
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/monitor_get_fail",
+            context=ExecutionContext(
+                request_params={"dataset_id": str(ObjectId())}
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Mock get to raise an exception
+        get_exception = Exception("Failed to retrieve operation")
+
+        with patch.object(self.svc, "get", side_effect=get_exception), patch(
+            "fiftyone.operators.delegated._execute_operator_in_child_process"
+        ), patch.object(self.svc._repo, "ping") as mock_ping, patch(
+            "psutil.Process"
+        ) as mock_psutil_process, patch(
+            "time.sleep", return_value=None
+        ):
+            mock_psutil_parent = mock.MagicMock()
+            mock_psutil_process.return_value = mock_psutil_parent
+
+            result = self.svc.execute_operation(
+                operation=doc, log=False, monitor=True
+            )
+
+            # Ping should not be called if get fails
+            mock_ping.assert_not_called()
+
+            # Should terminate the process due to get exception
+            mock_psutil_process.assert_called_once_with(mock_process.pid)
+            mock_psutil_parent.children.assert_called_once_with(recursive=True)
+            mock_psutil_parent.terminate.assert_called_once()
+
+        self.assertIsNotNone(result)
+        self.assertIn("Error in monitoring loop", result.error)
+        self.assertIn("Failed to retrieve operation", result.error)
 
     def test_execute_with_renamed_dataset(self, get_op_mock):
         # setup
@@ -888,7 +1192,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         # Execute queued operation after saving the new dataset name
         try:
             results = self.svc.execute_queued_operations(
-                delegation_target="test_target"
+                delegation_target="test_target", monitor=False
             )
             self.assertEqual(len(results), 1)
             self.assertIsNone(results[0].error)
@@ -902,6 +1206,77 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
         finally:
             dataset.delete()
+
+    @patch.object(delegated, "do_execute_operator")
+    @patch.object(delegated, "prepare_operator_executor")
+    def test_execute_with_pipeline_context(
+        self, prepare_operator_mock, do_execute_mock, mock_get_operator
+    ):
+        with patch.object(self.svc, "get") as do_get_mock:
+            parent_run_info = PipelineRunInfo(
+                active=False,
+                expected_children=[1, 1, 5],
+                stage_index=2,
+                child_errors={"child1": "error1", "child2": "error2"},
+            )
+            parent_id = ObjectId()
+            pipeline = Pipeline(
+                [
+                    PipelineStage(operator_uri="@test/op1", name="one"),
+                    PipelineStage(name="two", operator_uri="@test/op2"),
+                    PipelineStage(
+                        name="three",
+                        operator_uri="@test/op3",
+                        num_distributed_tasks=5,
+                    ),
+                ]
+            )
+
+            parent_do = DelegatedOperationDocument()
+            parent_do.id = parent_id
+            parent_do.pipeline = pipeline
+            parent_do.pipeline_run_info = parent_run_info
+            do_get_mock.return_value = parent_do
+
+            child_do = DelegatedOperationDocument()
+            child_do.id = bson.ObjectId()
+            child_do.operator = "@test/op3"
+            child_do.parent_id = parent_id
+            ctx = ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": "dataset"},
+            )
+            child_do.context = ctx
+            prepare_operator_mock.return_value = (
+                mock_get_operator.return_value,
+                None,
+                ctx,
+                None,
+            )
+
+            #####
+            asyncio.run(self.svc._execute_operator(child_do))
+            #####
+
+            do_get_mock.assert_called_once_with(parent_id)
+            pipeline_ctx = PipelineExecutionContext(
+                parent_run_info.active,
+                parent_run_info.stage_index,
+                total_stages=len(pipeline.stages),
+                num_distributed_tasks=pipeline.stages[
+                    parent_run_info.stage_index
+                ].num_distributed_tasks,
+                pipeline_errors=parent_run_info.child_errors,
+            )
+            prepare_operator_mock.assert_called_once_with(
+                operator_uri=child_do.operator,
+                request_params=ctx.request_params,
+                delegated_operation_id=child_do.id,
+                set_progress=mock.ANY,
+                pipeline_ctx=pipeline_ctx,
+            )
+            do_execute_mock.assert_called_once_with(
+                mock_get_operator.return_value, ctx, exhaust=True
+            )
 
     def test_paging_sorting(self, mock_get_operator):
         dataset_name = f"test_dataset_{ObjectId()}"
@@ -1048,9 +1423,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(total, 25)
         dataset.delete()
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_gets_dataset_id_from_name(
         self, mock_load_dataset, mock_get_operator, *args
     ):
@@ -1072,9 +1445,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(doc.dataset_id, dataset_id)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_deletes_by_dataset_id(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1125,9 +1496,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(len(ops), 0)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_search(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1224,9 +1593,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(len(docs), 1)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_count(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1273,9 +1640,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(docs, 25)
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     def test_rename_operation(self, mock_load_dataset, mock_get_operator):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -1300,9 +1665,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc.id)
         self.assertEqual(doc.label, "this is my delegated operation run.")
 
-    @patch(
-        "fiftyone.core.odm.utils.load_dataset",
-    )
+    @patch("fiftyone.core.odm.load_dataset")
     @pytest.mark.asyncio
     async def test_set_completed_in_async_context(
         self, mock_load_dataset, mock_get_operator
@@ -1358,3 +1721,89 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         #####
         self.assertRaises(PermissionError, dos.set_queued, op_id)
         #####
+
+    def test_queue_panel_delegated_op(self, mock_get_operator):
+        """Queue DO that comes from a panel"""
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext(
+            request_params={
+                "params": {
+                    "panel_id": bson.ObjectId(),
+                    "panel_state": {"foo2": "bar2"},
+                }
+            }
+        )
+        ctx.request_params = {"foo": "bar"}
+        ctx.params = {
+            "panel_id": bson.ObjectId(),
+            "panel_state": {"foo2": "bar2"},
+        }
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx,
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_failed_exec_adds_child_error_to_parent(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(operator_uri="@test/op1", name="one"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(name="three", operator_uri="@test/op3"),
+            ]
+        )
+        parent_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+        self.docs_to_delete.append(parent_doc)
+
+        #####
+        child_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(child_doc)
+        child_doc.parent_id = parent_doc.id
+        self.svc.execute_operation(child_doc)
+        #####
+
+        updated_parent_do = self.svc.get(parent_doc.id)
+        self.assertIn(
+            str(child_doc.id), updated_parent_do.pipeline_run_info.child_errors
+        )
+        self.assertIn(
+            "MockOperator failed",
+            updated_parent_do.pipeline_run_info.child_errors[
+                str(child_doc.id)
+            ],
+        )

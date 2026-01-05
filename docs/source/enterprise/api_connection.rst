@@ -6,18 +6,12 @@ API Connection
 .. default-role:: code
 
 This page describes how to create API keys and configure your
-:ref:`SDK installation <enterprise-python-sdk>` to connect to your Enterprise
-deployment's API.
+:ref:`SDK installation <enterprise-python-sdk>` to connect to your FiftyOne
+Enterprise deployment.
 
 All actions taken via API connections are authenticated based on the user
 associated with the API key, which means that concepts like user roles and
 dataset permissions *are enforced*.
-
-.. note::
-
-   **API connections are currently in beta.** The recommended stable solution
-   is to use your Enterprise deployment's
-   :ref:`MongoDB connection <configuring-mongodb-connection>`.
 
 .. _configuring-an-api-connection:
 

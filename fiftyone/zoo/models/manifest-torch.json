@@ -49,6 +49,12 @@
                 "alexnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -74,6 +80,9 @@
                         "weights": "DeepLabV3_ResNet101_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -89,7 +98,17 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3", "official"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "resnet",
+                "deeplabv3",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -124,7 +143,20 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -159,7 +191,20 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -194,7 +239,20 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "sa-1b", "torch", "zero-shot", "transformer"],
+            "tags": [
+                "segment-anything",
+                "sa-1b",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2023-05-12 11:40:51"
         },
         {
@@ -229,7 +287,17 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -264,7 +332,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -299,7 +383,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -334,7 +434,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -368,7 +484,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -403,7 +536,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -438,7 +588,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -473,7 +640,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -516,6 +700,16 @@
                 "transformer",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "SA-Med2D-20M",
+                    "url": "https://github.com/OpenGVLab/SAM-Med2D"
+                },
+                {
+                    "name": "Medical Video Datasets",
+                    "url": "https://github.com/MedicineToken/Medical-SAM2"
+                }
+            ],
             "date_added": "2024-08-17 14:48:00"
         },
         {
@@ -552,7 +746,17 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -589,7 +793,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -626,7 +846,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -663,7 +899,23 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -699,7 +951,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -736,7 +1005,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -773,7 +1059,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -810,7 +1113,24 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "video", "transformer", "official"],
+            "tags": [
+                "segment-anything",
+                "torch",
+                "zero-shot",
+                "video",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-V",
+                    "url": "https://ai.meta.com/datasets/segment-anything-video/"
+                },
+                {
+                    "name": "SA-1B",
+                    "url": "https://segment-anything.com/dataset/index.html"
+                }
+            ],
             "date_added": "2024-08-05 14:38:20"
         },
         {
@@ -836,6 +1156,9 @@
                         "weights": "DeepLabV3_ResNet50_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -851,7 +1174,17 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "resnet", "deeplabv3", "official"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "resnet",
+                "deeplabv3",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -903,6 +1236,12 @@
                 "densenet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -951,7 +1290,14 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1004,6 +1350,12 @@
                 "densenet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1055,6 +1407,12 @@
                 "densenet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1093,7 +1451,17 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "faster-rcnn", "resnet", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "faster-rcnn",
+                "resnet",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1119,6 +1487,9 @@
                         "weights": "FCN_ResNet101_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -1134,7 +1505,17 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet", "official"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "fcn",
+                "resnet",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1160,6 +1541,9 @@
                         "weights": "FCN_ResNet50_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
+                    "output_processor_args": {
+                        "has_softmax_out": false
+                    },
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
                     "image_mean": [0.485, 0.456, 0.406],
@@ -1175,7 +1559,17 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "coco", "torch", "fcn", "resnet", "official"],
+            "tags": [
+                "segmentation",
+                "coco",
+                "torch",
+                "fcn",
+                "resnet",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1227,6 +1621,12 @@
                 "googlenet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1276,6 +1676,12 @@
                 "torch",
                 "inception",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1341,7 +1747,17 @@
                     "support": true
                 }
             },
-            "tags": ["keypoints", "coco", "torch", "keypoint-rcnn", "resnet", "official"],
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "keypoint-rcnn",
+                "resnet",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1379,7 +1795,17 @@
                     "support": true
                 }
             },
-            "tags": ["instances", "coco", "torch", "mask-rcnn", "resnet", "official"],
+            "tags": [
+                "instances",
+                "coco",
+                "torch",
+                "mask-rcnn",
+                "resnet",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1430,6 +1856,12 @@
                 "torch",
                 "mnasnet",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1482,6 +1914,12 @@
                 "mnasnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1532,6 +1970,12 @@
                 "torch",
                 "mobilenet",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1584,6 +2028,12 @@
                 "resnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1634,6 +2084,12 @@
                 "torch",
                 "resnet",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1686,6 +2142,12 @@
                 "resnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1736,6 +2198,12 @@
                 "torch",
                 "resnet",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1788,6 +2256,12 @@
                 "resnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1839,6 +2313,12 @@
                 "resnext",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1887,7 +2367,14 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnext"
+                "resnext",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -1927,7 +2414,10 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet"],
+            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -1978,6 +2468,12 @@
                 "torch",
                 "shufflenet",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2030,12 +2526,18 @@
                 "shufflenet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-1.1-imagenet-torch",
             "base_filename": "squeezenet1_1-f364aa15.pth",
-            "version": null,
+            "version": "1.1",
             "description": "Tiny image classifier that fits in just five megabytes for embedded devices",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
@@ -2071,13 +2573,19 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
             "base_name": "squeezenet-imagenet-torch",
             "base_filename": "squeezenet1_0-a815701f.pth",
-            "version": null,
+            "version": "1.0",
             "description": "Ultra-compact image classifier perfect for severely resource-constrained hardware and applications",
             "source": "https://pytorch.org/vision/main/models.html",
             "author": "Forrest Iandola",
@@ -2113,7 +2621,19 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
+            "tags": [
+                "classification",
+                "imagenet",
+                "torch",
+                "squeezenet",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2165,6 +2685,12 @@
                 "vgg",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2213,6 +2739,12 @@
                 "torch",
                 "vgg",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2265,6 +2797,12 @@
                 "vgg",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2313,6 +2851,12 @@
                 "torch",
                 "vgg",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2365,6 +2909,12 @@
                 "vgg",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2413,6 +2963,12 @@
                 "torch",
                 "vgg",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2465,6 +3021,12 @@
                 "vgg",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2513,6 +3075,12 @@
                 "torch",
                 "vgg",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2020-12-11 13:45:51"
         },
@@ -2565,6 +3133,12 @@
                 "wide-resnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2616,6 +3190,12 @@
                 "wide-resnet",
                 "official"
             ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
+            ],
             "date_added": "2020-12-11 13:45:51"
         },
         {
@@ -2657,8 +3237,11 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot",    
+                "zero-shot",
                 "transformer"
+            ],
+            "training_data": [
+                { "name": "LAION-2B", "url": "https://laion.ai/blog/laion-5b/" }
             ],
             "date_added": "2023-12-13 14:25:51"
         },
@@ -2692,6 +3275,7 @@
                 "transformers",
                 "official"
             ],
+            "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2723,6 +3307,12 @@
                 "torch",
                 "transformers",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -2756,6 +3346,7 @@
                 "transformers",
                 "official"
             ],
+            "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2769,7 +3360,12 @@
             "size_bytes": null,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
-                "config": {}
+                "config": {
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
+                }
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2780,7 +3376,14 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "transformers",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2806,6 +3409,7 @@
                 }
             },
             "tags": ["depth", "torch", "transformers"],
+            "training_data": [],
             "date_added": "2024-02-06 14:25:51"
         },
         {
@@ -2844,6 +3448,7 @@
                 "zero-shot",
                 "official"
             ],
+            "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2883,6 +3488,9 @@
                 "zero-shot",
                 "official"
             ],
+            "training_data": [
+                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
+            ],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2910,12 +3518,12 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
                 "official"
             ],
+            "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
         {
@@ -2936,7 +3544,9 @@
                         "output_segmentation": true
                     },
                     "output_processor_args": {
-                        "logits_key": "segmentation_logits"
+                        "logits_key": "segmentation_logits",
+                        "no_background_cls": true,
+                        "has_softmax_out": false
                     },
                     "transforms_args": {
                         "use_fast": false
@@ -2963,6 +3573,16 @@
                 "transformers",
                 "zero-shot",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "YFCC-100M",
+                    "url": "https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"
+                },
+                {
+                    "name": "Conceptual Captions 12M",
+                    "url": "https://github.com/google-research-datasets/conceptual-12m"
+                }
             ],
             "date_added": "2025-05-15 15:20:35"
         },
@@ -2993,11 +3613,13 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
                 "official"
+            ],
+            "training_data": [
+                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3028,11 +3650,13 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
                 "official"
+            ],
+            "training_data": [
+                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
             ],
             "date_added": "2025-07-15 13:49:00"
         },
@@ -3063,11 +3687,13 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
                 "official"
+            ],
+            "training_data": [
+                { "name": "WebLI", "url": "https://arxiv.org/abs/2209.06794" }
             ],
             "date_added": "2025-07-28 15:25:00"
         },
@@ -3103,6 +3729,20 @@
                 "transformers",
                 "zero-shot",
                 "official"
+            ],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "OpenImages V6",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                },
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                }
             ],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3152,9 +3792,12 @@
                 "embeddings",
                 "torch",
                 "clip",
-                "zero-shot",    
+                "zero-shot",
                 "transformer",
                 "official"
+            ],
+            "training_data": [
+                { "name": "WIT-400M", "url": "https://github.com/openai/CLIP" }
             ],
             "date_added": "2022-04-12 17:49:51"
         },
@@ -3187,7 +3830,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3219,7 +3874,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3251,7 +3918,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3283,7 +3962,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-07-31 10:17:51"
         },
         {
@@ -3315,7 +4006,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3347,7 +4050,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3379,7 +4094,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3411,7 +4138,19 @@
                     "support": true
                 }
             },
-            "tags": ["embeddings", "torch", "dinov2", "transformer", "official"],
+            "tags": [
+                "embeddings",
+                "torch",
+                "dinov2",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "LVD-142M",
+                    "url": "https://arxiv.org/abs/2304.07193"
+                }
+            ],
             "date_added": "2023-12-02 16:42:00"
         },
         {
@@ -3452,6 +4191,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3492,6 +4234,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3532,6 +4277,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3572,6 +4320,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -3612,6 +4363,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3652,6 +4406,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3692,6 +4449,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3732,6 +4492,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3772,6 +4535,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -3812,6 +4578,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3852,6 +4621,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3892,6 +4664,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3932,6 +4707,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -3972,6 +4750,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4012,6 +4793,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4052,6 +4836,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -4092,6 +4879,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4132,6 +4922,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-04-02 19:22:51"
         },
         {
@@ -4172,6 +4965,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4212,6 +5008,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4252,6 +5051,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4292,6 +5094,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4332,6 +5137,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -4372,6 +5180,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4412,6 +5223,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4452,6 +5266,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4492,6 +5309,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4532,6 +5352,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4572,6 +5395,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4612,6 +5438,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4652,6 +5481,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4692,6 +5524,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4732,6 +5567,9 @@
                 }
             },
             "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-10-05 19:22:51"
         },
         {
@@ -4772,6 +5610,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4812,6 +5668,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4852,6 +5726,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4892,6 +5784,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4932,6 +5842,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -4972,6 +5900,24 @@
                 }
             },
             "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
             "date_added": "2025-04-10 12:24:41"
         },
         {
@@ -5011,7 +5957,17 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rtdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -5051,7 +6007,17 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformer", "rtdetr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "torch",
+                "transformer",
+                "rtdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2024-07-01 19:22:51"
         },
         {
@@ -5092,6 +6058,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5132,6 +6112,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5172,6 +6166,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5212,6 +6220,20 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                }
+            ],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -5251,7 +6273,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "DOTA-v1.0",
+                    "url": "https://captain-whu.github.io/DOTA/"
+                }
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5291,7 +6326,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "DOTA-v1.0",
+                    "url": "https://captain-whu.github.io/DOTA/"
+                }
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5331,7 +6379,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "DOTA-v1.0",
+                    "url": "https://captain-whu.github.io/DOTA/"
+                }
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5371,7 +6432,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "DOTA-v1.0",
+                    "url": "https://captain-whu.github.io/DOTA/"
+                }
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5411,7 +6485,20 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "yolo", "polylines", "obb", "official"],
+            "tags": [
+                "detection",
+                "torch",
+                "yolo",
+                "polylines",
+                "obb",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "DOTA-v1.0",
+                    "url": "https://captain-whu.github.io/DOTA/"
+                }
+            ],
             "date_added": "2024-04-05 19:22:51"
         },
         {
@@ -5452,6 +6539,12 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "Open Images V7",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                }
+            ],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5492,6 +6585,12 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "Open Images V7",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                }
+            ],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5532,6 +6631,12 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "Open Images V7",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                }
+            ],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5572,6 +6677,12 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "Open Images V7",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                }
+            ],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5612,6 +6723,12 @@
                 }
             },
             "tags": ["detection", "oiv7", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "Open Images V7",
+                    "url": "https://storage.googleapis.com/openimages/web/index.html"
+                }
+            ],
             "date_added": "2024-05-20 19:22:51"
         },
         {
@@ -5641,6 +6758,16 @@
                 }
             },
             "tags": ["detection", "torch", "yolo", "official"],
+            "training_data": [
+                {
+                    "name": "MS COCO 2017",
+                    "url": "https://cocodataset.org"
+                },
+                {
+                    "name": "Objects365",
+                    "url": "https://www.objects365.org"
+                }
+            ],
             "date_added": "2024-01-06 08:51:14"
         },
         {
@@ -5668,7 +6795,11 @@
                 }
             },
             "requirements": {
-                "packages": ["torch>=1.7.0", "torchvision>=0.8.1", "ultralytics"],
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics"
+                ],
                 "cpu": {
                     "support": true
                 },
@@ -5677,6 +6808,9 @@
                 }
             },
             "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-05-22 14:14:45"
         },
         {
@@ -5687,7 +6821,7 @@
             "source": "https://huggingface.co/facebook/convnext-tiny-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 457742046,
+            "size_bytes": 228984557,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5712,7 +6846,15 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5750,7 +6892,14 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5762,7 +6911,7 @@
             "source": "https://huggingface.co/facebook/convnext-base-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 1417939660,
+            "size_bytes": 709242057,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5788,7 +6937,14 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5800,7 +6956,7 @@
             "source": "https://huggingface.co/facebook/convnext-large-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 3164754044,
+            "size_bytes": 1582656553,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -5825,7 +6981,15 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5863,7 +7027,18 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-22K",
+                    "url": "https://www.image-net.org/download.php"
+                },
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5901,7 +7076,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5939,7 +7121,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -5977,7 +7166,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6015,7 +7211,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6053,7 +7256,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6091,7 +7301,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6129,7 +7346,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6167,7 +7391,14 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-06-30 12:00:00"
         },
@@ -6204,7 +7435,14 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6241,7 +7479,14 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6278,7 +7523,14 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6315,7 +7567,14 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ImageNet-1K",
+                    "url": "https://www.image-net.org/download.php"
+                }
             ],
             "date_added": "2025-07-02 12:00:00"
         },
@@ -6326,7 +7585,7 @@
             "description": "Lightweight real-time object detector optimized for speed on edge devices",
             "source": "https://huggingface.co/PekingU/rtdetr_v2_r18vd",
             "author": "Wenyu Lv, et al.",
-            "license": "Apache-2.0",
+            "license": "Apache 2.0",
             "size_bytes": 161820194,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
@@ -6349,9 +7608,14 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
-                "rtdetr"
+                "rtdetr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
             "date_added": "2025-07-03 12:00:00"
         },
@@ -6362,7 +7626,7 @@
             "description": "Balanced real-time object detector offering improved accuracy for production use",
             "source": "https://huggingface.co/PekingU/rtdetr_v2_r50vd",
             "author": "Wenyu Lv, et al.",
-            "license": "Apache-2.0",
+            "license": "Apache 2.0",
             "size_bytes": 344364318,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
@@ -6385,10 +7649,14 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "rtdetr",
                 "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
             "date_added": "2025-07-03 12:00:00"
         },
@@ -6408,11 +7676,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
@@ -6420,7 +7684,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6439,11 +7714,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
@@ -6451,7 +7722,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6470,11 +7752,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
@@ -6482,7 +7760,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6501,11 +7790,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
@@ -6513,7 +7798,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6532,11 +7828,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "transformers"],
                 "cpu": {
                     "support": true
                 },
@@ -6544,7 +7836,18 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "detr", "official"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "detr",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
             "date_added": "2025-07-15 23:00:00"
         },
         {
@@ -6559,7 +7862,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b0-finetuned-ade-512-512"
+                    "name_or_path": "nvidia/segformer-b0-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6571,7 +7878,19 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:17"
         },
         {
@@ -6586,7 +7905,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b1-finetuned-ade-512-512"
+                    "name_or_path": "nvidia/segformer-b1-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6598,7 +7921,19 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:20"
         },
         {
@@ -6613,7 +7948,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b2-finetuned-ade-512-512"
+                    "name_or_path": "nvidia/segformer-b2-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6625,7 +7964,19 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:22"
         },
         {
@@ -6640,7 +7991,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b3-finetuned-ade-512-512"
+                    "name_or_path": "nvidia/segformer-b3-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6652,7 +8007,19 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:24"
         },
         {
@@ -6667,7 +8034,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b4-finetuned-ade-512-512"
+                    "name_or_path": "nvidia/segformer-b4-finetuned-ade-512-512",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6679,7 +8050,19 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:25"
         },
         {
@@ -6694,7 +8077,11 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
                 "config": {
-                    "name_or_path": "nvidia/segformer-b5-finetuned-ade-640-640"
+                    "name_or_path": "nvidia/segformer-b5-finetuned-ade-640-640",
+                    "output_processor_args": {
+                        "no_background_cls": true,
+                        "has_softmax_out": false
+                    }
                 }
             },
             "requirements": {
@@ -6706,14 +8093,491 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ADE20K",
+                    "url": "https://github.com/CSAILVision/ADE20K"
+                }
+            ],
             "date_added": "2025-08-04 12:34:27"
+        },
+        {
+            "base_name": "medsiglip-448-zero-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Medical SigLIP for zero-shot image classification and embeddings",
+            "source": "https://huggingface.co/google/medsiglip-448",
+            "author": "Google Research",
+            "license": "Custom (HAI-DEF gated on Hugging Face)",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "google/medsiglip-448",
+                    "transformers_processor_kwargs": {
+                        "padding": true
+                    },
+                    "output_processor_args": {
+                        "store_logits": true,
+                        "logits_key": "logits_per_image"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch",
+                    "torchvision",
+                    "transformers",
+                    "huggingface_hub"
+                ],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "zero-shot",
+                "embeddings"
+            ],
+            "training_data": [],
+            "date_added": "2025-09-03 15:09:00"
+        },
+        {
+            "base_name": "monet-zero-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "CLIP‑based vision‑language model for zero‑shot dermatology image classification.",
+            "source": "https://huggingface.co/suinleelab/monet",
+            "author": "Su‑In Lee Lab",
+            "license": "MIT",
+            "size_bytes": 1710000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "suinleelab/monet",
+                    "transformers_processor_kwargs": {
+                        "padding": true
+                    },
+                    "output_processor_args": {
+                        "logits_key": "logits_per_image"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "MONET (dermatology image–text corpus)",
+                    "url": "https://huggingface.co/suinleelab/monet"
+                }
+            ],
+            "date_added": "2025-09-04 12:45:00"
+        },
+        {
+            "base_name": "pubmed-clip-vit-base-patch32",
+            "base_filename": null,
+            "version": null,
+            "description": "Zero-shot medical image classifier trained on biomedical image–text pairs.",
+            "source": "https://huggingface.co/flaviagiammarino/pubmed-clip-vit-base-patch32",
+            "author": "Sedigheh Eslami et al.",
+            "license": "MIT",
+            "size_bytes": 634388480,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "name_or_path": "flaviagiammarino/pubmed-clip-vit-base-patch32",
+                    "transforms_args": { "use_fast": false },
+                    "transformers_processor_kwargs": { "padding": true }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "zero-shot",
+                "embeddings"
+            ],
+            "training_data": [
+                {
+                    "name": "ROCO (Radiology Objects in Context)",
+                    "url": "https://github.com/razorx89/roco-dataset"
+                }
+            ],
+            "date_added": "2025-09-05 11:56:00"
+        },
+        {
+            "base_name": "pose-estimation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Vision Transformer for pose estimation with 90M parameters removing complex decoder components.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "license": "Apache 2.0",
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation"
+            ],
+            "training_data": [],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Vision Transformer for pose estimation with 90M parameters using standard ViT backbone. Detects 17 human keypoints through heatmap regression achieving 75.8 AP on COCO. Processes 256x192 images with hierarchical features for accurate joint localization.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 360007012,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-base",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-base-simple-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Simplified ViTPose with 90M parameters removing complex decoder components. Maintains 75.1 AP through direct heatmap prediction from transformer features. Streamlined architecture for easier deployment while preserving accuracy on human pose tasks.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 343673076,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-base-simple",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Small ViTPose+ with 30M parameters using mixture-of-experts for multi-dataset training. Achieves 68.7 AP through dataset-specific adaptation. Lightweight MOE architecture enables efficient pose estimation across diverse human pose datasets.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 132619932,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-small",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Base ViTPose+ with 130M parameters implementing mixture-of-experts modules. Delivers 77.5 AP through dataset-aware routing. MOE design handles multiple pose datasets simultaneously while maintaining strong per-dataset performance.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 501627628,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-base",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Large ViTPose+ with 430M parameters scaling MOE architecture for superior accuracy. Achieves 78.3 AP on COCO through enhanced capacity. Mixture-of-experts enables specialization across pose datasets while maintaining unified architecture.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1737705492,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-large",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "vitpose-plus-huge-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Huge ViTPose+ with 900M parameters maximizing MOE capacity for best performance. Delivers 78.9 AP through massive scale. Flagship mixture-of-experts model handling diverse pose datasets with dataset-specific optimization paths.",
+            "source": "https://github.com/ViTAE-Transformer/ViTPose",
+            "author": "Yufei Xu, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 3597730876,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForPoseEstimation",
+                "config": {
+                    "name_or_path": "usyd-community/vitpose-plus-huge",
+                    "transformers_processor_kwargs": {
+                        "return_tensors": "pt"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "keypoints",
+                "coco",
+                "torch",
+                "transformers",
+                "pose-estimation",
+                "official"
+            ],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-L14-336-Vision-Encoder",
+            "base_filename": "PE-Core-L14-336.pt",
+            "version": null,
+            "description": "The ViT from the large variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 2684747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-L14-336"
+                    },
+                    "transforms_args": {
+                        "image_size": 532
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-11-19 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-B16-224-Vision-Encoder",
+            "base_filename": "PE-Core-B16-224.pt",
+            "version": null,
+            "description": "The ViT from the base variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1794747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-B16-224"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-12-05 12:00:00"
         },
         {
             "base_name": "llmdet-tiny-torch",
             "base_filename": null,
             "version": null,
-            "description": "Lightweight open‑vocabulary detector that finds any object you describe in images without class‑specific training.",
+            "description": "Lightweight open-vocabulary detector that finds any object you describe in images without class-specific training.",
             "source": "https://huggingface.co/iSEE-Laboratory/llmdet_tiny",
             "author": "iSEE Laboratory",
             "license": "Apache 2.0",
@@ -6726,27 +8590,17 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
+                "cpu": { "support": true },
+                "gpu": { "support": true }
             },
-            "tags": [
-                "detection",
-                "torch",
-                "transformers",
-                "zero-shot",
-                "official"
-            ],
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
             "date_added": "2025-08-11 15:00:08"
         },
         {
             "base_name": "llmdet-base-torch",
             "base_filename": null,
             "version": null,
-            "description": "Balanced open‑vocabulary detector that recognizes objects from natural‑language prompts with strong accuracy",
+            "description": "Balanced open-vocabulary detector that recognizes objects from natural-language prompts with strong accuracy.",
             "source": "https://huggingface.co/iSEE-Laboratory/llmdet_base",
             "author": "iSEE Laboratory",
             "license": "Apache 2.0",
@@ -6759,31 +8613,21 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
+                "cpu": { "support": true },
+                "gpu": { "support": true }
             },
-            "tags": [
-                "detection",
-                "torch",
-                "transformers",
-                "zero-shot",
-                "official"
-            ],
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
             "date_added": "2025-08-11 15:00:08"
         },
         {
             "base_name": "llmdet-large-torch",
             "base_filename": null,
             "version": null,
-            "description": "High‑accuracy open‑vocabulary detector that reliably finds objects you describe in complex scenes",
+            "description": "High-capacity open-vocabulary detector for maximum detection quality from free-form text queries.",
             "source": "https://huggingface.co/iSEE-Laboratory/llmdet_large",
             "author": "iSEE Laboratory",
             "license": "Apache 2.0",
-            "size_bytes": 1376363740,
+            "size_bytes": 1376000000,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
                 "config": {
@@ -6792,20 +8636,10 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
-                "cpu": {
-                    "support": true
-                },
-                "gpu": {
-                    "support": true
-                }
+                "cpu": { "support": true },
+                "gpu": { "support": true }
             },
-            "tags": [
-                "detection",
-                "torch",
-                "transformers",
-                "zero-shot",
-                "official"
-            ],
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
             "date_added": "2025-08-11 15:00:08"
         }
     ]

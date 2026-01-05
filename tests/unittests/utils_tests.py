@@ -1,14 +1,13 @@
 """
 FiftyOne utilities unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from datetime import datetime
 import sys
-import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -20,7 +19,6 @@ import fiftyone as fo
 import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.core.odm.utils import load_dataset
 import fiftyone.core.utils as fou
 from fiftyone.migrations.runner import MigrationRunner
 import fiftyone.utils.data as foud
@@ -354,6 +352,18 @@ class BatcherTests(unittest.TestCase):
             for batch in batcher:
                 self.assertEqual(len(batch), n // 2)
 
+        samples_with_none = [None] + samples
+        count = 0
+        batcher = fou.ContentSizeBatcher(
+            iter(samples_with_none), target_size=1
+        )
+        with batcher:
+            for batch in batcher:
+                if count == 0:
+                    self.assertIsNone(batch[0])
+                count += len(batch)
+        self.assertEqual(count, len(samples_with_none))
+
     def test_static_batcher_perfect_boundary(self):
         iterable = list(range(200))
         batcher = fou.StaticBatcher(iterable, batch_size=100, progress=False)
@@ -493,7 +503,7 @@ class CoreUtilsTests(unittest.TestCase):
             fou.to_slug("------")  # too short
 
         with self.assertRaises(ValueError):
-            fou.to_slug("a" * 101)  # too long
+            fou.to_slug("a" * 1552)  # too long
 
     def test_get_module_name(self):
         if sys.platform.startswith("win"):
@@ -782,7 +792,8 @@ class MigrationTests(unittest.TestCase):
 
 class ConfigTests(unittest.TestCase):
     def test_multiple_config_cleanup(self):
-        # Note this is not a unit test and running this modifies the fiftyone config collection
+        # Note this is not a unit test and running this modifies the fiftyone
+        # config collection
 
         db = foo.get_db_conn()
         orig_config = foo.get_db_config()
@@ -793,7 +804,8 @@ class ConfigTests(unittest.TestCase):
             ObjectId.from_datetime(datetime(2023, 1, 1)),
         ]
         try:
-            # Ensure that the fake configs are not already in the database due to failed cleanup
+            # Ensure that the fake configs are not already in the database due
+            # to failed cleanup
             db.config.delete_many({"_id": {"$in": new_config_ids}})
 
             # Add some duplicate documents
@@ -815,7 +827,8 @@ class ConfigTests(unittest.TestCase):
             config = foo.get_db_config()
 
             if fo.config.database_admin:
-                # Ensure that duplicate documents are automatically cleaned up if run by database admin
+                # Ensure that duplicate documents are automatically cleaned up
+                # if run by database admin
                 self.assertEqual(len(list(db.config.aggregate([]))), 1)
             else:
                 # Otherwise, the duplicates are not cleaned up
@@ -826,93 +839,6 @@ class ConfigTests(unittest.TestCase):
         finally:
             # Clean up the fake configs
             db.config.delete_many({"_id": {"$in": new_config_ids}})
-
-
-class TestLoadDataset(unittest.TestCase):
-    @patch("fiftyone.core.dataset.dataset_exists")
-    @patch("fiftyone.core.odm.get_db_conn")
-    @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_id(
-        self, mock_dataset, mock_get_db_conn, dataset_exists
-    ):
-        # Setup
-        identifier = ObjectId()
-        mock_db = MagicMock()
-        mock_get_db_conn.return_value = mock_db
-        mock_db.datasets.find_one.return_value = {
-            "_id": ObjectId(identifier),
-            "name": "test_dataset",
-        }
-        dataset_exists.return_value = True
-
-        # Test
-        result = load_dataset(id=identifier)
-
-        # Assertions
-        mock_get_db_conn.assert_called_once()
-        mock_db.datasets.find_one.assert_called_once_with(
-            {"_id": ObjectId(identifier)}, {"name": True}
-        )
-
-        self.assertEqual(result, mock_dataset.return_value)
-
-    @patch("fiftyone.core.dataset.dataset_exists")
-    @patch("fiftyone.core.odm.get_db_conn")
-    @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_alt_id(
-        self, mock_dataset, mock_get_db_conn, dataset_exists
-    ):
-        # Setup
-        identifier = "alt_id"
-        mock_db = MagicMock()
-        mock_get_db_conn.return_value = mock_db
-        mock_db.datasets.find_one.return_value = {
-            "_id": "identifier",
-            "name": "dataset_name",
-        }
-        dataset_exists.return_value = True
-
-        # Test
-        result = load_dataset(id=identifier)
-
-        # Assertions
-        mock_get_db_conn.assert_called_once()
-        mock_db.datasets.find_one.assert_called_once_with(
-            {"_id": identifier}, {"name": True}
-        )
-        self.assertEqual(result, mock_dataset.return_value)
-
-    @patch("fiftyone.core.dataset.dataset_exists")
-    @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_name(self, mock_dataset, dataset_exists):
-        # Setup
-        identifier = "test_dataset"
-        mock_dataset.return_value = {"_id": ObjectId(), "name": identifier}
-        dataset_exists.return_value = True
-
-        # Test
-        result = load_dataset(name=identifier)
-
-        # Assertions
-        self.assertEqual(result, mock_dataset.return_value)
-
-    @patch("fiftyone.core.odm.get_db_conn")
-    def test_load_dataset_nonexistent(self, mock_get_db_conn):
-        # Setup
-        identifier = ObjectId()
-        mock_db = MagicMock()
-        mock_db.datasets.find_one.return_value = None
-        mock_get_db_conn.return_value = mock_db
-
-        # Call the function and expect a ValueError
-        with self.assertRaises(ValueError) as context:
-            load_dataset(id=identifier)
-
-        # Assertions
-        mock_get_db_conn.assert_called_once()
-        mock_db.datasets.find_one.assert_called_once_with(
-            {"_id": identifier}, {"name": True}
-        )
 
 
 class ProgressBarTests(unittest.TestCase):
@@ -951,6 +877,79 @@ class ProgressBarTests(unittest.TestCase):
         self._test_correct_value(
             progress=False, global_progress=False, quiet=False, expected=True
         )
+
+
+class RecommendProcessPoolWorkersTests(unittest.TestCase):
+    @patch.object(fou.multiprocessing, "current_process")
+    def test_daemon(self, current_process_mock):
+        current_process_mock.return_value.daemon = True
+        self.assertEqual(fou.recommend_process_pool_workers(8, 4), 0)
+
+    def test_explicit(self):
+        with patch.object(fo.config, "default_process_pool_workers", None):
+            # Uses explicitly passed workers
+            self.assertEqual(fou.recommend_process_pool_workers(8, 4), 8)
+
+            # Negative number coerced to 0
+            self.assertEqual(fou.recommend_process_pool_workers(-1), 0)
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(fou.recommend_process_pool_workers(8, 4), 2)
+
+    def test_default_from_config(self):
+        # Uses default from config
+        with patch.object(fo.config, "default_process_pool_workers", 4):
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=8), 4
+            )
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(fou.recommend_process_pool_workers(), 2)
+
+        # Test default from config is 0
+        with patch.object(fo.config, "default_process_pool_workers", 0):
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=4), 0
+            )
+
+    def test_default_passed_in(self):
+        with patch.object(fo.config, "default_process_pool_workers", None):
+            # Uses default passed in
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=8), 8
+            )
+            self.assertEqual(
+                fou.recommend_process_pool_workers(default_num_workers=-1), 0
+            )
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(
+                    fou.recommend_process_pool_workers(default_num_workers=8),
+                    2,
+                )
+
+    @patch.object(fou.multiprocessing, "cpu_count")
+    def test_cpucount(self, cpu_count_mock):
+        with patch.object(fo.config, "default_process_pool_workers", None):
+            cpu_count_mock.return_value = 10
+            self.assertEqual(fou.recommend_process_pool_workers(), 10)
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(fou.recommend_process_pool_workers(), 2)
+
+    @patch.object(fou.multiprocessing, "cpu_count")
+    def test_cpucount_exception(self, cpu_count_mock):
+        with patch.object(fo.config, "default_process_pool_workers", None):
+            cpu_count_mock.side_effect = ValueError
+            self.assertEqual(fou.recommend_process_pool_workers(), 4)
+
+            # Number is capped by config
+            with patch.object(fo.config, "max_process_pool_workers", 2):
+                self.assertEqual(fou.recommend_process_pool_workers(), 2)
 
 
 if __name__ == "__main__":

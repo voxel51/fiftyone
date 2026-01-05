@@ -218,6 +218,17 @@ export const isFramesView = selector<boolean>({
   },
 });
 
+// if it is not a base sample view (frame, patches, clip)
+export const isGeneratedView = selector<boolean>({
+  key: "isGeneratedView",
+  get: ({ get }) => {
+    return get(rootElementName) !== ELEMENT_NAMES.SAMPLE;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
 export const currentViewSlug = selector<string>({
   key: "currentViewSlug",
   get: () => {
