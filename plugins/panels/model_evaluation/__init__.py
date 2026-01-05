@@ -51,7 +51,7 @@ ENABLE_CACHING = (
     os.environ.get("FIFTYONE_DISABLE_EVALUATION_CACHING") not in TRUTHY_VALUES
 )
 CACHE_TTL = 30 * 24 * 60 * 60  # 30 days in seconds
-CACHE_VERSION = "v3.0.0"
+CACHE_VERSION = "v3.0.1"
 SUPPORTED_EVALUATION_TYPES = ["classification", "detection", "segmentation"]
 
 
@@ -338,7 +338,7 @@ class EvaluationPanel(Panel):
         sums = defaultdict(float)
         for yp, conf in zip(results.ypred, results.confs):
             counts[yp] += 1
-            sums[yp] += conf if conf is not None else 0.0
+            sums[yp] += conf if (conf and not np.isnan(conf)) else 0.0
 
         avg_confs = {}
         for c in results.classes:
