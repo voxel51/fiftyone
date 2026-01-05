@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 // note: inspired by https://github.com/davidfig/pixi-dashed-line/blob/main/lib/index.ts
