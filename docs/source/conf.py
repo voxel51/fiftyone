@@ -24,7 +24,7 @@ from custom_directives import (
     CustomGuidesCardDirective,
     CustomAnimatedCTADirective,
 )
-from redirects import generate_redirects
+from redirects import generate_redirects, generate_api_redirects
 
 import fiftyone.constants as foc
 
@@ -281,6 +281,7 @@ def setup(app):
     # Generate page redirects
     app.add_config_value("redirects_file", "redirects", "env")
     app.connect("builder-inited", generate_redirects)
+    app.connect("build-finished", generate_api_redirects)
 
     # Custom directives
     app.add_directive("custombutton", CustomButtonDirective)
