@@ -11,18 +11,18 @@ import {
   EditOutlined,
   Sync,
 } from "@mui/icons-material";
+import { MenuItem, Select, TextField } from "@mui/material";
 import {
-  Box,
   Button,
-  Chip,
-  MenuItem,
-  Select,
-  Switch,
-  Tab,
-  Tabs,
-  TextField,
-  Typography,
-} from "@mui/material";
+  Pill,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Toggle,
+  ToggleSwitch,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -34,14 +34,12 @@ import {
   ContentArea,
   EditContainer,
   EditSectionHeader,
-  editTabsStyles,
   EmptyStateBox,
   FieldColumn,
   FieldRow,
   ItemActions,
   ItemContent,
   ItemRow,
-  Label,
   ListContainer,
   SchemaSection,
   Section,
@@ -181,10 +179,10 @@ const ClassRow = ({
       sx={{ color: "text.secondary", cursor: "grab" }}
     />
     <ItemContent>
-      <Typography fontWeight={500}>{name}</Typography>
-      <Typography color="secondary" variant="body2">
+      <Text>{name}</Text>
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
         {attributeCount} attribute{attributeCount !== 1 ? "s" : ""}
-      </Typography>
+      </Text>
     </ItemContent>
     <ItemActions>
       <IconButton onClick={onDelete}>
@@ -219,13 +217,13 @@ const AttributeRow = ({
       sx={{ color: "text.secondary", cursor: "grab" }}
     />
     <ItemContent>
-      <Typography fontWeight={500}>{name}</Typography>
-      <Typography color="secondary" variant="body2">
+      <Text>{name}</Text>
+      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
         {getAttributeTypeLabel(type)}
         {optionCount !== undefined &&
           ` · ${optionCount} option${optionCount !== 1 ? "s" : ""}`}
-      </Typography>
-      {readOnly && <Chip label="Read-only" size="small" variant="outlined" />}
+      </Text>
+      {readOnly && <Pill size={Size.Sm}>Read-only</Pill>}
     </ItemContent>
     <ItemActions>
       <IconButton onClick={onDelete}>
@@ -255,18 +253,14 @@ const ClassesSection = ({
   return (
     <Section>
       <EditSectionHeader>
-        <Typography fontWeight={500}>Classes</Typography>
-        <Button
-          size="small"
-          onClick={onAddClass}
-          sx={{ color: "text.primary", textTransform: "none" }}
-        >
+        <span className="font-medium">Classes</span>
+        <Button size={Size.Sm} variant={Variant.Secondary} onClick={onAddClass}>
           + Add class
         </Button>
       </EditSectionHeader>
       {classEntries.length === 0 ? (
         <EmptyStateBox>
-          <Typography color="secondary">No classes yet</Typography>
+          <Text color={TextColor.Secondary}>No classes yet</Text>
         </EmptyStateBox>
       ) : (
         classEntries.map(([name, config]) => (
@@ -300,18 +294,18 @@ const AttributesSection = ({
   return (
     <Section>
       <EditSectionHeader>
-        <Typography fontWeight={500}>Attributes</Typography>
+        <span className="font-medium">Attributes</span>
         <Button
-          size="small"
+          size={Size.Sm}
+          variant={Variant.Secondary}
           onClick={onAddAttribute}
-          sx={{ color: "text.primary", textTransform: "none" }}
         >
           + Add attribute
         </Button>
       </EditSectionHeader>
       {attrEntries.length === 0 ? (
         <EmptyStateBox>
-          <Typography color="secondary">No attributes yet</Typography>
+          <Text color={TextColor.Secondary}>No attributes yet</Text>
         </EmptyStateBox>
       ) : (
         attrEntries.map(([name, config]) => (
@@ -346,20 +340,20 @@ const GUIViewContent = ({
       <ListContainer>
         <Section>
           <EditSectionHeader>
-            <Typography fontWeight={500}>Classes</Typography>
+            <span className="font-medium">Classes</span>
           </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
-            <Typography color="secondary">Scanning schema</Typography>
+            <Text color={TextColor.Secondary}>Scanning schema</Text>
           </EmptyStateBox>
         </Section>
         <Section>
           <EditSectionHeader>
-            <Typography fontWeight={500}>Attributes</Typography>
+            <span className="font-medium">Attributes</span>
           </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
-            <Typography color="secondary">Scanning schema</Typography>
+            <Text color={TextColor.Secondary}>Scanning schema</Text>
           </EmptyStateBox>
         </Section>
       </ListContainer>
@@ -412,7 +406,7 @@ const JSONViewContent = ({
     return (
       <CenteredStack spacing={1} sx={{ p: 3 }}>
         <LoadingSpinner />
-        <Typography color="secondary">Scanning schema</Typography>
+        <Text color={TextColor.Secondary}>Scanning schema</Text>
       </CenteredStack>
     );
   }
@@ -458,7 +452,6 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
     [activeFields, hiddenFields]
   );
 
-  const [tab, setTab] = useState<"gui" | "json">("gui");
   const [readOnlyField, setReadOnlyField] = useState(false);
 
   useEffect(() => {
@@ -473,7 +466,13 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
       {/* Field name and type section */}
       <FieldRow style={{ marginTop: "1rem" }}>
         <FieldColumn>
-          <Label variant="body2">Field name</Label>
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Secondary}
+            className="mb-2 block"
+          >
+            Field name
+          </Text>
           <Select
             fullWidth
             size="small"
@@ -488,7 +487,13 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
           </Select>
         </FieldColumn>
         <FieldColumn>
-          <Label variant="body2">Field type</Label>
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Secondary}
+            className="mb-2 block"
+          >
+            Field type
+          </Text>
           <TextField
             fullWidth
             size="small"
@@ -500,65 +505,73 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
       </FieldRow>
 
       {/* Read-only toggle */}
-      <Box my={2}>
-        <Typography fontWeight={500}>Read-only</Typography>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="body2" color="secondary">
-            When enabled, annotators can view this field but can't edit its
-            values.
-          </Typography>
-          <Switch
+      <div className="my-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <Text className="font-medium block">Read-only</Text>
+            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+              When enabled, annotators can view this field but can't edit its
+              values.
+            </Text>
+          </div>
+          <Toggle
+            size={Size.Sm}
             checked={readOnlyField}
-            onChange={(e) => setReadOnlyField(e.target.checked)}
+            onChange={(checked) => setReadOnlyField(checked)}
           />
-        </Box>
-      </Box>
+        </div>
+      </div>
 
       {/* Schema section */}
       <SchemaSection>
-        <Label variant="body2">Schema</Label>
         <TabsRow>
-          <Tabs
-            value={tab}
-            sx={editTabsStyles}
-            TabIndicatorProps={{ style: { display: "none" } }}
-          >
-            <Tab label="GUI" value="gui" onClick={() => setTab("gui")} />
-            <Tab label="JSON" value="json" onClick={() => setTab("json")} />
-          </Tabs>
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+            Schema
+          </Text>
           <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Sync fontSize="small" />}
+            size={Size.Sm}
+            variant={Variant.Secondary}
             onClick={() => data.compute()}
-            sx={{
-              color: "text.primary",
-              borderColor: "divider",
-              textTransform: "none",
-              "&:hover": {
-                borderColor: "action.active",
-              },
-              "&:active": {
-                borderColor: "action.active",
-              },
-            }}
           >
+            <Sync fontSize="small" style={{ marginRight: 4 }} />
             Scan
           </Button>
         </TabsRow>
-
-        <ContentArea>
-          {tab === "gui" ? (
-            <GUIViewContent config={data.config} scanning={data.scanning} />
-          ) : (
-            <JSONViewContent
-              configStr={data.configStr}
-              onChange={data.setConfigStr}
-              path={path}
-              scanning={data.scanning}
-            />
-          )}
-        </ContentArea>
+        <ToggleSwitch
+          size={Size.Sm}
+          tabs={[
+            {
+              id: "gui",
+              data: {
+                label: "GUI",
+                content: (
+                  <ContentArea>
+                    <GUIViewContent
+                      config={data.config}
+                      scanning={data.scanning}
+                    />
+                  </ContentArea>
+                ),
+              },
+            },
+            {
+              id: "json",
+              data: {
+                label: "JSON",
+                content: (
+                  <ContentArea>
+                    <JSONViewContent
+                      configStr={data.configStr}
+                      onChange={data.setConfigStr}
+                      path={path}
+                      scanning={data.scanning}
+                    />
+                  </ContentArea>
+                ),
+              },
+            },
+          ]}
+        />
       </SchemaSection>
 
       <Footer

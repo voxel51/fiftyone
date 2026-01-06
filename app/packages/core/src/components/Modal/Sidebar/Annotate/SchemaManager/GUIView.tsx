@@ -1,14 +1,15 @@
-import { Tooltip } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
 import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
+import { Collapse, Typography } from "@mui/material";
 import {
-  Chip,
-  Collapse,
-  Tooltip as MuiTooltip,
-  Typography,
-} from "@mui/material";
-import { RichList, Clickable, Pill, Size } from "@voxel51/voodo";
+  RichList,
+  Clickable,
+  Pill,
+  Size,
+  Tooltip,
+  Anchor,
+} from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
@@ -115,7 +116,7 @@ const FieldActions = ({ path }: { path: string }) => {
   const setField = useSetAtom(currentField);
 
   return (
-    <Tooltip placement="top-center" text="Configure annotation schema">
+    <Tooltip content="Configure annotation schema" anchor={Anchor.Top}>
       <Clickable
         style={{ padding: 4, height: 29, width: 29 }}
         onClick={() => setField(path)}
@@ -175,10 +176,13 @@ const ActiveFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
-          <MuiTooltip title="Fields currently active and available for dataset annotation">
+          <Tooltip
+            content="Fields currently active and available for dataset annotation"
+            anchor={Anchor.Top}
+          >
             <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-          </MuiTooltip>
-          <Chip label="0" size="small" />
+          </Tooltip>
+          <Pill size={Size.Xs}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
@@ -193,10 +197,13 @@ const ActiveFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
-        <MuiTooltip title="Fields currently active and available for dataset annotation">
+        <Tooltip
+          content="Fields currently active and available for dataset annotation"
+          anchor={Anchor.Top}
+        >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-        </MuiTooltip>
-        <Chip label={fields.length} size="small" />
+        </Tooltip>
+        <Pill size={Size.Xs}>{fields.length}</Pill>
       </GUISectionHeader>
       <RichList
         listItems={listItems}
@@ -258,10 +265,13 @@ const HiddenFieldsSection = () => {
           </Typography>
           {expanded ? <ExpandLess /> : <ExpandMore />}
         </CollapsibleHeader>
-        <Tooltip title="Fields currently hidden and not available for dataset annotation">
+        <Tooltip
+          content="Fields currently hidden and not available for dataset annotation"
+          anchor={Anchor.Top}
+        >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
         </Tooltip>
-        <Chip label={fields.length} size="small" />
+        <Pill size={Size.Xs}>{fields.length}</Pill>
       </GUISectionHeader>
       <Collapse in={expanded}>
         {fields.map((path) => (

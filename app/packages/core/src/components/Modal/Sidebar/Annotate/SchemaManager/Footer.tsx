@@ -1,6 +1,6 @@
-import { MuiButton } from "@fiftyone/components";
 import React from "react";
 import styled from "styled-components";
+import { Button, Size, Variant } from "@voxel51/voodo";
 
 const Container = styled.div`
   width: 100%;
@@ -16,7 +16,12 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
-interface Button {
+const RightSection = styled.div`
+  display: flex;
+  gap: 0.75rem;
+`;
+
+interface ButtonConfig {
   onClick: () => void;
   text: string;
   disabled?: boolean;
@@ -25,32 +30,46 @@ interface Button {
 const Footer = ({
   primaryButton,
   secondaryButton,
+  leftButton,
 }: {
-  primaryButton: Button;
-  secondaryButton?: Button;
+  primaryButton: ButtonConfig;
+  secondaryButton?: ButtonConfig;
+  leftButton?: ButtonConfig;
 }) => {
   return (
     <Container>
-      {secondaryButton ? (
-        <MuiButton
-          variant="outlined"
-          color="secondary"
-          onClick={secondaryButton.onClick}
-          disabled={secondaryButton.disabled}
+      {leftButton ? (
+        <Button
+          size={Size.Sm}
+          variant={Variant.Secondary}
+          onClick={leftButton.onClick}
+          disabled={leftButton.disabled}
         >
-          {secondaryButton.text}
-        </MuiButton>
+          {leftButton.text}
+        </Button>
       ) : (
         <div />
       )}
-      <MuiButton
-        variant="contained"
-        color="primary"
-        onClick={primaryButton.onClick}
-        disabled={primaryButton.disabled}
-      >
-        {primaryButton.text}
-      </MuiButton>
+      <RightSection>
+        {secondaryButton && (
+          <Button
+            size={Size.Sm}
+            variant={Variant.Secondary}
+            onClick={secondaryButton.onClick}
+            disabled={secondaryButton.disabled}
+          >
+            {secondaryButton.text}
+          </Button>
+        )}
+        <Button
+          size={Size.Sm}
+          variant={Variant.Primary}
+          onClick={primaryButton.onClick}
+          disabled={primaryButton.disabled}
+        >
+          {primaryButton.text}
+        </Button>
+      </RightSection>
     </Container>
   );
 };

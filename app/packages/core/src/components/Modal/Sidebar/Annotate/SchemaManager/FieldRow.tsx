@@ -1,6 +1,12 @@
-import { Tooltip } from "@fiftyone/components";
 import { EditOutlined } from "@mui/icons-material";
-import { ListItem, Pill, Clickable, Size } from "@voxel51/voodo";
+import {
+  ListItem,
+  Pill,
+  Clickable,
+  Size,
+  Tooltip,
+  Anchor,
+} from "@voxel51/voodo";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -39,7 +45,7 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
         </Pill>
       )}
       {isSupported && (
-        <Tooltip placement="top-center" text="Configure annotation schema">
+        <Tooltip content="Configure annotation schema" anchor={Anchor.Top}>
           <Clickable
             style={{ padding: 4, height: 29, width: 29 }}
             onClick={onEdit}
