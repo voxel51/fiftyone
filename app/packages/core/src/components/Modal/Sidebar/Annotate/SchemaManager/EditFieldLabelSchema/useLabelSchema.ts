@@ -105,8 +105,8 @@ const useScan = (field: string) => {
           callback: (result) => {
             if (result.result) {
               setCurrent(result.result.label_schema);
-              setIsScanning(false);
             }
+            setIsScanning(false);
           },
         }
       );
@@ -153,6 +153,7 @@ const useValidate = (field: string) => {
           setErrors([e.message]);
         }
 
+        setIsValidating(false);
         setIsValid(false);
         return;
       }

@@ -2640,41 +2640,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._rename_fields(
             sample_collection, paths, new_paths
         )
-
-        label_schemas = self.label_schemas
-        new_label_schemas = self.label_schemas
-        active_label_schemas = self.active_label_schemas
-        for path, new_path in zip(paths, new_paths):
-            if path in label_schemas:
-                new_label_schemas[new_path] = new_label_schemas.pop(path)
-                if path in active_label_schemas:
-                    active_label_schemas[
-                        active_label_schemas.index(path)
-                    ] = new_path
-                continue
-
-            for field in label_schemas:
-                if field.startswith(f"{path}."):
-                    new_field = f"{new_path}.{field.split('.')[1]}"
-                    new_label_schemas[new_field] = new_label_schemas.pop(field)
-            keys = path.split(".")
-            parent = ".".join(keys[:-1])
-
-            if self._is_label_field(parent):
-                if parent not in label_schemas:
-                    # this is a label list field
-                    # e.g. remove "detections" from "ground_truth.detections"
-                    parent = ".".join(parent.split(".")[:-1])
-
-                if parent in label_schemas:
-                    attributes = new_label_schemas[parent].get(
-                        foac.ATTRIBUTES, {}
-                    )
-                    name = keys[-1]
-                    if name in attributes:
-                        new_name = new_path.split(".")[-1]
-                        attributes[new_name] = attributes.pop(name)
-
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -2682,8 +2647,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
-        self.set_label_schemas(new_label_schemas)
-        self.active_label_schemas = active_label_schemas
 
     def _rename_frame_fields(self, field_mapping, view=None):
         sample_collection = self if view is None else view
@@ -2993,45 +2956,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
-
         fields, _ = _parse_fields(field_names)
-
-        label_schemas = self.label_schemas
-        new_label_schemas = self.label_schemas
-
-        for path in field_names:
-            if path in label_schemas:
-                del new_label_schemas[path]
-                continue
-
-            for field in label_schemas:
-                if field.startswith(f"{path}."):
-                    del new_label_schemas[field]
-
-            keys = path.split(".")
-            parent = ".".join(keys[:-1])
-
-            if self._is_label_field(parent):
-                if parent not in label_schemas:
-                    # this is a label list field
-                    # e.g. remove "detections" from
-                    # "ground_truth.detections"
-                    parent = ".".join(parent.split(".")[:-1])
-
-                if parent in label_schemas:
-                    attributes = new_label_schemas[parent].get(
-                        foac.ATTRIBUTES, {}
-                    )
-                    name = keys[-1]
-                    if name in attributes:
-                        del attributes[name]
 
         if fields:
             fos.Sample._purge_fields(self._sample_collection_name, fields)
 
         fos.Sample._reload_docs(self._sample_collection_name)
         self._reload()
-        self.set_label_schemas(new_label_schemas)
 
     def _remove_dynamic_sample_fields(self, field_names, error_level):
         field_names = _to_list(field_names)
