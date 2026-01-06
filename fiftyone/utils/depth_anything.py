@@ -11,7 +11,6 @@ import logging
 import os
 
 import cv2
-import eta.core.utils as etau
 import numpy as np
 from PIL import Image
 
@@ -29,7 +28,7 @@ logger = logging.getLogger(__name__)
 def _ensure_depth_anything_3():
     try:
         fou.ensure_package("depth-anything-3")
-    except (ImportError, ModuleNotFoundError):
+    except ImportError:
         logger.info("Installing depth-anything-3 from GitHub...")
         fou.install_package(
             "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
@@ -52,8 +51,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        name_or_path (None): the name or path to the Depth Anything V3 model.
-            Defaults to ``"depth-anything/da3-large"``
+        name_or_path ("depth-anything/da3-large"): the name or path to the
+            Depth Anything V3 model
     """
 
     def __init__(self, d):
@@ -126,7 +125,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 img = img.squeeze(0)
             elif img.dim() == 4:
                 raise ValueError(
-                    "Batch size > 1 not supported, got shape %s" % (tuple(img.shape),)
+                    "Batch size > 1 not supported, got shape %s"
+                    % (tuple(img.shape),)
                 )
             if img.dim() == 3 and img.shape[0] == 3:
                 img = img.permute(1, 2, 0)
@@ -141,6 +141,10 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 raise ValueError(
                     "Expected image with shape (H, W, 3), got %s" % (img.shape,)
                 )
+            if img.dtype in (np.float32, np.float64):
+                if img.max() <= 1.0:
+                    img = img * 255
+                img = np.clip(img, 0, 255).astype(np.uint8)
             return img, (img.shape[1], img.shape[0])
         else:
             raise TypeError(
