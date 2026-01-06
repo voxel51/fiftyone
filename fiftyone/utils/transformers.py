@@ -2,7 +2,7 @@
 Utilities for working with
 `Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1403,7 +1403,9 @@ class _HFTransformsHandler:
                     )
 
             res = self.processor(**args, **self.kwargs)
-            res["boxes"] = args.get("boxes", [])
+            # only attach boxes if explicitly provided
+            if "boxes" in args:
+                res["boxes"] = args["boxes"]
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1

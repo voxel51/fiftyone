@@ -244,7 +244,8 @@
                 "sa-1b",
                 "torch",
                 "zero-shot",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -286,7 +287,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "official"],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -644,7 +645,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -744,7 +746,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -954,7 +956,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -1287,7 +1290,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "training_data": [
                 {
@@ -2363,7 +2367,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnext"
+                "resnext",
+                "official"
             ],
             "training_data": [
                 {
@@ -2409,7 +2414,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet"],
+            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -2568,7 +2573,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
             "training_data": [
                 {
                     "name": "ImageNet-1K",
@@ -3406,6 +3411,90 @@
             "tags": ["depth", "torch", "transformers"],
             "training_data": [],
             "date_added": "2024-02-06 14:25:51"
+        },
+        {
+            "base_name": "depth-anything-v2-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight Depth Anything V2 model for fast monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 99200000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Small-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced Depth Anything V2 model for general-purpose monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Base-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 390400000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Base-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-accuracy Depth Anything V2 model for detailed monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Large-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1340000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Large-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
         },
         {
             "base_name": "zero-shot-classification-transformer-torch",
@@ -6816,7 +6905,7 @@
             "source": "https://huggingface.co/facebook/convnext-tiny-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 457742046,
+            "size_bytes": 228984557,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6842,7 +6931,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "embeddings"
+                "embeddings",
+                "official"
             ],
             "training_data": [
                 {
@@ -6905,7 +6995,7 @@
             "source": "https://huggingface.co/facebook/convnext-base-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 1417939660,
+            "size_bytes": 709242057,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6950,7 +7040,7 @@
             "source": "https://huggingface.co/facebook/convnext-large-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 3164754044,
+            "size_bytes": 1582656553,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6976,7 +7066,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "embeddings"
+                "embeddings",
+                "official"
             ],
             "training_data": [
                 {
@@ -7604,7 +7695,8 @@
                 "embeddings",
                 "torch",
                 "transformers",
-                "rtdetr"
+                "rtdetr",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8284,7 +8376,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8323,7 +8416,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8362,7 +8456,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8401,7 +8496,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8440,7 +8536,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8479,7 +8576,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }

@@ -17,6 +17,10 @@ import {
   currentOverlay,
   currentSchema,
 } from "./state";
+import type {
+  NumberSchemaType,
+  SchemaType,
+} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 const getLabel = (value) => {
   if (typeof value === "boolean") {
@@ -30,20 +34,31 @@ const getLabel = (value) => {
   return value;
 };
 
-const createInput = (name: string, ftype: string) => {
-  return {
-    type:
-      ftype === STRING_FIELD
-        ? "string"
-        : ftype === BOOLEAN_FIELD
-        ? "boolean"
-        : "number",
+const createInput = (
+  name: string,
+  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+): SchemaType => {
+  const type =
+    ftype === STRING_FIELD
+      ? "string"
+      : ftype === BOOLEAN_FIELD
+      ? "boolean"
+      : "number";
+
+  const schema: SchemaType = {
+    type,
     view: {
       name: "PrimitiveView",
       label: name,
       component: "PrimitiveView",
     },
   };
+
+  if (typeof multipleOf === "number" && type === "number") {
+    (schema as NumberSchemaType).multipleOf = multipleOf;
+  }
+
+  return schema;
 };
 
 const createRadio = (name: string, choices) => {
@@ -110,10 +125,7 @@ const useSchema = () => {
       }
 
       if (attributes[attr].type === "input") {
-        properties[attr] = createInput(
-          attr,
-          attributes[attr].ftype || STRING_FIELD
-        );
+        properties[attr] = createInput(attr, attributes[attr]);
       }
 
       if (attributes[attr].type === "radio") {
@@ -141,40 +153,37 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (typeof data === "string") {
-          if (schema?.ftype === FLOAT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseFloat(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
-
-          if (schema?.ftype === INT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseInt(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
+      if (typeof data === "string") {
+        if (schema?.ftype === FLOAT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseFloat(data);
+          return Number.isFinite(parsed) ? parsed : null;
         }
 
-        return data;
-      },
+        if (schema?.ftype === INT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseInt(data);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+      }
+
+      return data;
+    },
     []
   );
 };
 
 const AnnotationSchema = () => {
   const schema = useSchema();
-  const [data, save] = useAtom(currentData);
+  const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
-
-  const schemaKeys = Object.keys(schema.properties);
 
   if (!field) {
     throw new Error("no field");
@@ -187,17 +196,17 @@ const AnnotationSchema = () => {
   return (
     <div>
       <SchemaIOComponent
+        key={overlay.id}
+        smartForm={true}
         schema={schema}
         data={data}
         onChange={async (changes) => {
           const result = Object.fromEntries(
             await Promise.all(
-              Object.entries(changes)
-                .filter(([key]) => schemaKeys.includes(key))
-                .map(async ([key, value]) => [
-                  key,
-                  await handleChanges(field, key, value),
-                ])
+              Object.entries(changes).map(async ([key, value]) => [
+                key,
+                await handleChanges(field, key, value),
+              ])
             )
           );
 

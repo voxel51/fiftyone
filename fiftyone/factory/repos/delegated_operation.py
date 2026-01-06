@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operation repository.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,9 +15,9 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-from fiftyone.internal.util import is_remote_service
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
+from fiftyone.internal.util import is_remote_service
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionProgress,
@@ -56,6 +56,7 @@ class DelegatedOperationRepo(object):
         log_path: Optional[str] = None,
         progress: Optional[ExecutionProgress] = None,
         required_state: Optional[ExecutionRunState] = None,
+        monitored: bool = False,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -320,6 +321,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         log_path: Optional[str] = None,
         progress: Optional[ExecutionProgress] = None,
         required_state: Optional[ExecutionRunState] = None,
+        monitored: bool = False,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -367,6 +369,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "run_state": run_state,
                     "started_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow(),
+                    "monitored": monitored,
                 }
             }
         elif run_state == ExecutionRunState.SCHEDULED:

@@ -39,7 +39,13 @@ export default function useExit(revertLabel = true) {
 
   return useCallback(() => {
     const store = getDefaultStore();
-    store.get(currentOverlay)?.setSelected?.(false);
+    const overlay = store.get(currentOverlay);
+
+    if (overlay) {
+      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
+      overlay.onHoverLeave();
+    }
+
     const label = store.get(savedLabel);
     const unsaved = store.get(current);
 
@@ -73,21 +79,22 @@ export default function useExit(revertLabel = true) {
     // return the label to the last "saved" state
     label && store.set(currentData, label);
 
-    overlay &&
+    if (overlay) {
       scene?.executeCommand(
         new UpdateLabelCommand(overlay, overlay.label, label)
       );
 
-    if (overlay instanceof BoundingBoxOverlay) {
-      overlay.label.bounding_box &&
-        scene?.executeCommand(
-          new TransformOverlayCommand(
-            overlay,
-            overlay.id,
-            overlay.getAbsoluteBounds(),
-            scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
-          )
-        );
+      if (overlay instanceof BoundingBoxOverlay) {
+        overlay.label.bounding_box &&
+          scene?.executeCommand(
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              overlay.getAbsoluteBounds(),
+              scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
+            )
+          );
+      }
     }
 
     setSaved(null);

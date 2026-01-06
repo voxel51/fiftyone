@@ -1,7 +1,7 @@
 """
 FiftyOne operator types.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3136,7 +3136,7 @@ class IconButtonView(Button):
         inputs.view("icon_btn", iconButtonView)
 
     Args:
-        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+        icon (None): a icon for the button. See https://github.com/marella/material-icons?tab=readme-ov-file#available-icons
         variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
             ``"outlined"``, or ``"contained"``.
         label (None): a label for the button

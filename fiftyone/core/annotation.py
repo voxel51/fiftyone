@@ -1,7 +1,7 @@
 """
 Annotation runs framework.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -153,7 +153,11 @@ def compute_annotation_schema(collection, field_name, scan_samples=True):
             fof.IntField,
         ),
     ):
-        return {"type": "input", "default": None}
+        schema = {"type": "input", "default": None, "ftype": field.__class__.__name__.replace("Field", "").lower()}
+        # Add multipleOf for float fields to set step increment
+        if isinstance(field, fof.FloatField):
+            schema["multipleOf"] = 0.01
+        return schema
 
     if not isinstance(field, fof.EmbeddedDocumentField):
         raise ValueError(f"unsupported annotation field {field}")

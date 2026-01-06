@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -34,6 +34,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.map as focm
@@ -2147,30 +2148,24 @@ class SampleCollection(object):
                     )
                 )
         else:
-            _id_path = _root + "._id"
             id_path = root + "._id"
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
             update["$set"] = {"last_modified_at": now}
 
-            if label_ids is None:
+            if ids is None or label_ids is None:
                 if is_frame_field:
-                    label_ids = self.values(id_path, unwind=True)
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
                 else:
-                    label_ids = self.values(id_path)
+                    ids, label_ids = self.values(["_id", id_path])
 
-            batch_size = fou.recommend_batch_size_for_value(
-                ObjectId(), max_size=100000
-            )
-            for _label_ids in fou.iter_batches(label_ids, batch_size):
-                _label_ids = [_id for _id in _label_ids if _id is not None]
-                if _label_ids:
-                    ops.append(
-                        UpdateMany(
-                            {_id_path: {"$in": _label_ids}},
-                            update,
-                        )
-                    )
+            for _id, _label_id in zip(ids, label_ids):
+                if _label_id is None:
+                    continue
+
+                ops.append(UpdateOne({"_id": _id}, update))
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
@@ -12643,6 +12638,7 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
             id_map[(_id, fn)] = _fid
 
         for fn in set(_vals.keys()) - set(_fns):
+            fofu.validate_frame_number(fn)
             dicts.append(
                 {
                     "_sample_id": ObjectId(_id),

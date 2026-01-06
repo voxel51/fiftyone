@@ -1,7 +1,7 @@
 """
 Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2415,7 +2415,10 @@ class ViewExpression(object):
             if isinstance(values, ViewExpression) or not etau.is_container(
                 values
             ):
-                return ViewExpression({"$in": [values, self]})
+                # The second value must always resolve to an array
+                return ViewExpression(
+                    {"$in": [values, {"$ifNull": [self, []]}]}
+                )
 
         if not all:
             return self.intersection(values).length() > 0

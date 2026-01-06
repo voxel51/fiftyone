@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { getSampleSrc } from "@fiftyone/state";
@@ -10,6 +10,7 @@ import type {
   CanonicalMedia,
   Dimensions,
   Rect,
+  RenderMeta,
 } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
@@ -166,7 +167,10 @@ export class ImageOverlay
     return this.id;
   }
 
-  protected async renderImpl(renderer: Renderer2D): Promise<void> {
+  protected async renderImpl(
+    renderer: Renderer2D,
+    _renderMeta: RenderMeta
+  ): Promise<void> {
     // Only dispose if we don't have a texture yet or if the texture source changed
     const needsDispose = !this.texture || this.texture.type !== "texture";
 

@@ -23,7 +23,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data, choices)}
+        value={getDefaultValue(data, choices)}
         freeSolo={allowUserInput}
         size="small"
         onChange={(e, choice) => {

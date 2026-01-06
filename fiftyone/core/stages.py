@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9339,6 +9339,7 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     SortBySimilarity,
     Shuffle,
     # View stages that only select documents
+    Concat,
     Exclude,
     ExcludeBy,
     ExcludeGroupSlices,

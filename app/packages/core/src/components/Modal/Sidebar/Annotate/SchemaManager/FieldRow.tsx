@@ -1,6 +1,6 @@
 import { Tooltip } from "@fiftyone/components";
-import { DeleteOutlined, EditOutlined } from "@mui/icons-material";
-import { Checkbox, Typography } from "@mui/material";
+import { DragIndicator, EditOutlined } from "@mui/icons-material";
+import { Checkbox, Chip, Typography } from "@mui/material";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React from "react";
@@ -24,48 +24,72 @@ const Selectable = ({ isSelected }: { isSelected: SelectedAtom }) => {
   );
 };
 
-const FieldRow = ({
-  isSelected,
-  path,
-  onDelete,
-}: {
-  isSelected?: SelectedAtom;
+// Placeholder: determine if a field type is supported for annotation
+const isFieldTypeSupported = (_fieldType: string | undefined): boolean => {
+  // TODO: implement actual logic
+  return true;
+};
+
+interface FieldRowProps {
   path: string;
-  onDelete?: {
-    tooltip: string;
-    callback: () => void;
-  };
-}) => {
+  isSelected?: SelectedAtom;
+  showDragHandle?: boolean;
+  hasSchema?: boolean;
+  isReadOnly?: boolean;
+}
+
+const FieldRow = ({
+  path,
+  isSelected,
+  showDragHandle = false,
+  hasSchema = false,
+  isReadOnly = false,
+}: FieldRowProps) => {
   const setField = useSetAtom(currentField);
   const fType = useAtomValue(fieldType(path));
+  const isSupported = isFieldTypeSupported(fType);
 
   return (
     <Item>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
-        {isSelected && <Selectable isSelected={isSelected} />}
-        <Typography>{path}</Typography>
+        {hasSchema && isSelected && <Selectable isSelected={isSelected} />}
+        {showDragHandle && (
+          <DragIndicator
+            fontSize="small"
+            sx={{ color: "text.secondary", cursor: "grab" }}
+          />
+        )}
+        <Typography fontWeight={500}>{path}</Typography>
         <Typography color="secondary">{fType}</Typography>
       </ItemLeft>
 
-      <ItemRight>
-        {onDelete && (
-          <Tooltip placement="top-center" text={onDelete.tooltip}>
+      <ItemRight style={{ gap: "0.5rem" }}>
+        {!isSupported && (
+          <Chip
+            label="Unsupported"
+            size="small"
+            variant="outlined"
+            sx={{ opacity: 0.7 }}
+          />
+        )}
+        {isReadOnly && (
+          <Chip
+            label="Read-only"
+            size="small"
+            variant="outlined"
+            sx={{ opacity: 0.7 }}
+          />
+        )}
+        {isSupported && (
+          <Tooltip placement="top-center" text="Configure annotation schema">
             <RoundButtonWhite
               style={{ padding: 4, height: 29, width: 29 }}
-              onClick={onDelete.callback}
+              onClick={() => setField(path)}
             >
-              <DeleteOutlined />
+              <EditOutlined />
             </RoundButtonWhite>
           </Tooltip>
         )}
-        <Tooltip placement="top-center" text="Configure annotation schema">
-          <RoundButtonWhite
-            style={{ padding: 4, height: 29, width: 29 }}
-            onClick={() => setField(path)}
-          >
-            <EditOutlined />
-          </RoundButtonWhite>
-        </Tooltip>
       </ItemRight>
     </Item>
   );
