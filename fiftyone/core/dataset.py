@@ -1113,10 +1113,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """The list of active fields in the dataset's
         :ref:`label schemas <annotation-label-schema>`.
         """
-        return list(self._doc.active_label_schemas)
+        return list(self._doc.active_label_schemas or [])
 
     @active_label_schemas.setter
     def active_label_schemas(self, fields):
+        if etau.is_str(fields):
+            fields = [fields]
+        elif fields is None:
+            fields = []
+        else:
+            fields = list(fields)
+
         for field in fields:
             if field not in self._doc.label_schemas:
                 raise ValueError(
@@ -1173,7 +1180,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         foa.validate_label_schemas(self, label_schemas)
         self._doc.label_schemas = label_schemas
-        active = list(self.active_label_schemas)
+        active = list(self.active_label_schemas or [])
 
         for field in self._doc.active_label_schemas:
             if field not in label_schemas:

@@ -6,6 +6,8 @@ Annotation label schema generation
 |
 """
 
+from pymongo.errors import OperationFailure
+
 import eta.core.utils as etau
 
 import fiftyone.core.annotation.constants as foac
@@ -424,7 +426,7 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
             if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
                 settings[foac.VALUES] = values
 
-    except Exception:
+    except OperationFailure:
         # too many distinct values
         pass
 

@@ -82,6 +82,9 @@ def list_valid_annotation_fields(
             by the App for annotation
         flatten (False): whether to flatten embedded documents with
             ``dot.notation``
+
+    Returns:
+        a sorted list of valid annotation field names
     """
     fields = sample_collection.get_field_schema()
     media_type = sample_collection.media_type
@@ -115,8 +118,8 @@ def flatten_fields(collection, fields, require_app_support=False):
     Args:
         collection: the sample collection
         fields: iterable of field names to flatten
-        app_support (False): whether to only include fields supported by the
-            App for annotation
+        require_app_support (False): whether to only include fields supported
+            by the App for annotation
 
     Returns:
         sorted list of flattened field names
