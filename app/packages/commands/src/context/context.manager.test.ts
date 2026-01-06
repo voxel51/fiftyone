@@ -8,7 +8,7 @@ describe("CommandContextManager", () => {
     });
 
     it("can push/pop contexts", () => {
-        const listener = vi.fn((newId) => { return; });
+        const listener = vi.fn((_newId) => { return; });
         const newContext = CommandContextManager.instance().createCommandContext("fo.test", true);
         const unsub = CommandContextManager.instance().subscribe(listener);
         CommandContextManager.instance().pushContext(newContext);

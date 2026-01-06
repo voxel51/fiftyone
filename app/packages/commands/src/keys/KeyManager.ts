@@ -17,7 +17,7 @@ export type KeyMatchState = {
  * @see KeyParser for documentation on the binding format.
  */
 export class KeyManager {
-  private bindings = new Map<Array<KeySequence>, Command>();
+  private bindings = new Map<string, Command>();
   private priorMatches = new Array<KeyboardEvent>();
   /**
    * @param commandRegistry For testing we want a local command registry.
@@ -34,15 +34,16 @@ export class KeyManager {
   public match(
     event: KeyboardEvent,
   ): KeyMatchState {
-    let state: KeyMatchState = {
+    const state: KeyMatchState = {
       partial: false,
     }
     let hasMatch = false;
     let command: Command | undefined = undefined;
-    for (const [sequences, cmd] of this.bindings) {
+    for (const [binding, cmd] of this.bindings) {
       if(command){
         break;
       }
+      const sequences = KeyParser.parseBinding(binding);
       for (const [index, sequence] of sequences.entries()) {
         //Match to prior matches for the begining if there are any
         if (index < this.priorMatches.length) {
@@ -94,19 +95,8 @@ export class KeyManager {
   private isKeyBound(
     test: Array<KeySequence>
   ): boolean {
-    return (
-      [...this.bindings.keys()].find((sequences) => {
-        if (sequences.length !== test.length) {
-          return false;
-        }
-        for (let i = 0; i < sequences.length; i++) {
-          if (!sequences[i].equals(test[i])) {
-            return false;
-          }
-        }
-        return true;
-      }) !== undefined
-    );
+    const normal = this.normalizeBinding(test);
+    return this.bindings.has(normal);
   }
   /**
    * @see KeyParser for documentation of the sequence specification
@@ -121,12 +111,25 @@ export class KeyManager {
         `The command id ${commandId} is not registered for binding ${sequence}`
       );
     }
+    
     if (this.isKeyBound(keySequences)) {
       throw new Error(
         `The binding ${sequence} is already bound in this context`
       );
     }
-    this.bindings.set(keySequences, command);
+    this.bindings.set(this.normalizeBinding(keySequences), command);
+  }
+
+  private normalizeBinding(sequences: KeySequence[]){
+    const strings = new Array<string>();
+    sequences.forEach((sequence)=>{
+      strings.push(sequence.toString());
+    })
+    return strings.join(',');
+  }
+
+  public unbindKey(sequence: string){
+    this.bindings.delete(this.normalizeBinding(KeyParser.parseBinding(sequence)));
   }
 
   public resetKeyState(){

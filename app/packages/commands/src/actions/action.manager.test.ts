@@ -33,7 +33,7 @@ describe("ActionManager", () => {
     });
 
     it("fires action events on execute/undo/redo", async () => {
-        const listener = vi.fn((id, isUndo) => { return; })
+        const listener = vi.fn((_id, _isUndo) => { return; })
         const unsub = manager.subscribeActions(listener);
         await manager.execute(action);
         expect(listener).toBeCalledTimes(1);

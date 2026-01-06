@@ -11,6 +11,7 @@ import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import { KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -122,33 +123,22 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     };
   }, [nextNavigator, previousNavigator]);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
+  const navLeft = useCallback(async () => {
+    previousNavigator.navigate();
+  }, [[previousNavigator]]);
+  const navRight = useCallback(async () => {
+    nextNavigator.navigate();
+  }, [nextNavigator]);
 
-      // Prevent navigation when interacting with any form field
-      if (
-        active?.tagName === "INPUT" ||
-        active?.tagName === "TEXTAREA" ||
-        active?.tagName === "SELECT"
-      ) {
-        return;
-      }
+  const { context } = useCommandContext(KnownContexts.Modal);
 
-      if (e.altKey || e.ctrlKey || e.metaKey) {
-        return;
-      }
+  const previousCmd = useCommand(context, "fo.modal.previous", 
+    navLeft, ()=>{ return true;}, "Previous", "Previous Sample");
+  const nextCmd = useCommand(context, "fo.modal.next", 
+    navRight, ()=>{return true; }, "Next", "Next Sample");
+  useKeyBinding(previousCmd.id, "ArrowLeft", context);
+  useKeyBinding(nextCmd.id, "ArrowRight", context);
 
-      if (e.key === "ArrowLeft") {
-        previousNavigator.navigate();
-      } else if (e.key === "ArrowRight") {
-        nextNavigator.navigate();
-      }
-    },
-    [nextNavigator, previousNavigator]
-  );
-
-  fos.useEventHandler(document, "keyup", keyboardHandler);
   const { confirmExit } = useConfirmExit(useExit(), useSave());
 
   const next = useCallback(

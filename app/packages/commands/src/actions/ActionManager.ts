@@ -42,8 +42,8 @@ export class ActionManager {
   private undoStack: Undoable[] = [];
   private redoStack: Undoable[] = [];
   private maxStackSize = 100;
-  private undoListeners = new Array<WeakRef<UndoStateListener>>();
-  private actionListeners = new Array<WeakRef<ActionListener>>();
+  private undoListeners = new Set<UndoStateListener>();
+  private actionListeners = new Set<ActionListener>();
 
   /**
    * Pushes an undoable action onto the undo stack.
@@ -141,52 +141,28 @@ export class ActionManager {
   }
 
   public subscribeUndo(listener: UndoStateListener): () => void {
-    const ref = new WeakRef(listener);
-    this.undoListeners.push(ref);
+    this.undoListeners.add(listener);
     return () => {
-      this.undoListeners = this.undoListeners.filter((ref) => {
-        const deref = ref.deref();
-        if (!deref || listener === deref) {
-          return false;
-        }
-      });
-      return true;
+      this.undoListeners.delete(listener);
     }
   }
 
   public subscribeActions(listener: ActionListener): () => void {
-    const ref = new WeakRef(listener);
-    this.actionListeners.push(ref);
+    this.actionListeners.add(listener);
     return () => {
-      this.actionListeners = this.actionListeners.filter((ref) => {
-        const deref = ref.deref();
-        if (!deref || listener === deref) {
-          return false;
-        }
-      });
-      return true;
+      this.actionListeners.delete(listener);
     }
   }
 
   private fireUndoListeners() {
-    this.undoListeners = this.undoListeners.filter((ref) => {
-      const deref = ref.deref();
-      if (!deref) {
-        return false;
-      }
-      deref(this.canUndo(), this.canRedo());
-      return true;
-    });
+    this.undoListeners.forEach((l)=>{
+      l(this.canUndo(), this.canRedo());
+    })
   }
 
   private fireActionListeners(id: string, isUndo: boolean) {
-    this.actionListeners = this.actionListeners.filter((ref) => {
-      const deref = ref.deref();
-      if (!deref) {
-        return false;
-      }
-      deref(id, isUndo);
-      return true;
-    })
+    this.actionListeners.forEach(listener => {
+      listener(id, isUndo);
+    });
   }
 }

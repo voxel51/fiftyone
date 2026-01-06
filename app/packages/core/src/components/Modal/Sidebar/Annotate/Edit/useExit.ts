@@ -13,6 +13,7 @@ import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
 import { current, currentData, currentOverlay, savedLabel } from "./state";
+import { CommandContextManager } from "@fiftyone/commands";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
@@ -52,10 +53,8 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-
-    // We are leaving editing mode, clear the stack
-    scene?.clearUndoRedoStack();
-
+    
+    CommandContextManager.instance().clearUndoRedoStack();
     if (!label || !revertLabel) {
       setSaved(null);
       setEditing(null);

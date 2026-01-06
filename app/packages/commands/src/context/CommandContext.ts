@@ -18,6 +18,7 @@ export class CommandContext {
     private readonly actions = new ActionManager();
     private readonly commands = new CommandRegistry(this.actions);
     private readonly keys = new KeyManager(this.commands);
+    private unsubscribes = new Array<() => void>();
     private lastCanUndo = false;
     private lastCanRedo = false;
     private undoListeners = new Set<UndoStateListener>();
@@ -27,7 +28,18 @@ export class CommandContext {
             this.lastCanUndo = parent.canUndo();
             this.lastCanRedo = parent.canRedo();
         }
-        this.listenToAllUndo(this.updateUndoState.bind(this));
+
+    }
+
+    public activate() {
+        this.unsubscribes.push(this.listenToAllUndo(this.updateUndoState.bind(this)));
+    }
+
+    public deactivate() {
+        this.unsubscribes.forEach((unsubFn) => {
+            unsubFn();
+        });
+        this.unsubscribes = [];
     }
     /**
      * Adds a listeners to the local ActionManager and all parent
@@ -35,11 +47,16 @@ export class CommandContext {
      * in the heirarchy.
      * @param l the listener
      */
-    private listenToAllUndo(l: () => void): void {
-        this.actions.subscribeUndo(l);
+    private listenToAllUndo(l: () => void): () => void {
+        const unsubLocal = this.actions.subscribeUndo(l);
         if (this.parent) {
-            this.parent.listenToAllUndo(l);
+            const unsubParent = this.parent.listenToAllUndo(l);
+            return () => {
+                unsubLocal();
+                unsubParent();
+            }
         }
+        return unsubLocal;
     }
     /**
      * Called when this context or any parent context's undo state changes.
@@ -47,9 +64,11 @@ export class CommandContext {
      * of all available scopes.  If there is a change, listeners are invoked.
      */
     private updateUndoState() {
-        let newUndo = this.canUndo();
-        let newRedo = this.canRedo();
+        const newUndo = this.canUndo();
+        const newRedo = this.canRedo();
+        console.debug(`updateUndoState ${newUndo} ${newRedo}`)
         if (newUndo !== this.lastCanUndo || newRedo !== this.lastCanRedo) {
+            console.debug("firing context undo listeners");
             this.lastCanUndo = newUndo;
             this.lastCanRedo = newRedo;
             this.fireUndoListeners();
@@ -167,12 +186,12 @@ export class CommandContext {
         }
     }
 
-    public subscribeActions(listener: ActionListener): ()=> void{
+    public subscribeActions(listener: ActionListener): () => void {
         const unsub = this.actions.subscribeActions(listener);
-        if(this.parent){
+        if (this.parent) {
             //subscribe recursively and curry the unsubscribes
             const parentUnsub = this.parent.subscribeActions(listener);
-            return ()=>{
+            return () => {
                 unsub();
                 parentUnsub();
             }
@@ -215,8 +234,11 @@ export class CommandContext {
         return this.commands.registerCommand(id, execute, enablement, label, description);
     }
 
+    public unregisterCommand(id: string) {
+        this.commands.unregisterCommand(id);
+    }
     public getCommand(id: string): Command | undefined {
-        let command = this.commands.getCommand(id);
+        const command = this.commands.getCommand(id);
         if (command) {
             return command;
         }
@@ -232,7 +254,7 @@ export class CommandContext {
             resolved = cmd;
         }
         if (resolved) {
-            let result = await resolved.execute();
+            const result = await resolved.execute();
             if (result && "undo" in result && typeof result.undo === "function") {
                 this.actions.push(result as Undoable);
             }
@@ -242,7 +264,15 @@ export class CommandContext {
         return false;
     }
 
-    public bindKey(seqence: string, commandId: string) : void {
-        this.keys.bindKey(seqence, commandId);
+    public bindKey(sequence: string, commandId: string): void {
+        this.keys.bindKey(sequence, commandId);
+    }
+    public unbindKey(binding: string){
+        this.keys.unbindKey(binding);
+    }
+
+    public clearUndoRedoStack(){
+        this.actions.clear();
+        this.parent?.clearUndoRedoStack();
     }
 }

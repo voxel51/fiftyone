@@ -52,6 +52,40 @@ describe("KeyManager", () => {
         expect(state.full).toBeDefined();
     });
 
+    it("can match a single key binding", async () => {
+        const keyEvent = new KeyboardEvent("keydown", { key: "s" });
+        const command = commandRegistry.registerCommand(
+            "fo.test.command",
+            async () => {
+                return;
+            },
+            () => { return true; }
+        );
+        expect(command).toBeDefined();
+        expect(() => {
+            keyManager.bindKey("s", "fo.test.command");
+        }).not.toThrow();
+        const state = keyManager.match(keyEvent);
+        expect(state.full).toBeDefined();
+    });
+
+    it("can match a single sequence command binding alt+space", async () => {
+        const keyEvent = new KeyboardEvent("keydown", { altKey: true, key: String.fromCharCode(160) });
+        const command = commandRegistry.registerCommand(
+            "fo.test.command",
+            async () => {
+                return;
+            },
+            () => { return true; }
+        );
+        expect(command).toBeDefined();
+        expect(() => {
+            keyManager.bindKey("alt+space", "fo.test.command");
+        }).not.toThrow();
+        const state = keyManager.match(keyEvent);
+        expect(state.full).toBeDefined();
+    });
+
     it("does not match a single sequence command binding with unexpected modifier keys", async () => {
         const keyEvent = new KeyboardEvent("keydown", { ctrlKey: true, altKey: true, key: "s" });
         const command = commandRegistry.registerCommand(

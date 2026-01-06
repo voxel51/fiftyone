@@ -477,31 +477,6 @@ export class InteractionManager {
     ) {
       return;
     }
-
-    // Handle undo: Ctrl+Z (or Cmd+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === "z" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      await CommandContextManager.instance().getActiveContext().undo();
-      return;
-    }
-
-    // Handle redo: Ctrl+Y or Ctrl+Shift+Z (or Cmd+Y/Cmd+Shift+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      ((event.key === "y" && !event.shiftKey) ||
-        (event.key === "z" && event.shiftKey))
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      await CommandContextManager.instance().getActiveContext().redo();
-      return;
-    }
-
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
@@ -532,7 +507,7 @@ export class InteractionManager {
 
     const distance = Math.sqrt(
       Math.pow(point.x - this.clickStartPoint.x, 2) +
-        Math.pow(point.y - this.clickStartPoint.y, 2)
+      Math.pow(point.y - this.clickStartPoint.y, 2)
     );
     const duration = now - this.clickStartTime;
 
@@ -659,7 +634,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-        Math.pow(point.y - this.lastClickPoint.y, 2)
+      Math.pow(point.y - this.lastClickPoint.y, 2)
     );
 
     return (

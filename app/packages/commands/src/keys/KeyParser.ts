@@ -23,13 +23,18 @@ export class KeySequence {
         );
     }
     //Match for KeyboardEvents
-    public matches(other: KeyboardEvent) {
+    public matches(event: KeyboardEvent) {
+        let key = event.key.toLocaleLowerCase();
+        if (event.key.length === 1 && event.key.charCodeAt(0) === 160) {
+            //handles the case where alt+space changes the key from " "(32) to &nbsp(160)
+            key = ' ';
+        }
         return (
-            other.ctrlKey === this.isCtrl &&
-            other.metaKey === this.isMeta &&
-            other.shiftKey === this.isShift &&
-            other.altKey === this.isAlt &&
-            other.key === this.key
+            (event.ctrlKey === this.isCtrl) &&
+            (event.metaKey === this.isMeta) &&
+            (event.shiftKey === this.isShift) &&
+            (event.altKey === this.isAlt) &&
+            (key === this.key)
         );
     }
     /**
@@ -65,7 +70,12 @@ export class KeySequence {
             if (ret.length > 0) {
                 ret += "+"
             }
-            ret += this.key;
+            if (this.key === " ") {
+                ret += "space";
+            }
+            else {
+                ret += this.key;
+            }
         }
         return ret;
     }
@@ -172,7 +182,7 @@ export class KeyParser {
                     }
                     switch (keyLow) {
                         case "space":
-                            keySequence.key = " ";
+                            keySequence.key = ' ';
                             break;
                         //unescape \+ (= is the lower case)
                         case "\\+":

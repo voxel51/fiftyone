@@ -693,7 +693,7 @@ export class Scene2D {
    * Recalculates the overlay rendering order based on activePaths and interactive state.
    */
   private recalculateOverlayOrder() {
-    const { activePaths, showOverlays, alpha } = this.sceneOptions || {};
+    const { activePaths } = this.sceneOptions || {};
     const pixelCoordinates = this.interactionManager.getPixelCoordinates();
 
     if (!pixelCoordinates) {
@@ -1066,7 +1066,8 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  transformOverlay(id: string, options: TransformOptions): boolean {
+  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+    console.debug('transformOverlay');
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1098,6 +1099,7 @@ export class Scene2D {
     }
 
     // Create and execute transform command for undo/redo support
+    console.debug("Executing transform");
     const command = new TransformOverlayCommand(
       overlay,
       id,
@@ -1105,7 +1107,7 @@ export class Scene2D {
       newBounds
     );
 
-    this.executeCommand(command);
+    await this.executeCommand(command);
 
     return true;
   }
@@ -1162,8 +1164,8 @@ export class Scene2D {
    * @param command - The command to execute.
    * @param isUndoable - Whether the command is undoable.
    */
-  executeCommand(command: Action, isUndoable = true): void {
-    CommandContextManager.instance().getActiveContext().executeAction(command);
+  async executeCommand(command: Action, isUndoable = true): Promise<void> {
+    await CommandContextManager.instance().getActiveContext().executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,

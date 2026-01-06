@@ -10,6 +10,8 @@ describe("CommandContext", () => {
 
   beforeEach(() => {
     context = new CommandContext("test");
+    //typically called by the CommandContextManager on push, not directly
+    context.activate();
     testExec = vi.fn(async () => { return; });
     testUndo = vi.fn(async () => { return; });
     testUndoable = new DelegatingUndoable("fo.test.undo", testExec, testUndo);
@@ -45,7 +47,7 @@ describe("CommandContext", () => {
   });
 
   it("fires updates on undo redo state changes", async () => {
-    const listener = vi.fn((undoEnabled, redoEnabled) => { return; });
+    const listener = vi.fn((_undoEnabled, _redoEnabled) => { return; });
     const unsub = context.subscribeUndoState(listener);
     await context.executeAction(testUndoable);
     expect(listener).toBeCalledTimes(1);
@@ -67,7 +69,7 @@ describe("CommandContext", () => {
   });
 
   it("fires action events on execute/undo/redo", async () => {
-    const listener = vi.fn((id, isUndo) => { return; })
+    const listener = vi.fn((_id, _isUndo) => { return; })
     const unsub = context.subscribeActions(listener);
     await context.executeAction(testUndoable);
     expect(listener).toBeCalledTimes(1);

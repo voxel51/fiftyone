@@ -57,9 +57,9 @@ export const useLighter = () => {
   );
 
   const transformOverlay = useCallback(
-    (id: string, options: TransformOptions) => {
+    async (id: string, options: TransformOptions) => {
       if (scene) {
-        return scene.transformOverlay(id, options);
+        return await scene.transformOverlay(id, options);
       }
       return false;
     },

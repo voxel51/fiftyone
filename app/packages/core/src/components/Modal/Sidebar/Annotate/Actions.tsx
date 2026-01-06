@@ -1,5 +1,4 @@
 import { Tooltip } from "@fiftyone/components";
-import { useLighter } from "@fiftyone/lighter";
 import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";

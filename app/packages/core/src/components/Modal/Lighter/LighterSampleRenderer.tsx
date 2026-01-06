@@ -33,7 +33,6 @@ export const LighterSampleRenderer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // unique scene id allows us to destroy/recreate scenes reliably
   const [sceneId, setSceneId] = useState<string | null>(null);
-
   // we have this hack to force a re-render on layout effect, so that containerRef.current is defined
   // this is to allow stable singleton canvas to bind to new containers
   const [, setReTrigger] = useState(0);
