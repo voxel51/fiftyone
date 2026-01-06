@@ -11,6 +11,7 @@ Inspired by https://github.com/sphinx-contrib/redirects.
 import glob
 import json
 import os
+import re
 
 from sphinx.builders import html as builders
 from sphinx.util import logging
@@ -117,6 +118,35 @@ def _process_zoo_redirects(app):
         )
 
 
+def _process_api_redirects(app):
+    """Generate redirects for old-style API class URLs to main API page."""
+    api_dir = os.path.join(app.builder.outdir, "api")
+    if not os.path.exists(api_dir):
+        return
+
+    count = 0
+    for html_file in glob.glob(os.path.join(api_dir, "fiftyone.*.html")):
+        module_name = os.path.basename(html_file)
+        with open(html_file) as f:
+            for class_id in re.findall(r'id="(fiftyone\.[^"]+)"', f.read()):
+                if not class_id.split(".")[-1][0].isupper():
+                    continue
+
+                redirect_file = "%s.html" % class_id
+                if os.path.exists(os.path.join(api_dir, redirect_file)):
+                    continue
+
+                _write_redirect_file(
+                    api_dir,
+                    redirect_file,
+                    "%s#%s" % (module_name, class_id),
+                    _REDIRECT_TEMPLATE,
+                )
+                count += 1
+
+    logger.info("Created %d API class redirect pages" % count)
+
+
 def generate_redirects(app):
     if not isinstance(app.builder, builders.StandaloneHTMLBuilder):
         logger.warning(
@@ -127,6 +157,17 @@ def generate_redirects(app):
 
     _process_static_redirects(app)
     _process_zoo_redirects(app)
+
+
+def generate_api_redirects(app, exception):
+    """Sphinx build-finished event handler to generate API redirects."""
+    if exception is not None:
+        return
+
+    if not isinstance(app.builder, builders.StandaloneHTMLBuilder):
+        return
+
+    _process_api_redirects(app)
 
 
 _REDIRECT_TEMPLATE = """
