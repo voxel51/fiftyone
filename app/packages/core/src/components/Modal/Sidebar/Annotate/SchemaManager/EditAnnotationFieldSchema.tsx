@@ -11,10 +11,11 @@ import {
   EditOutlined,
   Sync,
 } from "@mui/icons-material";
-import { MenuItem, Select, TextField } from "@mui/material";
 import {
   Button,
+  Input,
   Pill,
+  Select,
   Size,
   Text,
   TextColor,
@@ -467,65 +468,58 @@ const EditAnnotationFieldSchema = ({ path }: { path: string }) => {
       <FieldRow style={{ marginTop: "1rem" }}>
         <FieldColumn>
           <Text
-            variant={TextVariant.Sm}
+            variant={TextVariant.Xl}
             color={TextColor.Secondary}
             className="mb-2 block"
           >
             Field name
           </Text>
           <Select
-            fullWidth
-            size="small"
+            exclusive
             value={path}
-            onChange={(e) => setCurrentField(e.target.value as string)}
-          >
-            {allFields.map((field) => (
-              <MenuItem key={field} value={field}>
-                {field}
-              </MenuItem>
-            ))}
-          </Select>
+            onChange={(value) => {
+              if (typeof value === "string") {
+                setCurrentField(value);
+              }
+            }}
+            options={allFields.map((field) => ({
+              id: field,
+              data: { label: field },
+            }))}
+          />
         </FieldColumn>
         <FieldColumn>
           <Text
-            variant={TextVariant.Sm}
+            variant={TextVariant.Xl}
             color={TextColor.Secondary}
             className="mb-2 block"
           >
             Field type
           </Text>
-          <TextField
-            fullWidth
-            size="small"
-            value={fType || ""}
-            disabled
-            InputProps={{ readOnly: true }}
-          />
+          <Input value={fType || ""} disabled readOnly />
         </FieldColumn>
       </FieldRow>
 
       {/* Read-only toggle */}
       <div className="my-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <Text className="font-medium block">Read-only</Text>
-            <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              When enabled, annotators can view this field but can't edit its
-              values.
-            </Text>
-          </div>
+        <div className="flex items-center justify-between mb-1">
+          <Text variant={TextVariant.Xl}>Read-only</Text>
           <Toggle
             size={Size.Sm}
             checked={readOnlyField}
             onChange={(checked) => setReadOnlyField(checked)}
           />
         </div>
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          When enabled, annotators can view this field but can't edit its
+          values.
+        </Text>
       </div>
 
       {/* Schema section */}
       <SchemaSection>
         <TabsRow>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
             Schema
           </Text>
           <Button
