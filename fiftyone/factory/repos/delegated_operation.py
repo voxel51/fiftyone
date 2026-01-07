@@ -557,17 +557,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             update={"$set": {"archived": False}},
             return_document=pymongo.ReturnDocument.AFTER,
         )
-        return DelegatedOperationDocument().from_pymongo(doc)
+        if doc:
+            return DelegatedOperationDocument().from_pymongo(doc)
 
     def delete_operation(
         self, _id: ObjectId, archive: bool = False
     ) -> DelegatedOperationDocument:
         if archive:
-            self._collection.update_one(
+            doc = self._collection.find_one_and_update_one(
                 filter={"_id": _id},
                 update={"$set": {"archived": True}},
+                return_document=pymongo.ReturnDocument.AFTER,
             )
-            doc = self._collection.find_one(filter={"_id": _id})
         else:
             doc = self._collection.find_one_and_delete(
                 filter={"_id": _id},
