@@ -564,7 +564,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self, _id: ObjectId, archive: bool = False
     ) -> DelegatedOperationDocument:
         if archive:
-            doc = self._collection.find_one_and_update_one(
+            doc = self._collection.find_one_and_update(
                 filter={"_id": _id},
                 update={"$set": {"archived": True}},
                 return_document=pymongo.ReturnDocument.AFTER,
