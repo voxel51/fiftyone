@@ -1383,11 +1383,11 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             )
 
             #####
-            with self.assertRaises(
-                ValueError,
-                msg="Pipeline execution failed",
-            ):
-                asyncio.run(self.svc._execute_operator(pipeline_do))
+            result = asyncio.run(self.svc._execute_operator(pipeline_do))
+            assert (
+                result.error_message
+                and "Pipeline execution failed" in result.error_message
+            )
             #####
 
             prepare_operator_mock.assert_called_once_with(

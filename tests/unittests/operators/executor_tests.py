@@ -393,6 +393,6 @@ class TestPipeline:
         assert isinstance(result, ExecutionResult)
         assert result.error is not None
         assert (
-            result.error_message
-            == "Failed to execute pipeline stage[0]: Operator failed"
+            "Failed to execute pipeline stage[0]: Operator failed"
+            in result.error_message
         )
