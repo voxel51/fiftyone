@@ -1,14 +1,10 @@
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
-import {
-  getBrowserStorageEffectForKey,
-  groupId,
-  nullableModalSampleId,
-} from "@fiftyone/state";
+import { groupId, nullableModalSampleId } from "@fiftyone/state";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
 import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
-import type { Vector3Tuple } from "three";
 import type {
   AnnotationPlaneState,
   PolylinePointTransformData,
@@ -16,6 +12,7 @@ import type {
   SelectedPoint,
   TransformMode,
 } from "./annotation/types";
+import { CuboidTransformData } from "./annotation/useSetEditingToNewCuboid";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type {
@@ -25,7 +22,6 @@ import type {
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
-import { CuboidTransformData } from "./annotation/useSetEditingToNewCuboid";
 
 // =============================================================================
 // GENERAL 3D
