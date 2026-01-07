@@ -3579,6 +3579,7 @@ class DelegatedArchiveCommand(Command):
             nargs="*",
             default=None,
             metavar="IDS",
+            help="an operation ID or list of operation IDs",
         )
         parser.add_argument(
             "--unarchive",
