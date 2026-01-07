@@ -7,20 +7,37 @@ Execution Store specific event handling logic.
 """
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Set, Tuple, Callable
+from typing import Any, Callable, Dict, Optional, Set, Tuple
 
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCollection
 
 from fiftyone.operators.message import MessageData, MessageMetadata
+from fiftyone.server.events.constants import (
+    OPERATION_TYPE_DELETE,
+    OPERATION_TYPE_INSERT,
+    OPERATION_TYPE_UPDATE,
+)
 from fiftyone.server.events.service import PollingStrategy
+
+# Key used internally for store metadata
+STORE_METADATA_KEY = "__store__"
 
 
 def execution_store_message_builder(
     change: Dict[str, Any]
-) -> Tuple[str, MessageData]:
-    """Builds a message from a change stream document for Execution Store."""
-    operation_type = change["operationType"]
+) -> Tuple[Optional[str], Optional[MessageData]]:
+    """Build a message from a change stream document for Execution Store.
+
+    Args:
+        change: MongoDB change stream document.
+
+    Returns:
+        Tuple of (store_name, MessageData), or (None, None) if invalid.
+    """
+    operation_type = change.get("operationType")
+    if not operation_type:
+        return None, None
 
     # Get the store name from the document
     if "fullDocument" in change and change["fullDocument"]:
@@ -29,15 +46,14 @@ def execution_store_message_builder(
         key = change["fullDocument"].get("key")
         value = change["fullDocument"].get("value")
     else:
-        # For delete operations, we need to use the document key
-        doc_id = change["documentKey"].get("_id", {})
+        # For delete operations, use the document key
+        doc_id = change.get("documentKey", {}).get("_id", {})
         if isinstance(doc_id, dict):
             store_name = doc_id.get("store_name")
             dataset_id = doc_id.get("dataset_id")
             key = doc_id.get("key")
             value = None
         else:
-            # If we can't get the store name, return None
             return None, None
 
     if not store_name:
@@ -65,10 +81,18 @@ def execution_store_message_builder(
 def execution_store_initial_state_builder(
     channel: str, dataset_id: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Builds the query for initial state for Execution Store."""
-    query = {
+    """Build the query for initial state for Execution Store.
+
+    Args:
+        channel: The store name to get initial state for.
+        dataset_id: Optional dataset ID to filter by.
+
+    Returns:
+        MongoDB query filter for initial state documents.
+    """
+    query: Dict[str, Any] = {
         "store_name": channel,
-        "key": {"$ne": "__store__"},
+        "key": {"$ne": STORE_METADATA_KEY},
     }
 
     if dataset_id is not None:
@@ -80,6 +104,12 @@ def execution_store_initial_state_builder(
 
 
 class ExecutionStorePollingStrategy(PollingStrategy):
+    """Polling strategy for Execution Store collections.
+
+    Tracks keys per store to detect inserts, updates, and deletes
+    when change streams are unavailable.
+    """
+
     def __init__(self):
         self._last_keys: Dict[str, Set[str]] = {}
 
@@ -89,9 +119,20 @@ class ExecutionStorePollingStrategy(PollingStrategy):
         notify_callback: Callable[[str, MessageData], Any],
         last_poll_time: Optional[datetime],
     ) -> datetime:
+        """Poll the execution store for changes.
+
+        Args:
+            collection: The MongoDB collection to poll.
+            notify_callback: Async callback to notify of changes.
+            last_poll_time: Time of last poll, or None for first poll.
+
+        Returns:
+            Timestamp of this poll.
+        """
         now = datetime.now(timezone.utc)
         store_names = await collection.distinct("store_name")
 
+        # First poll: initialize state
         if last_poll_time is None:
             for store_name in store_names:
                 self._last_keys[store_name] = set(
@@ -110,13 +151,13 @@ class ExecutionStorePollingStrategy(PollingStrategy):
             # Detect deleted keys
             deleted_keys = previous_keys - current_keys
             for key in deleted_keys:
-                if key == "__store__":
+                if key == STORE_METADATA_KEY:
                     continue
                 message_data = MessageData(
                     key=key,
                     value=None,
                     metadata=MessageMetadata(
-                        operation_type="delete",
+                        operation_type=OPERATION_TYPE_DELETE,
                         dataset_id=None,
                         timestamp=datetime.now(timezone.utc).isoformat(),
                     ),
@@ -132,11 +173,15 @@ class ExecutionStorePollingStrategy(PollingStrategy):
             docs = await collection.find(query).to_list()
             for doc in docs:
                 key = doc["key"]
-                if key == "__store__":
+                if key == STORE_METADATA_KEY:
                     continue
                 value = doc["value"]
                 dataset_id = doc.get("dataset_id")
-                event = "insert" if key not in previous_keys else "update"
+                event = (
+                    OPERATION_TYPE_INSERT
+                    if key not in previous_keys
+                    else OPERATION_TYPE_UPDATE
+                )
 
                 message_data = MessageData(
                     key=key,

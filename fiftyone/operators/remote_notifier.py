@@ -1,9 +1,9 @@
 """
-FiftyOne operator server SSE notifier for execution store events.
+FiftyOne operator server SSE notifier for real-time events.
 
 This module provides an SSE notifier that listens for notification requests
-targeting a specific execution store. When a broadcast is sent to a store,
-all connected SSE clients subscribed to that store will receive the message.
+targeting specific channels. When a broadcast is sent to a channel,
+all connected SSE clients subscribed to that channel receive the message.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,6 +19,8 @@ from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Dict, Optional, Set, Tuple
 
 from sse_starlette.sse import EventSourceResponse
+
+from fiftyone.server.events.constants import get_startup_timeout_seconds
 
 logger = logging.getLogger(__name__)
 
@@ -182,12 +184,17 @@ class SseNotifier(RemoteNotifier):
         channel: str,
         dataset_id: Optional[str] = None,
         collection_name: str = "execution_store",
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
+        """Broadcast the current state of the channel to the connected client.
+
+        Args:
+            queue: The asyncio queue to send messages to.
+            channel: The channel to sync state for.
+            dataset_id: Optional dataset ID to filter by.
+            collection_name: The collection name to get the service for.
+            loop: The event loop the queue belongs to.
         """
-        Broadcast the current state of the channel to the connected client.
-        """
-        # Get the notification service from the manager
         from fiftyone.server.events.manager import (
             get_default_notification_manager,
         )
@@ -200,24 +207,27 @@ class SseNotifier(RemoteNotifier):
 
         if not notification_service:
             logger.warning(
-                f"Notification service for collection '{collection_name}' not found in manager"
+                "Notification service for collection '%s' not found in manager",
+                collection_name,
             )
             return
 
-        # wait until the notification service is started, with a timeout of 10 seconds
+        # Wait for notification service to start
+        timeout = get_startup_timeout_seconds()
         start_time = time.time()
         while not notification_service.is_running:
-            if time.time() - start_time > 10:
+            if time.time() - start_time > timeout:
                 raise TimeoutError(
-                    "Notification service failed to start within 10 seconds"
+                    f"Notification service failed to start within {timeout} seconds"
                 )
             await asyncio.sleep(0.5)
 
         def _thread_safe_put(msg):
             loop.call_soon_threadsafe(queue.put_nowait, msg.to_json())
 
+        # Use the public broadcast_initial_state method
         asyncio.run_coroutine_threadsafe(
-            notification_service._broadcast_current_state_for_channel(
+            notification_service.broadcast_initial_state(
                 channel,
                 dataset_id,
                 _thread_safe_put,

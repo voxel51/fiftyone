@@ -33,17 +33,13 @@ import fiftyone.constants as foc
 from fiftyone.operators.remote_notifier import default_sse_notifier
 from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
-from fiftyone.server.events.execution_store import (
-    execution_store_message_builder,
-    execution_store_initial_state_builder,
+from fiftyone.server.events import (
     ExecutionStorePollingStrategy,
+    execution_store_initial_state_builder,
+    execution_store_message_builder,
+    get_default_notification_manager,
+    is_notification_service_disabled,
 )
-from fiftyone.server.events.manager import get_default_notification_manager
-
-# from fiftyone.server.events.samples import (
-#     sample_message_builder,
-#     sample_initial_state_builder,
-# )
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
@@ -163,20 +159,10 @@ app = Starlette(
 )
 
 
-def is_notification_service_disabled() -> bool:
-    """Check if the notification service is disabled."""
-    return (
-        os.getenv(
-            "FIFTYONE_EXECUTION_STORE_NOTIFICATION_SERVICE_DISABLED", "false"
-        ).lower()
-        == "true"
-    )
-
-
 @app.on_event("startup")
 async def startup_event():
     if is_notification_service_disabled():
-        logger.info("Execution Store notification service is disabled")
+        logger.info("Notification service is disabled")
         return
 
     manager = get_default_notification_manager()
@@ -193,9 +179,12 @@ async def startup_event():
     )
 
     # Example: How to watch a specific sample collection (e.g. samples.12345)
-    # This demonstrates that the system can watch arbitrary collections
+    # This demonstrates that the system can watch arbitrary collections.
+    # Note: sample_initial_state_builder returns None by default to avoid
+    # memory exhaustion on large datasets. Implement a custom builder with
+    # limits if initial state sync is needed.
     #
-    # from fiftyone.server.events.samples import (
+    # from fiftyone.server.events import (
     #     sample_message_builder,
     #     sample_initial_state_builder,
     # )
@@ -204,7 +193,7 @@ async def startup_event():
     #     collection_name="samples.12345",
     #     message_builder=sample_message_builder,
     #     remote_notifier=default_sse_notifier,
-    #     initial_state_builder=sample_initial_state_builder,
+    #     initial_state_builder=sample_initial_state_builder,  # Returns None
     # )
 
     app.state.notification_manager = manager
@@ -216,12 +205,11 @@ async def shutdown_event():
         hasattr(app.state, "notification_manager")
         and app.state.notification_manager
     ):
-        logger.info("Shutting down notification manager...")
+        logger.info("Shutting down notification manager")
         try:
-            # Run in a thread because stop() is not async but manages loop
             await asyncio.to_thread(app.state.notification_manager.stop)
             logger.info("Notification manager shutdown complete")
         except Exception as e:
             logger.exception(
-                f"Error during notification manager shutdown: {e}"
+                "Error during notification manager shutdown: %s", e
             )
