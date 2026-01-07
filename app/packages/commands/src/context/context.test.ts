@@ -1,4 +1,4 @@
-import { it, describe, vi, beforeEach, expect } from "vitest";
+import { it, describe, vi, beforeEach, expect, afterEach } from "vitest";
 import { CommandContext } from "./CommandContext";
 import { DelegatingUndoable, Undoable } from "../actions";
 
@@ -17,6 +17,10 @@ describe("CommandContext", () => {
     testUndoable = new DelegatingUndoable("fo.test.undo", testExec, testUndo);
   });
 
+  afterEach(()=>{
+    context.deactivate();
+  });
+  
   it("can register a command", () => {
     expect(context.registerCommand("fo.test", async () => { return; }, () => { return true })).toBeDefined();
     expect(context.getCommand("fo.test")).toBeDefined();

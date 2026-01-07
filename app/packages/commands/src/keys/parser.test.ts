@@ -119,7 +119,6 @@ describe("KeyParser", () => {
     expect(result[1].isShift).toBeFalsy();
     expect(result[1].key).toEqual("d");
 
-    expect(result.length).toEqual(2);
     result = KeyParser.parseBinding("ctrl+\\,,shift+\\+");
     expect(result.length).toEqual(2);
     expect(result[0].isAlt).toBeFalsy();
@@ -133,7 +132,6 @@ describe("KeyParser", () => {
     expect(result[1].isShift).toBeTruthy();
     expect(result[1].key).toEqual("=");
 
-    expect(result.length).toEqual(2);
     result = KeyParser.parseBinding("f,q");
     expect(result.length).toEqual(2);
     result = KeyParser.parseBinding("ctrl+f,shift+ q, meta+z");

@@ -21,8 +21,6 @@ export class CommandRegistry {
    * 
    * @param id The command id.  Use the "fo." prefix for our commands.  Plugins may register them as well.
    * @param execute The lambda to call on execution
-   * @param undo If provided the command will automatically support undo.  This function will be called to 
-   * perform the undo.
    * @param label A short name like Save, Delete, etc
    * @param description A longer description such as "Deletes the selected annotation"
    * @param enablement A function to determine if the command is enabled.  It is invoked when 

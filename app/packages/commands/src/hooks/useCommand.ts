@@ -16,15 +16,21 @@ import { CommandFunction } from "../types";
 export const useCommand = (context: CommandContext, id: string, execFn: CommandFunction, enablement: () => boolean, label?: string, description?: string) => {
     const exec = useRef(execFn);
     const enable = useRef(enablement);
+
+    useEffect(()=>{
+        exec.current = execFn;
+        enable.current = enablement;
+    }, [execFn, enablement]);
+
     const cmd = useMemo(() => {
         return context.registerCommand(id, exec.current, enable.current, label, description);
     }, [id, label, description, context]);
     useEffect(() => {
         if (cmd) {
             return () => {
-                context.unregisterCommand(id);
+                context.unregisterCommand(cmd.id);
             }
         }
-    }, [id, cmd, context]);
+    }, [cmd, context]);
     return cmd;
 }

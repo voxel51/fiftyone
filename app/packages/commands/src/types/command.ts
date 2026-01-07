@@ -46,7 +46,7 @@ export class Command {
    */
   public isEnabled(): boolean {
     const newEnabled = this.enablementFunc();
-    if(newEnabled != this._enabled){
+    if(newEnabled !== this._enabled){
       this._enabled = newEnabled;
       this.fireListeners();
     }

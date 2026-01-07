@@ -33,7 +33,7 @@ describe("CommandContextManager", () => {
         //pop returns to the default
         CommandContextManager.instance().popContext();
         expect(CommandContextManager.instance().getActiveContext().id).toBe(KnownContexts.Default);
-        //further pops stay at deault
+        //further pops stay at default
         CommandContextManager.instance().popContext();
         expect(CommandContextManager.instance().getActiveContext().id).toBe(KnownContexts.Default);
 

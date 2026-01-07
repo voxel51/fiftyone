@@ -25,7 +25,6 @@ describe("CommandRegistry", () => {
                 return;
             },
             () => { return true; },
-            undefined,
             "fo",
             "test fo command",
         );
@@ -45,7 +44,6 @@ describe("CommandRegistry", () => {
                 return;
             },
             () => { return true; },
-            undefined,
             "fo",
             "test fo command"
         );
@@ -72,7 +70,6 @@ describe("CommandRegistry", () => {
             () => {
                 return true;
             },
-            undefined,
             "fo",
             "test fo command",
         );
@@ -91,7 +88,6 @@ describe("CommandRegistry", () => {
             () => {
                 return false;
             },
-            undefined,
             "fo",
             "test fo command",
         );
@@ -111,7 +107,6 @@ describe("CommandRegistry", () => {
             () => {
                 return false;
             },
-            undefined,
             "fo",
             "test fo command",
         );
@@ -128,7 +123,6 @@ describe("CommandRegistry", () => {
             () => {
                 return false;
             },
-            undefined,
             "fo",
             "test fo command",
         );

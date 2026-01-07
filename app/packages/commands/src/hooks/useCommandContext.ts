@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { CommandContext, CommandContextManager } from "../context";
 
 /**
@@ -17,12 +17,12 @@ export const useCommandContext = (context?: CommandContext | string, inheritCurr
     activate: () => void,
     deactivate: () => void
 } => {
-    let existed = false;
+    const existed = useRef(false);
     const boundContext = useMemo(() => {
         if (typeof context === "string") {
             const existing = CommandContextManager.instance().getCommandContext(context);
             if (existing) {
-                existed = true;
+                existed.current = true;
                 return existing;
             }
             return CommandContextManager.instance().createCommandContext(context, inheritCurrent ? inheritCurrent : true);
@@ -35,11 +35,11 @@ export const useCommandContext = (context?: CommandContext | string, inheritCurr
 
     useEffect(() => {
         return () => {
-            if (!existed) {
+            if (!existed.current) {
                 CommandContextManager.instance().destroyContext(boundContext.id);
             }
         }
-    }, [boundContext, existed]);
+    }, [boundContext]);
 
     const activate = useCallback(() => {
         CommandContextManager.instance().pushContext(boundContext);

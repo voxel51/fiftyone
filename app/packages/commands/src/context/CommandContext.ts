@@ -9,7 +9,7 @@ import { CommandRegistry } from "../registry/CommandRegistry";
 import { Command, CommandFunction } from "../types";
 
 /**
- * Represents a scoped execution enviroment consisting of
+ * Represents a scoped execution environment consisting of
  * an undo/redo stack, registered commands, and key bindings.
  * Scope can be inherited to allow chaining of parent commands,
  * key binding, etc.
@@ -66,9 +66,7 @@ export class CommandContext {
     private updateUndoState() {
         const newUndo = this.canUndo();
         const newRedo = this.canRedo();
-        console.debug(`updateUndoState ${newUndo} ${newRedo}`)
         if (newUndo !== this.lastCanUndo || newRedo !== this.lastCanRedo) {
-            console.debug("firing context undo listeners");
             this.lastCanUndo = newUndo;
             this.lastCanRedo = newRedo;
             this.fireUndoListeners();
@@ -109,8 +107,7 @@ export class CommandContext {
         //if we have a parent, and we had no
         //undo, propogate it up
         if (this.parent) {
-            await this.parent.undo();
-            return true;
+            return await this.parent.undo();
         }
         return false;
     }
@@ -120,7 +117,7 @@ export class CommandContext {
      * and we have a parent, propogate it up.
      * @returns true if a redo occurred.
      */
-    public async redo() {
+    public async redo(): Promise<boolean> {
         if (this.actions.canRedo()) {
             await this.actions.redo();
             return true;
@@ -128,8 +125,7 @@ export class CommandContext {
         //if we have a parent, and we had no
         //redo, propogate it up
         if (this.parent) {
-            await this.parent.redo();
-            return true;
+            return await this.parent.redo();
         }
         return false;
     }

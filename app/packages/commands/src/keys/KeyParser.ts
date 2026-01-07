@@ -15,11 +15,11 @@ export class KeySequence {
     //Equality check to another sequence
     public equals(other: KeySequence) {
         return (
-            other.isCtrl == this.isCtrl &&
-            other.isMeta == this.isMeta &&
-            other.isShift == this.isShift &&
-            other.isAlt == this.isAlt &&
-            other.key == this.key
+            other.isCtrl === this.isCtrl &&
+            other.isMeta === this.isMeta &&
+            other.isShift === this.isShift &&
+            other.isAlt === this.isAlt &&
+            other.key === this.key
         );
     }
     //Match for KeyboardEvents

@@ -18,8 +18,7 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { useCommandContext } from "@fiftyone/commands/src/hooks/useCommandContext";
-import { KnownContexts, useCommand, useKeyBinding } from "@fiftyone/commands";
+import { KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -66,7 +65,7 @@ const Modal = () => {
   useEffect(() => {
     activate();
     return deactivate;
-  }, [cmdContext]);
+  }, [activate, deactivate]);
 
   const clearModal = fos.useClearModal();
 
@@ -141,7 +140,7 @@ const Modal = () => {
           }
           return newSelected;
         });
-      });
+      }, []);
 
   const selectCmd = useCommand(cmdContext, "fo.modal.select", selectCallback,
     () => { return true; }, "Select", "Select Sample");
@@ -151,7 +150,7 @@ const Modal = () => {
     ({ set }) =>
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
-      });
+      }, []);
   const sidebarCmd = useCommand(cmdContext, "fo.modal.sidebar.toggle",
     sidebarFn, () => { return true; }, "Sidebar", "Show/Hide the sidebar");
   useKeyBinding(sidebarCmd.id, "s", cmdContext);
@@ -159,8 +158,8 @@ const Modal = () => {
   const fullscreenFn = useRecoilCallback(
     ({ set }) =>
       async () => {
-        set(fos.sidebarVisible(true), (prev) => !prev);
-      });
+        set(fos.fullscreen, (prev) => !prev);
+      }, []);
   const fullscreenCmd = useCommand(cmdContext, "fo.modal.fullscreen.toggle",
     fullscreenFn, () => { return true; }, "Fullscreen", "Enter/Exit full screen mode");
   useKeyBinding(fullscreenCmd.id, "f", cmdContext);
@@ -178,7 +177,7 @@ const Modal = () => {
         }
 
         await modalCloseHandler();
-      });
+      }, []);
 
   const closeCmd = useCommand(cmdContext, "fo.modal.close", closeFn, () => { return true; }, "Close", "Close the window.");
   useKeyBinding(closeCmd.id, "Escape", cmdContext);

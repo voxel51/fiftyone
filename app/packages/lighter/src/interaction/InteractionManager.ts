@@ -13,7 +13,6 @@ import type { Renderer2D } from "../renderer/Renderer2D";
 import type { SelectionManager } from "../selection/SelectionManager";
 import type { Point, Rect } from "../types";
 import { InteractiveDetectionHandler } from "./InteractiveDetectionHandler";
-import { CommandContextManager } from "@fiftyone/commands";
 
 /**
  * Interface for objects that can handle interaction events.

@@ -1078,7 +1078,6 @@ export class Scene2D {
    * @returns True if the transformation was successful, false otherwise.
    */
   async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
-    console.debug('transformOverlay');
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1110,7 +1109,6 @@ export class Scene2D {
     }
 
     // Create and execute transform command for undo/redo support
-    console.debug("Executing transform");
     const command = new TransformOverlayCommand(
       overlay,
       id,

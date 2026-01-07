@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { CommandContext, CommandContextManager } from "../context";
 import { Command } from "../types";
 
@@ -9,32 +9,28 @@ import { Command } from "../types";
  * @param context The context of the binding.  @see CommandContext
  */
 export const useKeyBinding = (command: string | Command, binding: string, context?: CommandContext) => {
-    let resolvedCmd: Command | undefined;
-    let resolvedCtx: CommandContext;
-    if (!context) {
-        resolvedCtx = CommandContextManager.instance().getActiveContext();
-    }
-    else {
-        resolvedCtx = context;
-    }
-    if (typeof command === "string") {
-        resolvedCmd = resolvedCtx.getCommand(command);
-    }
-    else {
-        resolvedCmd = command;
-    }
-    if (!resolvedCtx) {
-        console.error(`Could not resolve a command context.`);
-    }
-    if (!resolvedCmd) {
-        console.error(`Unable to find command ${command} while binding key ${binding}`);
-    }
+    const resolvedCtx = useMemo(() => {
+        return context || CommandContextManager.instance().getActiveContext();
+    }, [context]);
+    const resolvedCmd = useMemo(() => {
+        if (typeof command === "string") {
+            return resolvedCtx?.getCommand(command);
+        }
+        return command;
+    }, [command, resolvedCtx]);
+
     useEffect(() => {
-        if (resolvedCmd && resolvedCtx) {
-            resolvedCtx.bindKey(binding, resolvedCmd.id);
-            return () => {
-                resolvedCtx.unbindKey(binding);
-            }
+        if (!resolvedCtx) {
+            console.error(`Could not resolve a command context.`);
+            return;
+        }
+        if (!resolvedCmd) {
+            console.error(`Unable to find command ${command} while binding key ${binding}`);
+            return;
+        }
+        resolvedCtx.bindKey(binding, resolvedCmd.id);
+        return () => {
+            resolvedCtx.unbindKey(binding);
         }
     }, [resolvedCtx, binding, resolvedCmd]);
 

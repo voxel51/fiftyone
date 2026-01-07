@@ -125,7 +125,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   const navLeft = useCallback(async () => {
     previousNavigator.navigate();
-  }, [[previousNavigator]]);
+  }, [previousNavigator]);
   const navRight = useCallback(async () => {
     nextNavigator.navigate();
   }, [nextNavigator]);
