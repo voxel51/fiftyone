@@ -1506,33 +1506,35 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
         return res
 
     def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
-        width, height = frame_size
-
-        boxes = output["boxes"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
-        labels = output.get("text_labels", output["labels"])
-        if hasattr(labels, "detach"):
-            labels = labels.detach().cpu().numpy()
-
         detections = []
-        for box, label, score in zip(boxes, labels, scores, strict=True):
+
+        scores = output["scores"].cpu().numpy()
+        boxes = output["boxes"].cpu().numpy()
+        labels = output.get("text_labels", output["labels"])
+        if hasattr(labels, "cpu"):
+            labels = labels.cpu().numpy()
+
+        for score, label, box in zip(scores, labels, boxes):
             if confidence_thresh is not None and score < confidence_thresh:
                 continue
 
-            x1, y1, x2, y2 = box
-            bounding_box = [x1 / width, y1 / height, (x2 - x1) / width, (y2 - y1) / height]
-
-            if self._is_grounded:
-                label = label
-            elif self.classes is not None and 0 <= int(label) < len(self.classes):
-                label = self.classes[int(label)]
-            else:
-                label = str(label)
+            if not self._is_grounded:
+                if self.classes is not None and 0 <= int(label) < len(self.classes):
+                    label = self.classes[int(label)]
+                else:
+                    label = str(label)
 
             if classes is not None and label not in classes:
                 continue
 
-            detections.append(fol.Detection(label=label, bounding_box=bounding_box, confidence=score))
+            box = _convert_bounding_box(box, frame_size)
+            detections.append(
+                fol.Detection(
+                    label=label,
+                    bounding_box=box,
+                    confidence=score.item(),
+                )
+            )
 
         return fol.Detections(detections=detections)
 
