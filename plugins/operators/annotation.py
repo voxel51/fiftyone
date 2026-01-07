@@ -30,6 +30,20 @@ class ActivateLabelSchemas(foo.Operator):
         ctx.dataset.activate_label_schemas(fields)
 
 
+class SetActiveLabelSchemas(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="set_active_label_schemas",
+            label="Set active label schemas",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        fields = ctx.params.get("fields", [])
+        ctx.dataset.active_label_schemas = fields
+
+
 class DeleteLabelSchemas(foo.Operator):
     @property
     def config(self):

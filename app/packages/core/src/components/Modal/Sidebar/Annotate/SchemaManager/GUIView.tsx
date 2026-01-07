@@ -153,9 +153,8 @@ const FieldActions = ({ path }: { path: string }) => {
 const ActiveFieldsSection = () => {
   // Support both atom systems
   const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
-  const fieldsFromLegacy = useAtomValue(activeLabelSchemas);
+  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
   const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
-  const setFields = setFieldsNew;
 
   const [, setSelected] = useAtom(selectedActiveFields);
   const fieldTypes = useAtomValue(
@@ -167,6 +166,9 @@ const ActiveFieldsSection = () => {
       [fields]
     )
   );
+
+  // Operator to persist field order to DB
+  const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
 
   const listItems = useMemo(
     () =>
@@ -185,9 +187,14 @@ const ActiveFieldsSection = () => {
 
   const handleOrderChange = useCallback(
     (newItems: { id: string; data: ListItemProps }[]) => {
-      setFields(newItems.map((item) => item.id));
+      const newOrder = newItems.map((item) => item.id);
+      // Update UI immediately
+      setFieldsNew(newOrder);
+      setFieldsLegacy(newOrder);
+      // Persist to DB
+      setActiveSchemas.execute({ fields: newOrder });
     },
-    [setFields]
+    [setFieldsNew, setFieldsLegacy, setActiveSchemas]
   );
 
   const handleSelected = useCallback(
