@@ -400,7 +400,7 @@ def _handle_float_or_int(
         return settings
 
     mn, mx = collection.bounds(field_name, safe=True)
-    if mn != mx and mn is not None:
+    if mn != mx:
         settings[foac.COMPONENT] = foac.SLIDER
         settings[foac.RANGE] = [mn, mx]
 

@@ -1,16 +1,15 @@
 """
-Compute annotation schema operator
+Annotation label schemas operators
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from exceptiongroup import ExceptionGroup
-
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
+    ValidationErrors,
     validate_label_schemas,
 )
 import fiftyone.operators as foo
@@ -155,9 +154,9 @@ class ValidateLabelSchemas(foo.Operator):
             validate_label_schemas(
                 ctx.dataset, ctx.params.get("label_schemas", {})
             )
-        except ExceptionGroup as exceptions:
-            for exception in exceptions.exceptions:
-                if isinstance(exception, ExceptionGroup):
+        except ValidationErrors as exceptions:
+            for exception in list(exceptions.exceptions):
+                if isinstance(exception, ValidationErrors):
                     for subexception in exception.exceptions:
                         errors.append(str(subexception))
                     continue

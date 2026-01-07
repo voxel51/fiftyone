@@ -18,6 +18,10 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
 
+class ValidationErrors(ExceptionGroup):
+    """Validation errors for label schemas"""
+
+
 def validate_label_schemas(
     sample_collection, label_schema, fields=None, _allow_default=False
 ):
@@ -34,7 +38,7 @@ def validate_label_schemas(
             such values
 
     Raises:
-        ExceptionGroup: if the label schema(s) are invalid
+        ValidationErrors: if the label schema(s) are invalid
     """
     is_scalar = etau.is_str(fields)
 
@@ -67,7 +71,7 @@ def validate_label_schemas(
             exceptions.append(exc)
 
     if exceptions:
-        raise ExceptionGroup("invalid label schema(s)", exceptions)
+        raise ValidationErrors("invalid label schema(s)", exceptions)
 
 
 def _validate_field_label_schema(
@@ -519,7 +523,7 @@ def _validate_attributes(collection, field_name, class_name, attributes):
             exceptions.append(exc)
 
     if len(exceptions) > 1:
-        raise ExceptionGroup(
+        raise ValidationErrors(
             f"invalid attributes for field '{field_name}'", exceptions
         )
     elif exceptions:
@@ -531,7 +535,7 @@ def _validate_default(
 ):
     if not allow_default:
         raise ValueError(
-            f"'default' setting is not allowed for field '{field_name}"
+            f"'default' setting is not allowed for field '{field_name}'"
         )
 
     exception = ValueError(
@@ -565,7 +569,7 @@ def _validate_default_list(
 ):
     if not allow_default:
         raise ValueError(
-            f"'default' setting is not allowed for field '{field_name}"
+            f"'default' setting is not allowed for field '{field_name}'"
         )
 
     if not isinstance(value, list):
@@ -630,7 +634,7 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not value:
         raise ValueError(
             f"'{key}' setting for field '{field_name}' must have at least "
-            f"one value "
+            f"one value"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:
