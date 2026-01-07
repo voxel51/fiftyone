@@ -1487,6 +1487,160 @@ class DatasetIntegrationTests(unittest.TestCase):
         resolved = dataset.resolve_extrinsics(sample_side)
         self.assertIsNone(resolved)
 
+    @drop_datasets
+    def test_add_intrinsics(self):
+        """Test adding intrinsics using the ergonomic add_intrinsics method."""
+        dataset = fo.Dataset()
+
+        # Add first intrinsics
+        intrinsics1 = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+        dataset.add_intrinsics("camera_front", intrinsics1)
+
+        self.assertIn("camera_front", dataset.camera_intrinsics)
+        retrieved1 = dataset.camera_intrinsics["camera_front"]
+        self.assertEqual(retrieved1.fx, 1000.0)
+
+        # Add second intrinsics (should not overwrite first)
+        intrinsics2 = OpenCVCameraIntrinsics(
+            fx=800.0,
+            fy=800.0,
+            cx=640.0,
+            cy=360.0,
+            k1=-0.1,
+        )
+        dataset.add_intrinsics("camera_rear", intrinsics2)
+
+        # Both should exist
+        self.assertIn("camera_front", dataset.camera_intrinsics)
+        self.assertIn("camera_rear", dataset.camera_intrinsics)
+        self.assertEqual(dataset.camera_intrinsics["camera_front"].fx, 1000.0)
+        self.assertEqual(dataset.camera_intrinsics["camera_rear"].fx, 800.0)
+        self.assertEqual(dataset.camera_intrinsics["camera_rear"].k1, -0.1)
+
+    @drop_datasets
+    def test_add_intrinsics_type_error(self):
+        """Test that add_intrinsics raises TypeError for invalid input."""
+        dataset = fo.Dataset()
+
+        with self.assertRaises(TypeError) as cm:
+            dataset.add_intrinsics("camera_front", {"fx": 1000.0})
+
+        self.assertIn("CameraIntrinsics", str(cm.exception))
+
+    @drop_datasets
+    def test_add_extrinsics_with_frames_in_object(self):
+        """Test adding extrinsics with source/target frames in the object."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.5, 0.0, 1.2],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+        dataset.add_extrinsics(extrinsics)
+
+        # Key should be auto-generated
+        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+        retrieved = dataset.sensor_extrinsics["camera_front::ego"]
+        self.assertEqual(retrieved.source_frame, "camera_front")
+        self.assertEqual(retrieved.target_frame, "ego")
+        nptest.assert_array_almost_equal(
+            retrieved.translation, [1.5, 0.0, 1.2]
+        )
+
+    @drop_datasets
+    def test_add_extrinsics_with_both_frames(self):
+        """Test adding extrinsics with both source and target frames set."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[0.0, 0.0, 2.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="lidar",
+            target_frame="ego",
+        )
+        dataset.add_extrinsics(extrinsics)
+
+        self.assertIn("lidar::ego", dataset.sensor_extrinsics)
+        retrieved = dataset.sensor_extrinsics["lidar::ego"]
+        self.assertEqual(retrieved.source_frame, "lidar")
+        self.assertEqual(retrieved.target_frame, "ego")
+
+    @drop_datasets
+    def test_add_extrinsics_default_target_frame(self):
+        """Test that target_frame defaults to 'world' if not specified."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.0, 2.0, 3.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="sensor",
+        )
+        dataset.add_extrinsics(extrinsics)
+
+        # Key should use "world" as default target
+        self.assertIn("sensor::world", dataset.sensor_extrinsics)
+        retrieved = dataset.sensor_extrinsics["sensor::world"]
+        self.assertEqual(retrieved.target_frame, "world")
+
+    @drop_datasets
+    def test_add_extrinsics_multiple(self):
+        """Test adding multiple extrinsics incrementally."""
+        dataset = fo.Dataset()
+
+        # Add first extrinsics
+        ext1 = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="ego",
+        )
+        dataset.add_extrinsics(ext1)
+
+        # Add second extrinsics
+        ext2 = SensorExtrinsics(
+            translation=[0.0, 0.0, 0.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+        dataset.add_extrinsics(ext2)
+
+        # Both should exist
+        self.assertIn("camera::ego", dataset.sensor_extrinsics)
+        self.assertIn("ego::world", dataset.sensor_extrinsics)
+
+    @drop_datasets
+    def test_add_extrinsics_missing_source_frame_error(self):
+        """Test that add_extrinsics raises ValueError if source_frame is missing."""
+        dataset = fo.Dataset()
+
+        extrinsics = SensorExtrinsics(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+        )
+
+        with self.assertRaises(ValueError) as cm:
+            dataset.add_extrinsics(extrinsics)
+
+        self.assertIn("source_frame", str(cm.exception))
+
+    @drop_datasets
+    def test_add_extrinsics_type_error(self):
+        """Test that add_extrinsics raises TypeError for invalid input."""
+        dataset = fo.Dataset()
+
+        with self.assertRaises(TypeError) as cm:
+            dataset.add_extrinsics({"translation": [1.0, 0.0, 1.5]})
+
+        self.assertIn("SensorExtrinsics", str(cm.exception))
+
 
 class SensorExtrinsicsValidationTests(unittest.TestCase):
     """Tests for sensor_extrinsics key/field validation."""

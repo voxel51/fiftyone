@@ -1132,6 +1132,59 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.camera_intrinsics = intrinsics
         self.save()
 
+    def add_intrinsics(self, name, intrinsics):
+        """Adds camera intrinsics to the dataset.
+
+        This method provides a convenient way to add intrinsics for a
+        specific camera/sensor without replacing the entire intrinsics dict.
+
+        Args:
+            name: the sensor/camera name (typically matching group slice names
+                for grouped datasets)
+            intrinsics: a :class:`fiftyone.core.camera.CameraIntrinsics`
+                instance
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add intrinsics for front camera
+            dataset.add_intrinsics(
+                "camera_front",
+                fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+            )
+
+            # Add intrinsics for rear camera
+            dataset.add_intrinsics(
+                "camera_rear",
+                fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            )
+
+            # Verify intrinsics were added
+            print(dataset.camera_intrinsics.keys())
+            # dict_keys(['camera_front', 'camera_rear'])
+        """
+        import fiftyone.core.camera as foc
+
+        if not isinstance(intrinsics, foc.CameraIntrinsics):
+            raise TypeError(
+                f"Expected CameraIntrinsics, got {type(intrinsics).__name__}"
+            )
+
+        current = dict(self._doc.camera_intrinsics or {})
+        current[name] = intrinsics
+        self._doc.camera_intrinsics = current
+        self.save()
+
     @property
     def sensor_extrinsics(self):
         """A dict mapping frame relationships to
@@ -1174,6 +1227,68 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def sensor_extrinsics(self, extrinsics):
         self._validate_sensor_extrinsics(extrinsics)
         self._doc.sensor_extrinsics = extrinsics
+        self.save()
+
+    def add_extrinsics(self, extrinsics):
+        """Adds sensor extrinsics to the dataset.
+
+        This method provides a convenient way to add extrinsics without
+        manually constructing the ``"source_frame::target_frame"`` key.
+
+        Args:
+            extrinsics: a :class:`fiftyone.core.camera.SensorExtrinsics`
+                instance with ``source_frame`` set (``target_frame`` defaults
+                to "world" if not specified)
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add extrinsics for camera to ego transformation
+            dataset.add_extrinsics(
+                fo.SensorExtrinsics(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                )
+            )
+
+            # Add extrinsics for lidar (target_frame defaults to "world")
+            dataset.add_extrinsics(
+                fo.SensorExtrinsics(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                )
+            )
+
+            # Verify extrinsics were added
+            print(dataset.sensor_extrinsics.keys())
+            # dict_keys(['camera_front::ego', 'lidar::world'])
+        """
+        import fiftyone.core.camera as foc
+
+        if not isinstance(extrinsics, foc.SensorExtrinsics):
+            raise TypeError(
+                f"Expected SensorExtrinsics, got {type(extrinsics).__name__}"
+            )
+
+        if extrinsics.source_frame is None:
+            raise ValueError("extrinsics.source_frame must be set")
+
+        # Default target_frame to "world" if not specified
+        if extrinsics.target_frame is None:
+            extrinsics.target_frame = "world"
+
+        key = f"{extrinsics.source_frame}::{extrinsics.target_frame}"
+
+        current = dict(self._doc.sensor_extrinsics or {})
+        current[key] = extrinsics
+        self._validate_sensor_extrinsics({key: extrinsics})
+        self._doc.sensor_extrinsics = current
         self.save()
 
     def _validate_sensor_extrinsics(self, extrinsics):
