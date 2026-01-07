@@ -18,7 +18,7 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
+import { KnownCommands, KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -142,27 +142,27 @@ const Modal = () => {
         });
       }, []);
 
-  const selectCmd = useCommand(cmdContext, "fo.modal.select", selectCallback,
+  useCommand(cmdContext, KnownCommands.ModalSelect, selectCallback,
     () => { return true; }, "Select", "Select Sample");
-  useKeyBinding(selectCmd.id, "x", cmdContext);
+  useKeyBinding(KnownCommands.ModalSelect, "x", cmdContext);
 
   const sidebarFn = useRecoilCallback(
     ({ set }) =>
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
       }, []);
-  const sidebarCmd = useCommand(cmdContext, "fo.modal.sidebar.toggle",
+  useCommand(cmdContext, KnownCommands.ModalSidebarToggle,
     sidebarFn, () => { return true; }, "Sidebar", "Show/Hide the sidebar");
-  useKeyBinding(sidebarCmd.id, "s", cmdContext);
+  useKeyBinding(KnownCommands.ModalSidebarToggle, "s", cmdContext);
 
   const fullscreenFn = useRecoilCallback(
     ({ set }) =>
       async () => {
         set(fos.fullscreen, (prev) => !prev);
       }, []);
-  const fullscreenCmd = useCommand(cmdContext, "fo.modal.fullscreen.toggle",
+  useCommand(cmdContext, KnownCommands.ModalFullScreenToggle,
     fullscreenFn, () => { return true; }, "Fullscreen", "Enter/Exit full screen mode");
-  useKeyBinding(fullscreenCmd.id, "f", cmdContext);
+  useKeyBinding(KnownCommands.ModalFullScreenToggle, "f", cmdContext);
 
   const closeFn = useRecoilCallback(
     ({ snapshot }) =>
@@ -179,8 +179,8 @@ const Modal = () => {
         await modalCloseHandler();
       }, []);
 
-  const closeCmd = useCommand(cmdContext, "fo.modal.close", closeFn, () => { return true; }, "Close", "Close the window.");
-  useKeyBinding(closeCmd.id, "Escape", cmdContext);
+  useCommand(cmdContext, KnownCommands.ModalClose, closeFn, () => { return true; }, "Close", "Close the window.");
+  useKeyBinding(KnownCommands.ModalClose, "Escape", cmdContext);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);
 

@@ -16,7 +16,13 @@ export enum KnownContexts {
 
 export enum KnownCommands {
     Undo = "fo.undo",
-    Redo = "fo.redo"
+    Redo = "fo.redo",
+    ModalSelect = "fo.modal.select",
+    ModalSidebarToggle = "fo.modal.sidebar.toggle",
+    ModalFullScreenToggle = "fo.modal.fullscreen.toggle",
+    ModalClose = "fo.modal.close",
+    ModalNextSample = "fo.modal.next.sample",
+    ModalPreviousSample = "fo.modal.previous.sample"
 }
 //callback for context changes
 export type CommandContextListener = (newId: string) => void;

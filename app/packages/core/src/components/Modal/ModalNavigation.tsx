@@ -11,7 +11,7 @@ import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
-import { KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
+import { KnownCommands, KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -132,12 +132,12 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   const { context } = useCommandContext(KnownContexts.Modal);
 
-  const previousCmd = useCommand(context, "fo.modal.previous", 
+  useCommand(context, KnownCommands.ModalPreviousSample, 
     navLeft, ()=>{ return true;}, "Previous", "Previous Sample");
-  const nextCmd = useCommand(context, "fo.modal.next", 
+  useCommand(context, KnownCommands.ModalNextSample, 
     navRight, ()=>{return true; }, "Next", "Next Sample");
-  useKeyBinding(previousCmd.id, "ArrowLeft", context);
-  useKeyBinding(nextCmd.id, "ArrowRight", context);
+  useKeyBinding(KnownCommands.ModalPreviousSample, "ArrowLeft", context);
+  useKeyBinding(KnownCommands.ModalNextSample, "ArrowRight", context);
 
   const { confirmExit } = useConfirmExit(useExit(), useSave());
 

@@ -12,26 +12,27 @@ export const useKeyBinding = (command: string | Command, binding: string, contex
     const resolvedCtx = useMemo(() => {
         return context || CommandContextManager.instance().getActiveContext();
     }, [context]);
-    const resolvedCmd = useMemo(() => {
-        if (typeof command === "string") {
-            return resolvedCtx?.getCommand(command);
-        }
-        return command;
-    }, [command, resolvedCtx]);
 
     useEffect(() => {
         if (!resolvedCtx) {
             console.error(`Could not resolve a command context.`);
             return;
         }
-        if (!resolvedCmd) {
-            console.error(`Unable to find command ${command} while binding key ${binding}`);
-            return;
+        let cmd: Command | undefined;
+        if (typeof command === "string") {
+            cmd = resolvedCtx.getCommand(command);
         }
-        resolvedCtx.bindKey(binding, resolvedCmd.id);
+        else {
+            cmd = command;
+        }
+        if (cmd) {
+            resolvedCtx.bindKey(binding, cmd.id);
+        }
         return () => {
-            resolvedCtx.unbindKey(binding);
+            if (cmd) {
+                resolvedCtx.unbindKey(binding);
+            }
         }
-    }, [resolvedCtx, binding, resolvedCmd]);
+    }, [resolvedCtx, command, binding]);
 
 }
