@@ -3544,7 +3544,7 @@ class DelegatedDeleteCommand(Command):
         for id in args.ids:
             op = dos.get(ObjectId(id))
             if op.run_state != fooe.ExecutionRunState.RUNNING:
-                print("Deleteing operation %s" % id)
+                print("Deleting operation %s" % id)
                 dos.delete_operation(ObjectId(id))
             else:
                 print(
