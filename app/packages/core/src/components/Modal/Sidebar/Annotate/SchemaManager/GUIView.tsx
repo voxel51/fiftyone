@@ -135,7 +135,11 @@ const FieldActions = ({ path }: { path: string }) => {
   const setField = useSetAtom(currentField);
 
   return (
-    <Tooltip content="Configure annotation schema" anchor={Anchor.Top}>
+    <Tooltip
+      content="Configure annotation schema"
+      anchor={Anchor.Bottom}
+      portal
+    >
       <Clickable
         style={{ padding: 4, height: 29, width: 29 }}
         onClick={() => setField(path)}
@@ -203,6 +207,7 @@ const ActiveFieldsSection = () => {
           <Tooltip
             content="Fields currently active and available for dataset annotation"
             anchor={Anchor.Top}
+            portal
           >
             <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
           </Tooltip>
@@ -224,6 +229,7 @@ const ActiveFieldsSection = () => {
         <Tooltip
           content="Fields currently active and available for dataset annotation"
           anchor={Anchor.Top}
+          portal
         >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
         </Tooltip>
@@ -296,6 +302,7 @@ const HiddenFieldsSection = () => {
         <Tooltip
           content="Fields currently hidden and not available for dataset annotation"
           anchor={Anchor.Top}
+          portal
         >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
         </Tooltip>

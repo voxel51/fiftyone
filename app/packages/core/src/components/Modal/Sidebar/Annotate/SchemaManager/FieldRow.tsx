@@ -45,7 +45,11 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
         </Pill>
       )}
       {isSupported && (
-        <Tooltip content="Configure annotation schema" anchor={Anchor.Top}>
+        <Tooltip
+          content="Configure annotation schema"
+          anchor={Anchor.Bottom}
+          portal
+        >
           <Clickable
             style={{ padding: 4, height: 29, width: 29 }}
             onClick={onEdit}
