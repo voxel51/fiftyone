@@ -3597,6 +3597,15 @@ class DelegatedArchiveCommand(Command):
                     print("Operation %s is not archived" % id)
             else:
                 if not op.archived:
+                    if op.run_state not in (
+                        fooe.ExecutionRunState.COMPLETED,
+                        fooe.ExecutionRunState.FAILED,
+                    ):
+                        print(
+                            "Cannot archive operation %s in state %s"
+                            % (id, op.run_state.upper())
+                        )
+                        continue
                     print("Archiving operation %s" % id)
                     dos.archive_operation(ObjectId(id))
                 else:
