@@ -6,6 +6,12 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { currentField, showModal } from "../state";
+import {
+  hasDraftChanges,
+  useDiscardChanges,
+  useInitializeDraft,
+  useSaveChanges,
+} from "./draftState";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView, {
   selectedActiveFields,
@@ -72,8 +78,10 @@ const SchemaManagerFooter = () => {
   const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
+  const hasChanges = useAtomValue(hasDraftChanges);
+  const saveChanges = useSaveChanges();
+  const discardChanges = useDiscardChanges();
 
-  // Don't show footer when editing a field (it has its own footer)
   if (field) {
     return null;
   }
@@ -102,10 +110,14 @@ const SchemaManagerFooter = () => {
         )}
       </FooterLeft>
       <FooterRight>
-        <MuiButton variant="outlined" disabled>
+        <MuiButton variant="outlined" onClick={discardChanges}>
           Discard
         </MuiButton>
-        <MuiButton variant="contained" disabled>
+        <MuiButton
+          variant="contained"
+          onClick={saveChanges}
+          disabled={!hasChanges}
+        >
           Save
         </MuiButton>
       </FooterRight>
@@ -122,6 +134,8 @@ const Modal = () => {
     return el;
   }, []);
   const show = useSetAtom(showModal);
+
+  useInitializeDraft();
 
   useEffect(() => {
     element.style.display = "block";
