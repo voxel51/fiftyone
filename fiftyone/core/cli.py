@@ -3387,8 +3387,10 @@ def _print_delegated_list(ops):
         "queued_at",
         "state",
         "completed",
-        "archived",
     ]
+
+    if any(op.archived for op in ops):
+        headers.append("archived")
 
     rows = []
     for op in ops:
@@ -3532,12 +3534,6 @@ class DelegatedDeleteCommand(Command):
             metavar="IDS",
             help="an operation ID or list of operation IDs",
         )
-        parser.add_argument(
-            "--archive",
-            action="store_true",
-            default=False,
-            help="archive operations rather than deleting them",
-        )
 
     @staticmethod
     def execute(parser, args):
@@ -3548,11 +3544,8 @@ class DelegatedDeleteCommand(Command):
         for id in args.ids:
             op = dos.get(ObjectId(id))
             if op.run_state != fooe.ExecutionRunState.RUNNING:
-                print(
-                    "%s operation %s"
-                    % ("Archiving" if args.archive else "Deleting", id)
-                )
-                dos.delete_operation(ObjectId(id), archive=args.archive)
+                print("Deleteing operation %s" % id)
+                dos.delete_operation(ObjectId(id))
             else:
                 print(
                     "Cannot delete operation %s in state %s"
@@ -3605,7 +3598,7 @@ class DelegatedArchiveCommand(Command):
             else:
                 if not op.archived:
                     print("Archiving operation %s" % id)
-                    dos.delete_operation(ObjectId(id), archive=True)
+                    dos.archive_operation(ObjectId(id))
                 else:
                     print("Operation %s is already archived" % id)
 
@@ -3665,19 +3658,11 @@ class DelegatedCleanupCommand(Command):
                 "operations"
             ),
         )
-        parser.add_argument(
-            "--archive",
-            action="store_true",
-            default=False,
-            help="archive operations rather than deleting them",
-        )
 
     @staticmethod
     def execute(parser, args):
         if args.orphan:
-            _cleanup_orphan_delegated(
-                dry_run=args.dry_run, archive=args.archive
-            )
+            _cleanup_orphan_delegated(dry_run=args.dry_run)
         elif args.operator or args.dataset or args.state:
             state = _parse_state(args.state)
             _cleanup_delegated(
@@ -3685,20 +3670,19 @@ class DelegatedCleanupCommand(Command):
                 dataset=args.dataset,
                 state=state,
                 dry_run=args.dry_run,
-                archive=args.archive,
             )
         else:
             print("No cleanup options specified")
 
 
-def _cleanup_orphan_delegated(dry_run=False, archive=False):
+def _cleanup_orphan_delegated(dry_run=False):
     from fiftyone.core.odm import get_db_conn
 
     db = get_db_conn()
     dataset_ids = set(d["_id"] for d in db.datasets.find({}, {"_id": 1}))
 
     dos = food.DelegatedOperationService()
-    ops = dos.list_operations(include_archived=not archive)
+    ops = dos.list_operations()
 
     del_ids = set(op.id for op in ops if op.dataset_id not in dataset_ids)
 
@@ -3711,12 +3695,10 @@ def _cleanup_orphan_delegated(dry_run=False, archive=False):
     else:
         print("Deleting %d orphan operation(s)" % num_del)
         for del_id in del_ids:
-            dos.delete_operation(del_id, archive=archive)
+            dos.delete_operation(del_id)
 
 
-def _cleanup_delegated(
-    operator=None, dataset=None, state=None, dry_run=False, archive=False
-):
+def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
     if state == fooe.ExecutionRunState.RUNNING:
         raise ValueError(
             "Deleting operations that are currently running is not allowed"
@@ -3727,7 +3709,6 @@ def _cleanup_delegated(
         operator=operator,
         dataset_name=dataset,
         run_state=state,
-        include_archived=not archive,
     )
 
     del_ids = set()
@@ -3744,7 +3725,7 @@ def _cleanup_delegated(
     else:
         print("Deleting %d operation(s)" % num_del)
         for del_id in del_ids:
-            dos.delete_operation(del_id, archive=archive)
+            dos.delete_operation(del_id)
 
 
 class PluginsCommand(Command):

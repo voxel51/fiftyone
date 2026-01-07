@@ -399,6 +399,17 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
+    def archive_operation(self, doc_id):
+        """Archives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.archive_operation(_id=doc_id)
+
     def unarchive_operation(self, doc_id):
         """Unarchives the given delegated operation.
 
@@ -410,30 +421,24 @@ class DelegatedOperationService(object):
         """
         return self._repo.unarchive_operation(_id=doc_id)
 
-    def delete_operation(self, doc_id, archive=False):
+    def delete_operation(self, doc_id):
         """Deletes the given delegated operation.
 
         Args:
             doc_id: the ID of the delegated operation
-            archive (False): whether to archive the operation instead of
-                deleting it
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
-        return self._repo.delete_operation(_id=doc_id, archive=archive)
+        return self._repo.delete_operation(_id=doc_id)
 
-    def delete_for_dataset(self, dataset_id, archive=False):
+    def delete_for_dataset(self, dataset_id):
         """Deletes all delegated operations associated with the given dataset.
 
         Args:
             dataset_id: the ID of the dataset
-            archive (False): whether to archive the operations instead of
-                deleting them
         """
-        return self._repo.delete_for_dataset(
-            dataset_id=dataset_id, archive=archive
-        )
+        return self._repo.delete_for_dataset(dataset_id=dataset_id)
 
     def rerun_operation(self, doc_id):
         """Reruns the specified delegated operation.

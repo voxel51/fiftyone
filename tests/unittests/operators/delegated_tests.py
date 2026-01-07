@@ -1469,24 +1469,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         ops = self.svc.list_operations(dataset_name=dataset_name)
         self.assertEqual(len(ops), 25)
 
-        # Test archive=True
-        self.svc.delete_for_dataset(dataset_id=dataset_id, archive=True)
+        self.svc.delete_for_dataset(dataset_id=dataset_id)
 
-        # Should be hidden by default
-        ops = self.svc.list_operations(dataset_name=dataset_name)
-        self.assertEqual(len(ops), 0)
-
-        # Should be visible with flag
-        ops = self.svc.list_operations(
-            dataset_name=dataset_name, include_archived=True
-        )
-        self.assertEqual(len(ops), 25)
-        self.assertTrue(all(op.archived for op in ops))
-
-        # Test archive=False (permanent delete)
-        self.svc.delete_for_dataset(dataset_id=dataset_id, archive=False)
-
-        # Should be gone
         ops = self.svc.list_operations(
             dataset_name=dataset_name, include_archived=True
         )
@@ -1501,7 +1485,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.docs_to_delete.append(doc)
 
         # Archive it
-        self.svc.delete_operation(doc.id, archive=True)
+        self.svc.archive_operation(doc.id)
 
         # Check hidden
         ops = self.svc.list_operations(
@@ -1516,16 +1500,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(ops), 1)
         self.assertTrue(ops[0].archived)
-
-        # Permanently delete
-        self.svc.delete_operation(doc.id, archive=False)
-
-        # Check gone
-        ops = self.svc.list_operations(
-            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
-            include_archived=True,
-        )
-        self.assertEqual(len(ops), 0)
 
     @patch("fiftyone.core.odm.load_dataset")
     def test_search(self, mock_load_dataset, mock_get_operator):
