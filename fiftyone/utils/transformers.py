@@ -1515,13 +1515,19 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
             labels = labels.detach().cpu().numpy()
 
         detections = []
-        for box, label, score in zip(boxes, labels, scores):
+        for box, label, score in zip(boxes, labels, scores, strict=True):
             if confidence_thresh is not None and score < confidence_thresh:
                 continue
 
             x1, y1, x2, y2 = box
             bounding_box = [x1 / width, y1 / height, (x2 - x1) / width, (y2 - y1) / height]
-            label = label if self._is_grounded else self.classes[label]
+
+            if self._is_grounded:
+                label = label
+            elif self.classes is not None and 0 <= int(label) < len(self.classes):
+                label = self.classes[int(label)]
+            else:
+                label = str(label)
 
             if classes is not None and label not in classes:
                 continue
