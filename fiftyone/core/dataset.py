@@ -30,6 +30,7 @@ from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
+import fiftyone.core.camera as focam
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
@@ -1173,9 +1174,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             print(dataset.camera_intrinsics.keys())
             # dict_keys(['camera_front', 'camera_rear'])
         """
-        import fiftyone.core.camera as foc
-
-        if not isinstance(intrinsics, foc.CameraIntrinsics):
+        if not isinstance(intrinsics, focam.CameraIntrinsics):
             raise TypeError(
                 f"Expected CameraIntrinsics, got {type(intrinsics).__name__}"
             )
@@ -1269,9 +1268,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             print(dataset.sensor_extrinsics.keys())
             # dict_keys(['camera_front::ego', 'lidar::world'])
         """
-        import fiftyone.core.camera as foc
-
-        if not isinstance(extrinsics, foc.SensorExtrinsics):
+        if not isinstance(extrinsics, focam.SensorExtrinsics):
             raise TypeError(
                 f"Expected SensorExtrinsics, got {type(extrinsics).__name__}"
             )
@@ -1301,13 +1298,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ValueError: if a key doesn't match the object's source_frame and
                 target_frame fields
         """
-        import fiftyone.core.camera as foc
-
         if extrinsics is None:
             return
 
         for key, value in extrinsics.items():
-            if not isinstance(value, foc.SensorExtrinsics):
+            if not isinstance(value, focam.SensorExtrinsics):
                 continue
 
             # Parse key to get expected frames
@@ -1348,15 +1343,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             a :class:`fiftyone.core.camera.CameraIntrinsics`, or None if not
             found
         """
-        import fiftyone.core.camera as foc
-
         intrinsics_map = dict(self.camera_intrinsics or {})
 
         # Check for sample-level intrinsics by matching type
         for _, value in sample.iter_fields():
-            if isinstance(value, foc.CameraIntrinsics):
+            if isinstance(value, focam.CameraIntrinsics):
                 return value
-            elif isinstance(value, foc.CameraIntrinsicsRef):
+            elif isinstance(value, focam.CameraIntrinsicsRef):
                 return intrinsics_map.get(value.ref)
 
         # Try to infer from group slice
@@ -1425,8 +1418,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample, "camera", "world", chain_via=["ego"]
             )
         """
-        import fiftyone.core.camera as foc
-
         extrinsics = self.sensor_extrinsics or {}
 
         if target_frame is None:
@@ -1466,14 +1457,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self, sample, source_frame, target_frame, extrinsics
     ):
         """Directly resolve extrinsics without chaining."""
-        import fiftyone.core.camera as foc
-
         # Check for sample-level extrinsics by matching type
         for _, value in sample.iter_fields():
             if isinstance(value, list):
                 for item in value:
                     if isinstance(
-                        item, (foc.SensorExtrinsics, foc.SensorExtrinsicsRef)
+                        item,
+                        (focam.SensorExtrinsics, focam.SensorExtrinsicsRef),
                     ):
                         ext = self._resolve_single_extrinsics(
                             item, source_frame, target_frame
@@ -1481,7 +1471,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         if ext is not None:
                             return ext
             elif isinstance(
-                value, (foc.SensorExtrinsics, foc.SensorExtrinsicsRef)
+                value, (focam.SensorExtrinsics, focam.SensorExtrinsicsRef)
             ):
                 ext = self._resolve_single_extrinsics(
                     value, source_frame, target_frame
@@ -1527,18 +1517,16 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _resolve_single_extrinsics(self, value, source_frame, target_frame):
         """Helper to resolve a single extrinsics value."""
-        import fiftyone.core.camera as foc
-
         extrinsics = self.sensor_extrinsics or {}
 
-        if isinstance(value, foc.SensorExtrinsics):
+        if isinstance(value, focam.SensorExtrinsics):
             val_target = value.target_frame or "world"
             if (
                 value.source_frame == source_frame
                 and val_target == target_frame
             ):
                 return value
-        elif isinstance(value, foc.SensorExtrinsicsRef):
+        elif isinstance(value, focam.SensorExtrinsicsRef):
             # Look up the reference
             ref_value = extrinsics.get(value.ref)
             if ref_value is not None:
