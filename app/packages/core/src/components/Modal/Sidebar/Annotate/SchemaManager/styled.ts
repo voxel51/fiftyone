@@ -211,29 +211,24 @@ export const ModalHeader = styled.div`
   height: 36px;
 `;
 
-const IconButton = styled.div`
+export const BackButton = styled(BackIcon)`
   cursor: pointer;
-  height: 3rem;
-  padding: 0.5rem;
-  width: 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 1.5rem !important;
+  margin-right: 0.75rem;
 
   &:hover {
-    background: ${({ theme }) => theme.background.level1};
-    border-radius: 1.5rem;
-    color: ${({ theme }) => theme.text.primary};
+    opacity: 0.7;
   }
 `;
 
-export const BackButton = styled(IconButton).attrs({
-  as: BackIcon,
-})``;
+export const CloseButton = styled(CloseIcon)`
+  cursor: pointer;
+  font-size: 1.5rem !important;
 
-export const CloseButton = styled(IconButton).attrs({
-  as: CloseIcon,
-})``;
+  &:hover {
+    opacity: 0.7;
+  }
+`;
 
 export const ModalFooter = styled.div`
   display: flex;

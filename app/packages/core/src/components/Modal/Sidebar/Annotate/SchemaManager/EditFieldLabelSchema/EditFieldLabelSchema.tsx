@@ -1,53 +1,58 @@
 import { Sync } from "@mui/icons-material";
-import { Box, Button, Switch, Typography } from "@mui/material";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Toggle,
+  Variant,
+} from "@voxel51/voodo";
+import { useSetAtom } from "jotai";
 import Footer from "../Footer";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
+import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
+import { currentField } from "../state";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
+
   return (
     <EditContainer>
+      {/* Field name and type header */}
+      <Header field={field} setField={setCurrentField} />
+
       {/* Read-only toggle */}
-      <Box my={2}>
-        <Typography fontWeight={500}>Read-only</Typography>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="body2" color="secondary">
-            When enabled, annotators can view this field but can't edit its
-            values.
-          </Typography>
-          <Switch
-            key={labelSchema.isReadOnly}
+      <div className="my-4">
+        <div className="flex items-center justify-between mb-1">
+          <Text variant={TextVariant.Xl}>Read-only</Text>
+          <Toggle
+            size={Size.Sm}
             disabled={labelSchema.isReadOnlyRequired}
             checked={labelSchema.isReadOnly}
             onChange={labelSchema.toggleReadOnly}
           />
-        </Box>
-      </Box>
+        </div>
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          When enabled, annotators can view this field but can't edit its
+          values.
+        </Text>
+      </div>
 
-      {/* Schema section */}
+      {/* Schema section - JSON only */}
       <SchemaSection>
-        <Label variant="body2">Schema</Label>
         <TabsRow>
+          <Label variant="body2">Schema</Label>
           <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Sync fontSize="small" />}
+            size={Size.Sm}
+            variant={Variant.Secondary}
             onClick={labelSchema.scan}
-            sx={{
-              color: "text.primary",
-              borderColor: "divider",
-              textTransform: "none",
-              "&:hover": {
-                borderColor: "action.active",
-              },
-              "&:active": {
-                borderColor: "action.active",
-              },
-            }}
           >
+            <Sync fontSize="small" style={{ marginRight: 4 }} />
             Scan
           </Button>
         </TabsRow>
@@ -81,7 +86,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             labelSchema.isValidating ||
             !labelSchema.isValid ||
             !labelSchema.hasChanges,
-          text: labelSchema.isScanning ? "Saving..." : "Save",
+          text: labelSchema.isSaving ? "Saving..." : "Save",
         }}
       />
     </EditContainer>

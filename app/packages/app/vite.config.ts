@@ -25,6 +25,7 @@ async function loadConfig() {
       alias: {
         path: "path-browserify",
       },
+      dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
     build: {
       rollupOptions: {

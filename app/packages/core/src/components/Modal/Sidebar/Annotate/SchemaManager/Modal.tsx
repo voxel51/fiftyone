@@ -57,10 +57,10 @@ const Subheading = () => {
 };
 
 const Page = () => {
-  const [field, setField] = useAtom(currentField);
+  const field = useAtomValue(currentField);
 
   if (field) {
-    return <EditFieldLabelSchema field={field} setField={setField} />;
+    return <EditFieldLabelSchema field={field} />;
   }
 
   return <GUIView />;

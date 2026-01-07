@@ -1,20 +1,43 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
-import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
-import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
+import {
+  EditOutlined,
+  ExpandLess,
+  ExpandMore,
+  InfoOutlined,
+} from "@mui/icons-material";
+import { Collapse, Typography } from "@mui/material";
+import {
+  Anchor,
+  Clickable,
+  Pill,
+  RichList,
+  Size,
+  ToggleSwitch,
+  Tooltip,
+} from "@voxel51/voodo";
+import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import {
+  activeSchemaTab,
   activeLabelSchemas,
+  activePaths,
   addToActiveSchemas,
+  fieldType,
   inactiveLabelSchemas,
+  inactivePaths,
   labelSchemaData,
+  labelSchemasData,
   removeFromActiveSchemas,
+  schema,
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
-import { CollapsibleHeader, GUISectionHeader } from "./styled";
+import { currentField } from "./state";
+import { CollapsibleHeader, ContentArea, GUISectionHeader } from "./styled";
 
 // Selection state for active fields
 export const selectedActiveFields = atom(new Set<string>());
@@ -50,9 +73,17 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
   )
 );
 
-// Check if a field has schema configured
+// Check if a field has schema configured (supports both atom systems)
 export const fieldHasSchema = atomFamily((path: string) =>
-  atom((get) => !!get(labelSchemaData(path)).label_schema)
+  atom((get) => {
+    // Check new schema system
+    const schemaData = get(schema(path));
+    if (schemaData?.config) return true;
+    // Check legacy schema system
+    const legacyData = get(labelSchemaData(path));
+    if (legacyData?.label_schema) return true;
+    return false;
+  })
 );
 
 export const useActivateFields = () => {
@@ -99,8 +130,68 @@ export const useDeactivateFields = () => {
   ]);
 };
 
+// Helper to build actions for a field row
+const FieldActions = ({ path }: { path: string }) => {
+  const setField = useSetAtom(currentField);
+
+  return (
+    <Tooltip content="Configure annotation schema" anchor={Anchor.Top}>
+      <Clickable
+        style={{ padding: 4, height: 29, width: 29 }}
+        onClick={() => setField(path)}
+      >
+        <EditOutlined fontSize="small" />
+      </Clickable>
+    </Tooltip>
+  );
+};
+
 const ActiveFieldsSection = () => {
-  const fields = useAtomValue(activeLabelSchemas);
+  // Support both atom systems
+  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
+  const fieldsFromLegacy = useAtomValue(activeLabelSchemas);
+  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
+  const setFields = setFieldsNew;
+
+  const [, setSelected] = useAtom(selectedActiveFields);
+  const fieldTypes = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
+        ),
+      [fields]
+    )
+  );
+
+  const listItems = useMemo(
+    () =>
+      fields.map((path) => ({
+        id: path,
+        data: {
+          canSelect: true,
+          canDrag: true,
+          primaryContent: path,
+          secondaryContent: fieldTypes[path],
+          actions: <FieldActions path={path} />,
+        } as ListItemProps,
+      })),
+    [fields, fieldTypes]
+  );
+
+  const handleOrderChange = useCallback(
+    (newItems: { id: string; data: ListItemProps }[]) => {
+      setFields(newItems.map((item) => item.id));
+    },
+    [setFields]
+  );
+
+  const handleSelected = useCallback(
+    (selectedIds: string[]) => {
+      setSelected(new Set(selectedIds));
+    },
+    [setSelected]
+  );
 
   if (!fields?.length) {
     return (
@@ -109,10 +200,13 @@ const ActiveFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Active fields
           </Typography>
-          <Tooltip title="Fields currently active and available for dataset annotation">
+          <Tooltip
+            content="Fields currently active and available for dataset annotation"
+            anchor={Anchor.Top}
+          >
             <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
           </Tooltip>
-          <Chip label="0" size="small" />
+          <Pill size={Size.Xs}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
@@ -127,20 +221,20 @@ const ActiveFieldsSection = () => {
         <Typography variant="body1" fontWeight={500}>
           Active fields
         </Typography>
-        <Tooltip title="Fields currently active and available for dataset annotation">
+        <Tooltip
+          content="Fields currently active and available for dataset annotation"
+          anchor={Anchor.Top}
+        >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
         </Tooltip>
-        <Chip label={fields.length} size="small" />
+        <Pill size={Size.Xs}>{fields.length}</Pill>
       </GUISectionHeader>
-      {fields.map((path) => (
-        <FieldRow
-          key={path}
-          path={path}
-          isSelected={isActiveFieldSelected(path)}
-          showDragHandle={true}
-          hasSchema={true}
-        />
-      ))}
+      <RichList
+        listItems={listItems}
+        draggable={true}
+        onOrderChange={handleOrderChange}
+        onSelected={handleSelected}
+      />
     </>
   );
 };
@@ -160,7 +254,11 @@ const HiddenFieldRow = ({ path }: { path: string }) => {
 
 // Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
 const sortedInactivePaths = atom((get) => {
-  const fields = get(inactiveLabelSchemas);
+  // Support both atom systems
+  const fieldsFromNew = get(inactivePaths);
+  const fieldsFromLegacy = get(inactiveLabelSchemas);
+  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
+
   const withSchema: string[] = [];
   const withoutSchema: string[] = [];
 
@@ -195,10 +293,13 @@ const HiddenFieldsSection = () => {
           </Typography>
           {expanded ? <ExpandLess /> : <ExpandMore />}
         </CollapsibleHeader>
-        <Tooltip title="Fields currently hidden and not available for dataset annotation">
+        <Tooltip
+          content="Fields currently hidden and not available for dataset annotation"
+          anchor={Anchor.Top}
+        >
           <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
         </Tooltip>
-        <Chip label={fields.length} size="small" />
+        <Pill size={Size.Xs}>{fields.length}</Pill>
       </GUISectionHeader>
       <Collapse in={expanded}>
         {fields.map((path) => (
@@ -209,11 +310,91 @@ const HiddenFieldsSection = () => {
   );
 };
 
-const GUIView = () => {
+// GUI content - field list with drag-drop
+const GUIContent = () => {
   return (
-    <Container style={{ marginBottom: "0.5rem" }}>
+    <>
       <ActiveFieldsSection />
       <HiddenFieldsSection />
+    </>
+  );
+};
+
+// JSON content - raw schema view
+const JSONContent = () => {
+  const schemasData = useAtomValue(labelSchemasData);
+  const jsonStr = useMemo(
+    () => JSON.stringify(schemasData, null, 2),
+    [schemasData]
+  );
+
+  if (!schemasData) {
+    return (
+      <Item style={{ justifyContent: "center", opacity: 0.7 }}>
+        <Typography color="secondary">No schema data available</Typography>
+      </Item>
+    );
+  }
+
+  return (
+    <ContentArea>
+      <CodeView
+        data={jsonStr}
+        path="schemas"
+        schema={{
+          view: {
+            language: "json",
+            readOnly: true,
+            width: "100%",
+            height: "100%",
+            componentsProps: {
+              container: {
+                style: { height: "100%" },
+              },
+            },
+          },
+        }}
+      />
+    </ContentArea>
+  );
+};
+
+const TAB_IDS = ["gui", "json"] as const;
+
+const GUIView = () => {
+  const [activeTab, setActiveTab] = useAtom(activeSchemaTab);
+  const defaultIndex = TAB_IDS.indexOf(activeTab);
+
+  const handleTabChange = useCallback(
+    (index: number) => {
+      setActiveTab(TAB_IDS[index]);
+    },
+    [setActiveTab]
+  );
+
+  return (
+    <Container style={{ marginBottom: "0.5rem" }}>
+      <ToggleSwitch
+        size={Size.Sm}
+        defaultIndex={defaultIndex}
+        onChange={handleTabChange}
+        tabs={[
+          {
+            id: "gui",
+            data: {
+              label: "GUI",
+              content: <GUIContent />,
+            },
+          },
+          {
+            id: "json",
+            data: {
+              label: "JSON",
+              content: <JSONContent />,
+            },
+          },
+        ]}
+      />
     </Container>
   );
 };
