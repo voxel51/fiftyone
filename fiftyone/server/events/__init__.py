@@ -24,6 +24,11 @@ from fiftyone.server.events.manager import (
     NotificationManager,
     get_default_notification_manager,
 )
+from fiftyone.server.events.policy import (
+    CollectionWatchPolicy,
+    DenylistWatchPolicy,
+    PolicyViolationError,
+)
 from fiftyone.server.events.samples import (
     sample_initial_state_builder,
     sample_message_builder,
@@ -55,6 +60,10 @@ __all__ = [
     # Manager
     "NotificationManager",
     "get_default_notification_manager",
+    # Policy
+    "CollectionWatchPolicy",
+    "DenylistWatchPolicy",
+    "PolicyViolationError",
     # Service
     "ChangeStreamNotificationService",
     "MongoCollectionNotificationService",

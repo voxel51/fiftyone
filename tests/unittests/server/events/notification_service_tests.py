@@ -20,6 +20,11 @@ from fiftyone.server.events.service import (
     PollingStrategy,
 )
 from fiftyone.server.events.manager import NotificationManager
+from fiftyone.server.events.policy import (
+    CollectionWatchPolicy,
+    DenylistWatchPolicy,
+    PolicyViolationError,
+)
 from fiftyone.server.events.subscription import (
     InLocalMemorySubscriptionRegistry,
 )
@@ -764,3 +769,316 @@ class TestIntegrationScenarios:
                 await service.notify("my_channel", message)
 
             callback.assert_not_called()
+
+
+class TestDenylistWatchPolicy:
+    """Tests for the DenylistWatchPolicy."""
+
+    def test_empty_denylist_allows_all(self):
+        """Test that empty denylist allows all collections."""
+        policy = DenylistWatchPolicy()
+
+        assert policy.is_collection_allowed("anything")
+        assert policy.is_collection_allowed("samples.xyz")
+        assert policy.is_collection_allowed("internal.secrets")
+
+    def test_exact_match_denial(self):
+        """Test denying exact collection names."""
+        policy = DenylistWatchPolicy(["internal.secrets"])
+
+        assert not policy.is_collection_allowed("internal.secrets")
+        assert policy.is_collection_allowed("internal.other")
+        assert policy.is_collection_allowed("samples.xyz")
+
+    def test_glob_pattern_star(self):
+        """Test glob pattern with * wildcard."""
+        policy = DenylistWatchPolicy(["internal.*"])
+
+        assert not policy.is_collection_allowed("internal.secrets")
+        assert not policy.is_collection_allowed("internal.config")
+        assert policy.is_collection_allowed("samples.xyz")
+        assert policy.is_collection_allowed("execution_store")
+
+    def test_glob_pattern_underscore_prefix(self):
+        """Test glob pattern for underscore-prefixed collections."""
+        policy = DenylistWatchPolicy(["_*"])
+
+        assert not policy.is_collection_allowed("_internal")
+        assert not policy.is_collection_allowed("_system")
+        assert policy.is_collection_allowed("samples.xyz")
+
+    def test_glob_pattern_suffix(self):
+        """Test glob pattern with suffix matching."""
+        policy = DenylistWatchPolicy(["*.backup"])
+
+        assert not policy.is_collection_allowed("samples.backup")
+        assert not policy.is_collection_allowed("execution_store.backup")
+        assert policy.is_collection_allowed("samples.xyz")
+
+    def test_glob_pattern_question_mark(self):
+        """Test glob pattern with ? single character wildcard."""
+        policy = DenylistWatchPolicy(["temp?"])
+
+        assert not policy.is_collection_allowed("temp1")
+        assert not policy.is_collection_allowed("tempX")
+        assert policy.is_collection_allowed("temp")
+        assert policy.is_collection_allowed("temp12")
+
+    def test_multiple_patterns(self):
+        """Test multiple denial patterns."""
+        policy = DenylistWatchPolicy(["internal.*", "system.*", "_*"])
+
+        assert not policy.is_collection_allowed("internal.config")
+        assert not policy.is_collection_allowed("system.users")
+        assert not policy.is_collection_allowed("_hidden")
+        assert policy.is_collection_allowed("samples.xyz")
+        assert policy.is_collection_allowed("execution_store")
+
+    def test_add_pattern(self):
+        """Test adding patterns dynamically."""
+        policy = DenylistWatchPolicy()
+
+        assert policy.is_collection_allowed("internal.secrets")
+
+        policy.add_pattern("internal.*")
+
+        assert not policy.is_collection_allowed("internal.secrets")
+
+    def test_add_pattern_idempotent(self):
+        """Test that adding same pattern twice doesn't duplicate."""
+        policy = DenylistWatchPolicy()
+        policy.add_pattern("internal.*")
+        policy.add_pattern("internal.*")
+
+        assert len(policy.denied_patterns) == 1
+
+    def test_remove_pattern(self):
+        """Test removing patterns."""
+        policy = DenylistWatchPolicy(["internal.*"])
+
+        assert not policy.is_collection_allowed("internal.secrets")
+
+        result = policy.remove_pattern("internal.*")
+
+        assert result is True
+        assert policy.is_collection_allowed("internal.secrets")
+
+    def test_remove_nonexistent_pattern(self):
+        """Test removing a pattern that doesn't exist."""
+        policy = DenylistWatchPolicy()
+        result = policy.remove_pattern("nonexistent")
+        assert result is False
+
+    def test_clear_patterns(self):
+        """Test clearing all patterns."""
+        policy = DenylistWatchPolicy(["internal.*", "system.*"])
+
+        policy.clear_patterns()
+
+        assert len(policy.denied_patterns) == 0
+        assert policy.is_collection_allowed("internal.secrets")
+        assert policy.is_collection_allowed("system.users")
+
+    def test_denied_patterns_property_returns_copy(self):
+        """Test that denied_patterns returns a copy, not the internal list."""
+        policy = DenylistWatchPolicy(["internal.*"])
+        patterns = policy.denied_patterns
+
+        patterns.append("system.*")
+
+        # Original should be unchanged
+        assert len(policy.denied_patterns) == 1
+
+
+class TestPolicyViolationError:
+    """Tests for PolicyViolationError exception."""
+
+    def test_exception_message(self):
+        """Test that exception contains meaningful message."""
+        error = PolicyViolationError("Collection 'test' is denied")
+        assert "Collection 'test' is denied" in str(error)
+
+    def test_exception_inheritance(self):
+        """Test that PolicyViolationError is an Exception."""
+        error = PolicyViolationError("test")
+        assert isinstance(error, Exception)
+
+
+class TestNotificationManagerPolicy:
+    """Tests for policy integration with NotificationManager."""
+
+    @pytest.fixture
+    def manager(self):
+        return NotificationManager()
+
+    def test_set_and_get_policy(self, manager):
+        """Test setting and getting policy."""
+        policy = DenylistWatchPolicy(["internal.*"])
+
+        manager.set_policy(policy)
+        retrieved = manager.get_policy()
+
+        assert retrieved is policy
+
+    def test_set_policy_to_none(self, manager):
+        """Test clearing policy by setting to None."""
+        policy = DenylistWatchPolicy(["internal.*"])
+        manager.set_policy(policy)
+
+        manager.set_policy(None)
+
+        assert manager.get_policy() is None
+
+    def test_manage_collection_with_no_policy(self, manager):
+        """Test that manage_collection works without policy."""
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            service = manager.manage_collection(
+                collection_name="any_collection",
+                message_builder=simple_message_builder,
+            )
+
+            assert service is not None
+
+    def test_manage_collection_allowed_by_policy(self, manager):
+        """Test managing a collection that is allowed by policy."""
+        policy = DenylistWatchPolicy(["internal.*"])
+        manager.set_policy(policy)
+
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            service = manager.manage_collection(
+                collection_name="samples.xyz",
+                message_builder=simple_message_builder,
+            )
+
+            assert service is not None
+
+    def test_manage_collection_denied_by_policy(self, manager):
+        """Test that managing a denied collection raises error."""
+        policy = DenylistWatchPolicy(["internal.*"])
+        manager.set_policy(policy)
+
+        with pytest.raises(PolicyViolationError) as exc_info:
+            with patch("fiftyone.core.odm.get_async_db_conn"):
+                manager.manage_collection(
+                    collection_name="internal.secrets",
+                    message_builder=simple_message_builder,
+                )
+
+        assert "internal.secrets" in str(exc_info.value)
+        assert "denied by policy" in str(exc_info.value)
+
+    def test_manage_collection_denied_by_glob_pattern(self, manager):
+        """Test denial using glob patterns."""
+        policy = DenylistWatchPolicy(["system.*", "_*"])
+        manager.set_policy(policy)
+
+        with pytest.raises(PolicyViolationError):
+            with patch("fiftyone.core.odm.get_async_db_conn"):
+                manager.manage_collection(
+                    collection_name="system.users",
+                    message_builder=simple_message_builder,
+                )
+
+        with pytest.raises(PolicyViolationError):
+            with patch("fiftyone.core.odm.get_async_db_conn"):
+                manager.manage_collection(
+                    collection_name="_hidden_collection",
+                    message_builder=simple_message_builder,
+                )
+
+    def test_policy_enforcement_idempotent(self, manager):
+        """Test that already-managed collection is still returned even with policy."""
+        # First manage without policy
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            service1 = manager.manage_collection(
+                collection_name="internal.config",
+                message_builder=simple_message_builder,
+            )
+
+        # Now set policy that would deny this collection
+        policy = DenylistWatchPolicy(["internal.*"])
+        manager.set_policy(policy)
+
+        # Managing same collection should return existing service (no policy check)
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            service2 = manager.manage_collection(
+                collection_name="internal.config",
+                message_builder=simple_message_builder,
+            )
+
+        assert service1 is service2
+
+    def test_policy_change_affects_future_registrations(self, manager):
+        """Test that changing policy affects future registrations."""
+        # Start with no policy
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            manager.manage_collection(
+                collection_name="samples.xyz",
+                message_builder=simple_message_builder,
+            )
+
+        # Set restrictive policy
+        policy = DenylistWatchPolicy(["samples.*"])
+        manager.set_policy(policy)
+
+        # New collection with matching pattern should be denied
+        with pytest.raises(PolicyViolationError):
+            with patch("fiftyone.core.odm.get_async_db_conn"):
+                manager.manage_collection(
+                    collection_name="samples.abc",
+                    message_builder=simple_message_builder,
+                )
+
+
+class TestCustomWatchPolicy:
+    """Tests for custom policy implementations."""
+
+    def test_custom_policy_implementation(self):
+        """Test implementing a custom policy."""
+
+        class AllowlistPolicy(CollectionWatchPolicy):
+            """Policy that only allows specific collections."""
+
+            def __init__(self, allowed):
+                self._allowed = set(allowed)
+
+            def is_collection_allowed(self, collection_name):
+                return collection_name in self._allowed
+
+        policy = AllowlistPolicy(["samples.dataset1", "execution_store"])
+
+        assert policy.is_collection_allowed("samples.dataset1")
+        assert policy.is_collection_allowed("execution_store")
+        assert not policy.is_collection_allowed("samples.dataset2")
+        assert not policy.is_collection_allowed("internal.secrets")
+
+    def test_custom_policy_with_manager(self):
+        """Test using custom policy with manager."""
+
+        class PrefixAllowPolicy(CollectionWatchPolicy):
+            def __init__(self, allowed_prefixes):
+                self._prefixes = allowed_prefixes
+
+            def is_collection_allowed(self, collection_name):
+                return any(
+                    collection_name.startswith(p) for p in self._prefixes
+                )
+
+        policy = PrefixAllowPolicy(["samples.", "execution_store"])
+        manager = NotificationManager()
+        manager.set_policy(policy)
+
+        with patch("fiftyone.core.odm.get_async_db_conn"):
+            # Allowed
+            service = manager.manage_collection(
+                collection_name="samples.xyz",
+                message_builder=simple_message_builder,
+            )
+            assert service is not None
+
+            # Denied
+            with pytest.raises(PolicyViolationError):
+                manager.manage_collection(
+                    collection_name="internal.config",
+                    message_builder=simple_message_builder,
+                )

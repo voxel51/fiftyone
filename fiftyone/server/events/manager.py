@@ -12,6 +12,10 @@ import threading
 from typing import Dict, Optional
 
 from fiftyone.operators.remote_notifier import RemoteNotifier
+from fiftyone.server.events.policy import (
+    CollectionWatchPolicy,
+    PolicyViolationError,
+)
 from fiftyone.server.events.service import (
     InitialStateBuilder,
     MessageBuilder,
@@ -36,6 +40,7 @@ class NotificationManager:
     def __init__(self):
         self._services: Dict[str, MongoCollectionNotificationService] = {}
         self._sub_id_to_collection: Dict[str, str] = {}
+        self._policy: Optional[CollectionWatchPolicy] = None
         self._lock = threading.Lock()
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -100,6 +105,24 @@ class NotificationManager:
             self._loop = None
             self._loop_ready.clear()
 
+    def set_policy(self, policy: Optional[CollectionWatchPolicy]) -> None:
+        """Set the policy for controlling which collections can be watched.
+
+        Args:
+            policy: The policy to use, or None to allow all collections.
+        """
+        with self._lock:
+            self._policy = policy
+
+    def get_policy(self) -> Optional[CollectionWatchPolicy]:
+        """Get the current collection watch policy.
+
+        Returns:
+            The current policy, or None if no policy is set.
+        """
+        with self._lock:
+            return self._policy
+
     def manage_collection(
         self,
         collection_name: str,
@@ -123,10 +146,22 @@ class NotificationManager:
 
         Returns:
             The notification service for this collection.
+
+        Raises:
+            PolicyViolationError: If the collection is denied by policy.
         """
         with self._lock:
+            # Return existing service without re-checking policy
             if collection_name in self._services:
                 return self._services[collection_name]
+
+            # Check policy before allowing new collection to be managed
+            if self._policy and not self._policy.is_collection_allowed(
+                collection_name
+            ):
+                raise PolicyViolationError(
+                    f"Collection '{collection_name}' is denied by policy"
+                )
 
             service = MongoCollectionNotificationService(
                 collection_name=collection_name,
