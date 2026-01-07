@@ -7,26 +7,29 @@ Definition of the `fiftyone` command-line interface (CLI).
 """
 
 import argparse
-from collections import defaultdict
-from datetime import datetime
 import fnmatch
 import json
 import os
 import re
 import subprocess
 import sys
-import time
 import textwrap
+import time
+import webbrowser
+from collections import defaultdict
+from datetime import datetime
 
 import argcomplete
-from bson import ObjectId
-from tabulate import tabulate
-import webbrowser
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+from bson import ObjectId
+from tabulate import tabulate
 
 import fiftyone as fo
+
+# pylint: disable=import-error,no-name-in-module
+import fiftyone.brain as fob
+import fiftyone.brain.config as fobc
 import fiftyone.constants as foc
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
@@ -45,11 +48,6 @@ import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
 from fiftyone import ViewField as F
-
-# pylint: disable=import-error,no-name-in-module
-import fiftyone.brain as fob
-import fiftyone.brain.config as fobc
-
 
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
@@ -3313,6 +3311,12 @@ class DelegatedListCommand(Command):
             default=None,
             help="a maximum number of operations to show",
         )
+        parser.add_argument(
+            "--include-archived",
+            action="store_true",
+            default=False,
+            help="whether to include archived operations",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -3328,6 +3332,7 @@ class DelegatedListCommand(Command):
             operator=args.operator,
             dataset_name=args.dataset,
             run_state=state,
+            include_archived=args.include_archived,
             search=search,
             paging=paging,
         )
@@ -3524,6 +3529,12 @@ class DelegatedDeleteCommand(Command):
             metavar="IDS",
             help="an operation ID or list of operation IDs",
         )
+        parser.add_argument(
+            "--archive",
+            action="store_true",
+            default=False,
+            help="archive operations rather than deleting them",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -3535,7 +3546,7 @@ class DelegatedDeleteCommand(Command):
             op = dos.get(ObjectId(id))
             if op.run_state != fooe.ExecutionRunState.RUNNING:
                 print("Deleting operation %s" % id)
-                dos.delete_operation(ObjectId(id))
+                dos.delete_operation(ObjectId(id), archive=args.archive)
             else:
                 print(
                     "Cannot delete operation %s in state %s"
@@ -3598,11 +3609,19 @@ class DelegatedCleanupCommand(Command):
                 "operations"
             ),
         )
+        parser.add_argument(
+            "--archive",
+            action="store_true",
+            default=False,
+            help="archive operations rather than deleting them",
+        )
 
     @staticmethod
     def execute(parser, args):
         if args.orphan:
-            _cleanup_orphan_delegated(dry_run=args.dry_run)
+            _cleanup_orphan_delegated(
+                dry_run=args.dry_run, archive=args.archive
+            )
         elif args.operator or args.dataset or args.state:
             state = _parse_state(args.state)
             _cleanup_delegated(
@@ -3610,19 +3629,20 @@ class DelegatedCleanupCommand(Command):
                 dataset=args.dataset,
                 state=state,
                 dry_run=args.dry_run,
+                archive=args.archive,
             )
         else:
             print("No cleanup options specified")
 
 
-def _cleanup_orphan_delegated(dry_run=False):
+def _cleanup_orphan_delegated(dry_run=False, archive=False):
     from fiftyone.core.odm import get_db_conn
 
     db = get_db_conn()
     dataset_ids = set(d["_id"] for d in db.datasets.find({}, {"_id": 1}))
 
     dos = food.DelegatedOperationService()
-    ops = dos.list_operations()
+    ops = dos.list_operations(include_archived=not archive)
 
     del_ids = set(op.id for op in ops if op.dataset_id not in dataset_ids)
 
@@ -3635,10 +3655,12 @@ def _cleanup_orphan_delegated(dry_run=False):
     else:
         print("Deleting %d orphan operation(s)" % num_del)
         for del_id in del_ids:
-            dos.delete_operation(del_id)
+            dos.delete_operation(del_id, archive=archive)
 
 
-def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
+def _cleanup_delegated(
+    operator=None, dataset=None, state=None, dry_run=False, archive=False
+):
     if state == fooe.ExecutionRunState.RUNNING:
         raise ValueError(
             "Deleting operations that are currently running is not allowed"
@@ -3649,6 +3671,7 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
         operator=operator,
         dataset_name=dataset,
         run_state=state,
+        include_archived=not archive,
     )
 
     del_ids = set()
@@ -3665,7 +3688,7 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
     else:
         print("Deleting %d operation(s)" % num_del)
         for del_id in del_ids:
-            dos.delete_operation(del_id)
+            dos.delete_operation(del_id, archive=archive)
 
 
 class PluginsCommand(Command):

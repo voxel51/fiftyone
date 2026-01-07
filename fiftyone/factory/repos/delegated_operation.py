@@ -103,16 +103,19 @@ class DelegatedOperationRepo(object):
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
+        include_archived: bool = False,
         **kwargs: Any,
     ) -> List[DelegatedOperationDocument]:
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
 
-    def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+    def delete_operation(
+        self, _id: ObjectId, archive: bool = False
+    ) -> DelegatedOperationDocument:
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
-    def delete_for_dataset(self, dataset_id: ObjectId):
+    def delete_for_dataset(self, dataset_id: ObjectId, archive: bool = False):
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
@@ -501,6 +504,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
+        include_archived: bool = False,
         **kwargs: Any,
     ) -> List[DelegatedOperationDocument]:
         query = {}
@@ -516,6 +520,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["delegation_target"] = delegation_target
         if dataset_id:
             query["dataset_id"] = dataset_id
+        if not include_archived:
+            query["archived"] = {"$ne": True}
 
         for arg in kwargs:
             query[arg] = kwargs[arg]
@@ -539,15 +545,31 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
-    def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
-        doc = self._collection.find_one_and_delete(
-            filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
-        )
+    def delete_operation(
+        self, _id: ObjectId, archive: bool = False
+    ) -> DelegatedOperationDocument:
+        if archive:
+            self._collection.update_one(
+                filter={"_id": _id},
+                update={"$set": {"archived": True}},
+            )
+            doc = self._collection.find_one(filter={"_id": _id})
+        else:
+            doc = self._collection.find_one_and_delete(
+                filter={"_id": _id},
+                return_document=pymongo.ReturnDocument.BEFORE,
+            )
         if doc:
             return DelegatedOperationDocument().from_pymongo(doc)
 
-    def delete_for_dataset(self, dataset_id: ObjectId):
-        self._collection.delete_many(filter={"dataset_id": dataset_id})
+    def delete_for_dataset(self, dataset_id: ObjectId, archive: bool = False):
+        if archive:
+            self._collection.update_many(
+                filter={"dataset_id": dataset_id},
+                update={"$set": {"archived": True}},
+            )
+        else:
+            self._collection.delete_many(filter={"dataset_id": dataset_id})
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})

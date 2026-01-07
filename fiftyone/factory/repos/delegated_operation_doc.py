@@ -11,9 +11,9 @@ from datetime import datetime
 
 from fiftyone.operators.executor import (
     ExecutionContext,
+    ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
 from fiftyone.operators.types import Pipeline, PipelineRunInfo
 
@@ -61,6 +61,7 @@ class DelegatedOperationDocument(object):
         self.log_size = None
         self.log_path = None
         self.monitored = False
+        self.archived = False
 
         # distributed task fields
         self.parent_id = None  # Only on children
@@ -95,6 +96,7 @@ class DelegatedOperationDocument(object):
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
         self.monitored = doc.get("monitored", False)
+        self.archived = doc.get("archived", False)
 
         # grouped fields
         self.parent_id = doc.get("parent_id", None)

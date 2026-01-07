@@ -399,24 +399,30 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
-    def delete_operation(self, doc_id):
+    def delete_operation(self, doc_id, archive=False):
         """Deletes the given delegated operation.
 
         Args:
             doc_id: the ID of the delegated operation
+            archive (False): whether to archive the operation instead of
+                deleting it
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
-        return self._repo.delete_operation(_id=doc_id)
+        return self._repo.delete_operation(_id=doc_id, archive=archive)
 
-    def delete_for_dataset(self, dataset_id):
+    def delete_for_dataset(self, dataset_id, archive=False):
         """Deletes all delegated operations associated with the given dataset.
 
         Args:
             dataset_id: the ID of the dataset
+            archive (False): whether to archive the operations instead of
+                deleting them
         """
-        return self._repo.delete_for_dataset(dataset_id=dataset_id)
+        return self._repo.delete_for_dataset(
+            dataset_id=dataset_id, archive=archive
+        )
 
     def rerun_operation(self, doc_id):
         """Reruns the specified delegated operation.
@@ -498,6 +504,7 @@ class DelegatedOperationService(object):
         delegation_target=None,
         paging=None,
         search=None,
+        include_archived=False,
         **kwargs,
     ):
         """Lists the delegated operations matching the given criteria.
@@ -516,6 +523,7 @@ class DelegatedOperationService(object):
             paging (None): optional
                 :class:`fiftyone.factory.DelegatedOperationPagingParams`
             search (None): optional search term dict
+            include_archived (False): whether to include archived operations
 
         Returns:
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -528,6 +536,7 @@ class DelegatedOperationService(object):
             delegation_target=delegation_target,
             paging=paging,
             search=search,
+            include_archived=include_archived,
             **kwargs,
         )
 

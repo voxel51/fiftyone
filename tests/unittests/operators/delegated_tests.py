@@ -14,16 +14,18 @@ from unittest.mock import patch
 
 import bson
 import pytest
-
 from bson import ObjectId
 
 from fiftyone import Dataset
 from fiftyone.factory import (
     DelegatedOperationPagingParams,
-    SortDirection,
     SortByField,
+    SortDirection,
 )
-from fiftyone.operators.types import PipelineRunInfo
+from fiftyone.factory.repos import (
+    DelegatedOperationDocument,
+    delegated_operation,
+)
 from fiftyone.operators import delegated
 from fiftyone.operators.delegated import DelegatedOperationService
 from fiftyone.operators.executor import (
@@ -32,12 +34,8 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     PipelineExecutionContext,
 )
-from fiftyone.operators.types import Pipeline, PipelineStage
-from fiftyone.factory.repos import (
-    DelegatedOperationDocument,
-    delegated_operation,
-)
 from fiftyone.operators.operator import Operator, OperatorConfig
+from fiftyone.operators.types import Pipeline, PipelineRunInfo, PipelineStage
 
 TEST_DO_PREFIX = "@testVoxelFiftyOneDOSvc"
 
@@ -1452,8 +1450,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
 
-        # create 100 docs, 25 of each state & for each user
-        queued = []
+        # create 25 docs
         operator = f"{TEST_DO_PREFIX}/operator/test_{ObjectId}"
         for i in range(25):
             doc = self.svc.queue_operation(
@@ -1466,34 +1463,68 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                     }
                 ),
             )
-            time.sleep(0.01)  # ensure that the queued_at times are different
             self.docs_to_delete.append(doc)
-            queued.append(doc)
 
-        ops = self.svc.list_operations(
-            dataset_name=dataset_name,
-            paging=DelegatedOperationPagingParams(
-                skip=0,
-                limit=100,
-                sort_by=SortByField.QUEUED_AT,
-                sort_direction=SortDirection.DESCENDING,
-            ),
-        )
-
+        # Initial check
+        ops = self.svc.list_operations(dataset_name=dataset_name)
         self.assertEqual(len(ops), 25)
 
-        self.svc.delete_for_dataset(dataset_id=dataset_id)
+        # Test archive=True
+        self.svc.delete_for_dataset(dataset_id=dataset_id, archive=True)
 
+        # Should be hidden by default
+        ops = self.svc.list_operations(dataset_name=dataset_name)
+        self.assertEqual(len(ops), 0)
+
+        # Should be visible with flag
         ops = self.svc.list_operations(
-            dataset_name=dataset_name,
-            paging=DelegatedOperationPagingParams(
-                skip=0,
-                limit=100,
-                sort_by=SortByField.QUEUED_AT,
-                sort_direction=SortDirection.DESCENDING,
-            ),
+            dataset_name=dataset_name, include_archived=True
         )
+        self.assertEqual(len(ops), 25)
+        self.assertTrue(all(op.archived for op in ops))
 
+        # Test archive=False (permanent delete)
+        self.svc.delete_for_dataset(dataset_id=dataset_id, archive=False)
+
+        # Should be gone
+        ops = self.svc.list_operations(
+            dataset_name=dataset_name, include_archived=True
+        )
+        self.assertEqual(len(ops), 0)
+
+    def test_archive_operation(self, mock_get_operator):
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
+            label="archive_test",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Archive it
+        self.svc.delete_operation(doc.id, archive=True)
+
+        # Check hidden
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test"
+        )
+        self.assertEqual(len(ops), 0)
+
+        # Check visible
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
+            include_archived=True,
+        )
+        self.assertEqual(len(ops), 1)
+        self.assertTrue(ops[0].archived)
+
+        # Permanently delete
+        self.svc.delete_operation(doc.id, archive=False)
+
+        # Check gone
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
+            include_archived=True,
+        )
         self.assertEqual(len(ops), 0)
 
     @patch("fiftyone.core.odm.load_dataset")
