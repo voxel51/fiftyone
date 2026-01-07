@@ -62,7 +62,6 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.2",
-        "@voxel51/voodo": "portal:/Users/lanny/code/design-system"
+        "brace-expansion": "^2.0.2"
     }
 }
