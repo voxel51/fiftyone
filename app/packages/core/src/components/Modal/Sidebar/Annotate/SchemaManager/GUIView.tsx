@@ -303,7 +303,15 @@ const JSONContent = () => {
   }
 
   return (
-    <ContentArea>
+    <ContentArea
+      style={{
+        position: "absolute",
+        top: "20px",
+        left: "2rem",
+        right: "2rem",
+        bottom: 0,
+      }}
+    >
       <CodeView
         data={jsonStr}
         path="schemas"
