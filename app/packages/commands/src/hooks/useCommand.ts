@@ -34,6 +34,6 @@ export const useCommand = (context: CommandContext, id: string, execFn: CommandF
     }, [context, id, exec, enable, label,description]);
     
     return useCallback(async ()=>{
-        await context.executeCommand(id);
+        return await context.executeCommand(id);
     }, [id, context]);
 }
