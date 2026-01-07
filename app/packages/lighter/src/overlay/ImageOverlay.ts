@@ -122,6 +122,7 @@ export class ImageOverlay
    */
   private createImageElement(container: HTMLElement): void {
     this.imgElement = document.createElement("img");
+    this.imgElement.setAttribute("data-cy", "lighter-sample-image");
 
     // Note: No CORS requirement
     this.imgElement.src = getSampleSrc(this.options.src);
