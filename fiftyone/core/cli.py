@@ -3153,6 +3153,7 @@ class DelegatedCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "archive", DelegatedArchiveCommand)
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
@@ -3386,6 +3387,7 @@ def _print_delegated_list(ops):
         "queued_at",
         "state",
         "completed",
+        "archived",
     ]
 
     rows = []
@@ -3409,6 +3411,7 @@ def _print_delegated_list(ops):
                 "queued_at": op.queued_at,
                 "state": state,
                 "completed": op.run_state == fooe.ExecutionRunState.COMPLETED,
+                "archived": op.archived,
             }
         )
 
@@ -3552,6 +3555,55 @@ class DelegatedDeleteCommand(Command):
                     "Cannot delete operation %s in state %s"
                     % (id, op.run_state.upper())
                 )
+
+
+class DelegatedArchiveCommand(Command):
+    """Archive delegated operations.
+
+    Examples::
+
+        # Archive the specified operation(s)
+        fiftyone delegated archive <id1> <id2> ...
+
+        # Unarchive the specified operation(s)
+        fiftyone delegated archive <id1> <id2> ... --unarchive
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+        )
+        parser.add_argument(
+            "--unarchive",
+            action="store_true",
+            default=False,
+            help="unarchive operations rather than archiving them",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if args.unarchive:
+                if op.archived:
+                    print("Unarchiving operation %s" % id)
+                    dos.unarchive_operation(ObjectId(id))
+                else:
+                    print("Operation %s is not archived" % id)
+            else:
+                if not op.archived:
+                    print("Archiving operation %s" % id)
+                    dos.delete_operation(ObjectId(id), archive=True)
+                else:
+                    print("Operation %s is already archived" % id)
 
 
 class DelegatedCleanupCommand(Command):

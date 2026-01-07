@@ -399,6 +399,17 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
+    def unarchive_operation(self, doc_id):
+        """Unarchives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.unarchive_operation(_id=doc_id)
+
     def delete_operation(self, doc_id, archive=False):
         """Deletes the given delegated operation.
 

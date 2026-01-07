@@ -109,6 +109,12 @@ class DelegatedOperationRepo(object):
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
 
+    def unarchive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Unarchive an operation."""
+        raise NotImplementedError(
+            "subclass must implement unarchive_operation()"
+        )
+
     def delete_operation(
         self, _id: ObjectId, archive: bool = False
     ) -> DelegatedOperationDocument:
@@ -544,6 +550,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             docs = docs.limit(paging.limit)
 
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
+
+    def unarchive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"archived": False}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
 
     def delete_operation(
         self, _id: ObjectId, archive: bool = False
