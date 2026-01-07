@@ -71,7 +71,7 @@ export const CreateCuboidRenderer = ({
 
     return {
       normal: plane.normal,
-      constant: plane.constant,
+      constant: -plane.constant,
     };
   }, [annotationPlane.position, annotationPlane.quaternion]);
 
@@ -112,10 +112,6 @@ export const CreateCuboidRenderer = ({
 
       // Position center at midpoint between center and current
       const cuboidCenter = center.clone().add(current).multiplyScalar(0.5);
-      // Offset by half height along plane normal
-      cuboidCenter.add(
-        planeAxes.normal.clone().multiplyScalar(DEFAULT_HEIGHT / 2)
-      );
 
       return {
         location: cuboidCenter.toArray() as THREE.Vector3Tuple,
