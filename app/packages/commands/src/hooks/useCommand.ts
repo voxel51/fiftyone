@@ -23,7 +23,11 @@ export const useCommand = (context: CommandContext, id: string, execFn: CommandF
     }, [execFn, enablement]);
 
     const cmd = useMemo(() => {
-        return context.registerCommand(id, exec.current, enable.current, label, description);
+        return context.registerCommand(
+            id, 
+            ()=> exec.current(), 
+            ()=> enable.current(), 
+            label, description);
     }, [id, label, description, context]);
     useEffect(() => {
         if (cmd) {
