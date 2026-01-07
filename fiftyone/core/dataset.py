@@ -1180,9 +1180,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         foa.validate_label_schemas(self, label_schemas)
         self._doc.label_schemas = label_schemas
-        active = list(self.active_label_schemas or [])
+        active = self.active_label_schemas
 
-        for field in self._doc.active_label_schemas:
+        for field in self.active_label_schemas:
             if field not in label_schemas:
                 active.remove(field)
 
@@ -1252,11 +1252,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ValueError: if any fields are not in the label schema
         """
         if fields is None:
-            fields = sorted(self._doc.label_schemas)
+            fields = sorted(self.label_schemas)
         elif etau.is_str(fields):
             fields = [fields]
 
-        result = list(self._doc.active_label_schemas)
+        result = self.active_label_schemas
         for field in fields:
             if field not in self._doc.label_schemas:
                 raise ValueError(f"field '{field}' is not in the label schema")
@@ -1284,11 +1284,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 is not currently active
         """
         if fields is None:
-            fields = self._doc.active_label_schemas
+            fields = self.active_label_schemas
         elif etau.is_str(fields):
             fields = [fields]
 
-        result = list(self._doc.active_label_schemas)
+        result = self.active_label_schemas
         for field in fields:
             if field not in self._doc.label_schemas:
                 raise ValueError(

@@ -3740,9 +3740,6 @@ class SampleCollection(object):
             }
 
         Args:
-            sample_collection: the
-                :class:`fiftyone.core.collections.SampleCollection` to generate
-                the schema with
             fields (None): a field name, ``embedded.field.name`` or iterable of
                 such values
             scan_samples (True): whether to scan the collection to populate

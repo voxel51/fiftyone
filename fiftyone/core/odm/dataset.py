@@ -942,7 +942,7 @@ class DatasetDocument(Document):
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
     runs = DictField(ReferenceField(RunDocument))
-    active_label_schemas = ListField(StringField(), default=[])
+    active_label_schemas = ListField(StringField())
     label_schemas = DictField()
 
     def get_saved_views(self):
