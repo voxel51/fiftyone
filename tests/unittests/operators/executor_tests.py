@@ -198,7 +198,6 @@ async def test_delegate_operator(list_operators):
 @patch("fiftyone.operators.registry.OperatorRegistry.list_operators")
 class TestPipeline:
     PREFIX = "@voxel51/operators/"
-    calls = []
 
     def record_request_params(self, *args, **kwargs):
         self.calls.append(copy.deepcopy(args[0].request_params))
