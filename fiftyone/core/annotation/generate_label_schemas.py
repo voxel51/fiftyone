@@ -243,7 +243,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             such values
         scan_samples (True): whether to scan the collection to populate
             component settings based on actual field values (ranges,
-            values, etc). By default, the label schema is generated from *only*
+            values, etc). If False, the label schema is generated from *only*
             the statically available information in the dataset's field schema
 
     Raises:
@@ -280,10 +280,11 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             label_schema,
             fields=field_name,
         )
-        schema[field_name] = label_schema
 
-    if is_scalar:
-        return next(iter(schema.values()))
+        if is_scalar:
+            return label_schema
+
+        schema[field_name] = label_schema
 
     return schema
 
@@ -408,26 +409,25 @@ def _handle_float_or_int(
 
 
 def _handle_str(collection, field_name, is_list, settings, scan_samples):
+    values = None
+
     try:
         if scan_samples and field_name != foac.FILEPATH:
             values = collection.distinct(field_name)
-        else:
-            values = None
-
-        if values:
-            if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-                settings[foac.COMPONENT] = (
-                    foac.CHECKBOXES if is_list else foac.RADIO
-                )
-
-            elif len(values) <= foac.VALUES_THRESHOLD:
-                settings[foac.COMPONENT] = foac.DROPDOWN
-
-            if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
-                settings[foac.VALUES] = values
-
     except OperationFailure:
         # too many distinct values
         pass
+
+    if values:
+        if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+            settings[foac.COMPONENT] = (
+                foac.CHECKBOXES if is_list else foac.RADIO
+            )
+
+        elif len(values) <= foac.VALUES_THRESHOLD:
+            settings[foac.COMPONENT] = foac.DROPDOWN
+
+        if settings[foac.COMPONENT] in foac.VALUES_COMPONENTS:
+            settings[foac.VALUES] = values
 
     return settings

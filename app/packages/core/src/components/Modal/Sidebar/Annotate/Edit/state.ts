@@ -5,12 +5,12 @@ import { atomFamily, atomWithReset } from "jotai/utils";
 import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 
-const CLASSIFICATION = "classification";
-const CLASSIFICATIONS = "classifications";
-const DETECTION = "detection";
-const DETECTIONS = "detections";
-const POLYLINE = "polyline";
-const POLYLINES = "polylines";
+export const CLASSIFICATION = "classification";
+export const CLASSIFICATIONS = "classifications";
+export const DETECTION = "detection";
+export const DETECTIONS = "detections";
+export const POLYLINE = "polyline";
+export const POLYLINES = "polylines";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 

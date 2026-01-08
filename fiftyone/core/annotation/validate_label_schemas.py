@@ -522,12 +522,10 @@ def _validate_attributes(collection, field_name, class_name, attributes):
         except Exception as exc:
             exceptions.append(exc)
 
-    if len(exceptions) > 1:
+    if exceptions:
         raise ValidationErrors(
-            f"invalid attributes for field '{field_name}'", exceptions
+            f"invalid attribute(s) for field '{field_name}'", exceptions
         )
-    elif exceptions:
-        raise exceptions[0]
 
 
 def _validate_default(

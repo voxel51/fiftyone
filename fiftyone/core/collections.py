@@ -3744,7 +3744,7 @@ class SampleCollection(object):
                 such values
             scan_samples (True): whether to scan the collection to populate
                 component settings based on actual field values (ranges,
-                values, etc). By default, the label schema is generated from
+                values, etc). If False, the label schema is generated from
                 *only* the statically available information in the dataset's
                 field schema
 
