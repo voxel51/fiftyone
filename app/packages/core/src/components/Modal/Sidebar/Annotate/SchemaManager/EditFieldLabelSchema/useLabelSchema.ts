@@ -18,7 +18,7 @@ const useCurrentLabelSchema = (field: string) => {
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data.defaultLabelSchema;
+  return data?.defaultLabelSchema;
 };
 
 const useDiscard = (field: string) => {
@@ -72,7 +72,7 @@ const useConfigUpdate = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data.labelSchema,
+    data?.labelSchema,
     (labelSchema) => {
       setAtom({ ...data, labelSchema });
     },
