@@ -162,7 +162,11 @@ export class ImageOverlay
     const imgRef = this.imgElement;
     this.imgElement.onload = () => {
       // Guard against stale handler execution after destroy
-      if (imgRef === this.imgElement && this.imgElement && !this.isImageLoaded) {
+      if (
+        imgRef === this.imgElement &&
+        this.imgElement &&
+        !this.isImageLoaded
+      ) {
         this.originalDimensions = {
           width: this.imgElement.naturalWidth,
           height: this.imgElement.naturalHeight,
@@ -494,6 +498,8 @@ export class ImageOverlay
     }
 
     if (this.imgElement) {
+      this.imgElement.onload = null;
+      this.imgElement.onerror = null;
       this.imgElement.remove();
       this.imgElement = undefined;
     }
