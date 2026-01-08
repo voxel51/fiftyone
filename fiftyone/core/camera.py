@@ -646,15 +646,22 @@ class CameraProjector:
         self.extrinsics = extrinsics
         self.camera_convention = camera_convention
 
-        # Precompute matrices
-        self._K = intrinsics.intrinsic_matrix
-        self._K_inv = np.linalg.inv(self._K)
+    @property
+    def _K(self) -> np.ndarray:
+        """Returns the intrinsic matrix, always reflecting current intrinsics."""
+        return self.intrinsics.intrinsic_matrix
 
-        if extrinsics is not None:
-            # Transform from world to camera
-            self._world_to_camera = extrinsics.inverse().extrinsic_matrix
-        else:
-            self._world_to_camera = None
+    @property
+    def _K_inv(self) -> np.ndarray:
+        """Returns the inverse intrinsic matrix."""
+        return np.linalg.inv(self.intrinsics.intrinsic_matrix)
+
+    @property
+    def _world_to_camera(self) -> Optional[np.ndarray]:
+        """Returns the world-to-camera transformation matrix."""
+        if self.extrinsics is not None:
+            return self.extrinsics.inverse().extrinsic_matrix
+        return None
 
     def project(
         self,

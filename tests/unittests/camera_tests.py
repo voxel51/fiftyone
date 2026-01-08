@@ -772,6 +772,74 @@ class CameraProjectorTests(unittest.TestCase):
         points_2d2 = projector.project(world_point2, in_camera_frame=False)
         nptest.assert_array_almost_equal(points_2d2, [[1060.0, 540.0]])
 
+    def test_intrinsics_mutation_reflected_in_projection(self):
+        """Test that changes to intrinsics after projector creation are reflected."""
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+
+        projector = CameraProjector(intrinsics)
+
+        # Project a point at (1, 0, 10) with original intrinsics
+        # u = fx * (1/10) + cx = 1000 * 0.1 + 960 = 1060
+        points_3d = np.array([[1.0, 0.0, 10.0]])
+        points_2d_before = projector.project(points_3d, in_camera_frame=True)
+        nptest.assert_array_almost_equal(points_2d_before, [[1060.0, 540.0]])
+
+        # Modify intrinsics after projector creation
+        projector.intrinsics.fx = 2000.0
+
+        # Project same point - should use updated fx
+        # u = fx * (1/10) + cx = 2000 * 0.1 + 960 = 1160
+        points_2d_after = projector.project(points_3d, in_camera_frame=True)
+        nptest.assert_array_almost_equal(points_2d_after, [[1160.0, 540.0]])
+
+    def test_extrinsics_mutation_reflected_in_projection(self):
+        """Test that changes to extrinsics after projector creation are reflected."""
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+
+        # Camera at origin, identity rotation
+        extrinsics = SensorExtrinsics(
+            translation=[0.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="world",
+        )
+
+        projector = CameraProjector(intrinsics, extrinsics)
+
+        # World point at (0, 0, 10) projects to principal point
+        world_point = np.array([[0.0, 0.0, 10.0]])
+        points_2d_before = projector.project(
+            world_point, in_camera_frame=False
+        )
+        nptest.assert_array_almost_equal(points_2d_before, [[960.0, 540.0]])
+
+        # Move camera 5 units back along z-axis (camera at world z=-5)
+        # Now the world point (0, 0, 10) is 15 units in front of camera
+        projector.extrinsics.translation = [0.0, 0.0, -5.0]
+
+        # Project same world point - should use updated extrinsics
+        # Point still on optical axis, projects to principal point
+        points_2d_after = projector.project(world_point, in_camera_frame=False)
+        nptest.assert_array_almost_equal(points_2d_after, [[960.0, 540.0]])
+
+        # Test with an off-axis point to verify the transform changed
+        # World point at (1, 0, 10): camera at z=-5 means point is at z=15 in camera frame
+        # u = fx * (1/15) + cx = 1000 * (1/15) + 960 ≈ 1026.67
+        world_point2 = np.array([[1.0, 0.0, 10.0]])
+        points_2d2 = projector.project(world_point2, in_camera_frame=False)
+        expected_u = 1000.0 * (1.0 / 15.0) + 960.0
+        nptest.assert_array_almost_equal(points_2d2, [[expected_u, 540.0]])
+
 
 class ReferenceTests(unittest.TestCase):
     """Tests for CameraIntrinsicsRef and SensorExtrinsicsRef."""
