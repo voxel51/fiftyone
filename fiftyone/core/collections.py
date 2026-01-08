@@ -3543,7 +3543,7 @@ class SampleCollection(object):
             -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
             -   ``dict``: :class:`fiftyone.core.fields.DictField`
             -   ``float``: :class:`fiftyone.core.fields.FloatField`
-            -   ``id``: : :class:`fiftyone.core.fields.ObjectIdField` or
+            -   ``id``: :class:`fiftyone.core.fields.ObjectIdField` or
                 :class:`fiftyone.core.fields.UUIDField`
             -   ``int``: :class:`fiftyone.core.fields.IntField` or
                 :class:`fiftyone.core.fields.FrameNumberField`
