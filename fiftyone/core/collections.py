@@ -3553,7 +3553,7 @@ class SampleCollection(object):
                 :class:`fiftyone.core.fields.IntField`
             -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.FloatField`
-            -   ``list<str>``: : :class:`fiftyone.core.fields.ListField` of
+            -   ``list<str>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.StringField`
             -   ``str``: :class:`fiftyone.core.fields.StringField`
 
