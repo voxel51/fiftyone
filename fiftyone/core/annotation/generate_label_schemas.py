@@ -31,7 +31,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     schema. See
     :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
-    Currently supported  media types for the collection are ``image`` and
+    Currently supported media types for the collection are ``image`` and
     ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
     **Primitives and components**
