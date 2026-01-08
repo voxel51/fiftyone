@@ -67,6 +67,12 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if len(depth_maps.shape) == 2:
             depth_maps = depth_maps[np.newaxis, ...]
 
+        if len(depth_maps) != len(image_sizes):
+            raise ValueError(
+                "Length mismatch: got %d depth maps but %d image sizes"
+                % (len(depth_maps), len(image_sizes))
+            )
+
         results = []
         for i, depth in enumerate(depth_maps):
             orig_h, orig_w = image_sizes[i]
