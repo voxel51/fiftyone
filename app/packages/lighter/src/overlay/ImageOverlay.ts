@@ -106,11 +106,11 @@ export class ImageOverlay
         this.createImageElement(parentElement);
       } else if (this.imgElement.parentElement !== parentElement) {
         // Migrate existing element to new parent
-        const canvas = parentElement.querySelector("canvas");
-        if (canvas) {
-          canvas.style.position = "relative";
-          canvas.style.zIndex = "1";
-          parentElement.insertBefore(this.imgElement, canvas);
+        const targetCanvas = parentElement.querySelector("canvas");
+        if (targetCanvas) {
+          targetCanvas.style.position = "relative";
+          targetCanvas.style.zIndex = "1";
+          parentElement.insertBefore(this.imgElement, targetCanvas);
         } else {
           parentElement.appendChild(this.imgElement);
         }
