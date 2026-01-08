@@ -1278,6 +1278,127 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 mock_get_operator.return_value, ctx, exhaust=True
             )
 
+    @patch.object(delegated, "do_execute_pipeline")
+    @patch.object(delegated, "prepare_operator_executor")
+    def test_execute_pipeline(
+        self, prepare_operator_mock, do_execute_mock, mock_get_operator
+    ):
+        with patch.object(self.svc, "get") as do_get_mock:
+            pipeline_id = ObjectId()
+            pipeline = Pipeline(
+                [
+                    PipelineStage(operator_uri="@test/op1", name="one"),
+                    PipelineStage(name="two", operator_uri="@test/op2"),
+                    PipelineStage(
+                        name="three",
+                        operator_uri="@test/op3",
+                        num_distributed_tasks=5,
+                    ),
+                ]
+            )
+
+            pipeline_do = DelegatedOperationDocument()
+            pipeline_do.id = pipeline_id
+            pipeline_do.pipeline = pipeline
+            do_get_mock.return_value = pipeline_do
+            do_execute_mock.return_value = None
+
+            request_params = {
+                "foo": "bar",
+                "dataset_name": "dataset",
+                "dataset_id": None,
+                "run_doc": pipeline_id,
+                "target": "outputs",
+                "results": None,
+            }
+            ctx = ExecutionContext(
+                request_params=copy.deepcopy(request_params),
+            )
+            pipeline_do.context = ctx
+            prepare_operator_mock.return_value = (
+                mock_get_operator.return_value,
+                None,
+                ctx,
+                None,
+            )
+
+            #####
+            asyncio.run(self.svc._execute_operator(pipeline_do))
+            #####
+
+            prepare_operator_mock.assert_called_once_with(
+                operator_uri=pipeline_do.operator,
+                request_params=request_params,
+                delegated_operation_id=pipeline_do.id,
+                set_progress=mock.ANY,
+                pipeline_ctx=None,
+            )
+            do_execute_mock.assert_called_once_with(pipeline, ctx)
+
+    @patch.object(delegated, "do_execute_pipeline")
+    @patch.object(delegated, "prepare_operator_executor")
+    def test_execute_pipeline_error(
+        self, prepare_operator_mock, do_execute_mock, mock_get_operator
+    ):
+        with patch.object(self.svc, "get") as do_get_mock:
+            pipeline_id = ObjectId()
+            pipeline = Pipeline(
+                [
+                    PipelineStage(operator_uri="@test/op1", name="one"),
+                    PipelineStage(name="two", operator_uri="@test/op2"),
+                    PipelineStage(
+                        name="three",
+                        operator_uri="@test/op3",
+                        num_distributed_tasks=5,
+                    ),
+                ]
+            )
+
+            pipeline_do = DelegatedOperationDocument()
+            pipeline_do.id = pipeline_id
+            pipeline_do.pipeline = pipeline
+            do_get_mock.return_value = pipeline_do
+            do_execute_mock.return_value = (
+                ValueError("Pipeline execution failed"),
+                "Pipeline execution failed",
+            )
+
+            request_params = {
+                "foo": "bar",
+                "dataset_name": "dataset",
+                "dataset_id": None,
+                "run_doc": pipeline_id,
+                "target": "outputs",
+                "results": None,
+            }
+            ctx = ExecutionContext(
+                request_params=copy.deepcopy(request_params),
+            )
+            pipeline_do.context = ctx
+            prepare_operator_mock.return_value = (
+                mock_get_operator.return_value,
+                None,
+                ctx,
+                None,
+            )
+
+            #####
+            result = asyncio.run(self.svc._execute_operator(pipeline_do))
+            assert (
+                result.error_message
+                and "Pipeline execution failed" in result.error_message
+            )
+            #####
+
+            prepare_operator_mock.assert_called_once_with(
+                operator_uri=pipeline_do.operator,
+                request_params=request_params,
+                delegated_operation_id=pipeline_do.id,
+                set_progress=mock.ANY,
+                pipeline_ctx=None,
+            )
+            do_execute_mock.assert_called_once_with(pipeline, ctx)
+
     def test_paging_sorting(self, mock_get_operator):
         dataset_name = f"test_dataset_{ObjectId()}"
         dataset = Dataset(dataset_name, _create=True, persistent=True)
