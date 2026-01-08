@@ -23,9 +23,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import mongoengine.errors as moe
 from bson import DBRef, ObjectId, json_util
-from deprecated import deprecated
 from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
-from pymongo.collection import Collection
 from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
