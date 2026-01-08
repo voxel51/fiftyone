@@ -6,27 +6,39 @@ import {
   TextColor,
   TextVariant,
   Toggle,
+  ToggleSwitch,
   Variant,
 } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
+import { useCallback, useState } from "react";
 import Footer from "../Footer";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
+import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 import { currentField } from "../state";
 
+const TAB_IDS = ["gui", "json"] as const;
+type TabId = typeof TAB_IDS[number];
+
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
+  const [activeTab, setActiveTab] = useState<TabId>("gui");
+
+  const handleTabChange = useCallback((index: number) => {
+    setActiveTab(TAB_IDS[index]);
+  }, []);
+
+  const schemaData =
+    labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema;
 
   return (
     <EditContainer>
-      {/* Field name and type header */}
       <Header field={field} setField={setCurrentField} />
 
-      {/* Read-only toggle */}
       <div className="my-4">
         <div className="flex items-center justify-between mb-1">
           <Text variant={TextVariant.Xl}>Read-only</Text>
@@ -43,10 +55,18 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </Text>
       </div>
 
-      {/* Schema section - JSON only */}
       <SchemaSection>
+        <Label variant="body2">Schema</Label>
         <TabsRow>
-          <Label variant="body2">Schema</Label>
+          <ToggleSwitch
+            size={Size.Sm}
+            defaultIndex={0}
+            onChange={handleTabChange}
+            tabs={[
+              { id: "gui", data: { label: "GUI" } },
+              { id: "json", data: { label: "JSON" } },
+            ]}
+          />
           <Button
             size={Size.Sm}
             variant={Variant.Secondary}
@@ -57,18 +77,18 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           </Button>
         </TabsRow>
 
-        <JSONEditor
-          errors={!!labelSchema.errors.length}
-          data={JSON.stringify(
-            labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema,
-            undefined,
-            2
-          )}
-          onChange={(value) => {
-            labelSchema.validate(value);
-          }}
-          scanning={labelSchema.isScanning}
-        />
+        {activeTab === "gui" ? (
+          <GUIContent config={schemaData} scanning={labelSchema.isScanning} />
+        ) : (
+          <JSONEditor
+            errors={!!labelSchema.errors.length}
+            data={JSON.stringify(schemaData, undefined, 2)}
+            onChange={(value) => {
+              labelSchema.validate(value);
+            }}
+            scanning={labelSchema.isScanning}
+          />
+        )}
       </SchemaSection>
 
       <Errors errors={labelSchema.errors} />

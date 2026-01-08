@@ -306,7 +306,7 @@ const JSONContent = () => {
     <ContentArea
       style={{
         position: "absolute",
-        top: "20px",
+        top: "50px",
         left: "2rem",
         right: "2rem",
         bottom: 0,
