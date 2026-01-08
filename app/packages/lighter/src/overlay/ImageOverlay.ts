@@ -137,7 +137,13 @@ export class ImageOverlay
     this.imgElement.setAttribute("data-cy", "lighter-sample-image");
 
     // Note: No CORS requirement
-    this.imgElement.src = getSampleSrc(this.options.src);
+    const src = getSampleSrc(this.options.src);
+    if (!src) {
+      console.error("Invalid sample source:", this.options.src);
+      this.emitError(new Error(`Invalid sample source: ${this.options.src}`));
+      return;
+    }
+    this.imgElement.src = src;
 
     this.imgElement.style.position = "absolute";
     this.imgElement.style.top = "0";
