@@ -84,7 +84,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           <GUIContent
             config={schemaData}
             scanning={labelSchema.isScanning}
-            onClassOrderChange={labelSchema.updateClassOrder}
+            onConfigChange={labelSchema.updateConfig}
           />
         ) : (
           <JSONEditor

@@ -56,11 +56,14 @@ const useReadOnly = (field: string) => {
   };
 };
 
-const useClassOrder = (field: string) => {
+const useConfigUpdate = (field: string) => {
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
     updateClassOrder: (newOrder: string[]) => {
       setCurrent({ ...current, classes: newOrder });
+    },
+    updateConfig: (newConfig: object) => {
+      setCurrent(newConfig);
     },
   };
 };
@@ -173,7 +176,7 @@ const useValidate = (field: string) => {
 export default function (field: string) {
   const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
-  const classOrder = useClassOrder(field);
+  const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
@@ -187,7 +190,7 @@ export default function (field: string) {
 
     ...discard,
     ...readOnly,
-    ...classOrder,
+    ...configUpdate,
     ...save,
     ...scan,
     ...validate,

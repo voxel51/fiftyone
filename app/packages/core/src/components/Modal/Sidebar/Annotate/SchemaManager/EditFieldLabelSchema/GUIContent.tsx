@@ -3,10 +3,16 @@
  */
 
 import { LoadingSpinner } from "@fiftyone/components";
-import { EditOutlined } from "@mui/icons-material";
+import {
+  CheckOutlined,
+  DeleteOutlined,
+  EditOutlined,
+} from "@mui/icons-material";
 import {
   Button,
+  Checkbox,
   Clickable,
+  Input,
   Pill,
   RichList,
   Size,
@@ -16,13 +22,38 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
+import styled from "styled-components";
 import {
   EditSectionHeader,
   EmptyStateBox,
   ListContainer,
   Section,
 } from "../styled";
+
+// Styled components for edit card
+const EditCardContainer = styled.div`
+  background: ${({ theme }) => theme.background.level1};
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+`;
+
+const EditCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+const EditCardActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+`;
+
+const EditCardField = styled.div`
+  margin-bottom: 1rem;
+`;
 
 // Types
 export interface AttributeConfig {
@@ -60,35 +91,190 @@ const EditAction = ({ onEdit }: { onEdit: () => void }) => (
   </Clickable>
 );
 
+// Edit/Add class card component
+interface EditClassCardProps {
+  mode: "add" | "edit";
+  initialName?: string;
+  attributeCount: number;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}
+
+const EditClassCard = ({
+  mode,
+  initialName = "",
+  attributeCount,
+  onSave,
+  onCancel,
+}: EditClassCardProps) => {
+  const [name, setName] = useState(initialName);
+
+  const handleSave = () => {
+    if (name.trim()) {
+      onSave(name.trim());
+    }
+  };
+
+  return (
+    <EditCardContainer>
+      <EditCardHeader>
+        <Text variant={TextVariant.Lg}>
+          {mode === "add" ? "New class" : "Edit class"}
+        </Text>
+        <EditCardActions>
+          <Clickable onClick={onCancel} style={{ padding: 4 }}>
+            <DeleteOutlined fontSize="small" />
+          </Clickable>
+          <Clickable onClick={handleSave} style={{ padding: 4 }}>
+            <CheckOutlined fontSize="small" />
+          </Clickable>
+        </EditCardActions>
+      </EditCardHeader>
+      <EditCardField>
+        <Text
+          variant={TextVariant.Lg}
+          color={TextColor.Secondary}
+          style={{ marginBottom: 8, display: "block" }}
+        >
+          Name
+        </Text>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Class name"
+          autoFocus
+        />
+      </EditCardField>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Checkbox size={Size.Sm} checked={false} disabled />
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          Include all {attributeCount} attributes
+        </Text>
+      </div>
+    </EditCardContainer>
+  );
+};
+
+// Inline edit card for use inside RichList
+const InlineEditClassCard = ({
+  initialName,
+  attributeCount,
+  onSave,
+  onCancel,
+}: {
+  initialName: string;
+  attributeCount: number;
+  onSave: (name: string) => void;
+  onCancel: () => void;
+}) => {
+  const [name, setName] = useState(initialName);
+
+  const handleSave = () => {
+    if (name.trim()) {
+      onSave(name.trim());
+    }
+  };
+
+  return (
+    <div style={{ width: "100%", padding: "0.5rem 0", flex: 1 }}>
+      <EditCardHeader style={{ marginBottom: "0.75rem" }}>
+        <Text variant={TextVariant.Lg}>Edit class: {initialName}</Text>
+        <EditCardActions>
+          <Clickable onClick={onCancel} style={{ padding: 4 }}>
+            <DeleteOutlined fontSize="small" />
+          </Clickable>
+          <Clickable onClick={handleSave} style={{ padding: 4 }}>
+            <CheckOutlined fontSize="small" />
+          </Clickable>
+        </EditCardActions>
+      </EditCardHeader>
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="Class name"
+        autoFocus
+        style={{ marginBottom: "0.75rem" }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Checkbox size={Size.Sm} checked={false} disabled />
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          Apply all {attributeCount} attributes
+        </Text>
+      </div>
+    </div>
+  );
+};
+
 // Classes section component
 export const ClassesSection = ({
   classes,
   attributeCount,
   onAddClass,
   onEditClass,
+  onDeleteClass,
   onOrderChange,
 }: {
   classes: string[];
   attributeCount: number;
-  onAddClass: () => void;
-  onEditClass: (name: string) => void;
+  onAddClass: (name: string) => void;
+  onEditClass: (oldName: string, newName: string) => void;
+  onDeleteClass: (name: string) => void;
   onOrderChange?: (newOrder: string[]) => void;
 }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingClass, setEditingClass] = useState<string | null>(null);
+
+  const handleAddSave = (name: string) => {
+    onAddClass(name);
+    setIsAdding(false);
+  };
+
+  const handleEditSave = useCallback(
+    (newName: string) => {
+      if (editingClass) {
+        onEditClass(editingClass, newName);
+        setEditingClass(null);
+      }
+    },
+    [editingClass, onEditClass]
+  );
+
+  const handleEditCancel = useCallback(() => {
+    if (editingClass) {
+      onDeleteClass(editingClass);
+      setEditingClass(null);
+    }
+  }, [editingClass, onDeleteClass]);
+
   const listItems = useMemo(
     () =>
       classes.map((name) => ({
         id: name,
-        data: {
-          canSelect: false,
-          canDrag: true,
-          primaryContent: name,
-          secondaryContent: `${attributeCount} attribute${
-            attributeCount !== 1 ? "s" : ""
-          }`,
-          actions: <EditAction onEdit={() => onEditClass(name)} />,
-        } as ListItemProps,
+        data:
+          name === editingClass
+            ? ({
+                canSelect: false,
+                canDrag: true,
+                primaryContent: (
+                  <InlineEditClassCard
+                    initialName={name}
+                    attributeCount={attributeCount}
+                    onSave={handleEditSave}
+                    onCancel={handleEditCancel}
+                  />
+                ),
+              } as ListItemProps)
+            : ({
+                canSelect: false,
+                canDrag: true,
+                primaryContent: name,
+                secondaryContent: `${attributeCount} attribute${
+                  attributeCount !== 1 ? "s" : ""
+                }`,
+                actions: <EditAction onEdit={() => setEditingClass(name)} />,
+              } as ListItemProps),
       })),
-    [classes, attributeCount, onEditClass]
+    [classes, attributeCount, editingClass, handleEditSave, handleEditCancel]
   );
 
   const handleOrderChange = useCallback(
@@ -103,20 +289,38 @@ export const ClassesSection = ({
     <Section>
       <EditSectionHeader>
         <Text variant={TextVariant.Lg}>Classes</Text>
-        <Button size={Size.Sm} variant={Variant.Secondary} onClick={onAddClass}>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Secondary}
+          onClick={() => setIsAdding(true)}
+          disabled={isAdding || editingClass !== null}
+        >
           + Add class
         </Button>
       </EditSectionHeader>
-      {classes.length === 0 ? (
+
+      {/* Add new class card */}
+      {isAdding && (
+        <EditClassCard
+          mode="add"
+          attributeCount={attributeCount}
+          onSave={handleAddSave}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
+
+      {classes.length === 0 && !isAdding ? (
         <EmptyStateBox>
           <Text color={TextColor.Secondary}>No classes defined</Text>
         </EmptyStateBox>
       ) : (
-        <RichList
-          listItems={listItems}
-          draggable={true}
-          onOrderChange={handleOrderChange}
-        />
+        classes.length > 0 && (
+          <RichList
+            listItems={listItems}
+            draggable={true}
+            onOrderChange={handleOrderChange}
+          />
+        )
       )}
     </Section>
   );
@@ -193,21 +397,55 @@ export const AttributesSection = ({
 interface GUIContentProps {
   config: SchemaConfigType | undefined;
   scanning: boolean;
-  onClassOrderChange?: (newOrder: string[]) => void;
+  onConfigChange?: (config: SchemaConfigType) => void;
 }
 
-const GUIContent = ({
-  config,
-  scanning,
-  onClassOrderChange,
-}: GUIContentProps) => {
-  const classes = config?.classes || [];
-  const attributes = config?.attributes || {};
+const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
+  const classes = useMemo(() => config?.classes || [], [config?.classes]);
+  const attributes = useMemo(
+    () => config?.attributes || {},
+    [config?.attributes]
+  );
 
   // Debug: log the data structure
   console.log("GUIContent config:", config);
   console.log("GUIContent classes:", classes);
   console.log("GUIContent attributes:", attributes);
+
+  const handleAddClass = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newClasses = [...classes, name];
+      onConfigChange?.({ ...config, classes: newClasses });
+    },
+    [config, classes, onConfigChange]
+  );
+
+  const handleEditClass = useCallback(
+    (oldName: string, newName: string) => {
+      if (!config) return;
+      const newClasses = classes.map((c) => (c === oldName ? newName : c));
+      onConfigChange?.({ ...config, classes: newClasses });
+    },
+    [config, classes, onConfigChange]
+  );
+
+  const handleDeleteClass = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newClasses = classes.filter((c) => c !== name);
+      onConfigChange?.({ ...config, classes: newClasses });
+    },
+    [config, classes, onConfigChange]
+  );
+
+  const handleClassOrderChange = useCallback(
+    (newOrder: string[]) => {
+      if (!config) return;
+      onConfigChange?.({ ...config, classes: newOrder });
+    },
+    [config, onConfigChange]
+  );
 
   if (scanning) {
     return (
@@ -239,13 +477,10 @@ const GUIContent = ({
       <ClassesSection
         classes={classes}
         attributeCount={Object.keys(attributes).length}
-        onAddClass={() => {
-          // TODO: Implement add class
-        }}
-        onEditClass={(_name) => {
-          // TODO: Implement edit class
-        }}
-        onOrderChange={onClassOrderChange}
+        onAddClass={handleAddClass}
+        onEditClass={handleEditClass}
+        onDeleteClass={handleDeleteClass}
+        onOrderChange={handleClassOrderChange}
       />
       <AttributesSection
         attributes={attributes}
