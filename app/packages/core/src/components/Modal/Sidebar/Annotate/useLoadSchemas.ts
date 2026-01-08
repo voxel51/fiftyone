@@ -1,4 +1,5 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { toCamelCase } from "@fiftyone/utilities";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { activeLabelSchemas, labelSchemasData } from "./state";
@@ -13,7 +14,8 @@ export default function useLoadSchemas() {
       return;
     }
 
-    setData(get.result.label_schemas);
+    // Convert snake_case from Python to camelCase for frontend
+    setData(toCamelCase(get.result.label_schemas));
     setActive(get.result.active_label_schemas);
   }, [get.result, setData]);
 
