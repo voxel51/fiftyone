@@ -41,9 +41,16 @@ DEFAULT_DA3_MODEL = "depth-anything/da3-base"
 
 
 def _normalize_float_to_uint8(img_array):
-    """Convert float image array to uint8.
+    """Converts a float image array to uint8.
 
-    Assumes [0,1] range if max <= 1.0, otherwise [0,255].
+    Arrays with max value <= 1.0 are assumed to be in [0, 1] range and are
+    scaled to [0, 255].
+
+    Args:
+        img_array: a numpy array
+
+    Returns:
+        a ``uint8`` numpy array with values in [0, 255]
     """
     if img_array.dtype == np.uint8:
         return img_array
@@ -55,10 +62,21 @@ def _normalize_float_to_uint8(img_array):
 class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     """Output processor for Depth Anything V3 models.
 
-    Converts raw depth predictions to normalized heatmaps.
+    Converts raw depth predictions to normalized
+    :class:`fiftyone.core.labels.Heatmap` instances.
     """
 
     def __call__(self, output, image_sizes, **kwargs):
+        """Processes model output into heatmap labels.
+
+        Args:
+            output: a dict containing the model output with a ``"depth"`` key
+            image_sizes: a list of ``(height, width)`` tuples
+            **kwargs: additional keyword arguments
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Heatmap` instances
+        """
         depth_maps = output["depth"]
 
         if isinstance(depth_maps, torch.Tensor):
@@ -166,6 +184,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
     @property
     def media_type(self):
+        """The media type processed by this model."""
         return "image"
 
     def _predict_all(self, imgs):
@@ -212,13 +231,23 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
 
 class _DepthAnythingV3Transforms:
-    """Transforms handler for Depth Anything V3.
+    """Input transforms for Depth Anything V3.
 
-    Converts various image input types to numpy arrays and tracks original
-    sizes for output processor.
+    Converts various image input types (file paths, PIL Images, torch Tensors,
+    and numpy arrays) to numpy arrays and tracks original sizes for the output
+    processor.
     """
 
     def __call__(self, img):
+        """Transforms an image to the format expected by the model.
+
+        Args:
+            img: an image, which can be a filepath string,
+                :class:`PIL.Image.Image`, torch Tensor, or numpy array
+
+        Returns:
+            a tuple of ``(img_array, original_size)``
+        """
         from PIL import Image as PILImage
 
         if isinstance(img, str):
