@@ -31,7 +31,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     schema. See
     :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
-    Currently supported  media types for the collection are ``image`` and
+    Currently supported media types for the collection are ``image`` and
     ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
     **Primitives and components**
@@ -43,7 +43,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
         -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
         -   ``dict``: :class:`fiftyone.core.fields.DictField`
         -   ``float``: :class:`fiftyone.core.fields.FloatField`
-        -   ``id``: : :class:`fiftyone.core.fields.ObjectIdField` or
+        -   ``id``: :class:`fiftyone.core.fields.ObjectIdField` or
             :class:`fiftyone.core.fields.UUIDField`
         -   ``int``: :class:`fiftyone.core.fields.IntField` or
             :class:`fiftyone.core.fields.FrameNumberField`
@@ -53,7 +53,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             :class:`fiftyone.core.fields.IntField`
         -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
             :class:`fiftyone.core.fields.FloatField`
-        -   ``list<str>``: : :class:`fiftyone.core.fields.ListField` of
+        -   ``list<str>``: :class:`fiftyone.core.fields.ListField` of
             :class:`fiftyone.core.fields.StringField`
         -   ``str``: :class:`fiftyone.core.fields.StringField`
 
@@ -98,7 +98,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             scanned, or ``scan_samples`` is ``False``
 
     ``float`` types support a ``precision`` setting when a ``text`` component
-    is configured  for the number of digits to allow after the decimal.
+    is configured for the number of digits to allow after the decimal.
 
     All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
     If a field is ``read_only`` in the field schema, then the ``read_only``

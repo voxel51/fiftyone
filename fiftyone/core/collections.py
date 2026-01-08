@@ -3530,7 +3530,7 @@ class SampleCollection(object):
         schema. See
         :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
 
-        Currently supported  media types for the collection are ``image`` and
+        Currently supported media types for the collection are ``image`` and
         ``3d``. See
         :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
@@ -3543,7 +3543,7 @@ class SampleCollection(object):
             -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
             -   ``dict``: :class:`fiftyone.core.fields.DictField`
             -   ``float``: :class:`fiftyone.core.fields.FloatField`
-            -   ``id``: : :class:`fiftyone.core.fields.ObjectIdField` or
+            -   ``id``: :class:`fiftyone.core.fields.ObjectIdField` or
                 :class:`fiftyone.core.fields.UUIDField`
             -   ``int``: :class:`fiftyone.core.fields.IntField` or
                 :class:`fiftyone.core.fields.FrameNumberField`
@@ -3553,7 +3553,7 @@ class SampleCollection(object):
                 :class:`fiftyone.core.fields.IntField`
             -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.FloatField`
-            -   ``list<str>``: : :class:`fiftyone.core.fields.ListField` of
+            -   ``list<str>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.StringField`
             -   ``str``: :class:`fiftyone.core.fields.StringField`
 
@@ -3599,7 +3599,7 @@ class SampleCollection(object):
                 scanned, or ``scan_samples`` is ``False``
 
         ``float`` types support a ``precision`` setting when a ``text``
-        component is configured  for the number of digits to allow after the
+        component is configured for the number of digits to allow after the
         decimal.
 
         All types support a ``read_only`` flag. ``id`` types must be
@@ -3624,7 +3624,7 @@ class SampleCollection(object):
         Primitive attributes of label types are configured via the
         ``attributes`` setting.
 
-        When a label is marked is ``read_only``, all its attributes inherit the
+        When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
 
 
