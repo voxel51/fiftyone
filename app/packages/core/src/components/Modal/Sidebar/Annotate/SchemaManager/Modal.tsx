@@ -2,7 +2,7 @@ import { MuiButton } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { currentField, showModal } from "../state";
@@ -13,12 +13,10 @@ import GUIView, {
   useActivateFields,
   useDeactivateFields,
 } from "./GUIView";
-import { hasJsonChanges, useFullSchemaEditor } from "./useFullSchemaEditor";
 import {
   BackButton,
   CloseButton,
   FooterLeft,
-  FooterRight,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -73,18 +71,6 @@ const SchemaManagerFooter = () => {
   const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
-  const hasJsonEditorChanges = useAtomValue(hasJsonChanges);
-  const jsonEditor = useFullSchemaEditor();
-
-  const saveChanges = useCallback(() => {
-    if (hasJsonEditorChanges) {
-      jsonEditor.save();
-    }
-  }, [hasJsonEditorChanges, jsonEditor]);
-
-  const discardChanges = useCallback(() => {
-    jsonEditor.discard();
-  }, [jsonEditor]);
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
@@ -92,6 +78,12 @@ const SchemaManagerFooter = () => {
   }
 
   const hasSelection = hiddenSelectedCount > 0 || activeSelectedCount > 0;
+
+  // Only show footer when there's a selection to move
+  if (!hasSelection) {
+    return null;
+  }
+
   const isMovingToVisible = hiddenSelectedCount > 0;
   const selectedCount = isMovingToVisible
     ? hiddenSelectedCount
@@ -101,35 +93,17 @@ const SchemaManagerFooter = () => {
   return (
     <ModalFooter>
       <FooterLeft>
-        {hasSelection && (
-          <MuiButton
-            variant="outlined"
-            startIcon={
-              isMovingToVisible ? <KeyboardArrowUp /> : <KeyboardArrowDown />
-            }
-            onClick={onMove}
-          >
-            Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
-            fields
-          </MuiButton>
-        )}
-      </FooterLeft>
-      <FooterRight>
         <MuiButton
           variant="outlined"
-          onClick={discardChanges}
-          disabled={!hasJsonEditorChanges}
+          startIcon={
+            isMovingToVisible ? <KeyboardArrowUp /> : <KeyboardArrowDown />
+          }
+          onClick={onMove}
         >
-          Discard
+          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
+          fields
         </MuiButton>
-        <MuiButton
-          variant="contained"
-          onClick={saveChanges}
-          disabled={!hasJsonEditorChanges}
-        >
-          Save
-        </MuiButton>
-      </FooterRight>
+      </FooterLeft>
     </ModalFooter>
   );
 };
