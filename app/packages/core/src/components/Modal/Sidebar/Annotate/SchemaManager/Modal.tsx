@@ -1,6 +1,6 @@
-import { MuiButton } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
+import { Button, Size, Variant } from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -93,16 +93,15 @@ const SchemaManagerFooter = () => {
   return (
     <ModalFooter>
       <FooterLeft>
-        <MuiButton
-          variant="outlined"
-          startIcon={
-            isMovingToVisible ? <KeyboardArrowUp /> : <KeyboardArrowDown />
-          }
-          onClick={onMove}
-        >
+        <Button size={Size.Sm} variant={Variant.Secondary} onClick={onMove}>
+          {isMovingToVisible ? (
+            <KeyboardArrowUp fontSize="small" style={{ marginRight: 4 }} />
+          ) : (
+            <KeyboardArrowDown fontSize="small" style={{ marginRight: 4 }} />
+          )}
           Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
           fields
-        </MuiButton>
+        </Button>
       </FooterLeft>
     </ModalFooter>
   );

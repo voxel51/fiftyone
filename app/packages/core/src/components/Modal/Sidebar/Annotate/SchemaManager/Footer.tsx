@@ -1,31 +1,6 @@
 import React, { ReactNode } from "react";
-import styled from "styled-components";
 import { Button, Size, Variant } from "@voxel51/voodo";
-
-const Container = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid ${({ theme }) => theme.divider};
-  align-items: center;
-  position: absolute;
-  bottom: 0;
-  padding: 0 2rem;
-  height: 64px;
-  left: 0;
-  background: ${({ theme }) => theme.background.level2};
-`;
-
-const LeftSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-const RightSection = styled.div`
-  display: flex;
-  gap: 0.75rem;
-`;
+import { EditFieldFooter, FooterLeft, FooterRight } from "./styled";
 
 interface ButtonConfig {
   onClick: () => void;
@@ -43,9 +18,9 @@ const Footer = ({
   leftContent?: ReactNode;
 }) => {
   return (
-    <Container>
-      <LeftSection>{leftContent}</LeftSection>
-      <RightSection>
+    <EditFieldFooter>
+      <FooterLeft>{leftContent}</FooterLeft>
+      <FooterRight>
         {secondaryButton && (
           <Button
             size={Size.Sm}
@@ -64,8 +39,8 @@ const Footer = ({
         >
           {primaryButton.text}
         </Button>
-      </RightSection>
-    </Container>
+      </FooterRight>
+    </EditFieldFooter>
   );
 };
 

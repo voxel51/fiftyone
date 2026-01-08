@@ -23,10 +23,14 @@ import {
 } from "@voxel51/voodo";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useState, ReactNode } from "react";
-import styled from "styled-components";
 import {
+  EditCardActions,
+  EditCardContainer,
+  EditCardField,
+  EditCardHeader,
   EditSectionHeader,
   EmptyStateBox,
+  ExpandedEditContent,
   ListContainer,
   Section,
 } from "../styled";
@@ -35,37 +39,6 @@ import {
 interface ListItemProps extends BaseListItemProps {
   additionalContent?: ReactNode;
 }
-
-// Styled components for edit card
-const EditCardContainer = styled.div`
-  background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
-  padding: 1rem;
-  margin-bottom: 0.5rem;
-`;
-
-const EditCardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-`;
-
-const EditCardActions = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
-const EditCardField = styled.div`
-  margin-bottom: 1rem;
-`;
-
-// Expanded content wrapper for inline editing
-const ExpandedEditContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-`;
 
 // Types
 export interface AttributeConfig {

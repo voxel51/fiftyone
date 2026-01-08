@@ -1,3 +1,4 @@
+import { useOperatorExecutor } from "@fiftyone/operators";
 import { Sync } from "@mui/icons-material";
 import {
   Button,
@@ -9,9 +10,13 @@ import {
   ToggleSwitch,
   Variant,
 } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
-import { activeLabelSchemas } from "../../state";
+import {
+  activeLabelSchemas,
+  addToActiveSchemas,
+  removeFromActiveSchemas,
+} from "../../state";
 import Footer from "../Footer";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
@@ -28,8 +33,33 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
   const [activeTab, setActiveTab] = useState<TabId>("gui");
-  const activeFields = useAtomValue(activeLabelSchemas);
+  const [activeFields] = useAtom(activeLabelSchemas);
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const activateFields = useOperatorExecutor("activate_label_schemas");
+  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
+
   const isFieldVisible = activeFields?.includes(field) ?? false;
+
+  const handleToggleVisibility = useCallback(() => {
+    const fieldSet = new Set([field]);
+    if (isFieldVisible) {
+      // Move to hidden
+      removeFromActive(fieldSet);
+      deactivateFields.execute({ fields: [field] });
+    } else {
+      // Move to active
+      addToActive(fieldSet);
+      activateFields.execute({ fields: [field] });
+    }
+  }, [
+    field,
+    isFieldVisible,
+    addToActive,
+    removeFromActive,
+    activateFields,
+    deactivateFields,
+  ]);
 
   const handleTabChange = useCallback((index: number) => {
     setActiveTab(TAB_IDS[index]);
@@ -106,9 +136,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             <Toggle
               size={Size.Sm}
               checked={isFieldVisible}
-              onChange={() => {
-                // TODO: Toggle field visibility
-              }}
+              onChange={handleToggleVisibility}
             />
             <Text variant={TextVariant.Lg}>Visible field</Text>
           </div>
