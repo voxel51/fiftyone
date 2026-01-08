@@ -1,6 +1,13 @@
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
-import { Button, Size, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -16,7 +23,6 @@ import GUIView, {
 import {
   BackButton,
   CloseButton,
-  FooterLeft,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -92,7 +98,11 @@ const SchemaManagerFooter = () => {
 
   return (
     <ModalFooter>
-      <FooterLeft>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
         <Button size={Size.Sm} variant={Variant.Secondary} onClick={onMove}>
           {isMovingToVisible ? (
             <KeyboardArrowUp fontSize="small" style={{ marginRight: 4 }} />
@@ -102,7 +112,7 @@ const SchemaManagerFooter = () => {
           Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
           fields
         </Button>
-      </FooterLeft>
+      </Stack>
     </ModalFooter>
   );
 };

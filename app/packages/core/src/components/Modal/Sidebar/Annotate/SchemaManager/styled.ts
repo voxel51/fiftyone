@@ -251,18 +251,6 @@ export const EditFieldFooter = styled(ModalFooter)`
   border-top: 1px solid ${({ theme }) => theme.divider};
 `;
 
-export const FooterLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
-export const FooterRight = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-`;
-
 // ============================================
 // Empty State Components
 // ============================================
@@ -321,19 +309,8 @@ export const EditCardHeader = styled.div`
   margin-bottom: 1rem;
 `;
 
-export const EditCardActions = styled.div`
-  display: flex;
-  gap: 0.5rem;
-`;
-
 export const EditCardField = styled.div`
   margin-bottom: 1rem;
-`;
-
-export const ExpandedEditContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
 `;
 
 // ============================================

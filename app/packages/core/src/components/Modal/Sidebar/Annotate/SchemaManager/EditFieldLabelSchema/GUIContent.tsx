@@ -13,9 +13,12 @@ import {
   Checkbox,
   Clickable,
   Input,
+  Orientation,
   Pill,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -24,13 +27,11 @@ import {
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import React, { useCallback, useMemo, useState, ReactNode } from "react";
 import {
-  EditCardActions,
   EditCardContainer,
   EditCardField,
   EditCardHeader,
   EditSectionHeader,
   EmptyStateBox,
-  ExpandedEditContent,
   ListContainer,
   Section,
 } from "../styled";
@@ -106,14 +107,14 @@ const EditClassCard = ({
         <Text variant={TextVariant.Lg}>
           {mode === "add" ? "New class" : "Edit class"}
         </Text>
-        <EditCardActions>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           <Clickable onClick={onCancel} style={{ padding: 4 }}>
             <DeleteOutlined fontSize="small" />
           </Clickable>
           <Clickable onClick={handleSave} style={{ padding: 4 }}>
             <CheckOutlined fontSize="small" />
           </Clickable>
-        </EditCardActions>
+        </Stack>
       </EditCardHeader>
       <EditCardField>
         <Text
@@ -151,7 +152,7 @@ const InlineEditExpandedContent = ({
   attributeCount: number;
 }) => {
   return (
-    <ExpandedEditContent>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
       <div>
         <Input
           value={name}
@@ -166,7 +167,7 @@ const InlineEditExpandedContent = ({
           Include all {attributeCount} attributes
         </Text>
       </div>
-    </ExpandedEditContent>
+    </Stack>
   );
 };
 
@@ -227,7 +228,7 @@ export const ClassesSection = ({
                 canDrag: true,
                 primaryContent: "Edit class",
                 actions: (
-                  <EditCardActions>
+                  <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
                     <Clickable
                       onClick={handleEditCancel}
                       style={{ padding: 4 }}
@@ -237,7 +238,7 @@ export const ClassesSection = ({
                     <Clickable onClick={handleEditSave} style={{ padding: 4 }}>
                       <CheckOutlined fontSize="small" />
                     </Clickable>
-                  </EditCardActions>
+                  </Stack>
                 ),
                 additionalContent: (
                   <InlineEditExpandedContent

@@ -80,9 +80,9 @@ export const fieldHasSchema = atomFamily((path: string) =>
     // Check new schema system
     const schemaData = get(schema(path));
     if (schemaData?.config) return true;
-    // Check legacy schema system
+    // Check legacy schema system (now in camelCase)
     const legacyData = get(labelSchemaData(path));
-    if (legacyData?.label_schema) return true;
+    if (legacyData?.labelSchema) return true;
     return false;
   })
 );
@@ -327,6 +327,9 @@ const HiddenFieldsSection = () => {
 
 // GUI content - field list with drag-drop
 const GUIContent = () => {
+  const schemasData = useAtomValue(labelSchemasData);
+  console.log("GUIContent fields (labelSchemasData):", schemasData);
+
   return (
     <>
       <ActiveFieldsSection />

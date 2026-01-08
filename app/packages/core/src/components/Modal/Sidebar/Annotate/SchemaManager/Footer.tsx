@@ -1,6 +1,13 @@
 import React, { ReactNode } from "react";
-import { Button, Size, Variant } from "@voxel51/voodo";
-import { EditFieldFooter, FooterLeft, FooterRight } from "./styled";
+import {
+  Button,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
+import { EditFieldFooter } from "./styled";
 
 interface ButtonConfig {
   onClick: () => void;
@@ -19,8 +26,18 @@ const Footer = ({
 }) => {
   return (
     <EditFieldFooter>
-      <FooterLeft>{leftContent}</FooterLeft>
-      <FooterRight>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
+        {leftContent}
+      </Stack>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Md}
+        style={{ alignItems: "center" }}
+      >
         {secondaryButton && (
           <Button
             size={Size.Sm}
@@ -39,7 +56,7 @@ const Footer = ({
         >
           {primaryButton.text}
         </Button>
-      </FooterRight>
+      </Stack>
     </EditFieldFooter>
   );
 };
