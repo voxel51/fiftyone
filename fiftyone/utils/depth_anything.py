@@ -28,6 +28,7 @@ def _ensure_depth_anything_3():
         logger.info("Installing depth-anything-3 from GitHub...")
         fou.install_package(
             "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
+            "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
         )
 
 
@@ -37,6 +38,16 @@ da3_api = fou.lazy_import(
 )
 
 DEFAULT_DA3_MODEL = "depth-anything/da3-base"
+
+
+def _normalize_float_to_uint8(img_array):
+    """Convert float image array to uint8.
+
+    Assumes [0,1] range if max <= 1.0, otherwise [0,255].
+    """
+    if img_array.max() <= 1.0:
+        img_array = img_array * 255
+    return np.clip(img_array, 0, 255).astype(np.uint8)
 
 
 class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
@@ -156,7 +167,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             self._image_sizes = [p[1] for p in processed]
         else:
             images = imgs
-            self._image_sizes = [(img.shape[0], img.shape[1]) for img in imgs]
+            self._image_sizes = [self._get_image_size(img) for img in imgs]
 
         output = self._forward_pass(images)
 
@@ -168,6 +179,19 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             )
 
         return output
+
+    def _get_image_size(self, img):
+        from PIL import Image as PILImage
+
+        if isinstance(img, str):
+            with PILImage.open(img) as pil_img:
+                return (pil_img.height, pil_img.width)
+        elif isinstance(img, PILImage.Image):
+            return (img.height, img.width)
+        elif isinstance(img, (np.ndarray, torch.Tensor)):
+            return (img.shape[0], img.shape[1])
+        else:
+            raise TypeError("Unsupported image type: %s" % type(img))
 
     def _forward_pass(self, images):
         with torch.no_grad():
@@ -205,18 +229,14 @@ class _DepthAnythingV3Transforms:
                 img = img.permute(1, 2, 0)
             img_array = img.cpu().numpy()
             if img_array.dtype in (np.float32, np.float64):
-                if img_array.max() <= 1.0:
-                    img_array = img_array * 255
-                img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+                img_array = _normalize_float_to_uint8(img_array)
         elif isinstance(img, np.ndarray):
             if img.ndim != 3 or img.shape[2] != 3:
                 raise ValueError(
                     "Expected image with shape (H, W, 3), got %s" % (img.shape,)
                 )
             if img.dtype in (np.float32, np.float64):
-                if img.max() <= 1.0:
-                    img = img * 255
-                img = np.clip(img, 0, 255).astype(np.uint8)
+                img = _normalize_float_to_uint8(img)
             img_array = img
         else:
             raise TypeError(
