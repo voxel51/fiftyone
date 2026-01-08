@@ -7,12 +7,12 @@ import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
+  CuboidTransformData,
   PolylinePointTransformData,
   SegmentState,
   SelectedPoint,
   TransformMode,
 } from "./annotation/types";
-import { CuboidTransformData } from "./annotation/useSetEditingToNewCuboid";
 import { SHADE_BY_HEIGHT } from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type {
@@ -386,7 +386,7 @@ export const editSegmentsModeAtom = atom<boolean>({
 
 /**
  * Whether the user is in create cuboid mode.
- * When enabled, dragging in the 3D scene will create a new cuboid.
+ * When enabled, the user can create a new cuboid using a 3-click interaction.
  */
 export const isCreatingCuboidAtom = atom<boolean>({
   key: "fo3d-isCreatingCuboid",

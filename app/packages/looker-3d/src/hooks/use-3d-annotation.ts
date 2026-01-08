@@ -6,8 +6,10 @@ import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { PolylinePointTransformData } from "../annotation/types";
-import { CuboidTransformData } from "../annotation/useSetEditingToNewCuboid";
+import {
+  CuboidTransformData,
+  PolylinePointTransformData,
+} from "../annotation/types";
 import { points3dToPolylineSegments } from "../annotation/utils/polyline-utils";
 import {
   hoveredLabelAtom,

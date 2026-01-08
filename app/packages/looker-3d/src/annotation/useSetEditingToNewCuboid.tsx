@@ -8,19 +8,12 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { atomWithReset, useResetAtom } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import type { Vector3Tuple } from "three";
 import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
   stagedCuboidTransformsAtom,
 } from "../state";
-
-export interface CuboidTransformData {
-  location: Vector3Tuple;
-  dimensions: Vector3Tuple;
-  rotation?: Vector3Tuple;
-  quaternion?: [number, number, number, number];
-}
+import type { CuboidTransformData } from "./types";
 
 export const currentEditingCuboidAtom =
   atomWithReset<fos.AnnotationLabel | null>(null);

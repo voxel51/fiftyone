@@ -5,8 +5,10 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
-import { PolylinePointTransformData } from "../annotation/types";
-import { CuboidTransformData } from "../annotation/useSetEditingToNewCuboid";
+import {
+  CuboidTransformData,
+  PolylinePointTransformData,
+} from "../annotation/types";
 import {
   SET_EGO_VIEW_EVENT,
   SET_TOP_VIEW_EVENT,
