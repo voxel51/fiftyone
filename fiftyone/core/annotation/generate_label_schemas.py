@@ -98,7 +98,7 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             scanned, or ``scan_samples`` is ``False``
 
     ``float`` types support a ``precision`` setting when a ``text`` component
-    is configured  for the number of digits to allow after the decimal.
+    is configured for the number of digits to allow after the decimal.
 
     All types support a ``read_only`` flag. ``id`` types must be ``read_only``.
     If a field is ``read_only`` in the field schema, then the ``read_only``
