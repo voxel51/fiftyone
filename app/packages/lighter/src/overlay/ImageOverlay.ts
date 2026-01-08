@@ -101,8 +101,20 @@ export class ImageOverlay
     const canvas = renderer.getCanvas();
     const parentElement = canvas.parentElement;
 
-    if (parentElement && !this.imgElement) {
-      this.createImageElement(parentElement);
+    if (parentElement) {
+      if (!this.imgElement) {
+        this.createImageElement(parentElement);
+      } else if (this.imgElement.parentElement !== parentElement) {
+        // Migrate existing element to new parent
+        const canvas = parentElement.querySelector("canvas");
+        if (canvas) {
+          canvas.style.position = "relative";
+          canvas.style.zIndex = "1";
+          parentElement.insertBefore(this.imgElement, canvas);
+        } else {
+          parentElement.appendChild(this.imgElement);
+        }
+      }
     }
 
     if (parentElement) {
@@ -142,7 +154,7 @@ export class ImageOverlay
 
     // Handle image load to get dimensions
     this.imgElement.onload = () => {
-      if (this.imgElement) {
+      if (this.imgElement && !this.isImageLoaded) {
         this.originalDimensions = {
           width: this.imgElement.naturalWidth,
           height: this.imgElement.naturalHeight,
