@@ -607,15 +607,32 @@ class CameraProjector:
 
     Args:
         intrinsics: a :class:`CameraIntrinsics` instance
-        extrinsics (None): optional :class:`SensorExtrinsics` defining the
-            camera-to-world (or camera-to-reference) transformation. If
-            provided, 3D points are assumed to be in the target frame and
-            will be transformed to camera frame before projection
+        camera_to_reference (None): optional :class:`SensorExtrinsics`
+            defining the **camera-to-reference** transformation (i.e., the
+            camera's pose in the reference frame). If provided, 3D points
+            passed to :meth:`project` are assumed to be in the reference
+            frame (``camera_to_reference.target_frame``) and will be
+            transformed to camera frame before projection.
+
+            The transform should have:
+
+            - ``source_frame``: the camera/sensor name (e.g., "cam_front")
+            - ``target_frame``: the reference frame (e.g., "world", "ego")
+
         camera_convention ("opencv"): 3D camera axis convention, either
             "opencv" (z-forward, x-right, y-down) or "opengl" (z-backward,
             x-right, y-up). Note: This only affects the 3D coordinate axes.
             Pixel coordinates always follow image-space convention with
             +x right, +y down, origin at top-left
+
+    Important:
+        **Extrinsics direction**: This class expects **camera-to-reference**
+        extrinsics, NOT reference-to-camera. If you have a reference-to-camera
+        transform (e.g., world-to-camera), invert it first::
+
+            projector = fo.CameraProjector(intrinsics, world_to_cam.inverse())
+
+        Or use the :meth:`from_reference_to_camera` constructor.
 
     Example::
 
@@ -626,21 +643,27 @@ class CameraProjector:
             fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
         )
 
+        # Project points already in camera frame
         projector = fo.CameraProjector(intrinsics)
-
-        # Project 3D points to 2D
         points_3d = np.array([[0, 0, 10], [1, 2, 10]])
         points_2d = projector.project(points_3d, in_camera_frame=True)
 
-        # Unproject 2D points to 3D rays
-        depth = np.array([10, 10])
-        points_3d_back = projector.unproject(points_2d, depth)
+        # Project world points using camera-to-world extrinsics
+        cam_to_world = fo.SensorExtrinsics(
+            translation=[0.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
+            target_frame="world",
+        )
+        projector = fo.CameraProjector(intrinsics, cam_to_world)
+        world_points = np.array([[0, 0, 10]])
+        pixels = projector.project(world_points, in_camera_frame=False)
     """
 
     def __init__(
         self,
         intrinsics: CameraIntrinsics,
-        extrinsics: Optional[SensorExtrinsics] = None,
+        camera_to_reference: Optional[SensorExtrinsics] = None,
         camera_convention: str = "opencv",
     ):
         if camera_convention not in ("opencv", "opengl"):
@@ -649,9 +672,93 @@ class CameraProjector:
                 f"got '{camera_convention}'"
             )
 
+        # Validate extrinsics direction and warn if it looks backwards
+        if camera_to_reference is not None:
+            self._validate_extrinsics_direction(camera_to_reference)
+
         self.intrinsics = intrinsics
-        self.extrinsics = extrinsics
+        self.camera_to_reference = camera_to_reference
         self.camera_convention = camera_convention
+
+    @classmethod
+    def from_reference_to_camera(
+        cls,
+        intrinsics: CameraIntrinsics,
+        reference_to_camera: SensorExtrinsics,
+        camera_convention: str = "opencv",
+    ) -> "CameraProjector":
+        """Creates a CameraProjector from reference-to-camera extrinsics.
+
+        Use this constructor if your extrinsics transform points FROM the
+        reference frame TO the camera frame (e.g., world-to-camera). This
+        is common when loading from some datasets or calibration tools.
+
+        This method automatically inverts the transform to the expected
+        camera-to-reference format.
+
+        Args:
+            intrinsics: a :class:`CameraIntrinsics` instance
+            reference_to_camera: a :class:`SensorExtrinsics` that transforms
+                points from the reference frame to the camera frame
+            camera_convention: "opencv" or "opengl"
+
+        Returns:
+            a :class:`CameraProjector` instance
+
+        Example::
+
+            # If you have world-to-camera extrinsics:
+            world_to_cam = fo.SensorExtrinsics(
+                translation=[...],
+                quaternion=[...],
+                source_frame="world",
+                target_frame="camera",
+            )
+            projector = fo.CameraProjector.from_reference_to_camera(
+                intrinsics, world_to_cam
+            )
+        """
+        return cls(
+            intrinsics=intrinsics,
+            camera_to_reference=reference_to_camera.inverse(),
+            camera_convention=camera_convention,
+        )
+
+    def _validate_extrinsics_direction(
+        self, extrinsics: SensorExtrinsics
+    ) -> None:
+        """Warns if extrinsics appear to be in the wrong direction."""
+        reference_keywords = (
+            "world",
+            "global",
+            "map",
+            "ego",
+            "vehicle",
+            "base",
+        )
+        camera_keywords = ("cam", "camera", "sensor", "image")
+
+        src = (extrinsics.source_frame or "").lower()
+        tgt = (extrinsics.target_frame or "").lower()
+
+        # Check if source_frame looks like a reference frame (not a camera)
+        src_looks_like_reference = any(kw in src for kw in reference_keywords)
+        tgt_looks_like_camera = any(kw in tgt for kw in camera_keywords)
+
+        if src_looks_like_reference or tgt_looks_like_camera:
+            warnings.warn(
+                f"CameraProjector expects camera-to-reference extrinsics, "
+                f"but received source_frame='{extrinsics.source_frame}', "
+                f"target_frame='{extrinsics.target_frame}'. "
+                f"This looks like reference-to-camera extrinsics. "
+                f"If so, either:\n"
+                f"  1. Call extrinsics.inverse() before passing to CameraProjector\n"
+                f"  2. Use CameraProjector.from_reference_to_camera() instead\n"
+                f"Expected: source_frame=<camera_name>, "
+                f"target_frame=<reference_frame>",
+                UserWarning,
+                stacklevel=3,
+            )
 
     @property
     def _K(self) -> np.ndarray:
@@ -664,10 +771,10 @@ class CameraProjector:
         return np.linalg.inv(self.intrinsics.intrinsic_matrix)
 
     @property
-    def _world_to_camera(self) -> Optional[np.ndarray]:
-        """Returns the world-to-camera transformation matrix."""
-        if self.extrinsics is not None:
-            return self.extrinsics.inverse().extrinsic_matrix
+    def _reference_to_camera(self) -> Optional[np.ndarray]:
+        """Returns the reference-to-camera transformation matrix."""
+        if self.camera_to_reference is not None:
+            return self.camera_to_reference.inverse().extrinsic_matrix
         return None
 
     def project(
@@ -680,8 +787,8 @@ class CameraProjector:
         Args:
             points_3d: (N, 3) array of 3D points
             in_camera_frame: if True, points are already in camera frame;
-                if False and extrinsics are provided, points are transformed
-                from the extrinsics' target frame to camera frame
+                if False and camera_to_reference is provided, points are
+                transformed from the reference frame to camera frame
 
         Returns:
             (N, 2) array of 2D pixel coordinates
@@ -694,11 +801,11 @@ class CameraProjector:
             )
 
         # Transform to camera frame if needed
-        if not in_camera_frame and self._world_to_camera is not None:
-            # Apply world-to-camera transformation
+        if not in_camera_frame and self._reference_to_camera is not None:
+            # Apply reference-to-camera transformation
             ones = np.ones((points.shape[0], 1))
             points_h = np.hstack([points, ones])
-            points = (self._world_to_camera @ points_h.T).T[:, :3]
+            points = (self._reference_to_camera @ points_h.T).T[:, :3]
 
         # Handle OpenGL convention (flip z and y)
         if self.camera_convention == "opengl":
@@ -784,8 +891,8 @@ class CameraProjector:
             points_2d: (N, 2) array of 2D pixel coordinates
             depth: scalar or (N,) array of z-depth values in camera frame
             in_camera_frame: if True, returns points in camera frame; if False
-                and extrinsics are provided, transforms to the extrinsics'
-                target frame
+                and camera_to_reference is provided, transforms to the
+                reference frame
 
         Returns:
             (N, 3) array of 3D points
@@ -823,9 +930,9 @@ class CameraProjector:
             points_3d[:, 1] = -points_3d[:, 1]
             points_3d[:, 2] = -points_3d[:, 2]
 
-        # Transform to world frame if requested
-        if not in_camera_frame and self.extrinsics is not None:
-            T = self.extrinsics.extrinsic_matrix
+        # Transform to reference frame if requested
+        if not in_camera_frame and self.camera_to_reference is not None:
+            T = self.camera_to_reference.extrinsic_matrix
             ones = np.ones((points_3d.shape[0], 1))
             points_h = np.hstack([points_3d, ones])
             points_3d = (T @ points_h.T).T[:, :3]

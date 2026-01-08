@@ -628,7 +628,7 @@ class CameraProjectorTests(unittest.TestCase):
         nptest.assert_array_almost_equal(recovered_3d, original_3d)
 
     def test_projection_with_extrinsics(self):
-        """Test projection with extrinsics (world to camera transform)."""
+        """Test projection with camera-to-reference extrinsics."""
         intrinsics = PinholeCameraIntrinsics(
             fx=1000.0,
             fy=1000.0,
@@ -637,15 +637,15 @@ class CameraProjectorTests(unittest.TestCase):
         )
 
         # Camera is at (0, 0, 0) looking down positive z
-        # Extrinsics: camera frame to world frame
-        extrinsics = SensorExtrinsics(
+        # camera_to_reference: camera frame to world frame
+        cam_to_world = SensorExtrinsics(
             source_frame="camera",
             target_frame="world",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
-        projector = CameraProjector(intrinsics, extrinsics)
+        projector = CameraProjector(intrinsics, cam_to_world)
 
         # Point at world (0, 0, 10) should project to principal point
         points_3d = np.array([[0.0, 0.0, 10.0]])
@@ -822,6 +822,40 @@ class CameraProjectorTests(unittest.TestCase):
         points_2d2 = projector.project(world_point2, in_camera_frame=False)
         nptest.assert_array_almost_equal(points_2d2, [[1060.0, 540.0]])
 
+    def test_from_reference_to_camera_constructor(self):
+        """Test the from_reference_to_camera alternative constructor."""
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+
+        # Create world-to-camera extrinsics (the "inverted" direction)
+        # Camera at world (0, 0, -5), so world-to-camera adds 5 to z
+        world_to_cam = SensorExtrinsics(
+            translation=[0.0, 0.0, 5.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="world",
+            target_frame="camera",
+        )
+
+        # Use the alternative constructor
+        projector = CameraProjector.from_reference_to_camera(
+            intrinsics, world_to_cam
+        )
+
+        # Verify internal state is camera-to-reference
+        self.assertEqual(projector.camera_to_reference.source_frame, "camera")
+        self.assertEqual(projector.camera_to_reference.target_frame, "world")
+
+        # World point at (0, 0, 5) should be 10 units in front of camera
+        # (camera is at world z=-5, so point at z=5 is 10 units ahead)
+        world_point = np.array([[0.0, 0.0, 5.0]])
+        points_2d = projector.project(world_point, in_camera_frame=False)
+
+        nptest.assert_array_almost_equal(points_2d, [[960.0, 540.0]])
+
     def test_intrinsics_mutation_reflected_in_projection(self):
         """Test that changes to intrinsics after projector creation are reflected."""
         intrinsics = PinholeCameraIntrinsics(
@@ -857,14 +891,14 @@ class CameraProjectorTests(unittest.TestCase):
         )
 
         # Camera at origin, identity rotation
-        extrinsics = SensorExtrinsics(
+        cam_to_world = SensorExtrinsics(
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
 
-        projector = CameraProjector(intrinsics, extrinsics)
+        projector = CameraProjector(intrinsics, cam_to_world)
 
         # World point at (0, 0, 10) projects to principal point
         world_point = np.array([[0.0, 0.0, 10.0]])
@@ -875,7 +909,7 @@ class CameraProjectorTests(unittest.TestCase):
 
         # Move camera 5 units back along z-axis (camera at world z=-5)
         # Now the world point (0, 0, 10) is 15 units in front of camera
-        projector.extrinsics.translation = [0.0, 0.0, -5.0]
+        projector.camera_to_reference.translation = [0.0, 0.0, -5.0]
 
         # Project same world point - should use updated extrinsics
         # Point still on optical axis, projects to principal point
