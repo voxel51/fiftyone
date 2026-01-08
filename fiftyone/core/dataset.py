@@ -1180,13 +1180,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         foa.validate_label_schemas(self, label_schemas)
         self._doc.label_schemas = label_schemas
-        active = self.active_label_schemas
-
-        for field in self.active_label_schemas:
-            if field not in label_schemas:
-                active.remove(field)
-
-        self._doc.active_label_schemas = active
+        self._doc.active_label_schemas = [field for field in self.active_label_schemas
+                                          if field in label_schemas]
         self.save()
 
     def update_label_schema(self, field, label_schema):
