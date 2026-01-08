@@ -3624,7 +3624,7 @@ class SampleCollection(object):
         Primitive attributes of label types are configured via the
         ``attributes`` setting.
 
-        When a label is marked is ``read_only``, all its attributes inherit the
+        When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
 
 
