@@ -45,6 +45,8 @@ def _normalize_float_to_uint8(img_array):
 
     Assumes [0,1] range if max <= 1.0, otherwise [0,255].
     """
+    if img_array.dtype == np.uint8:
+        return img_array
     if img_array.max() <= 1.0:
         img_array = img_array * 255
     return np.clip(img_array, 0, 255).astype(np.uint8)
