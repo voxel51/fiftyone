@@ -454,6 +454,13 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         R = matrix[:3, :3]
         t = matrix[:3, 3]
 
+        # Check rotation matrix validity
+        if not np.allclose(R @ R.T, np.eye(3), atol=1e-6):
+            warnings.warn(
+                "Rotation matrix is not orthogonal; projecting to nearest valid rotation",
+                stacklevel=2,
+            )
+
         quat = Rotation.from_matrix(R).as_quat()
 
         return cls(

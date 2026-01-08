@@ -480,6 +480,56 @@ class SensorExtrinsicsTests(unittest.TestCase):
                 covariance=[0.01, 0.01],
             )
 
+    def test_from_matrix_orthogonal_no_warning(self):
+        """Test that orthogonal rotation matrix does not trigger warning."""
+        import warnings
+
+        # Valid orthogonal rotation matrix (90 deg around z)
+        R = np.array(
+            [
+                [0.0, -1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+        matrix = np.eye(4)
+        matrix[:3, :3] = R
+        matrix[:3, 3] = [1.0, 2.0, 3.0]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            SensorExtrinsics.from_matrix(matrix, source_frame="sensor")
+            # No warning should be raised for orthogonal matrix
+            orthogonality_warnings = [
+                x for x in w if "orthogonal" in str(x.message).lower()
+            ]
+            self.assertEqual(len(orthogonality_warnings), 0)
+
+    def test_from_matrix_non_orthogonal_warns(self):
+        """Test that non-orthogonal rotation matrix triggers warning."""
+        import warnings
+
+        # Non-orthogonal matrix (scaled, not a valid rotation)
+        R = np.array(
+            [
+                [1.5, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+        matrix = np.eye(4)
+        matrix[:3, :3] = R
+        matrix[:3, 3] = [1.0, 2.0, 3.0]
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            SensorExtrinsics.from_matrix(matrix, source_frame="sensor")
+            # Warning should be raised for non-orthogonal matrix
+            orthogonality_warnings = [
+                x for x in w if "orthogonal" in str(x.message).lower()
+            ]
+            self.assertEqual(len(orthogonality_warnings), 1)
+
 
 class CameraProjectorTests(unittest.TestCase):
     """Tests for CameraProjector class."""
