@@ -196,7 +196,11 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 return (pil_img.height, pil_img.width)
         elif isinstance(img, PILImage.Image):
             return (img.height, img.width)
-        elif isinstance(img, (np.ndarray, torch.Tensor)):
+        elif isinstance(img, np.ndarray):
+            return (img.shape[0], img.shape[1])
+        elif isinstance(img, torch.Tensor):
+            if img.dim() == 3 and img.shape[0] in (1, 3, 4):
+                return (img.shape[1], img.shape[2])
             return (img.shape[0], img.shape[1])
         else:
             raise TypeError("Unsupported image type: %s" % type(img))
@@ -233,8 +237,12 @@ class _DepthAnythingV3Transforms:
                     "Batch size > 1 not supported, got shape %s"
                     % (tuple(img.shape),)
                 )
-            if img.dim() == 3 and img.shape[0] == 3:
+            if img.dim() == 3 and img.shape[0] in (1, 3, 4):
                 img = img.permute(1, 2, 0)
+            if img.shape[2] == 1:
+                img = img.expand(-1, -1, 3)
+            elif img.shape[2] == 4:
+                img = img[:, :, :3]
             img_array = img.cpu().numpy()
             if img_array.dtype in (np.float32, np.float64):
                 img_array = _normalize_float_to_uint8(img_array)
