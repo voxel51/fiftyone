@@ -21,8 +21,8 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
-import React, { useCallback, useMemo, useState } from "react";
+import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
+import React, { useCallback, useMemo, useState, ReactNode } from "react";
 import styled from "styled-components";
 import {
   EditSectionHeader,
@@ -30,6 +30,11 @@ import {
   ListContainer,
   Section,
 } from "../styled";
+
+// Extend ListItemProps to include additionalContent (added to design-system)
+interface ListItemProps extends BaseListItemProps {
+  additionalContent?: ReactNode;
+}
 
 // Styled components for edit card
 const EditCardContainer = styled.div`
@@ -53,6 +58,13 @@ const EditCardActions = styled.div`
 
 const EditCardField = styled.div`
   margin-bottom: 1rem;
+`;
+
+// Expanded content wrapper for inline editing
+const ExpandedEditContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 `;
 
 // Types
@@ -146,7 +158,7 @@ const EditClassCard = ({
         />
       </EditCardField>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Checkbox size={Size.Sm} checked={false} disabled />
+        <Checkbox size={Size.Sm} checked={true} disabled />
         <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
           Include all {attributeCount} attributes
         </Text>
@@ -155,53 +167,33 @@ const EditClassCard = ({
   );
 };
 
-// Inline edit card for use inside RichList
-const InlineEditClassCard = ({
-  initialName,
+// Expanded content for inline class editing (Name input + Include checkbox)
+const InlineEditExpandedContent = ({
+  name,
+  onNameChange,
   attributeCount,
-  onSave,
-  onCancel,
 }: {
-  initialName: string;
+  name: string;
+  onNameChange: (name: string) => void;
   attributeCount: number;
-  onSave: (name: string) => void;
-  onCancel: () => void;
 }) => {
-  const [name, setName] = useState(initialName);
-
-  const handleSave = () => {
-    if (name.trim()) {
-      onSave(name.trim());
-    }
-  };
-
   return (
-    <div style={{ width: "100%", padding: "0.5rem 0", flex: 1 }}>
-      <EditCardHeader style={{ marginBottom: "0.75rem" }}>
-        <Text variant={TextVariant.Lg}>Edit class: {initialName}</Text>
-        <EditCardActions>
-          <Clickable onClick={onCancel} style={{ padding: 4 }}>
-            <DeleteOutlined fontSize="small" />
-          </Clickable>
-          <Clickable onClick={handleSave} style={{ padding: 4 }}>
-            <CheckOutlined fontSize="small" />
-          </Clickable>
-        </EditCardActions>
-      </EditCardHeader>
-      <Input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Class name"
-        autoFocus
-        style={{ marginBottom: "0.75rem" }}
-      />
+    <ExpandedEditContent>
+      <div>
+        <Input
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="Class name"
+          autoFocus
+        />
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Checkbox size={Size.Sm} checked={false} disabled />
-        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          Apply all {attributeCount} attributes
+        <Checkbox size={Size.Sm} checked={true} disabled />
+        <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+          Include all {attributeCount} attributes
         </Text>
       </div>
-    </div>
+    </ExpandedEditContent>
   );
 };
 
@@ -223,26 +215,31 @@ export const ClassesSection = ({
 }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingClass, setEditingClass] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const handleAddSave = (name: string) => {
     onAddClass(name);
     setIsAdding(false);
   };
 
-  const handleEditSave = useCallback(
-    (newName: string) => {
-      if (editingClass) {
-        onEditClass(editingClass, newName);
-        setEditingClass(null);
-      }
-    },
-    [editingClass, onEditClass]
-  );
+  const handleStartEdit = useCallback((name: string) => {
+    setEditingClass(name);
+    setEditingName(name);
+  }, []);
+
+  const handleEditSave = useCallback(() => {
+    if (editingClass && editingName.trim()) {
+      onEditClass(editingClass, editingName.trim());
+      setEditingClass(null);
+      setEditingName("");
+    }
+  }, [editingClass, editingName, onEditClass]);
 
   const handleEditCancel = useCallback(() => {
     if (editingClass) {
       onDeleteClass(editingClass);
       setEditingClass(null);
+      setEditingName("");
     }
   }, [editingClass, onDeleteClass]);
 
@@ -255,12 +252,25 @@ export const ClassesSection = ({
             ? ({
                 canSelect: false,
                 canDrag: true,
-                primaryContent: (
-                  <InlineEditClassCard
-                    initialName={name}
+                primaryContent: "Edit class",
+                actions: (
+                  <EditCardActions>
+                    <Clickable
+                      onClick={handleEditCancel}
+                      style={{ padding: 4 }}
+                    >
+                      <DeleteOutlined fontSize="small" />
+                    </Clickable>
+                    <Clickable onClick={handleEditSave} style={{ padding: 4 }}>
+                      <CheckOutlined fontSize="small" />
+                    </Clickable>
+                  </EditCardActions>
+                ),
+                additionalContent: (
+                  <InlineEditExpandedContent
+                    name={editingName}
+                    onNameChange={setEditingName}
                     attributeCount={attributeCount}
-                    onSave={handleEditSave}
-                    onCancel={handleEditCancel}
                   />
                 ),
               } as ListItemProps)
@@ -271,10 +281,18 @@ export const ClassesSection = ({
                 secondaryContent: `${attributeCount} attribute${
                   attributeCount !== 1 ? "s" : ""
                 }`,
-                actions: <EditAction onEdit={() => setEditingClass(name)} />,
+                actions: <EditAction onEdit={() => handleStartEdit(name)} />,
               } as ListItemProps),
       })),
-    [classes, attributeCount, editingClass, handleEditSave, handleEditCancel]
+    [
+      classes,
+      attributeCount,
+      editingClass,
+      editingName,
+      handleEditSave,
+      handleEditCancel,
+      handleStartEdit,
+    ]
   );
 
   const handleOrderChange = useCallback(
@@ -415,7 +433,7 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
   const handleAddClass = useCallback(
     (name: string) => {
       if (!config) return;
-      const newClasses = [...classes, name];
+      const newClasses = [name, ...classes];
       onConfigChange?.({ ...config, classes: newClasses });
     },
     [config, classes, onConfigChange]
