@@ -9,8 +9,9 @@ import {
   ToggleSwitch,
   Variant,
 } from "@voxel51/voodo";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
+import { activeLabelSchemas } from "../../state";
 import Footer from "../Footer";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
@@ -27,6 +28,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
   const [activeTab, setActiveTab] = useState<TabId>("gui");
+  const activeFields = useAtomValue(activeLabelSchemas);
+  const isFieldVisible = activeFields?.includes(field) ?? false;
 
   const handleTabChange = useCallback((index: number) => {
     setActiveTab(TAB_IDS[index]);
@@ -78,7 +81,11 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </TabsRow>
 
         {activeTab === "gui" ? (
-          <GUIContent config={schemaData} scanning={labelSchema.isScanning} />
+          <GUIContent
+            config={schemaData}
+            scanning={labelSchema.isScanning}
+            onClassOrderChange={labelSchema.updateClassOrder}
+          />
         ) : (
           <JSONEditor
             errors={!!labelSchema.errors.length}
@@ -94,6 +101,18 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
       <Errors errors={labelSchema.errors} />
 
       <Footer
+        leftContent={
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Toggle
+              size={Size.Sm}
+              checked={isFieldVisible}
+              onChange={() => {
+                // TODO: Toggle field visibility
+              }}
+            />
+            <Text variant={TextVariant.Lg}>Visible field</Text>
+          </div>
+        }
         secondaryButton={{
           onClick: labelSchema.discard,
           disabled: !labelSchema.hasChanges,

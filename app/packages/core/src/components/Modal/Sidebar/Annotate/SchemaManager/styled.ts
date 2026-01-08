@@ -12,6 +12,8 @@ export const Section = styled.div`
 
 export const ListContainer = styled.div`
   padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
 `;
 
 export const EmptyStateBox = styled(Box)`

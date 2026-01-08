@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import styled from "styled-components";
 import { Button, Size, Variant } from "@voxel51/voodo";
 
@@ -16,6 +16,12 @@ const Container = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
+const LeftSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
 const RightSection = styled.div`
   display: flex;
   gap: 0.75rem;
@@ -30,26 +36,15 @@ interface ButtonConfig {
 const Footer = ({
   primaryButton,
   secondaryButton,
-  leftButton,
+  leftContent,
 }: {
   primaryButton: ButtonConfig;
   secondaryButton?: ButtonConfig;
-  leftButton?: ButtonConfig;
+  leftContent?: ReactNode;
 }) => {
   return (
     <Container>
-      {leftButton ? (
-        <Button
-          size={Size.Sm}
-          variant={Variant.Secondary}
-          onClick={leftButton.onClick}
-          disabled={leftButton.disabled}
-        >
-          {leftButton.text}
-        </Button>
-      ) : (
-        <div />
-      )}
+      <LeftSection>{leftContent}</LeftSection>
       <RightSection>
         {secondaryButton && (
           <Button

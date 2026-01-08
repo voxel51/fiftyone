@@ -1,31 +1,25 @@
 /**
  * GUI editing components for classes and attributes.
- * These components are prepared for future use when GUI editing is enabled
- * in the EditFieldLabelSchema view.
  */
 
-import { IconButton, LoadingSpinner } from "@fiftyone/components";
-import {
-  DeleteOutlined,
-  DragIndicator,
-  EditOutlined,
-} from "@mui/icons-material";
+import { LoadingSpinner } from "@fiftyone/components";
+import { EditOutlined } from "@mui/icons-material";
 import {
   Button,
+  Clickable,
   Pill,
+  RichList,
   Size,
   Text,
   TextColor,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import React from "react";
+import type { ListItemProps } from "@voxel51/voodo";
+import React, { useCallback, useMemo } from "react";
 import {
   EditSectionHeader,
   EmptyStateBox,
-  ItemActions,
-  ItemContent,
-  ItemRow,
   ListContainer,
   Section,
 } from "../styled";
@@ -33,7 +27,7 @@ import {
 // Types
 export interface AttributeConfig {
   type: string;
-  options?: string[];
+  values?: string[];
   readOnly?: boolean;
 }
 
@@ -42,7 +36,7 @@ export interface ClassConfig {
 }
 
 export interface SchemaConfigType {
-  classes?: Record<string, ClassConfig>;
+  classes?: string[];
   attributes?: Record<string, AttributeConfig>;
 }
 
@@ -54,121 +48,75 @@ const getAttributeTypeLabel = (type: string): string => {
     dropdown: "Dropdown",
     text: "Text",
     number: "Number",
+    select: "Object selector",
   };
   return typeMap[type] || type;
 };
 
-// Class row component
-export const ClassRow = ({
-  name,
-  attributeCount,
-  onDelete,
-  onEdit,
-}: {
-  name: string;
-  attributeCount: number;
-  onDelete: () => void;
-  onEdit: () => void;
-}) => (
-  <ItemRow>
-    <DragIndicator
-      fontSize="small"
-      sx={{ color: "text.secondary", cursor: "grab" }}
-    />
-    <ItemContent>
-      <Text>{name}</Text>
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-        {attributeCount} attribute{attributeCount !== 1 ? "s" : ""}
-      </Text>
-    </ItemContent>
-    <ItemActions>
-      <IconButton onClick={onDelete}>
-        <DeleteOutlined fontSize="small" />
-      </IconButton>
-      <IconButton onClick={onEdit}>
-        <EditOutlined fontSize="small" />
-      </IconButton>
-    </ItemActions>
-  </ItemRow>
-);
-
-// Attribute row component
-export const AttributeRow = ({
-  name,
-  type,
-  optionCount,
-  readOnly,
-  onDelete,
-  onEdit,
-}: {
-  name: string;
-  type: string;
-  optionCount?: number;
-  readOnly?: boolean;
-  onDelete: () => void;
-  onEdit: () => void;
-}) => (
-  <ItemRow>
-    <DragIndicator
-      fontSize="small"
-      sx={{ color: "text.secondary", cursor: "grab" }}
-    />
-    <ItemContent>
-      <Text>{name}</Text>
-      <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-        {getAttributeTypeLabel(type)}
-        {optionCount !== undefined &&
-          ` · ${optionCount} option${optionCount !== 1 ? "s" : ""}`}
-      </Text>
-      {readOnly && <Pill size={Size.Sm}>Read-only</Pill>}
-    </ItemContent>
-    <ItemActions>
-      <IconButton onClick={onDelete}>
-        <DeleteOutlined fontSize="small" />
-      </IconButton>
-      <IconButton onClick={onEdit}>
-        <EditOutlined fontSize="small" />
-      </IconButton>
-    </ItemActions>
-  </ItemRow>
+// Action button for edit
+const EditAction = ({ onEdit }: { onEdit: () => void }) => (
+  <Clickable onClick={onEdit} style={{ padding: 4, height: 29, width: 29 }}>
+    <EditOutlined fontSize="small" />
+  </Clickable>
 );
 
 // Classes section component
 export const ClassesSection = ({
   classes,
+  attributeCount,
   onAddClass,
-  onDeleteClass,
   onEditClass,
+  onOrderChange,
 }: {
-  classes: Record<string, ClassConfig>;
+  classes: string[];
+  attributeCount: number;
   onAddClass: () => void;
-  onDeleteClass: (name: string) => void;
   onEditClass: (name: string) => void;
+  onOrderChange?: (newOrder: string[]) => void;
 }) => {
-  const classEntries = Object.entries(classes);
+  const listItems = useMemo(
+    () =>
+      classes.map((name) => ({
+        id: name,
+        data: {
+          canSelect: false,
+          canDrag: true,
+          primaryContent: name,
+          secondaryContent: `${attributeCount} attribute${
+            attributeCount !== 1 ? "s" : ""
+          }`,
+          actions: <EditAction onEdit={() => onEditClass(name)} />,
+        } as ListItemProps,
+      })),
+    [classes, attributeCount, onEditClass]
+  );
+
+  const handleOrderChange = useCallback(
+    (newItems: { id: string; data: ListItemProps }[]) => {
+      const newOrder = newItems.map((item) => item.id);
+      onOrderChange?.(newOrder);
+    },
+    [onOrderChange]
+  );
 
   return (
     <Section>
       <EditSectionHeader>
-        <span className="font-medium">Classes</span>
+        <Text variant={TextVariant.Lg}>Classes</Text>
         <Button size={Size.Sm} variant={Variant.Secondary} onClick={onAddClass}>
           + Add class
         </Button>
       </EditSectionHeader>
-      {classEntries.length === 0 ? (
+      {classes.length === 0 ? (
         <EmptyStateBox>
-          <Text color={TextColor.Secondary}>No classes yet</Text>
+          <Text color={TextColor.Secondary}>No classes defined</Text>
         </EmptyStateBox>
       ) : (
-        classEntries.map(([name, config]) => (
-          <ClassRow
-            key={name}
-            name={name}
-            attributeCount={Object.keys(config.attributes || {}).length}
-            onDelete={() => onDeleteClass(name)}
-            onEdit={() => onEditClass(name)}
-          />
-        ))
+        <RichList
+          listItems={listItems}
+          draggable={true}
+          onOrderChange={handleOrderChange}
+        />
       )}
     </Section>
   );
@@ -178,20 +126,50 @@ export const ClassesSection = ({
 export const AttributesSection = ({
   attributes,
   onAddAttribute,
-  onDeleteAttribute,
   onEditAttribute,
 }: {
   attributes: Record<string, AttributeConfig>;
   onAddAttribute: () => void;
-  onDeleteAttribute: (name: string) => void;
   onEditAttribute: (name: string) => void;
 }) => {
-  const attrEntries = Object.entries(attributes);
+  const listItems = useMemo(() => {
+    const attrEntries = Object.entries(attributes);
+    return attrEntries.map(([name, config]) => {
+      const typeLabel = getAttributeTypeLabel(config.type);
+      const optionCount = config.values?.length;
+      const secondaryParts = [typeLabel];
+      if (optionCount !== undefined) {
+        secondaryParts.push(
+          `${optionCount} option${optionCount !== 1 ? "s" : ""}`
+        );
+      }
+
+      return {
+        id: name,
+        data: {
+          canSelect: false,
+          canDrag: false,
+          primaryContent: name,
+          secondaryContent: (
+            <>
+              {secondaryParts.join(" · ")}
+              {config.readOnly && (
+                <Pill size={Size.Sm} style={{ marginLeft: 8 }}>
+                  Read-only
+                </Pill>
+              )}
+            </>
+          ),
+          actions: <EditAction onEdit={() => onEditAttribute(name)} />,
+        } as ListItemProps,
+      };
+    });
+  }, [attributes, onEditAttribute]);
 
   return (
     <Section>
       <EditSectionHeader>
-        <span className="font-medium">Attributes</span>
+        <Text variant={TextVariant.Lg}>Attributes</Text>
         <Button
           size={Size.Sm}
           variant={Variant.Secondary}
@@ -200,22 +178,12 @@ export const AttributesSection = ({
           + Add attribute
         </Button>
       </EditSectionHeader>
-      {attrEntries.length === 0 ? (
+      {listItems.length === 0 ? (
         <EmptyStateBox>
-          <Text color={TextColor.Secondary}>No attributes yet</Text>
+          <Text color={TextColor.Secondary}>No attributes defined</Text>
         </EmptyStateBox>
       ) : (
-        attrEntries.map(([name, config]) => (
-          <AttributeRow
-            key={name}
-            name={name}
-            type={config.type}
-            optionCount={config.options?.length}
-            readOnly={config.readOnly}
-            onDelete={() => onDeleteAttribute(name)}
-            onEdit={() => onEditAttribute(name)}
-          />
-        ))
+        <RichList listItems={listItems} draggable={false} />
       )}
     </Section>
   );
@@ -225,19 +193,28 @@ export const AttributesSection = ({
 interface GUIContentProps {
   config: SchemaConfigType | undefined;
   scanning: boolean;
-  onConfigChange?: (config: SchemaConfigType) => void;
+  onClassOrderChange?: (newOrder: string[]) => void;
 }
 
-const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
-  const classes = config?.classes || {};
+const GUIContent = ({
+  config,
+  scanning,
+  onClassOrderChange,
+}: GUIContentProps) => {
+  const classes = config?.classes || [];
   const attributes = config?.attributes || {};
+
+  // Debug: log the data structure
+  console.log("GUIContent config:", config);
+  console.log("GUIContent classes:", classes);
+  console.log("GUIContent attributes:", attributes);
 
   if (scanning) {
     return (
       <ListContainer>
         <Section>
           <EditSectionHeader>
-            <span className="font-medium">Classes</span>
+            <Text variant={TextVariant.Lg}>Classes</Text>
           </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
@@ -246,7 +223,7 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
         </Section>
         <Section>
           <EditSectionHeader>
-            <span className="font-medium">Attributes</span>
+            <Text variant={TextVariant.Lg}>Attributes</Text>
           </EditSectionHeader>
           <EmptyStateBox>
             <LoadingSpinner style={{ marginRight: 8 }} />
@@ -261,25 +238,21 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     <ListContainer>
       <ClassesSection
         classes={classes}
+        attributeCount={Object.keys(attributes).length}
         onAddClass={() => {
           // TODO: Implement add class
         }}
-        onDeleteClass={(name) => {
-          // TODO: Implement delete class
-        }}
-        onEditClass={(name) => {
+        onEditClass={(_name) => {
           // TODO: Implement edit class
         }}
+        onOrderChange={onClassOrderChange}
       />
       <AttributesSection
         attributes={attributes}
         onAddAttribute={() => {
           // TODO: Implement add attribute
         }}
-        onDeleteAttribute={(name) => {
-          // TODO: Implement delete attribute
-        }}
-        onEditAttribute={(name) => {
+        onEditAttribute={(_name) => {
           // TODO: Implement edit attribute
         }}
       />

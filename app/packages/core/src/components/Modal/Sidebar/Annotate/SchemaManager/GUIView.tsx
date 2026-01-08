@@ -37,6 +37,7 @@ import {
 import FieldRow from "./FieldRow";
 import { currentField } from "./state";
 import { CollapsibleHeader, ContentArea, GUISectionHeader } from "./styled";
+import { useFullSchemaEditor } from "./useFullSchemaEditor";
 
 export const selectedActiveFields = atom(new Set<string>());
 export const isActiveFieldSelected = atomFamily((path: string) =>
@@ -289,10 +290,7 @@ const GUIContent = () => {
 
 const JSONContent = () => {
   const schemasData = useAtomValue(labelSchemasData);
-  const jsonStr = useMemo(
-    () => JSON.stringify(schemasData, null, 2),
-    [schemasData]
-  );
+  const { currentJson, onChange } = useFullSchemaEditor();
 
   if (!schemasData) {
     return (
@@ -313,12 +311,12 @@ const JSONContent = () => {
       }}
     >
       <CodeView
-        data={jsonStr}
+        data={currentJson}
         path="schemas"
         schema={{
           view: {
             language: "json",
-            readOnly: true,
+            readOnly: false,
             width: "100%",
             height: "100%",
             componentsProps: {
@@ -328,6 +326,7 @@ const JSONContent = () => {
             },
           },
         }}
+        onChange={(_, value) => onChange(value)}
       />
     </ContentArea>
   );

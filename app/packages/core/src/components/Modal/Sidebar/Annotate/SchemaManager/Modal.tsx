@@ -2,7 +2,7 @@ import { MuiButton } from "@fiftyone/components";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { currentField, showModal } from "../state";
@@ -19,6 +19,7 @@ import GUIView, {
   useActivateFields,
   useDeactivateFields,
 } from "./GUIView";
+import { hasJsonChanges, useFullSchemaEditor } from "./useFullSchemaEditor";
 import {
   BackButton,
   CloseButton,
@@ -79,8 +80,25 @@ const SchemaManagerFooter = () => {
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
   const hasChanges = useAtomValue(hasDraftChanges);
-  const saveChanges = useSaveChanges();
-  const discardChanges = useDiscardChanges();
+  const hasJsonEditorChanges = useAtomValue(hasJsonChanges);
+  const saveFieldChanges = useSaveChanges();
+  const discardFieldChanges = useDiscardChanges();
+  const jsonEditor = useFullSchemaEditor();
+
+  const saveChanges = useCallback(() => {
+    // Save JSON changes if any
+    if (hasJsonEditorChanges) {
+      jsonEditor.save();
+    } else {
+      // Save field ordering changes
+      saveFieldChanges();
+    }
+  }, [hasJsonEditorChanges, jsonEditor, saveFieldChanges]);
+
+  const discardChanges = useCallback(() => {
+    jsonEditor.discard();
+    discardFieldChanges();
+  }, [jsonEditor, discardFieldChanges]);
 
   if (field) {
     return null;

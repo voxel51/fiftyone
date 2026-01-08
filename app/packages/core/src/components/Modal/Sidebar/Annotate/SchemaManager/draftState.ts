@@ -7,14 +7,19 @@ import {
   activePaths,
   inactiveLabelSchemas,
   inactivePaths,
+  showModal,
 } from "../state";
-import { showModal } from "../state";
+import { hasJsonChanges } from "./useFullSchemaEditor";
 
 export const draftActiveFields = atom<string[] | null>(null);
 export const draftHiddenFields = atom<string[] | null>(null);
 
 export const hasDraftChanges = atom((get) => {
-  return get(draftActiveFields) !== null || get(draftHiddenFields) !== null;
+  return (
+    get(draftActiveFields) !== null ||
+    get(draftHiddenFields) !== null ||
+    get(hasJsonChanges)
+  );
 });
 
 export const useInitializeDraft = () => {

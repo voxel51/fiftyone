@@ -5,7 +5,7 @@ import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { labelSchemaData } from "../../state";
 
-const currentLabelSchema = atomFamily((field: string) => atom());
+const currentLabelSchema = atomFamily((_field: string) => atom());
 
 const useCurrentLabelSchema = (field: string) => {
   const [current, setCurrent] = useAtom(currentLabelSchema(field));
@@ -48,10 +48,19 @@ const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: current.read_only,
-    isReadOnlyRequired: data.read_only,
+    isReadOnly: current?.read_only,
+    isReadOnlyRequired: data?.read_only,
     toggleReadOnly: () => {
-      setCurrent({ ...current, read_only: !current.read_only });
+      setCurrent({ ...current, read_only: !current?.read_only });
+    },
+  };
+};
+
+const useClassOrder = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  return {
+    updateClassOrder: (newOrder: string[]) => {
+      setCurrent({ ...current, classes: newOrder });
     },
   };
 };
@@ -164,6 +173,7 @@ const useValidate = (field: string) => {
 export default function (field: string) {
   const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
+  const classOrder = useClassOrder(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
@@ -177,6 +187,7 @@ export default function (field: string) {
 
     ...discard,
     ...readOnly,
+    ...classOrder,
     ...save,
     ...scan,
     ...validate,
