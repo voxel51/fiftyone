@@ -6,12 +6,6 @@ import { useCallback, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { currentField, showModal } from "../state";
-import {
-  hasDraftChanges,
-  useDiscardChanges,
-  useInitializeDraft,
-  useSaveChanges,
-} from "./draftState";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView, {
   selectedActiveFields,
@@ -79,27 +73,20 @@ const SchemaManagerFooter = () => {
   const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
-  const hasChanges = useAtomValue(hasDraftChanges);
   const hasJsonEditorChanges = useAtomValue(hasJsonChanges);
-  const saveFieldChanges = useSaveChanges();
-  const discardFieldChanges = useDiscardChanges();
   const jsonEditor = useFullSchemaEditor();
 
   const saveChanges = useCallback(() => {
-    // Save JSON changes if any
     if (hasJsonEditorChanges) {
       jsonEditor.save();
-    } else {
-      // Save field ordering changes
-      saveFieldChanges();
     }
-  }, [hasJsonEditorChanges, jsonEditor, saveFieldChanges]);
+  }, [hasJsonEditorChanges, jsonEditor]);
 
   const discardChanges = useCallback(() => {
     jsonEditor.discard();
-    discardFieldChanges();
-  }, [jsonEditor, discardFieldChanges]);
+  }, [jsonEditor]);
 
+  // Don't show footer when editing a field (it has its own footer)
   if (field) {
     return null;
   }
@@ -128,13 +115,17 @@ const SchemaManagerFooter = () => {
         )}
       </FooterLeft>
       <FooterRight>
-        <MuiButton variant="outlined" onClick={discardChanges}>
+        <MuiButton
+          variant="outlined"
+          onClick={discardChanges}
+          disabled={!hasJsonEditorChanges}
+        >
           Discard
         </MuiButton>
         <MuiButton
           variant="contained"
           onClick={saveChanges}
-          disabled={!hasChanges}
+          disabled={!hasJsonEditorChanges}
         >
           Save
         </MuiButton>
@@ -152,8 +143,6 @@ const Modal = () => {
     return el;
   }, []);
   const show = useSetAtom(showModal);
-
-  useInitializeDraft();
 
   useEffect(() => {
     element.style.display = "block";

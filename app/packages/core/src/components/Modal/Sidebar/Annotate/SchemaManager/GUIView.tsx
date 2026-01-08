@@ -1,3 +1,5 @@
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { useNotification } from "@fiftyone/state";
 import {
   EditOutlined,
   ExpandLess,
@@ -21,24 +23,24 @@ import React, { useCallback, useMemo, useState } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import {
   activeSchemaTab,
+  activeLabelSchemas,
+  activePaths,
+  addToActiveSchemas,
   fieldType,
+  inactiveLabelSchemas,
+  inactivePaths,
   labelSchemaData,
   labelSchemasData,
+  removeFromActiveSchemas,
   schema,
 } from "../state";
 import { Container, Item } from "./Components";
-import {
-  effectiveActiveFields,
-  effectiveHiddenFields,
-  useDraftActivateFields,
-  useDraftDeactivateFields,
-  useUpdateDraftOrder,
-} from "./draftState";
 import FieldRow from "./FieldRow";
 import { currentField } from "./state";
 import { CollapsibleHeader, ContentArea, GUISectionHeader } from "./styled";
 import { useFullSchemaEditor } from "./useFullSchemaEditor";
 
+// Selection state for active fields
 export const selectedActiveFields = atom(new Set<string>());
 export const isActiveFieldSelected = atomFamily((path: string) =>
   atom(
@@ -47,6 +49,7 @@ export const isActiveFieldSelected = atomFamily((path: string) =>
       const selected = new Set(get(selectedActiveFields));
       toggle ? selected.add(path) : selected.delete(path);
       set(selectedActiveFields, selected);
+      // Clear hidden fields selection when selecting active fields
       if (toggle) {
         set(selectedHiddenFields, new Set());
       }
@@ -54,6 +57,7 @@ export const isActiveFieldSelected = atomFamily((path: string) =>
   )
 );
 
+// Selection state for hidden fields
 export const selectedHiddenFields = atom(new Set<string>());
 export const isHiddenFieldSelected = atomFamily((path: string) =>
   atom(
@@ -62,6 +66,7 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
       const selected = new Set(get(selectedHiddenFields));
       toggle ? selected.add(path) : selected.delete(path);
       set(selectedHiddenFields, selected);
+      // Clear active fields selection when selecting hidden fields
       if (toggle) {
         set(selectedActiveFields, new Set());
       }
@@ -69,10 +74,13 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
   )
 );
 
+// Check if a field has schema configured (supports both atom systems)
 export const fieldHasSchema = atomFamily((path: string) =>
   atom((get) => {
+    // Check new schema system
     const schemaData = get(schema(path));
     if (schemaData?.config) return true;
+    // Check legacy schema system
     const legacyData = get(labelSchemaData(path));
     if (legacyData?.label_schema) return true;
     return false;
@@ -80,25 +88,50 @@ export const fieldHasSchema = atomFamily((path: string) =>
 );
 
 export const useActivateFields = () => {
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
-  const draftActivate = useDraftActivateFields();
+  const activateFields = useOperatorExecutor("activate_label_schemas");
+  const setMessage = useNotification();
 
   return useCallback(() => {
-    draftActivate(selected);
+    addToActiveSchema(selected);
+    activateFields.execute({ fields: Array.from(selected) });
     setSelected(new Set());
-  }, [draftActivate, selected, setSelected]);
+    setMessage({
+      msg: `${selected.size} schema${
+        selected.size > 1 ? "s" : ""
+      } moved to active fields`,
+      variant: "success",
+    });
+  }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
 };
 
 export const useDeactivateFields = () => {
+  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
-  const draftDeactivate = useDraftDeactivateFields();
+  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
+  const setMessage = useNotification();
 
   return useCallback(() => {
-    draftDeactivate(selected);
+    removeFromActiveSchema(selected);
+    deactivateFields.execute({ fields: Array.from(selected) });
     setSelected(new Set());
-  }, [draftDeactivate, selected, setSelected]);
+    setMessage({
+      msg: `${selected.size} schema${
+        selected.size > 1 ? "s" : ""
+      } moved to hidden fields`,
+      variant: "success",
+    });
+  }, [
+    deactivateFields,
+    removeFromActiveSchema,
+    selected,
+    setSelected,
+    setMessage,
+  ]);
 };
 
+// Helper to build actions for a field row
 const FieldActions = ({ path }: { path: string }) => {
   const setField = useSetAtom(currentField);
 
@@ -119,8 +152,10 @@ const FieldActions = ({ path }: { path: string }) => {
 };
 
 const ActiveFieldsSection = () => {
-  const fields = useAtomValue(effectiveActiveFields);
-  const updateDraftOrder = useUpdateDraftOrder();
+  // Support both atom systems
+  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
+  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
+  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
 
   const [, setSelected] = useAtom(selectedActiveFields);
   const fieldTypes = useAtomValue(
@@ -132,6 +167,9 @@ const ActiveFieldsSection = () => {
       [fields]
     )
   );
+
+  // Operator to persist field order to DB
+  const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
 
   const listItems = useMemo(
     () =>
@@ -151,9 +189,13 @@ const ActiveFieldsSection = () => {
   const handleOrderChange = useCallback(
     (newItems: { id: string; data: ListItemProps }[]) => {
       const newOrder = newItems.map((item) => item.id);
-      updateDraftOrder(newOrder);
+      // Update UI immediately
+      setFieldsNew(newOrder);
+      setFieldsLegacy(newOrder);
+      // Persist to DB
+      setActiveSchemas.execute({ fields: newOrder });
     },
-    [updateDraftOrder]
+    [setFieldsNew, setFieldsLegacy, setActiveSchemas]
   );
 
   const handleSelected = useCallback(
@@ -224,8 +266,12 @@ const HiddenFieldRow = ({ path }: { path: string }) => {
   );
 };
 
-const sortedHiddenFields = atom((get) => {
-  const fields = get(effectiveHiddenFields);
+// Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
+const sortedInactivePaths = atom((get) => {
+  // Support both atom systems
+  const fieldsFromNew = get(inactivePaths);
+  const fieldsFromLegacy = get(inactiveLabelSchemas);
+  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
 
   const withSchema: string[] = [];
   const withoutSchema: string[] = [];
@@ -242,7 +288,7 @@ const sortedHiddenFields = atom((get) => {
 });
 
 const HiddenFieldsSection = () => {
-  const fields = useAtomValue(sortedHiddenFields);
+  const fields = useAtomValue(sortedInactivePaths);
   const [expanded, setExpanded] = useState(true);
 
   if (!fields.length) {
@@ -279,6 +325,7 @@ const HiddenFieldsSection = () => {
   );
 };
 
+// GUI content - field list with drag-drop
 const GUIContent = () => {
   return (
     <>
@@ -288,6 +335,7 @@ const GUIContent = () => {
   );
 };
 
+// JSON content - raw schema view
 const JSONContent = () => {
   const schemasData = useAtomValue(labelSchemasData);
   const { currentJson, onChange } = useFullSchemaEditor();
