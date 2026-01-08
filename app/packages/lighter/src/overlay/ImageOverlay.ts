@@ -159,8 +159,10 @@ export class ImageOverlay
     }
 
     // Handle image load to get dimensions
+    const imgRef = this.imgElement;
     this.imgElement.onload = () => {
-      if (this.imgElement && !this.isImageLoaded) {
+      // Guard against stale handler execution after destroy
+      if (imgRef === this.imgElement && this.imgElement && !this.isImageLoaded) {
         this.originalDimensions = {
           width: this.imgElement.naturalWidth,
           height: this.imgElement.naturalHeight,
