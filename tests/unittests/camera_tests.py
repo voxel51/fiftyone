@@ -187,9 +187,37 @@ class SensorExtrinsicsTests(unittest.TestCase):
         self.assertEqual(extrinsics.source_frame, "camera")
         self.assertEqual(extrinsics.target_frame, "ego")
 
+    def test_extrinsics_default_values(self):
+        """Test that translation and quaternion have sensible defaults."""
+        extrinsics = SensorExtrinsics(source_frame="camera")
+
+        # translation defaults to zero
+        self.assertEqual(extrinsics.translation, [0.0, 0.0, 0.0])
+        # quaternion defaults to identity rotation
+        self.assertEqual(extrinsics.quaternion, [0.0, 0.0, 0.0, 1.0])
+
+    def test_extrinsics_source_frame_required(self):
+        """Test that source_frame is required at construction."""
+        with self.assertRaises(ValueError) as cm:
+            SensorExtrinsics()
+
+        self.assertIn("source_frame", str(cm.exception))
+        self.assertIn("required", str(cm.exception))
+
+    def test_from_matrix_requires_source_frame(self):
+        """Test that from_matrix raises ValueError without source_frame."""
+        matrix = np.eye(4)
+        matrix[:3, 3] = [1.0, 2.0, 3.0]
+
+        with self.assertRaises(ValueError) as cm:
+            SensorExtrinsics.from_matrix(matrix)
+
+        self.assertIn("source_frame", str(cm.exception))
+
     def test_rotation_matrix_identity(self):
         """Test rotation matrix for identity quaternion."""
         extrinsics = SensorExtrinsics(
+            source_frame="sensor",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
@@ -204,6 +232,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         cos45 = np.cos(np.pi / 4)
 
         extrinsics = SensorExtrinsics(
+            source_frame="sensor",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, sin45, cos45],
         )
@@ -223,6 +252,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
     def test_extrinsic_matrix(self):
         """Test the 4x4 extrinsic matrix."""
         extrinsics = SensorExtrinsics(
+            source_frame="sensor",
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
@@ -264,11 +294,14 @@ class SensorExtrinsicsTests(unittest.TestCase):
         matrix = np.eye(4)
         matrix[:3, 3] = [1.0, 2.0, 3.0]
 
-        extrinsics = SensorExtrinsics.from_matrix(matrix)
+        extrinsics = SensorExtrinsics.from_matrix(
+            matrix, source_frame="sensor"
+        )
 
         nptest.assert_array_almost_equal(
             extrinsics.translation, [1.0, 2.0, 3.0]
         )
+        self.assertEqual(extrinsics.source_frame, "sensor")
 
     def test_inverse(self):
         """Test inverse transformation."""
@@ -412,25 +445,28 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         self.assertIn("Cannot compose", str(cm.exception))
 
-    def test_compose_unspecified_frames_allowed(self):
-        """Test that composition works when frames are unspecified."""
+    def test_compose_unspecified_target_frame_allowed(self):
+        """Test that composition works when target_frame is unspecified."""
         t1 = SensorExtrinsics(
+            source_frame="A",
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
         t2 = SensorExtrinsics(
+            source_frame="B",
             translation=[0.0, 1.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
         composed = t1.compose(t2)
-        self.assertIsNone(composed.source_frame)
+        self.assertEqual(composed.source_frame, "A")
         self.assertIsNone(composed.target_frame)
 
     def test_covariance_validation(self):
         """Test that covariance must have 6 elements."""
         SensorExtrinsics(
+            source_frame="sensor",
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             covariance=[0.01, 0.01, 0.01, 0.001, 0.001, 0.001],
@@ -438,6 +474,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             SensorExtrinsics(
+                source_frame="sensor",
                 translation=[1.0, 0.0, 0.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 covariance=[0.01, 0.01],
@@ -552,6 +589,8 @@ class CameraProjectorTests(unittest.TestCase):
         # Camera is at (0, 0, 0) looking down positive z
         # Extrinsics: camera frame to world frame
         extrinsics = SensorExtrinsics(
+            source_frame="camera",
+            target_frame="world",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
@@ -1616,20 +1655,16 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIn("camera::ego", dataset.sensor_extrinsics)
         self.assertIn("ego::world", dataset.sensor_extrinsics)
 
-    @drop_datasets
-    def test_add_extrinsics_missing_source_frame_error(self):
-        """Test that add_extrinsics raises ValueError if source_frame is missing."""
-        dataset = fo.Dataset()
-
-        extrinsics = SensorExtrinsics(
-            translation=[1.0, 0.0, 1.5],
-            quaternion=[0.0, 0.0, 0.0, 1.0],
-        )
-
+    def test_sensor_extrinsics_requires_source_frame(self):
+        """Test that SensorExtrinsics constructor requires source_frame."""
         with self.assertRaises(ValueError) as cm:
-            dataset.add_extrinsics(extrinsics)
+            SensorExtrinsics(
+                translation=[1.0, 0.0, 1.5],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+            )
 
         self.assertIn("source_frame", str(cm.exception))
+        self.assertIn("required", str(cm.exception))
 
     @drop_datasets
     def test_add_extrinsics_type_error(self):
@@ -1677,19 +1712,15 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
 
         self.assertIn("lidar", dataset.sensor_extrinsics)
 
-    @drop_datasets
     def test_sensor_extrinsics_missing_source_frame_raises(self):
-        """Test that extrinsics with None source_frame raises ValueError."""
-        dataset = fo.Dataset()
-
-        extrinsics = SensorExtrinsics(
-            translation=[1.5, 0.0, 1.2],
-            quaternion=[0.0, 0.0, 0.0, 1.0],
-            # source_frame is None (required)
-        )
-
+        """Test that SensorExtrinsics with None source_frame raises ValueError at construction."""
+        # source_frame is required at construction time
         with self.assertRaises(ValueError) as cm:
-            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+            SensorExtrinsics(
+                translation=[1.5, 0.0, 1.2],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                # source_frame is None (required)
+            )
 
         self.assertIn("source_frame", str(cm.exception))
 
@@ -1797,25 +1828,20 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
         self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
 
-    @drop_datasets
     def test_sensor_extrinsics_partial_fields_target_only_raises(self):
-        """Test that missing source_frame raises ValueError even if target_frame is set."""
-        dataset = fo.Dataset()
-
+        """Test that missing source_frame raises ValueError at construction even if target_frame is set."""
         # source_frame is None (required), target_frame matches
-        extrinsics = SensorExtrinsics(
-            translation=[1.5, 0.0, 1.2],
-            quaternion=[0.0, 0.0, 0.0, 1.0],
-            # source_frame is None
-            target_frame="ego",
-        )
-
+        # Validation happens at construction time, not at dataset assignment
         with self.assertRaises(ValueError) as cm:
-            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+            SensorExtrinsics(
+                translation=[1.5, 0.0, 1.2],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                # source_frame is None
+                target_frame="ego",
+            )
 
         self.assertIn("source_frame", str(cm.exception))
-        self.assertIn("requires", str(cm.exception).lower())
-        self.assertIn("to be set", str(cm.exception).lower())
+        self.assertIn("required", str(cm.exception).lower())
 
 
 class PolymorphicIntrinsicsTests(unittest.TestCase):
@@ -1914,6 +1940,7 @@ class CustomDerivationTests(unittest.TestCase):
         extrinsics = CustomExtrinsics(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
             custom_field="test_value",
         )
 
@@ -1936,6 +1963,7 @@ class CustomDerivationTests(unittest.TestCase):
         extrinsics = CustomExtrinsics(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
             custom_field="test",
         )
 
@@ -1951,6 +1979,7 @@ class CustomDerivationTests(unittest.TestCase):
         extrinsics = CustomExtrinsics(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera",
             custom_field="test",
         )
 

@@ -311,10 +311,12 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
     scipy and ROS conventions.
 
     Args:
-        translation: 3-element list [tx, ty, tz] (position in target frame)
-        quaternion: unit quaternion [qx, qy, qz, qw] (scalar-last convention)
-        source_frame (None): name of source coordinate frame (e.g.,
-            "camera_front")
+        source_frame: name of source coordinate frame (e.g., "camera_front").
+            This is a required argument.
+        translation ([0, 0, 0]): 3-element list [tx, ty, tz] (position in
+            target frame)
+        quaternion ([0, 0, 0, 1]): unit quaternion [qx, qy, qz, qw]
+            (scalar-last convention, defaults to identity rotation)
         target_frame (None): name of target coordinate frame (e.g., "ego",
             "world")
         timestamp (None): optional timestamp in nanoseconds for interpolation
@@ -343,12 +345,24 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         T = extrinsics.extrinsic_matrix
     """
 
-    translation = fof.ListField(fof.FloatField(), default=None)
-    quaternion = fof.ListField(fof.FloatField(), default=None)
+    translation = fof.ListField(
+        fof.FloatField(), default=lambda: [0.0, 0.0, 0.0]
+    )
+    quaternion = fof.ListField(
+        fof.FloatField(), default=lambda: [0.0, 0.0, 0.0, 1.0]
+    )
     source_frame = fof.StringField(default=None)
     target_frame = fof.StringField(default=None)
     timestamp = fof.IntField(default=None)
     covariance = fof.ListField(fof.FloatField(), default=None)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.source_frame is None:
+            raise ValueError(
+                "source_frame is required for SensorExtrinsics. "
+                "Please specify the source coordinate frame name."
+            )
 
     def validate(self, clean=True):
         """Validates the extrinsics data.
