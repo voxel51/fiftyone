@@ -3599,7 +3599,7 @@ class SampleCollection(object):
                 scanned, or ``scan_samples`` is ``False``
 
         ``float`` types support a ``precision`` setting when a ``text``
-        component is configured  for the number of digits to allow after the
+        component is configured for the number of digits to allow after the
         decimal.
 
         All types support a ``read_only`` flag. ``id`` types must be
