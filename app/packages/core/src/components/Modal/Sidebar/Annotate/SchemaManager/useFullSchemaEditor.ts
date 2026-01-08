@@ -54,13 +54,13 @@ export const useFullSchemaEditor = () => {
         setIsValidating(true);
         const parsed = JSON.parse(value);
 
-        // Extract label_schema from each field for validation
+        // Extract labelSchema from each field for validation
         const labelSchemas: Record<string, unknown> = {};
         for (const [field, data] of Object.entries(parsed)) {
-          if (data && typeof data === "object" && "label_schema" in data) {
+          if (data && typeof data === "object" && "labelSchema" in data) {
             labelSchemas[field] = (
-              data as { label_schema: unknown }
-            ).label_schema;
+              data as { labelSchema: unknown }
+            ).labelSchema;
           }
         }
 
@@ -98,11 +98,11 @@ export const useFullSchemaEditor = () => {
       setIsSaving(true);
       const parsed = JSON.parse(draftJson);
 
-      // Update each field's label_schema
+      // Update each field's labelSchema
       const updates: Promise<void>[] = [];
       for (const [field, data] of Object.entries(parsed)) {
-        if (data && typeof data === "object" && "label_schema" in data) {
-          const labelSchema = (data as { label_schema: unknown }).label_schema;
+        if (data && typeof data === "object" && "labelSchema" in data) {
+          const labelSchema = (data as { labelSchema: unknown }).labelSchema;
           updates.push(
             new Promise((resolve) => {
               updateSchema.execute(

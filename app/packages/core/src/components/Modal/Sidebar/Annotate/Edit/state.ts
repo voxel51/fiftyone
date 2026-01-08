@@ -102,7 +102,7 @@ export const currentSchema = atom((get) => {
     throw new Error("no current field");
   }
 
-  return get(labelSchemaData(field)).label_schema;
+  return get(labelSchemaData(field))?.labelSchema;
 });
 
 export const currentDisabledFields = atom((get) => {
