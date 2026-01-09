@@ -7,17 +7,14 @@ FiftyOne Server camera route unit tests.
 """
 
 import json
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from starlette.exceptions import HTTPException
 
 import fiftyone as fo
+from fiftyone.core.camera import PinholeCameraIntrinsics, SensorExtrinsics
 import fiftyone.server.routes.camera as forc
-from fiftyone.core.camera import (
-    PinholeCameraIntrinsics,
-    SensorExtrinsics,
-)
 
 
 @pytest.fixture(name="dataset")
@@ -119,6 +116,50 @@ def fixture_mock_batch_request(dataset_id):
     return _create_request
 
 
+@pytest.fixture(name="multi_sample_dataset")
+def fixture_multi_sample_dataset():
+    """Creates a dataset with multiple samples for batch endpoint tests."""
+    dataset = fo.Dataset()
+    dataset.persistent = True
+
+    samples = [
+        fo.Sample(filepath=f"/tmp/test_camera_{i}.jpg") for i in range(3)
+    ]
+    dataset.add_samples(samples)
+
+    # Add both intrinsics and extrinsics to first sample
+    sample = dataset.first()
+    sample["camera_intrinsics"] = PinholeCameraIntrinsics(
+        fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
+    )
+    sample["sensor_extrinsics"] = SensorExtrinsics(
+        translation=[1.0, 2.0, 3.0],
+        quaternion=[0.0, 0.0, 0.0, 1.0],
+        source_frame="camera",
+        target_frame="world",
+    )
+    sample.save()
+
+    try:
+        yield dataset
+    finally:
+        if fo.dataset_exists(dataset.name):
+            fo.delete_dataset(dataset.name)
+
+
+@pytest.fixture(name="multi_sample_ids")
+def fixture_multi_sample_ids(multi_sample_dataset):
+    """Returns sample IDs from multi-sample dataset."""
+    return [str(s.id) for s in multi_sample_dataset]
+
+
+@pytest.fixture(name="multi_dataset_id")
+def fixture_multi_dataset_id(multi_sample_dataset):
+    """Returns the ID of the multi-sample dataset."""
+    # pylint: disable-next=protected-access
+    return multi_sample_dataset._doc.id
+
+
 class TestCameraIntrinsicsRoute:
     """Tests for CameraIntrinsics endpoint."""
 
@@ -197,7 +238,7 @@ class TestCameraExtrinsicsRoute:
         """Tests successfully retrieving camera extrinsics."""
         extrinsics = SensorExtrinsics(
             translation=[1.0, 2.0, 3.0],
-            rotation=[0.0, 0.0, 0.0, 1.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
@@ -327,7 +368,7 @@ class TestCameraExtrinsicsRoute:
 
         # Mock resolve_extrinsics to raise ValueError
         with patch.object(
-            type(dataset),
+            fo.Dataset,
             "resolve_extrinsics",
             side_effect=ValueError("Frames don't chain properly"),
         ):
@@ -340,41 +381,6 @@ class TestCameraExtrinsicsRoute:
 
 class TestBatchCameraIntrinsicsRoute:
     """Tests for BatchCameraIntrinsics endpoint."""
-
-    @pytest.fixture(name="multi_sample_dataset")
-    def fixture_multi_sample_dataset(self):
-        """Creates a dataset with multiple samples."""
-        dataset = fo.Dataset()
-        dataset.persistent = True
-
-        samples = [
-            fo.Sample(filepath=f"/tmp/test_camera_{i}.jpg") for i in range(3)
-        ]
-        dataset.add_samples(samples)
-
-        # Add intrinsics to first sample only
-        sample = dataset.first()
-        sample["camera_intrinsics"] = PinholeCameraIntrinsics(
-            fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
-        )
-        sample.save()
-
-        try:
-            yield dataset
-        finally:
-            if fo.dataset_exists(dataset.name):
-                fo.delete_dataset(dataset.name)
-
-    @pytest.fixture(name="multi_sample_ids")
-    def fixture_multi_sample_ids(self, multi_sample_dataset):
-        """Returns sample IDs from multi-sample dataset."""
-        return [str(s.id) for s in multi_sample_dataset]
-
-    @pytest.fixture(name="multi_dataset_id")
-    def fixture_multi_dataset_id(self, multi_sample_dataset):
-        """Returns the ID of the multi-sample dataset."""
-        # pylint: disable-next=protected-access
-        return multi_sample_dataset._doc.id
 
     @pytest.mark.asyncio
     async def test_batch_intrinsics_success(
@@ -490,44 +496,6 @@ class TestBatchCameraIntrinsicsRoute:
 
 class TestBatchCameraExtrinsicsRoute:
     """Tests for BatchCameraExtrinsics endpoint."""
-
-    @pytest.fixture(name="multi_sample_dataset")
-    def fixture_multi_sample_dataset(self):
-        """Creates a dataset with multiple samples."""
-        dataset = fo.Dataset()
-        dataset.persistent = True
-
-        samples = [
-            fo.Sample(filepath=f"/tmp/test_camera_{i}.jpg") for i in range(3)
-        ]
-        dataset.add_samples(samples)
-
-        # Add extrinsics to first sample only
-        sample = dataset.first()
-        sample["sensor_extrinsics"] = SensorExtrinsics(
-            translation=[1.0, 2.0, 3.0],
-            rotation=[0.0, 0.0, 0.0, 1.0],
-            source_frame="camera",
-            target_frame="world",
-        )
-        sample.save()
-
-        try:
-            yield dataset
-        finally:
-            if fo.dataset_exists(dataset.name):
-                fo.delete_dataset(dataset.name)
-
-    @pytest.fixture(name="multi_sample_ids")
-    def fixture_multi_sample_ids(self, multi_sample_dataset):
-        """Returns sample IDs from multi-sample dataset."""
-        return [str(s.id) for s in multi_sample_dataset]
-
-    @pytest.fixture(name="multi_dataset_id")
-    def fixture_multi_dataset_id(self, multi_sample_dataset):
-        """Returns the ID of the multi-sample dataset."""
-        # pylint: disable-next=protected-access
-        return multi_sample_dataset._doc.id
 
     @pytest.mark.asyncio
     async def test_batch_extrinsics_success(
