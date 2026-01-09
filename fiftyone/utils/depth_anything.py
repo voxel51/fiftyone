@@ -23,10 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _ensure_depth_anything_3():
-    try:
-        fou.ensure_package("depth-anything-3")
-    except ImportError:
-        logger.info("Installing depth-anything-3 from GitHub...")
+    if not fou.ensure_package("depth-anything-3", error_level=2):
         fou.install_package(
             "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
             "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
@@ -207,8 +204,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             images = [p[0] for p in processed]
             self._image_sizes = [p[1] for p in processed]
         else:
-            images = [p[0] for p in imgs]
-            self._image_sizes = [p[1] for p in imgs]
+            images = imgs
+            self._image_sizes = [self._get_image_size(img) for img in imgs]
 
         output = self._forward_pass(images)
 
