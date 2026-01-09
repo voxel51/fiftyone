@@ -280,7 +280,9 @@ class _DepthAnythingV3Transforms:
                     "Batch size > 1 not supported, got shape %s"
                     % (tuple(img.shape),)
                 )
-            if img.dim() == 3 and img.shape[0] in (1, 3, 4):
+            if img.dim() == 2:
+                img = img.unsqueeze(2).expand(-1, -1, 3)
+            elif img.dim() == 3 and img.shape[0] in (1, 3, 4):
                 img = img.permute(1, 2, 0)
             if img.shape[2] == 1:
                 img = img.expand(-1, -1, 3)
