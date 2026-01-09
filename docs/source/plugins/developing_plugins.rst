@@ -1184,6 +1184,69 @@ the caching strategy according to your needs:
     Refer to :ref:`this section <panel-execution-cache>` for more information
     about using the execution cache.
 
+.. _operator-async-data-loading:
+
+Async data loading
+------------------
+
+Some operators need to load data asynchronously (e.g., from an API or database)
+based on user input. The :meth:`loader() <fiftyone.operators.types.Object.loader>`
+method allows you to fetch data without blocking the form, showing a loading
+indicator while the data is being retrieved.
+
+To use a loader, define an operator that returns the data and call
+:meth:`inputs.loader() <fiftyone.operators.types.Object.loader>` to trigger it:
+
+.. code-block:: python
+    :linenos:
+
+    class LoadModels(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="load_models", unlisted=True)
+
+        def execute(self, ctx):
+            make = ctx.params.get("make")
+            models = {"dodge": [{"id": "charger", "name": "Charger"}]}
+            return models.get(make, [])
+
+
+    class CarSelector(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="car_selector", dynamic=True)
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.enum("make", values=["dodge", "jeep"], label="Make")
+
+            if ctx.params.get("make"):
+                inputs.loader(
+                    "models",
+                    type=types.List(types.Object()),
+                    operator="@my-plugin/load_models",
+                    params={"make": ctx.params["make"]},
+                    label="Loading models...",
+                )
+
+            models = ctx.params.get("models", {})
+            if models.get("state") == "loaded":
+                inputs.enum("model", values=[m["id"] for m in models["data"]], label="Model")
+
+            return types.Property(inputs)
+
+The loader property value always has the following structure:
+
+- ``state``: one of ``"idle"``, ``"loading"``, ``"loaded"``, or ``"errored"``
+- ``data``: the data returned by the operator (shaped by the ``type`` argument)
+- ``error``: an error message if the loader failed
+
+.. note::
+
+    Loaders require ``dynamic=True`` in the operator config so that
+    :meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` is
+    re-called when the loader state changes.
+
 .. _operator-target-view:
 
 Target view __SUB_NEW__
