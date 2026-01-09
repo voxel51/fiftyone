@@ -11,7 +11,7 @@ import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
-import { fieldType } from "../state";
+import { fieldAttributeCount, fieldType } from "../state";
 import { currentField } from "./state";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
@@ -25,6 +25,7 @@ const isFieldTypeSupported = (_fieldType: string | undefined): boolean => {
 // Hook to get field row data and actions
 const useFieldRow = (path: string, isReadOnly: boolean) => {
   const fType = useAtomValue(fieldType(path));
+  const attrCount = useAtomValue(fieldAttributeCount(path));
   const setField = useSetAtom(currentField);
   const isSupported = isFieldTypeSupported(fType);
 
@@ -39,11 +40,7 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
           Unsupported
         </Pill>
       )}
-      {isReadOnly && (
-        <Pill size={Size.Xs} style={{ opacity: 0.7 }}>
-          Read-only
-        </Pill>
-      )}
+      {isReadOnly && <Pill size={Size.Md}>Read-only</Pill>}
       {isSupported && (
         <Tooltip
           content="Configure annotation schema"
@@ -61,7 +58,19 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
     </span>
   );
 
-  return { fType, actions };
+  const secondaryContent = (
+    <>
+      {fType}
+      {attrCount > 0 && (
+        <span style={{ opacity: 0.7 }}>
+          {" "}
+          • {attrCount} attribute{attrCount !== 1 ? "s" : ""}
+        </span>
+      )}
+    </>
+  );
+
+  return { fType, attrCount, secondaryContent, actions };
 };
 
 // Hook to connect jotai selection atom
@@ -93,7 +102,7 @@ const FieldRow = ({
   isReadOnly = false,
   dragHandleListeners,
 }: FieldRowProps) => {
-  const { fType, actions } = useFieldRow(path, isReadOnly);
+  const { secondaryContent, actions } = useFieldRow(path, isReadOnly);
   const selection = useSelection(hasSchema ? isSelected : undefined);
 
   return (
@@ -104,7 +113,7 @@ const FieldRow = ({
       canDrag={showDragHandle}
       dragHandleListeners={dragHandleListeners}
       primaryContent={path}
-      secondaryContent={fType}
+      secondaryContent={secondaryContent}
       actions={actions}
     />
   );

@@ -26,6 +26,7 @@ import {
   activeLabelSchemas,
   activePaths,
   addToActiveSchemas,
+  fieldAttributeCount,
   fieldType,
   inactiveLabelSchemas,
   inactivePaths,
@@ -84,6 +85,14 @@ export const fieldHasSchema = atomFamily((path: string) =>
     const legacyData = get(labelSchemaData(path));
     if (legacyData?.labelSchema) return true;
     return false;
+  })
+);
+
+// Check if a field is read-only
+export const fieldIsReadOnly = atomFamily((path: string) =>
+  atom((get) => {
+    const data = get(labelSchemaData(path));
+    return data?.readOnly ?? data?.labelSchema?.readOnly ?? false;
   })
 );
 
@@ -167,6 +176,26 @@ const ActiveFieldsSection = () => {
       [fields]
     )
   );
+  const fieldReadOnlyStates = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(fields.map((f) => [f, get(fieldIsReadOnly(f))]))
+        ),
+      [fields]
+    )
+  );
+  const fieldAttrCounts = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(
+            fields.map((f) => [f, get(fieldAttributeCount(f))])
+          )
+        ),
+      [fields]
+    )
+  );
 
   // Operator to persist field order to DB
   const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
@@ -179,11 +208,27 @@ const ActiveFieldsSection = () => {
           canSelect: true,
           canDrag: true,
           primaryContent: path,
-          secondaryContent: fieldTypes[path],
+          secondaryContent: (
+            <>
+              {fieldTypes[path]}
+              {fieldAttrCounts[path] > 0 && (
+                <span style={{ opacity: 0.7 }}>
+                  {" "}
+                  • {fieldAttrCounts[path]} attribute
+                  {fieldAttrCounts[path] !== 1 ? "s" : ""}
+                </span>
+              )}
+              {fieldReadOnlyStates[path] && (
+                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
+                  Read-only
+                </Pill>
+              )}
+            </>
+          ),
           actions: <FieldActions path={path} />,
         } as ListItemProps,
       })),
-    [fields, fieldTypes]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
   );
 
   const handleOrderChange = useCallback(
@@ -255,6 +300,7 @@ const ActiveFieldsSection = () => {
 
 const HiddenFieldRow = ({ path }: { path: string }) => {
   const hasSchema = useAtomValue(fieldHasSchema(path));
+  const isReadOnly = useAtomValue(fieldIsReadOnly(path));
 
   return (
     <FieldRow
@@ -262,6 +308,7 @@ const HiddenFieldRow = ({ path }: { path: string }) => {
       path={path}
       isSelected={hasSchema ? isHiddenFieldSelected(path) : undefined}
       hasSchema={hasSchema}
+      isReadOnly={isReadOnly}
     />
   );
 };
