@@ -12,13 +12,20 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { current, currentData, currentOverlay, savedLabel } from "./state";
+import {
+  current,
+  currentData,
+  currentOverlay,
+  hasChanges,
+  savedLabel,
+} from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
+  const hasChanged = useAtomValue(hasChanges);
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -85,16 +92,19 @@ export default function useExit(revertLabel = true) {
         new UpdateLabelCommand(overlay, overlay.label, label)
       );
 
-      if (overlay instanceof BoundingBoxOverlay) {
-        overlay.label.bounding_box &&
-          scene?.executeCommand(
-            new TransformOverlayCommand(
-              overlay,
-              overlay.id,
-              overlay.getAbsoluteBounds(),
-              scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
-            )
-          );
+      if (
+        hasChanged &&
+        overlay instanceof BoundingBoxOverlay &&
+        overlay.label.bounding_box
+      ) {
+        scene?.executeCommand(
+          new TransformOverlayCommand(
+            overlay,
+            overlay.id,
+            overlay.getAbsoluteBounds(),
+            scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
+          )
+        );
       }
     }
 
