@@ -4,7 +4,7 @@ import { useNotification } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { RoundButtonWhite } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 import { activePaths, removeFromActiveSchemas } from "../state";
@@ -16,13 +16,13 @@ import NoActiveSchema from "./NoActiveSchema";
 const useDeactivate = () => {
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedFields);
-  const activateFields = useOperatorExecutor("deactivate_annotation_schemas");
+  const activateFields = useOperatorExecutor("deactivate_label_schemas");
   const setMessage = useNotification();
 
   return useCallback(
     (path?: string) => {
       removeFromActiveSchema(path ? new Set([path]) : selected);
-      activateFields.execute({ paths: path ? [path] : Array.from(selected) });
+      activateFields.execute({ fields: path ? [path] : Array.from(selected) });
       setSelected(new Set());
       const size = path ? 1 : selected.size;
       setMessage({

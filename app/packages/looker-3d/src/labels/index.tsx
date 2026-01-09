@@ -1,6 +1,6 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
-import { activeSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -57,7 +57,7 @@ export const ThreeDLabels = ({
 }: ThreeDLabelsProps) => {
   const mode = useAtomValue(fos.modalMode);
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
-  const annotationSchemas = useAtomValue(activeSchemas);
+  const annotationSchemas = useAtomValue(activeLabelSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
