@@ -78,6 +78,17 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         Returns:
             a list of :class:`fiftyone.core.labels.Heatmap` instances
         """
+        if not isinstance(output, dict):
+            raise TypeError(
+                "Expected dict output, got %s" % type(output).__name__
+            )
+
+        if "depth" not in output:
+            raise KeyError(
+                "Model output missing 'depth' key. Available: %s"
+                % list(output.keys())
+            )
+
         depth_maps = output["depth"]
 
         if isinstance(depth_maps, torch.Tensor):
