@@ -312,13 +312,20 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
+        loader_type = Object()
+        loader_type.enum(
+            "state", values=["idle", "loading", "loaded", "errored"]
+        )
+        loader_type.define_property("data", type)
+        loader_type.str("error")
+
         view = LoaderView(
             operator=operator,
             params=params,
             label=label,
             placeholder_view=placeholder_view,
         )
-        return self.define_property(name, type, view=view, **kwargs)
+        return self.define_property(name, loader_type, view=view, **kwargs)
 
     def btn(
         self,
