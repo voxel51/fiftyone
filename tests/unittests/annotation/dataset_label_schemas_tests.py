@@ -18,6 +18,20 @@ from decorators import drop_datasets
 
 class DatasetAnnotationTests(unittest.TestCase):
     @drop_datasets
+    def test_empty_label_schemas(self):
+        dataset = fo.Dataset()
+        dataset.active_label_schemas = []
+        dataset.active_label_schemas = None
+        self.assertEqual(dataset.active_label_schemas, [])
+        with self.assertRaises(ValueError):
+            dataset.active_label_schemas = ["one"]
+
+        self.assertEqual(dataset.label_schemas, {})
+        dataset.set_label_schemas(None)
+        self.assertEqual(dataset.label_schemas, {})
+        dataset.set_label_schemas({})
+
+    @drop_datasets
     def test_active_label_schemas(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("test", fo.IntField)

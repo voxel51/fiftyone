@@ -3428,9 +3428,9 @@ def register(p):
     # annotation
     p.register(ActivateLabelSchemas)
     p.register(DeactivateLabelSchemas)
-    p.register(SetActiveLabelSchemas)
     p.register(DeleteLabelSchemas)
     p.register(GenerateLabelSchemas)
     p.register(GetLabelSchemas)
+    p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)

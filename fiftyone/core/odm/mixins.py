@@ -613,7 +613,7 @@ class DatasetMixin(object):
                     new_field = f"{new_path}.{field.split('.')[1]}"
                     new_label_schemas[new_field] = new_label_schemas.pop(field)
 
-                _handle_nested_label_schema_change(
+                _change_nested_label_schema(
                     dataset, path, new_path, label_schemas, new_label_schemas
                 )
 
@@ -863,7 +863,7 @@ class DatasetMixin(object):
                 if field.startswith(f"{path}."):
                     del new_label_schemas[field]
 
-            _handle_nested_label_schema_change(
+            _change_nested_label_schema(
                 dataset, path, None, label_schemas, new_label_schemas
             )
 
@@ -2041,7 +2041,7 @@ def _get_index_updates(dataset, paths, new_paths=None):
     return updates
 
 
-def _handle_nested_label_schema_change(
+def _change_nested_label_schema(
     dataset, path, new_path, label_schemas, new_label_schemas
 ):
     keys = path.split(".")

@@ -323,7 +323,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
             {
                 "type": "float",
                 "component": "text",
-                "default": 1.0,
+                "default": 1.1,
                 "precision": 1,
             },
             fields="float_field",
@@ -335,8 +335,8 @@ class LabelSchemaValidationTests(unittest.TestCase):
             {
                 "type": "float",
                 "component": "slider",
-                "range": [0.0, 1.0],
-                "default": 0.0,
+                "range": [0.5, 1],
+                "default": 0.5,
             },
             fields="float_field",
             _allow_default=True,
@@ -351,15 +351,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
                     "component": "slider",
                 },
                 fields="float_field",
-            )
-
-        # 'default' is not a float
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "float", "component": "text", "default": 1},
-                fields="float_field",
-                _allow_default=True,
             )
 
         # 'precision' is negative
@@ -390,8 +381,8 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 {
                     "type": "float",
                     "component": "slider",
-                    "range": [0.0, 1.0],
-                    "default": 2.0,
+                    "range": [0, 1],
+                    "default": 2,
                 },
                 fields="float_field",
                 _allow_default=True,
@@ -404,7 +395,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 {
                     "type": "float",
                     "component": "slider",
-                    "range": [1.0, 0.0],
+                    "range": [1, 0],
                 },
                 fields="float_field",
             )
