@@ -12,6 +12,7 @@ import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { fieldAttributeCount, fieldType } from "../state";
+import { isSystemReadOnlyField } from "./constants";
 import { currentField } from "./state";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
@@ -28,6 +29,7 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
   const attrCount = useAtomValue(fieldAttributeCount(path));
   const setField = useSetAtom(currentField);
   const isSupported = isFieldTypeSupported(fType);
+  const isSystemReadOnly = isSystemReadOnlyField(path);
 
   const onEdit = useCallback(() => {
     setField(path);
@@ -40,20 +42,24 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
           Unsupported
         </Pill>
       )}
-      {isReadOnly && <Pill size={Size.Md}>Read-only</Pill>}
-      {isSupported && (
-        <Tooltip
-          content="Configure annotation schema"
-          anchor={Anchor.Bottom}
-          portal
-        >
-          <Clickable
-            style={{ padding: 4, height: 29, width: 29 }}
-            onClick={onEdit}
+      {isReadOnly && !isSystemReadOnly && <Pill size={Size.Md}>Read-only</Pill>}
+      {isSystemReadOnly ? (
+        <Pill size={Size.Md}>Read-only</Pill>
+      ) : (
+        isSupported && (
+          <Tooltip
+            content="Configure annotation schema"
+            anchor={Anchor.Bottom}
+            portal
           >
-            <EditOutlined fontSize="small" />
-          </Clickable>
-        </Tooltip>
+            <Clickable
+              style={{ padding: 4, height: 29, width: 29 }}
+              onClick={onEdit}
+            >
+              <EditOutlined fontSize="small" />
+            </Clickable>
+          </Tooltip>
+        )
       )}
     </span>
   );
@@ -70,7 +76,7 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
     </>
   );
 
-  return { fType, attrCount, secondaryContent, actions };
+  return { fType, attrCount, secondaryContent, actions, isSystemReadOnly };
 };
 
 // Hook to connect jotai selection atom

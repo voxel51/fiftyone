@@ -88,11 +88,12 @@ export const fieldHasSchema = atomFamily((path: string) =>
   })
 );
 
-// Check if a field is read-only
+// Check if a field is read-only (user-set schema readOnly takes precedence)
 export const fieldIsReadOnly = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
-    return data?.readOnly ?? data?.labelSchema?.readOnly ?? false;
+    // Check schema-level readOnly first (user-configured), then field-level (system)
+    return data?.labelSchema?.readOnly || data?.readOnly || false;
   })
 );
 
