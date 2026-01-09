@@ -18,11 +18,11 @@ export class RemoveOverlayCommand implements Undoable {
     this.description = `Remove overlay ${overlay.id}`;
   }
 
-  async execute(): Promise<void> {
+  execute(): void {
     this.scene.removeOverlay(this.overlay.id, false);
   }
 
-  async undo(): Promise<void> {
+  undo(): void {
     this.scene.addOverlay(this.overlay, false);
   }
 }

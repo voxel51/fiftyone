@@ -2,15 +2,24 @@
  * Copyright 2017-2025, Voxel51, Inc.
  */
 
+import { isUndoable } from "../utils";
 import type { Action } from "./Action";
 import type { Undoable } from "./Undoable";
+
+export type UndoStateListener = (
+  undoEnabled: boolean,
+  redoEnabled: boolean
+) => void;
+
+export type ActionListener = (actionId: string, isUndo: boolean) => void;
+
 /**
- * Manages the execution of actions and supports 
+ * Manages the execution of actions and supports
  * undo/redo operations through them.
  *
- * Each user action is encapsulated as a Action action object that 
+ * Each user action is encapsulated as a Action action object that
  * implements the execute() method.
- * If the action also supports undo/redo, it must implment the undo() method. 
+ * If the action also supports undo/redo, it must implment the undo() method.
  * The ActionManager maintains two stacks:
  *
  * - undoStack: Contains executed actions that can be undone
@@ -21,9 +30,9 @@ import type { Undoable } from "./Undoable";
  * 2. The action is pushed onto the undoStack
  * 3. The redoStack is cleared (since a new action invalidates the redo history)
  *
- * If you execute the action outside of the ActionManager, but still want to 
+ * If you execute the action outside of the ActionManager, but still want to
  * provided undo/redo, use the push() method to push and Undoable on the stack.
- * 
+ *
  * When undo() is called:
  * 1. The last action is popped from undoStack
  * 2. The action's undo() method is called
@@ -34,10 +43,6 @@ import type { Undoable } from "./Undoable";
  * 2. The action's execute() method is called
  * 3. The action is pushed onto undoStack
  */
-
-export type UndoStateListener = (undoEnabled: boolean, redoEnabled: boolean) => void;
-export type ActionListener = (actionId: string, isUndo: boolean) => void;
-
 export class ActionManager {
   private undoStack: Undoable[] = [];
   private redoStack: Undoable[] = [];
@@ -125,9 +130,15 @@ export class ActionManager {
     return this.undoStack.length;
   }
 
+  /**
+   * Executes an action in this context and
+   * if it is Undoable, pushes it to the undo
+   * stack.
+   * @param action The action to execute
+   */
   async execute(action: Action): Promise<void> {
     await action.execute();
-    if ("undo" in action && typeof action.undo === 'function') {
+    if (isUndoable(action)) {
       this.push(action as Undoable);
     }
     this.fireActionListeners(action.id, false);
@@ -140,28 +151,41 @@ export class ActionManager {
     return this.redoStack.length;
   }
 
+  /**
+   * Registers a listener that is notified of
+   * any changes to the undo/redo state.
+   * @param listener The undo state listener
+   * @returns An unsubscribe callback
+   */
   public subscribeUndo(listener: UndoStateListener): () => void {
     this.undoListeners.add(listener);
     return () => {
       this.undoListeners.delete(listener);
-    }
+    };
   }
 
+  /**
+   * Registers a listener that is called when
+   * any action is executed, providing the command
+   * id and whether is was an undo or not.
+   * @param listener The action listener
+   * @returns An unsubscribe callback
+   */
   public subscribeActions(listener: ActionListener): () => void {
     this.actionListeners.add(listener);
     return () => {
       this.actionListeners.delete(listener);
-    }
+    };
   }
 
   private fireUndoListeners() {
-    this.undoListeners.forEach((l)=>{
+    this.undoListeners.forEach((l) => {
       l(this.canUndo(), this.canRedo());
-    })
+    });
   }
 
   private fireActionListeners(id: string, isUndo: boolean) {
-    this.actionListeners.forEach(listener => {
+    this.actionListeners.forEach((listener) => {
       listener(id, isUndo);
     });
   }

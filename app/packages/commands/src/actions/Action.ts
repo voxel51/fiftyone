@@ -9,21 +9,26 @@
  * Undable extension of the interface.
  */
 export interface Action {
-    id: string;
-    execute(): Promise<void>;
+  id: string;
+  /**
+   * Executes the action
+   */
+  execute(): Promise<void> | void;
 }
 
 /**
  * Delegates execution to a lambda
  */
 export class DelegatingAction implements Action {
-    constructor(
-        public readonly id: string,
-        private readonly execFn: () => Promise<void>
-    ) {
-    }
-    execute(): Promise<void> {
-        return this.execFn();
-    }
+  constructor(
+    public readonly id: string,
+    private readonly execFn: () => Promise<void>
+  ) {}
+  /**
+   * Executes the delegate function
+   * passed in the constructor
+   */
+  execute(): Promise<void> {
+    return this.execFn();
+  }
 }
-

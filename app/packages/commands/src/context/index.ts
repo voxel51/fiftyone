@@ -1,2 +1,2 @@
-export * from "./CommandContext"
-export * from "./CommandContextManager"
+export * from "./CommandContext";
+export * from "./CommandContextManager";

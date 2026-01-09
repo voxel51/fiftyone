@@ -33,11 +33,11 @@ export class TransformOverlayCommand implements Undoable {
     this.description = `Transform overlay ${overlayId}`;
   }
 
-  async execute(): Promise<void> {
+  execute(): void {
     this.overlay.setBounds(this.newBounds);
   }
 
-  async undo(): Promise<void> {
+  undo(): void {
     this.overlay.setBounds(this.oldBounds);
   }
 }

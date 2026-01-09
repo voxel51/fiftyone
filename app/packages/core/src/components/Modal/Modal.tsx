@@ -18,7 +18,13 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { KnownCommands, KnownContexts, useCommand, useCommandContext, useKeyBinding } from "@fiftyone/commands";
+import {
+  KnownCommands,
+  KnownContexts,
+  useCommand,
+  useCommandContext,
+  useKeyBinding,
+} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -61,7 +67,11 @@ const ModalCommandHandlersRegistration = () => {
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
-  const { context: cmdContext, activate, deactivate } = useCommandContext(KnownContexts.Modal, false);
+  const {
+    context: cmdContext,
+    activate,
+    deactivate,
+  } = useCommandContext(KnownContexts.Modal, false);
   useEffect(() => {
     activate();
     return deactivate;
@@ -140,28 +150,58 @@ const Modal = () => {
           }
           return newSelected;
         });
-      }, []);
+      },
+    []
+  );
 
-  useCommand(cmdContext, KnownCommands.ModalSelect, selectCallback,
-    () => { return true; }, "Select", "Select Sample");
+  useCommand(
+    cmdContext,
+    KnownCommands.ModalSelect,
+    selectCallback,
+    () => {
+      return true;
+    },
+    "Select",
+    "Select Sample"
+  );
   useKeyBinding(KnownCommands.ModalSelect, "x", cmdContext);
 
   const sidebarFn = useRecoilCallback(
     ({ set }) =>
       async () => {
         set(fos.sidebarVisible(true), (prev) => !prev);
-      }, []);
-  useCommand(cmdContext, KnownCommands.ModalSidebarToggle,
-    sidebarFn, () => { return true; }, "Sidebar", "Show/Hide the sidebar");
+      },
+    []
+  );
+  useCommand(
+    cmdContext,
+    KnownCommands.ModalSidebarToggle,
+    sidebarFn,
+    () => {
+      return true;
+    },
+    "Sidebar",
+    "Show/Hide the sidebar"
+  );
   useKeyBinding(KnownCommands.ModalSidebarToggle, "s", cmdContext);
 
   const fullscreenFn = useRecoilCallback(
     ({ set }) =>
       async () => {
         set(fos.fullscreen, (prev) => !prev);
-      }, []);
-  useCommand(cmdContext, KnownCommands.ModalFullScreenToggle,
-    fullscreenFn, () => { return true; }, "Fullscreen", "Enter/Exit full screen mode");
+      },
+    []
+  );
+  useCommand(
+    cmdContext,
+    KnownCommands.ModalFullScreenToggle,
+    fullscreenFn,
+    () => {
+      return true;
+    },
+    "Fullscreen",
+    "Enter/Exit full screen mode"
+  );
   useKeyBinding(KnownCommands.ModalFullScreenToggle, "f", cmdContext);
 
   const closeFn = useRecoilCallback(
@@ -177,9 +217,20 @@ const Modal = () => {
         }
 
         await modalCloseHandler();
-      }, []);
+      },
+    []
+  );
 
-  useCommand(cmdContext, KnownCommands.ModalClose, closeFn, () => { return true; }, "Close", "Close the window.");
+  useCommand(
+    cmdContext,
+    KnownCommands.ModalClose,
+    closeFn,
+    () => {
+      return true;
+    },
+    "Close",
+    "Close the window."
+  );
   useKeyBinding(KnownCommands.ModalClose, "Escape", cmdContext);
 
   const isFullScreen = useRecoilValue(fos.fullscreen);

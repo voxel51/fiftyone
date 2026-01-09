@@ -21,12 +21,11 @@ export class AddOverlayCommand implements Undoable {
     private absoluteBounds?: Rect,
     private relativeBounds?: Rect
   ) {
-    
     this.id = `add-overlay-${overlay.id}-${Date.now()}`;
     this.description = `Add overlay ${overlay.id}`;
   }
 
-  async execute(): Promise<void> {
+  execute(): void {
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();
@@ -44,7 +43,7 @@ export class AddOverlayCommand implements Undoable {
     }
   }
 
-  async undo(): Promise<void> {
+  undo(): void {
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
       const interactionManager = this.scene.getInteractionManager();

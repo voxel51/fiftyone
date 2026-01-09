@@ -4,26 +4,26 @@
 
 import { ActionManager, Undoable } from "../actions";
 import { Command, CommandFunction } from "../types";
+import { isUndoable } from "../utils";
 
 /**
  * Manages a map of registered commands.
- * This central command map allows for 
- * components to easily consume execution 
+ * This central command map allows for
+ * components to easily consume execution
  * paths registered by parents and peers.
  */
 export class CommandRegistry {
   private commands = new Map<string, Command>();
   private listeners = new Set<() => void>();
 
-  constructor(private readonly actionManager: ActionManager) {
-  }
+  constructor(private readonly actionManager: ActionManager) {}
   /**
-   * 
+   *
    * @param id The command id.  Use the "fo." prefix for our commands.  Plugins may register them as well.
    * @param execute The lambda to call on execution
    * @param label A short name like Save, Delete, etc
    * @param description A longer description such as "Deletes the selected annotation"
-   * @param enablement A function to determine if the command is enabled.  It is invoked when 
+   * @param enablement A function to determine if the command is enabled.  It is invoked when
    * registering a command and can be refresh with the @link updateEnabled function.
    * @returns A command object that can be used locally to execute, enable etc.
    */
@@ -32,8 +32,7 @@ export class CommandRegistry {
     execute: CommandFunction,
     enablement: () => boolean,
     label?: string,
-    description?: string,
-
+    description?: string
   ): Command {
     if (this.getCommand(id)) {
       throw new Error(`The command id ${id} is already registered`);
@@ -63,7 +62,7 @@ export class CommandRegistry {
     const command = this.getCommand(id);
     if (command && command.isEnabled()) {
       const result = await command.execute();
-      if (result && "undo" in result && typeof result.undo === "function") {
+      if (result && isUndoable(result)) {
         //enable undo/redo
         this.actionManager.push(result as Undoable);
       }
@@ -73,7 +72,9 @@ export class CommandRegistry {
   }
 
   private fireListeners() {
-    this.listeners.forEach((listener) => { listener() });
+    this.listeners.forEach((listener) => {
+      listener();
+    });
   }
   /**
    * Retrieves a previously registered command
@@ -99,4 +100,3 @@ export class CommandRegistry {
     this.listeners.delete(listener);
   }
 }
-

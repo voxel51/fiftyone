@@ -4,7 +4,7 @@
 
 import { Action } from "../actions";
 
-export type CommandFunction = ()=> Promise<Action | void | undefined>;
+export type CommandFunction = () => Promise<Action | void | undefined>;
 
 /**
  * Class to handle command style invocation.  It delegates
@@ -23,7 +23,7 @@ export class Command {
     private readonly executeFunc: CommandFunction,
     private enablementFunc: () => boolean,
     public readonly label?: string,
-    public readonly description?: string,
+    public readonly description?: string
   ) {
     //We don't fire listeners for initial
     //enablement, assuming the call is in process
@@ -46,7 +46,7 @@ export class Command {
    */
   public isEnabled(): boolean {
     const newEnabled = this.enablementFunc();
-    if(newEnabled !== this._enabled){
+    if (newEnabled !== this._enabled) {
       this._enabled = newEnabled;
       this.fireListeners();
     }
@@ -55,7 +55,7 @@ export class Command {
 
   /**
    * Replaces the current enablement function and update the enablement
-   * @param func 
+   * @param func
    */
   public setEnablement(func: () => boolean) {
     this.enablementFunc = func;
@@ -66,7 +66,9 @@ export class Command {
   }
 
   private fireListeners(): void {
-    this.enablementListeners.forEach((listener) => { listener() });
+    this.enablementListeners.forEach((listener) => {
+      listener();
+    });
   }
   /**
    * Subscribes to changes in the enabled state
@@ -77,6 +79,6 @@ export class Command {
     this.enablementListeners.add(listener);
     return () => {
       this.enablementListeners.delete(listener);
-    }
+    };
   }
 }

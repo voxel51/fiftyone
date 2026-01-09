@@ -25,11 +25,11 @@ export class UpdateLabelCommand implements Undoable {
     this.nextLabel = nextLabel;
   }
 
-  async execute(): Promise<void> {
+  execute(): void {
     update(this.overlay, this.nextLabel);
   }
 
-  async undo(): Promise<void> {
+  undo(): void {
     update(this.overlay, this.currentLabel);
   }
 }

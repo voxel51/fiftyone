@@ -13,7 +13,7 @@ export type KeyMatchState = {
 
 /**
  * Manages a set of key bindings in a context.
- * Each context must contain unique bindings.  
+ * Each context must contain unique bindings.
  * @see KeyParser for documentation on the binding format.
  */
 export class KeyManager {
@@ -23,24 +23,21 @@ export class KeyManager {
    * @param commandRegistry For testing we want a local command registry.
    * If not provided it will use the global one.
    */
-  constructor(private readonly commandRegistry: CommandRegistry) {
-  }
+  constructor(private readonly commandRegistry: CommandRegistry) {}
 
   /**
-   * Process the event against current bindings.  
+   * Process the event against current bindings.
    * @param event The key event
    * @returns A match state which tells if it is a partial match, or a full match, or none.
    */
-  public match(
-    event: KeyboardEvent,
-  ): KeyMatchState {
+  public match(event: KeyboardEvent): KeyMatchState {
     const state: KeyMatchState = {
       partial: false,
-    }
+    };
     let hasMatch = false;
     let command: Command | undefined = undefined;
     for (const [binding, cmd] of this.bindings) {
-      if(command){
+      if (command) {
         break;
       }
       const sequences = KeyParser.parseBinding(binding);
@@ -92,9 +89,7 @@ export class KeyManager {
    * @param test The sequences to check for
    * @returns true if it is, false if not
    */
-  private isKeyBound(
-    test: Array<KeySequence>
-  ): boolean {
+  private isKeyBound(test: Array<KeySequence>): boolean {
     const normal = this.normalizeBinding(test);
     return this.bindings.has(normal);
   }
@@ -111,7 +106,7 @@ export class KeyManager {
         `The command id ${commandId} is not registered for binding ${sequence}`
       );
     }
-    
+
     if (this.isKeyBound(keySequences)) {
       throw new Error(
         `The binding ${sequence} is already bound in this context`
@@ -120,20 +115,21 @@ export class KeyManager {
     this.bindings.set(this.normalizeBinding(keySequences), command);
   }
 
-  private normalizeBinding(sequences: KeySequence[]){
+  private normalizeBinding(sequences: KeySequence[]) {
     const strings = new Array<string>();
-    sequences.forEach((sequence)=>{
+    sequences.forEach((sequence) => {
       strings.push(sequence.toString());
-    })
-    return strings.join(',');
+    });
+    return strings.join(",");
   }
 
-  public unbindKey(sequence: string){
-    this.bindings.delete(this.normalizeBinding(KeyParser.parseBinding(sequence)));
+  public unbindKey(sequence: string) {
+    this.bindings.delete(
+      this.normalizeBinding(KeyParser.parseBinding(sequence))
+    );
   }
 
-  public resetKeyState(){
+  public resetKeyState() {
     this.priorMatches = [];
   }
 }
-
