@@ -85,7 +85,12 @@ export default function useExit(revertLabel = true) {
     }
 
     // return the label to the last "saved" state
-    label && store.set(currentData, label);
+    if (label && unsaved) {
+      store.set(current, {
+        ...unsaved,
+        data: label,
+      });
+    }
 
     if (overlay) {
       scene?.executeCommand(
