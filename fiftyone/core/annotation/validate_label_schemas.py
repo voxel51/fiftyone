@@ -244,7 +244,8 @@ def _validate_float_int_field_label_schema(
     field = collection.get_field(field_name)
     is_float = isinstance(field, fof.FloatField)
     _str_type = foac.FLOAT if is_float else foac.INT
-    _type = float if is_float else int
+    # a float field accepts float and int values
+    _type = (float, int) if is_float else int
 
     settings = foac.FLOAT_INT_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
