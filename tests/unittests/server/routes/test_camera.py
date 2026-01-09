@@ -19,6 +19,7 @@ from fiftyone.core.camera import (
     SensorExtrinsics,
 )
 import fiftyone.server.routes.camera as forc
+from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
 
 @pytest.fixture(name="dataset")
@@ -708,20 +709,20 @@ class TestHelperFunctions:
 
     def test_get_dataset_success(self, dataset, dataset_id):
         """Tests successful dataset retrieval."""
-        result = forc._get_dataset(dataset_id)
+        result = get_dataset(dataset_id)
         assert result.name == dataset.name
 
     def test_get_dataset_not_found(self):
         """Tests that HTTPException is raised for non-existent dataset."""
         with pytest.raises(HTTPException) as exc_info:
-            forc._get_dataset("non-existent-id")
+            get_dataset("non-existent-id")
 
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
 
     def test_get_sample_success(self, dataset, sample_id):
         """Tests successful sample retrieval."""
-        sample = forc._get_sample(dataset, sample_id)
+        sample = get_sample_from_dataset(dataset, sample_id)
         assert str(sample.id) == sample_id
 
     def test_get_sample_not_found(self, dataset):
@@ -731,7 +732,7 @@ class TestHelperFunctions:
         bad_id = str(ObjectId())
 
         with pytest.raises(HTTPException) as exc_info:
-            forc._get_sample(dataset, bad_id)
+            get_sample_from_dataset(dataset, bad_id)
 
         assert exc_info.value.status_code == 404
         assert f"Sample '{bad_id}' not found" in exc_info.value.detail

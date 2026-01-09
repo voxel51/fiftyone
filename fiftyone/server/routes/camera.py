@@ -14,54 +14,10 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-import fiftyone.core.odm as foo
 from fiftyone.server import utils
+from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
 logger = logging.getLogger(__name__)
-
-
-def _get_dataset(dataset_id: str):
-    """Loads a dataset by ID.
-
-    Args:
-        dataset_id: The ID of the dataset
-
-    Raises:
-        HTTPException: If the dataset is not found
-
-    Returns:
-        The dataset
-    """
-    try:
-        return foo.load_dataset(id=dataset_id)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Dataset '{dataset_id}' not found",
-        ) from err
-
-
-def _get_sample(dataset, sample_id: str):
-    """Retrieves a sample from a dataset.
-
-    Args:
-        dataset: The dataset
-        sample_id: The ID of the sample
-
-    Raises:
-        HTTPException: If the sample is not found
-
-    Returns:
-        The sample
-    """
-    try:
-        return dataset[sample_id]
-    except KeyError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Sample '{sample_id}' not found in dataset "
-            f"'{dataset.name}'",
-        ) from err
 
 
 class CameraIntrinsics(HTTPEndpoint):
@@ -87,8 +43,8 @@ class CameraIntrinsics(HTTPEndpoint):
             dataset_id,
         )
 
-        dataset = _get_dataset(dataset_id)
-        sample = _get_sample(dataset, sample_id)
+        dataset = get_dataset(dataset_id)
+        sample = get_sample_from_dataset(dataset, sample_id)
 
         intrinsics = dataset.resolve_intrinsics(sample)
 
@@ -137,8 +93,8 @@ class CameraExtrinsics(HTTPEndpoint):
             chain_via,
         )
 
-        dataset = _get_dataset(dataset_id)
-        sample = _get_sample(dataset, sample_id)
+        dataset = get_dataset(dataset_id)
+        sample = get_sample_from_dataset(dataset, sample_id)
 
         try:
             extrinsics = dataset.resolve_extrinsics(
@@ -212,7 +168,7 @@ class BatchCameraIntrinsics(HTTPEndpoint):
             dataset_id,
         )
 
-        dataset = _get_dataset(dataset_id)
+        dataset = get_dataset(dataset_id)
 
         results = {}
         for sample_id in sample_ids:
@@ -273,7 +229,7 @@ class BatchCameraExtrinsics(HTTPEndpoint):
             chain_via,
         )
 
-        dataset = _get_dataset(dataset_id)
+        dataset = get_dataset(dataset_id)
 
         results = {}
         for sample_id in sample_ids:
