@@ -207,8 +207,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             images = [p[0] for p in processed]
             self._image_sizes = [p[1] for p in processed]
         else:
-            images = imgs
-            self._image_sizes = [self._get_image_size(img) for img in imgs]
+            images = [p[0] for p in imgs]
+            self._image_sizes = [p[1] for p in imgs]
 
         output = self._forward_pass(images)
 
