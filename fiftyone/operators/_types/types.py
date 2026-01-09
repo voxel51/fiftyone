@@ -251,6 +251,69 @@ class Object(BaseType):
         """
         return self.define_property(name, Void(), view=view, **kwargs)
 
+    def loader(
+        self,
+        name,
+        type,
+        operator,
+        params=None,
+        label=None,
+        placeholder_view=None,
+        **kwargs,
+    ):
+        """Defines a loader property that fetches data asynchronously.
+
+        The loader executes an operator and stores the result at the property
+        path. Access the loader state via ``ctx.params[name]``::
+
+            ctx.params[name]["state"]  # "idle", "loading", "loaded", or "errored"
+            ctx.params[name]["data"]   # the loaded data (when state is "loaded")
+            ctx.params[name]["error"]  # error message (when state is "errored")
+
+        Examples::
+
+            def resolve_input(self, ctx):
+                inputs = types.Object()
+
+                chosen_make = ctx.params.get("make")
+                if chosen_make:
+                    inputs.loader(
+                        "available_models",
+                        type=types.List(types.Object()),
+                        operator="@my-plugin/load_models",
+                        params={"make": chosen_make},
+                        label="Loading models...",
+                    )
+
+                models = ctx.params.get("available_models", {})
+                if models.get("state") == "loaded":
+                    choices = Choices()
+                    for model in models.get("data", []):
+                        choices.add_choice(model["id"], label=model["name"])
+                    inputs.enum("model", values=choices)
+
+                return types.Property(inputs)
+
+        Args:
+            name: the name of the property
+            type: the type of the loaded data (e.g., ``types.Object()``,
+                ``types.List(types.Object())``)
+            operator: the operator to execute (string URI or callable method)
+            params (None): parameters to pass to the operator
+            label (None): loading message to display
+            placeholder_view (None): view to render while loading
+
+        Returns:
+            a :class:`Property`
+        """
+        view = LoaderView(
+            operator=operator,
+            params=params,
+            label=label,
+            placeholder_view=placeholder_view,
+        )
+        return self.define_property(name, type, view=view, **kwargs)
+
     def btn(
         self,
         name,
@@ -1845,6 +1908,54 @@ class LoadingView(ReadOnlyView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class LoaderView(View):
+    """A view that loads data asynchronously via an operator.
+
+    The view executes the specified operator and stores the result. The property
+    value will have the structure::
+
+        {
+            "state": "idle" | "loading" | "loaded" | "errored",
+            "data": <result from operator>,
+            "error": <error message if errored>
+        }
+
+    Args:
+        operator: the operator to execute (string URI or callable method)
+        params (None): parameters to pass to the operator
+        label (None): loading message to display
+        placeholder_view (None): view to render while loading
+    """
+
+    def __init__(
+        self,
+        operator,
+        params=None,
+        label=None,
+        placeholder_view=None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.operator = operator
+        self.params = params
+        self.placeholder_view = placeholder_view
+        if label is not None:
+            self.label = label
+
+    def to_json(self):
+        d = super().to_json()
+        if callable(self.operator):
+            d[
+                "operator"
+            ] = f"{self.operator.__self__.uri}#{self.operator.__name__}"
+        else:
+            d["operator"] = self.operator
+        d["params"] = self.params
+        if self.placeholder_view:
+            d["placeholder_view"] = self.placeholder_view.to_json()
+        return d
 
 
 class PillBadgeView(View):
