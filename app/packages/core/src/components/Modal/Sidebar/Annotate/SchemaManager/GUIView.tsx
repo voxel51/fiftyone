@@ -453,9 +453,6 @@ const HiddenFieldsSection = () => {
 
 // GUI content - field list with drag-drop
 const GUIContent = () => {
-  const schemasData = useAtomValue(labelSchemasData);
-  console.log("GUIContent fields (labelSchemasData):", schemasData);
-
   return (
     <>
       <ActiveFieldsSection />
@@ -467,7 +464,7 @@ const GUIContent = () => {
 // JSON content - raw schema view
 const JSONContent = () => {
   const schemasData = useAtomValue(labelSchemasData);
-  const { currentJson, onChange } = useFullSchemaEditor();
+  const { currentJson } = useFullSchemaEditor();
 
   if (!schemasData) {
     return (
@@ -493,7 +490,7 @@ const JSONContent = () => {
         schema={{
           view: {
             language: "json",
-            readOnly: false,
+            readOnly: true,
             width: "100%",
             height: "100%",
             componentsProps: {
@@ -503,7 +500,6 @@ const JSONContent = () => {
             },
           },
         }}
-        onChange={(_, value) => onChange(value)}
       />
     </ContentArea>
   );
