@@ -114,17 +114,14 @@ class SampleFieldDocument(EmbeddedDocument):
             try:
                 subfield = etau.get_class(subfield)
             except (ImportError, ModuleNotFoundError):
-                from fiftyone.core.odm.embedded_document import (
-                    DynamicEmbeddedDocument,
-                )
-
                 logger.warning(
                     "Unknown subfield type '%s' for field '%s'. "
-                    "Using DynamicEmbeddedDocument as fallback.",
+                    "Setting subfield to None. "
+                    "Some functionality may be limited.",
                     self.subfield,
                     self.name,
                 )
-                subfield = DynamicEmbeddedDocument
+                subfield = None
 
         fields = None
         if self.fields is not None:
