@@ -1276,9 +1276,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if extrinsics.source_frame is None:
             raise ValueError("extrinsics.source_frame must be set")
 
-        # Default target_frame to "world" if not specified
+        # Default target_frame to world if not specified
         if extrinsics.target_frame is None:
-            extrinsics.target_frame = "world"
+            extrinsics.target_frame = focam.DEFAULT_EXTRINSICS_TARGET_FRAME
 
         key = f"{extrinsics.source_frame}::{extrinsics.target_frame}"
 
@@ -1308,7 +1308,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             # Parse key to get expected frames
             parts = key.split("::", 1)
             expected_source = parts[0]
-            expected_target = parts[1] if len(parts) > 1 else "world"
+            expected_target = (
+                parts[1]
+                if len(parts) > 1
+                else focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            )
 
             if value.source_frame is None:
                 raise ValueError(
@@ -1322,12 +1326,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     f"but got source_frame='{value.source_frame}'"
                 )
 
-            if value.target_frame is not None:
-                if value.target_frame != expected_target:
-                    raise ValueError(
-                        f"Key '{key}' expects target_frame='{expected_target}' "
-                        f"but got target_frame='{value.target_frame}'"
-                    )
+            # Treat target_frame=None as world for comparison
+            actual_target = (
+                value.target_frame or focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            )
+            if actual_target != expected_target:
+                raise ValueError(
+                    f"Key '{key}' expects target_frame='{expected_target}' "
+                    f"but got target_frame='{value.target_frame}'"
+                )
 
     def resolve_intrinsics(self, sample):
         """Resolves camera intrinsics for the given sample.
@@ -1426,7 +1433,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         extrinsics = self.sensor_extrinsics or {}
 
         if target_frame is None:
-            target_frame = "world"
+            target_frame = focam.DEFAULT_EXTRINSICS_TARGET_FRAME
 
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
@@ -1493,7 +1500,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return extrinsics[key]
 
         # Try without target frame (implies world)
-        if target_frame == "world" and source_frame in extrinsics:
+        if (
+            target_frame == focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            and source_frame in extrinsics
+        ):
             return extrinsics[source_frame]
 
         return None
@@ -1525,7 +1535,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         extrinsics = self.sensor_extrinsics or {}
 
         if isinstance(value, focam.SensorExtrinsics):
-            val_target = value.target_frame or "world"
+            val_target = (
+                value.target_frame or focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            )
             if (
                 value.source_frame == source_frame
                 and val_target == target_frame
@@ -1538,7 +1550,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 # Parse the ref to check frames
                 parts = value.ref.split("::", 1)
                 ref_source = parts[0]
-                ref_target = parts[1] if len(parts) > 1 else "world"
+                ref_target = (
+                    parts[1]
+                    if len(parts) > 1
+                    else focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                )
                 if ref_source == source_frame and ref_target == target_frame:
                     return ref_value
 
@@ -1584,7 +1600,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             transform = extrinsics.get(key)
 
             # Try with implied world target
-            if transform is None and tgt == "world":
+            if (
+                transform is None
+                and tgt == focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            ):
                 transform = extrinsics.get(src)
 
             if transform is None:
