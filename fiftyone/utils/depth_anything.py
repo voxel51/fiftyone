@@ -100,13 +100,13 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 % (len(depth_maps), len(image_sizes))
             )
 
+        from PIL import Image
+
         results = []
         for i, depth in enumerate(depth_maps):
             orig_h, orig_w = image_sizes[i]
 
             if depth.shape[0] != orig_h or depth.shape[1] != orig_w:
-                from PIL import Image
-
                 depth_img = Image.fromarray(depth)
                 depth_img = depth_img.resize(
                     (orig_w, orig_h), Image.Resampling.BILINEAR
@@ -204,8 +204,12 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             images = [p[0] for p in processed]
             self._image_sizes = [p[1] for p in processed]
         else:
-            images = imgs
-            self._image_sizes = [self._get_image_size(img) for img in imgs]
+            if imgs and isinstance(imgs[0], (list, tuple)) and len(imgs[0]) == 2:
+                images = [p[0] for p in imgs]
+                self._image_sizes = [tuple(p[1]) for p in imgs]
+            else:
+                images = imgs
+                self._image_sizes = [self._get_image_size(img) for img in imgs]
 
         output = self._forward_pass(images)
 
@@ -266,7 +270,8 @@ class _DepthAnythingV3Transforms:
 
             if not os.path.isfile(img):
                 raise ValueError("Image file not found: %s" % img)
-            img_array = np.array(PILImage.open(img).convert("RGB"))
+            with PILImage.open(img) as pil_img:
+                img_array = np.array(pil_img.convert("RGB"))
         elif isinstance(img, PILImage.Image):
             img_array = np.array(img.convert("RGB"))
         elif isinstance(img, torch.Tensor):
