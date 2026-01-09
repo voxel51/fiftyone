@@ -1963,9 +1963,16 @@ class LoaderView(View):
     def to_json(self):
         d = super().to_json()
         if callable(self.operator):
-            d[
-                "operator"
-            ] = f"{self.operator.__self__.uri}#{self.operator.__name__}"
+            op_self = getattr(self.operator, "__self__", None)
+            uri = (
+                getattr(op_self, "uri", None) if op_self is not None else None
+            )
+            if uri is not None:
+                d["operator"] = f"{uri}#{self.operator.__name__}"
+            else:
+                module = getattr(self.operator, "__module__", "")
+                name = getattr(self.operator, "__name__", str(self.operator))
+                d["operator"] = f"{module}.{name}" if module else name
         else:
             d["operator"] = self.operator
         d["params"] = self.params
