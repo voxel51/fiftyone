@@ -13,6 +13,7 @@ import {
   currentActiveAnnotationField3dAtom,
   stagedCuboidTransformsAtom,
 } from "../state";
+import { quaternionToRadians } from "../utils";
 import type { CuboidTransformData } from "./types";
 
 export const currentEditingCuboidAtom =
@@ -58,7 +59,7 @@ export const useSetEditingToNewCuboid = () => {
       setEditing(null);
 
       const rotation: [number, number, number] = transformData.quaternion
-        ? quaternionToRotation(transformData.quaternion)
+        ? quaternionToRadians(transformData.quaternion)
         : [0, 0, 0];
 
       const defaultCuboidLabelData = {
@@ -107,33 +108,3 @@ export const useSetEditingToNewCuboid = () => {
     [currentSampleId, currentActiveField, currentAnnotationSidebar]
   );
 };
-
-/**
- * Convert quaternion [x, y, z, w] to Euler rotation [x, y, z] in radians
- */
-function quaternionToRotation(
-  quaternion: [number, number, number, number]
-): [number, number, number] {
-  const [x, y, z, w] = quaternion;
-
-  // Roll (x-axis rotation)
-  const sinr_cosp = 2 * (w * x + y * z);
-  const cosr_cosp = 1 - 2 * (x * x + y * y);
-  const roll = Math.atan2(sinr_cosp, cosr_cosp);
-
-  // Pitch (y-axis rotation)
-  const sinp = 2 * (w * y - z * x);
-  let pitch: number;
-  if (Math.abs(sinp) >= 1) {
-    pitch = (Math.PI / 2) * Math.sign(sinp); // use 90 degrees if out of range
-  } else {
-    pitch = Math.asin(sinp);
-  }
-
-  // Yaw (z-axis rotation)
-  const siny_cosp = 2 * (w * z + x * y);
-  const cosy_cosp = 1 - 2 * (y * y + z * z);
-  const yaw = Math.atan2(siny_cosp, cosy_cosp);
-
-  return [roll, pitch, yaw];
-}
