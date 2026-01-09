@@ -70,7 +70,6 @@ class SampleFieldDocument(EmbeddedDocument):
     description = StringField(null=True)
     info = DictField(null=True)
     read_only = BooleanField(default=False)
-    schema = DictField(null=True)
     created_at = DateTimeField(null=True, default=None)
 
     def _set_created_at(self, created_at):
@@ -109,7 +108,6 @@ class SampleFieldDocument(EmbeddedDocument):
             description=self.description,
             info=self.info,
             read_only=self.read_only,
-            schema=self.schema,
             created_at=self.created_at,
         )
 
@@ -139,7 +137,6 @@ class SampleFieldDocument(EmbeddedDocument):
             description=field.description,
             info=field.info,
             read_only=field.read_only,
-            schema=field.schema,
             created_at=field.created_at,
         )
 
@@ -945,6 +942,8 @@ class DatasetDocument(Document):
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
     runs = DictField(ReferenceField(RunDocument))
+    active_label_schemas = ListField(StringField())
+    label_schemas = DictField()
 
     def get_saved_views(self):
         saved_views = []

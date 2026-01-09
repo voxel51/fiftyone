@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import {
-  activeSchemas,
+  activeLabelSchemas,
   fieldTypes,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import { currentActiveAnnotationField3dAtom } from "@fiftyone/looker-3d/src/state";
@@ -12,7 +12,7 @@ export const FieldSelection = () => {
   const [currentActiveField, setCurrentActiveField] = useRecoilState(
     currentActiveAnnotationField3dAtom
   );
-  const activeSchema = useAtomValue(activeSchemas);
+  const activeSchema = useAtomValue(activeLabelSchemas);
   const fieldTypesVal = useAtomValue(fieldTypes);
 
   const schemaFields = useMemo(

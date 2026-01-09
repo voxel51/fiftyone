@@ -3,12 +3,10 @@ import { DragIndicator, EditOutlined } from "@mui/icons-material";
 import { Checkbox, Chip, Typography } from "@mui/material";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React from "react";
 import { RoundButtonWhite } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
-import { fieldType } from "../state";
+import { currentField, fieldType } from "../state";
 import { Item } from "./Components";
-import { currentField } from "./state";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
 
