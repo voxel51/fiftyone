@@ -6,7 +6,7 @@
  * Provides a unit of execution.  This can
  * be executed by the ActionManager to optionally
  * support automatic undo/redo by implementing the
- * Undable extension of the interface.
+ * Undoable extension of the interface.
  */
 export interface Action {
   id: string;
