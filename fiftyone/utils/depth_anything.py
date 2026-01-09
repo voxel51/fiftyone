@@ -290,10 +290,17 @@ class _DepthAnythingV3Transforms:
             if img_array.dtype in (np.float32, np.float64):
                 img_array = _normalize_float_to_uint8(img_array)
         elif isinstance(img, np.ndarray):
-            if img.ndim != 3 or img.shape[2] != 3:
+            if img.ndim == 2:
+                img = np.stack([img, img, img], axis=2)
+            elif img.ndim != 3 or img.shape[2] not in (1, 3, 4):
                 raise ValueError(
-                    "Expected image with shape (H, W, 3), got %s" % (img.shape,)
+                    "Expected image with shape (H, W), (H, W, 1), (H, W, 3), "
+                    "or (H, W, 4), got %s" % (img.shape,)
                 )
+            elif img.shape[2] == 1:
+                img = np.repeat(img, 3, axis=2)
+            elif img.shape[2] == 4:
+                img = img[:, :, :3]
             if img.dtype in (np.float32, np.float64):
                 img = _normalize_float_to_uint8(img)
             img_array = img
