@@ -4,6 +4,16 @@ import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { activeLabelSchemas, labelSchemasData } from "./state";
 
+// Convert property names to camelCase while preserving field names (top-level keys)
+const convertLabelSchemas = (schemas: Record<string, any>) => {
+  const result: Record<string, any> = {};
+  for (const fieldName in schemas) {
+    // Preserve field name, only convert the properties within
+    result[fieldName] = toCamelCase(schemas[fieldName]);
+  }
+  return result;
+};
+
 export default function useLoadSchemas() {
   const setData = useSetAtom(labelSchemasData);
   const setActive = useSetAtom(activeLabelSchemas);
@@ -14,8 +24,8 @@ export default function useLoadSchemas() {
       return;
     }
 
-    // Convert snake_case from Python to camelCase for frontend
-    setData(toCamelCase(get.result.label_schemas));
+    // Convert property names to camelCase while preserving field names
+    setData(convertLabelSchemas(get.result.label_schemas));
     setActive(get.result.active_label_schemas);
   }, [get.result, setData]);
 
