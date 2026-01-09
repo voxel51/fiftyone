@@ -1322,12 +1322,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     f"but got source_frame='{value.source_frame}'"
                 )
 
-            if value.target_frame is not None:
-                if value.target_frame != expected_target:
-                    raise ValueError(
-                        f"Key '{key}' expects target_frame='{expected_target}' "
-                        f"but got target_frame='{value.target_frame}'"
-                    )
+            # Treat target_frame=None as "world" for comparison
+            actual_target = value.target_frame or "world"
+            if actual_target != expected_target:
+                raise ValueError(
+                    f"Key '{key}' expects target_frame='{expected_target}' "
+                    f"but got target_frame='{value.target_frame}'"
+                )
 
     def resolve_intrinsics(self, sample):
         """Resolves camera intrinsics for the given sample.
