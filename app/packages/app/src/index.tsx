@@ -1,3 +1,4 @@
+/// <reference types="./env.d.ts" />
 import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
@@ -7,6 +8,10 @@ import { RecoilRoot } from "recoil";
 import Network from "./Network";
 import "./index.css";
 import { useRouter } from "./routing";
+
+if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_NAME) {
+  document.title = `${document.title} (${import.meta.env.VITE_DEV_WORKTREE_NAME})`;
+}
 
 const App: React.FC = () => {
   const { context, environment } = useRouter();

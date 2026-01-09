@@ -7,9 +7,9 @@ FiftyOne datasets.
 """
 
 from collections import defaultdict
+import copy
 from functools import partial
 import contextlib
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -17,43 +17,37 @@ import numbers
 import os
 import random
 import string
+from datetime import datetime
 
-from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
-import mongoengine.errors as moe
-from pymongo import (
-    DeleteMany,
-    InsertOne,
-    ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-)
-from pymongo.collection import Collection
-from pymongo.errors import CursorNotFound, BulkWriteError
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+import mongoengine.errors as moe
+from bson import DBRef, ObjectId, json_util
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
+import fiftyone.core.camera as focam
+import fiftyone.core.annotation as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import DatasetAppConfig
-import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
-from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.migrations as fomi
+from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.singletons import DatasetSingleton
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
@@ -1101,9 +1095,697 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
+    def camera_intrinsics(self):
+        """A dict mapping sensor/camera names to
+        :class:`fiftyone.core.camera.CameraIntrinsics` instances that define
+        the intrinsic parameters for each camera in the dataset.
+
+        Intrinsics are keyed by sensor name (typically matching group slice
+        names for grouped datasets).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set intrinsics for cameras
+            dataset.camera_intrinsics = {
+                "camera_front": fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+                "camera_rear": fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            }
+
+            # Edit existing intrinsics
+            dataset.camera_intrinsics["camera_front"].k1 = -0.12
+            dataset.save()  # must save after edits
+        """
+        return self._doc.camera_intrinsics
+
+    @camera_intrinsics.setter
+    def camera_intrinsics(self, intrinsics):
+        self._doc.camera_intrinsics = intrinsics
+        self.save()
+
+    def add_intrinsics(self, name, intrinsics):
+        """Adds camera intrinsics to the dataset.
+
+        This method provides a convenient way to add intrinsics for a
+        specific camera/sensor without replacing the entire intrinsics dict.
+
+        Args:
+            name: the sensor/camera name (typically matching group slice names
+                for grouped datasets)
+            intrinsics: a :class:`fiftyone.core.camera.CameraIntrinsics`
+                instance
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add intrinsics for front camera
+            dataset.add_intrinsics(
+                "camera_front",
+                fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+            )
+
+            # Add intrinsics for rear camera
+            dataset.add_intrinsics(
+                "camera_rear",
+                fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            )
+
+            # Verify intrinsics were added
+            print(dataset.camera_intrinsics.keys())
+            # dict_keys(['camera_front', 'camera_rear'])
+        """
+        if not isinstance(intrinsics, focam.CameraIntrinsics):
+            raise TypeError(
+                f"Expected CameraIntrinsics, got {type(intrinsics).__name__}"
+            )
+
+        current = dict(self._doc.camera_intrinsics or {})
+        current[name] = intrinsics
+        self._doc.camera_intrinsics = current
+        self.save()
+
+    @property
+    def sensor_extrinsics(self):
+        """A dict mapping frame relationships to
+        :class:`fiftyone.core.camera.SensorExtrinsics` instances that define
+        the extrinsic parameters (poses) for sensors in the dataset.
+
+        Extrinsics are keyed by ``"source_frame::target_frame"`` (e.g.,
+        ``"camera_front::ego"``) or just ``"source_frame"`` which implies
+        transformation to the ``"world"`` frame.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set extrinsics for sensors
+            dataset.sensor_extrinsics = {
+                "camera_front::ego": fo.SensorExtrinsics(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                ),
+                "lidar::ego": fo.SensorExtrinsics(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                    target_frame="ego",
+                ),
+            }
+
+            # Edit existing extrinsics
+            dataset.sensor_extrinsics["camera_front::ego"].translation[0] = 1.6
+            dataset.save()  # must save after edits
+        """
+        return self._doc.sensor_extrinsics
+
+    @sensor_extrinsics.setter
+    def sensor_extrinsics(self, extrinsics):
+        self._validate_sensor_extrinsics(extrinsics)
+        self._doc.sensor_extrinsics = extrinsics
+        self.save()
+
+    def add_extrinsics(self, extrinsics):
+        """Adds sensor extrinsics to the dataset.
+
+        This method provides a convenient way to add extrinsics without
+        manually constructing the ``"source_frame::target_frame"`` key.
+
+        Args:
+            extrinsics: a :class:`fiftyone.core.camera.SensorExtrinsics`
+                instance with ``source_frame`` set (``target_frame`` defaults
+                to "world" if not specified)
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add extrinsics for camera to ego transformation
+            dataset.add_extrinsics(
+                fo.SensorExtrinsics(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                )
+            )
+
+            # Add extrinsics for lidar (target_frame defaults to "world")
+            dataset.add_extrinsics(
+                fo.SensorExtrinsics(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                )
+            )
+
+            # Verify extrinsics were added
+            print(dataset.sensor_extrinsics.keys())
+            # dict_keys(['camera_front::ego', 'lidar::world'])
+        """
+        if not isinstance(extrinsics, focam.SensorExtrinsics):
+            raise TypeError(
+                f"Expected SensorExtrinsics, got {type(extrinsics).__name__}"
+            )
+
+        if extrinsics.source_frame is None:
+            raise ValueError("extrinsics.source_frame must be set")
+
+        # Default target_frame to "world" if not specified
+        if extrinsics.target_frame is None:
+            extrinsics.target_frame = "world"
+
+        key = f"{extrinsics.source_frame}::{extrinsics.target_frame}"
+
+        current = dict(self._doc.sensor_extrinsics or {})
+        current[key] = extrinsics
+        self._validate_sensor_extrinsics({key: extrinsics})
+        self._doc.sensor_extrinsics = current
+        self.save()
+
+    def _validate_sensor_extrinsics(self, extrinsics):
+        """Validates that extrinsics dict keys match object fields.
+
+        Args:
+            extrinsics: a dict mapping keys to SensorExtrinsics instances
+
+        Raises:
+            ValueError: if a key doesn't match the object's source_frame and
+                target_frame fields
+        """
+        if extrinsics is None:
+            return
+
+        for key, value in extrinsics.items():
+            if not isinstance(value, focam.SensorExtrinsics):
+                continue
+
+            # Parse key to get expected frames
+            parts = key.split("::", 1)
+            expected_source = parts[0]
+            expected_target = parts[1] if len(parts) > 1 else "world"
+
+            if value.source_frame is None:
+                raise ValueError(
+                    f"Key '{key}' requires source_frame to be set, "
+                    f"but got source_frame=None"
+                )
+
+            if value.source_frame != expected_source:
+                raise ValueError(
+                    f"Key '{key}' expects source_frame='{expected_source}' "
+                    f"but got source_frame='{value.source_frame}'"
+                )
+
+            if value.target_frame is not None:
+                if value.target_frame != expected_target:
+                    raise ValueError(
+                        f"Key '{key}' expects target_frame='{expected_target}' "
+                        f"but got target_frame='{value.target_frame}'"
+                    )
+
+    def resolve_intrinsics(self, sample):
+        """Resolves camera intrinsics for the given sample.
+
+        Resolution precedence:
+            1. If sample has a field with a
+               :class:`fiftyone.core.camera.CameraIntrinsics` value, use it
+            2. If sample has a field with a
+               :class:`fiftyone.core.camera.CameraIntrinsicsRef`, look up in
+               ``dataset.camera_intrinsics[ref]``
+            3. If sample is from a grouped dataset, infer from group slice name
+               and look up in ``dataset.camera_intrinsics[slice_name]``
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            a :class:`fiftyone.core.camera.CameraIntrinsics`, or None if not
+            found
+        """
+        intrinsics_map = dict(self.camera_intrinsics or {})
+
+        # Check for sample-level intrinsics by matching type
+        for _, value in sample.iter_fields():
+            if isinstance(value, focam.CameraIntrinsics):
+                return value
+            elif isinstance(value, focam.CameraIntrinsicsRef):
+                return intrinsics_map.get(value.ref)
+
+        # Try to infer from group slice
+        if self.media_type == fom.GROUP:
+            group = None
+            if self.group_field is not None:
+                group = getattr(sample, self.group_field, None)
+            if group is None and self.group_field == "group":
+                group = getattr(sample, "group", None)
+
+            if group is not None:
+                try:
+                    slice_name = group.name
+                    return intrinsics_map.get(slice_name)
+                except (AttributeError, KeyError):
+                    pass
+
+        return None
+
+    def resolve_extrinsics(
+        self, sample, source_frame=None, target_frame=None, chain_via=None
+    ):
+        """Resolves sensor extrinsics for the given sample.
+
+        Resolution precedence:
+
+            1. If sample has a field with a
+               :class:`fiftyone.core.camera.SensorExtrinsics` or
+               :class:`fiftyone.core.camera.SensorExtrinsicsRef` value (or a
+               list of them) with matching source/target frames, use it
+
+            2. Look up in ``dataset.sensor_extrinsics`` using the key format
+               ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
+               target is ``"world"``)
+
+            3. If sample is from a grouped dataset and ``source_frame`` is None,
+               infer source_frame from group slice name and look up in
+               ``dataset.sensor_extrinsics``
+
+            4. If ``chain_via`` is provided and no direct match is found,
+               chain transforms through the intermediate frames
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            source_frame (None): the source coordinate frame name. If None and
+                sample is from a grouped dataset, inferred from group slice name
+            target_frame (None): the target coordinate frame name. If None,
+                defaults to ``"world"``
+            chain_via (None): optional list of intermediate frame names to
+                chain through if a direct transform is not found. For example,
+                ``chain_via=["ego"]`` would attempt to resolve
+                ``source_frame -> ego -> target_frame`` by composing individual
+                transforms
+
+        Returns:
+            a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
+            found
+
+        Example::
+
+            # Direct lookup
+            transform = dataset.resolve_extrinsics(sample, "camera", "world")
+
+            # Chain through intermediate frame
+            transform = dataset.resolve_extrinsics(
+                sample, "camera", "world", chain_via=["ego"]
+            )
+        """
+        extrinsics = self.sensor_extrinsics or {}
+
+        if target_frame is None:
+            target_frame = "world"
+
+        # Try to infer source_frame from group slice if not provided
+        if source_frame is None:
+            if self.media_type == fom.GROUP:
+                group = None
+                if self.group_field is not None:
+                    group = getattr(sample, self.group_field, None)
+                if group is None and self.group_field == "group":
+                    group = getattr(sample, "group", None)
+
+                if group is not None:
+                    try:
+                        source_frame = group.name
+                    except (AttributeError, KeyError):
+                        pass
+
+        # Try direct resolution first
+        result = self._resolve_extrinsics_direct(
+            sample, source_frame, target_frame, extrinsics
+        )
+        if result is not None:
+            return result
+
+        # If chain_via is provided, try chaining through intermediate frames
+        if chain_via is not None and source_frame is not None:
+            return self._resolve_extrinsics_chain(
+                sample, source_frame, target_frame, chain_via, extrinsics
+            )
+
+        return None
+
+    def _resolve_extrinsics_direct(
+        self, sample, source_frame, target_frame, extrinsics
+    ):
+        """Directly resolve extrinsics without chaining."""
+        # Check for sample-level extrinsics by matching type
+        for _, value in sample.iter_fields():
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(
+                        item,
+                        (focam.SensorExtrinsics, focam.SensorExtrinsicsRef),
+                    ):
+                        ext = self._resolve_single_extrinsics(
+                            item, source_frame, target_frame
+                        )
+                        if ext is not None:
+                            return ext
+            elif isinstance(
+                value, (focam.SensorExtrinsics, focam.SensorExtrinsicsRef)
+            ):
+                ext = self._resolve_single_extrinsics(
+                    value, source_frame, target_frame
+                )
+                if ext is not None:
+                    return ext
+
+        if source_frame is None:
+            return None
+
+        # Look up in dataset-level extrinsics
+        key = f"{source_frame}::{target_frame}"
+        if key in extrinsics:
+            return extrinsics[key]
+
+        # Try without target frame (implies world)
+        if target_frame == "world" and source_frame in extrinsics:
+            return extrinsics[source_frame]
+
+        return None
+
+    def _resolve_extrinsics_chain(
+        self, sample, source_frame, target_frame, chain_via, extrinsics
+    ):
+        """Resolve extrinsics by chaining through intermediate frames."""
+        frames = [source_frame] + list(chain_via) + [target_frame]
+
+        result = None
+        for src, tgt in zip(frames, frames[1:]):
+            transform = self._resolve_extrinsics_direct(
+                sample, src, tgt, extrinsics
+            )
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
+
+    def _resolve_single_extrinsics(self, value, source_frame, target_frame):
+        """Helper to resolve a single extrinsics value."""
+        extrinsics = self.sensor_extrinsics or {}
+
+        if isinstance(value, focam.SensorExtrinsics):
+            val_target = value.target_frame or "world"
+            if (
+                value.source_frame == source_frame
+                and val_target == target_frame
+            ):
+                return value
+        elif isinstance(value, focam.SensorExtrinsicsRef):
+            # Look up the reference
+            ref_value = extrinsics.get(value.ref)
+            if ref_value is not None:
+                # Parse the ref to check frames
+                parts = value.ref.split("::", 1)
+                ref_source = parts[0]
+                ref_target = parts[1] if len(parts) > 1 else "world"
+                if ref_source == source_frame and ref_target == target_frame:
+                    return ref_value
+
+        return None
+
+    def get_transform_chain(
+        self, source_frame, target_frame, intermediate_frames=None
+    ):
+        """Computes a composed transformation between coordinate frames.
+
+        This method chains multiple extrinsics transforms to compute the
+        transformation from ``source_frame`` to ``target_frame``, optionally
+        through intermediate frames.
+
+        Args:
+            source_frame: the source coordinate frame name
+            target_frame: the target coordinate frame name
+            intermediate_frames (None): optional list of intermediate frame
+                names to chain through (e.g., ["ego"])
+
+        Returns:
+            a :class:`fiftyone.core.camera.SensorExtrinsics` representing the
+            composed transformation, or None if the chain cannot be resolved
+
+        Example::
+
+            # Get transform from camera_front to world via ego
+            transform = dataset.get_transform_chain(
+                "camera_front", "world", intermediate_frames=["ego"]
+            )
+        """
+        extrinsics = self.sensor_extrinsics or {}
+
+        if intermediate_frames is None:
+            intermediate_frames = []
+
+        frames = [source_frame] + intermediate_frames + [target_frame]
+
+        result = None
+        for src, tgt in zip(frames, frames[1:]):
+            # Try direct lookup
+            key = f"{src}::{tgt}"
+            transform = extrinsics.get(key)
+
+            # Try with implied world target
+            if transform is None and tgt == "world":
+                transform = extrinsics.get(src)
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
+
+    @property
+    def active_label_schemas(self):
+        """The list of active fields in the dataset's
+        :ref:`label schemas <annotation-label-schema>`.
+        """
+        return list(self._doc.active_label_schemas or [])
+
+    @active_label_schemas.setter
+    def active_label_schemas(self, fields):
+        fields = _as_str_list(fields)
+
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+        self._doc.active_label_schemas = fields
+        self.save()
+
+    @property
+    def label_schemas(self):
+        """The dataset's :ref:`label schemas <annotation-label-schema>` that
+        define its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate label
+        schemas.
+
+        Returns:
+            the dataset's label schemas ``dict``
+        """
+        return copy.deepcopy(self._doc.label_schemas) or {}
+
+    def set_label_schemas(self, label_schemas):
+        """Set the dataset's :ref:`label schemas <annotation-label-schema>`
+        that defines its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate a label
+        schema.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Generate and assign a label schemas for all supported fields with
+            # populated constraints and other settings, e.g. 'values', and
+            # 'range'. Requires all samples in the dataset
+            dataset.set_label_schemas(dataset.generate_label_schemas())
+
+            # Generate a bare label schemas for all supported fields
+            dataset.set_label_schemas(
+                dataset.generate_label_schemas(scan_samples=False)
+            )
+
+        Args:
+            label_schemas: a label schemas ``dict``
+        """
+        if label_schemas is None:
+            label_schemas = {}
+
+        foa.validate_label_schemas(self, label_schemas)
+        self._doc.label_schemas = label_schemas
+        self._doc.active_label_schemas = [
+            field
+            for field in self.active_label_schemas
+            if field in label_schemas
+        ]
+        self.save()
+
+    def update_label_schema(self, field, label_schema):
+        """Update an individual field's
+        :ref:`label schema <annotation-label-schema>`.
+
+        Example::
+            dataset.update_label_schema(
+                "ground_truth",
+                dataset.generate_label_schemas("ground_truth")
+            )
+
+        Args:
+            field: the field name
+            label_schema: the field's label schema
+
+        Raises:
+            ExceptionGroup: if the label schema is invalid
+        """
+        foa.validate_label_schemas(self, label_schema, fields=field)
+        label_schemas = self.label_schemas
+        label_schemas[field] = copy.deepcopy(label_schema)
+        self._doc.label_schemas = label_schemas
+        self.save()
+
+    def delete_label_schemas(self, fields=None):
+        """Deletes one or more
+        :ref:`label schemas <annotation-label-schema>`. If no fields are
+        provided, all label schemas are deleted.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if the label schema or schemas do not exist
+        """
+        label_schemas = self.label_schemas
+        fields = _as_str_list(fields if fields is not None else label_schemas)
+
+        for field in fields:
+            if field not in label_schemas:
+                raise ValueError(
+                    f"field '{field}' is not in the dataset's label schema"
+                )
+
+            del label_schemas[field]
+
+        self.set_label_schemas(label_schemas)
+
+    def activate_label_schemas(self, fields=None):
+        """Activate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are activated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable
+                of such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema
+        """
+        if fields is None:
+            fields = sorted(self.label_schemas)
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(f"field '{field}' is not in the label schema")
+
+            if field in result:
+                raise ValueError(
+                    f"field '{field}' is already active in the label schema"
+                )
+
+            result.append(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
+
+    def deactivate_label_schemas(self, fields=None):
+        """Deactivate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are deactivated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema, or any field
+                is not currently active
+        """
+        if fields is None:
+            fields = self.active_label_schemas
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+            if field not in result:
+                raise ValueError(f"field '{field}' label schema is not active")
+
+            result.remove(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -2449,7 +3131,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._rename_fields(
             sample_collection, paths, new_paths
         )
-
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -2766,7 +3447,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
-
         fields, _ = _parse_fields(field_names)
 
         if fields:
@@ -4448,7 +5128,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc.description = field.description
         field_doc.info = field.info
-        field_doc.schema = field.schema
 
         try:
             self.save()
@@ -7807,6 +8486,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_skeleton", None)
         )
 
+        dataset._doc.camera_intrinsics = dataset._parse_camera_intrinsics(
+            d.get("camera_intrinsics", {})
+        )
+        dataset._doc.sensor_extrinsics = dataset._parse_sensor_extrinsics(
+            d.get("sensor_extrinsics", {})
+        )
+
         dataset.save()
 
         def parse_sample(sd):
@@ -9649,6 +10335,11 @@ def _merge_dataset_doc(
         curr_doc.mask_targets.update(doc.mask_targets)
         curr_doc.skeletons.update(doc.skeletons)
 
+        if doc.camera_intrinsics is not None:
+            curr_doc.camera_intrinsics.update(doc.camera_intrinsics)
+        if doc.sensor_extrinsics is not None:
+            curr_doc.sensor_extrinsics.update(doc.sensor_extrinsics)
+
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
@@ -9662,6 +10353,15 @@ def _merge_dataset_doc(
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
         _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
+
+        if doc.camera_intrinsics is not None:
+            _update_no_overwrite(
+                curr_doc.camera_intrinsics, doc.camera_intrinsics
+            )
+        if doc.sensor_extrinsics is not None:
+            _update_no_overwrite(
+                curr_doc.sensor_extrinsics, doc.sensor_extrinsics
+            )
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
@@ -10772,6 +11472,16 @@ def _merge_embedded_doc_field(
             "default": {"$mergeObjects": docs},
         }
     }
+
+
+def _as_str_list(fields):
+    if fields is None:
+        return []
+
+    if etau.is_str(fields):
+        return [fields]
+
+    return list(fields)
 
 
 def _always_select_field(sample_collection, field):
