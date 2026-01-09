@@ -16,6 +16,7 @@ from decorators import drop_datasets
 import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone.core.camera import (
+    CAMERA_CONVENTION_OPENGL,
     CameraExtrinsics,
     CameraExtrinsicsRef,
     CameraIntrinsics,
@@ -662,7 +663,9 @@ class CameraProjectorTests(unittest.TestCase):
             cy=540.0,
         )
 
-        projector = CameraProjector(intrinsics, camera_convention="opengl")
+        projector = CameraProjector(
+            intrinsics, camera_convention=CAMERA_CONVENTION_OPENGL
+        )
 
         # In OpenGL, z is negative forward, y is up
         # A point at (0, 0, -10) in OpenGL = (0, 0, 10) in OpenCV

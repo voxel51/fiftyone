@@ -23,6 +23,14 @@ from fiftyone.core.odm.embedded_document import (
     EmbeddedDocument,
 )
 
+#: Supported 3D camera axis conventions
+CAMERA_CONVENTION_OPENCV = "opencv"
+CAMERA_CONVENTION_OPENGL = "opengl"
+SUPPORTED_CAMERA_CONVENTIONS = (
+    CAMERA_CONVENTION_OPENCV,
+    CAMERA_CONVENTION_OPENGL,
+)
+
 
 class CameraIntrinsics(DynamicEmbeddedDocument):
     """Base class for camera intrinsics.
@@ -666,9 +674,9 @@ class CameraProjector:
         camera_to_reference: Optional[SensorExtrinsics] = None,
         camera_convention: str = "opencv",
     ):
-        if camera_convention not in ("opencv", "opengl"):
+        if camera_convention not in SUPPORTED_CAMERA_CONVENTIONS:
             raise ValueError(
-                f"camera_convention must be 'opencv' or 'opengl', "
+                f"camera_convention must be one of {SUPPORTED_CAMERA_CONVENTIONS}, "
                 f"got '{camera_convention}'"
             )
 
@@ -808,7 +816,7 @@ class CameraProjector:
             points = (self._reference_to_camera @ points_h.T).T[:, :3]
 
         # Handle OpenGL convention (flip z and y)
-        if self.camera_convention == "opengl":
+        if self.camera_convention == CAMERA_CONVENTION_OPENGL:
             points = points.copy()
             points[:, 1] = -points[:, 1]
             points[:, 2] = -points[:, 2]
@@ -926,7 +934,7 @@ class CameraProjector:
 
         points_3d = np.column_stack([x_cam, y_cam, z_cam])
 
-        if self.camera_convention == "opengl":
+        if self.camera_convention == CAMERA_CONVENTION_OPENGL:
             points_3d[:, 1] = -points_3d[:, 1]
             points_3d[:, 2] = -points_3d[:, 2]
 
