@@ -21,6 +21,7 @@ import torch
 
 logger = logging.getLogger(__name__)
 
+
 def _ensure_depth_anything_3():
     try:
         fou.ensure_package("depth-anything-3")
@@ -176,6 +177,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
     def _load_model(self, config):
         model = da3_api.DepthAnything3.from_pretrained(config.name_or_path)
         model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
         model.eval()
         return model
 
