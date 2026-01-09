@@ -109,3 +109,86 @@ class GetIndexedValuesTests(unittest.TestCase):
 
         finally:
             dataset.delete()
+
+
+class SanitizeUnknownEmbeddedDocsTests(unittest.TestCase):
+    """Tests for graceful handling of unknown embedded document types."""
+
+    def test_sanitize_simple_unknown_document(self):
+        """Test sanitizing a simple unknown embedded document."""
+        import fiftyone.core.odm.utils as foou
+
+        data = {
+            "field1": "value1",
+            "unknown_field": {
+                "_cls": "UnknownDocumentType",
+                "data": "some_data",
+            },
+        }
+
+        result = foou.sanitize_unknown_embedded_docs(data)
+
+        # The unknown document should be converted to DynamicEmbeddedDocument
+        self.assertEqual(result["field1"], "value1")
+        self.assertIn("unknown_field", result)
+        # DynamicEmbeddedDocument keeps the data
+        self.assertEqual(result["unknown_field"]["data"], "some_data")
+        self.assertNotIn("_cls", result["unknown_field"])
+
+    def test_sanitize_nested_unknown_documents(self):
+        """Test sanitizing nested unknown embedded documents."""
+        import fiftyone.core.odm.utils as foou
+
+        data = {
+            "level1": {
+                "_cls": "UnknownType1",
+                "level2": {
+                    "_cls": "UnknownType2",
+                    "value": "nested_value",
+                },
+            },
+        }
+
+        result = foou.sanitize_unknown_embedded_docs(data)
+
+        # Both levels should be preserved
+        self.assertIn("level1", result)
+        self.assertEqual(result["level1"]["level2"]["value"], "nested_value")
+
+    def test_sanitize_list_of_documents(self):
+        """Test sanitizing lists containing unknown documents."""
+        import fiftyone.core.odm.utils as foou
+
+        data = {
+            "items": [
+                {"_cls": "UnknownType", "name": "item1"},
+                "string_item",
+                {"normal_dict": "value"},
+            ],
+        }
+
+        result = foou.sanitize_unknown_embedded_docs(data)
+
+        self.assertEqual(len(result["items"]), 3)
+        self.assertEqual(result["items"][0]["name"], "item1")
+        self.assertEqual(result["items"][1], "string_item")
+        self.assertEqual(result["items"][2]["normal_dict"], "value")
+
+    def test_sanitize_preserves_known_documents(self):
+        """Test that known documents are preserved as-is."""
+        import fiftyone.core.odm.utils as foou
+
+        # Create a dict that looks like a FiftyOne document (has _cls but it's known)
+        data = {
+            "field": "value",
+            "nested": {
+                "_cls": "fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument",
+                "data": "preserved",
+            },
+        }
+
+        result = foou.sanitize_unknown_embedded_docs(data)
+
+        # Should not raise an error and should preserve structure
+        self.assertEqual(result["field"], "value")
+        self.assertIn("nested", result)
