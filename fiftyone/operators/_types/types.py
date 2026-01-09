@@ -264,11 +264,17 @@ class Object(BaseType):
         """Defines a loader property that fetches data asynchronously.
 
         The loader executes an operator and stores the result at the property
-        path. Access the loader state via ``ctx.params[name]``::
+        path. The property value always has the following structure::
 
-            ctx.params[name]["state"]  # "idle", "loading", "loaded", or "errored"
-            ctx.params[name]["data"]   # the loaded data (when state is "loaded")
-            ctx.params[name]["error"]  # error message (when state is "errored")
+            {
+                "state": "idle" | "loading" | "loaded" | "errored",
+                "data": <type>,  # the loaded data, shaped by the type argument
+                "error": <str>   # error message (when state is "errored")
+            }
+
+        The ``type`` argument defines the shape of the ``data`` field, not the
+        entire loader value. For example, if ``type=types.List(types.Object())``,
+        then ``ctx.params[name]["data"]`` will be a list of objects.
 
         Examples::
 
@@ -296,8 +302,8 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
-            type: the type of the loaded data (e.g., ``types.Object()``,
-                ``types.List(types.Object())``)
+            type: the type of the ``data`` field within the loader value
+                (e.g., ``types.Object()``, ``types.List(types.Object())``)
             operator: the operator to execute (string URI or callable method)
             params (None): parameters to pass to the operator
             label (None): loading message to display
@@ -1913,14 +1919,17 @@ class LoadingView(ReadOnlyView):
 class LoaderView(View):
     """A view that loads data asynchronously via an operator.
 
-    The view executes the specified operator and stores the result. The property
-    value will have the structure::
+    The view executes the specified operator and stores the result. The loader
+    property value always has the following structure::
 
         {
             "state": "idle" | "loading" | "loaded" | "errored",
-            "data": <result from operator>,
-            "error": <error message if errored>
+            "data": <type>,  # shaped by the type argument passed to loader()
+            "error": <str>   # error message (when state is "errored")
         }
+
+    The ``type`` argument passed to :meth:`Object.loader` defines the shape of
+    the ``data`` field, not the entire loader value.
 
     Args:
         operator: the operator to execute (string URI or callable method)
