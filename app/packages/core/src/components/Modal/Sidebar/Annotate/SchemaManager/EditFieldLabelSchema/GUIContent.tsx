@@ -396,11 +396,6 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config?.attributes]
   );
 
-  // Debug: log the data structure
-  console.log("GUIContent config:", config);
-  console.log("GUIContent classes:", classes);
-  console.log("GUIContent attributes:", attributes);
-
   const handleAddClass = useCallback(
     (name: string) => {
       if (!config) return;
