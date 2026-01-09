@@ -89,11 +89,42 @@ class SampleFieldDocument(EmbeddedDocument):
 
         embedded_doc_type = self.embedded_doc_type
         if embedded_doc_type is not None:
-            embedded_doc_type = etau.get_class(embedded_doc_type)
+            try:
+                embedded_doc_type = etau.get_class(embedded_doc_type)
+            except (ImportError, ModuleNotFoundError):
+                # Fall back to generic embedded document for unknown types
+                # This enables backward compatibility when loading datasets
+                # created with newer FiftyOne versions that have types not
+                # available in this version
+                from fiftyone.core.odm.embedded_document import (
+                    DynamicEmbeddedDocument,
+                )
+
+                logger.warning(
+                    "Unknown embedded document type '%s' for field '%s'. "
+                    "Using DynamicEmbeddedDocument as fallback. "
+                    "Some functionality may be limited.",
+                    self.embedded_doc_type,
+                    self.name,
+                )
+                embedded_doc_type = DynamicEmbeddedDocument
 
         subfield = self.subfield
         if subfield is not None:
-            subfield = etau.get_class(subfield)
+            try:
+                subfield = etau.get_class(subfield)
+            except (ImportError, ModuleNotFoundError):
+                from fiftyone.core.odm.embedded_document import (
+                    DynamicEmbeddedDocument,
+                )
+
+                logger.warning(
+                    "Unknown subfield type '%s' for field '%s'. "
+                    "Using DynamicEmbeddedDocument as fallback.",
+                    self.subfield,
+                    self.name,
+                )
+                subfield = DynamicEmbeddedDocument
 
         fields = None
         if self.fields is not None:
