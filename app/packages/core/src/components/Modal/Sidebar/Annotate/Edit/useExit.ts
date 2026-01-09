@@ -15,6 +15,12 @@ import { editing } from ".";
 import { current, currentData, currentOverlay, savedLabel } from "./state";
 import { CommandContextManager } from "@fiftyone/commands";
 
+/**
+ * Create a memoized callback that exits label edit mode and optionally reverts unsaved changes.
+ *
+ * @param revertLabel - If `true`, restore the last saved label state when exiting; if `false`, discard any saved revert information and simply exit edit mode.
+ * @returns A memoized function that, when invoked, clears transient 3D editing state and undo/redo history, and then either discards a newly created unsaved label or restores the saved label state before clearing editing state.
+ */
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
