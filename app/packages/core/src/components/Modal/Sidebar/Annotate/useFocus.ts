@@ -80,13 +80,8 @@ export default function useFocus() {
         if (STORE.get(editing)) {
           // if it's a new label with no changes, discard it and allow the selection
           const currentLabel = STORE.get(current);
-          if (currentLabel?.isNew && !STORE.get(hasChanges)) {
-            removeOverlay(currentLabel.overlay.id);
-            scene?.exitInteractiveMode();
-            onExit();
-            select();
-            return;
-          }
+
+          if (currentLabel?.isNew) return;
 
           // a label is already being edited, let the DESELECT event handle it
           scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
