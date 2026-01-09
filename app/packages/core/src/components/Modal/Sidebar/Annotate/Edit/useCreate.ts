@@ -6,16 +6,18 @@ import type {
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
+import { objectId } from "@fiftyone/utilities";
+import { atom, getDefaultStore, useSetAtom } from "jotai";
+import { useCallback } from "react";
+import type { LabelType } from "./state";
 import {
   CLASSIFICATION,
   DETECTION,
   POLYLINE,
-  objectId,
-} from "@fiftyone/utilities";
-import { atom, getDefaultStore, useSetAtom } from "jotai";
-import { useCallback } from "react";
-import type { LabelType } from "./state";
-import { defaultField, editing, savedLabel } from "./state";
+  defaultField,
+  editing,
+  savedLabel,
+} from "./state";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();

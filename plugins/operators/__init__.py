@@ -25,14 +25,13 @@ from fiftyone.core.odm.workspace import default_workspace_factory
 from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
 from .annotation import (
-    ActivateAnnotationSchemas,
-    AddBoundingBox,
-    RemoveBoundingBox,
-    ComputeAnnotationSchema,
-    DeactivateAnnotationSchemas,
-    DeleteAnnotationSchema,
-    GetAnnotationSchemas,
-    SaveAnnotationSchema,
+    ActivateLabelSchemas,
+    DeactivateLabelSchemas,
+    DeleteLabelSchemas,
+    GetLabelSchemas,
+    GenerateLabelSchemas,
+    UpdateLabelSchema,
+    ValidateLabelSchemas,
 )
 
 logger = logging.getLogger(__name__)
@@ -3426,11 +3425,10 @@ def register(p):
     p.register(GroupBy)
 
     # annotation
-    p.register(ActivateAnnotationSchemas)
-    p.register(AddBoundingBox)
-    p.register(RemoveBoundingBox)
-    p.register(ComputeAnnotationSchema)
-    p.register(DeactivateAnnotationSchemas)
-    p.register(DeleteAnnotationSchema)
-    p.register(GetAnnotationSchemas)
-    p.register(SaveAnnotationSchema)
+    p.register(ActivateLabelSchemas)
+    p.register(DeactivateLabelSchemas)
+    p.register(DeleteLabelSchemas)
+    p.register(GenerateLabelSchemas)
+    p.register(GetLabelSchemas)
+    p.register(UpdateLabelSchema)
+    p.register(ValidateLabelSchemas)

@@ -6,6 +6,9 @@ FiftyOne datasets.
 |
 """
 
+from collections import defaultdict
+import copy
+from functools import partial
 import contextlib
 import fnmatch
 import itertools
@@ -14,9 +17,7 @@ import numbers
 import os
 import random
 import string
-from collections import defaultdict
 from datetime import datetime
-from functools import partial
 
 import cachetools
 import eta.core.serial as etas
@@ -29,6 +30,7 @@ from pymongo.errors import BulkWriteError, CursorNotFound
 import fiftyone as fo
 import fiftyone.constants as focn
 import fiftyone.core.camera as focam
+import fiftyone.core.annotation as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
@@ -1600,6 +1602,191 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Whether the dataset is deleted."""
         return self._deleted
 
+    @property
+    def active_label_schemas(self):
+        """The list of active fields in the dataset's
+        :ref:`label schemas <annotation-label-schema>`.
+        """
+        return list(self._doc.active_label_schemas or [])
+
+    @active_label_schemas.setter
+    def active_label_schemas(self, fields):
+        fields = _as_str_list(fields)
+
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+        self._doc.active_label_schemas = fields
+        self.save()
+
+    @property
+    def label_schemas(self):
+        """The dataset's :ref:`label schemas <annotation-label-schema>` that
+        define its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate label
+        schemas.
+
+        Returns:
+            the dataset's label schemas ``dict``
+        """
+        return copy.deepcopy(self._doc.label_schemas) or {}
+
+    def set_label_schemas(self, label_schemas):
+        """Set the dataset's :ref:`label schemas <annotation-label-schema>`
+        that defines its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate a label
+        schema.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Generate and assign a label schemas for all supported fields with
+            # populated constraints and other settings, e.g. 'values', and
+            # 'range'. Requires all samples in the dataset
+            dataset.set_label_schemas(dataset.generate_label_schemas())
+
+            # Generate a bare label schemas for all supported fields
+            dataset.set_label_schemas(
+                dataset.generate_label_schemas(scan_samples=False)
+            )
+
+        Args:
+            label_schemas: a label schemas ``dict``
+        """
+        if label_schemas is None:
+            label_schemas = {}
+
+        foa.validate_label_schemas(self, label_schemas)
+        self._doc.label_schemas = label_schemas
+        self._doc.active_label_schemas = [
+            field
+            for field in self.active_label_schemas
+            if field in label_schemas
+        ]
+        self.save()
+
+    def update_label_schema(self, field, label_schema):
+        """Update an individual field's
+        :ref:`label schema <annotation-label-schema>`.
+
+        Example::
+            dataset.update_label_schema(
+                "ground_truth",
+                dataset.generate_label_schemas("ground_truth")
+            )
+
+        Args:
+            field: the field name
+            label_schema: the field's label schema
+
+        Raises:
+            ExceptionGroup: if the label schema is invalid
+        """
+        foa.validate_label_schemas(self, label_schema, fields=field)
+        label_schemas = self.label_schemas
+        label_schemas[field] = copy.deepcopy(label_schema)
+        self._doc.label_schemas = label_schemas
+        self.save()
+
+    def delete_label_schemas(self, fields=None):
+        """Deletes one or more
+        :ref:`label schemas <annotation-label-schema>`. If no fields are
+        provided, all label schemas are deleted.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if the label schema or schemas do not exist
+        """
+        label_schemas = self.label_schemas
+        fields = _as_str_list(fields if fields is not None else label_schemas)
+
+        for field in fields:
+            if field not in label_schemas:
+                raise ValueError(
+                    f"field '{field}' is not in the dataset's label schema"
+                )
+
+            del label_schemas[field]
+
+        self.set_label_schemas(label_schemas)
+
+    def activate_label_schemas(self, fields=None):
+        """Activate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are activated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable
+                of such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema
+        """
+        if fields is None:
+            fields = sorted(self.label_schemas)
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(f"field '{field}' is not in the label schema")
+
+            if field in result:
+                raise ValueError(
+                    f"field '{field}' is already active in the label schema"
+                )
+
+            result.append(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
+
+    def deactivate_label_schemas(self, fields=None):
+        """Deactivate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are deactivated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema, or any field
+                is not currently active
+        """
+        if fields is None:
+            fields = self.active_label_schemas
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+            if field not in result:
+                raise ValueError(f"field '{field}' label schema is not active")
+
+            result.remove(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
+
     def summary(self):
         """Returns a string summary of the dataset.
 
@@ -2944,7 +3131,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._rename_fields(
             sample_collection, paths, new_paths
         )
-
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -3261,7 +3447,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
-
         fields, _ = _parse_fields(field_names)
 
         if fields:
@@ -4943,7 +5128,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc.description = field.description
         field_doc.info = field.info
-        field_doc.schema = field.schema
 
         try:
             self.save()
@@ -11288,6 +11472,16 @@ def _merge_embedded_doc_field(
             "default": {"$mergeObjects": docs},
         }
     }
+
+
+def _as_str_list(fields):
+    if fields is None:
+        return []
+
+    if etau.is_str(fields):
+        return [fields]
+
+    return list(fields)
 
 
 def _always_select_field(sample_collection, field):

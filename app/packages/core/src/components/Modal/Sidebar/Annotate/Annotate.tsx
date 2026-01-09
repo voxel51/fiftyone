@@ -12,12 +12,12 @@ import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import SchemaManager from "./SchemaManager";
-import { activePaths, schemas, showModal } from "./state";
+import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 
-const showImportPage = atom((get) => !get(activePaths).length);
+const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -106,7 +106,7 @@ interface AnnotateProps {
 const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
-  const loading = useAtomValue(schemas) === null;
+  const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
 
   const isDisabled = disabledReason !== null;

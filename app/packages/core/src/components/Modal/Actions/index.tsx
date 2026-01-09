@@ -16,7 +16,9 @@ import { useModalContext } from "../hooks";
 import GroupVisibility from "./GroupVisibility";
 import HiddenLabels from "./HiddenLabels";
 import ToggleFullscreen from "./ToggleFullscreen";
-
+import { useAtomValue } from "jotai";
+import { EXPLORE, modalMode } from "@fiftyone/state";
+ 
 const MODAL_ACTION_BAR_HANDLE_CLASS = "fo-modal-action-bar-handle";
 
 const Container = styled.div<{ $isFullScreen: boolean }>`
@@ -76,7 +78,7 @@ export default () => {
   const isActualGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const isFullScreen = useRecoilValue(fos.fullscreen);
-
+  const mode = useAtomValue(modalMode);
   const isGroup = useMemo(
     () => isActualGroup || isDynamicGroup,
     [isActualGroup, isDynamicGroup]
@@ -100,10 +102,9 @@ export default () => {
       <Container $isFullScreen={isFullScreen}>
         <DragActionsRow />
         <HiddenLabels modal />
-        <Selected modal lookerRef={activeLookerRef} />
+        { mode === EXPLORE && <Selected modal lookerRef={activeLookerRef} /> }
         <ColorScheme modal />
-        <Similarity modal />
-        <Tag modal lookerRef={activeLookerRef} />
+        { mode === EXPLORE && <Tag modal lookerRef={activeLookerRef} />}
         <Options modal />
         {isGroup && <GroupVisibility />}
         <BrowseOperations modal />

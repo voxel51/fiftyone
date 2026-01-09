@@ -4,13 +4,13 @@ import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
 import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import {
-  activePaths,
+  activeLabelSchemas,
   addToActiveSchemas,
-  inactivePaths,
+  inactiveLabelSchemas,
+  labelSchemaData,
   removeFromActiveSchemas,
-  schema,
 } from "../state";
 import { Container, Item } from "./Components";
 import FieldRow from "./FieldRow";
@@ -52,18 +52,18 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
 
 // Check if a field has schema configured
 export const fieldHasSchema = atomFamily((path: string) =>
-  atom((get) => !!get(schema(path))?.config)
+  atom((get) => !!get(labelSchemaData(path)).label_schema)
 );
 
 export const useActivateFields = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const [selected, setSelected] = useAtom(selectedHiddenFields);
-  const activateFields = useOperatorExecutor("activate_annotation_schemas");
+  const activateFields = useOperatorExecutor("activate_label_schemas");
   const setMessage = useNotification();
 
   return useCallback(() => {
     addToActiveSchema(selected);
-    activateFields.execute({ paths: Array.from(selected) });
+    activateFields.execute({ fields: Array.from(selected) });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -77,12 +77,12 @@ export const useActivateFields = () => {
 export const useDeactivateFields = () => {
   const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
   const [selected, setSelected] = useAtom(selectedActiveFields);
-  const deactivateFields = useOperatorExecutor("deactivate_annotation_schemas");
+  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
   const setMessage = useNotification();
 
   return useCallback(() => {
     removeFromActiveSchema(selected);
-    deactivateFields.execute({ paths: Array.from(selected) });
+    deactivateFields.execute({ fields: Array.from(selected) });
     setSelected(new Set());
     setMessage({
       msg: `${selected.size} schema${
@@ -100,9 +100,9 @@ export const useDeactivateFields = () => {
 };
 
 const ActiveFieldsSection = () => {
-  const fields = useAtomValue(activePaths);
+  const fields = useAtomValue(activeLabelSchemas);
 
-  if (!fields.length) {
+  if (!fields?.length) {
     return (
       <>
         <GUISectionHeader>
@@ -160,12 +160,12 @@ const HiddenFieldRow = ({ path }: { path: string }) => {
 
 // Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
 const sortedInactivePaths = atom((get) => {
-  const fields = get(inactivePaths);
+  const fields = get(inactiveLabelSchemas);
   const withSchema: string[] = [];
   const withoutSchema: string[] = [];
 
   for (const field of fields) {
-    if (get(schema(field))?.config) {
+    if (get(fieldHasSchema(field))) {
       withSchema.push(field);
     } else {
       withoutSchema.push(field);
@@ -211,7 +211,7 @@ const HiddenFieldsSection = () => {
 
 const GUIView = () => {
   return (
-    <Container style={{ marginBottom: "4rem" }}>
+    <Container style={{ marginBottom: "0.5rem" }}>
       <ActiveFieldsSection />
       <HiddenFieldsSection />
     </Container>
