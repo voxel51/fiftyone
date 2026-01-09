@@ -1,7 +1,8 @@
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
 import {
   Button,
+  Icon,
+  IconName,
   Orientation,
   Size,
   Spacing,
@@ -103,11 +104,19 @@ const SchemaManagerFooter = () => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <Button size={Size.Sm} variant={Variant.Secondary} onClick={onMove}>
+        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
           {isMovingToVisible ? (
-            <KeyboardArrowUp fontSize="small" style={{ marginRight: 4 }} />
+            <Icon
+              name={IconName.ChevronTop}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
           ) : (
-            <KeyboardArrowDown fontSize="small" style={{ marginRight: 4 }} />
+            <Icon
+              name={IconName.ChevronBottom}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
           )}
           Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
           fields

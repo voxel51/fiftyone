@@ -1,15 +1,11 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification } from "@fiftyone/state";
-import {
-  EditOutlined,
-  ExpandLess,
-  ExpandMore,
-  InfoOutlined,
-} from "@mui/icons-material";
 import { Collapse, Typography } from "@mui/material";
 import {
   Anchor,
   Clickable,
+  Icon,
+  IconName,
   Pill,
   RichList,
   Size,
@@ -36,7 +32,7 @@ import {
   schema,
 } from "../state";
 import { Container, Item } from "./Components";
-import FieldRow from "./FieldRow";
+import { isSystemReadOnlyField } from "./constants";
 import { currentField } from "./state";
 import { CollapsibleHeader, ContentArea, GUISectionHeader } from "./styled";
 import { useFullSchemaEditor } from "./useFullSchemaEditor";
@@ -151,11 +147,8 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable
-        style={{ padding: 4, height: 29, width: 29 }}
-        onClick={() => setField(path)}
-      >
-        <EditOutlined fontSize="small" />
+      <Clickable onClick={() => setField(path)}>
+        <Icon name={IconName.Edit} size={Size.Md} />
       </Clickable>
     </Tooltip>
   );
@@ -209,24 +202,21 @@ const ActiveFieldsSection = () => {
           canSelect: true,
           canDrag: true,
           primaryContent: path,
-          secondaryContent: (
-            <>
-              {fieldTypes[path]}
-              {fieldAttrCounts[path] > 0 && (
-                <span style={{ opacity: 0.7 }}>
-                  {" "}
-                  • {fieldAttrCounts[path]} attribute
-                  {fieldAttrCounts[path] !== 1 ? "s" : ""}
-                </span>
-              )}
+          secondaryContent: `${fieldTypes[path]}${
+            fieldAttrCounts[path] > 0
+              ? ` • ${fieldAttrCounts[path]} attribute${
+                  fieldAttrCounts[path] !== 1 ? "s" : ""
+                }`
+              : ""
+          }`,
+          actions: (
+            <span className="flex items-center gap-2">
               {fieldReadOnlyStates[path] && (
-                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
-                  Read-only
-                </Pill>
+                <Pill size={Size.Md}>Read-only</Pill>
               )}
-            </>
+              <FieldActions path={path} />
+            </span>
           ),
-          actions: <FieldActions path={path} />,
         } as ListItemProps,
       })),
     [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
@@ -260,12 +250,12 @@ const ActiveFieldsSection = () => {
           </Typography>
           <Tooltip
             content="Fields currently active and available for dataset annotation"
-            anchor={Anchor.Top}
+            anchor={Anchor.Bottom}
             portal
           >
-            <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+            <Icon name={IconName.Info} size={Size.Md} />
           </Tooltip>
-          <Pill size={Size.Xs}>0</Pill>
+          <Pill size={Size.Md}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
@@ -285,9 +275,9 @@ const ActiveFieldsSection = () => {
           anchor={Anchor.Top}
           portal
         >
-          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+          <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
-        <Pill size={Size.Xs}>{fields.length}</Pill>
+        <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
       <RichList
         listItems={listItems}
@@ -296,21 +286,6 @@ const ActiveFieldsSection = () => {
         onSelected={handleSelected}
       />
     </>
-  );
-};
-
-const HiddenFieldRow = ({ path }: { path: string }) => {
-  const hasSchema = useAtomValue(fieldHasSchema(path));
-  const isReadOnly = useAtomValue(fieldIsReadOnly(path));
-
-  return (
-    <FieldRow
-      key={path}
-      path={path}
-      isSelected={hasSchema ? isHiddenFieldSelected(path) : undefined}
-      hasSchema={hasSchema}
-      isReadOnly={isReadOnly}
-    />
   );
 };
 
@@ -335,9 +310,106 @@ const sortedInactivePaths = atom((get) => {
   return [...withSchema, ...withoutSchema];
 });
 
+// Actions component for hidden field rows
+const HiddenFieldActions = ({ path }: { path: string }) => {
+  const setField = useSetAtom(currentField);
+  const fieldData = useAtomValue(labelSchemaData(path));
+  const isSystemReadOnly = isSystemReadOnlyField(path);
+  const isUnsupported = fieldData?.unsupported ?? false;
+  const isReadOnly = useAtomValue(fieldIsReadOnly(path));
+
+  return (
+    <span className="flex items-center gap-2">
+      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {(isReadOnly || isSystemReadOnly) && (
+        <Pill size={Size.Md}>Read-only</Pill>
+      )}
+      {!isSystemReadOnly && !isUnsupported && (
+        <Tooltip
+          content="Configure annotation schema"
+          anchor={Anchor.Bottom}
+          portal
+        >
+          <Clickable onClick={() => setField(path)}>
+            <Icon name={IconName.Edit} size={Size.Md} />
+          </Clickable>
+        </Tooltip>
+      )}
+    </span>
+  );
+};
+
 const HiddenFieldsSection = () => {
   const fields = useAtomValue(sortedInactivePaths);
   const [expanded, setExpanded] = useState(true);
+  const [, setSelected] = useAtom(selectedHiddenFields);
+
+  const fieldTypes = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
+        ),
+      [fields]
+    )
+  );
+
+  const fieldAttrCounts = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(
+            fields.map((f) => [f, get(fieldAttributeCount(f))])
+          )
+        ),
+      [fields]
+    )
+  );
+
+  const fieldHasSchemaStates = useAtomValue(
+    useMemo(
+      () =>
+        atom((get) =>
+          Object.fromEntries(fields.map((f) => [f, get(fieldHasSchema(f))]))
+        ),
+      [fields]
+    )
+  );
+
+  const listItems = useMemo(
+    () =>
+      fields.map((path) => {
+        const isSystemReadOnly = isSystemReadOnlyField(path);
+        const hasSchema = fieldHasSchemaStates[path];
+
+        return {
+          id: path,
+          data: {
+            canSelect: hasSchema,
+            canDrag: false,
+            primaryContent: path,
+            secondaryContent: `${
+              isSystemReadOnly ? "system" : fieldTypes[path]
+            }${
+              !isSystemReadOnly && fieldAttrCounts[path] > 0
+                ? ` • ${fieldAttrCounts[path]} attribute${
+                    fieldAttrCounts[path] !== 1 ? "s" : ""
+                  }`
+                : ""
+            }`,
+            actions: <HiddenFieldActions path={path} />,
+          } as ListItemProps,
+        };
+      }),
+    [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates]
+  );
+
+  const handleSelected = useCallback(
+    (selectedIds: string[]) => {
+      setSelected(new Set(selectedIds));
+    },
+    [setSelected]
+  );
 
   if (!fields.length) {
     return null;
@@ -353,21 +425,27 @@ const HiddenFieldsSection = () => {
           <Typography variant="body1" fontWeight={500}>
             Hidden fields
           </Typography>
-          {expanded ? <ExpandLess /> : <ExpandMore />}
+          {expanded ? (
+            <Icon name={IconName.ChevronTop} size={Size.Md} />
+          ) : (
+            <Icon name={IconName.ChevronBottom} size={Size.Md} />
+          )}
         </CollapsibleHeader>
         <Tooltip
           content="Fields currently hidden and not available for dataset annotation"
           anchor={Anchor.Top}
           portal
         >
-          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
+          <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
-        <Pill size={Size.Xs}>{fields.length}</Pill>
+        <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
       <Collapse in={expanded}>
-        {fields.map((path) => (
-          <HiddenFieldRow key={path} path={path} />
-        ))}
+        <RichList
+          listItems={listItems}
+          draggable={false}
+          onSelected={handleSelected}
+        />
       </Collapse>
     </>
   );
@@ -447,7 +525,7 @@ const GUIView = () => {
   return (
     <Container style={{ marginBottom: "0.5rem" }}>
       <ToggleSwitch
-        size={Size.Sm}
+        size={Size.Md}
         defaultIndex={defaultIndex}
         onChange={handleTabChange}
         tabs={[

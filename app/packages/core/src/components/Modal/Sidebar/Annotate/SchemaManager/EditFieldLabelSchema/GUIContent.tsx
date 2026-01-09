@@ -4,14 +4,11 @@
 
 import { LoadingSpinner } from "@fiftyone/components";
 import {
-  CheckOutlined,
-  DeleteOutlined,
-  EditOutlined,
-} from "@mui/icons-material";
-import {
   Button,
   Checkbox,
   Clickable,
+  Icon,
+  IconName,
   Input,
   Orientation,
   Pill,
@@ -72,8 +69,8 @@ const getAttributeTypeLabel = (type: string): string => {
 
 // Action button for edit
 const EditAction = ({ onEdit }: { onEdit: () => void }) => (
-  <Clickable onClick={onEdit} style={{ padding: 4, height: 29, width: 29 }}>
-    <EditOutlined fontSize="small" />
+  <Clickable onClick={onEdit}>
+    <Icon name={IconName.Edit} size={Size.Md} />
   </Clickable>
 );
 
@@ -109,10 +106,10 @@ const EditClassCard = ({
         </Text>
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           <Clickable onClick={onCancel} style={{ padding: 4 }}>
-            <DeleteOutlined fontSize="small" />
+            <Icon name={IconName.Delete} size={Size.Md} />
           </Clickable>
           <Clickable onClick={handleSave} style={{ padding: 4 }}>
-            <CheckOutlined fontSize="small" />
+            <Icon name={IconName.Check} size={Size.Md} />
           </Clickable>
         </Stack>
       </EditCardHeader>
@@ -132,7 +129,7 @@ const EditClassCard = ({
         />
       </EditCardField>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Checkbox size={Size.Sm} checked={true} disabled />
+        <Checkbox size={Size.Md} checked={true} disabled />
         <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
           Include all {attributeCount} attributes
         </Text>
@@ -162,7 +159,7 @@ const InlineEditExpandedContent = ({
         />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Checkbox size={Size.Sm} checked={true} disabled />
+        <Checkbox size={Size.Md} checked={true} disabled />
         <Text variant={TextVariant.Md} color={TextColor.Secondary}>
           Include all {attributeCount} attributes
         </Text>
@@ -233,10 +230,10 @@ export const ClassesSection = ({
                       onClick={handleEditCancel}
                       style={{ padding: 4 }}
                     >
-                      <DeleteOutlined fontSize="small" />
+                      <Icon name={IconName.Delete} size={Size.Md} />
                     </Clickable>
                     <Clickable onClick={handleEditSave} style={{ padding: 4 }}>
-                      <CheckOutlined fontSize="small" />
+                      <Icon name={IconName.Check} size={Size.Md} />
                     </Clickable>
                   </Stack>
                 ),
@@ -282,7 +279,7 @@ export const ClassesSection = ({
       <EditSectionHeader>
         <Text variant={TextVariant.Lg}>Classes</Text>
         <Button
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Secondary}
           onClick={() => setIsAdding(true)}
           disabled={isAdding || editingClass !== null}
@@ -350,7 +347,7 @@ export const AttributesSection = ({
             <>
               {secondaryParts.join(" · ")}
               {config.readOnly && (
-                <Pill size={Size.Sm} style={{ marginLeft: 8 }}>
+                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
                   Read-only
                 </Pill>
               )}
@@ -367,7 +364,7 @@ export const AttributesSection = ({
       <EditSectionHeader>
         <Text variant={TextVariant.Lg}>Attributes</Text>
         <Button
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Secondary}
           onClick={onAddAttribute}
         >

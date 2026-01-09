@@ -1,7 +1,8 @@
-import { EditOutlined } from "@mui/icons-material";
 import {
   Anchor,
   Clickable,
+  Icon,
+  IconName,
   ListItem,
   Pill,
   Size,
@@ -11,24 +12,19 @@ import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
-import { fieldAttributeCount, fieldType } from "../state";
+import { fieldAttributeCount, fieldType, labelSchemaData } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import { currentField } from "./state";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
 
-// Placeholder: determine if a field type is supported for annotation
-const isFieldTypeSupported = (_fieldType: string | undefined): boolean => {
-  // TODO: implement actual logic
-  return true;
-};
-
 // Hook to get field row data and actions
 const useFieldRow = (path: string, isReadOnly: boolean) => {
   const fType = useAtomValue(fieldType(path));
   const attrCount = useAtomValue(fieldAttributeCount(path));
+  const fieldData = useAtomValue(labelSchemaData(path));
   const setField = useSetAtom(currentField);
-  const isSupported = isFieldTypeSupported(fType);
+  const isUnsupported = fieldData?.unsupported ?? false;
   const isSystemReadOnly = isSystemReadOnlyField(path);
 
   const onEdit = useCallback(() => {
@@ -37,37 +33,31 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
 
   const actions = (
     <span className="flex items-center gap-2">
-      {!isSupported && (
-        <Pill size={Size.Xs} style={{ opacity: 0.7 }}>
-          Unsupported
-        </Pill>
-      )}
-      {isReadOnly && !isSystemReadOnly && <Pill size={Size.Md}>Read-only</Pill>}
-      {isSystemReadOnly ? (
-        <Pill size={Size.Md}>Read-only</Pill>
-      ) : (
-        isSupported && (
-          <Tooltip
-            content="Configure annotation schema"
-            anchor={Anchor.Bottom}
-            portal
+      {!isSystemReadOnly && !isUnsupported && (
+        <Tooltip
+          content="Configure annotation schema"
+          anchor={Anchor.Bottom}
+          portal
+        >
+          <Clickable
+            style={{ padding: 4, height: 29, width: 29 }}
+            onClick={onEdit}
           >
-            <Clickable
-              style={{ padding: 4, height: 29, width: 29 }}
-              onClick={onEdit}
-            >
-              <EditOutlined fontSize="small" />
-            </Clickable>
-          </Tooltip>
-        )
+            <Icon name={IconName.Edit} size={Size.Md} />
+          </Clickable>
+        </Tooltip>
+      )}
+      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {(isReadOnly || isSystemReadOnly) && (
+        <Pill size={Size.Md}>Read-only</Pill>
       )}
     </span>
   );
 
   const secondaryContent = (
     <>
-      {fType}
-      {attrCount > 0 && (
+      {isSystemReadOnly ? "system" : fType}
+      {!isSystemReadOnly && attrCount > 0 && (
         <span style={{ opacity: 0.7 }}>
           {" "}
           • {attrCount} attribute{attrCount !== 1 ? "s" : ""}

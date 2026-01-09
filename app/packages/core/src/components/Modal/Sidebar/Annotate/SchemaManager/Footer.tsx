@@ -40,7 +40,7 @@ const Footer = ({
       >
         {secondaryButton && (
           <Button
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Secondary}
             onClick={secondaryButton.onClick}
             disabled={secondaryButton.disabled}
@@ -49,7 +49,7 @@ const Footer = ({
           </Button>
         )}
         <Button
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Primary}
           onClick={primaryButton.onClick}
           disabled={primaryButton.disabled}

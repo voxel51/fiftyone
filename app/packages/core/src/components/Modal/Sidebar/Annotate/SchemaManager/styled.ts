@@ -162,8 +162,8 @@ export const editTabsStyles = {
 export const GUISectionHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  gap: 0.8rem;
+  padding: 1rem 0;
 `;
 
 export const CollapsibleHeader = styled(GUISectionHeader)`

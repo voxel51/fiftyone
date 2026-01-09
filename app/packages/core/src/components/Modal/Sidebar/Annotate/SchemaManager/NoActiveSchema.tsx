@@ -1,7 +1,6 @@
 import { MuiIconFont } from "@fiftyone/components";
-import { ArrowForward } from "@mui/icons-material";
 import { Typography } from "@mui/material";
-import { Button, Size, Variant } from "@voxel51/voodo";
+import { Button, Icon, IconName, Size, Variant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import React from "react";
 import { activeSchemaTab } from "../state";
@@ -26,12 +25,16 @@ const NoActiveSchema = () => {
         Select fields that you’d like to add schemas to for annotation
       </Typography>
       <Button
-        size={Size.Sm}
+        size={Size.Md}
         variant={Variant.Primary}
         onClick={() => setTab("other")}
       >
         Select fields to import{" "}
-        <ArrowForward fontSize="small" style={{ marginLeft: 4 }} />
+        <Icon
+          name={IconName.ArrowRight}
+          size={Size.Md}
+          style={{ marginLeft: 4 }}
+        />
       </Button>
     </CenteredEmptyState>
   );

@@ -1,7 +1,8 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { Sync } from "@mui/icons-material";
 import {
   Button,
+  Icon,
+  IconName,
   Size,
   Text,
   TextColor,
@@ -76,7 +77,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         <div className="flex items-center justify-between mb-1">
           <Text variant={TextVariant.Xl}>Read-only</Text>
           <Toggle
-            size={Size.Sm}
+            size={Size.Md}
             disabled={labelSchema.isReadOnlyRequired}
             checked={labelSchema.isReadOnly}
             onChange={labelSchema.toggleReadOnly}
@@ -92,7 +93,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         <Label variant="body2">Schema</Label>
         <TabsRow>
           <ToggleSwitch
-            size={Size.Sm}
+            size={Size.Md}
             defaultIndex={0}
             onChange={handleTabChange}
             tabs={[
@@ -101,11 +102,15 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             ]}
           />
           <Button
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Secondary}
             onClick={labelSchema.scan}
           >
-            <Sync fontSize="small" style={{ marginRight: 4 }} />
+            <Icon
+              name={IconName.Refresh}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
             Scan
           </Button>
         </TabsRow>
@@ -134,7 +139,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         leftContent={
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Toggle
-              size={Size.Sm}
+              size={Size.Md}
               checked={isFieldVisible}
               onChange={handleToggleVisibility}
             />
