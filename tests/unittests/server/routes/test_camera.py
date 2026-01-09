@@ -13,7 +13,11 @@ import pytest
 from starlette.exceptions import HTTPException
 
 import fiftyone as fo
-from fiftyone.core.camera import PinholeCameraIntrinsics, SensorExtrinsics
+from fiftyone.core.camera import (
+    DEFAULT_EXTRINSICS_TARGET_FRAME,
+    PinholeCameraIntrinsics,
+    SensorExtrinsics,
+)
 import fiftyone.server.routes.camera as forc
 
 
@@ -136,7 +140,7 @@ def fixture_multi_sample_dataset():
         translation=[1.0, 2.0, 3.0],
         quaternion=[0.0, 0.0, 0.0, 1.0],
         source_frame="camera",
-        target_frame="world",
+        target_frame=DEFAULT_EXTRINSICS_TARGET_FRAME,
     )
     sample.save()
 
@@ -250,7 +254,7 @@ class TestCameraExtrinsicsRoute:
         request = mock_request(
             query_params={
                 "source_frame": "camera",
-                "target_frame": "world",
+                "target_frame": DEFAULT_EXTRINSICS_TARGET_FRAME,
             }
         )
         response = await extrinsics_endpoint.get(request)
@@ -281,7 +285,7 @@ class TestCameraExtrinsicsRoute:
         request = mock_request(
             query_params={
                 "source_frame": "camera",
-                "target_frame": "world",
+                "target_frame": DEFAULT_EXTRINSICS_TARGET_FRAME,
             }
         )
         response = await extrinsics_endpoint.get(request)

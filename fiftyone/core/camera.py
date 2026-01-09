@@ -32,6 +32,9 @@ SUPPORTED_CAMERA_CONVENTIONS = (
     CAMERA_CONVENTION_OPENGL,
 )
 
+#: Default target frame for sensor extrinsics
+DEFAULT_EXTRINSICS_TARGET_FRAME = "world"
+
 
 class ProjectionModel(ABC):
     """Abstract base class for camera projection models.
