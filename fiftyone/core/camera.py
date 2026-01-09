@@ -11,6 +11,7 @@ multi-sensor fusion workflows.
 """
 
 import warnings
+from abc import ABC, abstractmethod
 from typing import Optional, Union
 
 import cv2
@@ -30,6 +31,144 @@ SUPPORTED_CAMERA_CONVENTIONS = (
     CAMERA_CONVENTION_OPENCV,
     CAMERA_CONVENTION_OPENGL,
 )
+
+
+class ProjectionModel(ABC):
+    """Abstract base class for camera projection models.
+
+    Encapsulates projection and undistortion operations for different camera
+    models.
+    """
+
+    @abstractmethod
+    def project(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Project 3D points to 2D image coordinates.
+
+        Args:
+            points: (N, 3) array of 3D points in camera frame
+            K: (3, 3) intrinsic matrix
+            distortion: distortion coefficients, or None
+
+        Returns:
+            (N, 2) array of 2D pixel coordinates
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def undistort(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Undistort 2D image points, returning normalized coordinates.
+
+        Args:
+            points: (N, 2) array of 2D pixel coordinates
+            K: (3, 3) intrinsic matrix
+            distortion: distortion coefficients, or None
+
+        Returns:
+            (N, 2) array of normalized coordinates (z=1 plane in camera frame)
+        """
+        raise NotImplementedError
+
+
+class OpenCVProjectionModel(ProjectionModel):
+    """Standard OpenCV camera model with radial and tangential distortion."""
+
+    def project(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Project points using OpenCV's standard camera model."""
+        rvec = np.zeros(3, dtype=np.float64)
+        tvec = np.zeros(3, dtype=np.float64)
+
+        if distortion is None:
+            distortion = np.zeros(5, dtype=np.float64)
+
+        points_2d, _ = cv2.projectPoints(
+            points.reshape(-1, 1, 3),
+            rvec,
+            tvec,
+            K,
+            distortion,
+        )
+        return points_2d.reshape(-1, 2)
+
+    def undistort(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Undistort points using OpenCV's standard camera model.
+
+        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
+        """
+        if distortion is None:
+            distortion = np.zeros(5, dtype=np.float64)
+
+        undistorted = cv2.undistortPoints(
+            points.reshape(-1, 1, 2),
+            K,
+            distortion,
+        )
+        return undistorted.reshape(-1, 2)
+
+
+class FisheyeProjectionModel(ProjectionModel):
+    """OpenCV fisheye camera model with equidistant projection."""
+
+    def project(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Project points using OpenCV's fisheye camera model."""
+        rvec = np.zeros(3, dtype=np.float64)
+        tvec = np.zeros(3, dtype=np.float64)
+
+        if distortion is None:
+            distortion = np.zeros(4, dtype=np.float64)
+
+        points_2d, _ = cv2.fisheye.projectPoints(
+            points.reshape(1, -1, 3),
+            rvec,
+            tvec,
+            K,
+            distortion,
+        )
+        return points_2d.reshape(-1, 2)
+
+    def undistort(
+        self,
+        points: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+    ) -> np.ndarray:
+        """Undistort points using OpenCV's fisheye camera model.
+
+        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
+        """
+        if distortion is None:
+            distortion = np.zeros(4, dtype=np.float64)
+
+        undistorted = cv2.fisheye.undistortPoints(
+            points.reshape(-1, 1, 2),
+            K,
+            distortion,
+        )
+        return undistorted.reshape(-1, 2)
 
 
 class CameraIntrinsics(DynamicEmbeddedDocument):
@@ -122,6 +261,14 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
             a numpy array of distortion coefficients, or None if no distortion
         """
         return None
+
+    def get_projection_model(self) -> ProjectionModel:
+        """Returns the ProjectionModel instance for this camera model.
+
+        Returns:
+            a :class:`ProjectionModel` instance
+        """
+        return OpenCVProjectionModel()
 
     def camera_matrix_3x4(
         self, extrinsics: Optional["SensorExtrinsics"] = None
@@ -305,6 +452,14 @@ class OpenCVFisheyeCameraIntrinsics(CameraIntrinsics):
             ],
             dtype=np.float64,
         )
+
+    def get_projection_model(self) -> ProjectionModel:
+        """Returns the ProjectionModel instance for fisheye distortion.
+
+        Returns:
+            a :class:`FisheyeProjectionModel` instance
+        """
+        return FisheyeProjectionModel()
 
 
 class SensorExtrinsics(DynamicEmbeddedDocument):
@@ -687,6 +842,7 @@ class CameraProjector:
         self.intrinsics = intrinsics
         self.camera_to_reference = camera_to_reference
         self.camera_convention = camera_convention
+        self._projection_model = intrinsics.get_projection_model()
 
     @classmethod
     def from_reference_to_camera(
@@ -831,55 +987,9 @@ class CameraProjector:
             )
 
         distortion = self.intrinsics.get_distortion_coeffs()
-
-        if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
-            points_2d = self._project_fisheye(points, distortion)
-        else:
-            points_2d = self._project_opencv(points, distortion)
+        points_2d = self._projection_model.project(points, self._K, distortion)
 
         return points_2d
-
-    def _project_opencv(
-        self, points: np.ndarray, distortion: Optional[np.ndarray]
-    ) -> np.ndarray:
-        """Project points using OpenCV's standard camera model."""
-        # cv2.projectPoints expects (N, 1, 3) or (N, 3) object points
-        # and returns (N, 1, 2) image points
-        # With identity rvec/tvec since points are already in camera frame
-        rvec = np.zeros(3, dtype=np.float64)
-        tvec = np.zeros(3, dtype=np.float64)
-
-        if distortion is None:
-            distortion = np.zeros(5, dtype=np.float64)
-
-        points_2d, _ = cv2.projectPoints(
-            points.reshape(-1, 1, 3),
-            rvec,
-            tvec,
-            self._K,
-            distortion,
-        )
-        return points_2d.reshape(-1, 2)
-
-    def _project_fisheye(
-        self, points: np.ndarray, distortion: Optional[np.ndarray]
-    ) -> np.ndarray:
-        """Project points using OpenCV's fisheye camera model."""
-        # cv2.fisheye.projectPoints expects (1, N, 3) object points
-        rvec = np.zeros(3, dtype=np.float64)
-        tvec = np.zeros(3, dtype=np.float64)
-
-        if distortion is None:
-            distortion = np.zeros(4, dtype=np.float64)
-
-        points_2d, _ = cv2.fisheye.projectPoints(
-            points.reshape(1, -1, 3),
-            rvec,
-            tvec,
-            self._K,
-            distortion,
-        )
-        return points_2d.reshape(-1, 2)
 
     def unproject(
         self,
@@ -922,11 +1032,9 @@ class CameraProjector:
             )
 
         distortion = self.intrinsics.get_distortion_coeffs()
-
-        if isinstance(self.intrinsics, OpenCVFisheyeCameraIntrinsics):
-            points_normalized = self._undistort_fisheye(points, distortion)
-        else:
-            points_normalized = self._undistort_opencv(points, distortion)
+        points_normalized = self._projection_model.undistort(
+            points, self._K, distortion
+        )
 
         x_cam = points_normalized[:, 0] * depth
         y_cam = points_normalized[:, 1] * depth
@@ -946,39 +1054,3 @@ class CameraProjector:
             points_3d = (T @ points_h.T).T[:, :3]
 
         return points_3d
-
-    def _undistort_opencv(
-        self, points: np.ndarray, distortion: Optional[np.ndarray]
-    ) -> np.ndarray:
-        """Undistort points using OpenCV's standard camera model.
-
-        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
-        """
-        # cv2.undistortPoints expects (N, 1, 2) input
-        # Returns normalized coordinates when P is not provided
-        if distortion is None:
-            distortion = np.zeros(5, dtype=np.float64)
-
-        undistorted = cv2.undistortPoints(
-            points.reshape(-1, 1, 2),
-            self._K,
-            distortion,
-        )
-        return undistorted.reshape(-1, 2)
-
-    def _undistort_fisheye(
-        self, points: np.ndarray, distortion: Optional[np.ndarray]
-    ) -> np.ndarray:
-        """Undistort points using OpenCV's fisheye camera model.
-
-        Returns normalized (x, y) coordinates (z=1 plane in camera frame).
-        """
-        if distortion is None:
-            distortion = np.zeros(4, dtype=np.float64)
-
-        undistorted = cv2.fisheye.undistortPoints(
-            points.reshape(-1, 1, 2),
-            self._K,
-            distortion,
-        )
-        return undistorted.reshape(-1, 2)
