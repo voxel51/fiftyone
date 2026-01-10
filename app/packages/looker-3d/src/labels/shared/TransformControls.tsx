@@ -8,7 +8,6 @@ import {
   currentArchetypeSelectedForTransformAtom,
   isCurrentlyTransformingAtom,
   transformModeAtom,
-  transformSpaceAtom,
 } from "../../state";
 import type { Archetype3d, TransformProps } from "../../types";
 
@@ -51,7 +50,6 @@ export const Transformable = ({
 
   const modalMode = useAtomValue(fos.modalMode);
   const transformMode = useRecoilValue(transformModeAtom);
-  const transformSpace = useRecoilValue(transformSpaceAtom);
   const currentArchetypeSelectedForTransform = useRecoilValue(
     currentArchetypeSelectedForTransformAtom
   );
@@ -100,9 +98,11 @@ export const Transformable = ({
           <group position={new THREE.Vector3(...transformControlsPosition)}>
             <TransformControls
               ref={transformControlsRef}
+              rotationSnap={0.01}
+              scaleSnap={0.01}
               object={explicitObjectRef?.current || groupRef.current}
               mode={transformMode}
-              space={transformSpace}
+              space="local"
               onMouseDown={onTransformStartDecorated}
               onMouseUp={onTransformEndDecorated}
               onObjectChange={onObjectChangeDecorated}
