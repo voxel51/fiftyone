@@ -27,6 +27,7 @@ from mongoengine import ValidationError
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
+import fiftyone.core.materialize as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
@@ -5144,6 +5145,122 @@ class DatasetExtrasTests(unittest.TestCase):
         also_dataset.delete_saved_views()
         also_dataset.reload()
         self.assertListEqual(also_dataset.list_saved_views(), [])
+
+    @patch(
+        "fiftyone.core.stages.foma.materialize_view",
+        wraps=fom.materialize_view,
+    )
+    def test_saved_view_parameter_change(self, materialize_view):
+        dataset = self.dataset
+
+        view = dataset.select_fields("ground_truth").materialize().limit(2)
+
+        # Simulate a different parametrization of a view stage
+        view._all_stages[1]._state.pop("dataset_id")
+        view._all_stages[1]._state["dataset"] = dataset.name
+
+        dataset.save_view("test", view)
+        dataset.reload()  # avoids microsecond truncation issues
+
+        name = view._dataset.name
+        created_at1 = view._dataset.created_at
+        view_doc1 = dataset._get_saved_view_doc("test")
+        last_modified_at1 = view_doc1.last_modified_at
+        materialize_stage_str1 = view_doc1.view_stages[1]
+
+        self.assertTrue('"dataset"' in materialize_stage_str1)
+        self.assertEqual(materialize_view.call_count, 1)
+
+        # Loading a saved view with a new parametrization should automatically
+        # cause the serialized definition to be updated, but the backing
+        # dataset should not be regenerated
+        view = dataset.load_saved_view("test")
+
+        created_at2 = view._dataset.created_at
+        view_doc2 = dataset._get_saved_view_doc("test")
+        last_modified_at2 = view_doc2.last_modified_at
+        materialize_stage_str2 = view_doc2.view_stages[1]
+
+        self.assertEqual(view._dataset.name, name)
+        self.assertTrue(created_at1 == created_at2)
+        self.assertTrue('"dataset_id"' in materialize_stage_str2)
+        self.assertTrue(last_modified_at1 == last_modified_at2)
+        self.assertEqual(materialize_view.call_count, 1)
+
+        # Confirm that no updates are triggered the *next* time the saved view
+        # is loaded either
+        dataset.reload()
+        still_view = dataset.load_saved_view("test")
+
+        created_at3 = still_view._dataset.created_at
+        view_doc3 = dataset._get_saved_view_doc("test")
+        last_modified_at3 = view_doc3.last_modified_at
+
+        self.assertEqual(still_view._dataset.name, name)
+        self.assertTrue(created_at2 == created_at3)
+        self.assertTrue(last_modified_at2 == last_modified_at3)
+        self.assertEqual(materialize_view.call_count, 1)
+
+    def test_saved_generated_view_delete(self):
+        dataset = self.dataset
+
+        view = dataset.select_fields("ground_truth").materialize().limit(2)
+        name = view._dataset.name
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertTrue(view._dataset.persistent)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_view("test")
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(view._dataset.persistent)
+
+    def test_saved_generated_view_delete_all(self):
+        dataset = self.dataset
+
+        view = dataset.select_fields("ground_truth").materialize().limit(2)
+        name = view._dataset.name
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertTrue(view._dataset.persistent)
+
+        # Deleting view should cause backing dataset to become non-persistent
+        dataset.delete_saved_views()
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(view._dataset.persistent)
+
+    def test_saved_generated_view_delete_dataset(self):
+        dataset = self.dataset
+
+        view = dataset.select_fields("ground_truth").materialize().limit(2)
+        name = view._dataset.name
+
+        self.assertFalse(view._dataset.persistent)
+
+        # Backing datasets for saved views should be marked as persistent
+        dataset.save_view("test", view)
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertTrue(view._dataset.persistent)
+
+        # Deleting dataset should cause backing datasets associated with all
+        # saved views to become non-persistent
+        dataset.delete()
+
+        self.assertTrue(fo.dataset_exists(name))
+        self.assertFalse(view._dataset.persistent)
 
     def test_workspaces(self):
         dataset = self.dataset

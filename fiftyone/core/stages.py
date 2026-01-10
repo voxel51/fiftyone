@@ -27,6 +27,7 @@ from fiftyone.core.expressions import VALUE
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.materialize as foma
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 from fiftyone.core.odm.document import MongoEngineBaseDocument
@@ -6069,6 +6070,125 @@ class MatchTags(ViewStage):
         ]
 
 
+class Materialize(ViewStage):
+    """Materializes the current view into a temporary database collection.
+
+    Apply this stage to an expensive view (eg an unindexed filtering operation
+    on a large dataset) if you plan to perform multiple downstream operations
+    on the view.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+        from fiftyone import ViewField as F
+
+        dataset = foz.load_zoo_dataset("quickstart")
+
+        view = dataset.filter_labels("ground_truth", F("label") == "cat")
+
+        stage = fo.Materialize()
+        materialized_view = view.add_stage(stage)
+
+        print(view.count("ground_truth.detections"))
+        print(materialized_view.count("ground_truth.detections"))
+
+    Args:
+        config (None): an optional dict of keyword arguments for
+            :meth:`fiftyone.core.materialize.materialize_view` specifying how
+            to perform the conversion
+        **kwargs: optional keyword arguments for
+            :meth:`fiftyone.core.materialize.materialize_view` specifying how
+            to perform the conversion
+    """
+
+    def __init__(self, config=None, _state=None, **kwargs):
+        if kwargs:
+            if config is None:
+                config = kwargs
+            else:
+                config.update(kwargs)
+
+        self._config = config
+        self._state = _state
+
+    @property
+    def has_view(self):
+        return True
+
+    @property
+    def config(self):
+        """Parameters specifying how to perform the conversion."""
+        return self._config
+
+    def load_view(self, sample_collection, saved_view=False, reload=False):
+        state = {
+            "dataset_id": str(sample_collection._root_dataset._doc.id),
+            "stages": sample_collection.view()._serialize(include_uuids=False),
+            "config": self._config,
+        }
+
+        last_state = deepcopy(self._state)
+        if last_state is not None:
+            name = last_state.pop("name", None)
+        else:
+            name = None
+
+        try:
+            # Always reload the main dataset, the `reload` parameter is for
+            #   reloading materialized dataset
+            last_dataset = fod.load_dataset(name, reload=True)
+        except:
+            last_dataset = None
+
+        if (
+            reload
+            or last_dataset is None
+            or (state != last_state and not saved_view)
+        ):
+            kwargs = deepcopy(self._config) or {}
+
+            # Recreate same indexes from existing dataset
+            if reload and last_dataset is not None:
+                kwargs["include_indexes"] = last_dataset
+
+            materialized_dataset = foma.materialize_view(
+                sample_collection, **kwargs
+            )
+
+            # Other views may use the same generated dataset, so reuse the old
+            # name if possible
+            if name is not None and (saved_view or state == last_state):
+                if last_dataset is not None:
+                    last_dataset._delete()
+
+                materialized_dataset.name = name
+        else:
+            materialized_dataset = last_dataset
+
+        state["name"] = materialized_dataset.name
+        self._state = state
+
+        return foma.MaterializedView(
+            sample_collection, self, materialized_dataset
+        )
+
+    def _kwargs(self):
+        return [["config", self._config], ["_state", self._state]]
+
+    @classmethod
+    def _params(self):
+        return [
+            {
+                "name": "config",
+                "type": "NoneType|json",
+                "default": "None",
+                "placeholder": "config (default=None)",
+            },
+            {"name": "_state", "type": "NoneType|json", "default": "None"},
+        ]
+
+
 class Mongo(ViewStage):
     """A view stage defined by a raw MongoDB aggregation pipeline.
 
@@ -9310,6 +9430,7 @@ _STAGES = [
     MatchFrames,
     MatchLabels,
     MatchTags,
+    Materialize,
     Mongo,
     Select,
     SelectBy,
