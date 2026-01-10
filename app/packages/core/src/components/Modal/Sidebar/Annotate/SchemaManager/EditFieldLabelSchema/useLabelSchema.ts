@@ -61,6 +61,7 @@ const useConfigUpdate = (field: string) => {
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
     updateClassOrder: (newOrder: string[]) => {
+      if (!current) return;
       setCurrent({ ...current, classes: newOrder });
     },
     updateConfig: (newConfig: object) => {

@@ -3,14 +3,19 @@
  */
 
 // System read-only fields that cannot be edited or scanned
-export const SYSTEM_READ_ONLY_FIELDS = [
+const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
   "created_at",
   "id",
   "last_modified_at",
   "tags",
 ] as const;
 
-export type SystemReadOnlyField = typeof SYSTEM_READ_ONLY_FIELDS[number];
+export type SystemReadOnlyField = typeof SYSTEM_READ_ONLY_FIELDS_ARRAY[number];
+
+// Use Set for O(1) lookup
+const SYSTEM_READ_ONLY_FIELDS_SET = new Set<string>(
+  SYSTEM_READ_ONLY_FIELDS_ARRAY
+);
 
 export const isSystemReadOnlyField = (fieldName: string): boolean =>
-  SYSTEM_READ_ONLY_FIELDS.includes(fieldName as SystemReadOnlyField);
+  SYSTEM_READ_ONLY_FIELDS_SET.has(fieldName);
