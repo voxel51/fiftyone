@@ -189,8 +189,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                 images = [p[0] for p in imgs]
                 self._image_sizes = [tuple(p[1]) for p in imgs]
             else:
-                images = imgs
-                self._image_sizes = [self._get_image_size(img) for img in imgs]
+                raise ValueError("Preprocessed images required")
 
         output = self._forward_pass(images)
 
@@ -202,23 +201,6 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             )
 
         return output
-
-    def _get_image_size(self, img):
-        from PIL import Image as PILImage
-
-        if isinstance(img, str):
-            with PILImage.open(img) as pil_img:
-                return (pil_img.height, pil_img.width)
-        elif isinstance(img, PILImage.Image):
-            return (img.height, img.width)
-        elif isinstance(img, np.ndarray):
-            return (img.shape[0], img.shape[1])
-        elif isinstance(img, torch.Tensor):
-            if img.dim() == 3 and img.shape[0] in (1, 3, 4):
-                return (img.shape[1], img.shape[2])
-            return (img.shape[0], img.shape[1])
-        else:
-            raise TypeError("Unsupported image type: %s" % type(img))
 
     def _forward_pass(self, images):
         with torch.no_grad():
