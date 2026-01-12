@@ -3169,7 +3169,7 @@ class DelegatedCommand(Command):
 
 
 class DelegatedRerunCommand(Command):
-    """Rerun delegated operations that have failed.
+    """Rerun delegated operations
 
     Examples::
 
