@@ -45,6 +45,7 @@ class OperatorConfig(object):
             behavior will match the ``dynamic`` setting
         allow_distributed_execution (False): whether the operator supports
             distributing delegated execution across parallel workers.
+        rerunnable (True): whether the operator can be re-run
     """
 
     def __init__(

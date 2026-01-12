@@ -33,7 +33,7 @@ class PipelineStage:
     """Optional dict of parameters to pass to the operator"""
 
     rerunnable: Optional[bool] = None
-    """Whether the stage is rerunnable"""
+    """Whether the stage is rerunnable, defaults to operator config"""
 
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
     def __init__(
