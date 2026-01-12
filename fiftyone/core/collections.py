@@ -563,6 +563,24 @@ class SampleCollection(object):
         """
         raise NotImplementedError("Subclass must implement default_skeleton")
 
+    @property
+    def camera_intrinsics(self):
+        """The camera intrinsics of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.camera_intrinsics` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement camera_intrinsics")
+
+    @property
+    def sensor_extrinsics(self):
+        """The sensor extrinsics of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.sensor_extrinsics` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement sensor_extrinsics")
+
     def has_skeleton(self, field):
         """Determines whether this collection has a keypoint skeleton for the
         given field.
@@ -11097,6 +11115,12 @@ class SampleCollection(object):
         if self.default_skeleton:
             d["default_skeleton"] = self._serialize_default_skeleton()
 
+        if self.camera_intrinsics:
+            d["camera_intrinsics"] = self._serialize_camera_intrinsics()
+
+        if self.sensor_extrinsics:
+            d["sensor_extrinsics"] = self._serialize_sensor_extrinsics()
+
         if self.media_type == fom.GROUP:
             view = self.select_group_slices(_allow_mixed=True)
         else:
@@ -11764,6 +11788,28 @@ class SampleCollection(object):
 
         return self._root_dataset._doc.field_to_python(
             "default_skeleton", default_skeleton
+        )
+
+    def _serialize_camera_intrinsics(self):
+        return self._root_dataset._doc.field_to_mongo("camera_intrinsics")
+
+    def _serialize_sensor_extrinsics(self):
+        return self._root_dataset._doc.field_to_mongo("sensor_extrinsics")
+
+    def _parse_camera_intrinsics(self, camera_intrinsics):
+        if not camera_intrinsics:
+            return camera_intrinsics
+
+        return self._root_dataset._doc.field_to_python(
+            "camera_intrinsics", camera_intrinsics
+        )
+
+    def _parse_sensor_extrinsics(self, sensor_extrinsics):
+        if not sensor_extrinsics:
+            return sensor_extrinsics
+
+        return self._root_dataset._doc.field_to_python(
+            "sensor_extrinsics", sensor_extrinsics
         )
 
     def _to_fields_str(self, field_schema):
