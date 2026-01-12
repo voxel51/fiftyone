@@ -1511,6 +1511,11 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
         return res
 
     def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
+        """Converts raw detector output to :class:`fiftyone.core.labels.Detections`.
+
+        Unlike the base class, this handles grounded detection models that
+        return text labels directly rather than class indices.
+        """
         detections = []
 
         scores = output["scores"].cpu().numpy()
