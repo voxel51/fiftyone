@@ -289,7 +289,7 @@ const ActiveFieldsSection = () => {
   );
 };
 
-// Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
+// Atom to get sorted hidden fields: scanned (with schema) first, unscanned second, system read-only last
 const sortedInactivePaths = atom((get) => {
   // Support both atom systems
   const fieldsFromNew = get(inactivePaths);
@@ -298,16 +298,19 @@ const sortedInactivePaths = atom((get) => {
 
   const withSchema: string[] = [];
   const withoutSchema: string[] = [];
+  const systemReadOnly: string[] = [];
 
   for (const field of fields) {
-    if (get(fieldHasSchema(field))) {
+    if (isSystemReadOnlyField(field)) {
+      systemReadOnly.push(field);
+    } else if (get(fieldHasSchema(field))) {
       withSchema.push(field);
     } else {
       withoutSchema.push(field);
     }
   }
 
-  return [...withSchema, ...withoutSchema];
+  return [...withSchema, ...withoutSchema, ...systemReadOnly];
 });
 
 // Actions component for hidden field rows
@@ -385,7 +388,7 @@ const HiddenFieldsSection = () => {
         return {
           id: path,
           data: {
-            canSelect: hasSchema,
+            canSelect: hasSchema && !isSystemReadOnly,
             canDrag: false,
             primaryContent: path,
             secondaryContent: `${
