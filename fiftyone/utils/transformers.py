@@ -1497,7 +1497,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 output, target_sizes=image_sizes, threshold=confidence_thresh or 0
             )
         res = []
-        for o, img_sz in zip(output, image_sizes):
+        for o, img_sz in zip(output, image_sizes, strict=True):
             res.append(
                 self._parse_output(
                     o,
