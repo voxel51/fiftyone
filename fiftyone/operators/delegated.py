@@ -131,6 +131,7 @@ class DelegatedOperationService(object):
         context=None,
         metadata=None,
         pipeline=None,
+        rerunnable=True,
     ):
         """Queues the given delegated operation for execution.
 
@@ -147,6 +148,7 @@ class DelegatedOperationService(object):
             pipeline (None): an optional
                 :class:`fiftyone.operators.types.Pipeline` to use for
                 the operation, if this is a pipeline operator
+            rerunnable (True): whether the operation can be rerun
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -158,6 +160,7 @@ class DelegatedOperationService(object):
             context=context,
             metadata=metadata,
             pipeline=pipeline,
+            rerunnable=rerunnable,
         )
         return operation
 
@@ -454,8 +457,18 @@ class DelegatedOperationService(object):
         doc = self._repo.get(_id=doc_id)
         if doc is None:
             raise ValueError(f"No delegated operation with {doc_id=} found")
+        if not doc.rerunnable:
+            raise ValueError(f"Delegated operation {doc_id} is not rerunnable")
         if doc.parent_id:
-            raise ValueError("Cannot rerun a child delegated operation.")
+            parent_doc = self._repo.get(_id=doc.parent_id)
+            if parent_doc and parent_doc.run_state not in {
+                ExecutionRunState.COMPLETED,
+                ExecutionRunState.FAILED,
+            }:
+                raise ValueError(
+                    f"Cannot rerun delegated operation {doc_id} because its "
+                    f"parent operation {doc.parent_id} is not yet completed"
+                )
         return self._repo.queue_operation(**doc.__dict__)
 
     def get_queued_operations(self, operator=None, dataset_name=None):

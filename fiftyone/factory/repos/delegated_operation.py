@@ -6,12 +6,12 @@ FiftyOne delegated operation repository.
 |
 """
 
-import logging
 from datetime import datetime
+import logging
 from typing import Any, List, Optional, Union
 
-import pymongo
 from bson import ObjectId
+import pymongo
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
@@ -234,6 +234,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
         op = DelegatedOperationDocument(is_remote=self.is_remote)
+        op.rerunnable = kwargs.get("rerunnable", True)
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
