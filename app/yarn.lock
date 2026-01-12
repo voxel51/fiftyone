@@ -2572,7 +2572,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:*"
+    "@voxel51/voodo": "npm:^0.0.5"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -7287,7 +7287,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:*":
+"@voxel51/voodo@npm:^0.0.5":
   version: 0.0.5
   resolution: "@voxel51/voodo@npm:0.0.5"
   dependencies:
