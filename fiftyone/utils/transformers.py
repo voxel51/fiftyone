@@ -1438,12 +1438,17 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     Args:
         store_logits (False): whether to store the logits in the output
         logits_key ("logits"): the key to use for the logits in the output
+
+    Attributes:
+        _is_grounded (bool): whether the processor handles grounded object
+            detection models (e.g., GroundingDINO) vs standard detectors.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._processor = None
         self._objection_detection_processor = None
+        self._is_grounded = False
 
     @property
     def processor(self):
@@ -1456,7 +1461,6 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     @processor.setter
     def processor(self, processor):
         self._processor = processor
-        self._is_grounded = False
         if self._processor is not None:
             if hasattr(self._processor, "post_process_object_detection"):
                 self._objection_detection_processor = (
