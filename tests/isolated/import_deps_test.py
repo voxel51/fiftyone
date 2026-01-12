@@ -6,9 +6,20 @@ are intended to be manually installed by users.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import sys
 
-import pytest
+import sys
+from types import ModuleType
+
+
+class _UnavailableModule(ModuleType):
+    """A module placeholder that raises ModuleNotFoundError on attribute access."""
+
+    def __init__(self, name):
+        super().__init__(name)
+        self._name = name
+
+    def __getattr__(self, attr):
+        raise ModuleNotFoundError(f"No module named '{self._name}'")
 
 
 #
@@ -18,12 +29,12 @@ import pytest
 #
 # https://docs.python.org/3/reference/import.html#the-module-cache
 #
-sys.modules["tensorflow"] = None
-sys.modules["tensorflow_datasets"] = None
-sys.modules["torch"] = None
-sys.modules["torchvision"] = None
-sys.modules["flash"] = None
-sys.modules["pycocotools"] = None
+sys.modules["tensorflow"] = _UnavailableModule("tensorflow")
+sys.modules["tensorflow_datasets"] = _UnavailableModule("tensorflow_datasets")
+sys.modules["torch"] = _UnavailableModule("torch")
+sys.modules["torchvision"] = _UnavailableModule("torchvision")
+sys.modules["flash"] = _UnavailableModule("flash")
+sys.modules["pycocotools"] = _UnavailableModule("pycocotools")
 
 
 def test_import_core():
