@@ -2309,5 +2309,181 @@ class CameraPersistenceTests(unittest.TestCase):
         dataset2.delete()
 
 
+class UndistortImageTests(unittest.TestCase):
+    """Tests for image undistortion functionality."""
+
+    def test_pinhole_undistort_returns_copy(self):
+        """Test that pinhole (no distortion) returns a copy of the image."""
+        intrinsics = PinholeCameraIntrinsics(
+            fx=1000.0, fy=1000.0, cx=320.0, cy=240.0
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result = intrinsics.undistort_image(image)
+
+        nptest.assert_array_equal(result, image)
+        # Ensure it's a copy, not the same object
+        self.assertIsNot(result, image)
+
+    def test_opencv_undistort_image_shape(self):
+        """Test that OpenCV undistort preserves image shape."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=-0.2,
+            k2=0.1,
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result = intrinsics.undistort_image(image)
+
+        self.assertEqual(result.shape, image.shape)
+        self.assertEqual(result.dtype, image.dtype)
+
+    def test_opencv_undistort_grayscale(self):
+        """Test undistortion works with grayscale images."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0, fy=500.0, cx=320.0, cy=240.0, k1=-0.1
+        )
+        image = np.random.randint(0, 255, (480, 640), dtype=np.uint8)
+
+        result = intrinsics.undistort_image(image)
+
+        self.assertEqual(result.shape, image.shape)
+
+    def test_opencv_undistort_with_alpha(self):
+        """Test undistortion with different alpha values."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=-0.3,
+            k2=0.1,
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result_alpha0 = intrinsics.undistort_image(image, alpha=0.0)
+        result_alpha1 = intrinsics.undistort_image(image, alpha=1.0)
+
+        # Both should have correct shape
+        self.assertEqual(result_alpha0.shape, image.shape)
+        self.assertEqual(result_alpha1.shape, image.shape)
+
+        # Results should be different (different cropping)
+        self.assertFalse(np.array_equal(result_alpha0, result_alpha1))
+
+    def test_opencv_undistort_new_size(self):
+        """Test undistortion with custom output size."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0, fy=500.0, cx=320.0, cy=240.0, k1=-0.1
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result = intrinsics.undistort_image(image, new_size=(800, 600))
+
+        self.assertEqual(result.shape, (600, 800, 3))
+
+    def test_fisheye_undistort_image_shape(self):
+        """Test that fisheye undistort preserves image shape."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=400.0,
+            fy=400.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.1,
+            k2=-0.05,
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result = intrinsics.undistort_image(image)
+
+        self.assertEqual(result.shape, image.shape)
+        self.assertEqual(result.dtype, image.dtype)
+
+    def test_fisheye_undistort_with_alpha(self):
+        """Test fisheye undistortion with different alpha values."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=400.0,
+            fy=400.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.2,
+            k2=-0.1,
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        result_alpha0 = intrinsics.undistort_image(image, alpha=0.0)
+        result_alpha1 = intrinsics.undistort_image(image, alpha=1.0)
+
+        self.assertEqual(result_alpha0.shape, image.shape)
+        self.assertEqual(result_alpha1.shape, image.shape)
+
+    def test_undistort_invalid_image_raises(self):
+        """Test that invalid image dimensions raise ValueError."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0, fy=500.0, cx=320.0, cy=240.0
+        )
+
+        with self.assertRaises(ValueError):
+            intrinsics.undistort_image(np.array([1, 2, 3]))  # 1D array
+
+        with self.assertRaises(ValueError):
+            intrinsics.undistort_image(np.zeros((2, 3, 4, 5)))  # 4D array
+
+    def test_get_undistorter_opencv(self):
+        """Test creating undistorter for OpenCV model."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=-0.2,
+            k2=0.1,
+        )
+
+        undistorter = intrinsics.get_undistorter((640, 480))
+
+        self.assertEqual(undistorter.new_camera_matrix.shape, (3, 3))
+
+    def test_get_undistorter_fisheye(self):
+        """Test creating undistorter for fisheye model."""
+        intrinsics = OpenCVFisheyeCameraIntrinsics(
+            fx=400.0,
+            fy=400.0,
+            cx=320.0,
+            cy=240.0,
+            k1=0.1,
+            k2=-0.05,
+        )
+
+        undistorter = intrinsics.get_undistorter((640, 480))
+
+        self.assertEqual(undistorter.new_camera_matrix.shape, (3, 3))
+
+    def test_undistorter_produces_same_result(self):
+        """Test that undistorter produces same result as undistort_image."""
+        intrinsics = OpenCVCameraIntrinsics(
+            fx=500.0,
+            fy=500.0,
+            cx=320.0,
+            cy=240.0,
+            k1=-0.2,
+            k2=0.1,
+        )
+        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
+
+        # Direct undistortion
+        direct_result = intrinsics.undistort_image(image, alpha=0.5)
+
+        # Using undistorter
+        undistorter = intrinsics.get_undistorter((640, 480), alpha=0.5)
+        undistorter_result = undistorter(image)
+
+        nptest.assert_array_equal(direct_result, undistorter_result)
+
+
 if __name__ == "__main__":
     unittest.main()
