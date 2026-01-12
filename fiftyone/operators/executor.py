@@ -344,6 +344,7 @@ async def execute_or_delegate_operator(
                     label=run_name,
                     metadata=metadata,
                     pipeline=pipeline,
+                    rerunnable=operator.config.rerunnable,
                 )
 
                 execution = ExecutionResult(
