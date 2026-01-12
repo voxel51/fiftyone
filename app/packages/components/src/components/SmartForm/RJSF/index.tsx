@@ -1,17 +1,17 @@
-import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
+import React from "react";
 
 import { translateSchema } from "./translators";
 
-import widgets from "./widgets";
 import templates from "./templates";
+import widgets from "./widgets";
 
-export { isSchemaIOSchema, isJSONSchema } from "./translators";
+export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
-import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import type { IChangeEvent } from "@rjsf/core";
+import type { RJSFSchema, UiSchema, WidgetProps } from "@rjsf/utils";
 
 export interface RJSFProps {
   schema?: SchemaType;
@@ -52,6 +52,23 @@ export default function RJSF(props: RJSFProps) {
     if (props.onSubmit) {
       props.onSubmit(event.formData);
     }
+  };
+
+  console.log("schema", schema);
+  console.log("uiSchema", uiSchema);
+  console.log("widgets", widgets);
+  console.log("templates", templates);
+
+  const CustomCheckbox = function (props: WidgetProps) {
+    return (
+      <button
+        id="custom"
+        className={props.value ? "checked" : "unchecked"}
+        onClick={() => props.onChange(!props.value)}
+      >
+        {String(props.value)}
+      </button>
+    );
   };
 
   return (

@@ -608,6 +608,7 @@ def _validate_precision(field_name, value):
 
 
 def _validate_range_setting(field_name, value, _type):
+    print("field_name", field_name, "value", value, "_type", _type)
     if isinstance(value, list) and len(value) == 2:
         if isinstance(value[0], _type) and isinstance(value[1], _type):
             if value[0] < value[1]:

@@ -113,6 +113,8 @@ const createSelect = (name: string, choices: string[]) => {
 const useSchema = () => {
   const config = useAtomValue(currentSchema);
 
+  console.log("config", config);
+
   return useMemo(() => {
     const properties: Record<string, any> = {};
 
@@ -134,6 +136,17 @@ const useSchema = () => {
 
       if (attributes[attr].component === "dropdown") {
         properties[attr] = createTags(attr, attributes[attr].values);
+      }
+
+      if (attributes[attr].component === "checkbox") {
+        properties[attr] = {
+          type: "boolean",
+          view: {
+            name: "CheckboxView",
+            label: attr,
+            component: "CheckboxView",
+          },
+        };
       }
     }
 
@@ -181,6 +194,8 @@ const AnnotationSchema = () => {
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
+
+  console.log("schema", schema);
 
   if (!field) {
     throw new Error("no field");

@@ -5,6 +5,7 @@ import {
   InfoOutlined,
 } from "@mui/icons-material";
 import { Collapse, Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -14,7 +15,6 @@ import {
   ToggleSwitch,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import React, { useCallback, useMemo, useState } from "react";
