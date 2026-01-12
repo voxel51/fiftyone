@@ -12,14 +12,35 @@ from types import ModuleType
 
 
 class _UnavailableModule(ModuleType):
-    """A module placeholder that raises ModuleNotFoundError on attribute access."""
+    """A module placeholder that simulates an unavailable optional dependency.
+
+    Returns placeholder classes for attribute access that:
+    - Won't match real types in isinstance/issubclass checks (returns False)
+    - Raise ModuleNotFoundError when actually used (instantiated, called, etc.)
+    """
 
     def __init__(self, name):
         super().__init__(name)
         self._name = name
+        self._cache = {}
+
+    def _make_placeholder(self, attr):
+        """Create a placeholder class that raises on actual use."""
+        module_name = self._name
+
+        class _Placeholder:
+            def __init__(self, *args, **kwargs):
+                raise ModuleNotFoundError(f"No module named '{module_name}'")
+
+            def __call__(self, *args, **kwargs):
+                raise ModuleNotFoundError(f"No module named '{module_name}'")
+
+        return _Placeholder
 
     def __getattr__(self, attr):
-        raise ModuleNotFoundError(f"No module named '{self._name}'")
+        if attr not in self._cache:
+            self._cache[attr] = self._make_placeholder(attr)
+        return self._cache[attr]
 
 
 #
