@@ -4,18 +4,20 @@ import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import Sidebar, { Entries } from "../../../Sidebar";
+import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
+import PathEntry from "./PathEntry";
 import SchemaManager from "./SchemaManager";
 import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
+import { usePrimitivesCount } from "./usePrimitivesCount";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -61,6 +63,7 @@ const Loading = () => {
 
 const AnnotateSidebar = () => {
   useLabels();
+  usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
   if (editing) return null;
@@ -86,14 +89,7 @@ const AnnotateSidebar = () => {
 
           if (entry.kind === EntryKind.PATH) {
             return {
-              children: (
-                <Entries.PathValue
-                  entryKey={key}
-                  key={key}
-                  path={entry.path}
-                  trigger={trigger}
-                />
-              ),
+              children: <PathEntry path={entry.path} />,
               disabled: false,
             };
           }

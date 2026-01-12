@@ -89,7 +89,7 @@ const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
 };
 
 const labelsCount = atom((get) => get(labels).length);
-const primitivesCount = atom(0);
+export const primitivesCount = atom(0);
 
 const COUNT_ATOMS: Record<string, typeof labelsCount> = {
   Labels: labelsCount,
