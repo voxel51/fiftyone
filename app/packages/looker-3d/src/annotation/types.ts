@@ -70,6 +70,13 @@ export interface SegmentState {
   vertices: [number, number, number][];
 }
 
+export interface CuboidTransformData {
+  location: [number, number, number];
+  dimensions: [number, number, number];
+  rotation?: [number, number, number];
+  quaternion?: [number, number, number, number];
+}
+
 export interface AnnotationPlaneState {
   enabled: boolean;
   position: [number, number, number];

@@ -1969,19 +1969,20 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
 
     @drop_datasets
     def test_sensor_extrinsics_partial_fields_source_only(self):
-        """Test validation with only source_frame set (target_frame can be None)."""
+        """Test validation with only source_frame set (target_frame=None implies world)."""
         dataset = fo.Dataset()
 
-        # source_frame matches (required), target_frame is None (optional)
+        # source_frame matches (required), target_frame is None (implies "world")
         extrinsics = SensorExtrinsics(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
-            # target_frame is None
+            # target_frame is None, which is treated as "world"
         )
 
-        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
-        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+        # Key uses implied "world" target (no ::target suffix)
+        dataset.sensor_extrinsics = {"camera_front": extrinsics}
+        self.assertIn("camera_front", dataset.sensor_extrinsics)
 
     def test_sensor_extrinsics_partial_fields_target_only_raises(self):
         """Test that missing source_frame raises ValueError at construction even if target_frame is set."""

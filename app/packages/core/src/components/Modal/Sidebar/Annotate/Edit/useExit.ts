@@ -4,9 +4,11 @@ import {
   UpdateLabelCommand,
   useLighter,
 } from "@fiftyone/lighter";
+import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
-  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
@@ -36,6 +38,9 @@ export default function useExit(revertLabel = true) {
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
   );
+  const setStagedCuboidTransforms = useSetRecoilState(
+    stagedCuboidTransformsAtom
+  );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
@@ -49,7 +54,9 @@ export default function useExit(revertLabel = true) {
 
     if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
-      overlay.onHoverLeave();
+      if (TypeGuards.isHoverable(overlay)) {
+        overlay.onHoverLeave?.();
+      }
     }
 
     const label = store.get(savedLabel);
@@ -61,6 +68,7 @@ export default function useExit(revertLabel = true) {
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
     setStagedPolylineTransforms({});
+    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
@@ -123,6 +131,8 @@ export default function useExit(revertLabel = true) {
     revertLabel,
     removeOverlay,
     setStagedPolylineTransforms,
+    setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
+    setStagedCuboidTransforms,
   ]);
 }

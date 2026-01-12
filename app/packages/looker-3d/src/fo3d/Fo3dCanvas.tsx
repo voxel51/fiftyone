@@ -13,6 +13,7 @@ import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
+import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
@@ -170,6 +171,7 @@ const AnnotationControls = () => {
     <>
       <AnnotationPlane panelType="main" viewType="top" />
       <SegmentPolylineRenderer />
+      <CreateCuboidRenderer />
     </>
   );
 };
