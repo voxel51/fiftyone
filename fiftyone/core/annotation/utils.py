@@ -29,7 +29,7 @@ def get_supported_app_annotation_fields(sample_collection):
     """Gets the supported App annotation fields for a
     :class:`fiftyone.core.collections.SampleCollection`.
 
-    Currently supported  media types for the collection are ``image`` and
+    Currently supported media types for the collection are ``image`` and
     ``3d``. See :attr:`fiftyone.core.collections.SampleCollection.media_type`
 
     All supported primitive and ``embedded.document`` primitives are supported

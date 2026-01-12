@@ -1,7 +1,8 @@
-import { EditOutlined } from "@mui/icons-material";
 import {
   Anchor,
   Clickable,
+  Icon,
+  IconName,
   ListItem,
   Pill,
   Size,
@@ -11,22 +12,20 @@ import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import type { WritableAtom } from "jotai";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import React, { useCallback } from "react";
-import { fieldType } from "../state";
+import { fieldAttributeCount, fieldType, labelSchemaData } from "../state";
+import { isSystemReadOnlyField } from "./constants";
 import { currentField } from "./state";
 
 type SelectedAtom = WritableAtom<boolean, [toggle: boolean], void>;
 
-// Placeholder: determine if a field type is supported for annotation
-const isFieldTypeSupported = (_fieldType: string | undefined): boolean => {
-  // TODO: implement actual logic
-  return true;
-};
-
 // Hook to get field row data and actions
 const useFieldRow = (path: string, isReadOnly: boolean) => {
   const fType = useAtomValue(fieldType(path));
+  const attrCount = useAtomValue(fieldAttributeCount(path));
+  const fieldData = useAtomValue(labelSchemaData(path));
   const setField = useSetAtom(currentField);
-  const isSupported = isFieldTypeSupported(fType);
+  const isUnsupported = fieldData?.unsupported ?? false;
+  const isSystemReadOnly = isSystemReadOnlyField(path);
 
   const onEdit = useCallback(() => {
     setField(path);
@@ -34,17 +33,7 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
 
   const actions = (
     <span className="flex items-center gap-2">
-      {!isSupported && (
-        <Pill size={Size.Xs} style={{ opacity: 0.7 }}>
-          Unsupported
-        </Pill>
-      )}
-      {isReadOnly && (
-        <Pill size={Size.Xs} style={{ opacity: 0.7 }}>
-          Read-only
-        </Pill>
-      )}
-      {isSupported && (
+      {!isSystemReadOnly && !isUnsupported && (
         <Tooltip
           content="Configure annotation schema"
           anchor={Anchor.Bottom}
@@ -54,14 +43,30 @@ const useFieldRow = (path: string, isReadOnly: boolean) => {
             style={{ padding: 4, height: 29, width: 29 }}
             onClick={onEdit}
           >
-            <EditOutlined fontSize="small" />
+            <Icon name={IconName.Edit} size={Size.Md} />
           </Clickable>
         </Tooltip>
+      )}
+      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {(isReadOnly || isSystemReadOnly) && (
+        <Pill size={Size.Md}>Read-only</Pill>
       )}
     </span>
   );
 
-  return { fType, actions };
+  const secondaryContent = (
+    <>
+      {isSystemReadOnly ? "system" : fType}
+      {!isSystemReadOnly && attrCount > 0 && (
+        <span style={{ opacity: 0.7 }}>
+          {" "}
+          • {attrCount} attribute{attrCount !== 1 ? "s" : ""}
+        </span>
+      )}
+    </>
+  );
+
+  return { fType, attrCount, secondaryContent, actions, isSystemReadOnly };
 };
 
 // Hook to connect jotai selection atom
@@ -93,7 +98,7 @@ const FieldRow = ({
   isReadOnly = false,
   dragHandleListeners,
 }: FieldRowProps) => {
-  const { fType, actions } = useFieldRow(path, isReadOnly);
+  const { secondaryContent, actions } = useFieldRow(path, isReadOnly);
   const selection = useSelection(hasSchema ? isSelected : undefined);
 
   return (
@@ -104,7 +109,7 @@ const FieldRow = ({
       canDrag={showDragHandle}
       dragHandleListeners={dragHandleListeners}
       primaryContent={path}
-      secondaryContent={fType}
+      secondaryContent={secondaryContent}
       actions={actions}
     />
   );

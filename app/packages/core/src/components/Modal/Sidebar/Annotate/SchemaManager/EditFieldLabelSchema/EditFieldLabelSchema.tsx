@@ -1,37 +1,83 @@
-import { Sync } from "@mui/icons-material";
+import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   Button,
+  Icon,
+  IconName,
   Size,
   Text,
   TextColor,
   TextVariant,
   Toggle,
+  ToggleSwitch,
   Variant,
 } from "@voxel51/voodo";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
+import { useCallback, useState } from "react";
+import {
+  activeLabelSchemas,
+  addToActiveSchemas,
+  removeFromActiveSchemas,
+} from "../../state";
 import Footer from "../Footer";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
+import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 import { currentField } from "../state";
 
+const TAB_IDS = ["gui", "json"] as const;
+type TabId = typeof TAB_IDS[number];
+
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
+  const [activeTab, setActiveTab] = useState<TabId>("gui");
+  const [activeFields] = useAtom(activeLabelSchemas);
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const activateFields = useOperatorExecutor("activate_label_schemas");
+  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
+
+  const isFieldVisible = activeFields?.includes(field) ?? false;
+
+  const handleToggleVisibility = useCallback(() => {
+    const fieldSet = new Set([field]);
+    if (isFieldVisible) {
+      // Move to hidden
+      removeFromActive(fieldSet);
+      deactivateFields.execute({ fields: [field] });
+    } else {
+      // Move to active
+      addToActive(fieldSet);
+      activateFields.execute({ fields: [field] });
+    }
+  }, [
+    field,
+    isFieldVisible,
+    addToActive,
+    removeFromActive,
+    activateFields,
+    deactivateFields,
+  ]);
+
+  const handleTabChange = useCallback((index: number) => {
+    setActiveTab(TAB_IDS[index]);
+  }, []);
+
+  const schemaData =
+    labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema;
 
   return (
     <EditContainer>
-      {/* Field name and type header */}
       <Header field={field} setField={setCurrentField} />
 
-      {/* Read-only toggle */}
       <div className="my-4">
         <div className="flex items-center justify-between mb-1">
           <Text variant={TextVariant.Xl}>Read-only</Text>
           <Toggle
-            size={Size.Sm}
+            size={Size.Md}
             disabled={labelSchema.isReadOnlyRequired}
             checked={labelSchema.isReadOnly}
             onChange={labelSchema.toggleReadOnly}
@@ -43,37 +89,63 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </Text>
       </div>
 
-      {/* Schema section - JSON only */}
       <SchemaSection>
+        <Label variant="body2">Schema</Label>
         <TabsRow>
-          <Label variant="body2">Schema</Label>
+          <ToggleSwitch
+            size={Size.Md}
+            defaultIndex={0}
+            onChange={handleTabChange}
+            tabs={[
+              { id: "gui", data: { label: "GUI" } },
+              { id: "json", data: { label: "JSON" } },
+            ]}
+          />
           <Button
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Secondary}
             onClick={labelSchema.scan}
           >
-            <Sync fontSize="small" style={{ marginRight: 4 }} />
+            <Icon
+              name={IconName.Refresh}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
             Scan
           </Button>
         </TabsRow>
 
-        <JSONEditor
-          errors={!!labelSchema.errors.length}
-          data={JSON.stringify(
-            labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema,
-            undefined,
-            2
-          )}
-          onChange={(value) => {
-            labelSchema.validate(value);
-          }}
-          scanning={labelSchema.isScanning}
-        />
+        {activeTab === "gui" ? (
+          <GUIContent
+            config={schemaData}
+            scanning={labelSchema.isScanning}
+            onConfigChange={labelSchema.updateConfig}
+          />
+        ) : (
+          <JSONEditor
+            errors={!!labelSchema.errors.length}
+            data={JSON.stringify(schemaData, undefined, 2)}
+            onChange={(value) => {
+              labelSchema.validate(value);
+            }}
+            scanning={labelSchema.isScanning}
+          />
+        )}
       </SchemaSection>
 
       <Errors errors={labelSchema.errors} />
 
       <Footer
+        leftContent={
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Toggle
+              size={Size.Md}
+              checked={isFieldVisible}
+              onChange={handleToggleVisibility}
+            />
+            <Text variant={TextVariant.Lg}>Visible field</Text>
+          </div>
+        }
         secondaryButton={{
           onClick: labelSchema.discard,
           disabled: !labelSchema.hasChanges,

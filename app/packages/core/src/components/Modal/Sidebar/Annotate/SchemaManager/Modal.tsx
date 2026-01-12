@@ -1,17 +1,19 @@
-import { MuiButton } from "@fiftyone/components";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import { currentField, showModal } from "../state";
-import {
-  hasDraftChanges,
-  useDiscardChanges,
-  useInitializeDraft,
-  useSaveChanges,
-} from "./draftState";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView, {
   selectedActiveFields,
@@ -22,8 +24,6 @@ import GUIView, {
 import {
   BackButton,
   CloseButton,
-  FooterLeft,
-  FooterRight,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -78,15 +78,19 @@ const SchemaManagerFooter = () => {
   const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
-  const hasChanges = useAtomValue(hasDraftChanges);
-  const saveChanges = useSaveChanges();
-  const discardChanges = useDiscardChanges();
 
+  // Don't show footer when editing a field (it has its own footer)
   if (field) {
     return null;
   }
 
   const hasSelection = hiddenSelectedCount > 0 || activeSelectedCount > 0;
+
+  // Only show footer when there's a selection to move
+  if (!hasSelection) {
+    return null;
+  }
+
   const isMovingToVisible = hiddenSelectedCount > 0;
   const selectedCount = isMovingToVisible
     ? hiddenSelectedCount
@@ -95,32 +99,29 @@ const SchemaManagerFooter = () => {
 
   return (
     <ModalFooter>
-      <FooterLeft>
-        {hasSelection && (
-          <MuiButton
-            variant="outlined"
-            startIcon={
-              isMovingToVisible ? <KeyboardArrowUp /> : <KeyboardArrowDown />
-            }
-            onClick={onMove}
-          >
-            Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
-            fields
-          </MuiButton>
-        )}
-      </FooterLeft>
-      <FooterRight>
-        <MuiButton variant="outlined" onClick={discardChanges}>
-          Discard
-        </MuiButton>
-        <MuiButton
-          variant="contained"
-          onClick={saveChanges}
-          disabled={!hasChanges}
-        >
-          Save
-        </MuiButton>
-      </FooterRight>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
+        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+          {isMovingToVisible ? (
+            <Icon
+              name={IconName.ChevronTop}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          ) : (
+            <Icon
+              name={IconName.ChevronBottom}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          )}
+          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
+          fields
+        </Button>
+      </Stack>
     </ModalFooter>
   );
 };
@@ -134,8 +135,6 @@ const Modal = () => {
     return el;
   }, []);
   const show = useSetAtom(showModal);
-
-  useInitializeDraft();
 
   useEffect(() => {
     element.style.display = "block";

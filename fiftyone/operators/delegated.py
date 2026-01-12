@@ -23,6 +23,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     PipelineExecutionContext,
     do_execute_operator,
+    do_execute_pipeline,
     prepare_operator_executor,
     resolve_type_with_context,
 )
@@ -97,6 +98,7 @@ def _execute_operator_in_child_process(
                 )
 
             result = asyncio.run(service._execute_operator(operation))
+            result.raise_exceptions()
 
             service.set_completed(doc_id=operation.id, result=result)
             if log:
@@ -399,6 +401,28 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
+    def archive_operation(self, doc_id):
+        """Archives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.archive_operation(_id=doc_id)
+
+    def unarchive_operation(self, doc_id):
+        """Unarchives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.unarchive_operation(_id=doc_id)
+
     def delete_operation(self, doc_id):
         """Deletes the given delegated operation.
 
@@ -498,6 +522,7 @@ class DelegatedOperationService(object):
         delegation_target=None,
         paging=None,
         search=None,
+        include_archived=False,
         **kwargs,
     ):
         """Lists the delegated operations matching the given criteria.
@@ -516,6 +541,7 @@ class DelegatedOperationService(object):
             paging (None): optional
                 :class:`fiftyone.factory.DelegatedOperationPagingParams`
             search (None): optional search term dict
+            include_archived (False): whether to include archived operations
 
         Returns:
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -528,6 +554,7 @@ class DelegatedOperationService(object):
             delegation_target=delegation_target,
             paging=paging,
             search=search,
+            include_archived=include_archived,
             **kwargs,
         )
 
@@ -676,6 +703,7 @@ class DelegatedOperationService(object):
         """Executes an operation synchronously in the current process."""
         try:
             result = asyncio.run(self._execute_operator(operation))
+            result.raise_exceptions()
             self.set_completed(doc_id=operation.id, result=result)
             if log:
                 logger.info("Operation %s complete", operation.id)
@@ -900,7 +928,16 @@ class DelegatedOperationService(object):
 
             operator, _, ctx, __ = prepared
 
-            result = await do_execute_operator(operator, ctx, exhaust=True)
+            if doc.pipeline:
+                result = await do_execute_pipeline(doc.pipeline, ctx)
+                if result:
+                    error, error_message = result
+                    return ExecutionResult(
+                        error=error, error_message=error_message
+                    )
+                result = None
+            else:
+                result = await do_execute_operator(operator, ctx, exhaust=True)
 
             outputs_schema = None
             try:
@@ -917,8 +954,6 @@ class DelegatedOperationService(object):
                     exc_info=True,
                 )
 
-            execution_result = ExecutionResult(
+            return ExecutionResult(
                 result=result, outputs_schema=outputs_schema
             )
-
-            return execution_result

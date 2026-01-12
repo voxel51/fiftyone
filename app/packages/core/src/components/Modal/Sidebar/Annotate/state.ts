@@ -149,6 +149,27 @@ export const fieldType = atomFamily((path: string) =>
   })
 );
 
+export const fieldAttributeCount = atomFamily((path: string) =>
+  atom((get) => {
+    // Try new schema system first
+    const schemaData = get(schema(path));
+    if (schemaData?.config?.attributes) {
+      return Object.keys(schemaData.config.attributes).length;
+    }
+
+    // Try legacy schema system - check labelSchema first, then defaultLabelSchema
+    const legacyData = get(labelSchemaData(path));
+    if (legacyData?.labelSchema?.attributes) {
+      return Object.keys(legacyData.labelSchema.attributes).length;
+    }
+    if (legacyData?.defaultLabelSchema?.attributes) {
+      return Object.keys(legacyData.defaultLabelSchema.attributes).length;
+    }
+
+    return 0;
+  })
+);
+
 // =============================================================================
 // Actions
 // =============================================================================

@@ -1,11 +1,12 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { toCamelCase, toSnakeCase } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { labelSchemaData } from "../../state";
 
-const currentLabelSchema = atomFamily((field: string) => atom());
+const currentLabelSchema = atomFamily((_field: string) => atom());
 
 const useCurrentLabelSchema = (field: string) => {
   const [current, setCurrent] = useAtom(currentLabelSchema(field));
@@ -17,7 +18,7 @@ const useCurrentLabelSchema = (field: string) => {
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data.default_label_schema;
+  return data?.defaultLabelSchema;
 };
 
 const useDiscard = (field: string) => {
@@ -48,10 +49,23 @@ const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: current.read_only,
-    isReadOnlyRequired: data.read_only,
+    isReadOnly: current?.readOnly,
+    isReadOnlyRequired: data?.readOnly,
     toggleReadOnly: () => {
-      setCurrent({ ...current, read_only: !current.read_only });
+      setCurrent({ ...current, readOnly: !current?.readOnly });
+    },
+  };
+};
+
+const useConfigUpdate = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  return {
+    updateClassOrder: (newOrder: string[]) => {
+      if (!current) return;
+      setCurrent({ ...current, classes: newOrder });
+    },
+    updateConfig: (newConfig: object) => {
+      setCurrent(newConfig);
     },
   };
 };
@@ -59,9 +73,9 @@ const useReadOnly = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data.label_schema,
-    (label_schema) => {
-      setAtom({ ...data, label_schema });
+    data?.labelSchema,
+    (labelSchema) => {
+      setAtom({ ...data, labelSchema });
     },
   ];
 };
@@ -76,8 +90,9 @@ const useSave = (field: string) => {
     isSaving,
     save: () => {
       setIsSaving(true);
+      // Convert camelCase to snake_case for Python operator
       update.execute(
-        { field, label_schema: current },
+        { field, label_schema: toSnakeCase(current) },
         {
           callback: () => {
             setSaved(current);
@@ -104,7 +119,8 @@ const useScan = (field: string) => {
         {
           callback: (result) => {
             if (result.result) {
-              setCurrent(result.result.label_schema);
+              // Convert snake_case from Python to camelCase
+              setCurrent(toCamelCase(result.result.label_schema));
             }
             setIsScanning(false);
           },
@@ -129,8 +145,9 @@ const useValidate = (field: string) => {
       try {
         setIsValidating(true);
         const parsed = JSON.parse(data);
+        // Convert camelCase to snake_case for Python operator
         validate.execute(
-          { label_schemas: { [field]: parsed } },
+          { label_schemas: { [field]: toSnakeCase(parsed) } },
           {
             skipErrorNotification: true,
             callback: (result) => {
@@ -139,7 +156,8 @@ const useValidate = (field: string) => {
               }
 
               if (!result.result.errors.length) {
-                setCurrent(parsed);
+                // Store as camelCase in frontend state
+                setCurrent(toCamelCase(parsed));
                 setIsValid(true);
               } else {
                 setIsValid(false);
@@ -164,6 +182,7 @@ const useValidate = (field: string) => {
 export default function (field: string) {
   const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
+  const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
@@ -177,6 +196,7 @@ export default function (field: string) {
 
     ...discard,
     ...readOnly,
+    ...configUpdate,
     ...save,
     ...scan,
     ...validate,

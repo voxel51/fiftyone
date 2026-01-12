@@ -1,25 +1,13 @@
-import React from "react";
-import styled from "styled-components";
-import { Button, Size, Variant } from "@voxel51/voodo";
-
-const Container = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid ${({ theme }) => theme.divider};
-  align-items: center;
-  position: absolute;
-  bottom: 0;
-  padding: 0 2rem;
-  height: 64px;
-  left: 0;
-  background: ${({ theme }) => theme.background.level2};
-`;
-
-const RightSection = styled.div`
-  display: flex;
-  gap: 0.75rem;
-`;
+import React, { ReactNode } from "react";
+import {
+  Button,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
+import { EditFieldFooter } from "./styled";
 
 interface ButtonConfig {
   onClick: () => void;
@@ -30,30 +18,29 @@ interface ButtonConfig {
 const Footer = ({
   primaryButton,
   secondaryButton,
-  leftButton,
+  leftContent,
 }: {
   primaryButton: ButtonConfig;
   secondaryButton?: ButtonConfig;
-  leftButton?: ButtonConfig;
+  leftContent?: ReactNode;
 }) => {
   return (
-    <Container>
-      {leftButton ? (
-        <Button
-          size={Size.Sm}
-          variant={Variant.Secondary}
-          onClick={leftButton.onClick}
-          disabled={leftButton.disabled}
-        >
-          {leftButton.text}
-        </Button>
-      ) : (
-        <div />
-      )}
-      <RightSection>
+    <EditFieldFooter>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
+        {leftContent}
+      </Stack>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Md}
+        style={{ alignItems: "center" }}
+      >
         {secondaryButton && (
           <Button
-            size={Size.Sm}
+            size={Size.Md}
             variant={Variant.Secondary}
             onClick={secondaryButton.onClick}
             disabled={secondaryButton.disabled}
@@ -62,15 +49,15 @@ const Footer = ({
           </Button>
         )}
         <Button
-          size={Size.Sm}
+          size={Size.Md}
           variant={Variant.Primary}
           onClick={primaryButton.onClick}
           disabled={primaryButton.disabled}
         >
           {primaryButton.text}
         </Button>
-      </RightSection>
-    </Container>
+      </Stack>
+    </EditFieldFooter>
   );
 };
 

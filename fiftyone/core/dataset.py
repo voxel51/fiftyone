@@ -1117,12 +1117,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @active_label_schemas.setter
     def active_label_schemas(self, fields):
-        if etau.is_str(fields):
-            fields = [fields]
-        elif fields is None:
-            fields = []
-        else:
-            fields = list(fields)
+        fields = _as_str_list(fields)
 
         for field in fields:
             if field not in self._doc.label_schemas:
@@ -1131,7 +1126,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
 
         self._doc.active_label_schemas = fields
-        self._doc.save()
+        self.save()
 
     @property
     def label_schemas(self):
@@ -1180,13 +1175,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         foa.validate_label_schemas(self, label_schemas)
         self._doc.label_schemas = label_schemas
-        active = self.active_label_schemas
-
-        for field in self.active_label_schemas:
-            if field not in label_schemas:
-                active.remove(field)
-
-        self._doc.active_label_schemas = active
+        self._doc.active_label_schemas = [
+            field
+            for field in self.active_label_schemas
+            if field in label_schemas
+        ]
         self.save()
 
     def update_label_schema(self, field, label_schema):
@@ -1210,7 +1203,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         label_schemas = self.label_schemas
         label_schemas[field] = copy.deepcopy(label_schema)
         self._doc.label_schemas = label_schemas
-        self._doc.save()
+        self.save()
 
     def delete_label_schemas(self, fields=None):
         """Deletes one or more
@@ -1224,12 +1217,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Raises:
             ValueError: if the label schema or schemas do not exist
         """
-        if fields is None:
-            fields = list(self.label_schemas)
-        elif etau.is_str(fields):
-            fields = [fields]
-
         label_schemas = self.label_schemas
+        fields = _as_str_list(fields if fields is not None else label_schemas)
+
         for field in fields:
             if field not in label_schemas:
                 raise ValueError(
@@ -1253,8 +1243,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if fields is None:
             fields = sorted(self.label_schemas)
-        elif etau.is_str(fields):
-            fields = [fields]
+
+        fields = _as_str_list(fields)
 
         result = self.active_label_schemas
         for field in fields:
@@ -1269,7 +1259,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             result.append(field)
 
         self._doc.active_label_schemas = result
-        self._doc.save()
+        self.save()
 
     def deactivate_label_schemas(self, fields=None):
         """Deactivate :meth:`label_schemas`. If no fields are provided, all
@@ -1285,8 +1275,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         if fields is None:
             fields = self.active_label_schemas
-        elif etau.is_str(fields):
-            fields = [fields]
+
+        fields = _as_str_list(fields)
 
         result = self.active_label_schemas
         for field in fields:
@@ -1301,7 +1291,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             result.remove(field)
 
         self._doc.active_label_schemas = result
-        self._doc.save()
+        self.save()
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -10967,6 +10957,16 @@ def _merge_embedded_doc_field(
             "default": {"$mergeObjects": docs},
         }
     }
+
+
+def _as_str_list(fields):
+    if fields is None:
+        return []
+
+    if etau.is_str(fields):
+        return [fields]
+
+    return list(fields)
 
 
 def _always_select_field(sample_collection, field):
