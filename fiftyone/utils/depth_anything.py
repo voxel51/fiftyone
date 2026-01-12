@@ -38,25 +38,6 @@ da3_api = fou.lazy_import(
 DEFAULT_DA3_MODEL = "depth-anything/da3-base"
 
 
-def _normalize_float_to_uint8(img_array):
-    """Converts a float image array to uint8.
-
-    Arrays with max value <= 1.0 are assumed to be in [0, 1] range and are
-    scaled to [0, 255].
-
-    Args:
-        img_array: a numpy array
-
-    Returns:
-        a ``uint8`` numpy array with values in [0, 255]
-    """
-    if img_array.dtype == np.uint8:
-        return img_array
-    if img_array.max() <= 1.0:
-        img_array = img_array * 255
-    return np.clip(img_array, 0, 255).astype(np.uint8)
-
-
 class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     """Output processor for Depth Anything V3 models.
 
@@ -292,7 +273,9 @@ class _DepthAnythingV3Transforms:
                 img = img[:, :, :3]
             img_array = img.cpu().numpy()
             if img_array.dtype in (np.float32, np.float64):
-                img_array = _normalize_float_to_uint8(img_array)
+                if img_array.max() <= 1.0:
+                    img_array = img_array * 255
+                img_array = np.clip(img_array, 0, 255).astype(np.uint8)
         elif isinstance(img, np.ndarray):
             if img.ndim == 2:
                 img = np.stack([img, img, img], axis=2)
@@ -306,7 +289,9 @@ class _DepthAnythingV3Transforms:
             elif img.shape[2] == 4:
                 img = img[:, :, :3]
             if img.dtype in (np.float32, np.float64):
-                img = _normalize_float_to_uint8(img)
+                if img.max() <= 1.0:
+                    img = img * 255
+                img = np.clip(img, 0, 255).astype(np.uint8)
             img_array = img
         else:
             raise TypeError(
