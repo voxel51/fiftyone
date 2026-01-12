@@ -213,13 +213,13 @@ export interface Hoverable {
   } | null;
 
   /** Handle hover enter event */
-  onHoverEnter?(point: Point, event: PointerEvent): boolean;
+  onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
 
   /** Handle hover leave event */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean;
+  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /** Handle hover move event */
-  onHoverMove?(point: Point, event: PointerEvent): boolean;
+  onHoverMove?(point?: Point | null, event?: PointerEvent | null): boolean;
 }
 
 /**

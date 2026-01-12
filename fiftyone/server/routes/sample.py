@@ -10,16 +10,15 @@ import base64
 import datetime
 import logging
 import re
-from typing import Any, Union, Dict, Optional, List
+from typing import Any, Dict, List, Optional, Union
 
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
-
 from fiftyone.server import decorators, utils
+from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -95,21 +94,8 @@ def get_sample(
         The sample
     """
 
-    try:
-        dataset = foo.load_dataset(id=dataset_id)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Dataset '{dataset_id}' not found",
-        ) from err
-
-    try:
-        sample = dataset[sample_id]
-    except KeyError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Sample '{sample_id}' not found in dataset '{dataset_id}'",
-        ) from err
+    dataset = get_dataset(dataset_id)
+    sample = get_sample_from_dataset(dataset, sample_id)
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
