@@ -32,7 +32,7 @@ class PipelineStage:
     params: Optional[Mapping[str, Any]] = None
     """Optional dict of parameters to pass to the operator"""
 
-    rerunnable: bool = True
+    rerunnable: Optional[bool] = None
     """Whether the stage is rerunnable"""
 
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
@@ -43,7 +43,7 @@ class PipelineStage:
         name: Optional[str] = None,
         num_distributed_tasks: Optional[int] = None,
         params: Optional[Mapping[str, Any]] = None,
-        rerunnable: bool = True,
+        rerunnable: Optional[bool] = None,
         **_,
     ):
         # Call the default dataclass initialization for the defined fields
@@ -102,7 +102,7 @@ class Pipeline:
         name=None,
         num_distributed_tasks=None,
         params=None,
-        rerunnable=True,
+        rerunnable=None,
         # kwargs accepted for forward compatibility
         **kwargs,
     ):
