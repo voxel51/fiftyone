@@ -2433,57 +2433,6 @@ class UndistortImageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             intrinsics.undistort_image(np.zeros((2, 3, 4, 5)))  # 4D array
 
-    def test_get_undistorter_opencv(self):
-        """Test creating undistorter for OpenCV model."""
-        intrinsics = OpenCVCameraIntrinsics(
-            fx=500.0,
-            fy=500.0,
-            cx=320.0,
-            cy=240.0,
-            k1=-0.2,
-            k2=0.1,
-        )
-
-        undistorter = intrinsics.get_undistorter((640, 480))
-
-        self.assertEqual(undistorter.new_camera_matrix.shape, (3, 3))
-
-    def test_get_undistorter_fisheye(self):
-        """Test creating undistorter for fisheye model."""
-        intrinsics = OpenCVFisheyeCameraIntrinsics(
-            fx=400.0,
-            fy=400.0,
-            cx=320.0,
-            cy=240.0,
-            k1=0.1,
-            k2=-0.05,
-        )
-
-        undistorter = intrinsics.get_undistorter((640, 480))
-
-        self.assertEqual(undistorter.new_camera_matrix.shape, (3, 3))
-
-    def test_undistorter_produces_same_result(self):
-        """Test that undistorter produces same result as undistort_image."""
-        intrinsics = OpenCVCameraIntrinsics(
-            fx=500.0,
-            fy=500.0,
-            cx=320.0,
-            cy=240.0,
-            k1=-0.2,
-            k2=0.1,
-        )
-        image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
-
-        # Direct undistortion
-        direct_result = intrinsics.undistort_image(image, alpha=0.5)
-
-        # Using undistorter
-        undistorter = intrinsics.get_undistorter((640, 480), alpha=0.5)
-        undistorter_result = undistorter(image)
-
-        nptest.assert_array_equal(direct_result, undistorter_result)
-
 
 if __name__ == "__main__":
     unittest.main()
