@@ -18,12 +18,12 @@ import pytest
 #
 # https://docs.python.org/3/reference/import.html#the-module-cache
 #
-sys.modules["tensorflow"] = None
-sys.modules["tensorflow_datasets"] = None
-sys.modules["torch"] = None
-sys.modules["torchvision"] = None
-sys.modules["flash"] = None
-sys.modules["pycocotools"] = None
+del sys.modules["tensorflow"]
+del sys.modules["tensorflow_datasets"]
+del sys.modules["torch"]
+del sys.modules["torchvision"]
+del sys.modules["flash"]
+del sys.modules["pycocotools"]
 
 
 def test_import_core():
