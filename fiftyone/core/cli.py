@@ -3160,6 +3160,7 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "output", DelegatedOutputCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "delete", DelegatedDeleteCommand)
+        _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
         _register_command(subparsers, "rerun", DelegatedRerunCommand)
 
     @staticmethod
