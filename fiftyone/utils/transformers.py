@@ -685,6 +685,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
                 classes=self.config.filter_classes,
+                input_ids=args.get("input_ids"),
             )
         else:
             return output
@@ -1489,7 +1490,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     ):
         if self._is_grounded:
             output = self._objection_detection_processor(
-                output, output.get("input_ids"),
+                output, kwargs.get("input_ids"),
                 threshold=confidence_thresh or 0, target_sizes=image_sizes,
             )
         else:
