@@ -45,12 +45,12 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     :class:`fiftyone.core.labels.Heatmap` instances.
     """
 
-    def __call__(self, output, image_sizes, **kwargs):
+    def __call__(self, output, frame_size, **kwargs):
         """Processes model output into heatmap labels.
 
         Args:
             output: a dict containing the model output with a ``"depth"`` key
-            image_sizes: a list of ``(height, width)`` tuples
+            frame_size: a ``(width, height)`` tuple
             **kwargs: additional keyword arguments
 
         Returns:
@@ -75,22 +75,17 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if len(depth_maps.shape) == 2:
             depth_maps = depth_maps[np.newaxis, ...]
 
-        if len(depth_maps) != len(image_sizes):
-            raise ValueError(
-                "Length mismatch: got %d depth maps but %d image sizes"
-                % (len(depth_maps), len(image_sizes))
-            )
-
         from PIL import Image
 
+        width, height = frame_size
         results = []
-        for i, depth in enumerate(depth_maps):
-            orig_h, orig_w = image_sizes[i]
-
-            if depth.shape[0] != orig_h or depth.shape[1] != orig_w:
+        for depth in depth_maps:
+            if width is None or height is None:
+                pass
+            elif depth.shape[0] != height or depth.shape[1] != width:
                 depth_img = Image.fromarray(depth)
                 depth_img = depth_img.resize(
-                    (orig_w, orig_h), Image.Resampling.BILINEAR
+                    (width, height), Image.Resampling.BILINEAR
                 )
                 depth = np.array(depth_img)
 
@@ -125,6 +120,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             d, "name_or_path", default=DEFAULT_DA3_MODEL
         )
 
+        self.raw_inputs = True
+
         if self.output_processor_cls is None:
             self.output_processor_cls = (
                 "fiftyone.utils.depth_anything.DepthAnythingV3OutputProcessor"
@@ -156,10 +153,6 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         config: a :class:`DepthAnythingV3ModelConfig`
     """
 
-    def __init__(self, config):
-        super().__init__(config)
-        self._image_sizes = None
-
     def _download_model(self, config):
         pass
 
@@ -171,115 +164,11 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         model.eval()
         return model
 
-    def _build_transforms(self, config):
-        return _DepthAnythingV3Transforms(), True
-
     @property
     def media_type(self):
-        """The media type processed by this model."""
         return "image"
 
-    def _predict_all(self, imgs):
-        if self._preprocess:
-            processed = [self._transforms(img) for img in imgs]
-            images = [p[0] for p in processed]
-            self._image_sizes = [p[1] for p in processed]
-        else:
-            if imgs and isinstance(imgs[0], (list, tuple)) and len(imgs[0]) == 2:
-                images = [p[0] for p in imgs]
-                self._image_sizes = [tuple(p[1]) for p in imgs]
-            else:
-                raise ValueError("Preprocessed images required")
-
-        output = self._forward_pass(images)
-
-        if self._output_processor is not None:
-            return self._output_processor(
-                output,
-                self._image_sizes,
-                confidence_thresh=self.config.confidence_thresh,
-            )
-
-        return output
-
-    def _forward_pass(self, images):
+    def _forward_pass(self, imgs):
         with torch.no_grad():
-            prediction = self._model.inference(images)
+            prediction = self._model.inference(imgs)
         return {"depth": prediction.depth}
-
-
-class _DepthAnythingV3Transforms:
-    """Input transforms for Depth Anything V3.
-
-    Converts various image input types (file paths, PIL Images, torch Tensors,
-    and numpy arrays) to numpy arrays and tracks original sizes for the output
-    processor.
-    """
-
-    def __call__(self, img):
-        """Transforms an image to the format expected by the model.
-
-        Args:
-            img: an image, which can be a filepath string,
-                :class:`PIL.Image.Image`, torch Tensor, or numpy array
-
-        Returns:
-            a tuple of ``(img_array, original_size)``
-        """
-        from PIL import Image as PILImage
-
-        if isinstance(img, str):
-            import os
-
-            if not os.path.isfile(img):
-                raise ValueError("Image file not found: %s" % img)
-            with PILImage.open(img) as pil_img:
-                img_array = np.array(pil_img.convert("RGB"))
-        elif isinstance(img, PILImage.Image):
-            img_array = np.array(img.convert("RGB"))
-        elif isinstance(img, torch.Tensor):
-            if img.dim() == 4 and img.size(0) == 1:
-                img = img.squeeze(0)
-            elif img.dim() == 4:
-                raise ValueError(
-                    "Batch size > 1 not supported, got shape %s"
-                    % (tuple(img.shape),)
-                )
-            if img.dim() == 2:
-                img = img.unsqueeze(2).expand(-1, -1, 3)
-            elif img.dim() == 3 and img.shape[0] in (1, 3, 4):
-                img = img.permute(1, 2, 0)
-            if img.shape[2] == 1:
-                img = img.expand(-1, -1, 3)
-            elif img.shape[2] == 4:
-                img = img[:, :, :3]
-            img_array = img.cpu().numpy()
-            if img_array.dtype in (np.float32, np.float64):
-                if img_array.max() <= 1.0:
-                    img_array = img_array * 255
-                img_array = np.clip(img_array, 0, 255).astype(np.uint8)
-        elif isinstance(img, np.ndarray):
-            if img.ndim == 2:
-                img = np.stack([img, img, img], axis=2)
-            elif img.ndim != 3 or img.shape[2] not in (1, 3, 4):
-                raise ValueError(
-                    "Expected image with shape (H, W), (H, W, 1), (H, W, 3), "
-                    "or (H, W, 4), got %s" % (img.shape,)
-                )
-            elif img.shape[2] == 1:
-                img = np.repeat(img, 3, axis=2)
-            elif img.shape[2] == 4:
-                img = img[:, :, :3]
-            if img.dtype in (np.float32, np.float64):
-                if img.max() <= 1.0:
-                    img = img * 255
-                img = np.clip(img, 0, 255).astype(np.uint8)
-            img_array = img
-        else:
-            raise TypeError(
-                "Unsupported image type %s. Supported types are: str, "
-                "PIL.Image, torch.Tensor, np.ndarray" % type(img)
-            )
-
-        original_size = (img_array.shape[0], img_array.shape[1])
-        return img_array, original_size
