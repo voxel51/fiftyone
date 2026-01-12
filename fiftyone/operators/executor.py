@@ -48,6 +48,7 @@ class ExecutionRunState(object):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    TERMINAL_STATES = {COMPLETED, FAILED}
 
 
 class InvocationRequest(object):
@@ -343,7 +344,6 @@ async def execute_or_delegate_operator(
                     label=run_name,
                     metadata=metadata,
                     pipeline=pipeline,
-                    rerunnable=operator.config.rerunnable,
                 )
 
                 execution = ExecutionResult(

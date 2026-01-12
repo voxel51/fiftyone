@@ -461,10 +461,11 @@ class DelegatedOperationService(object):
             raise ValueError(f"Delegated operation {doc_id} is not rerunnable")
         if doc.parent_id:
             parent_doc = self._repo.get(_id=doc.parent_id)
-            if parent_doc and parent_doc.run_state not in {
-                ExecutionRunState.COMPLETED,
-                ExecutionRunState.FAILED,
-            }:
+            if (
+                parent_doc
+                and parent_doc.run_state
+                not in ExecutionRunState.TERMINAL_STATES
+            ):
                 raise ValueError(
                     f"Cannot rerun delegated operation {doc_id} because its "
                     f"parent operation {doc.parent_id} is not yet completed"
