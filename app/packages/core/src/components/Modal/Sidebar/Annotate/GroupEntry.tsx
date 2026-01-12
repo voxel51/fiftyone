@@ -81,7 +81,7 @@ const Toggle = ({ name }: { name: string }) => {
 };
 
 export const labelsExpanded = atom(true);
-export const primitivesExpanded = atom(false);
+export const primitivesExpanded = atom(true);
 
 const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
   Labels: labelsExpanded,

@@ -1,16 +1,70 @@
 import type { SidebarEntry } from "@fiftyone/state";
-import { EntryKind } from "@fiftyone/state";
+import {
+  EntryKind,
+  State,
+  activeModalSidebarSample,
+  fieldPaths,
+} from "@fiftyone/state";
+import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { getDefaultStore, useAtomValue } from "jotai";
+import { get } from "lodash";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { primitivesExpanded } from "./GroupEntry";
 import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
 
 const store = getDefaultStore();
 
+const getPrimitiveEntries = (
+  currentSample: any,
+  primitivePaths: string[],
+  expanded: boolean
+): SidebarEntry[] => {
+  if (!currentSample) {
+    return [];
+  }
+
+  const primitivesWithValues: string[] = [];
+  for (const path of primitivePaths) {
+    // Check if the field has a value in the current sample
+    const value = get(currentSample, path);
+    if (value !== null && value !== undefined && value !== "") {
+      primitivesWithValues.push(path);
+    }
+  }
+
+  if (primitivesWithValues.length === 0) {
+    return [];
+  }
+
+  const result: SidebarEntry[] = [];
+  // Add the group entry
+  result.push({ kind: EntryKind.GROUP, name: "Primitives" });
+  // Add path entries for each primitive field
+  for (const path of primitivesWithValues.sort()) {
+    result.push({
+      kind: EntryKind.PATH,
+      path,
+      shown: expanded,
+    });
+  }
+
+  return result;
+};
+
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const atoms = useAtomValue(labelAtoms);
   const activeFields = useAtomValue(activeLabelSchemas);
   const state = useAtomValue(labelsState);
+  const currentSample = useRecoilValue(activeModalSidebarSample);
+  const primitivePaths = useRecoilValue(
+    fieldPaths({
+      space: State.SPACE.SAMPLE,
+      ftype: VALID_PRIMITIVE_TYPES,
+    })
+  );
+  const primitivesExpandedState = useAtomValue(primitivesExpanded);
 
   const entries = useMemo(() => {
     if (state !== LabelsState.COMPLETE) {
@@ -51,8 +105,22 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       }
     }
 
+    const primitiveEntries = getPrimitiveEntries(
+      currentSample,
+      primitivePaths,
+      primitivesExpandedState
+    );
+    result.push(...primitiveEntries);
+
     return result as SidebarEntry[];
-  }, [atoms, activeFields, state]);
+  }, [
+    atoms,
+    activeFields,
+    state,
+    currentSample,
+    primitivePaths,
+    primitivesExpandedState,
+  ]);
 
   return [entries, () => {}];
 };

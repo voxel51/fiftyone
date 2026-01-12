@@ -4,7 +4,7 @@ import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
-import Sidebar from "../../../Sidebar";
+import Sidebar, { Entries } from "../../../Sidebar";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import GroupEntry from "./GroupEntry";
@@ -70,7 +70,8 @@ const AnnotateSidebar = () => {
       <Actions />
       <Sidebar
         isDisabled={() => true}
-        render={(key, group, entry) => {
+        render={(key, group, entry, controller, trigger) => {
+          console.log("entry", entry);
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
@@ -80,6 +81,20 @@ const AnnotateSidebar = () => {
             return {
               children: <LabelEntry atom={atom} />,
               disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.PATH) {
+            return {
+              children: (
+                <Entries.PathValue
+                  entryKey={key}
+                  key={key}
+                  path={entry.path}
+                  trigger={trigger}
+                />
+              ),
+              disabled: false,
             };
           }
 
