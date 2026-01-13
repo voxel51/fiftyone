@@ -29,6 +29,11 @@ import {
   ListContainer,
   Section,
 } from "../styled";
+import {
+  formatAttributeCount,
+  getAttributeTypeLabel,
+  getClassNameError,
+} from "../utils";
 
 // Extend ListItemProps to include additionalContent (added to design-system)
 interface ListItemProps extends BaseListItemProps {
@@ -51,40 +56,12 @@ export interface SchemaConfigType {
   attributes?: Record<string, AttributeConfig>;
 }
 
-// Helper functions
-const getAttributeTypeLabel = (type: string): string => {
-  const typeMap: Record<string, string> = {
-    radio: "Radio group",
-    checkbox: "Checkbox",
-    dropdown: "Dropdown",
-    text: "Text",
-    number: "Number",
-    select: "Object selector",
-  };
-  return typeMap[type] || type;
-};
-
 // Action button for edit
 const EditAction = ({ onEdit }: { onEdit: () => void }) => (
   <Clickable onClick={onEdit}>
     <Icon name={IconName.Edit} size={Size.Md} />
   </Clickable>
 );
-
-// Validation helper
-const getClassNameError = (
-  name: string,
-  existingClasses: string[],
-  currentClass?: string
-): string | null => {
-  const trimmed = name.trim();
-  if (!trimmed) return "Class name cannot be empty";
-  const isDuplicate = existingClasses.some(
-    (c) => c !== currentClass && c === trimmed
-  );
-  if (isDuplicate) return "Class name already exists";
-  return null;
-};
 
 // Add class card component using RichList item style
 interface AddClassCardProps {
@@ -335,9 +312,7 @@ export const ClassesSection = ({
                 canSelect: false,
                 canDrag: true,
                 primaryContent: name,
-                secondaryContent: `${attributeCount} attribute${
-                  attributeCount !== 1 ? "s" : ""
-                }`,
+                secondaryContent: formatAttributeCount(attributeCount),
                 actions: <EditAction onEdit={() => handleStartEdit(name)} />,
               } as ListItemProps),
       })),
