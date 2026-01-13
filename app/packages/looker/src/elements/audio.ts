@@ -375,8 +375,17 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
     const width = canvas.width;
     const height = canvas.height;
     const data = this.audioBuffer.getChannelData(0);
+
+    let maxAmp = 0;
+    for (let i = 0; i < data.length; i++) {
+      const val = Math.abs(data[i]);
+      if (val > maxAmp) maxAmp = val;
+    }
+    if (maxAmp === 0) maxAmp = 1;
+
     const step = Math.ceil(data.length / width);
-    const amp = height / 2;
+    const mid = height / 2;
+    const scale = (height * 0.9) / 2 / maxAmp;
 
     ctx.fillStyle = "rgb(238, 238, 238)";
     ctx.clearRect(0, 0, width, height);
@@ -385,11 +394,23 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
       let min = 1.0;
       let max = -1.0;
       for (let j = 0; j < step; j++) {
-        const datum = data[i * step + j];
-        if (datum < min) min = datum;
-        if (datum > max) max = datum;
+        const index = i * step + j;
+        if (index < data.length) {
+          const datum = data[index];
+          if (datum < min) min = datum;
+          if (datum > max) max = datum;
+        }
       }
-      ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+
+      if (min > max) {
+        min = 0;
+        max = 0;
+      }
+
+      const y = mid - max * scale;
+      const h = (max - min) * scale;
+
+      ctx.fillRect(i, y, 1, Math.max(1, h));
     }
   }
 
