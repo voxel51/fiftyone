@@ -1,4 +1,4 @@
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import { Vector3 } from "three";
 
@@ -8,10 +8,16 @@ interface HoveredPointMarkerProps {
 
 export const HoveredPointMarker = ({ position }: HoveredPointMarkerProps) => {
   const meshRef = useRef<any>(null);
+  const { camera } = useThree();
 
   // apply pulsating effect for scaling (based on distance from camera) and color
   // so that the marker is visible from far away
   useFrame(({ clock, camera }) => {
+    // Todo: impl for side panel view (which uses orthographic camera)
+    if (camera.type === "OrthographicCamera") {
+      return;
+    }
+
     const t = clock.getElapsedTime();
     const distance = camera.position.distanceTo(position);
     const pulse = 0.5 + 0.3 * Math.sin(t * 4);
@@ -25,6 +31,10 @@ export const HoveredPointMarker = ({ position }: HoveredPointMarkerProps) => {
       meshRef.current.material.emissiveIntensity = 0.7 + 0.3 * colorPhase;
     }
   });
+
+  if (camera.type === "OrthographicCamera") {
+    return null;
+  }
 
   return (
     <mesh ref={meshRef} position={position}>

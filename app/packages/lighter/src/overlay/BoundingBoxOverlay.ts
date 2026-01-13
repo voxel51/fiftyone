@@ -573,8 +573,10 @@ export class BoundingBoxOverlay
   onPointerUp(_point: Point, _event: PointerEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    // Mark final position for relative-coordinate update and reset drag state
-    this.markForCoordinateUpdate();
+    if (this.isMoving()) {
+      this.markForCoordinateUpdate();
+    }
+
     this.moveState = "NONE";
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
