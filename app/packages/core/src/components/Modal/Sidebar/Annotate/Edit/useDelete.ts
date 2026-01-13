@@ -82,8 +82,7 @@ export default function useDelete() {
     setSaving,
     setNotification,
   ]);
-
-
-
-  return onDelete;
+   ]);
+   return onDelete;
+ }
 }
