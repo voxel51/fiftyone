@@ -6,9 +6,9 @@ import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
-  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
+  stagedPolylineTransformsAtom,
 } from "../../state";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {

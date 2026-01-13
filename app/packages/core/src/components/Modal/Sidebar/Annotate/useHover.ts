@@ -46,7 +46,7 @@ export default function useHover() {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:canvasOverlayHover",
+    "annotation:canvasOverlayHover",
     useCallback((payload) => {
       const store = getDefaultStore();
       const current = store.get(hoveringLabelIds);
@@ -57,7 +57,7 @@ export default function useHover() {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:canvasOverlayUnhover",
+    "annotation:canvasOverlayUnhover",
     useCallback((payload) => {
       const store = getDefaultStore();
       store.set(

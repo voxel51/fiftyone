@@ -789,6 +789,88 @@ nodes:
     :meth:`default_skeleton <fiftyone.core.dataset.Dataset.default_skeleton>`
     properties in-place to save the changes to the database.
 
+.. _storing-camera-calibration:
+
+Storing camera calibration
+--------------------------
+
+All |Dataset| instances have
+:meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>` and
+:meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
+properties that you can use to store camera calibration parameters for
+multi-sensor datasets.
+
+The :meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>`
+property is a dictionary mapping sensor/camera names to |CameraIntrinsics|
+instances that define the internal parameters of each camera:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Store intrinsics for a stereo camera setup (1080p parameters)
+    dataset.camera_intrinsics = {
+        "left": fo.PinholeCameraIntrinsics(fx=1100, fy=1100, cx=960, cy=540),
+        "right": fo.PinholeCameraIntrinsics(fx=1100, fy=1100, cx=960, cy=540),
+    }
+    dataset.save()
+
+The :meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
+property is a dictionary mapping frame pairs to |SensorExtrinsics| instances
+that define the 6-DOF rigid transformations between coordinate frames. Keys
+should be formatted as ``"source_frame::target_frame"`` or simply
+``"source_frame"`` (which implies ``"world"`` as the target):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Store sensor mounting positions relative to the vehicle center ("ego")
+    dataset.sensor_extrinsics = {
+        # Left camera: 1.5m forward, 0.5m left, 1.2m up
+        "left::ego": fo.SensorExtrinsics(
+            translation=[1.5, 0.5, 1.2],
+            quaternion=[0, 0, 0, 1],
+            source_frame="left",
+            target_frame="ego",
+        ),
+        # Right camera: 1.5m forward, 0.5m right, 1.2m up
+        "right::ego": fo.SensorExtrinsics(
+            translation=[1.5, -0.5, 1.2],
+            quaternion=[0, 0, 0, 1],
+            source_frame="right",
+            target_frame="ego",
+        ),
+        # Lidar: centered, 2.0m up (roof-mounted)
+        "lidar::ego": fo.SensorExtrinsics(
+            translation=[0.0, 0.0, 2.0],
+            quaternion=[0, 0, 0, 1],
+            source_frame="lidar",
+            target_frame="ego",
+        ),
+    }
+    dataset.save()
+
+.. note::
+
+    See :ref:`this section <camera-intrinsics-extrinsics>` for more information
+    about creating and using camera intrinsics and extrinsics.
+
+.. note::
+
+    You must call
+    :meth:`dataset.save() <fiftyone.core.dataset.Dataset.save>` after updating
+    the dataset's
+    :meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>`
+    and
+    :meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
+    properties in-place to save the changes to the database.
+
 Deleting a dataset
 ------------------
 
@@ -5677,6 +5759,254 @@ Point cloud samples may contain any type and number of custom fields, including
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`,
 which are natively visualizable by the App's
 :ref:`3D visualizer <app-3d-visualizer>`.
+
+.. _camera-intrinsics-extrinsics:
+
+Camera intrinsics and extrinsics
+________________________________
+
+FiftyOne provides support for storing and working with camera intrinsic and
+extrinsic parameters, which are essential for 3D computer vision tasks such as
+multi-sensor fusion, depth estimation, and 3D reconstruction.
+
+.. note::
+
+    See :ref:`storing camera calibration <storing-camera-calibration>` for
+    information about storing intrinsics and extrinsics at the dataset level.
+
+.. _camera-intrinsics:
+
+Camera intrinsics
+-----------------
+
+Camera intrinsics describe the internal parameters of a camera, including focal
+length, principal point, and lens distortion. FiftyOne provides several
+|CameraIntrinsics| subclasses for different camera models:
+
+-   |PinholeCameraIntrinsics|: Simple pinhole camera model with no distortion
+-   |OpenCVCameraIntrinsics|: Brown-Conrady distortion model with radial and
+    tangential coefficients (up to 8 parameters)
+-   |OpenCVFisheyeCameraIntrinsics|: Fisheye equidistant projection model
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Create OpenCV camera intrinsics with distortion
+    intrinsics = fo.OpenCVCameraIntrinsics(
+        fx=1000.0,  # focal length x (pixels)
+        fy=1000.0,  # focal length y (pixels)
+        cx=960.0,   # principal point x
+        cy=540.0,   # principal point y
+        k1=-0.1,    # radial distortion coefficient
+        k2=0.05,    # radial distortion coefficient
+        p1=0.001,   # tangential distortion coefficient
+        p2=-0.001,  # tangential distortion coefficient
+    )
+
+    # Access the 3x3 intrinsic matrix
+    K = intrinsics.intrinsic_matrix
+
+    # Create intrinsics from a matrix
+    import numpy as np
+
+    K = np.array([
+        [1200.0, 0.0, 640.0],
+        [0.0, 1200.0, 480.0],
+        [0.0, 0.0, 1.0]
+    ])
+    intrinsics = fo.PinholeCameraIntrinsics.from_matrix(K)
+
+.. _sensor-extrinsics:
+
+Sensor extrinsics
+-----------------
+
+The |SensorExtrinsics| class represents a 6-DOF rigid transformation between
+coordinate frames, defined by a translation vector and a rotation quaternion.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Create a camera-to-ego transformation
+    extrinsics = fo.SensorExtrinsics(
+        translation=[1.5, 0.0, 1.2],  # [tx, ty, tz]
+        quaternion=[0.0, 0.0, 0.0, 1.0],  # [qx, qy, qz, qw] (scalar-last)
+        source_frame="camera_front",
+        target_frame="ego",
+    )
+
+    # Access the 4x4 transformation matrix
+    T = extrinsics.extrinsic_matrix
+
+    # Get the 3x3 rotation matrix
+    R = extrinsics.rotation_matrix
+
+    # Compute the inverse transformation (ego -> camera_front)
+    inv_extrinsics = extrinsics.inverse()
+
+    # Compose transformations (A->B composed with B->C = A->C)
+    camera_to_world = camera_to_ego.compose(ego_to_world)
+
+You can also create extrinsics from a transformation matrix:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import fiftyone as fo
+
+    # 4x4 homogeneous transformation matrix
+    T = np.eye(4)
+    T[:3, 3] = [1.0, 2.0, 3.0]  # translation
+
+    extrinsics = fo.SensorExtrinsics.from_matrix(
+        T,
+        source_frame="camera",
+        target_frame="world",
+    )
+
+.. note::
+
+    |CameraExtrinsics| is an alias for |SensorExtrinsics|.
+
+.. _resolving-calibration:
+
+Resolving calibration
+---------------------
+
+When working with samples, you can resolve camera calibration parameters using
+the :meth:`resolve_intrinsics() <fiftyone.core.dataset.Dataset.resolve_intrinsics>`
+and :meth:`resolve_extrinsics() <fiftyone.core.dataset.Dataset.resolve_extrinsics>`
+methods. These methods implement a resolution chain that checks multiple
+sources in order of precedence.
+
+For intrinsics, the resolution order is:
+
+1.  Sample-level |CameraIntrinsics| field (inline value)
+2.  Sample-level |CameraIntrinsicsRef| field (reference to dataset-level)
+3.  Group slice name lookup in ``dataset.camera_intrinsics`` (for grouped
+    datasets)
+
+For extrinsics, use the ``source_frame`` and ``target_frame`` parameters to
+specify the desired transformation. The ``chain_via`` parameter enables
+composing transformations through intermediate frames (e.g., camera → ego →
+world).
+
+.. note::
+
+    For :ref:`grouped datasets <groups>`, the group slice name plays an
+    important role in resolution:
+
+    -   **Intrinsics**: When resolving intrinsics, if no sample-level value is
+        found, the current ``dataset.group_slice`` name is used to look up the
+        intrinsics in ``dataset.camera_intrinsics``
+    -   **Extrinsics**: When ``source_frame`` is not specified, it is
+        automatically inferred from the group slice name
+
+    This means you can store calibration keyed by slice name (e.g., ``"left"``,
+    ``"right"``) and resolution will automatically find the correct parameters
+    for the current slice.
+
+The following example demonstrates a typical autonomous vehicle workflow with
+static sensor calibration stored at the dataset level and dynamic ego pose
+stored at the sample level:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Store static intrinsics (1080p parameters)
+    dataset.camera_intrinsics = {
+        "left": fo.PinholeCameraIntrinsics(fx=1100, fy=1100, cx=960, cy=540),
+        "right": fo.PinholeCameraIntrinsics(fx=1100, fy=1100, cx=960, cy=540),
+    }
+
+    # Store static sensor mounting positions relative to vehicle center ("ego")
+    dataset.sensor_extrinsics = {
+        "left::ego": fo.SensorExtrinsics(
+            translation=[1.5, 0.5, 1.2],
+            quaternion=[0, 0, 0, 1],
+            source_frame="left",
+            target_frame="ego",
+        ),
+        "right::ego": fo.SensorExtrinsics(
+            translation=[1.5, -0.5, 1.2],
+            quaternion=[0, 0, 0, 1],
+            source_frame="right",
+            target_frame="ego",
+        ),
+    }
+    dataset.save()
+
+    # Focus on the left camera
+    dataset.group_slice = "left"
+    sample = dataset.first()
+
+    # Store dynamic ego pose at sample level (vehicle location in the world)
+    sample["ego_pose"] = fo.SensorExtrinsics(
+        translation=[100.0, 50.0, 0.0],
+        quaternion=[0, 0, 0, 1],
+        source_frame="ego",
+        target_frame="world",
+    )
+    sample.save()
+
+    # Resolve intrinsics (infers "left" from dataset.group_slice)
+    intrinsics = dataset.resolve_intrinsics(sample)
+
+    # Resolve full transform chain: left camera -> ego -> world
+    extrinsics = dataset.resolve_extrinsics(
+        sample,
+        source_frame="left",
+        target_frame="world",
+        chain_via=["ego"],
+    )
+
+.. _camera-projection:
+
+3D projection
+-------------
+
+The |CameraProjector| class provides utilities for projecting points between 3D
+world coordinates and 2D image coordinates.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    # Using intrinsics and extrinsics resolved from the previous example
+    projector = fo.CameraProjector(intrinsics, extrinsics)
+
+    # Project a world point onto the image
+    # A stop sign at world coordinates (110, 52, 2):
+    # 10m in front of car, 2m left, 2m high
+    world_point = [[110.0, 52.0, 2.0]]
+    pixel = projector.project(world_point)
+
+    print(pixel)  # [[x, y]] image coordinates
+
+You can also unproject 2D points back to 3D if you have depth information:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+    import fiftyone as fo
+
+    # Unproject pixel coordinates to 3D using known depth
+    pixels = np.array([[960.0, 540.0]])  # image center
+    depths = np.array([10.0])  # 10 meters away
+
+    points_3d = projector.unproject(pixels, depths)
 
 .. generic-datasets:
 

@@ -350,7 +350,7 @@ class TestSampleRoutes:
         )
 
     @pytest.mark.asyncio
-    async def test_sample_not_found(self, mutator, mock_request, dataset_id):
+    async def test_sample_not_found(self, mutator, mock_request, dataset):
         """Tests that a 404 HTTPException is raised for a non-existent
         sample."""
         bad_id = str(ObjectId())
@@ -365,7 +365,7 @@ class TestSampleRoutes:
         assert exc_info.value.status_code == 404
         assert (
             exc_info.value.detail
-            == f"Sample '{bad_id}' not found in dataset '{dataset_id}'"
+            == f"Sample '{bad_id}' not found in dataset '{dataset.name}'"
         )
 
     @pytest.mark.asyncio
@@ -888,7 +888,7 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
-    async def test_sample_not_found(self, mutator, mock_request, dataset_id):
+    async def test_sample_not_found(self, mutator, mock_request, dataset):
         """Tests that a 404 is raised for a non-existent sample."""
         bad_id = str(ObjectId())
         mock_request.path_params["sample_id"] = bad_id
@@ -901,7 +901,7 @@ class TestSampleFieldRoute:
         assert exc_info.value.status_code == 404
         assert (
             exc_info.value.detail
-            == f"Sample '{bad_id}' not found in dataset '{dataset_id}'"
+            == f"Sample '{bad_id}' not found in dataset '{dataset.name}'"
         )
 
     @pytest.mark.asyncio

@@ -191,6 +191,10 @@ export class MockRenderer2D {
     this.scale = scale;
   }
 
+  getViewportPosition(): { x: number; y: number } {
+    return { x: 0, y: 0 };
+  }
+
   cleanUp(): void {
     this.resetTickHandler();
     this.containers.clear();
