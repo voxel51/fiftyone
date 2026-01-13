@@ -457,15 +457,10 @@ class DelegatedOperationService(object):
         doc = self._repo.get(_id=doc_id)
         if doc is None:
             raise ValueError(f"No delegated operation with {doc_id=} found")
-        if not doc.rerunnable:
-            raise ValueError(f"Delegated operation {doc_id} is not rerunnable")
         if doc.parent_id:
-            parent_doc = self._repo.get(_id=doc.parent_id)
-            if parent_doc.run_state not in ExecutionRunState.TERMINAL_STATES:
-                raise ValueError(
-                    f"Cannot rerun delegated operation {doc_id} because its "
-                    f"parent operation {doc.parent_id} is not yet completed"
-                )
+            raise ValueError(
+                "Rerunning pipeline child operations is not supported in the SDK."
+            )
         return self._repo.queue_operation(**doc.__dict__)
 
     def get_queued_operations(self, operator=None, dataset_name=None):

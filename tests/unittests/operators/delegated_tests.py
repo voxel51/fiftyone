@@ -837,14 +837,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                     _ = self.svc.rerun_operation("abc123")
 
         mock_child_doc.rerunnable = True
-        mock_parent_doc = mock.MagicMock(spec=DelegatedOperationDocument)
-        mock_parent_doc.run_state = ExecutionRunState.RUNNING
-        # test parent DO not completed
-        with patch.object(
-            self.svc._repo,
-            "get",
-            side_effect=[mock_child_doc, mock_parent_doc],
-        ):
+        mock_child_doc.parent_id = ObjectId()
+        # test parent_id not supported
+        with patch.object(self.svc._repo, "get", side_effect=mock_child_doc):
             with patch.object(
                 self.svc._repo, "queue_operation", return_value=mock_child_doc
             ):
