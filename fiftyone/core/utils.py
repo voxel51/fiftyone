@@ -74,6 +74,37 @@ import numpy as np
 import pytz
 import xmltodict
 
+
+def numpy_to_python(obj):
+    """Recursively convert numpy types to Python native types.
+
+    This is necessary for MongoDB/BSON serialization which doesn't support
+    numpy types.
+
+    Args:
+        obj: object to convert (numpy types, dicts, lists, or primitives)
+
+    Returns:
+        converted object with Python native types
+
+    Note:
+        Tuples are converted to lists for JSON/BSON compatibility, as these
+        formats do not distinguish between tuples and lists.
+    """
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, dict):
+        return {k: numpy_to_python(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [numpy_to_python(item) for item in obj]
+    else:
+        return obj
+
+
 import eta
 import eta.core.utils as etau
 
