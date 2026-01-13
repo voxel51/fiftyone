@@ -126,7 +126,6 @@ const useScan = (field: string) => {
         {
           callback: (result) => {
             if (result.result) {
-              // Convert snake_case from Python to camelCase
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
@@ -162,7 +161,6 @@ const useValidate = (field: string) => {
               }
 
               if (!result.result.errors.length) {
-                // Store as camelCase in frontend state
                 setCurrent(parsed);
                 setIsValid(true);
               } else {
