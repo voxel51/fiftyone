@@ -12,6 +12,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Union
 
+from bson import json_util
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
@@ -234,8 +235,9 @@ def ensure_sample_field(sample: fo.Sample, field: str):
         field_path = ".".join(field_parts[: idx + 1])
         try:
             sample.get_field(field_path)
-        except Exception:
+        except Exception as e:
             # no information available to create the fields
+            logger.debug("Error getting field %s: %s", field_path, e)
             break
 
         try:
@@ -292,6 +294,7 @@ def save_sample(
         )
 
         if update_result.matched_count == 0:
+            logger.debug("If-Match condition failed for sample %s", sample.id)
             raise HTTPException(
                 status_code=412, detail="If-Match condition failed"
             )
@@ -302,9 +305,11 @@ def save_sample(
     # ETag
     try:
         sample.reload(hard=True)
-    except Exception:
+    except Exception as e:
         # best-effort; still return response
-        ...
+        logger.debug(
+            "Could not reload sample %s after save due to: %s", sample.id, e
+        )
 
     return generate_sample_etag(sample)
 
@@ -340,18 +345,19 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
             detail=f"Failed to parse patches due to: {err}",
         ) from err
 
-    errors = {}
+    errors = []
     for i, p in enumerate(patches):
         try:
             p.apply(target)
         except Exception as e:
-            logger.error("Error applying patch %s: %s", p, e)
-            errors[str(patch_list[i])] = str(e)
+            patch = str(patch_list[i])
+            logger.error("Error applying patch `%s`: %s", patch, e)
+            errors.append(f"Error applying patch `{patch}`: {e}")
 
     if errors:
         raise HTTPException(
             status_code=400,
-            detail=errors,
+            detail=json_util.dumps(errors),
         )
     return target
 
@@ -384,6 +390,11 @@ class Sample(HTTPEndpoint):
 
         if_last_modified_at = get_if_last_modified_at(request)
         if if_last_modified_at is None:
+            logger.debug(
+                "Invalid or missing If-Match header for sample %s in dataset %s",
+                sample_id,
+                dataset_id,
+            )
             raise HTTPException(
                 status_code=400, detail="Invalid If-Match header"
             )
@@ -468,6 +479,7 @@ class SampleField(HTTPEndpoint):
         try:
             field_list = sample.get_field(path)
         except Exception as err:
+            logger.debug('Field "%s" not found in sample %s', path, sample_id)
             raise HTTPException(
                 status_code=404,
                 detail=f"Field '{path}' not found in sample '{sample_id}'",
@@ -480,6 +492,9 @@ class SampleField(HTTPEndpoint):
 
         field = next((f for f in field_list if f.id == field_id), None)
         if field is None:
+            logger.debug(
+                "Field with id '%s' not found in field '%s'", field_id, path
+            )
             raise HTTPException(
                 status_code=404,
                 detail=(
