@@ -78,7 +78,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.21.4,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.15.1,<0.16",
+    "voxel51-eta>=0.15.2,<0.16",
 ]
 
 
