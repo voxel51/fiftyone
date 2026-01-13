@@ -299,7 +299,11 @@ class GroupCameraExtrinsics(HTTPEndpoint):
         sample = get_sample_from_dataset(dataset, sample_id)
 
         # Check if sample belongs to a group
-        group_info = sample.group
+        try:
+            group_info = sample.group
+        except AttributeError:
+            group_info = None
+
         if group_info is None:
             raise HTTPException(
                 status_code=400,
@@ -336,7 +340,10 @@ class GroupCameraExtrinsics(HTTPEndpoint):
         results = {}
         for slice_name in slices:
             try:
-                slice_sample = dataset.get_group(group_id, slice_name)
+                group_samples = dataset.get_group(
+                    group_id, group_slices=[slice_name]
+                )
+                slice_sample = group_samples.get(slice_name)
             except KeyError:
                 results[slice_name] = {
                     "error": f"Slice '{slice_name}' not found in group"
