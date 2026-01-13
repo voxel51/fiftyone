@@ -263,6 +263,115 @@ class BatchStaticTransforms(HTTPEndpoint):
         return utils.json.JSONResponse({"results": results})
 
 
+class GroupCameraExtrinsics(HTTPEndpoint):
+    """Group camera extrinsics endpoint.
+
+    Retrieves extrinsics for multiple slices belonging to a group.
+    """
+
+    async def get(self, request: Request) -> JSONResponse:
+        """Retrieves camera/sensor extrinsics for slices in a sample's group.
+
+        Args:
+            request: Starlette request with dataset_id and sample_id in path
+                params, and optional slices, source_frame, target_frame,
+                chain_via query params
+
+        Returns:
+            JSON response containing results dict mapping slice name to
+            extrinsics data, null, or error message
+        """
+        dataset_id = request.path_params["dataset_id"]
+        sample_id = request.path_params["sample_id"]
+
+        slices_param = request.query_params.get("slices")
+        source_frame = request.query_params.get("source_frame")
+        target_frame = request.query_params.get("target_frame")
+        chain_via_param = request.query_params.get("chain_via")
+
+        chain_via: Optional[List[str]] = None
+        if chain_via_param:
+            chain_via = [
+                f.strip() for f in chain_via_param.split(",") if f.strip()
+            ]
+
+        dataset = get_dataset(dataset_id)
+        sample = get_sample_from_dataset(dataset, sample_id)
+
+        # Check if sample belongs to a group
+        group_info = sample.group
+        if group_info is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sample '{sample_id}' does not belong to a group",
+            )
+
+        group_id = group_info.id
+
+        # Determine which slices to query
+        if slices_param:
+            slices = [s.strip() for s in slices_param.split(",") if s.strip()]
+        else:
+            slices = dataset.group_slices or []
+
+        if not slices:
+            raise HTTPException(
+                status_code=400,
+                detail="No slices available for this group",
+            )
+
+        logger.debug(
+            "Received GET request for group camera extrinsics for sample %s "
+            "in dataset %s (group_id=%s, slices=%s, source_frame=%s, "
+            "target_frame=%s, chain_via=%s)",
+            sample_id,
+            dataset_id,
+            group_id,
+            slices,
+            source_frame,
+            target_frame,
+            chain_via,
+        )
+
+        results = {}
+        for slice_name in slices:
+            try:
+                slice_sample = dataset.get_group(group_id, slice_name)
+            except KeyError:
+                results[slice_name] = {
+                    "error": f"Slice '{slice_name}' not found in group"
+                }
+                continue
+
+            if slice_sample is None:
+                results[slice_name] = {
+                    "error": f"Slice '{slice_name}' not found in group"
+                }
+                continue
+
+            try:
+                extrinsics = dataset.resolve_extrinsics(
+                    slice_sample,
+                    source_frame=source_frame,
+                    target_frame=target_frame,
+                    chain_via=chain_via,
+                )
+            except ValueError as err:
+                results[slice_name] = {"error": str(err)}
+                continue
+
+            if extrinsics is None:
+                results[slice_name] = {"extrinsics": None}
+            else:
+                results[slice_name] = {
+                    "extrinsics": utils.json.serialize(extrinsics)
+                }
+
+        return utils.json.JSONResponse(
+            {"group_id": group_id, "results": results}
+        )
+
+
 CameraRoutes = [
     (
         "/dataset/{dataset_id}/sample/{sample_id}/intrinsics",
@@ -271,6 +380,10 @@ CameraRoutes = [
     (
         "/dataset/{dataset_id}/sample/{sample_id}/static_transforms",
         StaticTransforms,
+    ),
+    (
+        "/dataset/{dataset_id}/sample/{sample_id}/group/extrinsics",
+        GroupCameraExtrinsics,
     ),
     (
         "/dataset/{dataset_id}/samples/intrinsics",
