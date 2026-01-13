@@ -456,10 +456,10 @@ class DelegatedOperationService(object):
         """
         doc = self._repo.get(_id=doc_id)
         if doc is None:
-            raise ValueError(f"No delegated operation with {doc_id=} found")
+            raise ValueError(f"No delegated operation with {doc_id} found")
         if not doc.rerunnable:
             raise ValueError(
-                f"Delegated operation {doc_id=} is not marked as rerunnable"
+                f"Delegated operation {doc_id} is not marked as rerunnable"
             )
         if doc.parent_id:
             raise ValueError(
