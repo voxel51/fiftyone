@@ -286,80 +286,16 @@ export class TimeElement extends BaseElement<AudioState> {
   }
 }
 
-export class WaveformElement extends BaseElement<
-  AudioState,
-  HTMLCanvasElement
-> {
-  private audioContext: AudioContext;
-  private audioBuffer: AudioBuffer;
-  private src: string;
-
-  createHTMLElement() {
-    const element = document.createElement("canvas");
-    element.classList.add(lookerLoader); // Reuse loader class for positioning or style?
-    // Actually needs to be canvas style
-    element.style.width = "100%";
-    element.style.height = "100%";
-    return element;
-  }
-
-  renderSelf({ config: { src } }: Readonly<AudioState>) {
-    if (this.src !== src) {
-      this.src = src;
-      this.loadAudio(src);
-    }
-    return this.element;
-  }
-
-  async loadAudio(url: string) {
-    if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-    }
-    try {
-      const response = await fetch(url);
-      const arrayBuffer = await response.arrayBuffer();
-      this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-      this.drawWaveform();
-    } catch (e) {
-      console.error("Error loading audio waveform", e);
-    }
-  }
-
-  drawWaveform() {
-    if (!this.audioBuffer || !this.element) return;
-
-    const canvas = this.element;
-    const ctx = canvas.getContext("2d");
-    const width = canvas.width;
-    const height = canvas.height;
-    const data = this.audioBuffer.getChannelData(0);
-    const step = Math.ceil(data.length / width);
-    const amp = height / 2;
-
-    ctx.fillStyle = "rgb(238, 238, 238)"; // Theme color?
-    ctx.clearRect(0, 0, width, height);
-
-    // Draw logic
-    for (let i = 0; i < width; i++) {
-      let min = 1.0;
-      let max = -1.0;
-      for (let j = 0; j < step; j++) {
-        const datum = data[i * step + j];
-        if (datum < min) min = datum;
-        if (datum > max) max = datum;
-      }
-      ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
-    }
-  }
-}
-
 export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   private src: string;
   private volume: number;
   private loop = false;
   private playbackRate = 1;
   private requestCallback: (callback: (time: number) => void) => void;
+  private audioContext: AudioContext;
+  private audioBuffer: AudioBuffer;
+
+  imageSource: HTMLCanvasElement;
 
   getEvents(): Events<AudioState> {
     return {
@@ -367,7 +303,11 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
         update({ error: true });
       },
       loadedmetadata: ({ update }) => {
-        update({ duration: this.element.duration, loaded: true });
+        update({
+          duration: this.element.duration,
+          loaded: true,
+          dimensions: [1024, 200],
+        });
       },
       play: ({ update, dispatchEvent }) => {
         const callback = (time: number) => {
@@ -390,13 +330,67 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
     this.element = document.createElement("audio");
     this.element.preload = "metadata";
 
+    this.imageSource = document.createElement("canvas");
+    this.imageSource.width = 1024;
+    this.imageSource.height = 200;
+
     this.update(({ config: { src } }) => {
       this.src = src;
       this.element.src = src;
+      this.loadWaveform(src);
       return {};
     });
 
     return this.element;
+  }
+
+  async loadWaveform(url: string) {
+    if (!this.audioContext) {
+      const AudioContext =
+        window.AudioContext ||
+        (
+          window as unknown as {
+            webkitAudioContext: typeof window.AudioContext;
+          }
+        ).webkitAudioContext;
+      this.audioContext = new AudioContext();
+    }
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+      this.drawWaveform();
+      this.update({});
+      this.element.dispatchEvent(new Event("waveform-loaded"));
+    } catch (e) {
+      console.error("Error loading audio waveform", e);
+    }
+  }
+
+  drawWaveform() {
+    if (!this.audioBuffer || !this.imageSource) return;
+
+    const canvas = this.imageSource;
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+    const data = this.audioBuffer.getChannelData(0);
+    const step = Math.ceil(data.length / width);
+    const amp = height / 2;
+
+    ctx.fillStyle = "rgb(238, 238, 238)";
+    ctx.clearRect(0, 0, width, height);
+
+    for (let i = 0; i < width; i++) {
+      let min = 1.0;
+      let max = -1.0;
+      for (let j = 0; j < step; j++) {
+        const datum = data[i * step + j];
+        if (datum < min) min = datum;
+        if (datum > max) max = datum;
+      }
+      ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+    }
   }
 
   renderSelf({

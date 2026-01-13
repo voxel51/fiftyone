@@ -210,12 +210,6 @@ export const getAudioElements: GetElements<any> = (params) => {
     node: common.LookerElement,
     children: [
       {
-        node: audio.AudioElement,
-      },
-      {
-        node: audio.WaveformElement,
-      },
-      {
         node: common.CanvasElement,
       },
       {
