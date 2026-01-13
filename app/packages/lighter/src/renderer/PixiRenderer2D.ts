@@ -693,7 +693,10 @@ export class PixiRenderer2D implements Renderer2D {
    * @returns Current scaling factor.
    */
   getScale(): number {
-    return this.viewport?.scaled ?? 1;
+    if (!this.viewport || this.viewport.destroyed) {
+      return 1;
+    }
+    return this.viewport.scaled;
   }
 
   /**
@@ -701,9 +704,12 @@ export class PixiRenderer2D implements Renderer2D {
    * @returns The viewport position { x, y }.
    */
   getViewportPosition(): { x: number; y: number } {
+    if (!this.viewport || this.viewport.destroyed) {
+      return { x: 0, y: 0 };
+    }
     return {
-      x: this.viewport?.x ?? 0,
-      y: this.viewport?.y ?? 0,
+      x: this.viewport.x,
+      y: this.viewport.y,
     };
   }
 
