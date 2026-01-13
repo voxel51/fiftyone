@@ -35,8 +35,10 @@ export const useCommandContext = (
       );
     }
     if (context) {
+      existed.current = true;
       return context;
     }
+    existed.current = true;
     return CommandContextManager.instance().getActiveContext();
   }, [context, inheritCurrent]);
 

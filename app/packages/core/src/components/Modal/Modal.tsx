@@ -7,7 +7,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -21,9 +21,7 @@ import { modalContext } from "./modal-context";
 import {
   KnownCommands,
   KnownContexts,
-  useCommand,
-  useCommandContext,
-  useKeyBinding,
+  useKeyBindings,
 } from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
@@ -67,15 +65,6 @@ const ModalCommandHandlersRegistration = () => {
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const pointerDownTargetRef = useRef<EventTarget | null>(null);
-  const {
-    context: cmdContext,
-    activate,
-    deactivate,
-  } = useCommandContext(KnownContexts.Modal, false);
-  useEffect(() => {
-    activate();
-    return deactivate;
-  }, [activate, deactivate]);
 
   const clearModal = fos.useClearModal();
 
@@ -154,18 +143,6 @@ const Modal = () => {
     []
   );
 
-  useCommand(
-    cmdContext,
-    KnownCommands.ModalSelect,
-    selectCallback,
-    () => {
-      return true;
-    },
-    "Select",
-    "Select Sample"
-  );
-  useKeyBinding(KnownCommands.ModalSelect, "x", cmdContext);
-
   const sidebarFn = useRecoilCallback(
     ({ set }) =>
       async () => {
@@ -173,17 +150,6 @@ const Modal = () => {
       },
     []
   );
-  useCommand(
-    cmdContext,
-    KnownCommands.ModalSidebarToggle,
-    sidebarFn,
-    () => {
-      return true;
-    },
-    "Sidebar",
-    "Show/Hide the sidebar"
-  );
-  useKeyBinding(KnownCommands.ModalSidebarToggle, "s", cmdContext);
 
   const fullscreenFn = useRecoilCallback(
     ({ set }) =>
@@ -192,17 +158,6 @@ const Modal = () => {
       },
     []
   );
-  useCommand(
-    cmdContext,
-    KnownCommands.ModalFullScreenToggle,
-    fullscreenFn,
-    () => {
-      return true;
-    },
-    "Fullscreen",
-    "Enter/Exit full screen mode"
-  );
-  useKeyBinding(KnownCommands.ModalFullScreenToggle, "f", cmdContext);
 
   const closeFn = useRecoilCallback(
     ({ snapshot }) =>
@@ -220,19 +175,36 @@ const Modal = () => {
       },
     []
   );
-
-  useCommand(
-    cmdContext,
-    KnownCommands.ModalClose,
-    closeFn,
-    () => {
-      return true;
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalClose,
+      sequence: "Escape",
+      handler: closeFn,
+      label: "Close",
+      description: "Close the window."
     },
-    "Close",
-    "Close the window."
-  );
-  useKeyBinding(KnownCommands.ModalClose, "Escape", cmdContext);
-
+    {
+      commandId: KnownCommands.ModalFullScreenToggle,
+      sequence: "f",
+      handler: fullscreenFn,
+      label: "Fullscreen",
+      description: "Enter/Exit full screen mode"
+    },
+    {
+      commandId: KnownCommands.ModalSidebarToggle,
+      sequence: "s",
+      handler: sidebarFn,
+      label: "Sidebar",
+      description: "Show/Hide the sidebar"
+    },
+    {
+      commandId: KnownCommands.ModalSelect,
+      sequence: "x",
+      handler: selectCallback,
+      label: "Select",
+      description: "Select Sample"
+    }
+  ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
   const { closePanels } = useLookerHelpers();

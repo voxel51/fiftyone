@@ -4,7 +4,7 @@
 
 import { Action } from "../actions";
 
-export type CommandFunction = () => Promise<Action | void | undefined>;
+export type CommandFunction = () => Promise<Action | void | undefined> | void;
 
 /**
  * Class to handle command style invocation.  It delegates
