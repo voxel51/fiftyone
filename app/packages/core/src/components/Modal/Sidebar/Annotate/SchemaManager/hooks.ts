@@ -119,6 +119,13 @@ export const useFullSchemaEditor = () => {
         setIsValidating(true);
         const parsed = JSON.parse(value);
 
+        // Validate parsed is an object (not null, array, etc.)
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          setErrors(["Invalid JSON: expected an object"]);
+          setIsValidating(false);
+          return;
+        }
+
         // Extract labelSchema from each field for validation
         const labelSchemas: Record<string, unknown> = {};
         for (const [field, data] of Object.entries(parsed)) {

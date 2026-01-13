@@ -56,7 +56,7 @@ const selectSchemas = (
 };
 
 // Master schemas atom
-export const schemas = atom<AnnotationSchemas | null>(null);
+export const schemas = atom<AnnotationSchemas>({});
 
 // Single schema accessor
 export const schema = atomFamily((path: string) =>

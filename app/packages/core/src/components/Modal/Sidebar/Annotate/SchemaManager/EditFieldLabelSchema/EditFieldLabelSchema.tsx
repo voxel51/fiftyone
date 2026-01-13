@@ -45,13 +45,31 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const handleToggleVisibility = useCallback(() => {
     const fieldSet = new Set([field]);
     if (isFieldVisible) {
-      // Move to hidden
+      // Move to hidden (optimistic update with rollback on error)
       removeFromActive(fieldSet);
-      deactivateFields.execute({ fields: [field] });
+      deactivateFields.execute(
+        { fields: [field] },
+        {
+          callback: (result) => {
+            if (result.error) {
+              addToActive(fieldSet); // rollback on failure
+            }
+          },
+        }
+      );
     } else {
-      // Move to active
+      // Move to active (optimistic update with rollback on error)
       addToActive(fieldSet);
-      activateFields.execute({ fields: [field] });
+      activateFields.execute(
+        { fields: [field] },
+        {
+          callback: (result) => {
+            if (result.error) {
+              removeFromActive(fieldSet); // rollback on failure
+            }
+          },
+        }
+      );
     }
   }, [
     field,
