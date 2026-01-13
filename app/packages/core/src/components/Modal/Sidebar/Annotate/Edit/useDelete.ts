@@ -54,8 +54,8 @@ export default function useDelete() {
 
       await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
-      removeOverlay(label.overlay.id);
       setter();
+      removeOverlay(label.overlay.id);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label}" successfully deleted.`,
@@ -63,6 +63,7 @@ export default function useDelete() {
       });
       exit();
     } catch (error) {
+      console.error(error);
       setSaving(false);
       setNotification({
         msg: `Label "${
