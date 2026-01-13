@@ -29,7 +29,6 @@ from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
-import fiftyone.core.camera as focam
 import fiftyone.core.annotation as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
@@ -53,6 +52,7 @@ fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
+focam = fou.lazy_import("fiftyone.core.camera")
 
 
 _SUMMARY_FIELD_KEY = "_summary_field"
