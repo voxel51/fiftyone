@@ -825,7 +825,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def test_rerun_child_do_fail(self, mock_get_operator):
         mock_child_doc = mock.MagicMock(spec=DelegatedOperationDocument)
-        mock_child_doc.parent_id = ObjectId()
         mock_child_doc.rerunnable = False
 
         # test non-rerunnable child DO
