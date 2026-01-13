@@ -144,7 +144,7 @@ def _parse_sample_ids(request: Request) -> List[str]:
     return sample_ids
 
 
-class BatchCameraIntrinsics(HTTPEndpoint):
+class BatchIntrinsics(HTTPEndpoint):
     """Batch camera intrinsics endpoint."""
 
     async def get(self, request: Request) -> JSONResponse:
@@ -263,7 +263,100 @@ class BatchStaticTransforms(HTTPEndpoint):
         return utils.json.JSONResponse({"results": results})
 
 
-class GroupCameraExtrinsics(HTTPEndpoint):
+class GroupIntrinsics(HTTPEndpoint):
+    """Group camera intrinsics endpoint.
+
+    Retrieves intrinsics for multiple slices belonging to a group.
+    """
+
+    async def get(self, request: Request) -> JSONResponse:
+        """Retrieves camera intrinsics for slices in a sample's group.
+
+        Args:
+            request: Starlette request with dataset_id and sample_id in path
+                params, and optional slices query param
+
+        Returns:
+            JSON response containing results dict mapping slice name to
+            intrinsics data, null, or error message
+        """
+        dataset_id = request.path_params["dataset_id"]
+        sample_id = request.path_params["sample_id"]
+
+        slices_param = request.query_params.get("slices")
+
+        dataset = get_dataset(dataset_id)
+        sample = get_sample_from_dataset(dataset, sample_id)
+
+        # Check if sample belongs to a group
+        try:
+            group_info = sample.group
+        except AttributeError:
+            group_info = None
+
+        if group_info is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sample '{sample_id}' does not belong to a group",
+            )
+
+        group_id = group_info.id
+
+        # Determine which slices to query
+        if slices_param:
+            slices = [s.strip() for s in slices_param.split(",") if s.strip()]
+        else:
+            slices = dataset.group_slices or []
+
+        if not slices:
+            raise HTTPException(
+                status_code=400,
+                detail="No slices available for this group",
+            )
+
+        logger.debug(
+            "Received GET request for group camera intrinsics for sample %s "
+            "in dataset %s (group_id=%s, slices=%s)",
+            sample_id,
+            dataset_id,
+            group_id,
+            slices,
+        )
+
+        results = {}
+        for slice_name in slices:
+            try:
+                group_samples = dataset.get_group(
+                    group_id, group_slices=[slice_name]
+                )
+                slice_sample = group_samples.get(slice_name)
+            except KeyError:
+                results[slice_name] = {
+                    "error": f"Slice '{slice_name}' not found in group"
+                }
+                continue
+
+            if slice_sample is None:
+                results[slice_name] = {
+                    "error": f"Slice '{slice_name}' not found in group"
+                }
+                continue
+
+            intrinsics = dataset.resolve_intrinsics(slice_sample)
+
+            if intrinsics is None:
+                results[slice_name] = {"intrinsics": None}
+            else:
+                results[slice_name] = {
+                    "intrinsics": utils.json.serialize(intrinsics)
+                }
+
+        return utils.json.JSONResponse(
+            {"group_id": group_id, "results": results}
+        )
+
+
+class GroupExtrinsics(HTTPEndpoint):
     """Group camera extrinsics endpoint.
 
     Retrieves extrinsics for multiple slices belonging to a group.
@@ -389,12 +482,16 @@ CameraRoutes = [
         StaticTransforms,
     ),
     (
+        "/dataset/{dataset_id}/sample/{sample_id}/group/intrinsics",
+        GroupIntrinsics,
+    ),
+    (
         "/dataset/{dataset_id}/sample/{sample_id}/group/extrinsics",
-        GroupCameraExtrinsics,
+        GroupExtrinsics,
     ),
     (
         "/dataset/{dataset_id}/samples/intrinsics",
-        BatchCameraIntrinsics,
+        BatchIntrinsics,
     ),
     (
         "/dataset/{dataset_id}/samples/static_transforms",
