@@ -44,7 +44,25 @@ export default function RJSF(props: RJSFProps) {
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (props.onChange) {
-      props.onChange(event.formData);
+      // Filter out empty arrays that weren't in the original data
+      // i.e. don't add `tags: []` if `tags` does not already exist on props.data
+      const filteredData = { ...event.formData };
+      if (
+        props.data &&
+        typeof props.data === "object" &&
+        typeof filteredData === "object"
+      ) {
+        for (const key in filteredData) {
+          if (
+            !(key in props.data) &&
+            Array.isArray(filteredData[key]) &&
+            filteredData[key].length === 0
+          ) {
+            delete filteredData[key];
+          }
+        }
+      }
+      props.onChange(filteredData);
     }
   };
 
