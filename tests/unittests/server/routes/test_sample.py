@@ -772,6 +772,121 @@ class TestSampleRoutes:
         assert "Failed to parse patches due to" in exc_info.value.detail
 
 
+class TestHandleJsonPatch:
+    """Tests for the handle_json_patch function"""
+
+    def test_successful_patches(self):
+        """Tests successful 'add', 'replace', 'replace nested', and 'remove' operations"""
+        target = fo.Detections(
+            detections=[
+                fo.Detection(label="cat", confidence=0.9),
+                fo.Detection(
+                    label="bird",
+                    confidence=0.8,
+                    bounding_box=[0.5, 0.5, 0.1, 0.1],
+                ),
+            ]
+        )
+        patch_list = [
+            {
+                "op": "add",
+                "path": "/detections/0/bounding_box",
+                "value": [0.1, 0.2, 0.3, 0.4],
+            },
+            {"op": "replace", "path": "/detections/0/label", "value": "dog"},
+            {
+                "op": "replace",
+                "path": "/detections/1/confidence",
+                "value": 0.95,
+            },
+            {"op": "remove", "path": "/detections/0/confidence"},
+        ]
+
+        result = fors.handle_json_patch(target, patch_list)
+
+        # Verify add operation
+        assert result.detections[0].bounding_box == [0.1, 0.2, 0.3, 0.4]
+        # Verify replace operation
+        assert result.detections[0].label == "dog"
+        # Verify replace nested operation
+        assert result.detections[1].confidence == 0.95
+        # Verify remove operation
+        assert result.detections[0].confidence is None
+
+    def test_invalid_patch_format(self):
+        """Tests that invalid patch format raises HTTPException with proper detail"""
+        target = fo.Detection(label="cat")
+        # Missing 'op' field
+        patch_list = [{"path": "/label", "value": "dog"}]
+
+        with pytest.raises(HTTPException) as exc_info:
+            fors.handle_json_patch(target, patch_list)
+
+        assert exc_info.value.status_code == 400
+        assert "Failed to parse patches due to" in exc_info.value.detail
+
+    def test_patch_error_detail_is_list(self):
+        """Tests that patch errors return detail as a parsable list"""
+        target = fo.Detection(label="cat")
+        patch_list = [
+            {"op": "replace", "path": "/nonexistent_field", "value": "dog"}
+        ]
+
+        with pytest.raises(HTTPException) as exc_info:
+            fors.handle_json_patch(target, patch_list)
+
+        assert exc_info.value.status_code == 400
+
+        # Errors should be passed as a serialized list
+        assert isinstance(exc_info.value.detail, str)
+        err_detail = json.loads(exc_info.value.detail)
+        assert isinstance(err_detail, list)
+        assert len(err_detail) == 1
+        # The error message should contain the patch and field name
+        err_msg = err_detail[0]
+        assert "nonexistent_field" in err_msg
+        patch_str = str(patch_list[0])
+        assert patch_str in err_msg
+
+    def test_partial_success_all_errors_reported(self):
+        """Tests that when some patches succeed and some fail, all errors are reported"""
+        target = fo.Detection(label="cat", confidence=0.9)
+        patch_list = [
+            {
+                "op": "replace",
+                "path": "/label",
+                "value": "dog",
+            },  # Should succeed
+            {
+                "op": "replace",
+                "path": "/nonexistent",
+                "value": "fail",
+            },  # Should fail
+            {
+                "op": "add",
+                "path": "/bounding_box",
+                "value": [0.1, 0.2, 0.3, 0.4],
+            },  # Should succeed
+            {
+                "op": "replace",
+                "path": "/another_nonexistent",
+                "value": "fail2",
+            },  # Should fail
+        ]
+
+        with pytest.raises(HTTPException) as exc_info:
+            fors.handle_json_patch(target, patch_list)
+
+        assert exc_info.value.status_code == 400
+        err_detail = json.loads(exc_info.value.detail)
+        assert isinstance(err_detail, list)
+        assert len(err_detail) == 2
+
+        # Verify the successful operations were applied before the errors were raised
+        assert target.label == "dog"
+        assert target.bounding_box == [0.1, 0.2, 0.3, 0.4]
+
+
 class TestSampleFieldRoute:
     """Tests for sample field routes"""
 

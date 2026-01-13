@@ -294,7 +294,13 @@ def save_sample(
         )
 
         if update_result.matched_count == 0:
-            logger.debug("If-Match condition failed for sample %s", sample.id)
+            logger.debug(
+                "If-Match condition failed for sample %s: expected %s",
+                sample.id,
+                if_last_modified_at.isoformat()
+                if if_last_modified_at
+                else None,
+            )
             raise HTTPException(
                 status_code=412, detail="If-Match condition failed"
             )
@@ -350,9 +356,9 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         try:
             p.apply(target)
         except Exception as e:
-            patch = str(patch_list[i])
-            logger.error("Error applying patch `%s`: %s", patch, e)
-            errors.append(f"Error applying patch `{patch}`: {e}")
+            patch_str = str(patch_list[i])
+            logger.error("Error applying patch `%s`: %s", patch_str, e)
+            errors.append(f"Error applying patch `{patch_str}`: {e}")
 
     if errors:
         raise HTTPException(
