@@ -1953,7 +1953,13 @@ class LoaderView(View):
         placeholder_view=None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(
+            operator=operator,
+            params=params,
+            label=label,
+            placeholder_view=placeholder_view,
+            **kwargs,
+        )
         self.operator = operator
         self.params = params
         self.placeholder_view = placeholder_view
