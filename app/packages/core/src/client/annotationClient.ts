@@ -59,16 +59,12 @@ const handleErrorResponse = async (response: Response) => {
       }
     } catch (err) {
       // doesn't look like a list of errors
-      console.error("unparsable error:", err);
     }
     if (errorResponse?.errors) {
-      console.error("Patch application errors:", errorResponse.errors);
       throw new PatchApplicationError(errorResponse.errors.join(", "));
     }
 
-    throw new MalformedRequestError(
-      "Unexpected error response. See console for details."
-    );
+    throw new MalformedRequestError();
   } else if (response.status === 404) {
     throw new NotFoundError({ path: "sample" });
   }

@@ -67,7 +67,7 @@ export default function useSave() {
       setNotification({
         msg: `Label "${
           label.data.label ?? "Label"
-        }" not saved successfully. See console for details and try again.`,
+        }" not saved successfully. Try again.`,
         variant: "error",
       });
     }

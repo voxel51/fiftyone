@@ -63,12 +63,11 @@ export default function useDelete() {
       });
       exit();
     } catch (error) {
-      console.log("Error deleting label:", error);
       setSaving(false);
       setNotification({
         msg: `Label "${
           label.data.label ?? "Label"
-        }" not successfully deleted. "${error}.`,
+        }" not successfully deleted. Try again.`,
         variant: "error",
       });
     }
