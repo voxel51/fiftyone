@@ -16,14 +16,16 @@ import {
   Tooltip,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import { fieldAttributeCount, fieldType, labelSchemaData } from "../state";
+import { labelSchemaData } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import {
   currentField,
-  fieldHasSchema,
   fieldIsReadOnly,
+  hiddenFieldAttrCounts,
+  hiddenFieldHasSchemaStates,
+  hiddenFieldTypes,
   selectedHiddenFields,
   sortedInactivePaths,
 } from "./state";
@@ -66,38 +68,10 @@ const HiddenFieldsSection = () => {
   const [expanded, setExpanded] = useState(true);
   const [, setSelected] = useAtom(selectedHiddenFields);
 
-  // Batch field data fetching
-  const fieldTypes = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]))
-        ),
-      [fields]
-    )
-  );
-
-  const fieldAttrCounts = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(
-            fields.map((f) => [f, get(fieldAttributeCount(f))])
-          )
-        ),
-      [fields]
-    )
-  );
-
-  const fieldHasSchemaStates = useAtomValue(
-    useMemo(
-      () =>
-        atom((get) =>
-          Object.fromEntries(fields.map((f) => [f, get(fieldHasSchema(f))]))
-        ),
-      [fields]
-    )
-  );
+  // Use batched selectors from state
+  const fieldTypes = useAtomValue(hiddenFieldTypes);
+  const fieldAttrCounts = useAtomValue(hiddenFieldAttrCounts);
+  const fieldHasSchemaStates = useAtomValue(hiddenFieldHasSchemaStates);
 
   const listItems = useMemo(
     () =>
@@ -123,12 +97,9 @@ const HiddenFieldsSection = () => {
     [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates]
   );
 
-  const handleSelected = useCallback(
-    (selectedIds: string[]) => {
-      setSelected(new Set(selectedIds));
-    },
-    [setSelected]
-  );
+  const handleSelected = useCallback((selectedIds: string[]) => {
+    setSelected(new Set(selectedIds));
+  }, []);
 
   if (!fields.length) {
     return null;
@@ -138,7 +109,7 @@ const HiddenFieldsSection = () => {
     <>
       <GUISectionHeader>
         <CollapsibleHeader
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setExpanded((v) => !v)}
           style={{ padding: 0, flex: "none" }}
         >
           <Typography variant="body1" fontWeight={500}>

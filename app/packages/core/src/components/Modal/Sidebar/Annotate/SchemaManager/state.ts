@@ -7,6 +7,8 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import {
+  fieldAttributeCount,
+  fieldType,
   inactiveLabelSchemas,
   inactivePaths,
   labelSchemaData,
@@ -127,6 +129,39 @@ export const sortedInactivePaths = atom((get) => {
   }
 
   return [...withSchema, ...withoutSchema, ...systemReadOnly];
+});
+
+// =============================================================================
+// Batched Hidden Field Metadata Selectors
+// =============================================================================
+
+/**
+ * Batched field types for all hidden fields
+ * Returns a map of path -> fieldType
+ */
+export const hiddenFieldTypes = atom((get) => {
+  const fields = get(sortedInactivePaths);
+  return Object.fromEntries(fields.map((f) => [f, get(fieldType(f))]));
+});
+
+/**
+ * Batched attribute counts for all hidden fields
+ * Returns a map of path -> attributeCount
+ */
+export const hiddenFieldAttrCounts = atom((get) => {
+  const fields = get(sortedInactivePaths);
+  return Object.fromEntries(
+    fields.map((f) => [f, get(fieldAttributeCount(f))])
+  );
+});
+
+/**
+ * Batched hasSchema states for all hidden fields
+ * Returns a map of path -> hasSchema
+ */
+export const hiddenFieldHasSchemaStates = atom((get) => {
+  const fields = get(sortedInactivePaths);
+  return Object.fromEntries(fields.map((f) => [f, get(fieldHasSchema(f))]));
 });
 
 // =============================================================================

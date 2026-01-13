@@ -192,7 +192,8 @@ export const removeFromActiveSchemas = atom(
 
 export const deleteSchemas = atom(null, (_, set, paths: string[]) => {
   for (const path of paths) {
-    set(schemaConfig(path), undefined);
+    // Use schema setter with null to fully remove the entry from the master schemas atom
+    set(schema(path), null);
   }
 });
 

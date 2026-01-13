@@ -6,7 +6,7 @@
 
 import { Typography } from "@mui/material";
 import { ToggleSwitch, Size } from "@voxel51/voodo";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { activeSchemaTab, labelSchemasData } from "../state";
@@ -19,8 +19,6 @@ import { ContentArea } from "./styled";
 // =============================================================================
 // Re-exports for backwards compatibility
 // =============================================================================
-
-export { selectedActiveFields, selectedHiddenFields } from "./state";
 
 export { useActivateFields, useDeactivateFields } from "./hooks";
 
@@ -97,15 +95,19 @@ const JSONContent = () => {
 // =============================================================================
 
 const GUIView = () => {
-  const [activeTab, setActiveTab] = useAtom(activeSchemaTab);
-  const defaultIndex = TAB_IDS.indexOf(activeTab);
+  const activeTab = useAtomValue(activeSchemaTab);
+  const setActiveTab = useSetAtom(activeSchemaTab);
 
-  const handleTabChange = useCallback(
-    (index: number) => {
-      setActiveTab(TAB_IDS[index]);
-    },
-    [setActiveTab]
-  );
+  // Guard against invalid activeTab values (indexOf returns -1 for unknown values)
+  const tabIndex = TAB_IDS.indexOf(activeTab);
+  const defaultIndex = tabIndex === -1 ? 0 : tabIndex;
+
+  const handleTabChange = useCallback((index: number) => {
+    const tabId = TAB_IDS[index];
+    if (tabId) {
+      setActiveTab(tabId);
+    }
+  }, []);
 
   return (
     <Container style={{ marginBottom: "0.5rem" }}>
