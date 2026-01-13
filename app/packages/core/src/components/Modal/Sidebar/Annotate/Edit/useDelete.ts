@@ -63,7 +63,6 @@ export default function useDelete() {
       });
       exit();
     } catch (error) {
-      console.error(error);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label ?? "Label"
