@@ -6,14 +6,15 @@ import {
 } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
 import { useSetAtom } from "jotai";
-import { get } from "lodash";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { editing } from "./Edit";
-import { PRIMITIVE } from "./Edit/state";
+import { PRIMITIVE, primitivePath } from "./Edit/state";
+import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
+import { useSampleValue } from "./useSampleValue";
 
-const Container = animated(styled.div`
+const Container = animated(styled.div<{ $isReadOnly?: boolean }>`
   display: flex;
   justify-content: space-between;
   position: relative;
@@ -21,10 +22,13 @@ const Container = animated(styled.div`
   background: ${({ theme }) => theme.neutral.softBg};
   padding: 0.5rem;
 
-  &:hover,
-  &.hovering {
-    background: ${({ theme }) => theme.background.level1};
-  }
+  ${({ $isReadOnly, theme }) =>
+    !$isReadOnly &&
+    `
+    &:hover,
+    &.hovering {
+      background: ${theme.background.level1};
+    }`}
 `);
 
 const Header = styled.div`
@@ -47,7 +51,7 @@ const FormattedValue = styled.div`
   text-align: right;
 `;
 
-interface PathEntryProps {
+interface PrimitiveEntryProps {
   path: string;
 }
 
@@ -63,17 +67,13 @@ const UrlLink = ({ url }: UrlLinkProps) => {
   );
 };
 
-const PathEntry = ({ path }: PathEntryProps) => {
+const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const field = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const currentSample = useRecoilValue(fos.activeModalSidebarSample);
+  const value = useSampleValue(path);
   const timeZone = useRecoilValue(fos.timeZone);
   const setEditing = useSetAtom(editing);
-
-  // Get the value from the current sample using the path
-  const value = currentSample ? get(currentSample, path) : null;
-  console.log("field", field);
-  console.log("path", path);
-  console.log("value", value);
+  const setPrimitivePath = useSetAtom(primitivePath);
+  const { isReadOnly } = useReadOnly(path);
 
   const formatted = useMemo(() => {
     if (!value) return null;
@@ -90,8 +90,19 @@ const PathEntry = ({ path }: PathEntryProps) => {
     return result;
   }, [field.ftype, timeZone, value]);
 
+  const handleClick = () => {
+    if (isReadOnly) return;
+
+    setEditing(PRIMITIVE);
+    setPrimitivePath(path);
+  };
+
   return (
-    <Container onClick={() => setEditing(PRIMITIVE)}>
+    <Container
+      $isReadOnly={isReadOnly}
+      onClick={!isReadOnly ? handleClick : undefined}
+      style={{ cursor: isReadOnly ? "default" : "pointer" }}
+    >
       <Header>
         <div>{field.name || path}</div>
         <FormattedValue>{formatted}</FormattedValue>
@@ -100,4 +111,4 @@ const PathEntry = ({ path }: PathEntryProps) => {
   );
 };
 
-export default PathEntry;
+export default PrimitiveEntry;

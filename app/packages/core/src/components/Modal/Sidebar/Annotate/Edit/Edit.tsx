@@ -7,6 +7,7 @@ import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
 import Confirmation from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";
+import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";

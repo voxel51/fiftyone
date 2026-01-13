@@ -34,7 +34,7 @@ const getLabel = (value) => {
   return value;
 };
 
-const createInput = (
+export const createInput = (
   name: string,
   { ftype, multipleOf }: { ftype: string; multipleOf: number }
 ): SchemaType => {
@@ -61,7 +61,7 @@ const createInput = (
   return schema;
 };
 
-const createRadio = (name: string, choices) => {
+export const createRadio = (name: string, choices) => {
   return {
     type: "string",
     view: {
@@ -76,7 +76,7 @@ const createRadio = (name: string, choices) => {
   };
 };
 
-const createTags = (name: string, choices: string[]) => {
+export const createTags = (name: string, choices: string[]) => {
   return {
     type: "array",
     view: {
@@ -94,7 +94,7 @@ const createTags = (name: string, choices: string[]) => {
   };
 };
 
-const createSelect = (name: string, choices: string[]) => {
+export const createSelect = (name: string, choices: string[]) => {
   return {
     type: "string",
     view: {

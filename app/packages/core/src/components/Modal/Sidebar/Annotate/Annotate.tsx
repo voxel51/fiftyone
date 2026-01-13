@@ -11,7 +11,7 @@ import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
-import PathEntry from "./PathEntry";
+import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
 import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
@@ -89,7 +89,7 @@ const AnnotateSidebar = () => {
 
           if (entry.kind === EntryKind.PATH) {
             return {
-              children: <PathEntry path={entry.path} />,
+              children: <PrimitiveEntry path={entry.path} />,
               disabled: false,
             };
           }
