@@ -5,7 +5,7 @@
  */
 
 import { Typography } from "@mui/material";
-import { ToggleSwitch, Size } from "@voxel51/voodo";
+import { Size, ToggleSwitch } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
@@ -21,6 +21,7 @@ import { ContentArea } from "./styled";
 // =============================================================================
 
 export { useActivateFields, useDeactivateFields } from "./hooks";
+export { selectedActiveFields, selectedHiddenFields } from "./state";
 
 // =============================================================================
 // Tab IDs
