@@ -427,13 +427,23 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   }
 }
 
+class VolumeIconElement extends BaseElement<AudioState, HTMLDivElement> {
+  // ... similar to video
+  createHTMLElement() {
+    const div = document.createElement("div");
+    return div;
+  }
+  renderSelf() {
+    return this.element;
+  }
+}
+
 export const VOLUME = {
   node: VolumeIconElement, // Needs container if we want bar
   children: [],
 };
 
-class VolumeIconElement extends BaseElement<AudioState, HTMLDivElement> {
-  // ... similar to video
+class PlaybackRateIconElement extends BaseElement<AudioState, HTMLDivElement> {
   createHTMLElement() {
     const div = document.createElement("div");
     return div;
@@ -447,13 +457,3 @@ export const PLAYBACK_RATE = {
   node: PlaybackRateIconElement,
   children: [],
 };
-
-class PlaybackRateIconElement extends BaseElement<AudioState, HTMLDivElement> {
-  createHTMLElement() {
-    const div = document.createElement("div");
-    return div;
-  }
-  renderSelf() {
-    return this.element;
-  }
-}
