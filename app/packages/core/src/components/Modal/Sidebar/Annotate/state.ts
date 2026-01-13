@@ -78,7 +78,7 @@ export const schema = atomFamily((path: string) =>
 export const schemaConfig = atomFamily((path: string) =>
   atom(
     (get) => get(schema(path))?.config,
-    (get, set, config?: object) => {
+    (get, set, config?: AnnotationSchema["config"]) => {
       const next = get(schema(path)) ?? { active: false };
       set(schema(path), { ...next, config });
     }
