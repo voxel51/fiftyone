@@ -297,9 +297,7 @@ def save_sample(
             logger.debug(
                 "If-Match condition failed for sample %s: expected %s",
                 sample.id,
-                if_last_modified_at.isoformat()
-                if if_last_modified_at
-                else None,
+                if_last_modified_at,
             )
             raise HTTPException(
                 status_code=412, detail="If-Match condition failed"
