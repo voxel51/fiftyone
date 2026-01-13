@@ -490,6 +490,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 doc_type = fome.ImageMetadata
             elif media_type == fom.VIDEO:
                 doc_type = fome.VideoMetadata
+            elif media_type == fom.AUDIO:
+                doc_type = fome.AudioMetadata
             else:
                 doc_type = fome.Metadata
 
@@ -2532,8 +2534,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         elif _field is not None:
             raise ValueError(
-                f"Cannot generate a summary for field '{path}' of "
-                f"type {type(_field)}"
+                f"Cannot generate a summary for field '{path}' of type {type(_field)}"
             )
         else:
             raise ValueError(
@@ -3013,8 +3014,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     field.field = fof.Field()
                 else:
                     logger.warning(
-                        "Skipping dynamic list frame field '%s' with mixed "
-                        "types %s",
+                        "Skipping dynamic list frame field '%s' with mixed types %s",
                         path,
                         [type(f) for f in field.field],
                     )
@@ -9014,7 +9014,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._sample_doc_cls.from_dict(d)
         except Exception as e:
             logger.debug(
-                f'Error loading sample with ID {(d or {}).get("_id", "None")}. Error: {e}'
+                f"Error loading sample with ID {(d or {}).get('_id', 'None')}. Error: {e}"
             )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
@@ -9036,7 +9036,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return self._frame_doc_cls.from_dict(d)
         except Exception as e:
             logger.debug(
-                f'Error loading frame with ID {(d or {}).get("_id", "None")}. Error: {e}'
+                f"Error loading frame with ID {(d or {}).get('_id', 'None')}. Error: {e}"
             )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
@@ -10244,8 +10244,7 @@ def _merge_dataset_doc(
 
         if src_group_field is None:
             raise ValueError(
-                "Cannot merge samples with no group field into a grouped "
-                "dataset"
+                "Cannot merge samples with no group field into a grouped dataset"
             )
 
         if curr_doc.group_field is None:

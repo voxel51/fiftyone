@@ -5,6 +5,7 @@ Sample media utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.image as etai
 import eta.core.video as etav
 
@@ -12,10 +13,11 @@ import eta.core.video as etav
 # Valid media types
 VIDEO = "video"
 IMAGE = "image"
+AUDIO = "audio"
 POINT_CLOUD = "point-cloud"
 THREE_D = "3d"
 UNKNOWN = "unknown"
-MEDIA_TYPES = {IMAGE, VIDEO, POINT_CLOUD, THREE_D, UNKNOWN}
+MEDIA_TYPES = {IMAGE, VIDEO, AUDIO, POINT_CLOUD, THREE_D, UNKNOWN}
 
 # Special media types
 GROUP = "group"
@@ -36,6 +38,9 @@ def get_media_type(filepath):
 
     if etav.is_video_mime_type(filepath):
         return VIDEO
+
+    if _is_audio_mime_type(filepath):
+        return AUDIO
 
     if filepath.endswith(".pcd"):
         return POINT_CLOUD
@@ -76,3 +81,11 @@ class SelectGroupSlicesError(ValueError):
         ) % type_str
 
         super().__init__(message)
+
+
+def _is_audio_mime_type(filepath):
+    # @todo use eta.core.audio once available
+    import mimetypes
+
+    guess = mimetypes.guess_type(filepath)[0]
+    return guess and guess.startswith("audio/")

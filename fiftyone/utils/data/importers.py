@@ -5,6 +5,7 @@ Dataset importers.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import inspect
 import itertools
@@ -474,6 +475,20 @@ def _build_parse_sample_fcn(
                 tags=tags,
             )
 
+    elif isinstance(dataset_importer, UnlabeledAudioDatasetImporter):
+        # Unlabeled audio dataset
+
+        # The schema never needs expanding when importing unlabeled samples
+        expand_schema = False
+
+        def parse_sample(sample):
+            audio_path, audio_metadata = sample
+            return Sample(
+                filepath=audio_path,
+                metadata=audio_metadata,
+                tags=tags,
+            )
+
     elif isinstance(dataset_importer, UnlabeledMediaDatasetImporter):
         # Unlabeled media dataset
 
@@ -568,6 +583,35 @@ def _build_parse_sample_fcn(
 
             return sample
 
+    elif isinstance(dataset_importer, LabeledAudioDatasetImporter):
+        # Labeled audio dataset
+
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
+            label_key = lambda k: label_field + "_" + k
+        else:
+            label_field = "ground_truth"
+            label_key = lambda k: k
+
+        def parse_sample(sample):
+            audio_path, audio_metadata, label = sample
+
+            sample = Sample(
+                filepath=audio_path,
+                metadata=audio_metadata,
+                tags=tags,
+            )
+
+            if isinstance(label, dict):
+                sample.update_fields(
+                    {label_key(k): v for k, v in label.items()}
+                )
+            elif label is not None:
+                sample[label_field] = label
+
+            return sample
+
     else:
         raise ValueError(
             "Unsupported DatasetImporter type %s" % type(dataset_importer)
@@ -598,8 +642,7 @@ def build_dataset_importer(
     """
     if dataset_type is None:
         raise ValueError(
-            "You must provide a `dataset_type` in order to build a dataset "
-            "importer"
+            "You must provide a `dataset_type` in order to build a dataset importer"
         )
 
     if etau.is_str(dataset_type):
@@ -1271,6 +1314,52 @@ class UnlabeledVideoDatasetImporter(DatasetImporter):
         raise NotImplementedError("subclass must implement has_video_metadata")
 
 
+class UnlabeledAudioDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of unlabeled audio samples.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an ``(audio_path, audio_metadata)`` tuple, where
+
+            -   ``audio_path``: the path to the audio on disk
+            -   ``audio_metadata``: an
+                :class:`fiftyone.core.metadata.AudioMetadata` instances for the
+                audio, or ``None`` if :meth:`has_audio_metadata` is ``False``
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_audio_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each audio.
+        """
+        raise NotImplementedError("subclass must implement has_audio_metadata")
+
+
 class UnlabeledMediaDatasetImporter(DatasetImporter):
     """Interface for importing datasets of unlabeled media samples.
 
@@ -1488,6 +1577,80 @@ class LabeledVideoDatasetImporter(DatasetImporter):
             frame labels that it may return
         """
         raise NotImplementedError("subclass must implement frame_labels_cls")
+
+
+class LabeledAudioDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of labeled audio samples.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an  ``(audio_path, audio_metadata, labels)`` tuple, where
+
+            -   ``audio_path``: the path to the audio on disk
+            -   ``audio_metadata``: an
+                :class:`fiftyone.core.metadata.AudioMetadata` instances for the
+                audio, or ``None`` if :meth:`has_audio_metadata` is ``False``
+            -   ``labels``: sample-level labels for the audio, which can be any
+                of the following:
+
+                -   a :class:`fiftyone.core.labels.Label` instance
+                -   a dictionary mapping label fields to
+                    :class:`fiftyone.core.labels.Label` instances
+                -   ``None`` if the sample has no sample-level labels
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_audio_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each audio.
+        """
+        raise NotImplementedError("subclass must implement has_audio_metadata")
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer within the sample-level labels that it produces.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return sample-level labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single sample-level label
+            field of any of these types
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return sample-level label
+            dictionaries with keys and value-types specified by this
+            dictionary. Not all keys need be present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            sample-level labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
 
 class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
@@ -2335,6 +2498,87 @@ class ImageDirectoryImporter(UnlabeledImageDatasetImporter):
         filepaths = etau.list_files(dataset_dir, recursive=True)
         filepaths = [p for p in filepaths if etai.is_image_mime_type(p)]
         return len(filepaths)
+
+
+class AudioDirectoryImporter(UnlabeledAudioDatasetImporter):
+    """Importer for a directory of audio files.
+
+    See :ref:`this page <AudioDirectory-import>` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        recursive (True): whether to recursively traverse subdirectories
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.AudioMetadata` instances for each
+            audio file when importing
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        recursive=True,
+        compute_metadata=False,
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.recursive = recursive
+        self.compute_metadata = compute_metadata
+
+        self._filepaths = None
+        self._iter_filepaths = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_filepaths = iter(self._filepaths)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        filepath = next(self._iter_filepaths)
+
+        if self.compute_metadata:
+            metadata = fom.AudioMetadata.build_for(filepath)
+        else:
+            metadata = None
+
+        return filepath, metadata
+
+    @property
+    def has_dataset_info(self):
+        return False
+
+    @property
+    def has_audio_metadata(self):
+        return self.compute_metadata
+
+    def setup(self):
+        filepaths = etau.list_files(
+            self.dataset_dir, abs_paths=True, recursive=self.recursive
+        )
+        filepaths = self._preprocess_list(filepaths)
+
+        self._filepaths = filepaths
+        self._num_samples = len(filepaths)
+
+    @staticmethod
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(dataset_dir, recursive=True))
 
 
 class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):

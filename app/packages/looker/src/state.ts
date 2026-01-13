@@ -237,6 +237,10 @@ export interface FrameConfig extends BaseConfig {
 
 export type ImageConfig = BaseConfig;
 
+export interface AudioConfig extends BaseConfig {
+  frameRate?: number;
+}
+
 export interface VideoConfig extends BaseConfig {
   enableTimeline: boolean;
   frameRate: number;
@@ -275,6 +279,13 @@ export interface FrameOptions extends BaseOptions {
 
 export interface ImageOptions extends BaseOptions {
   zoom: boolean;
+}
+
+export interface AudioOptions extends BaseOptions {
+  autoplay: boolean;
+  loop: boolean;
+  playbackRate: number;
+  volume: number;
 }
 
 export interface VideoOptions extends BaseOptions {
@@ -344,6 +355,17 @@ export interface BaseState {
   error: boolean | number | AppError;
   destroyed: boolean;
   reloading: boolean;
+}
+
+export interface AudioState extends BaseState {
+  config: AudioConfig;
+  options: AudioOptions;
+  seeking: boolean;
+  playing: boolean;
+  duration: number | null;
+  buffering: boolean;
+  seekBarHovering: boolean;
+  SHORTCUTS: Readonly<ControlMap<AudioState>>;
 }
 
 export interface FrameState extends BaseState {
@@ -492,6 +514,14 @@ export const DEFAULT_FRAME_OPTIONS: FrameOptions = {
 export const DEFAULT_IMAGE_OPTIONS: ImageOptions = {
   ...DEFAULT_BASE_OPTIONS,
   zoom: false,
+};
+
+export const DEFAULT_AUDIO_OPTIONS: AudioOptions = {
+  ...DEFAULT_BASE_OPTIONS,
+  autoplay: false,
+  loop: false,
+  playbackRate: 1,
+  volume: 1,
 };
 
 export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
