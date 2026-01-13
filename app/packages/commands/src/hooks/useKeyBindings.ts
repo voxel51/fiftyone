@@ -12,6 +12,11 @@ export type KeyBinding = {
     enablement?: () => boolean;
 }
 
+/**
+ * Registers a set of key bindings in a given context.
+ * @param contextId The id of the context
+ * @param keyBindings The key bindings to register
+ */
 export const useKeyBindings = (contextId: string,
     keyBindings: KeyBinding[]) => {
     const { context, activate, deactivate } = useCommandContext(contextId);
