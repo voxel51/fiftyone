@@ -13,12 +13,14 @@ import {
   Orientation,
   Pill,
   RichList,
+  Select,
   Size,
   Spacing,
   Stack,
   Text,
   TextColor,
   TextVariant,
+  Toggle,
   Variant,
 } from "@voxel51/voodo";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
@@ -64,6 +66,42 @@ const getAttributeTypeLabel = (type: string): string => {
   return typeMap[type] || type;
 };
 
+// Attribute type options for the dropdown
+const ATTRIBUTE_TYPE_OPTIONS = [
+  { id: "string_list", data: { label: "String list" } },
+  { id: "text", data: { label: "Text" } },
+  { id: "number", data: { label: "Number" } },
+  { id: "select", data: { label: "Object selector" } },
+];
+
+// Component type options (only shown for string_list type)
+const COMPONENT_TYPE_OPTIONS = [
+  { id: "checkbox", data: { label: "Checkboxes", icon: IconName.Checkbox } },
+  { id: "dropdown", data: { label: "Dropdown", icon: IconName.Search } },
+  { id: "radio", data: { label: "Radio", icon: IconName.Radio } },
+];
+
+// Map internal type to display type
+const getInternalType = (
+  attributeType: string,
+  componentType: string
+): string => {
+  if (attributeType === "string_list") {
+    return componentType; // checkbox, dropdown, or radio
+  }
+  return attributeType; // text, number, select
+};
+
+// Map display type back to attribute type and component type
+const parseAttributeType = (
+  type: string
+): { attributeType: string; componentType: string } => {
+  if (["checkbox", "dropdown", "radio"].includes(type)) {
+    return { attributeType: "string_list", componentType: type };
+  }
+  return { attributeType: type, componentType: "checkbox" };
+};
+
 // Action button for edit
 const EditAction = ({ onEdit }: { onEdit: () => void }) => (
   <Clickable onClick={onEdit}>
@@ -71,7 +109,7 @@ const EditAction = ({ onEdit }: { onEdit: () => void }) => (
   </Clickable>
 );
 
-// Validation helper
+// Validation helper for class names
 const getClassNameError = (
   name: string,
   existingClasses: string[],
@@ -84,6 +122,421 @@ const getClassNameError = (
   );
   if (isDuplicate) return "Class name already exists";
   return null;
+};
+
+// Validation helper for attribute names
+const getAttributeNameError = (
+  name: string,
+  existingAttributes: string[],
+  currentAttribute?: string
+): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Attribute name cannot be empty";
+  const isDuplicate = existingAttributes.some(
+    (a) => a !== currentAttribute && a === trimmed
+  );
+  if (isDuplicate) return "Attribute name already exists";
+  return null;
+};
+
+// Form state for attribute editing
+interface AttributeFormState {
+  name: string;
+  attributeType: string;
+  componentType: string;
+  values: string[];
+  readOnly: boolean;
+}
+
+const createDefaultAttributeFormState = (): AttributeFormState => ({
+  name: "",
+  attributeType: "string_list",
+  componentType: "checkbox",
+  values: [],
+  readOnly: false,
+});
+
+const attributeConfigToFormState = (
+  name: string,
+  config: AttributeConfig
+): AttributeFormState => {
+  const { attributeType, componentType } = parseAttributeType(config.type);
+  return {
+    name,
+    attributeType,
+    componentType,
+    values: config.values || [],
+    readOnly: config.readOnly || false,
+  };
+};
+
+const formStateToAttributeConfig = (
+  state: AttributeFormState
+): AttributeConfig => ({
+  type: getInternalType(state.attributeType, state.componentType),
+  values: state.values.length > 0 ? state.values : undefined,
+  readOnly: state.readOnly || undefined,
+});
+
+// Values list component for attribute editing
+interface ValuesListProps {
+  values: string[];
+  onValuesChange: (values: string[]) => void;
+}
+
+const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
+  const [newValue, setNewValue] = useState("");
+
+  const handleAddValue = () => {
+    const trimmed = newValue.trim();
+    if (trimmed && !values.includes(trimmed)) {
+      onValuesChange([...values, trimmed]);
+      setNewValue("");
+    }
+  };
+
+  const handleDeleteValue = (index: number) => {
+    const newValues = values.filter((_, i) => i !== index);
+    onValuesChange(newValues);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddValue();
+    }
+  };
+
+  const valueListItems = values.map((value, index) => ({
+    id: `value-${index}`,
+    data: {
+      canSelect: false,
+      canDrag: true,
+      primaryContent: value,
+      actions: (
+        <Clickable
+          onClick={() => handleDeleteValue(index)}
+          style={{ padding: 4 }}
+        >
+          <Icon name={IconName.Delete} size={Size.Md} />
+        </Clickable>
+      ),
+    } as ListItemProps,
+  }));
+
+  const handleOrderChange = (
+    newItems: { id: string; data: ListItemProps }[]
+  ) => {
+    const newValues = newItems.map((item) => {
+      const index = parseInt(item.id.replace("value-", ""), 10);
+      return values[index];
+    });
+    onValuesChange(newValues);
+  };
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 8,
+        }}
+      >
+        <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+          Values
+        </Text>
+        <Clickable
+          onClick={handleAddValue}
+          style={{ display: "flex", alignItems: "center", gap: 4 }}
+        >
+          <Icon name={IconName.Add} size={Size.Sm} />
+          <Text variant={TextVariant.Sm}>Add value</Text>
+        </Clickable>
+      </div>
+      {values.length === 0 ? (
+        <div style={{ padding: "16px", textAlign: "center" }}>
+          <Input
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter a value and press Enter"
+          />
+          {values.length === 0 && !newValue && (
+            <Text
+              variant={TextVariant.Sm}
+              color={TextColor.Secondary}
+              style={{ marginTop: 8 }}
+            >
+              No values yet
+            </Text>
+          )}
+        </div>
+      ) : (
+        <>
+          <RichList
+            listItems={valueListItems}
+            draggable={true}
+            onOrderChange={handleOrderChange}
+          />
+          <div style={{ marginTop: 8 }}>
+            <Input
+              value={newValue}
+              onChange={(e) => setNewValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Add another value"
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+// Component type button for attribute form
+interface ComponentTypeButtonProps {
+  icon: IconName;
+  label: string;
+  isSelected: boolean;
+  onClick: () => void;
+}
+
+const ComponentTypeButton = ({
+  icon,
+  label,
+  isSelected,
+  onClick,
+}: ComponentTypeButtonProps) => (
+  <Clickable onClick={onClick}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "8px 12px",
+        borderRadius: 6,
+        border: isSelected
+          ? "1px solid var(--fo-palette-primary-main, #FF6D04)"
+          : "1px solid var(--fo-palette-divider, #333)",
+        backgroundColor: isSelected ? "rgba(255, 109, 4, 0.1)" : "transparent",
+        cursor: "pointer",
+        minWidth: 100,
+      }}
+    >
+      <Icon
+        name={icon}
+        size={Size.Md}
+        color={isSelected ? "#FF6D04" : undefined}
+      />
+      <Text variant={TextVariant.Md}>{label}</Text>
+    </div>
+  </Clickable>
+);
+
+// Attribute form content component (shared between add and edit)
+interface AttributeFormContentProps {
+  formState: AttributeFormState;
+  onFormStateChange: (state: AttributeFormState) => void;
+  existingAttributes: string[];
+  currentAttribute?: string;
+  nameError: string | null;
+}
+
+const AttributeFormContent = ({
+  formState,
+  onFormStateChange,
+  nameError,
+}: AttributeFormContentProps) => {
+  const showComponentType = formState.attributeType === "string_list";
+
+  return (
+    <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
+      {/* Name field */}
+      <div>
+        <Text
+          variant={TextVariant.Md}
+          color={TextColor.Secondary}
+          style={{ marginBottom: 8 }}
+        >
+          Name
+        </Text>
+        <Input
+          value={formState.name}
+          onChange={(e) =>
+            onFormStateChange({ ...formState, name: e.target.value })
+          }
+          placeholder="Attribute name"
+          error={!!nameError}
+          autoFocus
+        />
+        {nameError && (
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Destructive}
+            style={{ marginTop: 4 }}
+          >
+            {nameError}
+          </Text>
+        )}
+      </div>
+
+      {/* Attribute type dropdown */}
+      <div>
+        <Text
+          variant={TextVariant.Md}
+          color={TextColor.Secondary}
+          style={{ marginBottom: 8 }}
+        >
+          Attribute type
+        </Text>
+        <Select
+          options={ATTRIBUTE_TYPE_OPTIONS}
+          value={formState.attributeType}
+          exclusive
+          onChange={(value) => {
+            if (typeof value === "string") {
+              onFormStateChange({ ...formState, attributeType: value });
+            }
+          }}
+        />
+      </div>
+
+      {/* Component type selection (only for string_list) */}
+      {showComponentType && (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: 8 }}
+          >
+            Component type
+          </Text>
+          <div style={{ display: "flex", gap: 8 }}>
+            {COMPONENT_TYPE_OPTIONS.map((opt) => (
+              <ComponentTypeButton
+                key={opt.id}
+                icon={opt.data.icon}
+                label={opt.data.label}
+                isSelected={formState.componentType === opt.id}
+                onClick={() =>
+                  onFormStateChange({ ...formState, componentType: opt.id })
+                }
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Values list (only for string_list) */}
+      {showComponentType && (
+        <ValuesList
+          values={formState.values}
+          onValuesChange={(values) =>
+            onFormStateChange({ ...formState, values })
+          }
+        />
+      )}
+
+      {/* Read-only toggle */}
+      <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 4,
+          }}
+        >
+          <Text variant={TextVariant.Md}>Read-only</Text>
+          <Toggle
+            checked={formState.readOnly}
+            onChange={(checked) =>
+              onFormStateChange({ ...formState, readOnly: checked })
+            }
+            size={Size.Sm}
+          />
+        </div>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, annotators can view this attribute but can't edit its
+          values.
+        </Text>
+      </div>
+    </Stack>
+  );
+};
+
+// Add attribute card component using RichList item style
+interface AddAttributeCardProps {
+  existingAttributes: string[];
+  onSave: (name: string, config: AttributeConfig) => void;
+  onCancel: () => void;
+}
+
+const AddAttributeCard = ({
+  existingAttributes,
+  onSave,
+  onCancel,
+}: AddAttributeCardProps) => {
+  const [formState, setFormState] = useState<AttributeFormState>(
+    createDefaultAttributeFormState()
+  );
+  const [isDirty, setIsDirty] = useState(false);
+
+  const nameError = getAttributeNameError(formState.name, existingAttributes);
+  const showError = isDirty && nameError;
+  const canSave = !nameError;
+
+  const handleFormStateChange = (newState: AttributeFormState) => {
+    setFormState(newState);
+    if (!isDirty) setIsDirty(true);
+  };
+
+  const handleSave = () => {
+    if (canSave) {
+      onSave(formState.name.trim(), formStateToAttributeConfig(formState));
+    }
+  };
+
+  const listItem = {
+    id: "__new_attribute__",
+    data: {
+      canSelect: false,
+      canDrag: false,
+      primaryContent: "New attribute",
+      actions: (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Clickable onClick={onCancel} style={{ padding: 4 }}>
+            <Icon name={IconName.Delete} size={Size.Md} />
+          </Clickable>
+          <Clickable
+            onClick={handleSave}
+            style={{
+              padding: 4,
+              opacity: canSave ? 1 : 0.5,
+              cursor: canSave ? "pointer" : "not-allowed",
+            }}
+          >
+            <Icon name={IconName.Check} size={Size.Md} />
+          </Clickable>
+        </Stack>
+      ),
+      additionalContent: (
+        <AttributeFormContent
+          formState={formState}
+          onFormStateChange={handleFormStateChange}
+          existingAttributes={existingAttributes}
+          nameError={showError ? nameError : null}
+        />
+      ),
+    } as ListItemProps,
+  };
+
+  return (
+    <div style={{ marginBottom: "1rem" }}>
+      <RichList listItems={[listItem]} draggable={false} />
+    </div>
+  );
 };
 
 // Add class card component using RichList item style
@@ -407,11 +860,79 @@ export const AttributesSection = ({
   attributes,
   onAddAttribute,
   onEditAttribute,
+  onDeleteAttribute,
 }: {
   attributes: Record<string, AttributeConfig>;
-  onAddAttribute: () => void;
-  onEditAttribute: (name: string) => void;
+  onAddAttribute: (name: string, config: AttributeConfig) => void;
+  onEditAttribute: (
+    oldName: string,
+    newName: string,
+    config: AttributeConfig
+  ) => void;
+  onDeleteAttribute: (name: string) => void;
 }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingAttribute, setEditingAttribute] = useState<string | null>(null);
+  const [editingFormState, setEditingFormState] =
+    useState<AttributeFormState | null>(null);
+
+  const existingAttributeNames = useMemo(
+    () => Object.keys(attributes),
+    [attributes]
+  );
+
+  const editError =
+    editingAttribute && editingFormState
+      ? getAttributeNameError(
+          editingFormState.name,
+          existingAttributeNames,
+          editingAttribute
+        )
+      : null;
+
+  const handleAddSave = useCallback(
+    (name: string, config: AttributeConfig) => {
+      onAddAttribute(name, config);
+      setIsAdding(false);
+    },
+    [onAddAttribute]
+  );
+
+  const handleStartEdit = useCallback(
+    (name: string) => {
+      const config = attributes[name];
+      if (config) {
+        setEditingAttribute(name);
+        setEditingFormState(attributeConfigToFormState(name, config));
+      }
+    },
+    [attributes]
+  );
+
+  const handleEditSave = useCallback(() => {
+    if (!editingAttribute || !editingFormState || editError) return;
+    onEditAttribute(
+      editingAttribute,
+      editingFormState.name.trim(),
+      formStateToAttributeConfig(editingFormState)
+    );
+    setEditingAttribute(null);
+    setEditingFormState(null);
+  }, [editingAttribute, editingFormState, editError, onEditAttribute]);
+
+  const handleDeleteAttribute = useCallback(() => {
+    if (editingAttribute) {
+      onDeleteAttribute(editingAttribute);
+      setEditingAttribute(null);
+      setEditingFormState(null);
+    }
+  }, [editingAttribute, onDeleteAttribute]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingAttribute(null);
+    setEditingFormState(null);
+  }, []);
+
   const listItems = useMemo(() => {
     const attrEntries = Object.entries(attributes);
     return attrEntries.map(([name, config]) => {
@@ -422,6 +943,46 @@ export const AttributesSection = ({
         secondaryParts.push(
           `${optionCount} option${optionCount !== 1 ? "s" : ""}`
         );
+      }
+
+      if (name === editingAttribute && editingFormState) {
+        return {
+          id: name,
+          data: {
+            canSelect: false,
+            canDrag: false,
+            primaryContent: "Edit attribute",
+            actions: (
+              <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+                <Clickable
+                  onClick={handleDeleteAttribute}
+                  style={{ padding: 4 }}
+                >
+                  <Icon name={IconName.Delete} size={Size.Md} />
+                </Clickable>
+                <Clickable
+                  onClick={handleEditSave}
+                  style={{
+                    padding: 4,
+                    opacity: editError ? 0.5 : 1,
+                    cursor: editError ? "not-allowed" : "pointer",
+                  }}
+                >
+                  <Icon name={IconName.Check} size={Size.Md} />
+                </Clickable>
+              </Stack>
+            ),
+            additionalContent: (
+              <AttributeFormContent
+                formState={editingFormState}
+                onFormStateChange={setEditingFormState}
+                existingAttributes={existingAttributeNames}
+                currentAttribute={editingAttribute}
+                nameError={editError}
+              />
+            ),
+          } as ListItemProps,
+        };
       }
 
       return {
@@ -440,11 +1001,33 @@ export const AttributesSection = ({
               )}
             </>
           ),
-          actions: <EditAction onEdit={() => onEditAttribute(name)} />,
+          actions: (
+            <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+              <Clickable
+                onClick={() => {
+                  onDeleteAttribute(name);
+                }}
+                style={{ padding: 4 }}
+              >
+                <Icon name={IconName.Delete} size={Size.Md} />
+              </Clickable>
+              <EditAction onEdit={() => handleStartEdit(name)} />
+            </Stack>
+          ),
         } as ListItemProps,
       };
     });
-  }, [attributes, onEditAttribute]);
+  }, [
+    attributes,
+    editingAttribute,
+    editingFormState,
+    editError,
+    existingAttributeNames,
+    handleDeleteAttribute,
+    handleEditSave,
+    handleStartEdit,
+    onDeleteAttribute,
+  ]);
 
   return (
     <Section>
@@ -453,17 +1036,30 @@ export const AttributesSection = ({
         <Button
           size={Size.Md}
           variant={Variant.Secondary}
-          onClick={onAddAttribute}
+          onClick={() => setIsAdding(true)}
+          disabled={isAdding || editingAttribute !== null}
         >
           + Add attribute
         </Button>
       </EditSectionHeader>
-      {listItems.length === 0 ? (
+
+      {/* Add new attribute card */}
+      {isAdding && (
+        <AddAttributeCard
+          existingAttributes={existingAttributeNames}
+          onSave={handleAddSave}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
+
+      {listItems.length === 0 && !isAdding ? (
         <EmptyStateBox>
           <Text color={TextColor.Secondary}>No attributes defined</Text>
         </EmptyStateBox>
       ) : (
-        <RichList listItems={listItems} draggable={false} />
+        listItems.length > 0 && (
+          <RichList listItems={listItems} draggable={false} />
+        )
       )}
     </Section>
   );
@@ -518,6 +1114,39 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config, onConfigChange]
   );
 
+  const handleAddAttribute = useCallback(
+    (name: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = { [name]: attrConfig, ...attributes };
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, newName: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = { ...attributes };
+      // If name changed, remove old key
+      if (oldName !== newName) {
+        delete newAttributes[oldName];
+      }
+      newAttributes[newName] = attrConfig;
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newAttributes = { ...attributes };
+      delete newAttributes[name];
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
   if (scanning) {
     return (
       <ListContainer>
@@ -555,12 +1184,9 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
       />
       <AttributesSection
         attributes={attributes}
-        onAddAttribute={() => {
-          // TODO: Implement add attribute
-        }}
-        onEditAttribute={(_name) => {
-          // TODO: Implement edit attribute
-        }}
+        onAddAttribute={handleAddAttribute}
+        onEditAttribute={handleEditAttribute}
+        onDeleteAttribute={handleDeleteAttribute}
       />
     </ListContainer>
   );
