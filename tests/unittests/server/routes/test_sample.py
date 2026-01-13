@@ -1116,6 +1116,4 @@ class TestSampleFieldRoute:
 
         assert exc_info.value.status_code == 400
         assert str(patch_payload[0]) in exc_info.value.detail
-        assert (
-            "non_existent_attr" in exc_info.value.detail[str(patch_payload[0])]
-        )
+        assert "non_existent_attr" in exc_info.value.detail
