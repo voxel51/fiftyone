@@ -486,8 +486,11 @@ def _build_parse_sample_fcn(
             return Sample(
                 filepath=audio_path,
                 metadata=audio_metadata,
+                _media_type=fomm.AUDIO,
                 tags=tags,
             )
+            # print(f"DEBUG: Created sample {audio_path} with media_type={s.media_type}")
+            return s
 
     elif isinstance(dataset_importer, UnlabeledMediaDatasetImporter):
         # Unlabeled media dataset
@@ -600,6 +603,7 @@ def _build_parse_sample_fcn(
             sample = Sample(
                 filepath=audio_path,
                 metadata=audio_metadata,
+                _media_type=fomm.AUDIO,
                 tags=tags,
             )
 
@@ -2570,6 +2574,16 @@ class AudioDirectoryImporter(UnlabeledAudioDatasetImporter):
         filepaths = etau.list_files(
             self.dataset_dir, abs_paths=True, recursive=self.recursive
         )
+
+        # Filter for audio files
+        import mimetypes
+
+        filepaths = [
+            p
+            for p in filepaths
+            if (mimetypes.guess_type(p)[0] or "").startswith("audio/")
+        ]
+
         filepaths = self._preprocess_list(filepaths)
 
         self._filepaths = filepaths
@@ -2578,7 +2592,16 @@ class AudioDirectoryImporter(UnlabeledAudioDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(dataset_dir, recursive=True))
+        import mimetypes
+
+        filepaths = etau.list_files(dataset_dir, recursive=True)
+        return len(
+            [
+                p
+                for p in filepaths
+                if (mimetypes.guess_type(p)[0] or "").startswith("audio/")
+            ]
+        )
 
 
 class VideoDirectoryImporter(UnlabeledVideoDatasetImporter):
@@ -2728,13 +2751,22 @@ class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
         return False
 
     @property
-    def has_metadata(self):
+    def has_audio_metadata(self):
         return self.compute_metadata
 
     def setup(self):
         filepaths = etau.list_files(
             self.dataset_dir, abs_paths=True, recursive=self.recursive
         )
+
+        import mimetypes
+
+        filepaths = [
+            p
+            for p in filepaths
+            if (mimetypes.guess_type(p)[0] or "").startswith("audio/")
+        ]
+
         filepaths = self._preprocess_list(filepaths)
 
         self._filepaths = filepaths
@@ -2743,7 +2775,16 @@ class MediaDirectoryImporter(UnlabeledMediaDatasetImporter):
     @staticmethod
     def _get_num_samples(dataset_dir):
         # Used only by dataset zoo
-        return len(etau.list_files(dataset_dir, recursive=True))
+        import mimetypes
+
+        filepaths = etau.list_files(dataset_dir, recursive=True)
+        return len(
+            [
+                p
+                for p in filepaths
+                if (mimetypes.guess_type(p)[0] or "").startswith("audio/")
+            ]
+        )
 
 
 class FiftyOneImageClassificationDatasetImporter(

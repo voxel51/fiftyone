@@ -366,6 +366,7 @@ export interface AudioState extends BaseState {
   buffering: boolean;
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<AudioState>>;
+  audioBuffer?: AudioBuffer;
 }
 
 export interface FrameState extends BaseState {

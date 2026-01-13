@@ -22,7 +22,132 @@ import {
   lookerVolume,
 } from "./video.module.css"; // Reusing video styles for now
 
-// Reusing LoaderBar from video logic
+// --- DSP & Color Helpers ---
+
+// Viridis colormap approximation (simple 5-point gradient interpolation)
+const VIRIDIS_MAP = [
+  [68, 1, 84], // Dark purple
+  [59, 82, 139], // Blue
+  [33, 145, 140], // Teal
+  [94, 201, 98], // Green
+  [253, 231, 37], // Yellow
+];
+
+function getViridisColor(val: number): [number, number, number] {
+  const t = Math.max(0, Math.min(1, val));
+  const idx = t * (VIRIDIS_MAP.length - 1);
+  const i = Math.floor(idx);
+  const f = idx - i;
+  if (i >= VIRIDIS_MAP.length - 1)
+    return VIRIDIS_MAP[VIRIDIS_MAP.length - 1] as [number, number, number];
+
+  const c1 = VIRIDIS_MAP[i];
+  const c2 = VIRIDIS_MAP[i + 1];
+  return [
+    Math.round(c1[0] + f * (c2[0] - c1[0])),
+    Math.round(c1[1] + f * (c2[1] - c1[1])),
+    Math.round(c1[2] + f * (c2[2] - c1[2])),
+  ];
+}
+
+function fft(re: Float32Array, im: Float32Array) {
+  const n = re.length;
+  const jArr = new Uint32Array(n);
+  let m = 0;
+  for (let i = 0; i < n; i++) {
+    jArr[i] = m;
+    let k = n >> 1;
+    while (m & k) {
+      m &= ~k;
+      k >>= 1;
+    }
+    m |= k;
+  }
+
+  for (let i = 0; i < n; i++) {
+    const j = jArr[i];
+    if (i < j) {
+      const tr = re[i];
+      re[i] = re[j];
+      re[j] = tr;
+      const ti = im[i];
+      im[i] = im[j];
+      im[j] = ti;
+    }
+  }
+
+  for (let size = 2; size <= n; size *= 2) {
+    const halfsize = size / 2;
+    // Precompute sine/cosine is better but math.sin/cos is ok for 1024x1024 total ops
+    const angle = (-2 * Math.PI) / size;
+    const w_step_r = Math.cos(angle);
+    const w_step_i = Math.sin(angle);
+
+    for (let i = 0; i < n; i += size) {
+      let wr = 1.0;
+      let wi = 0.0;
+      for (let k = 0; k < halfsize; k++) {
+        const evenI = i + k;
+        const oddI = i + k + halfsize;
+
+        const tr = wr * re[oddI] - wi * im[oddI];
+        const ti = wr * im[oddI] + wi * re[oddI];
+
+        re[oddI] = re[evenI] - tr;
+        im[oddI] = im[evenI] - ti;
+        re[evenI] = re[evenI] + tr;
+        im[evenI] = im[evenI] + ti;
+
+        const wr_next = wr * w_step_r - wi * w_step_i;
+        wi = wr * w_step_i + wi * w_step_r;
+        wr = wr_next;
+      }
+    }
+  }
+}
+
+function createMelFilterbank(
+  sampleRate: number,
+  fftSize: number,
+  nMel: number,
+  fMin: number,
+  fMax: number
+): number[][] {
+  const nFftHalf = fftSize / 2 + 1;
+  const filters: number[][] = [];
+
+  const melMin = 1127 * Math.log(1 + fMin / 700);
+  const melMax = 1127 * Math.log(1 + fMax / 700);
+  const melPoints = new Float32Array(nMel + 2);
+
+  for (let i = 0; i < nMel + 2; i++) {
+    melPoints[i] = melMin + (i * (melMax - melMin)) / (nMel + 1);
+  }
+
+  const hzPoints = melPoints.map((m) => 700 * (Math.exp(m / 1127) - 1));
+  const binPoints = hzPoints.map((h) =>
+    Math.floor(((nFftHalf - 1) * h) / (sampleRate / 2))
+  );
+
+  for (let i = 0; i < nMel; i++) {
+    const filter = new Float32Array(nFftHalf).fill(0);
+    const start = binPoints[i];
+    const center = binPoints[i + 1];
+    const end = binPoints[i + 2];
+
+    for (let j = start; j < center; j++) {
+      filter[j] = (j - start) / (center - start);
+    }
+    for (let j = center; j < end; j++) {
+      filter[j] = (end - j) / (end - center);
+    }
+    filters.push(Array.from(filter));
+  }
+  return filters;
+}
+
+// --- End DSP Helpers ---
+
 export class LoaderBar extends BaseElement<AudioState> {
   private shown: boolean = undefined;
 
@@ -287,13 +412,13 @@ export class TimeElement extends BaseElement<AudioState> {
 }
 
 export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
-  private src: string;
-  private volume: number;
-  private loop = false;
-  private playbackRate = 1;
-  private requestCallback: (callback: (time: number) => void) => void;
-  private audioContext: AudioContext;
-  private audioBuffer: AudioBuffer;
+  protected src: string;
+  protected volume: number;
+  protected loop = false;
+  protected playbackRate = 1;
+  protected requestCallback: (callback: (time: number) => void) => void;
+  protected audioContext: AudioContext;
+  protected audioBuffer: AudioBuffer;
 
   imageSource: HTMLCanvasElement;
 
@@ -439,6 +564,175 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
     }
 
     return this.element;
+  }
+}
+
+export class SpectrogramElement extends AudioElement {
+  drawWaveform() {
+    if (!this.audioBuffer || !this.imageSource) return;
+
+    const canvas = this.imageSource;
+    const ctx = canvas.getContext("2d");
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Clear whole canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // --- Waveform (Top Half) ---
+    const waveHeight = height / 2;
+    const data = this.audioBuffer.getChannelData(0);
+
+    let maxAmp = 0;
+    for (let i = 0; i < data.length; i++) {
+      const val = Math.abs(data[i]);
+      if (val > maxAmp) maxAmp = val;
+    }
+    if (maxAmp === 0) maxAmp = 1;
+
+    const step = Math.ceil(data.length / width);
+    // Center of top half
+    const mid = waveHeight / 2;
+    const scale = (waveHeight * 0.9) / 2 / maxAmp;
+
+    ctx.fillStyle = "rgb(238, 238, 238)";
+
+    for (let i = 0; i < width; i++) {
+      let min = 1.0;
+      let max = -1.0;
+      for (let j = 0; j < step; j++) {
+        const index = i * step + j;
+        if (index < data.length) {
+          const datum = data[index];
+          if (datum < min) min = datum;
+          if (datum > max) max = datum;
+        }
+      }
+
+      if (min > max) {
+        min = 0;
+        max = 0;
+      }
+
+      const y = mid - max * scale;
+      const h = (max - min) * scale;
+      // Ensure height is at least 1px
+      ctx.fillRect(i, y, 1, Math.max(1, h));
+    }
+
+    // --- Spectrogram (Bottom Half) ---
+    const specHeight = height - waveHeight;
+    const specY = waveHeight;
+    const SAMPLE_RATE = this.audioBuffer.sampleRate;
+    const FFT_SIZE = 512;
+    const HOP_SIZE = Math.floor(data.length / width); // Match pixels
+    const MEL_BANDS = 80;
+
+    // Create Mel Filterbank (cached if possible, but here we generate)
+    const filters = createMelFilterbank(
+      SAMPLE_RATE,
+      FFT_SIZE,
+      MEL_BANDS,
+      0,
+      SAMPLE_RATE / 2
+    );
+
+    // Buffer for FFT
+    const re = new Float32Array(FFT_SIZE);
+    const im = new Float32Array(FFT_SIZE);
+    const window = new Float32Array(FFT_SIZE);
+    // Hann window
+    for (let i = 0; i < FFT_SIZE; i++) {
+      window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (FFT_SIZE - 1)));
+    }
+
+    // Compute spectrogram column by column
+    for (let x = 0; x < width; x++) {
+      const start = x * HOP_SIZE;
+      if (start + FFT_SIZE > data.length) break;
+
+      // Fill buffer with windowing
+      for (let i = 0; i < FFT_SIZE; i++) {
+        re[i] = data[start + i] * window[i];
+        im[i] = 0;
+      }
+
+      fft(re, im);
+
+      // Compute Magnitude Spectrum
+      const mag = new Float32Array(FFT_SIZE / 2 + 1);
+      for (let i = 0; i < mag.length; i++) {
+        mag[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
+      }
+
+      // Apply Mel Filterbank
+      const mels = new Float32Array(MEL_BANDS);
+      for (let i = 0; i < MEL_BANDS; i++) {
+        let sum = 0;
+        for (let j = 0; j < filters[i].length; j++) {
+          // filters[i] is length FFT_SIZE/2 + 1, maps to mag
+          // Wait, createMelFilterbank returns array of length FFT_SIZE/2+1?
+          // Yes.
+          if (filters[i][j] > 0) {
+            sum += mag[j] * filters[i][j];
+          }
+        }
+        mels[i] = sum;
+      }
+
+      // Log scale (dB)
+      for (let i = 0; i < MEL_BANDS; i++) {
+        mels[i] = 10 * Math.log10(mels[i] + 1e-10);
+      }
+
+      // Normalize (simple min/max for now, or fixed range)
+      // Audio visualization usually needs dynamic range compression
+      // We'll normalize per column? No, that looks bad.
+      // We normalize global? We don't have global stats yet.
+      // Let's assume -80dB to 0dB range roughly.
+      // Or just map min/max of this column for now to see something.
+      // Better: use fixed range [-100, 20] dB approximately.
+
+      const maxVal = Math.max(...mels);
+      const minVal = -80; // Floor
+
+      // Draw pixels
+      for (let i = 0; i < MEL_BANDS; i++) {
+        // Low freq at bottom of spectrogram area
+        // i=0 is low freq.
+        // Screen Y goes down. So i=0 should be at specY + specHeight
+        // i=MEL_BANDS-1 should be at specY.
+
+        let val = (mels[i] - minVal) / (maxVal - minVal + 20); // +20 for headroom
+        // Clamp
+        val = Math.max(0, Math.min(1, val));
+
+        const color = getViridisColor(val);
+        ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+
+        const y = specY + specHeight - 1 - (i / MEL_BANDS) * specHeight;
+        const h = specHeight / MEL_BANDS + 1; // +1 for overlap
+
+        ctx.fillRect(x, y, 1, h);
+      }
+    }
+
+    // X-Axis timestamps
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+
+    const duration = this.audioBuffer.duration;
+    // Draw every 1s
+    const pxPerSec = width / duration;
+    for (let t = 0; t < duration; t += 1) {
+      const x = t * pxPerSec;
+      ctx.fillText(`${t}s`, x, specY + specHeight - 12); // Near bottom
+
+      // Tick
+      ctx.fillRect(x, specY + specHeight - 4, 1, 4);
+    }
   }
 }
 
