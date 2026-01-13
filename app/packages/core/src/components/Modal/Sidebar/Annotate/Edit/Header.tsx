@@ -28,7 +28,7 @@ const Header = () => {
         <Round onClick={onExit}>
           <Back />
         </Round>
-        <Icon fill={color} />
+        {Icon && <Icon fill={color} />}
         <div>{type}</div>
       </ItemLeft>
       {!isAnnotatingPolyline && !isAnnotatingCuboid && (

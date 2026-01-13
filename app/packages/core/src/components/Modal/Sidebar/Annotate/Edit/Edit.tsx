@@ -7,7 +7,6 @@ import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
 import Confirmation from "../Confirmation";
 import useConfirmExit from "../Confirmation/useConfirmExit";
-import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
 import Footer from "./Footer";
 import Header from "./Header";
@@ -15,7 +14,8 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import { currentField, currentOverlay, currentType } from "./state";
+import PrimitiveEdit from "./PrimitiveEdit";
+import { currentField, currentOverlay, currentType, PRIMITIVE } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
 
@@ -87,10 +87,11 @@ export default function Edit() {
         <Header />
         <Content>
           <Id />
-          <Field />
+          {type !== PRIMITIVE && <Field />}
           {type === DETECTION && overlay && !is3dDetection && <Position />}
           {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
+          {type === PRIMITIVE && <PrimitiveEdit />}
           {field && <AnnotationSchema />}
         </Content>
         <Footer />

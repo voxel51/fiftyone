@@ -11,12 +11,15 @@ export const DETECTION = "detection";
 export const DETECTIONS = "detections";
 export const POLYLINE = "polyline";
 export const POLYLINES = "polylines";
+export const PRIMITIVE = "primitive";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
 export const editing = atomWithReset<
-  PrimitiveAtom<AnnotationLabel> | LabelType | null
+  PrimitiveAtom<AnnotationLabel> | LabelType | typeof PRIMITIVE | null
 >(null);
+
+export const primitivePath = atomWithReset<string | null>(null);
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);
@@ -28,12 +31,14 @@ export const hasChanges = atom((get) => {
 });
 const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
+const IS_PRIMITIVE = new Set([PRIMITIVE]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
 const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICIATION,
   [DETECTION]: IS_DETECTION,
   [POLYLINE]: IS_POLYLINE,
+  [PRIMITIVE]: IS_PRIMITIVE,
 };
 
 export type LabelType =

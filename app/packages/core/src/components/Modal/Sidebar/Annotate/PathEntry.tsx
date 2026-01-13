@@ -11,6 +11,7 @@ import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { editing } from "./Edit";
+import { PRIMITIVE } from "./Edit/state";
 
 const Container = animated(styled.div`
   display: flex;
@@ -90,7 +91,7 @@ const PathEntry = ({ path }: PathEntryProps) => {
   }, [field.ftype, timeZone, value]);
 
   return (
-    <Container onClick={() => setEditing(null)}>
+    <Container onClick={() => setEditing(PRIMITIVE)}>
       <Header>
         <div>{field.name || path}</div>
         <FormattedValue>{formatted}</FormattedValue>
