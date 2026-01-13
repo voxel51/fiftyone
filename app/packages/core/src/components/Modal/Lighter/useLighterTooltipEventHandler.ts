@@ -7,7 +7,7 @@ import {
   type LighterEventGroup,
   type Scene2D,
 } from "@fiftyone/lighter";
-import type { Hoverable } from "@fiftyone/lighter/src/types";
+import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import { useRecoilCallback } from "recoil";
@@ -43,7 +43,7 @@ export const useLighterTooltipEventHandler = (
         const overlay = scene?.getOverlay?.(id);
 
         if (!isUnhover) {
-          if (overlay && isHoverable(overlay)) {
+          if (overlay && TypeGuards.isHoverable(overlay)) {
             overlay.forceHoverEnter();
             const tooltipInfo = overlay.getTooltipInfo();
             if (tooltipInfo) {
@@ -64,7 +64,7 @@ export const useLighterTooltipEventHandler = (
         }
 
         if (isUnhover) {
-          if (overlay && isHoverable(overlay)) {
+          if (overlay && TypeGuards.isHoverable(overlay)) {
             overlay.forceHoverLeave();
           }
         }
@@ -153,10 +153,3 @@ export const useLighterTooltipEventHandler = (
     };
   }, [scene, handleDocumentMouseMove]);
 };
-
-/**
- * Type guard to check if an overlay implements the Hoverable interface.
- */
-function isHoverable(overlay: any): overlay is Hoverable {
-  return overlay && typeof overlay.getTooltipInfo === "function";
-}

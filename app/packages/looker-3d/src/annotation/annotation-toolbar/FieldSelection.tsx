@@ -1,27 +1,52 @@
 import { useTheme } from "@fiftyone/components";
 import {
-  activeSchemas,
+  activeLabelSchemas,
   fieldTypes,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
-import { currentActiveAnnotationField3dAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  currentActiveAnnotationField3dAtom,
+  current3dAnnotationModeAtom,
+} from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 
 export const FieldSelection = () => {
   const [currentActiveField, setCurrentActiveField] = useRecoilState(
     currentActiveAnnotationField3dAtom
   );
-  const activeSchema = useAtomValue(activeSchemas);
+  const activeSchema = useAtomValue(activeLabelSchemas);
   const fieldTypesVal = useAtomValue(fieldTypes);
+
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
   const schemaFields = useMemo(
     () =>
       Object.keys(activeSchema ?? {}).filter((field) => {
         const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
-        return thisFieldType === "polyline" || thisFieldType === "polylines";
+        if (isPolylineAnnotateActive) {
+          return thisFieldType === "polyline" || thisFieldType === "polylines";
+        }
+        if (isCuboidAnnotateActive) {
+          return (
+            thisFieldType === "detection" || thisFieldType === "detections"
+          );
+        }
+        return (
+          thisFieldType === "detection" ||
+          thisFieldType === "detections" ||
+          thisFieldType === "polyline" ||
+          thisFieldType === "polylines"
+        );
       }),
-    [activeSchema, fieldTypesVal]
+    [
+      activeSchema,
+      fieldTypesVal,
+      isPolylineAnnotateActive,
+      isCuboidAnnotateActive,
+    ]
   );
 
   const theme = useTheme() as any;

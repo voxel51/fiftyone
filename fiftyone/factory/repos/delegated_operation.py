@@ -6,12 +6,12 @@ FiftyOne delegated operation repository.
 |
 """
 
-import logging
 from datetime import datetime
+import logging
 from typing import Any, List, Optional, Union
 
-import pymongo
 from bson import ObjectId
+import pymongo
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
@@ -103,10 +103,23 @@ class DelegatedOperationRepo(object):
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
+        include_archived: bool = False,
         **kwargs: Any,
     ) -> List[DelegatedOperationDocument]:
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
+
+    def archive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Archive an operation."""
+        raise NotImplementedError(
+            "subclass must implement archive_operation()"
+        )
+
+    def unarchive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Unarchive an operation."""
+        raise NotImplementedError(
+            "subclass must implement unarchive_operation()"
+        )
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Delete an operation."""
@@ -221,6 +234,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
         op = DelegatedOperationDocument(is_remote=self.is_remote)
+        op.rerunnable = kwargs.get("rerunnable", True)
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
@@ -229,6 +243,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         op.delegation_target = kwargs.get("delegation_target", None)
         op.metadata = kwargs.get("metadata") or {}
         op.pipeline = kwargs.get("pipeline")
+        op.parent_id = kwargs.get("parent_id")
 
         context = None
         if isinstance(op.context, dict):
@@ -501,6 +516,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
+        include_archived: bool = False,
         **kwargs: Any,
     ) -> List[DelegatedOperationDocument]:
         query = {}
@@ -516,6 +532,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["delegation_target"] = delegation_target
         if dataset_id:
             query["dataset_id"] = dataset_id
+        if not include_archived:
+            query["archived"] = {"$ne": True}
 
         for arg in kwargs:
             query[arg] = kwargs[arg]
@@ -539,9 +557,28 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
+    def archive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"archived": True}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        if doc:
+            return DelegatedOperationDocument().from_pymongo(doc)
+
+    def unarchive_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"archived": False}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        if doc:
+            return DelegatedOperationDocument().from_pymongo(doc)
+
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
-            filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
+            filter={"_id": _id},
+            return_document=pymongo.ReturnDocument.BEFORE,
         )
         if doc:
             return DelegatedOperationDocument().from_pymongo(doc)

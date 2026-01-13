@@ -32,6 +32,7 @@ import type {
   CanonicalMedia,
   CoordinateSystem,
   DrawStyle,
+  Hoverable,
   Point,
   Rect,
   Spatial,
@@ -51,6 +52,13 @@ import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
+  isHoverable: (
+    body: Partial<BaseOverlay & Hoverable>
+  ): body is BaseOverlay & Hoverable =>
+    "getTooltipInfo" in body &&
+    "onHoverEnter" in body &&
+    "onHoverLeave" in body &&
+    "onHoverMove" in body,
   isSelectable: (
     body: BaseOverlay | InteractionHandler
   ): body is BaseOverlay & InteractionHandler & Selectable =>

@@ -55,6 +55,7 @@ class TestPipelineType(unittest.TestCase):
                     num_distributed_tasks=5,
                     params={"foo": "bar"},
                     always_run=True,
+                    rerunnable=False,
                 ),
             ]
         )
@@ -69,6 +70,7 @@ class TestPipelineType(unittest.TestCase):
                         "num_distributed_tasks": None,
                         "params": None,
                         "always_run": False,
+                        "rerunnable": None,
                     },
                     {
                         "operator_uri": "my/uri2",
@@ -76,6 +78,7 @@ class TestPipelineType(unittest.TestCase):
                         "num_distributed_tasks": 5,
                         "params": {"foo": "bar"},
                         "always_run": True,
+                        "rerunnable": False,
                     },
                 ],
             },

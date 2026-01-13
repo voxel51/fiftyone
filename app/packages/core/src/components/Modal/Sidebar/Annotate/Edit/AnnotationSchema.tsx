@@ -1,4 +1,8 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
+import type {
+  NumberSchemaType,
+  SchemaType,
+} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { expandPath, field } from "@fiftyone/state";
 import {
   BOOLEAN_FIELD,
@@ -8,7 +12,7 @@ import {
 } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
@@ -17,10 +21,6 @@ import {
   currentOverlay,
   currentSchema,
 } from "./state";
-import type {
-  NumberSchemaType,
-  SchemaType,
-} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 const getLabel = (value) => {
   if (typeof value === "boolean") {
@@ -124,20 +124,16 @@ const useSchema = () => {
         continue;
       }
 
-      if (attributes[attr].type === "input") {
+      if (attributes[attr].component === "text") {
         properties[attr] = createInput(attr, attributes[attr]);
       }
 
-      if (attributes[attr].type === "radio") {
+      if (attributes[attr].component === "radio") {
         properties[attr] = createRadio(attr, attributes[attr].values);
       }
 
-      if (attributes[attr].type === "tags") {
+      if (attributes[attr].component === "dropdown") {
         properties[attr] = createTags(attr, attributes[attr].values);
-      }
-
-      if (attributes[attr].type === "text") {
-        throw "text";
       }
     }
 
@@ -153,26 +149,27 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseFloat(data);
-          return Number.isFinite(parsed) ? parsed : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseFloat(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseInt(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseInt(data);
-          return Number.isFinite(parsed) ? parsed : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
@@ -216,7 +213,7 @@ const AnnotationSchema = () => {
             return;
           }
 
-          eventBus.dispatch("annotation:notification:sidebarValueUpdated", {
+          eventBus.dispatch("annotation:sidebarValueUpdated", {
             overlayId: overlay.id,
             currentLabel: overlay.label as any,
             value,

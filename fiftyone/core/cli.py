@@ -15,18 +15,22 @@ import os
 import re
 import subprocess
 import sys
-import time
 import textwrap
+import time
+import webbrowser
 
 import argcomplete
 from bson import ObjectId
 from tabulate import tabulate
-import webbrowser
 
 import eta.core.serial as etas
 import eta.core.utils as etau
-
 import fiftyone as fo
+from fiftyone import ViewField as F
+
+# pylint: disable=import-error,no-name-in-module
+import fiftyone.brain as fob
+import fiftyone.brain.config as fobc
 import fiftyone.constants as foc
 import fiftyone.core.config as focg
 import fiftyone.core.dataset as fod
@@ -44,12 +48,6 @@ import fiftyone.utils.quickstart as fouq
 import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
-from fiftyone import ViewField as F
-
-# pylint: disable=import-error,no-name-in-module
-import fiftyone.brain as fob
-import fiftyone.brain.config as fobc
-
 
 _TABLE_FORMAT = "simple"
 _MAX_CONSTANT_VALUE_COL_WIDTH = 79
@@ -3155,6 +3153,7 @@ class DelegatedCommand(Command):
     @staticmethod
     def setup(parser):
         subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "archive", DelegatedArchiveCommand)
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
@@ -3162,10 +3161,31 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
+        _register_command(subparsers, "rerun", DelegatedRerunCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class DelegatedRerunCommand(Command):
+    """Rerun delegated operations
+
+    Examples::
+
+        # Rerun the given operation id
+        fiftyone delegated rerun <operation-id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        do = dos.rerun_operation(ObjectId(args.id))
+        print("Successfully created rerun operation with ID '%s'" % do.id)
 
 
 class DelegatedLaunchCommand(Command):
@@ -3313,6 +3333,12 @@ class DelegatedListCommand(Command):
             default=None,
             help="a maximum number of operations to show",
         )
+        parser.add_argument(
+            "--include-archived",
+            action="store_true",
+            default=False,
+            help="whether to include archived operations",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -3328,6 +3354,7 @@ class DelegatedListCommand(Command):
             operator=args.operator,
             dataset_name=args.dataset,
             run_state=state,
+            include_archived=args.include_archived,
             search=search,
             paging=paging,
         )
@@ -3383,6 +3410,9 @@ def _print_delegated_list(ops):
         "completed",
     ]
 
+    if any(op.archived for op in ops):
+        headers.append("archived")
+
     rows = []
     for op in ops:
         state = op.run_state
@@ -3404,6 +3434,7 @@ def _print_delegated_list(ops):
                 "queued_at": op.queued_at,
                 "state": state,
                 "completed": op.run_state == fooe.ExecutionRunState.COMPLETED,
+                "archived": op.archived,
             }
         )
 
@@ -3541,6 +3572,65 @@ class DelegatedDeleteCommand(Command):
                     "Cannot delete operation %s in state %s"
                     % (id, op.run_state.upper())
                 )
+
+
+class DelegatedArchiveCommand(Command):
+    """Archive delegated operations.
+
+    Examples::
+
+        # Archive the specified operation(s)
+        fiftyone delegated archive <id1> <id2> ...
+
+        # Unarchive the specified operation(s)
+        fiftyone delegated archive <id1> <id2> ... --unarchive
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+            help="an operation ID or list of operation IDs",
+        )
+        parser.add_argument(
+            "--unarchive",
+            action="store_true",
+            default=False,
+            help="unarchive operations rather than archiving them",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if args.unarchive:
+                if op.archived:
+                    print("Unarchiving operation %s" % id)
+                    dos.unarchive_operation(ObjectId(id))
+                else:
+                    print("Operation %s is not archived" % id)
+            else:
+                if not op.archived:
+                    if op.run_state not in (
+                        fooe.ExecutionRunState.COMPLETED,
+                        fooe.ExecutionRunState.FAILED,
+                    ):
+                        print(
+                            "Cannot archive operation %s in state %s"
+                            % (id, op.run_state.upper())
+                        )
+                        continue
+                    print("Archiving operation %s" % id)
+                    dos.archive_operation(ObjectId(id))
+                else:
+                    print("Operation %s is already archived" % id)
 
 
 class DelegatedCleanupCommand(Command):

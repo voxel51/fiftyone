@@ -40,6 +40,7 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<2",
     "dill",
     "Deprecated",
+    "exceptiongroup",
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",

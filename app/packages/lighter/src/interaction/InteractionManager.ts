@@ -141,7 +141,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point: Point | null, event: PointerEvent | null): boolean;
+  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /**
    * Handle hover move event.
@@ -149,7 +149,7 @@ export interface InteractionHandler {
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove?(point: Point, event: PointerEvent): boolean;
+  onHoverMove?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /**
    * Forces the overlay to be in hovered state.
