@@ -832,7 +832,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             with patch.object(
                 self.svc._repo, "queue_operation", return_value=mock_child_doc
             ):
-                with pytest.raises(ValueError):
+                with pytest.raises(
+                    ValueError, match="not marked as rerunnable"
+                ):
                     _ = self.svc.rerun_operation("abc123")
 
         mock_child_doc.rerunnable = True
@@ -842,7 +844,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             with patch.object(
                 self.svc._repo, "queue_operation", return_value=mock_child_doc
             ):
-                with pytest.raises(ValueError):
+                with pytest.raises(
+                    ValueError, match="Rerunning pipeline child operations"
+                ):
                     _ = self.svc.rerun_operation("abc123")
 
     @patch("fiftyone.core.odm.load_dataset")
