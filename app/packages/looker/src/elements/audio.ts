@@ -419,6 +419,7 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   protected requestCallback: (callback: (time: number) => void) => void;
   protected audioContext: AudioContext;
   protected audioBuffer: AudioBuffer;
+  protected staticCanvas: HTMLCanvasElement;
 
   imageSource: HTMLCanvasElement;
 
@@ -435,18 +436,13 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
         });
       },
       play: ({ update, dispatchEvent }) => {
-        const callback = (time: number) => {
-          // Update currentTime in state?
-          // Or dispatch timeupdate
-        };
         update({ playing: true });
       },
       pause: ({ update }) => {
         update({ playing: false });
       },
       timeupdate: ({ dispatchEvent, update }) => {
-        // We need to pass currentTime to state to update seek bar
-        // BUT AudioState doesn't have it yet.
+        update({ currentTime: this.element.currentTime });
       },
     };
   }
@@ -458,6 +454,10 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
     this.imageSource = document.createElement("canvas");
     this.imageSource.width = 1024;
     this.imageSource.height = 200;
+
+    this.staticCanvas = document.createElement("canvas");
+    this.staticCanvas.width = 1024;
+    this.staticCanvas.height = 200;
 
     this.update(({ config: { src } }) => {
       this.src = src;
@@ -569,9 +569,10 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
 
 export class SpectrogramElement extends AudioElement {
   drawWaveform() {
-    if (!this.audioBuffer || !this.imageSource) return;
+    // Draws to staticCanvas instead of imageSource directly
+    if (!this.audioBuffer || !this.staticCanvas) return;
 
-    const canvas = this.imageSource;
+    const canvas = this.staticCanvas;
     const ctx = canvas.getContext("2d");
     const width = canvas.width;
     const height = canvas.height;
@@ -591,7 +592,6 @@ export class SpectrogramElement extends AudioElement {
     if (maxAmp === 0) maxAmp = 1;
 
     const step = Math.ceil(data.length / width);
-    // Center of top half
     const mid = waveHeight / 2;
     const scale = (waveHeight * 0.9) / 2 / maxAmp;
 
@@ -616,7 +616,6 @@ export class SpectrogramElement extends AudioElement {
 
       const y = mid - max * scale;
       const h = (max - min) * scale;
-      // Ensure height is at least 1px
       ctx.fillRect(i, y, 1, Math.max(1, h));
     }
 
@@ -625,10 +624,9 @@ export class SpectrogramElement extends AudioElement {
     const specY = waveHeight;
     const SAMPLE_RATE = this.audioBuffer.sampleRate;
     const FFT_SIZE = 512;
-    const HOP_SIZE = Math.floor(data.length / width); // Match pixels
+    const HOP_SIZE = Math.floor(data.length / width);
     const MEL_BANDS = 80;
 
-    // Create Mel Filterbank (cached if possible, but here we generate)
     const filters = createMelFilterbank(
       SAMPLE_RATE,
       FFT_SIZE,
@@ -637,21 +635,17 @@ export class SpectrogramElement extends AudioElement {
       SAMPLE_RATE / 2
     );
 
-    // Buffer for FFT
     const re = new Float32Array(FFT_SIZE);
     const im = new Float32Array(FFT_SIZE);
     const window = new Float32Array(FFT_SIZE);
-    // Hann window
     for (let i = 0; i < FFT_SIZE; i++) {
       window[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (FFT_SIZE - 1)));
     }
 
-    // Compute spectrogram column by column
     for (let x = 0; x < width; x++) {
       const start = x * HOP_SIZE;
       if (start + FFT_SIZE > data.length) break;
 
-      // Fill buffer with windowing
       for (let i = 0; i < FFT_SIZE; i++) {
         re[i] = data[start + i] * window[i];
         im[i] = 0;
@@ -659,20 +653,15 @@ export class SpectrogramElement extends AudioElement {
 
       fft(re, im);
 
-      // Compute Magnitude Spectrum
       const mag = new Float32Array(FFT_SIZE / 2 + 1);
       for (let i = 0; i < mag.length; i++) {
         mag[i] = Math.sqrt(re[i] * re[i] + im[i] * im[i]);
       }
 
-      // Apply Mel Filterbank
       const mels = new Float32Array(MEL_BANDS);
       for (let i = 0; i < MEL_BANDS; i++) {
         let sum = 0;
         for (let j = 0; j < filters[i].length; j++) {
-          // filters[i] is length FFT_SIZE/2 + 1, maps to mag
-          // Wait, createMelFilterbank returns array of length FFT_SIZE/2+1?
-          // Yes.
           if (filters[i][j] > 0) {
             sum += mag[j] * filters[i][j];
           }
@@ -680,59 +669,138 @@ export class SpectrogramElement extends AudioElement {
         mels[i] = sum;
       }
 
-      // Log scale (dB)
       for (let i = 0; i < MEL_BANDS; i++) {
         mels[i] = 10 * Math.log10(mels[i] + 1e-10);
       }
 
-      // Normalize (simple min/max for now, or fixed range)
-      // Audio visualization usually needs dynamic range compression
-      // We'll normalize per column? No, that looks bad.
-      // We normalize global? We don't have global stats yet.
-      // Let's assume -80dB to 0dB range roughly.
-      // Or just map min/max of this column for now to see something.
-      // Better: use fixed range [-100, 20] dB approximately.
-
       const maxVal = Math.max(...mels);
-      const minVal = -80; // Floor
+      const minVal = -80;
 
-      // Draw pixels
       for (let i = 0; i < MEL_BANDS; i++) {
-        // Low freq at bottom of spectrogram area
-        // i=0 is low freq.
-        // Screen Y goes down. So i=0 should be at specY + specHeight
-        // i=MEL_BANDS-1 should be at specY.
-
-        let val = (mels[i] - minVal) / (maxVal - minVal + 20); // +20 for headroom
-        // Clamp
+        let val = (mels[i] - minVal) / (maxVal - minVal + 20);
         val = Math.max(0, Math.min(1, val));
 
         const color = getViridisColor(val);
         ctx.fillStyle = `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
 
         const y = specY + specHeight - 1 - (i / MEL_BANDS) * specHeight;
-        const h = specHeight / MEL_BANDS + 1; // +1 for overlap
+        const h = specHeight / MEL_BANDS + 1;
 
         ctx.fillRect(x, y, 1, h);
       }
     }
 
-    // X-Axis timestamps
     ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "top";
 
     const duration = this.audioBuffer.duration;
-    // Draw every 1s
     const pxPerSec = width / duration;
     for (let t = 0; t < duration; t += 1) {
       const x = t * pxPerSec;
-      ctx.fillText(`${t}s`, x, specY + specHeight - 12); // Near bottom
-
-      // Tick
+      ctx.fillText(`${t}s`, x, specY + specHeight - 12);
       ctx.fillRect(x, specY + specHeight - 4, 1, 4);
     }
+  }
+
+  renderSelf(state: Readonly<AudioState>) {
+    super.renderSelf(state);
+
+    const {
+      currentTime,
+      duration,
+      seeking,
+      config: { thumbnail },
+    } = state;
+
+    if (seeking && duration) {
+      // Sync element time if seeking
+      if (Math.abs(this.element.currentTime - currentTime) > 0.1) {
+        this.element.currentTime = currentTime;
+      }
+    } else if (Math.abs(this.element.currentTime - currentTime) > 0.5) {
+      // Sync if drift is large
+      this.element.currentTime = currentTime;
+    }
+
+    if (thumbnail) return this.element;
+
+    // Compose final image
+    const ctx = this.imageSource.getContext("2d");
+    const width = this.imageSource.width;
+    const height = this.imageSource.height;
+
+    // Draw static background
+    if (this.staticCanvas) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(this.staticCanvas, 0, 0);
+    }
+
+    // Draw Playhead
+    if (duration && currentTime !== undefined) {
+      const x = (currentTime / duration) * width;
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+
+    return this.element;
+  }
+}
+
+export class TimelineInteractionElement extends BaseElement<
+  AudioState,
+  HTMLDivElement
+> {
+  getEvents(): Events<AudioState> {
+    return {
+      click: ({ event, update, dispatchEvent }) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const duration = this.state.duration;
+        if (!duration) return;
+
+        // Calculate time from click position
+        const rect = this.element.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const width = rect.width;
+        const time = (x / width) * duration;
+
+        // Update state and seek
+        update({ currentTime: time, seeking: true });
+
+        // We also need to unset seeking shortly after?
+        // Or rely on AudioElement to sync and then timeupdate to continue.
+        // Usually seek involves: pause -> set time -> play.
+        // But here we just jump.
+
+        // Force update to ensure playhead moves immediately
+        setTimeout(() => update({ seeking: false }), 100);
+      },
+      // Optional: Hover effect?
+    };
+  }
+
+  createHTMLElement() {
+    const element = document.createElement("div");
+    // Position over the canvas
+    element.style.position = "absolute";
+    element.style.top = "0";
+    element.style.left = "0";
+    element.style.width = "100%";
+    element.style.height = "100%";
+    element.style.zIndex = "10"; // Above canvas
+    element.style.cursor = "text"; // I-beam cursor like text selection/timeline
+    return element;
+  }
+
+  renderSelf() {
+    return this.element;
   }
 }
 

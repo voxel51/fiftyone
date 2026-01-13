@@ -216,6 +216,18 @@ export const getAudioElements: GetElements<any> = (params) => {
         node: common.CanvasElement,
       },
       {
+        node: audio.TimelineInteractionElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: audio.TimelineInteractionElement,
+      },
+      {
         node: common.ErrorElement,
       },
       { node: common.TagsElement },
