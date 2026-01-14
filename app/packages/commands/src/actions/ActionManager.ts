@@ -19,7 +19,7 @@ export type ActionListener = (actionId: string, isUndo: boolean) => void;
  *
  * Each user action is encapsulated as a Action action object that
  * implements the execute() method.
- * If the action also supports undo/redo, it must implment the undo() method.
+ * If the action also supports undo/redo, it must implement the undo() method.
  * The ActionManager maintains two stacks:
  *
  * - undoStack: Contains executed actions that can be undone
@@ -67,46 +67,49 @@ export class ActionManager {
 
   /**
    * Undoes the last undoable.
-   * @returns The undone action, or undefined if no actions to undo.
+   * @returns True if the undo was successful, false otherwise.
    */
-  async undo(): Promise<Undoable | undefined> {
+  async undo(): Promise<boolean> {
     const undoable = this.undoStack.pop();
     if (undoable) {
       try {
         await undoable.undo();
         this.redoStack.push(undoable);
         this.fireActionListeners(undoable.id, true);
+        this.fireUndoListeners();
+        return true;
       } catch (error) {
         console.error(`An exception ocurred during undo execution for undoable ${undoable.id}`);
         console.error(error);
+        this.fireUndoListeners();
+        return false;
       }
-      this.fireUndoListeners();
-      return undoable;
     }
-    return undefined;
+    return false;
   }
 
   /**
    * Redoes the last undone undoable action.
-   * @returns The redone action, or undefined if no undoable actions to redo.
+   * @returns True is the redo was successful, false otherwise.
    */
-  async redo(): Promise<Undoable | undefined> {
+  async redo(): Promise<boolean> {
     const undoable = this.redoStack.pop();
     if (undoable) {
       try {
         await undoable.execute();
         this.undoStack.push(undoable);
         this.fireActionListeners(undoable.id, false);
+        this.fireUndoListeners();
+        return true;
       } catch (error) {
         console.error(`An exception occurred during redo execution for undoable ${undoable.id}`);
         console.error(error);
+        this.fireUndoListeners();
+        return false;
       }
-      this.fireUndoListeners();
-      return undoable;
     }
-    return undefined;
+    return false;
   }
-
   /**
    * Checks if undo is available.
    * @returns True if undo is available.
