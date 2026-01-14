@@ -122,15 +122,15 @@ export class CommandContext {
    * and we have a parent, propogate it up.
    * @returns true if a redo occurred.
    */
-  public async undo(): Promise<boolean> {
+  public undo(): boolean {
     if (this.actions.canUndo()) {
-      await this.actions.undo();
+      this.actions.undo();
       return true;
     }
     //if we have a parent, and we had no
     //undo, propogate it up
     if (this.parent) {
-      return await this.parent.undo();
+      return this.parent.undo();
     }
     return false;
   }
@@ -140,15 +140,15 @@ export class CommandContext {
    * and we have a parent, propogate it up.
    * @returns true if a redo occurred.
    */
-  public async redo(): Promise<boolean> {
+  public redo(): boolean {
     if (this.actions.canRedo()) {
-      await this.actions.redo();
+      this.actions.redo();
       return true;
     }
     //if we have a parent, and we had no
     //redo, propogate it up
     if (this.parent) {
-      return await this.parent.redo();
+      return this.parent.redo();
     }
     return false;
   }
@@ -297,7 +297,7 @@ export class CommandContext {
    * @param cmd The command id or a command instance to run.
    * @returns true if the command was executed
    */
-  public async executeCommand(cmd: string | Command): Promise<boolean> {
+  public executeCommand(cmd: string | Command): boolean {
     let resolved: Command | undefined;
     if (typeof cmd === "string") {
       resolved = this.getCommand(cmd);
@@ -305,7 +305,7 @@ export class CommandContext {
       resolved = cmd;
     }
     if (resolved) {
-      const result = await resolved.execute();
+      const result = resolved.execute();
       if (result && isUndoable(result)) {
         this.actions.push(result as Undoable);
       }

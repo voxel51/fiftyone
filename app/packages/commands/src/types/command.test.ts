@@ -1,23 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "./command";
 
-let execFn: () => Promise<void>;
+let execFn: () => void;
 
 beforeEach(() => {
-  execFn = vi.fn(async () => {
+  execFn = vi.fn(() => {
     return;
   });
 });
 
 describe("Command", () => {
-  it("can execute", async () => {
+  it("can execute", () => {
     const cmd = new Command("fo.test.cmd", execFn, () => {
       return true;
     });
-    await cmd.execute();
+    cmd.execute();
     expect(execFn).toBeCalledTimes(1);
   });
-  it("can enable/disable", async () => {
+  it("can enable/disable", () => {
     let enabled = true;
     const cmd = new Command("fo.test.cmd", execFn, () => {
       return enabled;
@@ -26,16 +26,16 @@ describe("Command", () => {
     enabled = false;
     expect(cmd.isEnabled()).toEqual(false);
   });
-  it("does not execute when disabled", async () => {
+  it("does not execute when disabled", () => {
     const enabled = false;
     const cmd = new Command("fo.test.cmd", execFn, () => {
       return enabled;
     });
     expect(cmd.isEnabled()).toEqual(false);
-    await cmd.execute();
+    cmd.execute();
     expect(execFn).not.toBeCalled();
   });
-  it("fires notification on enable/disable", async () => {
+  it("fires notification on enable/disable", () => {
     const listener = vi.fn(() => {
       return;
     });

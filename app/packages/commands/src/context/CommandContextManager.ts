@@ -47,8 +47,8 @@ export class CommandContextManager {
     }
     this.defaultContext.registerCommand(
       KnownCommands.Undo,
-      async () => {
-        await this.getActiveContext().undo();
+      () => {
+        this.getActiveContext().undo();
       },
       () => {
         return this.getActiveContext().canUndo();
@@ -60,8 +60,8 @@ export class CommandContextManager {
     this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
     this.defaultContext.registerCommand(
       KnownCommands.Redo,
-      async () => {
-        await this.getActiveContext().redo();
+      () => {
+        this.getActiveContext().redo();
       },
       () => {
         return this.getActiveContext().canRedo();
@@ -192,8 +192,8 @@ export class CommandContextManager {
    * the command must be previously registered.
    * @param command The command or id
    */
-  public async executeCommand(command: string | Command) {
-    await this.getActiveContext().executeCommand(command);
+  public executeCommand(command: string | Command) {
+    this.getActiveContext().executeCommand(command);
   }
 
   /**

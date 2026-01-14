@@ -69,11 +69,11 @@ export class ActionManager {
    * Undoes the last undoable.
    * @returns True if the undo was successful, false otherwise.
    */
-  async undo(): Promise<boolean> {
+  undo(): boolean {
     const undoable = this.undoStack.pop();
     if (undoable) {
       try {
-        await undoable.undo();
+        undoable.undo();
         this.redoStack.push(undoable);
         this.fireActionListeners(undoable.id, true);
         this.fireUndoListeners();
@@ -92,11 +92,11 @@ export class ActionManager {
    * Redoes the last undone undoable action.
    * @returns True is the redo was successful, false otherwise.
    */
-  async redo(): Promise<boolean> {
+  redo(): boolean {
     const undoable = this.redoStack.pop();
     if (undoable) {
       try {
-        await undoable.execute();
+        undoable.execute();
         this.undoStack.push(undoable);
         this.fireActionListeners(undoable.id, false);
         this.fireUndoListeners();
@@ -149,8 +149,8 @@ export class ActionManager {
    * stack.
    * @param action The action to execute
    */
-  async execute(action: Action): Promise<void> {
-    await action.execute();
+  execute(action: Action): void {
+    action.execute();
     if (isUndoable(action)) {
       this.push(action as Undoable);
     }
