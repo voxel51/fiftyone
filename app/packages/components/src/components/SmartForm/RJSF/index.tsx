@@ -1,17 +1,17 @@
-import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
+import React from "react";
 
 import { translateSchema } from "./translators";
 
-import widgets from "./widgets";
 import templates from "./templates";
+import widgets from "./widgets";
 
-export { isSchemaIOSchema, isJSONSchema } from "./translators";
+export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
+import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import type { IChangeEvent } from "@rjsf/core";
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 export interface RJSFProps {
   schema?: SchemaType;
@@ -44,6 +44,8 @@ export default function RJSF(props: RJSFProps) {
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (props.onChange) {
+      props.onChange(event.formData);
+      return;
       // Filter out empty arrays that weren't in the original data
       // i.e. don't add `tags: []` if `tags` does not already exist on props.data
       const filteredData = { ...event.formData };

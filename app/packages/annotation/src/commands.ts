@@ -3,7 +3,7 @@
  */
 
 import { Command } from "@fiftyone/commands";
-import { AnnotationLabel } from "@fiftyone/state";
+import { AnnotationLabel, PrimitiveValue } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 
 /**
@@ -11,7 +11,7 @@ import { Field } from "@fiftyone/utilities";
  */
 export class UpsertAnnotationCommand extends Command<boolean> {
   constructor(
-    public readonly label: AnnotationLabel,
+    public readonly label: AnnotationLabel | PrimitiveValue,
     public readonly schema: Field
   ) {
     super();

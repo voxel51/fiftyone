@@ -12,9 +12,10 @@ import {
   ClassificationAnnotationLabel,
   DetectionAnnotationLabel,
   PolylineAnnotationLabel,
+  PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import { Field, Schema } from "@fiftyone/utilities";
+import { Field, Primitive, Schema } from "@fiftyone/utilities";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -84,12 +85,12 @@ export const buildLabelDeltas = (
  * Build a list of JSON deltas for mutating the given sample and label.
  *
  * @param sample Sample containing unmodified label data
- * @param label Current label state
+ * @param label Current label state (annotation label or primitive label)
  * @param schema Field schema
  */
 export const buildMutationDeltas = (
   sample: Sample,
-  label: AnnotationLabel,
+  label: AnnotationLabel | PrimitiveValue,
   schema: Field
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
@@ -98,9 +99,15 @@ export const buildMutationDeltas = (
   // element with an implied structure.
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
-      return buildDetectionsMutationDelta(sample, label);
+      return buildDetectionsMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     } else if (isFieldType(schema, "Detection")) {
-      return buildDetectionMutationDelta(sample, label);
+      return buildDetectionMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
@@ -114,6 +121,8 @@ export const buildMutationDeltas = (
     } else if (isFieldType(schema, "Polyline")) {
       return buildPolylineMutationDeltas(sample, label);
     }
+  } else if (label.type === "Primitive") {
+    return buildPrimitiveMutationDelta(sample, label.path, label.data);
   }
 
   throw new Error(
@@ -216,13 +225,33 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <T extends AnnotationLabel["data"]>(
+const buildSingleMutationDelta = <
+  T extends AnnotationLabel["data"] | Primitive
+>(
   sample: Sample,
   path: string,
   data: T
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
   return generateJsonPatch(existingLabel, data);
+};
+
+const buildPrimitiveMutationDelta = (
+  sample: Sample,
+  path: string,
+  data: Primitive
+): JSONDeltas => {
+  const existingValue = sample[path] as Primitive;
+
+  // If the value hasn't changed, return empty deltas
+  if (existingValue === data) {
+    return [];
+  }
+
+  // Return a replace operation with empty path - buildJsonPath will prepend the label path
+  const test: JSONDeltas = [{ op: "replace", path: "", value: data }];
+  console.log("test", test);
+  return test;
 };
 
 /**

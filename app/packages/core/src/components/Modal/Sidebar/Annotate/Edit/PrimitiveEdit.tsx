@@ -86,10 +86,10 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;
-
+    console.log("fieldValue", fieldValue);
     // For dict/JSON fields, parse the string value to an object before saving
     const dataToSave = processDictFieldValue(fieldValue, currentLabelSchema);
-
+    console.log("dataToSave", dataToSave);
     return await commandBus.execute(
       new UpsertAnnotationCommand(
         {
