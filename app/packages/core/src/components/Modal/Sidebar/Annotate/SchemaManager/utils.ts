@@ -128,6 +128,23 @@ export const getClassNameError = (
 };
 
 /**
+ * Validate attribute name and return error message if invalid
+ */
+export const getAttributeNameError = (
+  name: string,
+  existingAttributes: string[],
+  currentAttribute?: string
+): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Attribute name cannot be empty";
+  const isDuplicate = existingAttributes.some(
+    (a) => a !== currentAttribute && a === trimmed
+  );
+  if (isDuplicate) return "Attribute name already exists";
+  return null;
+};
+
+/**
  * Format attribute count text
  */
 export const formatAttributeCount = (count: number): string => {
@@ -155,3 +172,82 @@ export const buildFieldSecondaryContent = (
   }
   return typeText;
 };
+
+// =============================================================================
+// Attribute Form State Types and Helpers
+// =============================================================================
+
+/**
+ * Form state for attribute editing
+ */
+export interface AttributeFormState {
+  name: string;
+  attributeType: string;
+  componentType: string;
+  values: string[];
+  readOnly: boolean;
+}
+
+/**
+ * Create default attribute form state
+ */
+export const createDefaultAttributeFormState = (): AttributeFormState => ({
+  name: "",
+  attributeType: "string_list",
+  componentType: "checkbox",
+  values: [],
+  readOnly: false,
+});
+
+/**
+ * Map display type back to attribute type and component type
+ */
+export const parseAttributeType = (
+  type: string
+): { attributeType: string; componentType: string } => {
+  if (["checkbox", "dropdown", "radio"].includes(type)) {
+    return { attributeType: "string_list", componentType: type };
+  }
+  return { attributeType: type, componentType: "checkbox" };
+};
+
+/**
+ * Map internal type to display type
+ */
+export const getInternalType = (
+  attributeType: string,
+  componentType: string
+): string => {
+  if (attributeType === "string_list") {
+    return componentType; // checkbox, dropdown, or radio
+  }
+  return attributeType; // text, number, select
+};
+
+/**
+ * Convert AttributeConfig to form state
+ */
+export const attributeConfigToFormState = (
+  name: string,
+  config: AttributeConfig
+): AttributeFormState => {
+  const { attributeType, componentType } = parseAttributeType(config.type);
+  return {
+    name,
+    attributeType,
+    componentType,
+    values: config.values || [],
+    readOnly: config.read_only || false,
+  };
+};
+
+/**
+ * Convert form state to AttributeConfig
+ */
+export const formStateToAttributeConfig = (
+  state: AttributeFormState
+): AttributeConfig => ({
+  type: getInternalType(state.attributeType, state.componentType),
+  values: state.values.length > 0 ? state.values : undefined,
+  read_only: state.readOnly || undefined,
+});
