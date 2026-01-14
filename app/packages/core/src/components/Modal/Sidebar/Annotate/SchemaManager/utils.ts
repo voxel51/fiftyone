@@ -2,7 +2,80 @@
  * Utility functions for SchemaManager
  */
 
+import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
+import type { ReactNode } from "react";
 import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
+
+// =============================================================================
+// Types
+// =============================================================================
+
+// Extend ListItemProps to include additionalContent (added to design-system)
+export interface ListItemProps extends BaseListItemProps {
+  additionalContent?: ReactNode;
+}
+
+// RichList item type
+export interface RichListItem {
+  id: string;
+  data: ListItemProps;
+}
+
+// Options for creating a RichListItem
+export interface RichListItemOptions {
+  id: string;
+  primaryContent: ReactNode;
+  secondaryContent?: ReactNode;
+  actions?: ReactNode;
+  additionalContent?: ReactNode;
+  canSelect?: boolean;
+  canDrag?: boolean;
+}
+
+// Attribute configuration
+export interface AttributeConfig {
+  type: string;
+  values?: string[];
+  read_only?: boolean;
+}
+
+// Class configuration
+export interface ClassConfig {
+  attributes?: Record<string, AttributeConfig>;
+}
+
+// Schema configuration
+export interface SchemaConfigType {
+  classes?: string[];
+  attributes?: Record<string, AttributeConfig>;
+}
+
+// =============================================================================
+// Utility Functions
+// =============================================================================
+
+/**
+ * Create a RichListItem with defaults
+ */
+export const createRichListItem = ({
+  id,
+  primaryContent,
+  secondaryContent,
+  actions,
+  additionalContent,
+  canSelect = false,
+  canDrag = false,
+}: RichListItemOptions): RichListItem => ({
+  id,
+  data: {
+    canSelect,
+    canDrag,
+    primaryContent,
+    secondaryContent,
+    actions,
+    additionalContent,
+  },
+});
 
 /**
  * Get human-readable label for attribute type or component
