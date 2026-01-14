@@ -13,6 +13,7 @@ export default function useLoadSchemas() {
       return;
     }
 
+    // Convert property names to camelCase while preserving field names
     setData(get.result.label_schemas);
     setActive(get.result.active_label_schemas);
   }, [get.result, setData]);

@@ -1,32 +1,38 @@
+/**
+ * Hook for managing label schema editing for a field
+ */
+
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { atom, useAtom, useAtomValue } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { labelSchemaData } from "../../state";
+import { currentLabelSchema } from "../state";
 
-const currentLabelSchema = atomFamily((field: string) => atom());
+// =============================================================================
+// Internal Hooks
+// =============================================================================
 
 const useCurrentLabelSchema = (field: string) => {
   const [current, setCurrent] = useAtom(currentLabelSchema(field));
   const defaultSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
-  return [current ?? saved ?? defaultSchema, setCurrent];
+  return [current ?? saved ?? defaultSchema, setCurrent] as const;
 };
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data.default_label_schema;
+  return data?.default_label_schema;
 };
 
 const useDiscard = (field: string) => {
-  const [currentLabelSchema, setCurrent] = useCurrentLabelSchema(field);
+  const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
   return {
-    currentLabelSchema,
+    currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
       setCurrent(saved ?? defaultLabelSchema);
@@ -34,7 +40,7 @@ const useDiscard = (field: string) => {
   };
 };
 
-const useHasChanges = (one, two) => {
+const useHasChanges = (one: unknown, two: unknown) => {
   return useMemo(() => {
     try {
       return !isEqual(one, two);
@@ -48,10 +54,26 @@ const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: current.read_only,
-    isReadOnlyRequired: data.read_only,
+    isReadOnly: (current as { read_only?: boolean })?.read_only,
+    isReadOnlyRequired: data?.read_only,
     toggleReadOnly: () => {
-      setCurrent({ ...current, read_only: !current.read_only });
+      setCurrent({
+        ...(current as object),
+        read_only: !(current as { read_only?: boolean })?.read_only,
+      });
+    },
+  };
+};
+
+const useConfigUpdate = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  return {
+    updateClassOrder: (newOrder: string[]) => {
+      if (!current) return;
+      setCurrent({ ...(current as object), classes: newOrder });
+    },
+    updateConfig: (newConfig: object) => {
+      setCurrent(newConfig);
     },
   };
 };
@@ -59,11 +81,11 @@ const useReadOnly = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data.label_schema,
-    (label_schema) => {
-      setAtom({ ...data, label_schema });
+    data?.label_schema,
+    (labelSchema: unknown) => {
+      setAtom({ ...data, label_schema: labelSchema });
     },
-  ];
+  ] as const;
 };
 
 const useSave = (field: string) => {
@@ -92,7 +114,7 @@ const useSave = (field: string) => {
 
 const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+  const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
 
   return {
@@ -118,7 +140,7 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+  const [, setCurrent] = useCurrentLabelSchema(field);
   const validate = useOperatorExecutor("validate_label_schemas");
 
   return {
@@ -161,9 +183,14 @@ const useValidate = (field: string) => {
   };
 };
 
-export default function (field: string) {
+// =============================================================================
+// Main Hook
+// =============================================================================
+
+export default function useLabelSchema(field: string) {
   const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
+  const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
@@ -177,6 +204,7 @@ export default function (field: string) {
 
     ...discard,
     ...readOnly,
+    ...configUpdate,
     ...save,
     ...scan,
     ...validate,

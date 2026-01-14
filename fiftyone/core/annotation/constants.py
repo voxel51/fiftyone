@@ -184,7 +184,6 @@ SUPPORTED_PRIMITIVES = (
     fof.StringField,
     fof.UUIDField,
 )
-
 # label types whose subfields cannot yet be represented by a type/component in
 # annotation, e.g. the TemporalDetection.support field
 UNSUPPORTED_LABEL_TYPES = {

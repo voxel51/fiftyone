@@ -1,22 +1,15 @@
-import { MuiButton } from "@fiftyone/components";
-import React from "react";
-import styled from "styled-components";
+import React, { ReactNode } from "react";
+import {
+  Button,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
+import { EditFieldFooter } from "./styled";
 
-const Container = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  border-top: 1px solid ${({ theme }) => theme.divider};
-  align-items: center;
-  position: absolute;
-  bottom: 0;
-  padding: 0 2rem;
-  height: 64px;
-  left: 0;
-  background: ${({ theme }) => theme.background.level2};
-`;
-
-interface Button {
+interface ButtonConfig {
   onClick: () => void;
   text: string;
   disabled?: boolean;
@@ -25,33 +18,46 @@ interface Button {
 const Footer = ({
   primaryButton,
   secondaryButton,
+  leftContent,
 }: {
-  primaryButton: Button;
-  secondaryButton?: Button;
+  primaryButton: ButtonConfig;
+  secondaryButton?: ButtonConfig;
+  leftContent?: ReactNode;
 }) => {
   return (
-    <Container>
-      {secondaryButton ? (
-        <MuiButton
-          variant="outlined"
-          color="secondary"
-          onClick={secondaryButton.onClick}
-          disabled={secondaryButton.disabled}
-        >
-          {secondaryButton.text}
-        </MuiButton>
-      ) : (
-        <div />
-      )}
-      <MuiButton
-        variant="contained"
-        color="primary"
-        onClick={primaryButton.onClick}
-        disabled={primaryButton.disabled}
+    <EditFieldFooter>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
       >
-        {primaryButton.text}
-      </MuiButton>
-    </Container>
+        {leftContent}
+      </Stack>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Md}
+        style={{ alignItems: "center" }}
+      >
+        {secondaryButton && (
+          <Button
+            size={Size.Md}
+            variant={Variant.Secondary}
+            onClick={secondaryButton.onClick}
+            disabled={secondaryButton.disabled}
+          >
+            {secondaryButton.text}
+          </Button>
+        )}
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={primaryButton.onClick}
+          disabled={primaryButton.disabled}
+        >
+          {primaryButton.text}
+        </Button>
+      </Stack>
+    </EditFieldFooter>
   );
 };
 

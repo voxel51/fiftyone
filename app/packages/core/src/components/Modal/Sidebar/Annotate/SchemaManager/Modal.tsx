@@ -1,6 +1,14 @@
-import { MuiButton } from "@fiftyone/components";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { Typography } from "@mui/material";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -16,8 +24,6 @@ import GUIView, {
 import {
   BackButton,
   CloseButton,
-  FooterLeft,
-  FooterRight,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -57,10 +63,10 @@ const Subheading = () => {
 };
 
 const Page = () => {
-  const [field, setField] = useAtom(currentField);
+  const field = useAtomValue(currentField);
 
   if (field) {
-    return <EditFieldLabelSchema field={field} setField={setField} />;
+    return <EditFieldLabelSchema field={field} />;
   }
 
   return <GUIView />;
@@ -79,6 +85,12 @@ const SchemaManagerFooter = () => {
   }
 
   const hasSelection = hiddenSelectedCount > 0 || activeSelectedCount > 0;
+
+  // Only show footer when there's a selection to move
+  if (!hasSelection) {
+    return null;
+  }
+
   const isMovingToVisible = hiddenSelectedCount > 0;
   const selectedCount = isMovingToVisible
     ? hiddenSelectedCount
@@ -87,28 +99,29 @@ const SchemaManagerFooter = () => {
 
   return (
     <ModalFooter>
-      <FooterLeft>
-        {hasSelection && (
-          <MuiButton
-            variant="outlined"
-            startIcon={
-              isMovingToVisible ? <KeyboardArrowUp /> : <KeyboardArrowDown />
-            }
-            onClick={onMove}
-          >
-            Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
-            fields
-          </MuiButton>
-        )}
-      </FooterLeft>
-      <FooterRight>
-        <MuiButton variant="outlined" disabled>
-          Discard
-        </MuiButton>
-        <MuiButton variant="contained" disabled>
-          Save
-        </MuiButton>
-      </FooterRight>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
+        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+          {isMovingToVisible ? (
+            <Icon
+              name={IconName.ChevronTop}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          ) : (
+            <Icon
+              name={IconName.ChevronBottom}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          )}
+          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
+          fields
+        </Button>
+      </Stack>
     </ModalFooter>
   );
 };
