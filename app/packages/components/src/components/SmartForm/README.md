@@ -102,14 +102,27 @@ function MyForm() {
 
 ```tsx
 interface SmartFormProps {
-    schema: SchemaType; // SchemaIO schema (required)
+    schema?: SchemaType; // SchemaIO schema
+    jsonSchema?: RJSFSchema; // JSON Schema (alternative to schema)
     data?: unknown; // Initial form data
     uiSchema?: UiSchema; // Override generated UI schema
-    validator?: ValidatorType; // Custom JSON Schema validator
+    validator?: ValidatorType; // Custom JSON Schema validator (optional)
+    liveValidate?: boolean; // Enable live validation (default: true)
     onChange?: (data: unknown) => void; // Change handler
     onSubmit?: (data: unknown) => void; // Submit handler
 }
 ```
+
+### Prop Details
+
+- **`schema`**: SchemaIO format schema. Either `schema` or `jsonSchema` is required.
+- **`jsonSchema`**: JSON Schema format. Either `schema` or `jsonSchema` is required.
+- **`data`**: Initial form data to populate the form fields.
+- **`uiSchema`**: Custom UI Schema to override auto-generated UI configurations.
+- **`validator`**: Custom validator for JSON Schema validation. Defaults to `@rjsf/validator-ajv8` if not provided.
+- **`liveValidate`**: When `true`, validates form fields in real-time as users type. Defaults to `true` for immediate feedback. Set to `false` to validate only on submit.
+- **`onChange`**: Callback fired when form data changes. Receives updated data.
+- **`onSubmit`**: Callback fired when form is submitted. Receives final data.
 
 ---
 
@@ -208,12 +221,77 @@ const uiSchema = {
 
 ### Validation
 
+SmartForm supports both live validation (as users type) and submit-time validation.
+
+#### Live Validation (Default)
+
+By default, SmartForm validates fields in real-time as users interact with the form:
+
 ```tsx
-import validator from "@rjsf/validator-ajv8";
+<SmartForm
+    schema={schema}
+    data={data}
+    // liveValidate defaults to true
+/>
+```
+
+#### Disable Live Validation
+
+Validate only when the form is submitted:
+
+```tsx
+<SmartForm
+    schema={schema}
+    data={data}
+    liveValidate={false}
+/>
+```
+
+#### Custom Validator
+
+Provide a custom validator with specific configuration:
+
+```tsx
+import { customizeValidator } from "@rjsf/validator-ajv8";
+
+const customValidator = customizeValidator({
+    ajvOptionsOverrides: {
+        allErrors: true,
+        verbose: true,
+    },
+});
 
 <SmartForm
     schema={schema}
-    validator={validator} // Custom validator
+    validator={customValidator}
+    liveValidate={true}
+/>;
+```
+
+#### Validation Example
+
+```tsx
+const schema = {
+    type: "object",
+    properties: {
+        email: {
+            type: "string",
+            view: { label: "Email" },
+            pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
+        },
+        age: {
+            type: "number",
+            view: { label: "Age" },
+            min: 18,
+            max: 100,
+        },
+    },
+};
+
+<SmartForm
+    schema={schema}
+    liveValidate={true} // Show errors as user types
+    onChange={(data) => console.log(data)}
 />;
 ```
 

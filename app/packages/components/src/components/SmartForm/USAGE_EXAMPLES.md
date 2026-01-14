@@ -537,6 +537,171 @@ const uiSchema = {
 
 ---
 
+### Live Validation
+
+**Default Behavior (Live Validation Enabled):**
+
+```tsx
+<SmartForm
+    schema={schema}
+    data={data}
+    onChange={(data) => console.log(data)}
+/>
+```
+
+**Result:**
+- Validation errors appear inline as users type
+- Immediate feedback for incorrect input
+- Better user experience for complex forms
+
+---
+
+### Disable Live Validation
+
+**Validate Only on Submit:**
+
+```tsx
+<SmartForm
+    schema={schema}
+    data={data}
+    liveValidate={false}
+    onSubmit={(data) => console.log("Valid data:", data)}
+/>
+```
+
+**Result:**
+- No validation errors shown while typing
+- Validation occurs only when form is submitted
+- Useful for simpler forms or when live validation is too aggressive
+
+---
+
+### Custom Validator
+
+**Using Custom Validator with Options:**
+
+```tsx
+import { customizeValidator } from "@rjsf/validator-ajv8";
+
+const customValidator = customizeValidator({
+    ajvOptionsOverrides: {
+        allErrors: true,        // Show all validation errors
+        verbose: true,          // Include detailed error info
+        $data: true,            // Support $data references
+        formats: {
+            // Custom format validators
+            "phone": /^\d{3}-\d{3}-\d{4}$/,
+        },
+    },
+});
+
+const schema = {
+    type: "object",
+    properties: {
+        phone: {
+            type: "string",
+            view: { label: "Phone Number" },
+            format: "phone",
+        },
+    },
+};
+
+<SmartForm
+    schema={schema}
+    validator={customValidator}
+    liveValidate={true}
+/>;
+```
+
+**Result:**
+- Custom validation rules applied
+- Enhanced error messages
+- Support for custom formats
+
+---
+
+### Validation with Complex Rules
+
+**Complete validation example:**
+
+```tsx
+import SmartForm from "@fiftyone/components/SmartForm";
+import { customizeValidator } from "@rjsf/validator-ajv8";
+
+const validator = customizeValidator({
+    ajvOptionsOverrides: { allErrors: true },
+});
+
+const schema = {
+    type: "object",
+    properties: {
+        email: {
+            type: "string",
+            view: {
+                label: "Email Address",
+                description: "We'll never share your email",
+            },
+            pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
+            required: true,
+        },
+        password: {
+            type: "string",
+            view: {
+                label: "Password",
+                description: "Must be at least 8 characters",
+            },
+            minLength: 8,
+            required: true,
+        },
+        age: {
+            type: "number",
+            view: {
+                label: "Age",
+                description: "Must be 18 or older",
+            },
+            min: 18,
+            max: 120,
+        },
+        website: {
+            type: "string",
+            view: { label: "Website (optional)" },
+            pattern: "^https?://.*",
+        },
+    },
+};
+
+function RegistrationForm() {
+    const [formData, setFormData] = useState({});
+    const [errors, setErrors] = useState<string[]>([]);
+
+    const handleSubmit = (data) => {
+        setErrors([]);
+        console.log("Valid form data:", data);
+        // Submit to API
+    };
+
+    return (
+        <SmartForm
+            schema={schema}
+            data={formData}
+            validator={validator}
+            liveValidate={true}
+            onChange={setFormData}
+            onSubmit={handleSubmit}
+        />
+    );
+}
+```
+
+**Features:**
+- Email pattern validation with live feedback
+- Password length requirement
+- Age range validation
+- Optional URL pattern validation
+- All validation errors shown simultaneously
+
+---
+
 ### Conditional Fields
 
 ```tsx
