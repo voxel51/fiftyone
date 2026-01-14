@@ -79,21 +79,20 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
  */
 export const fieldHasSchema = atomFamily((path: string) =>
   atom((get) => {
-    // Check legacy schema system (now in camelCase)
     const legacyData = get(labelSchemaData(path));
-    if (legacyData?.labelSchema) return true;
+    if (legacyData?.label_schema) return true;
     return false;
   })
 );
 
 /**
- * Check if a field is read-only (user-set schema readOnly takes precedence)
+ * Check if a field is read-only (user-set schema read_only takes precedence)
  */
 export const fieldIsReadOnly = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
-    // Check schema-level readOnly first (user-configured), then field-level (system)
-    return data?.labelSchema?.readOnly || data?.readOnly || false;
+    // Check schema-level read_only first (user-configured), then field-level (system)
+    return data?.label_schema?.read_only || data?.read_only || false;
   })
 );
 

@@ -44,7 +44,7 @@ interface ListItemProps extends BaseListItemProps {
 export interface AttributeConfig {
   type: string;
   values?: string[];
-  readOnly?: boolean;
+  read_only?: boolean;
 }
 
 export interface ClassConfig {
@@ -408,7 +408,7 @@ export const AttributesSection = ({
           secondaryContent: (
             <>
               {secondaryParts.join(" · ")}
-              {config.readOnly && (
+              {config.read_only && (
                 <Pill size={Size.Md} style={{ marginLeft: 8 }}>
                   Read-only
                 </Pill>

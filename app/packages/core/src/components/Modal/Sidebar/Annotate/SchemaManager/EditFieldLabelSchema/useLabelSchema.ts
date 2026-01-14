@@ -59,7 +59,7 @@ const useReadOnly = (field: string) => {
     toggleReadOnly: () => {
       setCurrent({
         ...(current as object),
-        readOnly: !(current as { read_only?: boolean })?.read_only,
+        read_only: !(current as { read_only?: boolean })?.read_only,
       });
     },
   };
@@ -83,7 +83,7 @@ const useSavedLabelSchema = (field: string) => {
   return [
     data?.label_schema,
     (labelSchema: unknown) => {
-      setAtom({ ...data, labelSchema });
+      setAtom({ ...data, label_schema: labelSchema });
     },
   ] as const;
 };
