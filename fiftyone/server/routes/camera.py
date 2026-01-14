@@ -72,16 +72,9 @@ class StaticTransforms(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
-
-        source_frame = request.query_params.get("source_frame")
-        target_frame = request.query_params.get("target_frame")
-        chain_via_param = request.query_params.get("chain_via")
-
-        chain_via: Optional[List[str]] = None
-        if chain_via_param:
-            chain_via = [
-                f.strip() for f in chain_via_param.split(",") if f.strip()
-            ]
+        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+            request
+        )
 
         logger.debug(
             "Received GET request for static transform for sample %s "
@@ -142,6 +135,120 @@ def _parse_sample_ids(request: Request) -> List[str]:
         )
 
     return sample_ids
+
+
+def _parse_extrinsics_params(request: Request):
+    """Parses extrinsics-related query params.
+
+    Args:
+        request: Starlette request
+
+    Returns:
+        Tuple of (source_frame, target_frame, chain_via)
+    """
+    source_frame = request.query_params.get("source_frame")
+    target_frame = request.query_params.get("target_frame")
+    chain_via_param = request.query_params.get("chain_via")
+
+    chain_via: Optional[List[str]] = None
+    if chain_via_param:
+        chain_via = [
+            f.strip() for f in chain_via_param.split(",") if f.strip()
+        ]
+
+    return source_frame, target_frame, chain_via
+
+
+def _parse_slices(request: Request) -> List[str]:
+    """Parses optional slices from query params.
+
+    Args:
+        request: Starlette request
+
+    Returns:
+        List of slice names, or empty list if not provided
+    """
+    slices_param = request.query_params.get("slices")
+    if slices_param:
+        return [s.strip() for s in slices_param.split(",") if s.strip()]
+    return []
+
+
+def _get_group_info(sample, sample_id: str):
+    """Gets group info from a sample, validating it belongs to a group.
+
+    Args:
+        sample: The sample to get group info from
+        sample_id: The sample ID (for error messages)
+
+    Raises:
+        HTTPException: If sample does not belong to a group
+
+    Returns:
+        The group info object
+    """
+    try:
+        group_info = sample.group
+    except AttributeError:
+        group_info = None
+
+    if group_info is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Sample '{sample_id}' does not belong to a group",
+        )
+
+    return group_info
+
+
+def _get_group_slices(dataset, slices: List[str]) -> List[str]:
+    """Gets the list of slices to query for a group.
+
+    Args:
+        dataset: The dataset
+        slices: User-provided slices (may be empty)
+
+    Raises:
+        HTTPException: If no slices available
+
+    Returns:
+        List of slice names to query
+    """
+    if slices:
+        return slices
+
+    slices = dataset.group_slices or []
+    if not slices:
+        raise HTTPException(
+            status_code=400,
+            detail="No slices available for this group",
+        )
+
+    return slices
+
+
+def _get_slice_sample(dataset, group_id: str, slice_name: str):
+    """Gets a sample for a specific slice in a group.
+
+    Args:
+        dataset: The dataset
+        group_id: The group ID
+        slice_name: The slice name
+
+    Returns:
+        Tuple of (slice_sample, error_dict). If successful, error_dict is None.
+        If failed, slice_sample is None and error_dict contains the error.
+    """
+    try:
+        group_samples = dataset.get_group(group_id, group_slices=[slice_name])
+        slice_sample = group_samples.get(slice_name)
+    except KeyError:
+        return None, {"error": f"Slice '{slice_name}' not found in group"}
+
+    if slice_sample is None:
+        return None, {"error": f"Slice '{slice_name}' not found in group"}
+
+    return slice_sample, None
 
 
 class BatchIntrinsics(HTTPEndpoint):
@@ -208,16 +315,9 @@ class BatchStaticTransforms(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_ids = _parse_sample_ids(request)
-
-        source_frame = request.query_params.get("source_frame")
-        target_frame = request.query_params.get("target_frame")
-        chain_via_param = request.query_params.get("chain_via")
-
-        chain_via: Optional[List[str]] = None
-        if chain_via_param:
-            chain_via = [
-                f.strip() for f in chain_via_param.split(",") if f.strip()
-            ]
+        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+            request
+        )
 
         logger.debug(
             "Received GET request for batch static transforms for %d samples "
@@ -283,36 +383,12 @@ class GroupIntrinsics(HTTPEndpoint):
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
 
-        slices_param = request.query_params.get("slices")
-
         dataset = get_dataset(dataset_id)
         sample = get_sample_from_dataset(dataset, sample_id)
 
-        # Check if sample belongs to a group
-        try:
-            group_info = sample.group
-        except AttributeError:
-            group_info = None
-
-        if group_info is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Sample '{sample_id}' does not belong to a group",
-            )
-
+        group_info = _get_group_info(sample, sample_id)
         group_id = group_info.id
-
-        # Determine which slices to query
-        if slices_param:
-            slices = [s.strip() for s in slices_param.split(",") if s.strip()]
-        else:
-            slices = dataset.group_slices or []
-
-        if not slices:
-            raise HTTPException(
-                status_code=400,
-                detail="No slices available for this group",
-            )
+        slices = _get_group_slices(dataset, _parse_slices(request))
 
         logger.debug(
             "Received GET request for group camera intrinsics for sample %s "
@@ -325,21 +401,11 @@ class GroupIntrinsics(HTTPEndpoint):
 
         results = {}
         for slice_name in slices:
-            try:
-                group_samples = dataset.get_group(
-                    group_id, group_slices=[slice_name]
-                )
-                slice_sample = group_samples.get(slice_name)
-            except KeyError:
-                results[slice_name] = {
-                    "error": f"Slice '{slice_name}' not found in group"
-                }
-                continue
-
-            if slice_sample is None:
-                results[slice_name] = {
-                    "error": f"Slice '{slice_name}' not found in group"
-                }
+            slice_sample, error = _get_slice_sample(
+                dataset, group_id, slice_name
+            )
+            if error:
+                results[slice_name] = error
                 continue
 
             intrinsics = dataset.resolve_intrinsics(slice_sample)
@@ -376,46 +442,16 @@ class GroupExtrinsics(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
-
-        slices_param = request.query_params.get("slices")
-        source_frame = request.query_params.get("source_frame")
-        target_frame = request.query_params.get("target_frame")
-        chain_via_param = request.query_params.get("chain_via")
-
-        chain_via: Optional[List[str]] = None
-        if chain_via_param:
-            chain_via = [
-                f.strip() for f in chain_via_param.split(",") if f.strip()
-            ]
+        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+            request
+        )
 
         dataset = get_dataset(dataset_id)
         sample = get_sample_from_dataset(dataset, sample_id)
 
-        # Check if sample belongs to a group
-        try:
-            group_info = sample.group
-        except AttributeError:
-            group_info = None
-
-        if group_info is None:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Sample '{sample_id}' does not belong to a group",
-            )
-
+        group_info = _get_group_info(sample, sample_id)
         group_id = group_info.id
-
-        # Determine which slices to query
-        if slices_param:
-            slices = [s.strip() for s in slices_param.split(",") if s.strip()]
-        else:
-            slices = dataset.group_slices or []
-
-        if not slices:
-            raise HTTPException(
-                status_code=400,
-                detail="No slices available for this group",
-            )
+        slices = _get_group_slices(dataset, _parse_slices(request))
 
         logger.debug(
             "Received GET request for group camera extrinsics for sample %s "
@@ -432,21 +468,11 @@ class GroupExtrinsics(HTTPEndpoint):
 
         results = {}
         for slice_name in slices:
-            try:
-                group_samples = dataset.get_group(
-                    group_id, group_slices=[slice_name]
-                )
-                slice_sample = group_samples.get(slice_name)
-            except KeyError:
-                results[slice_name] = {
-                    "error": f"Slice '{slice_name}' not found in group"
-                }
-                continue
-
-            if slice_sample is None:
-                results[slice_name] = {
-                    "error": f"Slice '{slice_name}' not found in group"
-                }
+            slice_sample, error = _get_slice_sample(
+                dataset, group_id, slice_name
+            )
+            if error:
+                results[slice_name] = error
                 continue
 
             try:
