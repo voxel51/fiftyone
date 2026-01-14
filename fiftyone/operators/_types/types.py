@@ -259,6 +259,7 @@ class Object(BaseType):
         params=None,
         label=None,
         placeholder_view=None,
+        dependencies=None,
         **kwargs,
     ):
         """Defines a loader property that fetches data asynchronously.
@@ -276,10 +277,16 @@ class Object(BaseType):
         entire loader value. For example, if ``type=types.List(types.Object())``,
         then ``ctx.params[name]["data"]`` will be a list of objects.
 
+        By default, the loader executes only once when the component mounts.
+        Use the ``dependencies`` argument to specify which param paths should
+        trigger a reload when their values change.
+
         Examples::
 
             def resolve_input(self, ctx):
                 inputs = types.Object()
+
+                inputs.str("make", label="Car Make")
 
                 chosen_make = ctx.params.get("make")
                 if chosen_make:
@@ -289,6 +296,7 @@ class Object(BaseType):
                         operator="@my-plugin/load_models",
                         params={"make": chosen_make},
                         label="Loading models...",
+                        dependencies=["make"],  # reload when "make" changes
                     )
 
                 models = ctx.params.get("available_models", {})
@@ -308,6 +316,9 @@ class Object(BaseType):
             params (None): parameters to pass to the operator
             label (None): loading message to display
             placeholder_view (None): view to render while loading
+            dependencies (None): list of param paths (dot-notation supported)
+                that should trigger a reload when changed. If None, the loader
+                only executes once on mount
 
         Returns:
             a :class:`Property`
@@ -324,6 +335,7 @@ class Object(BaseType):
             params=params,
             label=label,
             placeholder_view=placeholder_view,
+            dependencies=dependencies,
         )
         return self.define_property(name, loader_type, view=view, **kwargs)
 
@@ -1938,11 +1950,18 @@ class LoaderView(View):
     The ``type`` argument passed to :meth:`Object.loader` defines the shape of
     the ``data`` field, not the entire loader value.
 
+    By default, the loader executes only once when the component mounts.
+    Use the ``dependencies`` argument to specify which param paths should
+    trigger a reload when their values change.
+
     Args:
         operator: the operator to execute (string URI or callable method)
         params (None): parameters to pass to the operator
         label (None): loading message to display
         placeholder_view (None): view to render while loading
+        dependencies (None): list of param paths (dot-notation supported)
+            that should trigger a reload when changed. If None, the loader
+            only executes once on mount
     """
 
     def __init__(
@@ -1951,6 +1970,7 @@ class LoaderView(View):
         params=None,
         label=None,
         placeholder_view=None,
+        dependencies=None,
         **kwargs,
     ):
         super().__init__(
@@ -1958,11 +1978,13 @@ class LoaderView(View):
             params=params,
             label=label,
             placeholder_view=placeholder_view,
+            dependencies=dependencies,
             **kwargs,
         )
         self.operator = operator
         self.params = params
         self.placeholder_view = placeholder_view
+        self.dependencies = dependencies
         if label is not None:
             self.label = label
 
@@ -1984,6 +2006,8 @@ class LoaderView(View):
         d["params"] = self.params
         if self.placeholder_view:
             d["placeholder_view"] = self.placeholder_view.to_json()
+        if self.dependencies:
+            d["dependencies"] = self.dependencies
         return d
 
 

@@ -171,9 +171,17 @@ describe("LoaderView", () => {
     });
   });
 
-  describe("re-loading on param change", () => {
-    it("re-executes operator when params change", async () => {
-      const props = createProps();
+  describe("dependencies behavior", () => {
+    it("does not reload when params change without dependencies", async () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { key: "value1" },
+            // No dependencies - should only load once on mount
+          },
+        },
+      });
       const { rerender } = render(<LoaderView {...props} />);
 
       await waitFor(() => {
@@ -181,10 +189,46 @@ describe("LoaderView", () => {
       });
 
       const newProps = createProps({
+        fullData: { myLoader: { state: "loaded", data: [] } },
         schema: {
           view: {
             operator: "@test/load_data",
-            params: { key: "new_value" },
+            params: { key: "value2" }, // Changed params
+            // Still no dependencies
+          },
+        },
+      });
+
+      rerender(<LoaderView {...newProps} />);
+
+      // Should NOT have called executeOperator again
+      expect(mockExecuteOperator).toHaveBeenCalledTimes(1);
+    });
+
+    it("reloads when tracked dependency changes", async () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { make: "Toyota", year: 2020 },
+            dependencies: ["make"], // Only track "make"
+          },
+        },
+      });
+      const { rerender } = render(<LoaderView {...props} />);
+
+      await waitFor(() => {
+        expect(mockExecuteOperator).toHaveBeenCalledTimes(1);
+      });
+
+      // Change tracked dependency
+      const newProps = createProps({
+        fullData: { myLoader: { state: "loaded", data: [] } },
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { make: "Honda", year: 2020 }, // Changed make
+            dependencies: ["make"],
           },
         },
       });
@@ -196,6 +240,77 @@ describe("LoaderView", () => {
       });
     });
 
+    it("does not reload when untracked param changes with dependencies", async () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { make: "Toyota", year: 2020 },
+            dependencies: ["make"], // Only track "make"
+          },
+        },
+      });
+      const { rerender } = render(<LoaderView {...props} />);
+
+      await waitFor(() => {
+        expect(mockExecuteOperator).toHaveBeenCalledTimes(1);
+      });
+
+      // Change untracked param
+      const newProps = createProps({
+        fullData: { myLoader: { state: "loaded", data: [] } },
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { make: "Toyota", year: 2021 }, // Only year changed
+            dependencies: ["make"],
+          },
+        },
+      });
+
+      rerender(<LoaderView {...newProps} />);
+
+      // Should NOT have called executeOperator again
+      expect(mockExecuteOperator).toHaveBeenCalledTimes(1);
+    });
+
+    it("tracks deeply nested dependencies", async () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { filters: { category: "sedan" } },
+            dependencies: ["filters.category"],
+          },
+        },
+      });
+      const { rerender } = render(<LoaderView {...props} />);
+
+      await waitFor(() => {
+        expect(mockExecuteOperator).toHaveBeenCalledTimes(1);
+      });
+
+      // Change nested tracked dependency
+      const newProps = createProps({
+        fullData: { myLoader: { state: "loaded", data: [] } },
+        schema: {
+          view: {
+            operator: "@test/load_data",
+            params: { filters: { category: "suv" } },
+            dependencies: ["filters.category"],
+          },
+        },
+      });
+
+      rerender(<LoaderView {...newProps} />);
+
+      await waitFor(() => {
+        expect(mockExecuteOperator).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  describe("loading state protection", () => {
     it("does not re-execute when already loading", async () => {
       const props = createProps({
         fullData: { myLoader: { state: "loading" } },
