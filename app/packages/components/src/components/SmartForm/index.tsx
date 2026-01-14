@@ -1,7 +1,7 @@
 import React from "react";
 import RJSF from "./RJSF";
 
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
+import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 export interface SmartFormProps {
@@ -11,6 +11,8 @@ export interface SmartFormProps {
   data?: unknown;
   onChange?: (data: unknown) => void;
   onSubmit?: (data: unknown) => void;
+  validator?: ValidatorType;
+  liveValidate?: boolean;
 }
 
 export default function SmartForm(props: SmartFormProps) {

@@ -10,7 +10,7 @@ import templates from "./templates";
 export { isSchemaIOSchema, isJSONSchema } from "./translators";
 
 import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
+import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 
 export interface RJSFProps {
@@ -20,6 +20,8 @@ export interface RJSFProps {
   data?: unknown;
   onChange?: (data: unknown) => void;
   onSubmit?: (data: unknown) => void;
+  validator?: ValidatorType;
+  liveValidate?: boolean;
 }
 
 export default function RJSF(props: RJSFProps) {
@@ -76,12 +78,13 @@ export default function RJSF(props: RJSFProps) {
     <Form
       schema={schema}
       uiSchema={uiSchema}
-      validator={validator}
+      validator={props.validator ?? validator}
       widgets={widgets}
       templates={templates}
       formData={props.data}
       onChange={handleChange}
       onSubmit={handleSubmit}
+      liveValidate={props.liveValidate ?? true}
     />
   );
 }
