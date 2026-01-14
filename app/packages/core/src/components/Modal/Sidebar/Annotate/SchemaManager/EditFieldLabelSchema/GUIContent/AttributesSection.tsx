@@ -2,6 +2,7 @@
  * Attributes section component for managing attributes.
  */
 
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   Button,
   Pill,
@@ -33,6 +34,10 @@ const AttributesSection = ({
   onAddAttribute,
   onEditAttribute,
 }: AttributesSectionProps) => {
+  const { isEnabled: isM4Enabled } = useFeature({
+    feature: FeatureFlag.VFF_ANNOTATION_M4,
+  });
+
   const listItems: RichListItem[] = useMemo(() => {
     const attrEntries = Object.entries(attributes);
     return attrEntries.map(([name, config]) => {
@@ -51,7 +56,7 @@ const AttributesSection = ({
         secondaryContent: (
           <>
             {secondaryParts.join(" · ")}
-            {config.read_only && (
+            {isM4Enabled && config.read_only && (
               <Pill size={Size.Md} style={{ marginLeft: 8 }}>
                 Read-only
               </Pill>
@@ -61,7 +66,7 @@ const AttributesSection = ({
         actions: <EditAction onEdit={() => onEditAttribute(name)} />,
       });
     });
-  }, [attributes, onEditAttribute]);
+  }, [attributes, onEditAttribute, isM4Enabled]);
 
   return (
     <Section>

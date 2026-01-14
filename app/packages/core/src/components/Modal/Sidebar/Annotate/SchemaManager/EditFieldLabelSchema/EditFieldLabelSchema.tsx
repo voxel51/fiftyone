@@ -1,3 +1,4 @@
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   Button,
@@ -29,6 +30,9 @@ import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import { currentField } from "../state";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
+  const { isEnabled: isM4Enabled } = useFeature({
+    feature: FeatureFlag.VFF_ANNOTATION_M4,
+  });
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
@@ -89,34 +93,38 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
     <EditContainer>
       <Header field={field} setField={setCurrentField} />
 
-      <div className="my-4">
-        <div className="flex items-center justify-between mb-1">
-          <Text variant={TextVariant.Xl}>Read-only</Text>
-          <Toggle
-            size={Size.Md}
-            disabled={labelSchema.isReadOnlyRequired}
-            checked={labelSchema.isReadOnly}
-            onChange={labelSchema.toggleReadOnly}
-          />
+      {isM4Enabled && (
+        <div className="my-4">
+          <div className="flex items-center justify-between mb-1">
+            <Text variant={TextVariant.Xl}>Read-only</Text>
+            <Toggle
+              size={Size.Md}
+              disabled={labelSchema.isReadOnlyRequired}
+              checked={labelSchema.isReadOnly}
+              onChange={labelSchema.toggleReadOnly}
+            />
+          </div>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            When enabled, annotators can view this field but can't edit its
+            values.
+          </Text>
         </div>
-        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-          When enabled, annotators can view this field but can't edit its
-          values.
-        </Text>
-      </div>
+      )}
 
       <SchemaSection>
         <Label variant="body2">Schema</Label>
         <TabsRow>
-          <ToggleSwitch
-            size={Size.Md}
-            defaultIndex={0}
-            onChange={handleTabChange}
-            tabs={[
-              { id: TAB_GUI, data: { label: "GUI" } },
-              { id: TAB_JSON, data: { label: "JSON" } },
-            ]}
-          />
+          {isM4Enabled && (
+            <ToggleSwitch
+              size={Size.Md}
+              defaultIndex={0}
+              onChange={handleTabChange}
+              tabs={[
+                { id: TAB_GUI, data: { label: "GUI" } },
+                { id: TAB_JSON, data: { label: "JSON" } },
+              ]}
+            />
+          )}
           <Button
             size={Size.Md}
             variant={Variant.Secondary}
@@ -131,7 +139,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           </Button>
         </TabsRow>
 
-        {activeTab === TAB_GUI ? (
+        {isM4Enabled && activeTab === TAB_GUI ? (
           <GUIContent
             config={schemaData}
             scanning={labelSchema.isScanning}

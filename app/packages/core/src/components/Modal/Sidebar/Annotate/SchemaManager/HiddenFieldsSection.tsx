@@ -4,6 +4,7 @@
  * Displays the collapsible list of hidden fields.
  */
 
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Collapse, Typography } from "@mui/material";
 import {
   Anchor,
@@ -36,6 +37,9 @@ import { buildFieldSecondaryContent } from "./utils";
  * Actions component for hidden field rows
  */
 const HiddenFieldActions = ({ path }: { path: string }) => {
+  const { isEnabled: isM4Enabled } = useFeature({
+    feature: FeatureFlag.VFF_ANNOTATION_M4,
+  });
   const setField = useSetAtom(currentField);
   const fieldData = useAtomValue(labelSchemaData(path));
   const isSystemReadOnly = isSystemReadOnlyField(path);
@@ -45,7 +49,7 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
   return (
     <span className="flex items-center gap-2">
       {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
-      {(isReadOnly || isSystemReadOnly) && (
+      {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
         <Pill size={Size.Md}>Read-only</Pill>
       )}
       {!isSystemReadOnly && !isUnsupported && (

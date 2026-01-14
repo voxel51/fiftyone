@@ -4,6 +4,7 @@
  * Main view for the Schema Manager with GUI and JSON tabs.
  */
 
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Typography } from "@mui/material";
 import { Size, ToggleSwitch } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -91,6 +92,9 @@ const JSONContent = () => {
 // =============================================================================
 
 const GUIView = () => {
+  const { isEnabled: isM4Enabled } = useFeature({
+    feature: FeatureFlag.VFF_ANNOTATION_M4,
+  });
   const activeTab = useAtomValue(activeSchemaTab);
   const setActiveTab = useSetAtom(activeSchemaTab);
 
@@ -104,6 +108,15 @@ const GUIView = () => {
       setActiveTab(tabId);
     }
   }, []);
+
+  // When M4 flag is off, show GUI content directly without toggle
+  if (!isM4Enabled) {
+    return (
+      <Container style={{ marginBottom: "0.5rem" }}>
+        <GUIContent />
+      </Container>
+    );
+  }
 
   return (
     <Container style={{ marginBottom: "0.5rem" }}>

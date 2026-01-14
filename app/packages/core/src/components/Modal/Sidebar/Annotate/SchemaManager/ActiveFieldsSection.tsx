@@ -4,6 +4,7 @@
  * Displays the list of active (visible) fields with drag-drop reordering.
  */
 
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { Typography } from "@mui/material";
 import {
@@ -50,6 +51,10 @@ const FieldActions = ({ path }: { path: string }) => {
 };
 
 const ActiveFieldsSection = () => {
+  const { isEnabled: isM4Enabled } = useFeature({
+    feature: FeatureFlag.VFF_ANNOTATION_M4,
+  });
+
   // Support both atom systems
   const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
   const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
@@ -108,7 +113,7 @@ const ActiveFieldsSection = () => {
           ),
           actions: (
             <span className="flex items-center gap-2">
-              {fieldReadOnlyStates[path] && (
+              {isM4Enabled && fieldReadOnlyStates[path] && (
                 <Pill size={Size.Md}>Read-only</Pill>
               )}
               <FieldActions path={path} />
@@ -116,7 +121,7 @@ const ActiveFieldsSection = () => {
           ),
         } as ListItemProps,
       })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates, isM4Enabled]
   );
 
   const handleOrderChange = useCallback(
