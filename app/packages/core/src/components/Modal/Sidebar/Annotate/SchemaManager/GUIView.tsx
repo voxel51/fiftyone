@@ -6,7 +6,7 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Typography } from "@mui/material";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
+import { Button, Size, ToggleSwitch, Variant } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
@@ -141,6 +141,13 @@ const GUIView = () => {
           },
         ]}
       />
+      <Button
+        variant={Variant.Secondary}
+        size={Size.Md}
+        style={{ position: "absolute", right: "2rem", top: 0 }}
+      >
+        New field
+      </Button>
     </Container>
   );
 };
