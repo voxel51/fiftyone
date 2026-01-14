@@ -76,7 +76,7 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const { isReadOnly } = useReadOnly(path);
 
   const formatted = useMemo(() => {
-    if (!value) return null;
+    if (value === undefined || value === null) return null;
 
     const result = formatPrimitive({
       ftype: field.ftype || "",

@@ -1,9 +1,10 @@
-import { State, activeModalSidebarSample, fieldPaths } from "@fiftyone/state";
+import { State, fieldPaths, modalSample } from "@fiftyone/state";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+import { get } from "lodash";
 import { useRecoilValue } from "recoil";
 
 const useSamplePrimitives = (): string[] => {
-  const currentSample = useRecoilValue(activeModalSidebarSample);
+  const currentSample = useRecoilValue(modalSample).sample;
   const primitivePaths = useRecoilValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,
@@ -11,16 +12,15 @@ const useSamplePrimitives = (): string[] => {
     })
   );
 
-  console.log("primitivePaths", primitivePaths);
   console.log("currentSample", currentSample);
 
   // only top level primitives that exist - we want to keep null
   // values it just means the value has not been set yet
-  const validPrimtitivePaths = primitivePaths.filter(
-    (path) => currentSample[path] !== undefined
+  const validPrimitivePaths = primitivePaths.filter(
+    (path) => get(currentSample, path) !== undefined
   );
 
-  return validPrimtitivePaths;
+  return validPrimitivePaths;
 };
 
 export default useSamplePrimitives;

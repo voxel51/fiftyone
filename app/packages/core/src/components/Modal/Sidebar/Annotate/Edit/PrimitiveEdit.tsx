@@ -14,64 +14,32 @@ import {
 import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import useLabelSchema from "../SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import { useSampleValue } from "../useSampleValue";
-import {
-  createCheckbox,
-  createJSONEditor,
-  createRadio,
-  createSelect,
-  createSlider,
-  createText,
-  createToggle,
-} from "./AnnotationSchema";
+import { parsePrimitiveSchema } from "./schemaHelpers";
 import useExit from "./useExit";
-
-interface PrimitiveSchema {
-  type: string;
-  component?: string;
-  choices?: unknown[];
-  values?: string[];
-  range?: [number, number];
-}
-
-function parsePrimitiveSchema(
-  name: string,
-  schema: PrimitiveSchema
-): SchemaType | undefined {
-  console.log(schema);
-
-  if (schema.component === "radio") {
-    return createRadio(name, schema.choices);
-  }
-  if (schema.component === "dropdown") {
-    return createSelect(name, schema.values);
-  }
-
-  if (schema.type === "bool") {
-    if (schema.component === "checkbox") {
-      return createCheckbox(name);
-    }
-    return createToggle(name);
-  }
-  if (schema.type === "str") {
-    return createText(name, "string");
-  }
-  if (schema.type === "dict") {
-    return createJSONEditor(name);
-  }
-  if (schema.type === "float" || schema.type === "int") {
-    if (schema.range) {
-      return createSlider(name, schema.range);
-    }
-    return createText(name, "number");
-  }
-  return undefined;
-}
 
 interface PrimitiveEditProps {
   path: string;
+}
+
+/**
+ * Processes a dict/JSON field value by parsing string values to objects.
+ * Handles empty strings by converting them to null.
+ */
+function processDictFieldValue(
+  fieldValue: Primitive,
+  currentLabelSchema?: { type?: string }
+): Primitive {
+  const isDictField = currentLabelSchema?.type === "dict";
+  if (!isDictField) {
+    return fieldValue;
+  }
+  const trimmedValue = (fieldValue as string).trim();
+  if (trimmedValue === "") {
+    return null;
+  }
+  return JSON.parse(trimmedValue);
 }
 
 export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
@@ -86,7 +54,30 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
   const value = useSampleValue(path);
 
   const primitiveSchema = parsePrimitiveSchema(path, currentLabelSchema);
-  const [fieldValue, setFieldValue] = useState<Primitive>(value as Primitive);
+
+  // For dict/JSON fields, stringify the initial value if it's an object
+  // If the value is null/undefined, initialize with empty JSON object
+  const getInitialValue = (): Primitive => {
+    if (currentLabelSchema?.type === "dict") {
+      if (value === null || value === undefined) {
+        return "{}";
+      }
+      if (typeof value === "object") {
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch {
+          return value as Primitive;
+        }
+      }
+      // If it's already a string, use it as-is (might be from previous edit)
+      if (typeof value === "string") {
+        return value;
+      }
+    }
+    return value as Primitive;
+  };
+
+  const [fieldValue, setFieldValue] = useState<Primitive>(getInitialValue());
 
   const handleChange = (data: unknown) => {
     setFieldValue(data as Primitive);
@@ -94,37 +85,49 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;
-    await commandBus.execute(
+
+    // For dict/JSON fields, parse the string value to an object before saving
+    const dataToSave = processDictFieldValue(fieldValue, currentLabelSchema);
+
+    return await commandBus.execute(
       new UpsertAnnotationCommand(
         {
           type: "Primitive",
-          data: fieldValue,
+          data: dataToSave,
           path: path,
         } as PrimitiveValue,
         fieldSchema
       )
     );
-  }, [fieldSchema, fieldValue, path]);
+  }, [fieldSchema, fieldValue, path, currentLabelSchema]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!fieldSchema) {
       console.error("Field schema not found for path:", path);
       return;
     }
     try {
-      await persistData();
-      setNotification({
-        msg: `Primitive ${path} value saved successfully.`,
-        variant: "success",
-      });
-      onExit();
+      const result = await persistData();
+      if (result) {
+        setNotification({
+          msg: `Primitive ${path} value saved successfully.`,
+          variant: "success",
+        });
+        onExit();
+      } else {
+        setNotification({
+          msg: `Failed to save primitive ${path}.`,
+          variant: "error",
+        });
+      }
     } catch (error) {
+      console.error("Error while saving primitive:", error);
       setNotification({
-        msg: `Failed to save primitive ${path}.`,
+        msg: `Error while saving primitive ${path}.`,
         variant: "error",
       });
     }
-  };
+  }, [path, persistData, setNotification, onExit]);
 
   if (!primitiveSchema) {
     return (
