@@ -17,11 +17,11 @@ export interface Undoable extends Action {
  * Delegate execute/undo to lambdas
  */
 export class DelegatingUndoable extends DelegatingAction implements Undoable {
-  private readonly _undoFn: () => Promise<void>;
+  private readonly _undoFn: () => Promise<void> | void;
   constructor(
     id: string,
-    execFn: () => Promise<void>,
-    undoFn: () => Promise<void>
+    execFn: () => Promise<void> | void,
+    undoFn: () => Promise<void> | void
   ) {
     super(id, execFn);
     this._undoFn = undoFn;
@@ -29,7 +29,7 @@ export class DelegatingUndoable extends DelegatingAction implements Undoable {
   /**
    * Executes the undoFn passed in the constructor
    */
-  undo(): Promise<void> {
-    return this._undoFn();
+  async undo(): Promise<void> {
+    return await this._undoFn();
   }
 }

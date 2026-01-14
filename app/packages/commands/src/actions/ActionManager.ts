@@ -72,9 +72,14 @@ export class ActionManager {
   async undo(): Promise<Undoable | undefined> {
     const undoable = this.undoStack.pop();
     if (undoable) {
-      await undoable.undo();
-      this.redoStack.push(undoable);
-      this.fireActionListeners(undoable.id, true);
+      try {
+        await undoable.undo();
+        this.redoStack.push(undoable);
+        this.fireActionListeners(undoable.id, true);
+      } catch (error) {
+        console.error(`An exception ocurred during undo execution for undoable ${undoable.id}`);
+        console.error(error);
+      }
       this.fireUndoListeners();
       return undoable;
     }
@@ -88,9 +93,14 @@ export class ActionManager {
   async redo(): Promise<Undoable | undefined> {
     const undoable = this.redoStack.pop();
     if (undoable) {
-      await undoable.execute();
-      this.undoStack.push(undoable);
-      this.fireActionListeners(undoable.id, false);
+      try {
+        await undoable.execute();
+        this.undoStack.push(undoable);
+        this.fireActionListeners(undoable.id, false);
+      } catch (error) {
+        console.error(`An exception occurred during redo execution for undoable ${undoable.id}`);
+        console.error(error);
+      }
       this.fireUndoListeners();
       return undoable;
     }

@@ -1,7 +1,5 @@
 import { useEffect } from "react";
 import { useCommandContext } from "./useCommandContext";
-import { useCommand } from "./useCommand";
-import { useKeyBinding } from "./useKeyBinding";
 
 export type KeyBinding = {
     commandId: string;
@@ -27,15 +25,30 @@ export const useKeyBindings = (contextId: string,
         }
     }, [activate, deactivate]);
 
-    for (const keyBinding of keyBindings) {
-        useCommand(context,
-            keyBinding.commandId,
-            keyBinding.handler,
-            keyBinding.enablement || (() => { return true; }),
-            keyBinding.label,
-            keyBinding.description);
-        useKeyBinding(keyBinding.commandId,
-            keyBinding.sequence,
-            context);
-    }
+    useEffect(() => {
+        const registeredCommands: string[] = [];
+        const registeredBindings: string[] = [];
+
+        for (const keyBinding of keyBindings) {
+            const cmd = context.registerCommand(
+                keyBinding.commandId,
+                keyBinding.handler,
+                keyBinding.enablement ?? (() => true),
+                keyBinding.label,
+                keyBinding.description
+            );
+            registeredCommands.push(cmd.id);
+            context.bindKey(keyBinding.sequence, cmd.id);
+            registeredBindings.push(keyBinding.sequence);
+        }
+
+        return () => {
+            for (const seq of registeredBindings) {
+                context.unbindKey(seq);
+            }
+            for (const id of registeredCommands) {
+                context.unregisterCommand(id);
+            }
+        };
+    }, [context, keyBindings]);
 }

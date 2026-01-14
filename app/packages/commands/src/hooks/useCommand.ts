@@ -7,7 +7,7 @@ import { CommandFunction } from "../types";
  * The command is unregistered on unmount.
  * @param context An acquired context @see useCommandContext
  * @param id The id of the command
- * @param execFn The. function to call when the command is executed
+ * @param execFn The function to call when the command is executed
  * @param enablement A function to determine if the command is enabled
  * @param label The short name of the command, ie Edit, Save, etc
  * @param description A longer description fit for a tooltip

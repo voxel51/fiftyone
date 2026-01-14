@@ -17,6 +17,7 @@ import {
   useCommand,
   useCommandContext,
   useKeyBinding,
+  useKeyBindings,
 } from "@fiftyone/commands";
 
 const Arrow = styled.span<{
@@ -129,40 +130,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     };
   }, [nextNavigator, previousNavigator]);
 
-  const navLeft = useCallback(async () => {
-    previousNavigator.navigate();
-  }, [previousNavigator]);
-  const navRight = useCallback(async () => {
-    nextNavigator.navigate();
-  }, [nextNavigator]);
-
-  const { context } = useCommandContext(KnownContexts.Modal);
-
-  useCommand(
-    context,
-    KnownCommands.ModalPreviousSample,
-    navLeft,
-    () => {
-      return true;
-    },
-    "Previous",
-    "Previous Sample"
-  );
-  useCommand(
-    context,
-    KnownCommands.ModalNextSample,
-    navRight,
-    () => {
-      return true;
-    },
-    "Next",
-    "Next Sample"
-  );
-  useKeyBinding(KnownCommands.ModalPreviousSample, "ArrowLeft", context);
-  useKeyBinding(KnownCommands.ModalNextSample, "ArrowRight", context);
-
   const { confirmExit } = useConfirmExit(useExit(), useSave());
-
   const next = useCallback(
     () => confirmExit(nextNavigator.navigate),
     [confirmExit, nextNavigator]
@@ -172,6 +140,23 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     () => confirmExit(previousNavigator.navigate),
     [confirmExit, previousNavigator]
   );
+
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalPreviousSample,
+      sequence: "ArrowLeft",
+      handler: previous,
+      label: "Previous",
+      description: "Previous Sample"
+    },
+    {
+      commandId: KnownCommands.ModalNextSample,
+      sequence: "ArrowRight",
+      handler: next,
+      label: "Next",
+      description: "Next Sample"
+    },
+  ]);
 
   if (!modal) {
     return null;

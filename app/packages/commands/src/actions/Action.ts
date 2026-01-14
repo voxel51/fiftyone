@@ -22,13 +22,13 @@ export interface Action {
 export class DelegatingAction implements Action {
   constructor(
     public readonly id: string,
-    private readonly execFn: () => Promise<void>
-  ) {}
+    private readonly execFn: () => Promise<void> | void
+  ) { }
   /**
    * Executes the delegate function
    * passed in the constructor
    */
-  execute(): Promise<void> {
-    return this.execFn();
+  async execute(): Promise<void> {
+    return await this.execFn();
   }
 }

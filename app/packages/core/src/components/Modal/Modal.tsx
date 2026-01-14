@@ -173,7 +173,7 @@ const Modal = () => {
 
         await modalCloseHandler();
       },
-    []
+    [modalCloseHandler]
   );
   useKeyBindings(KnownContexts.Modal, [
     {
