@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import React from "react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render } from "@testing-library/react";
 import SmartForm from "./index";
 import type { ValidatorType } from "@rjsf/utils";

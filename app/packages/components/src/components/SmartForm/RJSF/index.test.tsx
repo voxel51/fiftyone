@@ -1,4 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
+import React from "react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render } from "@testing-library/react";
 import RJSF from "./index";
 import type { ValidatorType } from "@rjsf/utils";
@@ -10,6 +11,16 @@ vi.mock("@rjsf/mui", () => ({
     (global as any).__rjsfFormProps = props;
     return null;
   }),
+}));
+
+// Mock widgets to prevent importing from @fiftyone/core which pulls in plotly.js
+vi.mock("./widgets", () => ({
+  default: {},
+}));
+
+// Mock templates to prevent any dependency issues
+vi.mock("./templates", () => ({
+  default: {},
 }));
 
 describe("RJSF Component", () => {
