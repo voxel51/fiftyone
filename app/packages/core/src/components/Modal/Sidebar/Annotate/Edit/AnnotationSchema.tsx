@@ -34,6 +34,17 @@ const getLabel = (value) => {
   return value;
 };
 
+export const createText = (name: string, type: string): SchemaType => {
+  return {
+    type,
+    view: {
+      name: "TextWidget",
+      component: "TextWidget",
+      label: name,
+    },
+  };
+};
+
 export const createInput = (
   name: string,
   { ftype, multipleOf }: { ftype: string; multipleOf: number }
@@ -61,9 +72,22 @@ export const createInput = (
   return schema;
 };
 
+export const createSlider = (name: string, range: [number, number]) => {
+  return {
+    type: "number",
+    min: range[0],
+    max: range[1],
+    view: {
+      name: "SliderView",
+      label: name,
+      component: "SliderView",
+    },
+  };
+};
+
 export const createRadio = (name: string, choices) => {
   return {
-    type: "string",
+    type: "float",
     view: {
       name: "RadioGroup",
       label: name,
@@ -106,6 +130,42 @@ export const createSelect = (name: string, choices: string[]) => {
         label: getLabel(choice),
         value: choice,
       })),
+    },
+  };
+};
+
+export const createCheckbox = (name: string) => {
+  return {
+    type: "boolean",
+    view: {
+      name: "CheckboxView",
+      label: name,
+      component: "CheckboxView",
+    },
+  };
+};
+
+export const createToggle = (name: string) => {
+  return {
+    type: "boolean",
+    view: {
+      name: "ToggleView",
+      label: name,
+      component: "ToggleView",
+    },
+  };
+};
+
+export const createJSONEditor = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "CodeView",
+      label: name,
+      component: "CodeView",
+      language: "json",
+      readOnly: false,
+      height: 300,
     },
   };
 };

@@ -15,8 +15,13 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import PrimitiveEdit from "./PrimitiveEdit";
-import { currentField, currentOverlay, currentType, PRIMITIVE } from "./state";
+import PrimitiveWrapper from "./PrimitiveWrapper";
+import {
+  currentField,
+  currentOverlay,
+  currentType,
+  primitivePath,
+} from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
 
@@ -42,6 +47,7 @@ const Content = styled.div`
 
 export default function Edit() {
   const field = useAtomValue(currentField);
+  const primitive = useAtomValue(primitivePath);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
 
@@ -81,6 +87,7 @@ export default function Edit() {
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const isPrimitive = primitive !== null;
 
   return (
     <Confirmation>
@@ -88,11 +95,11 @@ export default function Edit() {
         <Header />
         <Content>
           <Id />
-          {type !== PRIMITIVE && <Field />}
+          {!isPrimitive && <Field />}
           {type === DETECTION && overlay && !is3dDetection && <Position />}
           {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
-          {type === PRIMITIVE && <PrimitiveEdit />}
+          {isPrimitive && <PrimitiveWrapper />}
           {field && <AnnotationSchema />}
         </Content>
         <Footer />

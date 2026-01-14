@@ -74,7 +74,6 @@ const AnnotateSidebar = () => {
       <Sidebar
         isDisabled={() => true}
         render={(key, group, entry, controller, trigger) => {
-          console.log("entry", entry);
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }

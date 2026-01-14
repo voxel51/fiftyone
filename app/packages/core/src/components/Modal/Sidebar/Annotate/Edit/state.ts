@@ -19,7 +19,7 @@ export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | typeof PRIMITIVE | null
 >(null);
 
-export const primitivePath = atomWithReset<string | null>(null);
+export const primitivePath = atom<string | null>(null);
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);

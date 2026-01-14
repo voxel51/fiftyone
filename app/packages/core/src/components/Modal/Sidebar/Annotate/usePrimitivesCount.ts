@@ -1,19 +1,13 @@
-import { activeModalSidebarSample, fieldPaths, State } from "@fiftyone/state";
-import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
+import { activeModalSidebarSample } from "@fiftyone/state";
 import { useSetAtom } from "jotai";
-import { get } from "lodash";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { primitivesCount } from "./GroupEntry";
+import useSamplePrimitives from "./useSamplePrimitives";
 
 export const usePrimitivesCount = () => {
   const currentSample = useRecoilValue(activeModalSidebarSample);
-  const primitivePaths = useRecoilValue(
-    fieldPaths({
-      space: State.SPACE.SAMPLE,
-      ftype: VALID_PRIMITIVE_TYPES,
-    })
-  );
+  const samplePrimitives = useSamplePrimitives();
   const setPrimitivesCount = useSetAtom(primitivesCount);
 
   useEffect(() => {
@@ -21,16 +15,8 @@ export const usePrimitivesCount = () => {
       setPrimitivesCount(0);
       return;
     }
-
-    let count = 0;
-    for (const path of primitivePaths) {
-      const value = get(currentSample, path);
-      if (value) {
-        count++;
-      }
-    }
-    setPrimitivesCount(count);
-  }, [currentSample, primitivePaths, setPrimitivesCount]);
+    setPrimitivesCount(samplePrimitives.length);
+  }, [currentSample, samplePrimitives, setPrimitivesCount]);
 };
 
 export default usePrimitivesCount;
