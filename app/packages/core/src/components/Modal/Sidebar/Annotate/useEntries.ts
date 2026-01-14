@@ -1,16 +1,53 @@
 import type { SidebarEntry } from "@fiftyone/state";
-import { EntryKind } from "@fiftyone/state";
+import { EntryKind, modalSample } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { primitivesExpanded } from "./GroupEntry";
 import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
-
+import useSamplePrimitives from "./useSamplePrimitives";
 const store = getDefaultStore();
+
+const getPrimitiveEntries = (
+  currentSample: any,
+  primitivePaths: string[],
+  expanded: boolean
+): SidebarEntry[] => {
+  if (!currentSample) {
+    return [];
+  }
+
+  const result: SidebarEntry[] = [];
+  result.push({ kind: EntryKind.GROUP, name: "Primitives" });
+  primitivePaths.forEach((path) => {
+    result.push({
+      kind: EntryKind.PATH,
+      path,
+      shown: expanded,
+    });
+  });
+
+  return result;
+};
+
+const usePrimitiveEntries = (): SidebarEntry[] => {
+  const currentSample = useRecoilValue(modalSample);
+  const samplePrimitives = useSamplePrimitives();
+  const primitivesExpandedState = useAtomValue(primitivesExpanded);
+
+  return getPrimitiveEntries(
+    currentSample,
+    samplePrimitives,
+    primitivesExpandedState
+  );
+};
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const atoms = useAtomValue(labelAtoms);
   const activeFields = useAtomValue(activeLabelSchemas);
   const state = useAtomValue(labelsState);
+  const primitiveEntries = usePrimitiveEntries();
 
   const entries = useMemo(() => {
     if (state !== LabelsState.COMPLETE) {
@@ -50,9 +87,11 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
         result.push({ kind: EntryKind.LABEL, atom, id });
       }
     }
+    // todo - filter these to only the primitives that are in the active fields
+    result.push(...primitiveEntries);
 
     return result as SidebarEntry[];
-  }, [atoms, activeFields, state]);
+  }, [atoms, activeFields, state, primitiveEntries]);
 
   return [entries, () => {}];
 };

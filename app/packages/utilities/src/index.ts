@@ -154,6 +154,7 @@ export const POLYLINE = "Polyline";
 export const POLYLINES = "Polylines";
 export const REGRESSION = "Regression";
 export const SEGMENTATION = "Segmentation";
+export const PRIMITIVE = "primitive";
 export const TEMPORAL_DETECTION = "TemporalDetection";
 export const TEMPORAL_DETECTIONS = "TemporalDetections";
 

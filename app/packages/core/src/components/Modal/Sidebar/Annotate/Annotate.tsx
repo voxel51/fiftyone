@@ -11,11 +11,13 @@ import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
+import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
 import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
+import { usePrimitivesCount } from "./usePrimitivesCount";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -61,6 +63,7 @@ const Loading = () => {
 
 const AnnotateSidebar = () => {
   useLabels();
+  usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
   if (editing) return null;
@@ -87,6 +90,13 @@ const AnnotateSidebar = () => {
             return {
               children: <LoadingEntry />,
               disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.PATH) {
+            return {
+              children: <PrimitiveEntry path={entry.path} />,
+              disabled: false,
             };
           }
 
