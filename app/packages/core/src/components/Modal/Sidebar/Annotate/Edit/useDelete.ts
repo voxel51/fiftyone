@@ -45,8 +45,9 @@ export default function useDelete() {
       if (!fieldSchema) {
         setSaving(false);
         setNotification({
-          msg: `Unable to delete label: field schema not found for path "${label?.path ?? "unknown"
-            }".`,
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
           variant: "error",
         });
         return;
@@ -54,8 +55,8 @@ export default function useDelete() {
 
       await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
-      removeOverlay(label.overlay.id);
       setter();
+      removeOverlay(label.overlay.id);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label}" successfully deleted.`,
@@ -65,8 +66,9 @@ export default function useDelete() {
     } catch (error) {
       setSaving(false);
       setNotification({
-        msg: `Label "${label.data.label ?? "Label"
-          }" not successfully deleted. Try again.`,
+        msg: `Label "${
+          label.data.label ?? "Label"
+        }" not successfully deleted. Try again.`,
         variant: "error",
       });
     }
@@ -84,4 +86,3 @@ export default function useDelete() {
   ]);
   return onDelete;
 }
-
