@@ -57,6 +57,7 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
 
   // For dict/JSON fields, stringify the initial value if it's an object
   // If the value is null/undefined, initialize with empty JSON object
+  // TODO refactor this
   const getInitialValue = (): Primitive => {
     if (currentLabelSchema?.type === "dict") {
       if (value === null || value === undefined) {
