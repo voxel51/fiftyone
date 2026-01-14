@@ -3,7 +3,7 @@
  */
 
 import { WidgetProps } from "@rjsf/utils";
-import { FormField, Input, InputType } from "@voxel51/voodo";
+import { FormField, Input, InputProps, InputType } from "@voxel51/voodo";
 import React from "react";
 
 export default function TextWidget(props: WidgetProps) {
@@ -26,7 +26,7 @@ export default function TextWidget(props: WidgetProps) {
   const inputType =
     schema.type === "number" || schema.type === "integer" ? "number" : "text";
 
-  const inputProps: Record<string, any> = {};
+  const inputProps: InputProps = {};
   if (inputType === "number" && schema.multipleOf !== undefined) {
     inputProps.step = schema.multipleOf;
   }

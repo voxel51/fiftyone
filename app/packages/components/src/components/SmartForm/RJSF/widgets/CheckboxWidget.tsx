@@ -7,16 +7,12 @@ export default function CheckboxWidget(props: WidgetProps) {
 
   const checked = Boolean(value);
 
-  const handleChange = (newChecked: boolean): void => {
-    onChange(newChecked);
-  };
-
   return (
     <Stack orientation={Orientation.Column}>
       <Checkbox
         label={label}
         checked={checked}
-        onChange={handleChange}
+        onChange={onChange}
         disabled={disabled || readonly}
       />
       {rawErrors.length > 0 && (
