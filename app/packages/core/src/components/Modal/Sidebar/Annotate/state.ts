@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import { capitalize } from "lodash";
 
 export const activeSchemaTab = atom<"gui" | "json">("gui");
 
@@ -26,16 +27,17 @@ export const inactiveLabelSchemas = atom((get) =>
 
 export const fieldType = atomFamily((field: string) =>
   atom((get) => {
-    return get(labelSchemaData(field)).type;
+    const type = get(labelSchemaData(field)).type;
+    return capitalize(type);
   })
 );
 
-export const fieldTypes = atom((get) => {
-  return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
+export const fieldTypes = atom((get) =>
+  (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
     acc[cur] = get(fieldType(cur));
     return acc;
-  }, {});
-});
+  }, {})
+);
 
 export const addToActiveSchemas = atom(null, (get, set, add: Set<string>) => {
   const current: string[] = get(activeLabelSchemas) ?? [];
