@@ -8,13 +8,37 @@ import {
 } from "./utils";
 
 describe("getAttributeTypeLabel", () => {
-  it("should return human-readable label for known types", () => {
-    expect(getAttributeTypeLabel("radio")).toBe("Radio group");
+  it("should return human-readable label for known components", () => {
     expect(getAttributeTypeLabel("checkbox")).toBe("Checkbox");
+    expect(getAttributeTypeLabel("checkboxes")).toBe("Checkboxes");
+    expect(getAttributeTypeLabel("datepicker")).toBe("Date picker");
     expect(getAttributeTypeLabel("dropdown")).toBe("Dropdown");
+    expect(getAttributeTypeLabel("json")).toBe("JSON");
+    expect(getAttributeTypeLabel("radio")).toBe("Radio group");
+    expect(getAttributeTypeLabel("slider")).toBe("Slider");
     expect(getAttributeTypeLabel("text")).toBe("Text");
-    expect(getAttributeTypeLabel("number")).toBe("Number");
-    expect(getAttributeTypeLabel("select")).toBe("Object selector");
+    expect(getAttributeTypeLabel("toggle")).toBe("Toggle");
+  });
+
+  it("should return human-readable label for known types", () => {
+    expect(getAttributeTypeLabel("bool")).toBe("Boolean");
+    expect(getAttributeTypeLabel("list<bool>")).toBe("Boolean list");
+    expect(getAttributeTypeLabel("date")).toBe("Date");
+    expect(getAttributeTypeLabel("datetime")).toBe("Date/time");
+    expect(getAttributeTypeLabel("dict")).toBe("Dictionary");
+    expect(getAttributeTypeLabel("float")).toBe("Float");
+    expect(getAttributeTypeLabel("list<float>")).toBe("Float list");
+    expect(getAttributeTypeLabel("id")).toBe("ID");
+    expect(getAttributeTypeLabel("int")).toBe("Integer");
+    expect(getAttributeTypeLabel("list<int>")).toBe("Integer list");
+    expect(getAttributeTypeLabel("str")).toBe("String");
+    expect(getAttributeTypeLabel("list<str>")).toBe("String list");
+  });
+
+  it("should return the type as-is for unknown types", () => {
+    expect(getAttributeTypeLabel("custom")).toBe("custom");
+    expect(getAttributeTypeLabel("unknown")).toBe("unknown");
+    expect(getAttributeTypeLabel("")).toBe("");
   });
 });
 

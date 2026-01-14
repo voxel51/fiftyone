@@ -25,15 +25,13 @@ import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
+import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import { currentField } from "../state";
-
-const TAB_IDS = ["gui", "json"] as const;
-type TabId = typeof TAB_IDS[number];
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
-  const [activeTab, setActiveTab] = useState<TabId>("gui");
+  const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const [activeFields] = useAtom(activeLabelSchemas);
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
@@ -115,8 +113,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             defaultIndex={0}
             onChange={handleTabChange}
             tabs={[
-              { id: "gui", data: { label: "GUI" } },
-              { id: "json", data: { label: "JSON" } },
+              { id: TAB_GUI, data: { label: "GUI" } },
+              { id: TAB_JSON, data: { label: "JSON" } },
             ]}
           />
           <Button
@@ -133,7 +131,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           </Button>
         </TabsRow>
 
-        {activeTab === "gui" ? (
+        {activeTab === TAB_GUI ? (
           <GUIContent
             config={schemaData}
             scanning={labelSchema.isScanning}

@@ -2,17 +2,37 @@
  * Utility functions for SchemaManager
  */
 
+import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
+
 /**
- * Get human-readable label for attribute type
+ * Get human-readable label for attribute type or component
+ * Based on annotation/constants.py
  */
 export const getAttributeTypeLabel = (type: string): string => {
   const typeMap: Record<string, string> = {
-    radio: "Radio group",
+    // Components
     checkbox: "Checkbox",
+    checkboxes: "Checkboxes",
+    datepicker: "Date picker",
     dropdown: "Dropdown",
+    json: "JSON",
+    radio: "Radio group",
+    slider: "Slider",
     text: "Text",
-    number: "Number",
-    select: "Object selector",
+    toggle: "Toggle",
+    // Types
+    bool: "Boolean",
+    "list<bool>": "Boolean list",
+    date: "Date",
+    datetime: "Date/time",
+    dict: "Dictionary",
+    float: "Float",
+    "list<float>": "Float list",
+    id: "ID",
+    int: "Integer",
+    "list<int>": "Integer list",
+    str: "String",
+    "list<str>": "String list",
   };
   return typeMap[type] || type;
 };
@@ -56,7 +76,7 @@ export const buildFieldSecondaryContent = (
   attrCount: number,
   isSystemReadOnly: boolean
 ): string => {
-  const typeText = isSystemReadOnly ? "system" : fieldType;
+  const typeText = isSystemReadOnly ? SYSTEM_READ_ONLY_FIELD_NAME : fieldType;
   if (!isSystemReadOnly && attrCount > 0) {
     return `${typeText} • ${formatAttributeCount(attrCount)}`;
   }

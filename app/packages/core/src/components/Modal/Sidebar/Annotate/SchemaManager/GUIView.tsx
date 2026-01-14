@@ -12,6 +12,7 @@ import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { activeSchemaTab, labelSchemasData } from "../state";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
+import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
 import HiddenFieldsSection from "./HiddenFieldsSection";
 import { useFullSchemaEditor } from "./hooks";
 import { ContentArea } from "./styled";
@@ -22,12 +23,6 @@ import { ContentArea } from "./styled";
 
 export { useActivateFields, useDeactivateFields } from "./hooks";
 export { selectedActiveFields, selectedHiddenFields } from "./state";
-
-// =============================================================================
-// Tab IDs
-// =============================================================================
-
-const TAB_IDS = ["gui", "json"] as const;
 
 // =============================================================================
 // Content Components
@@ -118,14 +113,14 @@ const GUIView = () => {
         onChange={handleTabChange}
         tabs={[
           {
-            id: "gui",
+            id: TAB_GUI,
             data: {
               label: "GUI",
               content: <GUIContent />,
             },
           },
           {
-            id: "json",
+            id: TAB_JSON,
             data: {
               label: "JSON",
               content: <JSONContent />,
