@@ -1,17 +1,19 @@
-import { executeOperator } from "@fiftyone/operators";
+/**
+ * Copyright 2017-2026, Voxel51, Inc.
+ */
+
 import { Alert, Box, CircularProgress, Typography } from "@mui/material";
 import { get } from "lodash";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useEffect } from "react";
 import { getComponentProps } from "../utils";
 import DynamicIO from "./DynamicIO";
-
-type LoaderState = "idle" | "loading" | "loaded" | "errored";
-
-type LoaderValue = {
-  state: LoaderState;
-  data?: unknown;
-  error?: string;
-};
+import {
+  useDependencyHash,
+  useLoadTrigger,
+  useExecuteLoader,
+  type LoaderState,
+  type LoaderValue,
+} from "./hooks";
 
 export default function LoaderView(props: LoaderViewProps) {
   const { path, schema, onChange, fullData } = props;
@@ -21,47 +23,27 @@ export default function LoaderView(props: LoaderViewProps) {
     params = {},
     label = "Loading...",
     placeholder_view: placeholderView,
+    dependencies,
   } = view;
 
   const currentValue: LoaderValue = get(fullData, path) || { state: "idle" };
   const { state, error } = currentValue;
 
-  const lastParamsRef = useRef<string>();
-  const serializedParams = useMemo(() => JSON.stringify(params), [params]);
-
-  const executeLoad = useCallback(() => {
-    if (!operator) return;
-
-    onChange(path, { state: "loading" });
-    lastParamsRef.current = serializedParams;
-
-    executeOperator(operator, params, {
-      callback: (result) => {
-        if (result.error) {
-          onChange(path, {
-            state: "errored",
-            error: result.errorMessage || String(result.error),
-          });
-        } else {
-          onChange(path, {
-            state: "loaded",
-            data: result.result,
-          });
-        }
-      },
-    });
-  }, [operator, params, path, onChange, serializedParams]);
+  const dependencyHash = useDependencyHash(params, dependencies);
+  const { shouldLoad, markLoaded } = useLoadTrigger(
+    state as LoaderState,
+    dependencyHash
+  );
+  const executeLoad = useExecuteLoader({ operator, params, path, onChange });
 
   useEffect(() => {
-    const paramsChanged = lastParamsRef.current !== serializedParams;
-    const shouldLoad =
-      state === "idle" || (paramsChanged && state !== "loading");
-
     if (shouldLoad) {
+      markLoaded();
       executeLoad();
     }
-  }, [serializedParams, state, executeLoad]);
+  }, [shouldLoad, markLoaded, executeLoad]);
 
+  // Render loading state
   if (state === "loading" || state === "idle") {
     if (placeholderView) {
       return (
@@ -107,13 +89,14 @@ export default function LoaderView(props: LoaderViewProps) {
   return null;
 }
 
-type LoaderViewProps = {
+export type LoaderViewProps = {
   path: string;
   schema: {
     view?: {
       operator?: string;
       params?: Record<string, unknown>;
       label?: string;
+      dependencies?: string[];
       placeholder_view?: {
         view?: Record<string, unknown>;
         [key: string]: unknown;
