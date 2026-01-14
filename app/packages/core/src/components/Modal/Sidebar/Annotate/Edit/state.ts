@@ -122,11 +122,7 @@ export const disabledFields = atomFamily((type: LabelType) =>
       const isListType = IS_LIST.has(schemaType);
       const hasLabels = map[path]?.length > 0;
 
-      if (isListType) {
-        continue;
-      }
-
-      if (!hasLabels) {
+      if (isListType || !hasLabels) {
         continue;
       }
 
@@ -165,13 +161,9 @@ export const isNew = atom((get) => {
 const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
-    const activeSchemas = get(activeLabelSchemas) ?? [];
 
-    for (const field of activeSchemas) {
-      const schemaType = get(fieldType(field));
-      const hasMatch = IS[type].has(schemaType);
-
-      if (hasMatch) {
+    for (const field of get(activeLabelSchemas) ?? []) {
+      if (IS[type].has(get(fieldType(field)))) {
         fields.push(field);
       }
     }
@@ -183,9 +175,8 @@ const fieldsOfType = atomFamily((type: LabelType) =>
 export const defaultField = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = get(disabledFields(type));
-    const fields = get(fieldsOfType(type));
 
-    for (const path of fields) {
+		for (const path of get(fieldsOfType(type))) {
       if (!disabled.has(path)) {
         return path;
       }

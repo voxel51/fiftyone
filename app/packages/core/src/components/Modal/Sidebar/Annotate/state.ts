@@ -19,11 +19,11 @@ export const labelSchemaData = atomFamily((field) => {
 
 export const activeLabelSchemas = atom<string[] | null>(null);
 
-export const inactiveLabelSchemas = atom((get) => {
-  return Object.keys(get(labelSchemasData) ?? {})
+export const inactiveLabelSchemas = atom((get) =>
+  Object.keys(get(labelSchemasData) ?? {})
     .sort()
-    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field));
-});
+    .filter((field) => !(get(activeLabelSchemas) ?? []).includes(field))
+);
 
 export const fieldType = atomFamily((field: string) =>
   atom((get) => {
