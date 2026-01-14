@@ -7,7 +7,7 @@ import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
-import { CLASSIFICATION, DETECTION } from "./Edit/state";
+import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";

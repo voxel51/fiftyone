@@ -10,14 +10,8 @@ import { objectId } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
-import {
-  CLASSIFICATION,
-  DETECTION,
-  POLYLINE,
-  defaultField,
-  editing,
-  savedLabel,
-} from "./state";
+import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
+import { defaultField, editing, savedLabel } from "./state";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
