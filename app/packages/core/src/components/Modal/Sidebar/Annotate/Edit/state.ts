@@ -176,7 +176,7 @@ export const defaultField = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = get(disabledFields(type));
 
-		for (const path of get(fieldsOfType(type))) {
+    for (const path of get(fieldsOfType(type))) {
       if (!disabled.has(path)) {
         return path;
       }
