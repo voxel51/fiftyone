@@ -8,6 +8,7 @@ import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Collapse, Typography } from "@mui/material";
 import {
   Anchor,
+  Button,
   Clickable,
   Icon,
   IconName,
@@ -15,6 +16,7 @@ import {
   RichList,
   Size,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -36,7 +38,13 @@ import { buildFieldSecondaryContent } from "./utils";
 /**
  * Actions component for hidden field rows
  */
-const HiddenFieldActions = ({ path }: { path: string }) => {
+const HiddenFieldActions = ({
+  path,
+  hasSchema,
+}: {
+  path: string;
+  hasSchema: boolean;
+}) => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
@@ -52,17 +60,27 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
       {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
         <Pill size={Size.Md}>Read-only</Pill>
       )}
-      {!isSystemReadOnly && !isUnsupported && (
-        <Tooltip
-          content="Configure annotation schema"
-          anchor={Anchor.Bottom}
-          portal
-        >
-          <Clickable onClick={() => setField(path)}>
-            <Icon name={IconName.Edit} size={Size.Md} />
-          </Clickable>
-        </Tooltip>
-      )}
+      {!isSystemReadOnly &&
+        !isUnsupported &&
+        (hasSchema ? (
+          <Tooltip
+            content="Configure annotation schema"
+            anchor={Anchor.Bottom}
+            portal
+          >
+            <Clickable onClick={() => setField(path)}>
+              <Icon name={IconName.Edit} size={Size.Md} />
+            </Clickable>
+          </Tooltip>
+        ) : (
+          <Button
+            variant={Variant.Secondary}
+            size={Size.Md}
+            onClick={() => setField(path)}
+          >
+            Scan field
+          </Button>
+        ))}
     </span>
   );
 };
@@ -94,7 +112,7 @@ const HiddenFieldsSection = () => {
               fieldAttrCounts[path],
               isSystemReadOnly
             ),
-            actions: <HiddenFieldActions path={path} />,
+            actions: <HiddenFieldActions path={path} hasSchema={hasSchema} />,
           } as ListItemProps,
         };
       }),
