@@ -1,5 +1,6 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
+import { capitalize } from "lodash";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
@@ -58,33 +59,26 @@ export const activePaths = atom(
 // Field type atoms
 // =============================================================================
 
-export const fieldTypes = atom<{ [key: string]: string }>({});
-
 export const fieldType = atomFamily((path: string) =>
   atom((get) => {
     const legacyData = get(labelSchemaData(path));
-    return legacyData.type;
+    return legacyData?.type;
   })
 );
 
 export const fieldAttributeCount = atomFamily((path: string) =>
   atom((get) => {
-    const legacyData = get(labelSchemaData(path));
-    if (legacyData?.labelSchema?.attributes) {
-      return Object.keys(legacyData.labelSchema.attributes).length;
-    }
-
-    if (legacyData?.defaultLabelSchema?.attributes) {
-      return Object.keys(legacyData.defaultLabelSchema.attributes).length;
-    }
-
-    return 0;
+    const data = get(labelSchemaData(path));
+    return Object.keys(data?.label_schema?.attributes ?? {}).length;
   })
 );
 
-// =============================================================================
-// Actions
-// =============================================================================
+export const fieldTypes = atom((get) => {
+  return (get(activeLabelSchemas) ?? []).reduce((acc, cur) => {
+    acc[cur] = get(fieldType(cur));
+    return acc;
+  }, {} as { [key: string]: string });
+});
 
 export const addToActiveSchemas = atom(null, (get, set, add: Set<string>) => {
   const current: string[] = get(activeLabelSchemas) ?? [];
