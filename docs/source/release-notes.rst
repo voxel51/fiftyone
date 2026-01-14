@@ -3,6 +3,36 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.14.1
+--------------------------
+*Released January 14, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.11.1 <release-notes-v1.11.1>`, plus:
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `jws`, `next`, `node-forge`, and `validator`.
+
+
+.. _release-notes-v1.11.1:
+
+FiftyOne 1.11.1
+---------------
+*Released January 14, 2026*
+
+Core
+
+- Fixed an incompatibility with `sklearn>=1.8`
+  `#6657 <https://github.com/voxel51/fiftyone/pull/6657>`_
+
+Security
+
+- Updated `httplib2` in order to resolve a security vulnerability
+  `#6726 <https://github.com/voxel51/fiftyone/pull/6726>`_,
+  `eta#683 <https://github.com/voxel51/eta/pull/683>`_
+
+
 FiftyOne Enterprise 2.14.0
 --------------------------
 *Released December 5, 2025*

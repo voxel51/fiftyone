@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.11.0"
+VERSION = "1.11.1"
 
 
 def get_version():
@@ -78,7 +78,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.21.4,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.15.1,<0.16",
+    "voxel51-eta>=0.15.2,<0.16",
 ]
 
 
