@@ -169,6 +169,5 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         return "image"
 
     def _forward_pass(self, imgs):
-        with torch.no_grad():
-            prediction = self._model.inference(imgs)
+        prediction = self._model.inference(imgs)
         return {"depth": prediction.depth}
