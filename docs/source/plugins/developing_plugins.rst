@@ -1227,6 +1227,7 @@ To use a loader, define an operator that returns the data and call
                     operator="@my-plugin/load_models",
                     params={"make": ctx.params["make"]},
                     label="Loading models...",
+                    dependencies=["make"],  # reload when "make" changes
                 )
 
             models = ctx.params.get("models", {})
@@ -1240,6 +1241,25 @@ The loader property value always has the following structure:
 - ``state``: one of ``"idle"``, ``"loading"``, ``"loaded"``, or ``"errored"``
 - ``data``: the data returned by the operator (shaped by the ``type`` argument)
 - ``error``: an error message if the loader failed
+
+By default, loaders execute only once when the form mounts. To reload data when
+specific parameters change, use the ``dependencies`` argument with a list of
+parameter paths to watch:
+
+.. code-block:: python
+
+    inputs.loader(
+        "models",
+        type=types.List(types.Object()),
+        operator="@my-plugin/load_models",
+        params={"make": ctx.params["make"]},
+        label="Loading models...",
+        dependencies=["make"],  # reload only when "make" changes
+    )
+
+The ``dependencies`` argument supports dot-notation for nested values (e.g.,
+``"filters.category"``). The loader will re-execute whenever any of these
+values change, but will ignore changes to other parameters.
 
 .. note::
 
