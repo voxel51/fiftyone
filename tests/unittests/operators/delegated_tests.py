@@ -13,8 +13,8 @@ from unittest import mock
 from unittest.mock import patch
 
 import bson
-import pytest
 from bson import ObjectId
+import pytest
 
 from fiftyone import Dataset
 from fiftyone.factory import (
@@ -825,13 +825,28 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def test_rerun_child_do_fail(self, mock_get_operator):
         mock_child_doc = mock.MagicMock(spec=DelegatedOperationDocument)
-        mock_child_doc.parent_id = ObjectId()
+        mock_child_doc.rerunnable = False
 
+        # test non-rerunnable child DO
         with patch.object(self.svc._repo, "get", return_value=mock_child_doc):
             with patch.object(
                 self.svc._repo, "queue_operation", return_value=mock_child_doc
             ):
-                with pytest.raises(ValueError):
+                with pytest.raises(
+                    ValueError, match="not marked as rerunnable"
+                ):
+                    _ = self.svc.rerun_operation("abc123")
+
+        mock_child_doc.rerunnable = True
+        mock_child_doc.parent_id = ObjectId()
+        # test parent_id not supported
+        with patch.object(self.svc._repo, "get", side_effect=mock_child_doc):
+            with patch.object(
+                self.svc._repo, "queue_operation", return_value=mock_child_doc
+            ):
+                with pytest.raises(
+                    ValueError, match="Rerunning pipeline child operations"
+                ):
                     _ = self.svc.rerun_operation("abc123")
 
     @patch("fiftyone.core.odm.load_dataset")

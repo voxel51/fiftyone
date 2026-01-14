@@ -1,33 +1,38 @@
+/**
+ * Hook for managing label schema editing for a field
+ */
+
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { toCamelCase, toSnakeCase } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { labelSchemaData } from "../../state";
+import { currentLabelSchema } from "../state";
 
-const currentLabelSchema = atomFamily((_field: string) => atom());
+// =============================================================================
+// Internal Hooks
+// =============================================================================
 
 const useCurrentLabelSchema = (field: string) => {
   const [current, setCurrent] = useAtom(currentLabelSchema(field));
   const defaultSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
-  return [current ?? saved ?? defaultSchema, setCurrent];
+  return [current ?? saved ?? defaultSchema, setCurrent] as const;
 };
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data?.defaultLabelSchema;
+  return data?.default_label_schema;
 };
 
 const useDiscard = (field: string) => {
-  const [currentLabelSchema, setCurrent] = useCurrentLabelSchema(field);
+  const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
   return {
-    currentLabelSchema,
+    currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
       setCurrent(saved ?? defaultLabelSchema);
@@ -35,7 +40,7 @@ const useDiscard = (field: string) => {
   };
 };
 
-const useHasChanges = (one, two) => {
+const useHasChanges = (one: unknown, two: unknown) => {
   return useMemo(() => {
     try {
       return !isEqual(one, two);
@@ -49,10 +54,13 @@ const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: current?.readOnly,
-    isReadOnlyRequired: data?.readOnly,
+    isReadOnly: (current as { read_only?: boolean })?.read_only,
+    isReadOnlyRequired: data?.read_only,
     toggleReadOnly: () => {
-      setCurrent({ ...current, readOnly: !current?.readOnly });
+      setCurrent({
+        ...(current as object),
+        read_only: !(current as { read_only?: boolean })?.read_only,
+      });
     },
   };
 };
@@ -62,7 +70,7 @@ const useConfigUpdate = (field: string) => {
   return {
     updateClassOrder: (newOrder: string[]) => {
       if (!current) return;
-      setCurrent({ ...current, classes: newOrder });
+      setCurrent({ ...(current as object), classes: newOrder });
     },
     updateConfig: (newConfig: object) => {
       setCurrent(newConfig);
@@ -73,11 +81,11 @@ const useConfigUpdate = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data?.labelSchema,
-    (labelSchema) => {
-      setAtom({ ...data, labelSchema });
+    data?.label_schema,
+    (labelSchema: unknown) => {
+      setAtom({ ...data, label_schema: labelSchema });
     },
-  ];
+  ] as const;
 };
 
 const useSave = (field: string) => {
@@ -90,9 +98,8 @@ const useSave = (field: string) => {
     isSaving,
     save: () => {
       setIsSaving(true);
-      // Convert camelCase to snake_case for Python operator
       update.execute(
-        { field, label_schema: toSnakeCase(current) },
+        { field, label_schema: current },
         {
           callback: () => {
             setSaved(current);
@@ -107,7 +114,7 @@ const useSave = (field: string) => {
 
 const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+  const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
 
   return {
@@ -119,8 +126,7 @@ const useScan = (field: string) => {
         {
           callback: (result) => {
             if (result.result) {
-              // Convert snake_case from Python to camelCase
-              setCurrent(toCamelCase(result.result.label_schema));
+              setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
           },
@@ -134,7 +140,7 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+  const [, setCurrent] = useCurrentLabelSchema(field);
   const validate = useOperatorExecutor("validate_label_schemas");
 
   return {
@@ -145,9 +151,8 @@ const useValidate = (field: string) => {
       try {
         setIsValidating(true);
         const parsed = JSON.parse(data);
-        // Convert camelCase to snake_case for Python operator
         validate.execute(
-          { label_schemas: { [field]: toSnakeCase(parsed) } },
+          { label_schemas: { [field]: parsed } },
           {
             skipErrorNotification: true,
             callback: (result) => {
@@ -156,8 +161,7 @@ const useValidate = (field: string) => {
               }
 
               if (!result.result.errors.length) {
-                // Store as camelCase in frontend state
-                setCurrent(toCamelCase(parsed));
+                setCurrent(parsed);
                 setIsValid(true);
               } else {
                 setIsValid(false);
@@ -179,7 +183,11 @@ const useValidate = (field: string) => {
   };
 };
 
-export default function (field: string) {
+// =============================================================================
+// Main Hook
+// =============================================================================
+
+export default function useLabelSchema(field: string) {
   const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
   const configUpdate = useConfigUpdate(field);

@@ -33,7 +33,6 @@ import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
 
-
 logger = logging.getLogger(__name__)
 
 # This is for reduced code conflicts with enterprise logging
@@ -49,6 +48,7 @@ class ExecutionRunState(object):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    TERMINAL_STATES = {COMPLETED, FAILED}
 
 
 class InvocationRequest(object):
@@ -344,6 +344,7 @@ async def execute_or_delegate_operator(
                     label=run_name,
                     metadata=metadata,
                     pipeline=pipeline,
+                    rerunnable=operator.config.rerunnable,
                 )
 
                 execution = ExecutionResult(
