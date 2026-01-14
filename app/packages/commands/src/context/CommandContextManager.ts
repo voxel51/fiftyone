@@ -222,7 +222,7 @@ export class CommandContextManager {
    * @param event the key event
    * @returns Nothing
    */
-  public async handleKeyDown(event: KeyboardEvent): Promise<void> {
+  public handleKeyDown(event: KeyboardEvent): void {
     const active = document.activeElement;
 
     // Prevent shortcuts when interacting with any form field
@@ -236,7 +236,7 @@ export class CommandContextManager {
     }
     const match = this.getActiveContext().handleKeyDown(event);
     if (match.full) {
-      await this.getActiveContext().executeCommand(match.full);
+      this.getActiveContext().executeCommand(match.full);
       event.stopPropagation();
       event.preventDefault();
     }

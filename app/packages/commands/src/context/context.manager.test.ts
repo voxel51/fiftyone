@@ -80,7 +80,7 @@ describe("CommandContextManager", () => {
     CommandContextManager.instance()
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
-    await CommandContextManager.instance().handleKeyDown(
+    CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
@@ -103,7 +103,7 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().pushContext(context);
-    await CommandContextManager.instance().handleKeyDown(
+    CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
@@ -126,7 +126,7 @@ describe("CommandContextManager", () => {
       false
     );
     CommandContextManager.instance().pushContext(context);
-    await CommandContextManager.instance().handleKeyDown(
+    CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(0);

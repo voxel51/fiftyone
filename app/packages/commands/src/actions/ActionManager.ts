@@ -90,7 +90,7 @@ export class ActionManager {
 
   /**
    * Redoes the last undone undoable action.
-   * @returns True is the redo was successful, false otherwise.
+   * @returns True if the redo was successful, false otherwise.
    */
   redo(): boolean {
     const undoable = this.redoStack.pop();

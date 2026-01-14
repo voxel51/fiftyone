@@ -4,15 +4,15 @@ import { DelegatingUndoable } from "./Undoable";
 
 describe("ActionManager", () => {
   let manager: ActionManager;
-  let execFn: () => Promise<void>;
-  let undoFn: () => Promise<void>;
+  let execFn: () => void;
+  let undoFn: () => void;
   let action: DelegatingUndoable;
   beforeEach(() => {
     manager = new ActionManager();
-    execFn = vi.fn(async () => {
+    execFn = vi.fn(() => {
       return;
     });
-    undoFn = vi.fn(async () => {
+    undoFn = vi.fn(() => {
       return;
     });
     action = new DelegatingUndoable("fo.test", execFn, undoFn);
