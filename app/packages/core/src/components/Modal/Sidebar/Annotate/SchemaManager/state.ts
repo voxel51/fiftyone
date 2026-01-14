@@ -10,9 +10,7 @@ import {
   fieldAttributeCount,
   fieldType,
   inactiveLabelSchemas,
-  inactivePaths,
   labelSchemaData,
-  schema,
 } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 
@@ -81,9 +79,6 @@ export const isHiddenFieldSelected = atomFamily((path: string) =>
  */
 export const fieldHasSchema = atomFamily((path: string) =>
   atom((get) => {
-    // Check new schema system
-    const schemaData = get(schema(path));
-    if (schemaData?.config) return true;
     // Check legacy schema system (now in camelCase)
     const legacyData = get(labelSchemaData(path));
     if (legacyData?.labelSchema) return true;
@@ -109,10 +104,7 @@ export const fieldIsReadOnly = atomFamily((path: string) =>
  * - System read-only fields last
  */
 export const sortedInactivePaths = atom((get) => {
-  // Support both atom systems
-  const fieldsFromNew = get(inactivePaths);
-  const fieldsFromLegacy = get(inactiveLabelSchemas);
-  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
+  const fields = get(inactiveLabelSchemas);
 
   const withSchema: string[] = [];
   const withoutSchema: string[] = [];

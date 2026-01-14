@@ -3,7 +3,6 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { toCamelCase, toSnakeCase } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
@@ -24,7 +23,7 @@ const useCurrentLabelSchema = (field: string) => {
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data?.defaultLabelSchema;
+  return data?.default_label_schema;
 };
 
 const useDiscard = (field: string) => {
@@ -55,12 +54,12 @@ const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: (current as { readOnly?: boolean })?.readOnly,
-    isReadOnlyRequired: data?.readOnly,
+    isReadOnly: (current as { read_only?: boolean })?.read_only,
+    isReadOnlyRequired: data?.read_only,
     toggleReadOnly: () => {
       setCurrent({
         ...(current as object),
-        readOnly: !(current as { readOnly?: boolean })?.readOnly,
+        readOnly: !(current as { read_only?: boolean })?.read_only,
       });
     },
   };
@@ -82,7 +81,7 @@ const useConfigUpdate = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data?.labelSchema,
+    data?.label_schema,
     (labelSchema: unknown) => {
       setAtom({ ...data, labelSchema });
     },
@@ -99,9 +98,8 @@ const useSave = (field: string) => {
     isSaving,
     save: () => {
       setIsSaving(true);
-      // Convert camelCase to snake_case for Python operator
       update.execute(
-        { field, label_schema: toSnakeCase(current) },
+        { field, label_schema: current },
         {
           callback: () => {
             setSaved(current);
@@ -128,8 +126,7 @@ const useScan = (field: string) => {
         {
           callback: (result) => {
             if (result.result) {
-              // Convert snake_case from Python to camelCase
-              setCurrent(toCamelCase(result.result.label_schema));
+              setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
           },
@@ -154,9 +151,8 @@ const useValidate = (field: string) => {
       try {
         setIsValidating(true);
         const parsed = JSON.parse(data);
-        // Convert camelCase to snake_case for Python operator
         validate.execute(
-          { label_schemas: { [field]: toSnakeCase(parsed) } },
+          { label_schemas: { [field]: parsed } },
           {
             skipErrorNotification: true,
             callback: (result) => {
@@ -165,8 +161,7 @@ const useValidate = (field: string) => {
               }
 
               if (!result.result.errors.length) {
-                // Store as camelCase in frontend state
-                setCurrent(toCamelCase(parsed));
+                setCurrent(parsed);
                 setIsValid(true);
               } else {
                 setIsValid(false);
