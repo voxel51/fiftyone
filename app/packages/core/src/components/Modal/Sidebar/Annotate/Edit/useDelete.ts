@@ -2,6 +2,7 @@ import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/commands";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
+
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -22,7 +23,7 @@ export default function useDelete() {
   const [isSaving, setSaving] = useAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
-  return useCallback(async () => {
+  const onDelete = useCallback(async () => {
     if (!label || isSaving) {
       return;
     }
@@ -44,9 +45,8 @@ export default function useDelete() {
       if (!fieldSchema) {
         setSaving(false);
         setNotification({
-          msg: `Unable to delete label: field schema not found for path "${
-            label?.path ?? "unknown"
-          }".`,
+          msg: `Unable to delete label: field schema not found for path "${label?.path ?? "unknown"
+            }".`,
           variant: "error",
         });
         return;
@@ -54,8 +54,8 @@ export default function useDelete() {
 
       await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
-      removeOverlay(label.overlay.id);
       setter();
+      removeOverlay(label.overlay.id);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label}" successfully deleted.`,
@@ -63,11 +63,11 @@ export default function useDelete() {
       });
       exit();
     } catch (error) {
+      console.error(error);
       setSaving(false);
       setNotification({
-        msg: `Label "${
-          label.data.label ?? "Label"
-        }" not successfully deleted. Try again.`,
+        msg: `Label "${label.data.label ?? "Label"
+          }" not successfully deleted. Try again.`,
         variant: "error",
       });
     }
@@ -83,4 +83,6 @@ export default function useDelete() {
     setSaving,
     setNotification,
   ]);
+  return onDelete;
 }
+

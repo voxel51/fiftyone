@@ -323,6 +323,15 @@ const ThemeProvider: React.FC<
   const loadable = useRecoilValueLoadable(fos.theme);
   const current = loadable.state === "hasValue" ? loadable.contents : "dark";
 
+  // Sync dark class on document element for design-system components
+  React.useEffect(() => {
+    if (current === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [current]);
+
   return (
     <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>
       <CssVarsProvider theme={theme} defaultMode={current}>

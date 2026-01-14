@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import Network from "./Network";
 import "./index.css";
+import "@voxel51/voodo/theme.css";
 import { useRouter } from "./routing";
 
 if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_NAME) {

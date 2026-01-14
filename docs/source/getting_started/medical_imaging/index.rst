@@ -23,9 +23,9 @@ This step-by-step guide will walk you through a complete medical imaging workflo
 Guide Overview
 --------------
 
-This guide is broken down into the following sequential steps:
+This guide consists of a single comprehensive tutorial:
 
-1. **Getting Started with Medical Imaging** - Learn how to load medical imaging datasets in FiftyOne, specifically working with DICOM and CT scan formats, downloading sample datasets, and preparing them for use in FiftyOne
+**Getting Started with Medical Imaging** - Learn how to load medical imaging datasets in FiftyOne, specifically working with DICOM and CT scan formats, downloading sample datasets, and preparing them for use in FiftyOne
 
 .. _medical_imaging-prerequisites:
 

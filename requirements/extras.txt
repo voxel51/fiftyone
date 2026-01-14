@@ -1,6 +1,6 @@
-google-api-python-client>=1.6.5
+google-api-python-client>=1.7.12
 google-cloud-storage>=1.36
-httplib2<=0.15
+httplib2>=0.19
 ipywidgets>=7.5
 notebook>=5.3
 pydicom>=2.2.0

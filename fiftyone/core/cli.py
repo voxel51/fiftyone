@@ -3161,10 +3161,31 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
+        _register_command(subparsers, "rerun", DelegatedRerunCommand)
 
     @staticmethod
     def execute(parser, args):
         parser.print_help()
+
+
+class DelegatedRerunCommand(Command):
+    """Rerun delegated operations
+
+    Examples::
+
+        # Rerun the given operation id
+        fiftyone delegated rerun <operation-id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        do = dos.rerun_operation(ObjectId(args.id))
+        print("Successfully created rerun operation with ID '%s'" % do.id)
 
 
 class DelegatedLaunchCommand(Command):

@@ -685,6 +685,7 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
                 classes=self.config.filter_classes,
+                input_ids=args.get("input_ids"),
             )
         else:
             return output
@@ -1438,12 +1439,17 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     Args:
         store_logits (False): whether to store the logits in the output
         logits_key ("logits"): the key to use for the logits in the output
+
+    Attributes:
+        _is_grounded (bool): whether the processor handles grounded object
+            detection models (e.g., GroundingDINO) vs standard detectors.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._processor = None
         self._objection_detection_processor = None
+        self._is_grounded = False
 
     @property
     def processor(self):
@@ -1467,6 +1473,7 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._objection_detection_processor = (
                     self._processor.post_process_grounded_object_detection
                 )
+                self._is_grounded = True
             else:
                 raise ValueError(
                     "Processor does not have a post_process_object_detection "
@@ -1481,11 +1488,17 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
         classes=None,
         **kwargs,
     ):
-        output = self._objection_detection_processor(
-            output, target_sizes=image_sizes, threshold=confidence_thresh or 0
-        )
+        if self._is_grounded:
+            output = self._objection_detection_processor(
+                output, kwargs.get("input_ids"),
+                threshold=confidence_thresh or 0, target_sizes=image_sizes,
+            )
+        else:
+            output = self._objection_detection_processor(
+                output, target_sizes=image_sizes, threshold=confidence_thresh or 0
+            )
         res = []
-        for o, img_sz in zip(output, image_sizes):
+        for o, img_sz in zip(output, image_sizes, strict=True):
             res.append(
                 self._parse_output(
                     o,
@@ -1496,6 +1509,44 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
             )
 
         return res
+
+    def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
+        """Converts raw detector output to :class:`fiftyone.core.labels.Detections`.
+
+        Unlike the base class, this handles grounded detection models that
+        return text labels directly rather than class indices.
+        """
+        detections = []
+
+        scores = output["scores"].cpu().numpy()
+        boxes = output["boxes"].cpu().numpy()
+        labels = output.get("text_labels", output["labels"])
+        if hasattr(labels, "cpu"):
+            labels = labels.cpu().numpy()
+
+        for score, label, box in zip(scores, labels, boxes):
+            if confidence_thresh is not None and score < confidence_thresh:
+                continue
+
+            if not self._is_grounded:
+                if self.classes is not None and 0 <= int(label) < len(self.classes):
+                    label = self.classes[int(label)]
+                else:
+                    label = str(label)
+
+            if classes is not None and label not in classes:
+                continue
+
+            box = _convert_bounding_box(box, frame_size)
+            detections.append(
+                fol.Detection(
+                    label=label,
+                    bounding_box=box,
+                    confidence=score.item(),
+                )
+            )
+
+        return fol.Detections(detections=detections)
 
 
 class TransformersSemanticSegmentatorOutputProcessor(

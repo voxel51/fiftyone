@@ -10,9 +10,9 @@ multi-sensor fusion workflows.
 |
 """
 
-import warnings
 from abc import ABC, abstractmethod
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
+import warnings
 
 import cv2
 import numpy as np
@@ -81,6 +81,18 @@ class ProjectionModel(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def undistort_image(
+        self,
+        image: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+        alpha: float = 0.0,
+        new_size: Optional[Tuple[int, int]] = None,
+    ) -> np.ndarray:
+        """Undistort an image using this projection model."""
+        raise NotImplementedError
+
 
 class OpenCVProjectionModel(ProjectionModel):
     """Standard OpenCV camera model with radial and tangential distortion."""
@@ -127,6 +139,29 @@ class OpenCVProjectionModel(ProjectionModel):
         )
         return undistorted.reshape(-1, 2)
 
+    def undistort_image(
+        self,
+        image: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+        alpha: float = 0.0,
+        new_size: Optional[Tuple[int, int]] = None,
+    ) -> np.ndarray:
+        h, w = image.shape[:2]
+        image_size = (w, h)
+        output_size = new_size if new_size is not None else image_size
+
+        if distortion is None:
+            distortion = np.zeros(5, dtype=np.float64)
+
+        new_K, _ = cv2.getOptimalNewCameraMatrix(
+            K, distortion, image_size, alpha, output_size
+        )
+        map1, map2 = cv2.initUndistortRectifyMap(
+            K, distortion, None, new_K, output_size, cv2.CV_32FC1
+        )
+        return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
+
 
 class FisheyeProjectionModel(ProjectionModel):
     """OpenCV fisheye camera model with equidistant projection."""
@@ -172,6 +207,34 @@ class FisheyeProjectionModel(ProjectionModel):
             distortion,
         )
         return undistorted.reshape(-1, 2)
+
+    def undistort_image(
+        self,
+        image: np.ndarray,
+        K: np.ndarray,
+        distortion: Optional[np.ndarray],
+        alpha: float = 0.0,
+        new_size: Optional[Tuple[int, int]] = None,
+    ) -> np.ndarray:
+        h, w = image.shape[:2]
+        image_size = (w, h)
+        output_size = new_size if new_size is not None else image_size
+
+        if distortion is None:
+            distortion = np.zeros(4, dtype=np.float64)
+
+        new_K = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
+            K,
+            distortion,
+            image_size,
+            np.eye(3),
+            balance=alpha,
+            new_size=output_size,
+        )
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(
+            K, distortion, np.eye(3), new_K, output_size, cv2.CV_32FC1
+        )
+        return cv2.remap(image, map1, map2, cv2.INTER_LINEAR)
 
 
 class CameraIntrinsics(DynamicEmbeddedDocument):
@@ -301,6 +364,72 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
             else:
                 t = np.asarray(t).reshape(3, 1)
             return K @ np.hstack([R, t])
+
+    def undistort_image(
+        self,
+        image: np.ndarray,
+        alpha: float = 0.0,
+        new_size: Optional[Tuple[int, int]] = None,
+    ) -> np.ndarray:
+        """Undistort an image using this camera's intrinsics and distortion.
+
+        Removes lens distortion from an image, producing a rectified image
+        that follows the pinhole camera model.
+
+        Args:
+            image: input distorted image as a numpy array with shape (H, W) for
+                grayscale or (H, W, C) for color images
+            alpha: free scaling parameter between 0 and 1:
+
+                -   0: returns undistorted image with all pixels valid (cropped
+                    to remove black borders)
+                -   1: retains all source image pixels (may have black borders
+                    where no source data exists)
+
+                Intermediate values blend between the two extremes
+            new_size: optional output image size as (width, height). If None,
+                uses the input image size
+
+        Returns:
+            undistorted image as a numpy array with the same dtype as input
+
+        Example::
+
+            import fiftyone as fo
+            import cv2
+
+            intrinsics = fo.OpenCVCameraIntrinsics(
+                fx=1000.0, fy=1000.0, cx=960.0, cy=540.0,
+                k1=-0.1, k2=0.05,
+            )
+
+            distorted = cv2.imread("distorted.jpg")
+            rectified = intrinsics.undistort_image(distorted)
+
+            # Keep all pixels (with black borders)
+            rectified_full = intrinsics.undistort_image(distorted, alpha=1.0)
+        """
+        if image.ndim < 2 or image.ndim > 3:
+            raise ValueError(
+                f"Expected image with 2 or 3 dimensions, got {image.ndim}"
+            )
+
+        h, w = image.shape[:2]
+        image_size = (w, h)
+        output_size = new_size if new_size is not None else image_size
+
+        # pylint: disable=assignment-from-none
+        dist = self.get_distortion_coeffs()
+        if dist is None:
+            # No distortion - return resized copy if needed, else just copy
+            if output_size != image_size:
+                return cv2.resize(image, output_size)
+            return image.copy()
+
+        # Delegate to projection model
+        return self.get_projection_model().undistort_image(
+            image, self.intrinsic_matrix, dist, alpha, new_size
+        )
 
 
 class PinholeCameraIntrinsics(CameraIntrinsics):
