@@ -1,5 +1,5 @@
 import { getFieldSchema, UpsertAnnotationCommand } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
 import * as fos from "@fiftyone/state";
 import { PrimitiveValue } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
@@ -34,6 +34,9 @@ interface PrimitiveEditProps {
  * @returns the processed value of the field
  */
 function processFieldValue(fieldValue: Primitive, type: string): Primitive {
+  if (type === "date" || type === "datetime") {
+    return new Date(fieldValue as string).getTime();
+  }
   if (type !== "dict") {
     return fieldValue;
   }
