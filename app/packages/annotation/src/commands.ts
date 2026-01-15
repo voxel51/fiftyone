@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Command } from "@fiftyone/commands";
+import { Command } from "@fiftyone/command-bus";
 import { AnnotationLabel } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 
