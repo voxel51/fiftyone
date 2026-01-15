@@ -197,10 +197,23 @@ const AttributeFormContent = ({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
 
+  const [defaultTouched, setDefaultTouched] = useState(false);
+
   // Get component options for the selected type
   const componentOptions =
     COMPONENT_OPTIONS_BY_TYPE[formState.attributeType] || [];
   const showComponentType = componentOptions.length > 1;
+
+  // Validate default value - must be one of values if values are provided
+  const hasDefaultValue =
+    formState.defaultValue !== "" &&
+    formState.defaultValue !== undefined &&
+    formState.defaultValue !== null;
+  const defaultError =
+    defaultTouched &&
+    formState.values.length > 0 &&
+    hasDefaultValue &&
+    !formState.values.includes(formState.defaultValue);
 
   // When type changes, reset component to appropriate default
   const handleTypeChange = (newType: string) => {
@@ -399,8 +412,19 @@ const AttributeFormContent = ({
           onChange={(e) =>
             onFormStateChange({ ...formState, defaultValue: e.target.value })
           }
+          onBlur={() => setDefaultTouched(true)}
           placeholder="Default value"
+          error={defaultError}
         />
+        {defaultError && (
+          <Text
+            variant={TextVariant.Sm}
+            color={TextColor.Destructive}
+            style={{ marginTop: 4 }}
+          >
+            Default must be one of the defined values
+          </Text>
+        )}
       </div>
 
       {/* Read-only toggle (only when M4 flag enabled) */}
