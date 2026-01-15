@@ -31,8 +31,10 @@ vi.mock("recoil", () => ({
     if (atomKey.includes("currentActiveAnnotationField")) {
       return mockCurrentActiveField;
     }
-    // For fos.currentSampleId
-    return mockCurrentSampleId;
+    if (atomKey.includes("currentSampleId")) {
+      return mockCurrentSampleId;
+    }
+    throw new Error(`Unmocked atom accessed: ${atomKey}`);
   }),
   useSetRecoilState: vi.fn(() => mockSetReconciledLabels3D),
 }));
@@ -87,7 +89,6 @@ const createPolylineOverlay = (
 
 describe("useReconciledLabels3D", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     mockStagedPolylineTransforms = null;
     mockStagedCuboidTransforms = null;
     mockCurrentSampleId = "sample-123";
@@ -374,6 +375,26 @@ describe("useReconciledLabels3D", () => {
   });
 
   describe("edge cases", () => {
+    it("returns only existing overlays when currentSampleId is null", () => {
+      mockCurrentSampleId = null;
+      mockStagedCuboidTransforms = {
+        "new-det": {
+          location: [1, 2, 3],
+          dimensions: [4, 5, 6],
+        },
+      };
+
+      const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
+
+      const { result } = renderHook(() =>
+        useReconciledLabels3D({ rawOverlays: [detection] })
+      );
+
+      // Should process existing but not create new labels
+      expect(result.current.detections).toHaveLength(1);
+      expect(result.current.detections[0]._id).toBe("det-1");
+    });
+
     it("handles null staged transforms", () => {
       const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
       mockStagedCuboidTransforms = null;

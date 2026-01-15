@@ -99,7 +99,7 @@ interface ReconciledLabelBase3D {
  * A reconciled detection that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D detection that will be rendered.
  */
-export type ReconciledDetection3D3D = OverlayLabel &
+export type ReconciledDetection3D = OverlayLabel &
   CuboidTransformData &
   ReconciledLabelBase3D & {
     _cls: "Detection";
@@ -121,6 +121,6 @@ export type ReconciledPolyline3D3D = OverlayLabel &
  * Container for reconciled 3D label data.
  */
 export interface ReconciledLabels3D3D {
-  detections: ReconciledDetection3D3D[];
+  detections: ReconciledDetection3D[];
   polylines: ReconciledPolyline3D3D[];
 }

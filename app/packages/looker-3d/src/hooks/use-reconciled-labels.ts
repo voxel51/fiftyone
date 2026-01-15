@@ -2,12 +2,11 @@ import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type {
-  ReconciledDetection3D3D,
+  ReconciledDetection3D,
   ReconciledLabels3D3D,
   ReconciledPolyline3D3D,
 } from "../annotation/types";
 import type { OverlayLabel } from "../labels/loader";
-import type { PolyLineProps } from "../labels/polyline";
 import {
   createNewDetection,
   createNewPolyline,
@@ -23,6 +22,34 @@ import {
 
 interface UseReconciledLabels3DParams {
   rawOverlays: OverlayLabel[];
+}
+
+/**
+ * Type guard to check if an overlay is a Detection overlay (3D).
+ */
+function isDetectionOverlay(
+  overlay: OverlayLabel
+): overlay is OverlayLabel & { dimensions: unknown; location: unknown } {
+  return (
+    overlay._cls === "Detection" &&
+    "dimensions" in overlay &&
+    "location" in overlay &&
+    overlay.dimensions != null &&
+    overlay.location != null
+  );
+}
+
+/**
+ * Type guard to check if an overlay is a Polyline overlay (3D).
+ */
+function isPolylineOverlay(
+  overlay: OverlayLabel
+): overlay is OverlayLabel & { points3d: [number, number, number][][] } {
+  return (
+    overlay._cls === "Polyline" &&
+    "points3d" in overlay &&
+    overlay.points3d != null
+  );
 }
 
 /**
@@ -49,7 +76,7 @@ export function useReconciledLabels3D({
   const setReconciledLabels3D = useSetRecoilState(reconciledLabels3DSelector);
 
   const reconciledLabels3D = useMemo(() => {
-    const detections: ReconciledDetection3D3D[] = [];
+    const detections: ReconciledDetection3D[] = [];
     const polylines: ReconciledPolyline3D3D[] = [];
 
     // Track existing IDs to identify new labels from staged transforms
@@ -58,11 +85,7 @@ export function useReconciledLabels3D({
 
     // Process existing overlays with staged transforms
     for (const overlay of rawOverlays) {
-      if (
-        overlay._cls === "Detection" &&
-        (overlay as unknown as ReconciledDetection3D3D).dimensions &&
-        (overlay as unknown as ReconciledDetection3D3D).location
-      ) {
+      if (isDetectionOverlay(overlay)) {
         existingDetectionIds.add(overlay._id);
 
         const reconciled = reconcileDetection(
@@ -70,14 +93,11 @@ export function useReconciledLabels3D({
           stagedCuboidTransforms?.[overlay._id]
         );
         detections.push(reconciled);
-      } else if (
-        overlay._cls === "Polyline" &&
-        (overlay as unknown as PolyLineProps).points3d
-      ) {
+      } else if (isPolylineOverlay(overlay)) {
         existingPolylineIds.add(overlay._id);
 
         const reconciled = reconcilePolyline(
-          overlay as OverlayLabel & { points3d: [number, number, number][][] },
+          overlay,
           stagedPolylineTransforms?.[overlay._id]
         );
 
@@ -86,6 +106,10 @@ export function useReconciledLabels3D({
           polylines.push(reconciled);
         }
       }
+    }
+
+    if (!currentSampleId) {
+      return { detections, polylines };
     }
 
     // Create labels for NEW polylines that exist only in staged transforms
@@ -152,7 +176,7 @@ export function useReconciledLabels3D({
   // Sync reconciled labels to state for downstream consumers
   useEffect(() => {
     setReconciledLabels3D(reconciledLabels3D);
-  }, [reconciledLabels3D, setReconciledLabels3D]);
+  }, [reconciledLabels3D]);
 
   return reconciledLabels3D;
 }

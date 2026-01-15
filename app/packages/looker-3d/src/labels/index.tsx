@@ -14,12 +14,17 @@ import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
 import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { ThreeEvent } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import type {
+  ReconciledDetection3D,
+  ReconciledPolyline3D3D,
+} from "../annotation/types";
 import { useSetEditingToExistingCuboid } from "../annotation/useSetEditingToExistingCuboid";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
 import { PANEL_ORDER_LABELS } from "../constants";
@@ -270,16 +275,10 @@ export const ThreeDLabels = ({
 
             // Further filter based on current annotation mode
             if (current3dAnnotationMode === "cuboid") {
-              return (
-                l._cls.toLowerCase() === "detection" ||
-                l.type.toLowerCase() === "detection"
-              );
+              return l._cls === DETECTION || l.type === DETECTION;
             }
             if (current3dAnnotationMode === "polyline") {
-              return (
-                l._cls.toLowerCase() === "polyline" ||
-                l.type.toLowerCase() === "polyline"
-              );
+              return l._cls === POLYLINE || l.type === POLYLINE;
             }
           }
 
@@ -303,16 +302,32 @@ export const ThreeDLabels = ({
   // Step 1: Compute merged overlays (data computation)
   // This hook also syncs the merged overlays to state for downstream consumers
   const {
-    detections: ReconciledDetection3Ds,
-    polylines: ReconciledPolyline3Ds,
+    detections: reconciledDetection3Ds,
+    polylines: reconciledPolyline3Ds,
   } = useReconciledLabels3D({
     rawOverlays,
   });
 
+  const getOverlayColor = useCallback(
+    (overlay: ReconciledDetection3D | ReconciledPolyline3D3D) =>
+      overlay.isNew
+        ? getLabelColor({
+            coloring,
+            path: overlay.path,
+            isTagged: false,
+            labelTagColors,
+            customizeColorSetting,
+            label: overlay,
+            embeddedDocType: overlay._cls,
+          })
+        : overlay.color,
+    [coloring, labelTagColors, customizeColorSetting]
+  );
+
   // Step 2: Create JSX elements from merged data (rendering only)
   const cuboidOverlays = useMemo(
     () =>
-      ReconciledDetection3Ds.map((overlay) => (
+      reconciledDetection3Ds.map((overlay) => (
         <Cuboid
           key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
             overlay.sampleId
@@ -326,23 +341,11 @@ export const ThreeDLabels = ({
           label={overlay}
           tooltip={tooltip}
           useLegacyCoordinates={settings.useLegacyCoordinates}
-          color={
-            overlay.isNew
-              ? getLabelColor({
-                  coloring,
-                  path: overlay.path,
-                  isTagged: false,
-                  labelTagColors,
-                  customizeColorSetting,
-                  label: overlay,
-                  embeddedDocType: overlay._cls,
-                })
-              : overlay.color
-          }
+          color={getOverlayColor(overlay)}
         />
       )),
     [
-      ReconciledDetection3Ds,
+      reconciledDetection3Ds,
       cuboidLineWidth,
       overlayRotation,
       itemRotation,
@@ -350,16 +353,16 @@ export const ThreeDLabels = ({
       handleSelect,
       tooltip,
       settings,
-      coloring,
-      labelTagColors,
-      customizeColorSetting,
+      getOverlayColor,
     ]
   );
 
   const polylineOverlays = useMemo(() => {
-    return ReconciledPolyline3Ds.map((overlay) => (
+    return reconciledPolyline3Ds.map((overlay) => (
       <Polyline
-        key={`polyline-${overlay._id}-${overlay.sampleId}`}
+        key={`polyline-${overlay.isNew ? "new-" : ""}${overlay._id}-${
+          overlay.sampleId
+        }`}
         rotation={overlayRotation}
         opacity={labelAlpha}
         lineWidth={polylineWidth}
@@ -367,23 +370,11 @@ export const ThreeDLabels = ({
         label={overlay}
         onClick={(e) => handleSelect(overlay, "polyline", e)}
         tooltip={tooltip}
-        color={
-          overlay.isNew
-            ? getLabelColor({
-                coloring,
-                path: overlay.path,
-                isTagged: false,
-                labelTagColors,
-                customizeColorSetting,
-                label: overlay,
-                embeddedDocType: overlay._cls,
-              })
-            : overlay.color
-        }
+        color={getOverlayColor(overlay)}
       />
     ));
   }, [
-    ReconciledPolyline3Ds,
+    reconciledPolyline3Ds,
     overlayRotation,
     labelAlpha,
     polylineWidth,
@@ -392,6 +383,7 @@ export const ThreeDLabels = ({
     coloring,
     labelTagColors,
     customizeColorSetting,
+    getOverlayColor,
   ]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();

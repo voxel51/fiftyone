@@ -24,6 +24,8 @@ import type {
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
 
+type LabelId = string;
+
 // =============================================================================
 // GENERAL 3D
 // =============================================================================
@@ -475,7 +477,7 @@ export const hoveredVertexAtom = atom<{
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedPolylineTransformsAtom = atom<
-  Record<string, PolylinePointTransformData>
+  Record<LabelId, PolylinePointTransformData>
 >({
   key: "fo3d-stagedPolylineTransforms",
   default: {},
@@ -487,7 +489,7 @@ export const stagedPolylineTransformsAtom = atom<
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedCuboidTransformsAtom = atom<
-  Record<string, CuboidTransformData>
+  Record<LabelId, CuboidTransformData>
 >({
   key: "fo3d-stagedCuboidTransforms",
   default: {},

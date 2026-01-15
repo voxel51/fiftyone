@@ -2,7 +2,7 @@ import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sideba
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
-  ReconciledDetection3D3D,
+  ReconciledDetection3D,
   ReconciledPolyline3D3D,
 } from "../annotation/types";
 import { isValidPolylineSegment } from "../utils";
@@ -15,11 +15,11 @@ import type { OverlayLabel } from "./loader";
 export function reconcileDetection(
   overlay: OverlayLabel,
   stagedTransform?: CuboidTransformData
-): ReconciledDetection3D3D {
+): ReconciledDetection3D {
   return {
     ...overlay,
     ...(stagedTransform ?? {}),
-  } as ReconciledDetection3D3D;
+  } as ReconciledDetection3D;
 }
 
 /**
@@ -57,7 +57,7 @@ export function createNewDetection(
   transformData: CuboidTransformData,
   currentSampleId: string,
   path: string
-): ReconciledDetection3D3D {
+): ReconciledDetection3D {
   return {
     _id: labelId,
     _cls: "Detection",
@@ -71,7 +71,7 @@ export function createNewDetection(
     sampleId: currentSampleId,
     tags: [],
     isNew: true,
-  } as ReconciledDetection3D3D;
+  } as ReconciledDetection3D;
 }
 
 /**
@@ -88,9 +88,11 @@ export function createNewPolyline(
     return null;
   }
 
-  const points3d = transformData.segments.map((segment) => segment.points);
+  const validPoints3d = transformData.segments
+    .map((segment) => segment.points)
+    .filter(isValidPolylineSegment);
 
-  if (points3d.length === 0) {
+  if (validPoints3d.length === 0) {
     return null;
   }
 
@@ -103,7 +105,7 @@ export function createNewPolyline(
     selected: false,
     sampleId: currentSampleId,
     tags: [],
-    points3d,
+    points3d: validPoints3d,
     ...coerceStringBooleans(transformData.misc ?? {}),
     isNew: true,
   } as ReconciledPolyline3D3D;

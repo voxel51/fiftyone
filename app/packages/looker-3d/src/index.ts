@@ -1,5 +1,5 @@
 export type {
-  ReconciledDetection3D3D,
+  ReconciledDetection3D,
   ReconciledLabels3D3D,
   ReconciledPolyline3D3D,
 } from "./annotation/types";
