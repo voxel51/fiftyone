@@ -7,7 +7,7 @@ import useSamplePrimitives from "./useSamplePrimitives";
 
 export const usePrimitivesCount = () => {
   const currentSample = useRecoilValue(modalSample).sample;
-  const samplePrimitives = useSamplePrimitives();
+  const samplePrimitives = useSamplePrimitives(currentSample);
   const setPrimitivesCount = useSetAtom(primitivesCount);
 
   useEffect(() => {

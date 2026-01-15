@@ -1,10 +1,9 @@
-import { State, fieldPaths, modalSample } from "@fiftyone/state";
+import { Sample, State, fieldPaths } from "@fiftyone/state";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useRecoilValue } from "recoil";
 
-const useSamplePrimitives = (): string[] => {
-  const currentSample = useRecoilValue(modalSample).sample;
+const useSamplePrimitives = (currentSample: Sample): string[] => {
   const primitivePaths = useRecoilValue(
     fieldPaths({
       space: State.SPACE.SAMPLE,

@@ -1,38 +1,10 @@
-import { EntryKind, modalSample, type SidebarEntry } from "@fiftyone/state";
+import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
-import { primitivesExpanded } from "./GroupEntry";
 import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
-import useSamplePrimitives from "./useSamplePrimitives";
+import usePrimitiveEntries from "./usePrimitiveEntries";
 const store = getDefaultStore();
-
-const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
-  const currentSample = useRecoilValue(modalSample).sample;
-  const samplePrimitives = useSamplePrimitives();
-  const primitivesExpandedState = useAtomValue(primitivesExpanded);
-
-  if (!currentSample) {
-    return [];
-  }
-
-  const primitiveEntries: SidebarEntry[] = useMemo(
-    () =>
-      samplePrimitives
-        .filter((path) => activeFields.includes(path))
-        .map((path) => {
-          return {
-            kind: EntryKind.PATH,
-            path,
-            shown: primitivesExpandedState,
-          };
-        }),
-    [samplePrimitives, activeFields, primitivesExpandedState]
-  );
-
-  return [{ kind: EntryKind.GROUP, name: "Primitives" }, ...primitiveEntries];
-};
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const atoms = useAtomValue(labelAtoms);
