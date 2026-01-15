@@ -3,6 +3,7 @@ import type {
   SchemaType,
 } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { BOOLEAN_FIELD, STRING_FIELD } from "@fiftyone/utilities";
+import { useMemo } from "react";
 
 export interface PrimitiveSchema {
   type: string;
@@ -195,39 +196,41 @@ export const createNumericList = (name: string, choices: string[]) => {
 /**
  * Ruleset for rendering primitive fields based on their schema
  */
-export function parsePrimitiveSchema(
+export function usePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
-  if (schema.type === "list<float>" || schema.type === "list<int>") {
-    return createNumericList(name, schema.values || []);
-  }
-
-  if (schema.type === "list<str>") {
-    return createTags(name, schema.values || []);
-  }
-
-  if (schema.type === "bool") {
-    if (schema.component === "checkbox") {
-      return createCheckbox(name);
+  return useMemo(() => {
+    if (schema.type === "list<float>" || schema.type === "list<int>") {
+      return createNumericList(name, schema.values || []);
     }
-    return createToggle(name);
-  }
 
-  if (schema.type === "str") {
-    if (schema.component === "dropdown") {
-      return createSelect(name, schema.values || []);
-    } else if (schema.component === "radio") {
-      return createRadio(name, schema.values || []);
+    if (schema.type === "list<str>") {
+      return createTags(name, schema.values || []);
     }
-    return createText(name, "string");
-  }
 
-  if (schema.type === "float" || schema.type === "int") {
-    if (schema.range) {
-      return createSlider(name, schema.range);
+    if (schema.type === "bool") {
+      if (schema.component === "checkbox") {
+        return createCheckbox(name);
+      }
+      return createToggle(name);
     }
-    return createText(name, "number");
-  }
-  return undefined;
+
+    if (schema.type === "str") {
+      if (schema.component === "dropdown") {
+        return createSelect(name, schema.values || []);
+      } else if (schema.component === "radio") {
+        return createRadio(name, schema.values || []);
+      }
+      return createText(name, "string");
+    }
+
+    if (schema.type === "float" || schema.type === "int") {
+      if (schema.range) {
+        return createSlider(name, schema.range);
+      }
+      return createText(name, "number");
+    }
+    return undefined;
+  }, [name, schema]);
 }
