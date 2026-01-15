@@ -115,6 +115,12 @@ export const COMPONENT_OPTIONS_BY_TYPE: Record<
 // Types that support range input
 export const RANGE_TYPES = ["int", "float"];
 
+// Types that don't show values list
+export const NO_VALUES_TYPES = ["bool", "date", "datetime", "dict"];
+
+// Threshold for radio vs dropdown selection
+export const RADIO_MAX_VALUES = 5;
+
 // List types
 export const LIST_TYPES = [
   "list<str>",
@@ -131,16 +137,16 @@ export const getDefaultComponent = (
 ): string => {
   switch (type) {
     case "str":
-      // text (N=0) | radio (0<N<=5) | dropdown (N>5)
+      // text (N=0) | radio (0<N<=RADIO_MAX_VALUES) | dropdown (N>RADIO_MAX_VALUES)
       if (valuesCount === 0) return "text";
-      if (valuesCount <= 5) return "radio";
+      if (valuesCount <= RADIO_MAX_VALUES) return "radio";
       return "dropdown";
 
     case "int":
     case "float":
       // If values provided, use radio/dropdown (values take precedence)
       if (valuesCount > 0) {
-        if (valuesCount <= 5) return "radio";
+        if (valuesCount <= RADIO_MAX_VALUES) return "radio";
         return "dropdown";
       }
       // No values: text (no range) | slider (with range)
@@ -157,9 +163,9 @@ export const getDefaultComponent = (
       return "json";
 
     case "list<str>":
-      // text (N=0) | checkboxes (0<N<=5) | dropdown (N>5)
+      // text (N=0) | checkboxes (0<N<=RADIO_MAX_VALUES) | dropdown (N>RADIO_MAX_VALUES)
       if (valuesCount === 0) return "text";
-      if (valuesCount <= 5) return "checkboxes";
+      if (valuesCount <= RADIO_MAX_VALUES) return "checkboxes";
       return "dropdown";
 
     case "list<int>":

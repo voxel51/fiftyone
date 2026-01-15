@@ -344,3 +344,47 @@ export const MutedFieldItem = styled(FieldItem)`
   color: ${({ theme }) => theme.text.secondary};
   justify-content: center;
 `;
+
+// ============================================
+// Form Components (for attribute editing)
+// ============================================
+
+export const FormFieldRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+`;
+
+export const FormSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+`;
+
+export const ComponentButtonsContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+interface ComponentButtonContainerProps {
+  $isSelected: boolean;
+}
+
+export const ComponentButtonContainer = styled.div<ComponentButtonContainerProps>`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid
+    ${({ $isSelected }) =>
+      $isSelected
+        ? "var(--fo-palette-primary-main, #FF6D04)"
+        : "var(--fo-palette-divider, #333)"};
+  background-color: ${({ $isSelected }) =>
+    $isSelected ? "rgba(255, 109, 4, 0.1)" : "transparent"};
+  cursor: pointer;
+  min-width: 100px;
+`;

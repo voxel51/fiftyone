@@ -3,6 +3,7 @@
  */
 
 import { Input, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { FormFieldRow } from "../../../styled";
 
 interface RangeInputProps {
   range: [number, number] | null;
@@ -22,6 +23,12 @@ const RangeInput = ({ range, onRangeChange }: RangeInputProps) => {
     onRangeChange(min, max);
   };
 
+  const hasError =
+    range !== null &&
+    range[0] !== null &&
+    range[1] !== null &&
+    range[0] >= range[1];
+
   return (
     <div>
       <Text
@@ -31,8 +38,8 @@ const RangeInput = ({ range, onRangeChange }: RangeInputProps) => {
       >
         Range
       </Text>
-      <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <FormFieldRow style={{ gap: "1rem" }}>
+        <FormFieldRow>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             Min
           </Text>
@@ -40,11 +47,11 @@ const RangeInput = ({ range, onRangeChange }: RangeInputProps) => {
             type="number"
             value={range?.[0]?.toString() ?? ""}
             onChange={(e) => handleMinChange(e.target.value)}
-            placeholder="0"
             style={{ width: 80 }}
+            error={hasError}
           />
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        </FormFieldRow>
+        <FormFieldRow>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             Max
           </Text>
@@ -52,11 +59,20 @@ const RangeInput = ({ range, onRangeChange }: RangeInputProps) => {
             type="number"
             value={range?.[1]?.toString() ?? ""}
             onChange={(e) => handleMaxChange(e.target.value)}
-            placeholder="100"
             style={{ width: 80 }}
+            error={hasError}
           />
-        </div>
-      </div>
+        </FormFieldRow>
+      </FormFieldRow>
+      {hasError && (
+        <Text
+          variant={TextVariant.Sm}
+          color={TextColor.Destructive}
+          style={{ marginTop: 4 }}
+        >
+          Min must be less than max
+        </Text>
+      )}
     </div>
   );
 };

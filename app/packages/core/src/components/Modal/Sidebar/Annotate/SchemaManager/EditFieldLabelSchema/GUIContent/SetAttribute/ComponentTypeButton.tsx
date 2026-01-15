@@ -10,6 +10,7 @@ import {
   Text,
   TextVariant,
 } from "@voxel51/voodo";
+import { ComponentButtonContainer } from "../../../styled";
 
 interface ComponentTypeButtonProps {
   icon: IconName;
@@ -25,28 +26,14 @@ const ComponentTypeButton = ({
   onClick,
 }: ComponentTypeButtonProps) => (
   <Clickable onClick={onClick}>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 12px",
-        borderRadius: 6,
-        border: isSelected
-          ? "1px solid var(--fo-palette-primary-main, #FF6D04)"
-          : "1px solid var(--fo-palette-divider, #333)",
-        backgroundColor: isSelected ? "rgba(255, 109, 4, 0.1)" : "transparent",
-        cursor: "pointer",
-        minWidth: 100,
-      }}
-    >
+    <ComponentButtonContainer $isSelected={isSelected}>
       <Icon
         name={icon}
         size={Size.Md}
         color={isSelected ? "#FF6D04" : undefined}
       />
       <Text variant={TextVariant.Md}>{label}</Text>
-    </div>
+    </ComponentButtonContainer>
   </Clickable>
 );
 

@@ -19,7 +19,6 @@ const useCurrentLabelSchema = (field: string) => {
   const [saved] = useSavedLabelSchema(field);
 
   const wrappedSetCurrent = (value: unknown) => {
-    console.log("[SET CURRENT LABEL SCHEMA]", { field, value });
     setCurrent(value);
   };
 
@@ -78,7 +77,6 @@ const useConfigUpdate = (field: string) => {
       setCurrent({ ...(current as object), classes: newOrder });
     },
     updateConfig: (newConfig: object) => {
-      console.log("[UPDATE CONFIG]", { field, newConfig, current });
       setCurrent(newConfig);
     },
   };
@@ -118,12 +116,6 @@ const useSave = (field: string) => {
       }
 
       const hasNewAttributes = Object.keys(newAttributes).length > 0;
-      console.log("[SAVE]", {
-        field,
-        label_schema: current,
-        newAttributes,
-        hasNewAttributes,
-      });
 
       setIsSaving(true);
       update.execute(
@@ -133,8 +125,7 @@ const useSave = (field: string) => {
           ...(hasNewAttributes && { new_attributes: newAttributes }),
         },
         {
-          callback: (result) => {
-            console.log("[SAVE CALLBACK]", { result });
+          callback: () => {
             setSaved(current);
             setIsSaving(false);
           },

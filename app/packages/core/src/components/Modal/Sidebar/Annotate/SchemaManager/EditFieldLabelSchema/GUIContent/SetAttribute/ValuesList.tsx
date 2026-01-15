@@ -14,6 +14,7 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React, { useState } from "react";
+import { FormFieldRow, FormSectionHeader } from "../../../styled";
 import { createRichListItem, type RichListItem } from "../../../utils";
 
 interface ValuesListProps {
@@ -58,43 +59,34 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
   );
 
   const handleOrderChange = (newItems: RichListItem[]) => {
-    const newValues = newItems.map((item) => {
-      const index = parseInt(item.id.replace("values-", ""), 10);
-      return values[index];
-    });
+    const newValues = newItems.map(
+      (item) => item.data.primaryContent as string
+    );
     onValuesChange(newValues);
   };
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
+      <FormSectionHeader>
         <Text variant={TextVariant.Md} color={TextColor.Secondary}>
           Values
         </Text>
-        <Clickable
-          onClick={handleAddValue}
-          style={{ display: "flex", alignItems: "center", gap: 4 }}
-        >
-          <Icon name={IconName.Add} size={Size.Sm} />
-          <Text variant={TextVariant.Sm}>Add value</Text>
+        <Clickable onClick={handleAddValue}>
+          <FormFieldRow>
+            <Icon name={IconName.Add} size={Size.Sm} />
+            <Text variant={TextVariant.Sm}>Add value</Text>
+          </FormFieldRow>
         </Clickable>
-      </div>
+      </FormSectionHeader>
       {values.length === 0 ? (
-        <div style={{ textAlign: "center" }}>
+        <div>
           <Input
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Enter a value and press Enter"
           />
-          {values.length === 0 && !newValue && (
+          {!newValue && (
             <Text
               variant={TextVariant.Sm}
               color={TextColor.Secondary}
@@ -110,16 +102,14 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
             listItems={valueListItems}
             draggable={true}
             onOrderChange={handleOrderChange}
-            style={{ gap: 8 }}
           />
-          <div style={{ marginTop: 8 }}>
-            <Input
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add another value"
-            />
-          </div>
+          <Input
+            value={newValue}
+            onChange={(e) => setNewValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Add another value"
+            style={{ marginTop: 8 }}
+          />
         </>
       )}
     </div>

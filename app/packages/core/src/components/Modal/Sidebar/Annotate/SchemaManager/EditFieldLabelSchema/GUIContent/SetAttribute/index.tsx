@@ -16,12 +16,13 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import React from "react";
 import {
   ATTRIBUTE_TYPE_OPTIONS,
   COMPONENT_OPTIONS_BY_TYPE,
+  NO_VALUES_TYPES,
   RANGE_TYPES,
 } from "../../../constants";
+import { ComponentButtonsContainer, FormFieldRow } from "../../../styled";
 import type { AttributeFormState } from "../../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
 import RangeInput from "./RangeInput";
@@ -58,6 +59,7 @@ const AttributeFormContent = ({
   const componentOptions =
     COMPONENT_OPTIONS_BY_TYPE[formState.attributeType] || [];
   const showComponentType = componentOptions.length > 1;
+  const showValues = !NO_VALUES_TYPES.includes(formState.attributeType);
   const showRange = RANGE_TYPES.includes(formState.attributeType);
 
   return (
@@ -122,7 +124,7 @@ const AttributeFormContent = ({
           >
             Component type
           </Text>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <ComponentButtonsContainer>
             {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
@@ -132,15 +134,17 @@ const AttributeFormContent = ({
                 onClick={() => handleComponentChange(opt.id)}
               />
             ))}
-          </div>
+          </ComponentButtonsContainer>
         </div>
       )}
 
       {/* Values list */}
-      <ValuesList
-        values={formState.values}
-        onValuesChange={handleValuesChange}
-      />
+      {showValues && (
+        <ValuesList
+          values={formState.values}
+          onValuesChange={handleValuesChange}
+        />
+      )}
 
       {/* Range input */}
       {showRange && (
@@ -177,21 +181,14 @@ const AttributeFormContent = ({
       {/* Read-only toggle */}
       {isM4Enabled && (
         <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 4,
-            }}
-          >
+          <FormFieldRow style={{ marginBottom: 4 }}>
             <Text variant={TextVariant.Md}>Read-only</Text>
             <Toggle
               checked={formState.readOnly}
               onChange={handleReadOnlyChange}
               size={Size.Sm}
             />
-          </div>
+          </FormFieldRow>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             When enabled, annotators can view this attribute but cannot edit its
             values.

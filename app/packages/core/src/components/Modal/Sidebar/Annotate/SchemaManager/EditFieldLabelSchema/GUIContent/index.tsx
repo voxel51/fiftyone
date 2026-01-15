@@ -37,12 +37,11 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
 
   const handleAddClass = useCallback(
     (name: string) => {
-      console.log("[ADD CLASS]", { name, config });
       if (!config) return;
       const newClasses = [name, ...classes];
       onConfigChange?.({ ...config, classes: newClasses });
     },
-    [config, classes, onConfigChange]
+    [classes, config, onConfigChange]
   );
 
   const handleEditClass = useCallback(
@@ -73,16 +72,11 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
 
   const handleAddAttribute = useCallback(
     (name: string, attrConfig: AttributeConfig) => {
-      console.log("[ADD ATTRIBUTE]", { name, attrConfig, config, attributes });
       if (!config) return;
       const newAttributes = { [name]: attrConfig, ...attributes };
-      console.log("[ADD ATTRIBUTE] newConfig:", {
-        ...config,
-        attributes: newAttributes,
-      });
       onConfigChange?.({ ...config, attributes: newAttributes });
     },
-    [config, attributes, onConfigChange]
+    [attributes, config, onConfigChange]
   );
 
   const handleEditAttribute = useCallback(
