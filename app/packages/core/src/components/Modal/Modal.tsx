@@ -1,4 +1,8 @@
-import { useRegisterAnnotationCommandHandlers } from "@fiftyone/annotation";
+import {
+  useAutoSave,
+  useRegisterAnnotationCommandHandlers,
+  useRegisterAnnotationEventHandlers,
+} from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -7,7 +11,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { Fragment, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -18,6 +22,7 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -54,7 +59,14 @@ const SpacesContainer = styled.div`
 
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
-  return null;
+  useRegisterAnnotationEventHandlers();
+
+  const { isEnabled: enableAutoSave } = useFeature({
+    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
+  });
+  useAutoSave(enableAutoSave);
+
+  return <Fragment />;
 };
 
 const Modal = () => {
