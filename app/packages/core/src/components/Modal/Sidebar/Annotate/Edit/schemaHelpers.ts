@@ -3,7 +3,6 @@ import type {
   SchemaType,
 } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { BOOLEAN_FIELD, STRING_FIELD } from "@fiftyone/utilities";
-import { useMemo } from "react";
 
 export interface PrimitiveSchema {
   type: string;
@@ -13,7 +12,7 @@ export interface PrimitiveSchema {
   range?: [number, number];
 }
 
-const getLabel = (value?: string) => {
+const getLabel = (value?: unknown): string => {
   if (typeof value === "boolean") {
     return value ? "True" : "False";
   }
@@ -22,7 +21,7 @@ const getLabel = (value?: string) => {
     return "None";
   }
 
-  return value;
+  return value as string;
 };
 
 export const createInput = (
@@ -61,7 +60,7 @@ export const createSlider = (
     minLabel?: string;
     maxLabel?: string;
   }
-) => {
+): SchemaType => {
   const {
     bare = false,
     labeled = true,
@@ -84,14 +83,14 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: unknown[]) => {
+export const createRadio = (name: string, choices: string[]) => {
   return {
     type: "string",
     view: {
       name: "RadioGroup",
       label: name,
       component: "RadioView",
-      choices: choices.map((choice: unknown) => ({
+      choices: choices.map((choice: string) => ({
         label: getLabel(choice as string),
         value: choice,
       })),
@@ -200,37 +199,35 @@ export function usePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
-  return useMemo(() => {
-    if (schema.type === "list<float>" || schema.type === "list<int>") {
-      return createNumericList(name, schema.values || []);
-    }
+  if (schema.type === "list<float>" || schema.type === "list<int>") {
+    return createNumericList(name, schema.values || []);
+  }
 
-    if (schema.type === "list<str>") {
-      return createTags(name, schema.values || []);
-    }
+  if (schema.type === "list<str>") {
+    return createTags(name, schema.values || []);
+  }
 
-    if (schema.type === "bool") {
-      if (schema.component === "checkbox") {
-        return createCheckbox(name);
-      }
-      return createToggle(name);
+  if (schema.type === "bool") {
+    if (schema.component === "checkbox") {
+      return createCheckbox(name);
     }
+    return createToggle(name);
+  }
 
-    if (schema.type === "str") {
-      if (schema.component === "dropdown") {
-        return createSelect(name, schema.values || []);
-      } else if (schema.component === "radio") {
-        return createRadio(name, schema.values || []);
-      }
-      return createText(name, "string");
+  if (schema.type === "str") {
+    if (schema.component === "dropdown") {
+      return createSelect(name, schema.values || []);
+    } else if (schema.component === "radio") {
+      return createRadio(name, schema.values || []);
     }
+    return createText(name, "string");
+  }
 
-    if (schema.type === "float" || schema.type === "int") {
-      if (schema.range) {
-        return createSlider(name, schema.range);
-      }
-      return createText(name, "number");
+  if (schema.type === "float" || schema.type === "int") {
+    if (schema.range) {
+      return createSlider(name, schema.range);
     }
-    return undefined;
-  }, [name, schema]);
+    return createText(name, "number");
+  }
+  return undefined;
 }

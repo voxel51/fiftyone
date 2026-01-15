@@ -8,8 +8,6 @@ import {
   DatePicker,
   Orientation,
   Stack,
-  Text,
-  TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useState } from "react";
@@ -44,7 +42,11 @@ function processFieldValue(fieldValue: Primitive, type: string): Primitive {
   if (trimmedValue === "") {
     return null;
   }
-  return JSON.parse(trimmedValue);
+  try {
+    return JSON.parse(trimmedValue);
+  } catch (error) {
+    throw new Error(`Invalid JSON: ${trimmedValue}`);
+  }
 }
 
 /**
@@ -136,13 +138,14 @@ export default function PrimitiveEdit({
     }
   }, [path, persistData, setNotification, onExit]);
 
-  const EditContent = () => {
-    const isJson = type === "dict";
-    const isDate = type === "date" || type === "datetime";
-    // todo - schemaio component is not working correctly for dict fields
-    // this works fine but ideally we should use the schemaio component for all fields
-    if (isJson) {
-      return (
+  const isJson = type === "dict";
+  const isDate = type === "date" || type === "datetime";
+
+  return (
+    <Stack orientation={Orientation.Column}>
+      {/* todo - schemaio component is not working correctly for dict fields */}
+      {/* this works fine but ideally we should use the schemaio component for all fields */}
+      {isJson ? (
         <EditorContainer>
           <JSONEditor
             data={fieldValue as string}
@@ -151,40 +154,22 @@ export default function PrimitiveEdit({
             scanning={false}
           />
         </EditorContainer>
-      );
-    }
-    if (isDate) {
-      const dateValue = fieldValue ? new Date(fieldValue as string) : null;
-      return (
+      ) : isDate ? (
         <DatePicker
-          selected={dateValue}
+          selected={fieldValue ? new Date(fieldValue as string) : null}
           showTimeSelect={type === "datetime"}
           onChange={(date: Date | null) => {
             handleChange(date ? date.toISOString() : null);
           }}
         />
-      );
-    }
-    if (!primitiveSchema) {
-      return (
-        <Text variant={TextVariant.Label}>
-          Could not determine schema for path: {path}
-        </Text>
-      );
-    }
-    return (
-      <SchemaIOComponent
-        smartForm={true}
-        schema={primitiveSchema}
-        onChange={handleChange}
-        data={fieldValue}
-      />
-    );
-  };
-
-  return (
-    <Stack orientation={Orientation.Column}>
-      <EditContent />
+      ) : (
+        <SchemaIOComponent
+          smartForm={true}
+          schema={primitiveSchema}
+          onChange={handleChange}
+          data={fieldValue}
+        />
+      )}
       <Stack
         orientation={Orientation.Row}
         style={{

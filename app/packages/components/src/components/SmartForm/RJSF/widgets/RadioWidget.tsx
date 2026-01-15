@@ -30,7 +30,7 @@ export default function RadioWidget(props: WidgetProps) {
         value: String(val),
         label: String(enumNames[index] || val),
       })),
-    [enumValues, enumNames]
+    [schema]
   );
 
   const handleChange = (newValue: string) => {
@@ -52,7 +52,7 @@ export default function RadioWidget(props: WidgetProps) {
     // Check if the string value exists in enumValues
     const exists = enumValues.some((v) => String(v) === stringVal);
     return exists ? stringVal : "";
-  }, [value, enumValues]);
+  }, [schema]);
 
   const radioComponent = (
     <div

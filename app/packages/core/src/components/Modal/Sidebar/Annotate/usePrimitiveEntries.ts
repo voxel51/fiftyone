@@ -10,10 +10,6 @@ const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
   const samplePrimitives = useSamplePrimitives(currentSample);
   const primitivesExpandedState = useAtomValue(primitivesExpanded);
 
-  if (!currentSample) {
-    return [];
-  }
-
   const primitiveEntries: SidebarEntry[] = useMemo(
     () =>
       samplePrimitives

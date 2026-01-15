@@ -16,6 +16,7 @@ import {
   Sample,
 } from "@fiftyone/state";
 import { Field, Primitive, Schema } from "@fiftyone/utilities";
+import { get } from "lodash";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -241,7 +242,7 @@ const buildPrimitiveMutationDelta = (
   path: string,
   data: Primitive
 ): JSONDeltas => {
-  const existingValue = sample[path] as Primitive;
+  const existingValue = get(sample, path) as Primitive;
 
   // If the value hasn't changed, return empty deltas
   if (existingValue === data) {

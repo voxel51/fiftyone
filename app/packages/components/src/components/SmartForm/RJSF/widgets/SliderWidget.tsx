@@ -10,8 +10,7 @@ import { BaseSlider, FormField } from "@voxel51/voodo";
 import React from "react";
 
 export default function Slider(props: WidgetProps) {
-  const { value, onChange, schema, uiSchema, id, disabled, readonly, label } =
-    props;
+  const { value, onChange, schema, uiSchema, label, rawErrors } = props;
 
   // Extract min/max from schema
   const min = schema.minimum ?? 0;
@@ -50,5 +49,11 @@ export default function Slider(props: WidgetProps) {
     />
   );
 
-  return <FormField control={sliderComponent} label={label} />;
+  return (
+    <FormField
+      control={sliderComponent}
+      label={label}
+      error={rawErrors && rawErrors.length > 0 ? rawErrors[0] : undefined}
+    />
+  );
 }
