@@ -1,4 +1,9 @@
-import { isGeneratedView, mediaType, readOnly } from "@fiftyone/state";
+import {
+  isGeneratedView,
+  isPatchesView,
+  mediaType,
+  readOnly,
+} from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
@@ -40,7 +45,8 @@ export default function useCanAnnotate(): CanAnnotateResult {
     feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
   });
   const currentMediaType = useRecoilValue(mediaType);
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isUnsupportedGeneratedView =
+    useRecoilValue(isGeneratedView) && !useRecoilValue(isPatchesView);
 
   // hide tab entirely for read-only or feature disabled
   if (isReadOnly || !isAnnotationEnabled) {
@@ -49,6 +55,9 @@ export default function useCanAnnotate(): CanAnnotateResult {
 
   return {
     showAnnotationTab: true,
-    disabledReason: getDisabledReason(currentMediaType, isGenerated),
+    disabledReason: getDisabledReason(
+      currentMediaType,
+      isUnsupportedGeneratedView
+    ),
   };
 }

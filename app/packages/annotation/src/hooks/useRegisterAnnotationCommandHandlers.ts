@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  buildAnnotationPath,
+  useAnnotationEventBus,
+} from "@fiftyone/annotation";
 import { useRegisterCommandHandler } from "@fiftyone/commands";
 import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
@@ -12,14 +15,16 @@ import { isSampleIsh } from "@fiftyone/looker/src/util";
 import {
   AnnotationLabel,
   datasetId as fosDatasetId,
+  isGeneratedView,
   modalSample,
   useRefreshSample,
+  view,
 } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { DeleteAnnotationCommand, UpsertAnnotationCommand } from "../commands";
-import { OpType, buildJsonPath, buildLabelDeltas } from "../deltas";
+import { buildJsonPath, buildLabelDeltas, OpType } from "../deltas";
 
 /**
  * Hook that registers command handlers for annotation persistence.
@@ -59,7 +64,17 @@ export const useRegisterAnnotationCommandHandlers = () => {
 
   const handlePatchSample = useRecoilCallback(
     ({ snapshot }) =>
-      async (sampleDeltas: JSONDeltas): Promise<boolean> => {
+      async ({
+        sampleDeltas,
+        labelPath,
+        labelId,
+        opType,
+      }: {
+        sampleDeltas: JSONDeltas;
+        labelPath?: string;
+        labelId?: string;
+        opType?: OpType;
+      }): Promise<boolean> => {
         const currentSample = (await snapshot.getPromise(modalSample))?.sample;
         const versionToken = await getVersionToken();
 
@@ -67,28 +82,45 @@ export const useRegisterAnnotationCommandHandlers = () => {
           return false;
         }
 
+        // Extract the generated dataset name from the view state if present
+        const isGenerated = await snapshot.getPromise(isGeneratedView);
+        const generatedDatasetName = isGenerated
+          ? (await snapshot.getPromise(view))
+              ?.map(
+                (obj) => obj.kwargs.find(([key]) => key === "_state")?.[1]?.name
+              )
+              .filter(Boolean)?.[0]
+          : undefined;
+
         if (sampleDeltas.length > 0) {
-          try {
-            const response = await patchSample({
-              datasetId,
-              sampleId: currentSample._id,
-              deltas: sampleDeltas,
-              versionToken,
-            });
+          const response = await patchSample({
+            datasetId: datasetId,
+            sampleId: currentSample._sample_id || currentSample._id,
+            deltas: sampleDeltas,
+            versionToken,
+            labelId: isGenerated ? labelId : null,
+            path: isGenerated ? labelPath : null,
+            generatedDatasetName,
+            generatedSampleId: isGenerated ? currentSample._id : undefined,
+          });
 
-            // transform response data to match the graphql sample format
-            const cleanedSample = transformSampleData(response.sample);
-            if (isSampleIsh(cleanedSample)) {
-              refreshSample(cleanedSample as Sample);
-            } else {
-              console.error(
-                "response data does not adhere to sample format",
-                cleanedSample
-              );
-            }
-          } catch (error) {
-            console.error("error patching sample", error);
+          // For delete operations on patches, the patch sample is deleted and
+          // the backend returns the source sample. We can't refresh the modal
+          // with the source sample (different structure), so we skip the refresh.
+          // The modal should close automatically via other mechanisms.
+          if (isGenerated && opType === "delete") {
+            return true;
+          }
 
+          // transform response data to match the graphql sample format
+          const cleanedSample = transformSampleData(response.sample);
+          if (isSampleIsh(cleanedSample)) {
+            refreshSample(cleanedSample as Sample);
+          } else {
+            console.error(
+              "response data does not adhere to sample format",
+              cleanedSample
+            );
             return false;
           }
         }
@@ -109,28 +141,40 @@ export const useRegisterAnnotationCommandHandlers = () => {
         const currentSample = (await snapshot.getPromise(modalSample))?.sample;
 
         if (!currentSample) {
-          console.error("missing sample data!");
+          console.error("Missing sample data for annotation persistence");
           return false;
         }
 
         if (!annotationLabel) {
-          console.error("missing annotation label!");
+          console.error("Missing annotation label for persistence");
           return false;
         }
+
+        // Check if this is a generated dataset sample (e.g., patches, frames)
+        const isGenerated = await snapshot.getPromise(isGeneratedView);
 
         // calculate label deltas between current sample data and new label data
         const sampleDeltas = buildLabelDeltas(
           currentSample,
           annotationLabel,
           schema,
-          opType
+          opType,
+          isGenerated
         ).map((delta) => ({
           ...delta,
           // convert label delta to sample delta
-          path: buildJsonPath(annotationLabel.path, delta.path),
+          path: buildJsonPath(
+            isGenerated ? null : annotationLabel.path,
+            delta.path
+          ),
         }));
 
-        return await handlePatchSample(sampleDeltas);
+        return await handlePatchSample({
+          sampleDeltas: sampleDeltas,
+          labelPath: buildAnnotationPath(annotationLabel, isGenerated),
+          labelId: annotationLabel.data._id,
+          opType: opType,
+        });
       },
     [handlePatchSample]
   );

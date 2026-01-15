@@ -87,3 +87,34 @@ def parse(
             raise ValueError(f"Invalid operation '{op_str}'") from err
 
     return parsed if not return_one else parsed[0]
+
+
+def apply(
+    target: Any,
+    patches: Union[dict[str, Any], Iterable[dict[str, Any]]],
+    *,
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> tuple[Any, list[str]]:
+    """Parse and apply JSON patch operations to a target object.
+
+    Args:
+        target: The object to apply patches to
+        patches: JSON patch operations (dict or list of dicts)
+        transform_fn: Optional function to transform values before applying
+
+    Returns:
+        A tuple of (target, errors) where errors is a list of error messages
+        for any patches that failed to apply
+    """
+    parsed = parse(patches, transform_fn=transform_fn)
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+
+    errors = []
+    for i, p in enumerate(parsed):
+        try:
+            p.apply(target)
+        except Exception as e:
+            errors.append(f"Error applying patch `{patches[i]}`: {e}")
+
+    return target, errors
