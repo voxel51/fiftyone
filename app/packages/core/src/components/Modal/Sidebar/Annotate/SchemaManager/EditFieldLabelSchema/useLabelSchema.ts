@@ -18,7 +18,12 @@ const useCurrentLabelSchema = (field: string) => {
   const defaultSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
-  return [current ?? saved ?? defaultSchema, setCurrent] as const;
+  const wrappedSetCurrent = (value: unknown) => {
+    console.log("[SET CURRENT LABEL SCHEMA]", { field, value });
+    setCurrent(value);
+  };
+
+  return [current ?? saved ?? defaultSchema, wrappedSetCurrent] as const;
 };
 
 const useDefaultLabelSchema = (field: string) => {
@@ -73,6 +78,7 @@ const useConfigUpdate = (field: string) => {
       setCurrent({ ...(current as object), classes: newOrder });
     },
     updateConfig: (newConfig: object) => {
+      console.log("[UPDATE CONFIG]", { field, newConfig, current });
       setCurrent(newConfig);
     },
   };
@@ -97,11 +103,38 @@ const useSave = (field: string) => {
   return {
     isSaving,
     save: () => {
+      // Find new attributes (in current but not in saved)
+      const currentAttrs =
+        (current as { attributes?: Record<string, unknown> })?.attributes || {};
+      const savedAttrs =
+        (savedLabelSchema as { attributes?: Record<string, unknown> })
+          ?.attributes || {};
+      const newAttributes: Record<string, unknown> = {};
+
+      for (const [name, schema] of Object.entries(currentAttrs)) {
+        if (!(name in savedAttrs)) {
+          newAttributes[name] = schema;
+        }
+      }
+
+      const hasNewAttributes = Object.keys(newAttributes).length > 0;
+      console.log("[SAVE]", {
+        field,
+        label_schema: current,
+        newAttributes,
+        hasNewAttributes,
+      });
+
       setIsSaving(true);
       update.execute(
-        { field, label_schema: current },
         {
-          callback: () => {
+          field,
+          label_schema: current,
+          ...(hasNewAttributes && { new_attributes: newAttributes }),
+        },
+        {
+          callback: (result) => {
+            console.log("[SAVE CALLBACK]", { result });
             setSaved(current);
             setIsSaving(false);
           },

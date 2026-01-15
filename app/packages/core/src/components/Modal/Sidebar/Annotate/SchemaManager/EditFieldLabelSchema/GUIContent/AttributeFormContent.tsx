@@ -19,24 +19,16 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import type { RichListItem } from "../../utils";
 import React, { useState } from "react";
+import {
+  ATTRIBUTE_TYPE_OPTIONS,
+  COMPONENT_OPTIONS_BY_TYPE,
+  LIST_TYPES,
+  RANGE_TYPES,
+  getDefaultComponent,
+} from "../../constants";
 import { createRichListItem, type AttributeFormState } from "../../utils";
-
-// Attribute type options for the dropdown
-const ATTRIBUTE_TYPE_OPTIONS = [
-  { id: "string_list", data: { label: "String list" } },
-  { id: "text", data: { label: "Text" } },
-  { id: "number", data: { label: "Number" } },
-  { id: "select", data: { label: "Object selector" } },
-];
-
-// Component type options (only shown for string_list type)
-const COMPONENT_TYPE_OPTIONS = [
-  { id: "checkbox", data: { label: "Checkboxes", icon: IconName.Checkbox } },
-  { id: "dropdown", data: { label: "Dropdown", icon: IconName.Search } },
-  { id: "radio", data: { label: "Radio", icon: IconName.Radio } },
-];
+import type { RichListItem } from "../../utils";
 
 // Component type button for attribute form
 interface ComponentTypeButtonProps {
@@ -109,14 +101,11 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
 
   const valueListItems = values.map((value, index) =>
     createRichListItem({
-      id: `value-${index}`,
+      id: `values-${index}`,
       canDrag: true,
       primaryContent: value,
       actions: (
-        <Clickable
-          onClick={() => handleDeleteValue(index)}
-          style={{ padding: 4 }}
-        >
+        <Clickable onClick={() => handleDeleteValue(index)}>
           <Icon name={IconName.Delete} size={Size.Md} />
         </Clickable>
       ),
@@ -153,7 +142,7 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
         </Clickable>
       </div>
       {values.length === 0 ? (
-        <div style={{ padding: "16px", textAlign: "center" }}>
+        <div style={{ textAlign: "center" }}>
           <Input
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
@@ -176,6 +165,7 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
             listItems={valueListItems}
             draggable={true}
             onOrderChange={handleOrderChange}
+            style={{ gap: 8 }}
           />
           <div style={{ marginTop: 8 }}>
             <Input
@@ -207,7 +197,22 @@ const AttributeFormContent = ({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
 
-  const showComponentType = formState.attributeType === "string_list";
+  // Get component options for the selected type
+  const componentOptions =
+    COMPONENT_OPTIONS_BY_TYPE[formState.attributeType] || [];
+  const showComponentType = componentOptions.length > 1;
+
+  // When type changes, reset component to appropriate default
+  const handleTypeChange = (newType: string) => {
+    const defaultComponent = getDefaultComponent(newType, 0, false);
+    onFormStateChange({
+      ...formState,
+      attributeType: newType,
+      componentType: defaultComponent,
+      values: [], // Reset values when type changes
+      range: null, // Reset range when type changes
+    });
+  };
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
@@ -253,15 +258,17 @@ const AttributeFormContent = ({
           options={ATTRIBUTE_TYPE_OPTIONS}
           value={formState.attributeType}
           exclusive
+          portal
+          fullWidth
           onChange={(value) => {
             if (typeof value === "string") {
-              onFormStateChange({ ...formState, attributeType: value });
+              handleTypeChange(value);
             }
           }}
         />
       </div>
 
-      {/* Component type selection (only for string_list) */}
+      {/* Component type selection (when multiple options available) */}
       {showComponentType && (
         <div>
           <Text
@@ -271,11 +278,11 @@ const AttributeFormContent = ({
           >
             Component type
           </Text>
-          <div style={{ display: "flex", gap: 8 }}>
-            {COMPONENT_TYPE_OPTIONS.map((opt) => (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
-                icon={opt.data.icon}
+                icon={opt.data.icon || IconName.Edit}
                 label={opt.data.label}
                 isSelected={formState.componentType === opt.id}
                 onClick={() =>
@@ -287,15 +294,114 @@ const AttributeFormContent = ({
         </div>
       )}
 
-      {/* Values list (only for string_list) */}
-      {showComponentType && (
-        <ValuesList
-          values={formState.values}
-          onValuesChange={(values) =>
-            onFormStateChange({ ...formState, values })
-          }
-        />
+      {/* Values list */}
+      <ValuesList
+        values={formState.values}
+        onValuesChange={(values) => {
+          const hasRange = formState.range !== null;
+          const newComponent = getDefaultComponent(
+            formState.attributeType,
+            values.length,
+            hasRange
+          );
+          onFormStateChange({
+            ...formState,
+            values,
+            componentType: newComponent,
+          });
+        }}
+      />
+
+      {/* Range input (for int and float types) */}
+      {RANGE_TYPES.includes(formState.attributeType) && (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: 8 }}
+          >
+            Range
+          </Text>
+          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                Min
+              </Text>
+              <Input
+                type="number"
+                value={formState.range?.[0]?.toString() ?? ""}
+                onChange={(e) => {
+                  const min = e.target.value ? Number(e.target.value) : null;
+                  const max = formState.range?.[1] ?? null;
+                  const newRange: [number, number] | null =
+                    min !== null || max !== null
+                      ? [min ?? 0, max ?? 100]
+                      : null;
+                  const newComponent = getDefaultComponent(
+                    formState.attributeType,
+                    formState.values.length,
+                    newRange !== null
+                  );
+                  onFormStateChange({
+                    ...formState,
+                    range: newRange,
+                    componentType: newComponent,
+                  });
+                }}
+                placeholder="0"
+                style={{ width: 80 }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                Max
+              </Text>
+              <Input
+                type="number"
+                value={formState.range?.[1]?.toString() ?? ""}
+                onChange={(e) => {
+                  const min = formState.range?.[0] ?? null;
+                  const max = e.target.value ? Number(e.target.value) : null;
+                  const newRange: [number, number] | null =
+                    min !== null || max !== null
+                      ? [min ?? 0, max ?? 100]
+                      : null;
+                  const newComponent = getDefaultComponent(
+                    formState.attributeType,
+                    formState.values.length,
+                    newRange !== null
+                  );
+                  onFormStateChange({
+                    ...formState,
+                    range: newRange,
+                    componentType: newComponent,
+                  });
+                }}
+                placeholder="100"
+                style={{ width: 80 }}
+              />
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Default value input */}
+      <div>
+        <Text
+          variant={TextVariant.Md}
+          color={TextColor.Secondary}
+          style={{ marginBottom: 8 }}
+        >
+          Default
+        </Text>
+        <Input
+          value={formState.defaultValue}
+          onChange={(e) =>
+            onFormStateChange({ ...formState, defaultValue: e.target.value })
+          }
+          placeholder="Default value"
+        />
+      </div>
 
       {/* Read-only toggle (only when M4 flag enabled) */}
       {isM4Enabled && (

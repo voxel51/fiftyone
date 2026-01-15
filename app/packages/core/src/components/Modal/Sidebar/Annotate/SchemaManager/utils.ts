@@ -35,7 +35,10 @@ export interface RichListItemOptions {
 // Attribute configuration
 export interface AttributeConfig {
   type: string;
+  component?: string;
   values?: string[];
+  range?: [number, number];
+  default?: string;
   read_only?: boolean;
 }
 
@@ -185,6 +188,8 @@ export interface AttributeFormState {
   attributeType: string;
   componentType: string;
   values: string[];
+  range: [number, number] | null;
+  defaultValue: string;
   readOnly: boolean;
 }
 
@@ -193,35 +198,42 @@ export interface AttributeFormState {
  */
 export const createDefaultAttributeFormState = (): AttributeFormState => ({
   name: "",
-  attributeType: "string_list",
-  componentType: "checkbox",
+  attributeType: "str",
+  componentType: "text",
   values: [],
+  range: null,
+  defaultValue: "",
   readOnly: false,
 });
 
 /**
- * Map display type back to attribute type and component type
+ * Default components for each data type
  */
-export const parseAttributeType = (
-  type: string
-): { attributeType: string; componentType: string } => {
-  if (["checkbox", "dropdown", "radio"].includes(type)) {
-    return { attributeType: "string_list", componentType: type };
-  }
-  return { attributeType: type, componentType: "checkbox" };
+const DEFAULT_COMPONENTS: Record<string, string> = {
+  str: "text",
+  int: "text",
+  float: "text",
+  bool: "toggle",
+  date: "datepicker",
+  datetime: "datepicker",
+  dict: "json",
+  "list<str>": "text",
+  "list<int>": "text",
+  "list<float>": "text",
+  "list<bool>": "text",
 };
 
 /**
- * Map internal type to display type
+ * Parse attribute config type and component to form state values
  */
-export const getInternalType = (
-  attributeType: string,
-  componentType: string
-): string => {
-  if (attributeType === "string_list") {
-    return componentType; // checkbox, dropdown, or radio
-  }
-  return attributeType; // text, number, select
+export const parseAttributeType = (
+  type: string,
+  component?: string
+): { attributeType: string; componentType: string } => {
+  // Type is the actual data type (str, list<str>, int, etc.)
+  const attributeType = type;
+  const componentType = component || DEFAULT_COMPONENTS[type] || "text";
+  return { attributeType, componentType };
 };
 
 /**
@@ -231,12 +243,17 @@ export const attributeConfigToFormState = (
   name: string,
   config: AttributeConfig
 ): AttributeFormState => {
-  const { attributeType, componentType } = parseAttributeType(config.type);
+  const { attributeType, componentType } = parseAttributeType(
+    config.type,
+    config.component
+  );
   return {
     name,
     attributeType,
     componentType,
     values: config.values || [],
+    range: config.range || null,
+    defaultValue: config.default || "",
     readOnly: config.read_only || false,
   };
 };
@@ -247,7 +264,10 @@ export const attributeConfigToFormState = (
 export const formStateToAttributeConfig = (
   state: AttributeFormState
 ): AttributeConfig => ({
-  type: getInternalType(state.attributeType, state.componentType),
+  type: state.attributeType,
+  component: state.componentType || undefined,
   values: state.values.length > 0 ? state.values : undefined,
+  range: state.range || undefined,
+  default: state.defaultValue || undefined,
   read_only: state.readOnly || undefined,
 });
