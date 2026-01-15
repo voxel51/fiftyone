@@ -5,6 +5,7 @@ import { PrimitiveValue } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
 import {
   Button,
+  DatePicker,
   Orientation,
   Stack,
   Text,
@@ -134,7 +135,7 @@ export default function PrimitiveEdit({
 
   const EditContent = () => {
     const isJson = type === "dict";
-    const isDate = type === "date";
+    const isDate = type === "date" || type === "datetime";
     // todo - schemaio component is not working correctly for dict fields
     // this works fine but ideally we should use the schemaio component for all fields
     if (isJson) {
@@ -149,10 +150,18 @@ export default function PrimitiveEdit({
         </EditorContainer>
       );
     }
-    // todo - date editor when supported
-    // if (isDate) {
-    //   return <DateEditor data={fieldValue} onChange={handleChange} />;
-    // }
+    if (isDate) {
+      const dateValue = fieldValue ? new Date(fieldValue as string) : null;
+      return (
+        <DatePicker
+          selected={dateValue}
+          showTimeSelect={type === "datetime"}
+          onChange={(date: Date | null) => {
+            handleChange(date ? date.toISOString() : null);
+          }}
+        />
+      );
+    }
     if (!primitiveSchema) {
       return (
         <Text variant={TextVariant.Label}>
