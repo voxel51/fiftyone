@@ -4,9 +4,6 @@
 
 import {
   Checkbox,
-  Clickable,
-  Icon,
-  IconName,
   Input,
   Orientation,
   RichList,
@@ -19,6 +16,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useState } from "react";
 import { createRichListItem, getClassNameError } from "../../utils";
+import CardActions from "./CardActions";
 
 interface AddClassCardProps {
   attributeCount: number;
@@ -62,21 +60,7 @@ const AddClassCard = ({
     id: "__new__",
     primaryContent: "New class",
     actions: (
-      <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-        <Clickable onClick={onCancel} style={{ padding: 4 }}>
-          <Icon name={IconName.Delete} size={Size.Md} />
-        </Clickable>
-        <Clickable
-          onClick={handleSave}
-          style={{
-            padding: 4,
-            opacity: canSave ? 1 : 0.5,
-            cursor: canSave ? "pointer" : "not-allowed",
-          }}
-        >
-          <Icon name={IconName.Check} size={Size.Md} />
-        </Clickable>
-      </Stack>
+      <CardActions onDelete={onCancel} onSave={handleSave} canSave={canSave} />
     ),
     additionalContent: (
       <Stack orientation={Orientation.Column} spacing={Spacing.Md}>

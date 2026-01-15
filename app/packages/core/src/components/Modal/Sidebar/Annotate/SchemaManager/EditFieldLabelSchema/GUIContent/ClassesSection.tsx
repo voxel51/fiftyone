@@ -5,9 +5,6 @@
 import {
   Button,
   Checkbox,
-  Clickable,
-  Icon,
-  IconName,
   Input,
   Orientation,
   RichList,
@@ -28,6 +25,7 @@ import {
   type RichListItem,
 } from "../../utils";
 import AddClassCard from "./AddClassCard";
+import CardActions from "./CardActions";
 import EditAction from "./EditAction";
 
 // Expanded content for inline class editing (Name input + Include checkbox)
@@ -144,21 +142,11 @@ const ClassesSection = ({
               canDrag: true,
               primaryContent: "Edit class",
               actions: (
-                <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-                  <Clickable onClick={handleDeleteClass} style={{ padding: 4 }}>
-                    <Icon name={IconName.Delete} size={Size.Md} />
-                  </Clickable>
-                  <Clickable
-                    onClick={handleEditSave}
-                    style={{
-                      padding: 4,
-                      opacity: editError ? 0.5 : 1,
-                      cursor: editError ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    <Icon name={IconName.Check} size={Size.Md} />
-                  </Clickable>
-                </Stack>
+                <CardActions
+                  onDelete={handleDeleteClass}
+                  onSave={handleEditSave}
+                  canSave={!editError}
+                />
               ),
               additionalContent: (
                 <InlineEditExpandedContent
