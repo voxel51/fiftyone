@@ -3,8 +3,8 @@ import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type {
   ReconciledDetection3D,
-  ReconciledLabels3D3D,
-  ReconciledPolyline3D3D,
+  ReconciledLabels3D,
+  ReconciledPolyline3D,
 } from "../annotation/types";
 import type { OverlayLabel } from "../labels/loader";
 import {
@@ -68,7 +68,7 @@ function isPolylineOverlay(
  */
 export function useReconciledLabels3D({
   rawOverlays,
-}: UseReconciledLabels3DParams): ReconciledLabels3D3D {
+}: UseReconciledLabels3DParams): ReconciledLabels3D {
   const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
   const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -77,7 +77,7 @@ export function useReconciledLabels3D({
 
   const reconciledLabels3D = useMemo(() => {
     const detections: ReconciledDetection3D[] = [];
-    const polylines: ReconciledPolyline3D3D[] = [];
+    const polylines: ReconciledPolyline3D[] = [];
 
     // Track existing IDs to identify new labels from staged transforms
     const existingPolylineIds = new Set<string>();

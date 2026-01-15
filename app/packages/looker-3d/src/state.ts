@@ -9,7 +9,7 @@ import type {
   AnnotationPlaneState,
   CuboidTransformData,
   PolylinePointTransformData,
-  ReconciledLabels3D3D,
+  ReconciledLabels3D,
   SegmentState,
   SelectedPoint,
   TransformMode,
@@ -636,7 +636,7 @@ export const clearTransformStateSelector = selector({
 /**
  * Internal atom family keyed by sample ID storing reconciled label data.
  */
-const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D3D, string>({
+const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D, string>({
   key: "fo3d-ReconciledLabels3D",
   default: {
     detections: [],
@@ -649,7 +649,7 @@ const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D3D, string>({
  * This is the authoritative source for what labels will be rendered
  * in the 3D viewer.
  */
-export const reconciledLabels3DSelector = selector<ReconciledLabels3D3D>({
+export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
   key: "fo3d-reconciledLabels3DSelector",
   get: ({ get }) => {
     const sampleId = get(fos.currentSampleId);

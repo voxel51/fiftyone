@@ -103,24 +103,24 @@ export type ReconciledDetection3D = OverlayLabel &
   CuboidTransformData &
   ReconciledLabelBase3D & {
     _cls: "Detection";
-  };
+  } & Record<string, unknown>;
 
 /**
  * A reconciled polyline that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D polyline that will be rendered.
  */
-export type ReconciledPolyline3D3D = OverlayLabel &
+export type ReconciledPolyline3D = OverlayLabel &
   ReconciledLabelBase3D & {
     _cls: "Polyline";
     points3d: [number, number, number][][];
     filled?: boolean;
     closed?: boolean;
-  };
+  } & Record<string, unknown>;
 
 /**
  * Container for reconciled 3D label data.
  */
-export interface ReconciledLabels3D3D {
+export interface ReconciledLabels3D {
   detections: ReconciledDetection3D[];
-  polylines: ReconciledPolyline3D3D[];
+  polylines: ReconciledPolyline3D[];
 }

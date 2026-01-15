@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import type {
   ReconciledDetection3D,
-  ReconciledPolyline3D3D,
+  ReconciledPolyline3D,
 } from "../annotation/types";
 import { useSetEditingToExistingCuboid } from "../annotation/useSetEditingToExistingCuboid";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
@@ -309,7 +309,7 @@ export const ThreeDLabels = ({
   });
 
   const getOverlayColor = useCallback(
-    (overlay: ReconciledDetection3D | ReconciledPolyline3D3D) =>
+    (overlay: ReconciledDetection3D | ReconciledPolyline3D) =>
       overlay.isNew
         ? getLabelColor({
             coloring,

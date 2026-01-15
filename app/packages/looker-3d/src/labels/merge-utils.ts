@@ -3,7 +3,7 @@ import type {
   CuboidTransformData,
   PolylinePointTransformData,
   ReconciledDetection3D,
-  ReconciledPolyline3D3D,
+  ReconciledPolyline3D,
 } from "../annotation/types";
 import { isValidPolylineSegment } from "../utils";
 import type { OverlayLabel } from "./loader";
@@ -30,7 +30,7 @@ export function reconcileDetection(
 export function reconcilePolyline(
   overlay: OverlayLabel & { points3d: [number, number, number][][] },
   stagedTransform?: PolylinePointTransformData
-): ReconciledPolyline3D3D {
+): ReconciledPolyline3D {
   // Staged segments take precedence over original points3d
   let finalPoints3d = stagedTransform?.segments
     ? stagedTransform.segments.map((seg) => seg.points)
@@ -45,7 +45,7 @@ export function reconcilePolyline(
     ...overlay,
     ...coerceStringBooleans(stagedTransform?.misc ?? {}),
     points3d: finalPoints3d,
-  } as ReconciledPolyline3D3D;
+  } as ReconciledPolyline3D;
 }
 
 /**
@@ -83,7 +83,7 @@ export function createNewPolyline(
   labelId: string,
   transformData: PolylinePointTransformData,
   currentSampleId: string
-): ReconciledPolyline3D3D | null {
+): ReconciledPolyline3D | null {
   if (!transformData.segments || transformData.segments.length === 0) {
     return null;
   }
@@ -108,5 +108,5 @@ export function createNewPolyline(
     points3d: validPoints3d,
     ...coerceStringBooleans(transformData.misc ?? {}),
     isNew: true,
-  } as ReconciledPolyline3D3D;
+  } as ReconciledPolyline3D;
 }
