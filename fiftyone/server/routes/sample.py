@@ -467,11 +467,6 @@ class SampleField(HTTPEndpoint):
         generated_dataset_name = request.query_params.get("generated_dataset")
         generated_sample_id = request.query_params.get("generated_sample_id")
 
-        #### Teams Only ####
-        user = getattr(request.state, "user", None)
-        user_id = getattr(user, "id", None)
-        ####################
-
         logger.info(
             "Received patch request for field %s with ID %s on sample %s "
             "in dataset %s%s",

@@ -45,8 +45,9 @@ export default function useCanAnnotate(): CanAnnotateResult {
     feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
   });
   const currentMediaType = useRecoilValue(mediaType);
-  const isUnsupportedGeneratedView =
-    useRecoilValue(isGeneratedView) && !useRecoilValue(isPatchesView);
+  const isGenerated = useRecoilValue(isGeneratedView);
+  const isPatches = useRecoilValue(isPatchesView);
+  const isUnsupportedGeneratedView = isGenerated && !isPatches;
 
   // hide tab entirely for read-only or feature disabled
   if (isReadOnly || !isAnnotationEnabled) {
