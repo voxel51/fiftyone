@@ -21,7 +21,7 @@ import {
   type AttributeConfig,
   type AttributeFormState,
 } from "../../utils";
-import AttributeFormContent from "./AttributeFormContent";
+import AttributeFormContent from "./SetAttribute";
 
 interface AddAttributeCardProps {
   existingAttributes: string[];

@@ -31,7 +31,7 @@ import {
   type AttributeFormState,
 } from "../../utils";
 import AddAttributeCard from "./AddAttributeCard";
-import AttributeFormContent from "./AttributeFormContent";
+import AttributeFormContent from "./SetAttribute";
 import EditAction from "./EditAction";
 
 interface AttributesSectionProps {
