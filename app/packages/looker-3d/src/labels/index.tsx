@@ -1,5 +1,4 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
@@ -21,27 +20,24 @@ import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import * as THREE from "three";
 import { useSetEditingToExistingCuboid } from "../annotation/useSetEditingToExistingCuboid";
 import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
 import { PANEL_ORDER_LABELS } from "../constants";
 import { usePathFilter } from "../hooks";
+import { useReconciledLabels3D } from "../hooks/use-reconciled-labels";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
   current3dAnnotationModeAtom,
-  currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../state";
 import { Archetype3d } from "../types";
-import { isValidPolylineSegment, toEulerFromDegreesArray } from "../utils";
+import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
@@ -61,10 +57,9 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const setCurrent3dAnnotationMode = useSetRecoilState(
+  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
     current3dAnnotationModeAtom
   );
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -79,8 +74,6 @@ export const ThreeDLabels = ({
   const [polylineWidth, setPolylineWidth] = useRecoilState(
     polylineLabelLineWidthAtom
   );
-  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
-  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
@@ -119,8 +112,6 @@ export const ThreeDLabels = ({
       },
     },
   };
-
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   useControls(
     () => ({
@@ -269,7 +260,27 @@ export const ThreeDLabels = ({
 
           // In annotate mode, only show fields that exist in annotation schemas
           if (mode === "annotate") {
-            return annotationSchemas && l.path in annotationSchemas;
+            const isInAnnotationSchemas = Boolean(
+              annotationSchemas?.includes(l.path)
+            );
+
+            if (!isInAnnotationSchemas) {
+              return false;
+            }
+
+            // Further filter based on current annotation mode
+            if (current3dAnnotationMode === "cuboid") {
+              return (
+                l._cls.toLowerCase() === "detection" ||
+                l.type.toLowerCase() === "detection"
+              );
+            }
+            if (current3dAnnotationMode === "polyline") {
+              return (
+                l._cls.toLowerCase() === "polyline" ||
+                l.type.toLowerCase() === "polyline"
+              );
+            }
           }
 
           return true;
@@ -285,221 +296,99 @@ export const ThreeDLabels = ({
       customizeColorSetting,
       mode,
       annotationSchemas,
+      current3dAnnotationMode,
     ]
   );
 
-  const [cuboidOverlays, polylineOverlays] = useMemo(() => {
-    const newCuboidOverlays = [];
-    const newPolylineOverlays = [];
+  // Step 1: Compute merged overlays (data computation)
+  // This hook also syncs the merged overlays to state for downstream consumers
+  const {
+    detections: ReconciledDetection3Ds,
+    polylines: ReconciledPolyline3Ds,
+  } = useReconciledLabels3D({
+    rawOverlays,
+  });
 
-    for (const overlay of rawOverlays) {
-      if (
-        overlay._cls === "Detection" &&
-        overlay.dimensions &&
-        overlay.location
-      ) {
-        const maybeExistingCuboidTransform =
-          stagedCuboidTransforms?.[overlay._id];
-
-        const cuboidCombined = {
-          ...overlay,
-          ...(maybeExistingCuboidTransform ?? {}),
-        };
-
-        newCuboidOverlays.push(
-          <Cuboid
-            key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
-            lineWidth={cuboidLineWidth}
-            rotation={overlayRotation}
-            itemRotation={itemRotation}
-            opacity={labelAlpha}
-            {...(cuboidCombined as CuboidProps)}
-            onClick={(e) => handleSelect(overlay, "cuboid", e)}
-            label={cuboidCombined}
-            tooltip={tooltip}
-            useLegacyCoordinates={settings.useLegacyCoordinates}
-          />
-        );
-      } else if (
-        overlay._cls === "Polyline" &&
-        (overlay as PolyLineProps).points3d
-      ) {
-        const maybeExistingTransformData =
-          stagedPolylineTransforms?.[overlay._id];
-
-        // Overriden temp state takes precedence over the original points3d
-        let finalPoints3d = maybeExistingTransformData?.segments
-          ? maybeExistingTransformData.segments.map((seg) => seg.points)
-          : (overlay as PolyLineProps).points3d;
-
-        if (finalPoints3d) {
-          finalPoints3d = finalPoints3d.filter(isValidPolylineSegment);
-        }
-
-        const overlayCombined = {
-          ...overlay,
-          ...coerceStringBooleans(maybeExistingTransformData?.misc ?? {}),
-          points3d: finalPoints3d,
-        };
-
-        if (finalPoints3d && finalPoints3d.length > 0) {
-          newPolylineOverlays.push(
-            <Polyline
-              key={`polyline-${overlay._id ?? overlay.id}-${overlay.sampleId}`}
-              rotation={overlayRotation}
-              opacity={labelAlpha}
-              lineWidth={polylineWidth}
-              {...(overlayCombined as PolyLineProps)}
-              label={overlayCombined}
-              onClick={(e) => handleSelect(overlay, "polyline", e)}
-              tooltip={tooltip}
-            />
-          );
-        }
-      }
-    }
-
-    // Check for any label ids in stagedPolylineTransformsAtom that are not in newPolylineOverlays
-    // and create new polyline overlays for them
-    const existingPolylineIds = new Set(
-      rawOverlays
-        .filter((overlay) => overlay._cls === "Polyline")
-        .map((overlay) => overlay._id)
-    );
-
-    for (const [labelId, transformData] of Object.entries(
-      stagedPolylineTransforms ?? {}
-    )) {
-      if (!transformData.segments || transformData.segments.length === 0)
-        continue;
-
-      // Only process transforms for the current sample
-      if (transformData.sampleId !== currentSampleId) {
-        continue;
-      }
-
-      if (existingPolylineIds.has(labelId)) {
-        continue;
-      }
-
-      const points3d: THREE.Vector3Tuple[][] = transformData.segments.map(
-        (segment) => segment.points
-      );
-
-      if (points3d.length > 0) {
-        const overlayLabel = {
-          _id: labelId,
-          _cls: "Polyline",
-          type: "Polyline",
-          path: transformData.path,
-          label: transformData.label,
-          selected: false,
-          sampleId: currentSampleId,
-          tags: [],
-          points3d,
-          ...coerceStringBooleans(transformData.misc ?? {}),
-        };
-
-        newPolylineOverlays.push(
-          <Polyline
-            key={`polyline-${labelId}-${transformData.sampleId}`}
-            rotation={overlayRotation}
-            opacity={labelAlpha}
-            lineWidth={polylineWidth}
-            {...(overlayLabel as unknown as PolyLineProps)}
-            label={overlayLabel}
-            onClick={(e) => handleSelect(overlayLabel, "polyline", e)}
-            tooltip={tooltip}
-            color={getLabelColor({
-              coloring,
-              path: transformData.path,
-              isTagged: false,
-              labelTagColors,
-              customizeColorSetting,
-              label: overlayLabel,
-              embeddedDocType: overlayLabel._cls,
-            })}
-          />
-        );
-      }
-    }
-
-    // Check for any label ids in stagedCuboidTransformsAtom that are not in newCuboidOverlays
-    // and create new cuboid overlays for them (e.g., newly created cuboids)
-    const existingCuboidIds = new Set(
-      rawOverlays
-        .filter((overlay) => overlay._cls === "Detection")
-        .map((overlay) => overlay._id)
-    );
-
-    for (const [labelId, transformData] of Object.entries(
-      stagedCuboidTransforms ?? {}
-    )) {
-      if (!transformData.location || !transformData.dimensions) {
-        continue;
-      }
-
-      if (existingCuboidIds.has(labelId)) {
-        continue;
-      }
-
-      const overlayLabel = {
-        _id: labelId,
-        _cls: "Detection",
-        type: "Detection",
-        path: currentActiveField || "",
-        ...coerceStringBooleans(transformData ?? {}),
-        location: transformData.location,
-        dimensions: transformData.dimensions,
-        rotation: transformData.rotation ?? [0, 0, 0],
-        selected: false,
-        sampleId: currentSampleId,
-        tags: [],
-      };
-
-      newCuboidOverlays.push(
+  // Step 2: Create JSX elements from merged data (rendering only)
+  const cuboidOverlays = useMemo(
+    () =>
+      ReconciledDetection3Ds.map((overlay) => (
         <Cuboid
-          key={`cuboid-new-${labelId}-${currentSampleId}`}
+          key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
+            overlay.sampleId
+          }`}
           lineWidth={cuboidLineWidth}
           rotation={overlayRotation}
-          itemRotation={transformData.rotation ?? [0, 0, 0]}
+          itemRotation={overlay.rotation ?? itemRotation}
           opacity={labelAlpha}
-          location={transformData.location}
-          dimensions={transformData.dimensions}
-          selected={false}
-          label={overlayLabel}
-          onClick={(e) => handleSelect(overlayLabel, "cuboid", e)}
+          {...(overlay as unknown as CuboidProps)}
+          onClick={(e) => handleSelect(overlay, "cuboid", e)}
+          label={overlay}
           tooltip={tooltip}
-          color={getLabelColor({
-            coloring,
-            path: currentActiveField || "",
-            isTagged: false,
-            labelTagColors,
-            customizeColorSetting,
-            label: overlayLabel,
-            embeddedDocType: overlayLabel._cls,
-          })}
           useLegacyCoordinates={settings.useLegacyCoordinates}
+          color={
+            overlay.isNew
+              ? getLabelColor({
+                  coloring,
+                  path: overlay.path,
+                  isTagged: false,
+                  labelTagColors,
+                  customizeColorSetting,
+                  label: overlay,
+                  embeddedDocType: overlay._cls,
+                })
+              : overlay.color
+          }
         />
-      );
-    }
+      )),
+    [
+      ReconciledDetection3Ds,
+      cuboidLineWidth,
+      overlayRotation,
+      itemRotation,
+      labelAlpha,
+      handleSelect,
+      tooltip,
+      settings,
+      coloring,
+      labelTagColors,
+      customizeColorSetting,
+    ]
+  );
 
-    return [newCuboidOverlays, newPolylineOverlays];
+  const polylineOverlays = useMemo(() => {
+    return ReconciledPolyline3Ds.map((overlay) => (
+      <Polyline
+        key={`polyline-${overlay._id}-${overlay.sampleId}`}
+        rotation={overlayRotation}
+        opacity={labelAlpha}
+        lineWidth={polylineWidth}
+        {...(overlay as unknown as PolyLineProps)}
+        label={overlay}
+        onClick={(e) => handleSelect(overlay, "polyline", e)}
+        tooltip={tooltip}
+        color={
+          overlay.isNew
+            ? getLabelColor({
+                coloring,
+                path: overlay.path,
+                isTagged: false,
+                labelTagColors,
+                customizeColorSetting,
+                label: overlay,
+                embeddedDocType: overlay._cls,
+              })
+            : overlay.color
+        }
+      />
+    ));
   }, [
-    rawOverlays,
-    itemRotation,
-    labelAlpha,
+    ReconciledPolyline3Ds,
     overlayRotation,
+    labelAlpha,
+    polylineWidth,
     handleSelect,
     tooltip,
-    settings,
-    transformMode,
-    stagedPolylineTransforms,
-    stagedCuboidTransforms,
-    polylineWidth,
-    cuboidLineWidth,
-    currentSampleId,
-    currentActiveField,
     coloring,
     labelTagColors,
     customizeColorSetting,
