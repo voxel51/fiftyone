@@ -29,7 +29,7 @@ const Header = () => {
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
-        <div>{type}</div>
+        <div>Edit {type}</div>
       </ItemLeft>
       {!isAnnotatingPolyline && !isAnnotatingCuboid && (
         <ItemRight>

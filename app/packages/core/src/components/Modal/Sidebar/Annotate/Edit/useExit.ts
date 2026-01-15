@@ -16,14 +16,15 @@ import { useSetRecoilState } from "recoil";
 import { editing } from ".";
 import {
   current,
-  currentData,
   currentOverlay,
   hasChanges,
+  primitivePath,
   savedLabel,
 } from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
+  const setPrimitive = useSetAtom(primitivePath);
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
@@ -77,9 +78,14 @@ export default function useExit(revertLabel = true) {
     // We are leaving editing mode, clear the stack
     scene?.clearUndoRedoStack();
 
-    if (!label || !revertLabel) {
+    const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
+      setPrimitive(null);
+    };
+
+    if (!label || !revertLabel) {
+      resetEditingState();
       return;
     }
 
@@ -87,8 +93,7 @@ export default function useExit(revertLabel = true) {
     if (unsaved?.isNew) {
       removeOverlay(unsaved?.overlay.id);
       scene?.exitInteractiveMode();
-      setEditing(null);
-      setSaved(null);
+      resetEditingState();
       return;
     }
 
@@ -121,8 +126,7 @@ export default function useExit(revertLabel = true) {
       }
     }
 
-    setSaved(null);
-    setEditing(null);
+    resetEditingState();
   }, [
     scene,
     setEditing,
