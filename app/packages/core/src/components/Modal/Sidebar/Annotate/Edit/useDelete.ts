@@ -1,5 +1,5 @@
 import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 

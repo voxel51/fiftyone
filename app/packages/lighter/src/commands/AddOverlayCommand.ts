@@ -6,12 +6,12 @@ import { Scene2D } from "../core/Scene2D";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import { Rect } from "../types";
-import type { Command } from "./Command";
+import type { Undoable } from "@fiftyone/commands";
 
 /**
  * Command for adding an overlay to the scene with undo/redo support.
  */
-export class AddOverlayCommand implements Command {
+export class AddOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 

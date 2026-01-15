@@ -1,3 +1,4 @@
+import { CommandContextManager } from "@fiftyone/commands";
 import {
   BoundingBoxOverlay,
   TransformOverlayCommand,
@@ -75,9 +76,7 @@ export default function useExit(revertLabel = true) {
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
 
-    // We are leaving editing mode, clear the stack
-    scene?.clearUndoRedoStack();
-
+    CommandContextManager.instance().clearUndoRedoStack();
     const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
