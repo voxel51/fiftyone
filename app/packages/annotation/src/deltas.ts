@@ -249,9 +249,7 @@ const buildPrimitiveMutationDelta = (
   }
 
   // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  const test: JSONDeltas = [{ op: "replace", path: "", value: data }];
-  console.log("test", test);
-  return test;
+  return [{ op: "replace", path: "", value: data }];
 };
 
 /**

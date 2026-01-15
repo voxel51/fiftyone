@@ -13,6 +13,7 @@ import {
 } from "@voxel51/voodo";
 import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { useSampleValue } from "../useSampleValue";
@@ -25,10 +26,13 @@ interface PrimitiveEditProps {
 }
 
 /**
- * Processes a dict/JSON field value by parsing string values to objects.
- * Handles empty strings by converting them to null.
+ * processes dict fields by parsing string values to objects, returns
+ * input value for other field types
+ * @param fieldValue - the value of the field
+ * @param type - the type of the field
+ * @returns the processed value of the field
  */
-function processDictFieldValue(fieldValue: Primitive, type: string): Primitive {
+function processFieldValue(fieldValue: Primitive, type: string): Primitive {
   if (type !== "dict") {
     return fieldValue;
   }
@@ -59,6 +63,12 @@ function getInitialValue(type: string, value: unknown): Primitive {
   return value as Primitive;
 }
 
+const EditorContainer = styled.div`
+  height: 400px;
+  display: flex;
+  flex-direction: column;
+`;
+
 export default function PrimitiveEdit({
   path,
   currentLabelSchema,
@@ -85,8 +95,7 @@ export default function PrimitiveEdit({
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;
-    // For dict/JSON fields, parse the string value to an object before saving
-    const dataToSave = processDictFieldValue(fieldValue, type);
+    const dataToSave = processFieldValue(fieldValue, type);
     return await commandBus.execute(
       new UpsertAnnotationCommand(
         {
@@ -100,10 +109,6 @@ export default function PrimitiveEdit({
   }, [fieldSchema, fieldValue, path, type]);
 
   const handleSave = useCallback(async () => {
-    if (!fieldSchema) {
-      console.error("Field schema not found for path:", path);
-      return;
-    }
     try {
       const result = await persistData();
       if (result) {
@@ -134,16 +139,14 @@ export default function PrimitiveEdit({
     // this works fine but ideally we should use the schemaio component for all fields
     if (isJson) {
       return (
-        <div
-          style={{ height: "400px", display: "flex", flexDirection: "column" }}
-        >
+        <EditorContainer>
           <JSONEditor
             data={fieldValue as string}
             onChange={handleChange}
             errors={false}
             scanning={false}
           />
-        </div>
+        </EditorContainer>
       );
     }
     // todo - date editor when supported

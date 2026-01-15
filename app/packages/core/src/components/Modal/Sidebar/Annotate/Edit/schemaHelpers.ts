@@ -51,7 +51,22 @@ export const createInput = (
   return schema;
 };
 
-export const createSlider = (name: string, range: [number, number]) => {
+export const createSlider = (
+  name: string,
+  range: [number, number],
+  options?: {
+    bare?: boolean;
+    labeled?: boolean;
+    minLabel?: string;
+    maxLabel?: string;
+  }
+) => {
+  const {
+    bare = false,
+    labeled = true,
+    minLabel = "",
+    maxLabel = "",
+  } = options || {};
   return {
     type: "number",
     min: range[0],
@@ -60,6 +75,10 @@ export const createSlider = (name: string, range: [number, number]) => {
       name: "SliderView",
       label: name,
       component: "SliderView",
+      bare,
+      labeled,
+      minLabel,
+      maxLabel,
     },
   };
 };

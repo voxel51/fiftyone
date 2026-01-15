@@ -61,6 +61,12 @@ export function translateToUISchema(
 
     case SmartFormComponents.SliderView:
       uiSchema["ui:widget"] = "RangeWidget";
+      uiSchema["ui:options"] = {
+        bare: view.bare,
+        labeled: view.labeled,
+        minLabel: view.minLabel,
+        maxLabel: view.maxLabel,
+      };
       break;
 
     case SmartFormComponents.ColorView:

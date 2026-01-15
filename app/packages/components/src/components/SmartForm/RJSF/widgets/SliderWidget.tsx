@@ -16,7 +16,7 @@ export default function Slider(props: WidgetProps) {
   // Extract min/max from schema
   const min = schema.minimum ?? 0;
   const max = schema.maximum ?? 100;
-  const step = schema.multipleOf ?? 0.001;
+  const step = schema.multipleOf ?? 0.01;
 
   // Check if this should be a multi-value slider (range)
   // Multi-value if value is an array or if explicitly set in uiSchema
@@ -35,12 +35,6 @@ export default function Slider(props: WidgetProps) {
     onChange(newValue);
   };
 
-  // BaseSlider extends HTMLAttributes, so we can pass standard HTML props
-  // Extract only the props we need to avoid type conflicts
-  const htmlProps: { id?: string; style?: React.CSSProperties } = {};
-  if (disabled || readonly) {
-    htmlProps.style = { pointerEvents: "none", opacity: 0.6 };
-  }
   const sliderComponent = (
     <BaseSlider
       min={min}
@@ -53,7 +47,6 @@ export default function Slider(props: WidgetProps) {
       labeled={labeled}
       minLabel={minLabel}
       maxLabel={maxLabel}
-      {...htmlProps}
     />
   );
 

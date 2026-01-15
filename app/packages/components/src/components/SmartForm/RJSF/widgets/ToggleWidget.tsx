@@ -12,6 +12,10 @@ import {
 } from "@voxel51/voodo";
 import React, { useMemo } from "react";
 
+/**
+ * Convert a voodo toggle tabs into a boolean value
+ * switcher.
+ */
 export default function ToggleWidget(props: WidgetProps) {
   const {
     label,
@@ -43,15 +47,13 @@ export default function ToggleWidget(props: WidgetProps) {
   );
 
   const defaultIndex = value === true ? 1 : 0;
+  const isDisabled = disabled || readonly;
 
   const handleChange = (index: number) => {
-    if (disabled || readonly) {
-      return;
-    }
+    if (isDisabled) return;
+
     onChange(index === 1);
   };
-
-  const isDisabled = disabled || readonly;
 
   const toggleComponent = (
     <div

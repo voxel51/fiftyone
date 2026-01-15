@@ -1,4 +1,4 @@
-import { activeModalSidebarSample } from "@fiftyone/state";
+import { modalSample } from "@fiftyone/state";
 import { useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
@@ -6,7 +6,7 @@ import { primitivesCount } from "./GroupEntry";
 import useSamplePrimitives from "./useSamplePrimitives";
 
 export const usePrimitivesCount = () => {
-  const currentSample = useRecoilValue(activeModalSidebarSample);
+  const currentSample = useRecoilValue(modalSample).sample;
   const samplePrimitives = useSamplePrimitives();
   const setPrimitivesCount = useSetAtom(primitivesCount);
 

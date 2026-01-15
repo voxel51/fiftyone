@@ -1,6 +1,4 @@
-import type { SidebarEntry } from "@fiftyone/state";
-import * as fos from "@fiftyone/state";
-import { EntryKind } from "@fiftyone/state";
+import { EntryKind, modalSample, type SidebarEntry } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
@@ -11,7 +9,7 @@ import useSamplePrimitives from "./useSamplePrimitives";
 const store = getDefaultStore();
 
 const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
-  const currentSample = useRecoilValue(fos.activeModalSidebarSample);
+  const currentSample = useRecoilValue(modalSample).sample;
   const samplePrimitives = useSamplePrimitives();
   const primitivesExpandedState = useAtomValue(primitivesExpanded);
 

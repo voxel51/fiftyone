@@ -14,7 +14,6 @@ import { editing, primitivePath } from "./Edit/state";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import { useSampleValue } from "./useSampleValue";
 
-// TODO - refactor to voodo
 const Container = animated(styled.div<{ $isReadOnly?: boolean }>`
   display: flex;
   justify-content: space-between;
@@ -93,7 +92,6 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
 
   const handleClick = () => {
     if (isReadOnly) return;
-    console.log("setting primitive path", path);
     setEditingAtom(PRIMITIVE);
     setPrimitivePath(path);
   };

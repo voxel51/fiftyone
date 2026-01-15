@@ -1,4 +1,4 @@
-import * as fos from "@fiftyone/state";
+import { modalSample } from "@fiftyone/state";
 import { get } from "lodash";
 import { useRecoilValue } from "recoil";
 
@@ -9,7 +9,7 @@ import { useRecoilValue } from "recoil";
  * @returns The value at the given path, or null if the sample doesn't exist
  */
 export const useSampleValue = (path: string): unknown | null => {
-  const currentSample = useRecoilValue(fos.activeModalSidebarSample);
+  const currentSample = useRecoilValue(modalSample).sample;
   // Get the value from the current sample using the path
   return currentSample ? get(currentSample, path) : null;
 };
