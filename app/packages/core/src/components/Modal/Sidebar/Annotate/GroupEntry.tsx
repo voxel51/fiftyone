@@ -85,7 +85,7 @@ export const primitivesExpanded = atom(true);
 
 const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
   Labels: labelsExpanded,
-  Primitives: primitivesExpanded,
+  PRIMITIVES: primitivesExpanded,
 };
 
 const labelsCount = atom((get) => get(labels).length);
@@ -93,7 +93,7 @@ export const primitivesCount = atom(0);
 
 const COUNT_ATOMS: Record<string, typeof labelsCount> = {
   Labels: labelsCount,
-  Primitives: primitivesCount,
+  PRIMITIVES: primitivesCount,
 };
 
 const Group = React.memo(({ name }: { name: string }) => {

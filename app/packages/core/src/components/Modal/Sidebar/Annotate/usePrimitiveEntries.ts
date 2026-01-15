@@ -34,7 +34,7 @@ const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
     [samplePrimitives, activeFields, primitivesExpandedState]
   );
 
-  return [{ kind: EntryKind.GROUP, name: "Primitives" }, ...primitiveEntries];
+  return [{ kind: EntryKind.GROUP, name: "PRIMITIVES" }, ...primitiveEntries];
 };
 
 export default usePrimitiveEntries;
