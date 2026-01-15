@@ -118,6 +118,9 @@ export const RANGE_TYPES = ["int", "float"];
 // Types that don't show values list
 export const NO_VALUES_TYPES = ["bool", "date", "datetime", "dict"];
 
+// Numeric types - values should be stored as numbers, not strings
+export const NUMBER_TYPES = ["int", "float", "list<int>", "list<float>"];
+
 // Threshold for radio vs dropdown selection
 export const RADIO_MAX_VALUES = 5;
 

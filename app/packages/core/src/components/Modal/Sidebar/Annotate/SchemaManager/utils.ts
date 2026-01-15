@@ -4,7 +4,11 @@
 
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
-import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
+import {
+  getDefaultComponent,
+  NUMBER_TYPES,
+  SYSTEM_READ_ONLY_FIELD_NAME,
+} from "./constants";
 
 // =============================================================================
 // Types
@@ -36,9 +40,9 @@ export interface RichListItemOptions {
 export interface AttributeConfig {
   type: string;
   component?: string;
-  values?: string[];
+  values?: (string | number)[];
   range?: [number, number];
-  default?: string;
+  default?: string | number;
   read_only?: boolean;
 }
 
@@ -177,97 +181,90 @@ export const buildFieldSecondaryContent = (
 };
 
 // =============================================================================
-// Attribute Form State Types and Helpers
+// Attribute Form Helpers
 // =============================================================================
 
 /**
- * Form state for attribute editing
+ * Form data for attribute editing
+ * Uses strings for values and default (easier form handling)
+ * Converted to proper types in toAttributeConfig
  */
-export interface AttributeFormState {
+export interface AttributeFormData {
   name: string;
-  attributeType: string;
-  componentType: string;
-  values: string[];
-  range: [number, number] | null;
-  defaultValue: string;
-  readOnly: boolean;
+  type: string;
+  component?: string;
+  values?: string[];
+  range?: [number, number];
+  default?: string;
+  read_only?: boolean;
 }
 
 /**
- * Create default attribute form state
+ * Create default attribute form data
  */
-export const createDefaultAttributeFormState = (): AttributeFormState => ({
+export const createDefaultAttributeFormData = (): AttributeFormData => ({
   name: "",
-  attributeType: "str",
-  componentType: "text",
+  type: "str",
+  component: "text",
   values: [],
-  range: null,
-  defaultValue: "",
-  readOnly: false,
+  range: undefined,
+  default: undefined,
+  read_only: false,
 });
 
 /**
- * Default components for each data type
+ * Convert AttributeConfig to form data (adds name, ensures component has default)
+ * Converts numeric values back to strings for form editing
  */
-const DEFAULT_COMPONENTS: Record<string, string> = {
-  str: "text",
-  int: "text",
-  float: "text",
-  bool: "toggle",
-  date: "datepicker",
-  datetime: "datepicker",
-  dict: "json",
-  "list<str>": "text",
-  "list<int>": "text",
-  "list<float>": "text",
-  "list<bool>": "text",
-};
-
-/**
- * Parse attribute config type and component to form state values
- */
-export const parseAttributeType = (
-  type: string,
-  component?: string
-): { attributeType: string; componentType: string } => {
-  // Type is the actual data type (str, list<str>, int, etc.)
-  const attributeType = type;
-  const componentType = component || DEFAULT_COMPONENTS[type] || "text";
-  return { attributeType, componentType };
-};
-
-/**
- * Convert AttributeConfig to form state
- */
-export const attributeConfigToFormState = (
+export const toFormData = (
   name: string,
   config: AttributeConfig
-): AttributeFormState => {
-  const { attributeType, componentType } = parseAttributeType(
-    config.type,
-    config.component
-  );
-  return {
-    name,
-    attributeType,
-    componentType,
-    values: config.values || [],
-    range: config.range || null,
-    defaultValue: config.default || "",
-    readOnly: config.read_only || false,
-  };
-};
+): AttributeFormData => ({
+  name,
+  type: config.type,
+  component:
+    config.component ||
+    getDefaultComponent(
+      config.type,
+      config.values?.length ?? 0,
+      config.range !== undefined
+    ),
+  // Convert values to strings for form editing
+  values: config.values?.map((v) => String(v)),
+  range: config.range,
+  // Convert default to string for form editing
+  default: config.default !== undefined ? String(config.default) : undefined,
+  read_only: config.read_only,
+});
 
 /**
- * Convert form state to AttributeConfig
+ * Convert form data to AttributeConfig (removes name, cleans undefined)
+ * Converts values to numbers for numeric types
  */
-export const formStateToAttributeConfig = (
-  state: AttributeFormState
-): AttributeConfig => ({
-  type: state.attributeType,
-  component: state.componentType || undefined,
-  values: state.values.length > 0 ? state.values : undefined,
-  range: state.range || undefined,
-  default: state.defaultValue || undefined,
-  read_only: state.readOnly || undefined,
-});
+export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
+  const isNumericType = NUMBER_TYPES.includes(data.type);
+
+  // Convert string values to numbers for numeric types
+  let values: (string | number)[] | undefined;
+  if (data.values?.length) {
+    values = isNumericType
+      ? data.values.map((v) => parseFloat(v)).filter((n) => !isNaN(n))
+      : data.values;
+  }
+
+  // Convert default to number for numeric types
+  let defaultValue: string | number | undefined = data.default || undefined;
+  if (defaultValue && isNumericType) {
+    const parsed = parseFloat(defaultValue);
+    defaultValue = isNaN(parsed) ? undefined : parsed;
+  }
+
+  return {
+    type: data.type,
+    component: data.component || undefined,
+    values: values?.length ? values : undefined,
+    range: data.range,
+    default: defaultValue,
+    read_only: data.read_only || undefined,
+  };
+};

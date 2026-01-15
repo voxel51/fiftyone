@@ -20,9 +20,14 @@ import { createRichListItem, type RichListItem } from "../../../utils";
 interface ValuesListProps {
   values: string[];
   onValuesChange: (values: string[]) => void;
+  isNumeric?: boolean;
 }
 
-const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
+const ValuesList = ({
+  values,
+  onValuesChange,
+  isNumeric = false,
+}: ValuesListProps) => {
   const [newValue, setNewValue] = useState("");
 
   const handleAddValue = () => {
@@ -81,10 +86,15 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
       {values.length === 0 ? (
         <div>
           <Input
+            type={isNumeric ? "number" : "text"}
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Enter a value and press Enter"
+            placeholder={
+              isNumeric
+                ? "Enter a number and press Enter"
+                : "Enter a value and press Enter"
+            }
           />
           {!newValue && (
             <Text
@@ -104,10 +114,11 @@ const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
             onOrderChange={handleOrderChange}
           />
           <Input
+            type={isNumeric ? "number" : "text"}
             value={newValue}
             onChange={(e) => setNewValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Add another value"
+            placeholder={isNumeric ? "Add another number" : "Add another value"}
             style={{ marginTop: 8 }}
           />
         </>

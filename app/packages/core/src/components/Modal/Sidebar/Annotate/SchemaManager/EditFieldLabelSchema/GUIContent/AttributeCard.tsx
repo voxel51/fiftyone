@@ -3,7 +3,7 @@
  */
 
 import { RichList } from "@voxel51/voodo";
-import { createRichListItem, type AttributeFormState } from "../../utils";
+import { createRichListItem, type AttributeFormData } from "../../utils";
 import CardActions from "./CardActions";
 import AttributeFormContent from "./SetAttribute";
 
@@ -11,8 +11,8 @@ type Mode = "add" | "edit";
 
 interface AttributeCardProps {
   mode: Mode;
-  formState: AttributeFormState;
-  onFormStateChange: (state: AttributeFormState) => void;
+  formState: AttributeFormData;
+  onFormStateChange: (state: AttributeFormData) => void;
   nameError: string | null;
   canSave: boolean;
   onSave: () => void;

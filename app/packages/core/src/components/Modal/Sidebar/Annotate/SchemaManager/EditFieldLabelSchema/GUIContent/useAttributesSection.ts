@@ -4,12 +4,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  attributeConfigToFormState,
-  createDefaultAttributeFormState,
-  formStateToAttributeConfig,
+  createDefaultAttributeFormData,
   getAttributeNameError,
+  toAttributeConfig,
+  toFormData,
   type AttributeConfig,
-  type AttributeFormState,
+  type AttributeFormData,
 } from "../../utils";
 
 interface UseAttributesSectionProps {
@@ -31,14 +31,14 @@ export default function useAttributesSection({
 }: UseAttributesSectionProps) {
   // Add mode state
   const [isAdding, setIsAdding] = useState(false);
-  const [addFormState, setAddFormState] = useState<AttributeFormState>(
-    createDefaultAttributeFormState()
+  const [addFormState, setAddFormState] = useState<AttributeFormData>(
+    createDefaultAttributeFormData()
   );
   const [addIsDirty, setAddIsDirty] = useState(false);
 
   // Edit mode state
   const [editingAttribute, setEditingAttribute] = useState<string | null>(null);
-  const [editFormState, setEditFormState] = useState<AttributeFormState | null>(
+  const [editFormState, setEditFormState] = useState<AttributeFormData | null>(
     null
   );
   const [editIsDirty, setEditIsDirty] = useState(false);
@@ -71,27 +71,24 @@ export default function useAttributesSection({
   // Add mode handlers
   const startAdd = useCallback(() => {
     setIsAdding(true);
-    setAddFormState(createDefaultAttributeFormState());
+    setAddFormState(createDefaultAttributeFormData());
     setAddIsDirty(false);
   }, []);
 
   const cancelAdd = useCallback(() => {
     setIsAdding(false);
-    setAddFormState(createDefaultAttributeFormState());
+    setAddFormState(createDefaultAttributeFormData());
     setAddIsDirty(false);
   }, []);
 
-  const handleAddFormChange = useCallback((newState: AttributeFormState) => {
+  const handleAddFormChange = useCallback((newState: AttributeFormData) => {
     setAddFormState(newState);
     setAddIsDirty(true);
   }, []);
 
   const saveAdd = useCallback(() => {
     if (!canAdd) return;
-    onAddAttribute(
-      addFormState.name.trim(),
-      formStateToAttributeConfig(addFormState)
-    );
+    onAddAttribute(addFormState.name.trim(), toAttributeConfig(addFormState));
     cancelAdd();
   }, [addFormState, canAdd, cancelAdd, onAddAttribute]);
 
@@ -101,7 +98,7 @@ export default function useAttributesSection({
       const config = attributes[name];
       if (config) {
         setEditingAttribute(name);
-        setEditFormState(attributeConfigToFormState(name, config));
+        setEditFormState(toFormData(name, config));
         setEditIsDirty(false);
       }
     },
@@ -114,7 +111,7 @@ export default function useAttributesSection({
     setEditIsDirty(false);
   }, []);
 
-  const handleEditFormChange = useCallback((newState: AttributeFormState) => {
+  const handleEditFormChange = useCallback((newState: AttributeFormData) => {
     setEditFormState(newState);
     setEditIsDirty(true);
   }, []);
@@ -124,7 +121,7 @@ export default function useAttributesSection({
     onEditAttribute(
       editingAttribute,
       editFormState.name.trim(),
-      formStateToAttributeConfig(editFormState)
+      toAttributeConfig(editFormState)
     );
     cancelEdit();
   }, [editingAttribute, editFormState, canEdit, cancelEdit, onEditAttribute]);
