@@ -14,25 +14,22 @@ import {
 import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import useLabelSchema from "../SchemaManager/EditFieldLabelSchema/useLabelSchema";
+import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { useSampleValue } from "../useSampleValue";
-import { parsePrimitiveSchema } from "./schemaHelpers";
+import { parsePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import useExit from "./useExit";
 
 interface PrimitiveEditProps {
   path: string;
+  currentLabelSchema: PrimitiveSchema;
 }
 
 /**
  * Processes a dict/JSON field value by parsing string values to objects.
  * Handles empty strings by converting them to null.
  */
-function processDictFieldValue(
-  fieldValue: Primitive,
-  currentLabelSchema?: { type?: string }
-): Primitive {
-  const isDictField = currentLabelSchema?.type === "dict";
-  if (!isDictField) {
+function processDictFieldValue(fieldValue: Primitive, type: string): Primitive {
+  if (type !== "dict") {
     return fieldValue;
   }
   const trimmedValue = (fieldValue as string).trim();
@@ -42,43 +39,45 @@ function processDictFieldValue(
   return JSON.parse(trimmedValue);
 }
 
-export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
+/**
+ * Convert raw value into a primitive of the format that we can
+ * pass to SmartForm and handle dict fields correctly
+ * @param type - the type of the field
+ * @param value - the value of the field
+ * @returns the initial value of the field
+ */
+function getInitialValue(type: string, value: unknown): Primitive {
+  if (type === "dict") {
+    // If the value is null/undefined, initialize with empty JSON object
+    if (value === null || value === undefined) {
+      return "{}";
+    }
+    if (typeof value === "object") {
+      return JSON.stringify(value, null, 2);
+    }
+  }
+  return value as Primitive;
+}
+
+export default function PrimitiveEdit({
+  path,
+  currentLabelSchema,
+}: PrimitiveEditProps) {
+  const { type } = currentLabelSchema;
   const commandBus = useCommandBus();
   const setNotification = fos.useNotification();
   const onExit = useExit();
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const fieldSchema = getFieldSchema(schema, path);
-  const { currentLabelSchema } = useLabelSchema(path);
   const value = useSampleValue(path);
 
+  const fieldSchema = getFieldSchema(schema, path);
   const primitiveSchema = parsePrimitiveSchema(path, currentLabelSchema);
 
-  // For dict/JSON fields, stringify the initial value if it's an object
-  // If the value is null/undefined, initialize with empty JSON object
-  // TODO refactor this
-  const getInitialValue = (): Primitive => {
-    if (currentLabelSchema?.type === "dict") {
-      if (value === null || value === undefined) {
-        return "{}";
-      }
-      if (typeof value === "object") {
-        try {
-          return JSON.stringify(value, null, 2);
-        } catch {
-          return value as Primitive;
-        }
-      }
-      // If it's already a string, use it as-is (might be from previous edit)
-      if (typeof value === "string") {
-        return value;
-      }
-    }
-    return value as Primitive;
-  };
-
-  const [fieldValue, setFieldValue] = useState<Primitive>(getInitialValue());
+  const [fieldValue, setFieldValue] = useState<Primitive>(
+    getInitialValue(type, value)
+  );
 
   const handleChange = (data: unknown) => {
     setFieldValue(data as Primitive);
@@ -86,10 +85,8 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;
-    console.log("fieldValue", fieldValue);
     // For dict/JSON fields, parse the string value to an object before saving
-    const dataToSave = processDictFieldValue(fieldValue, currentLabelSchema);
-    console.log("dataToSave", dataToSave);
+    const dataToSave = processDictFieldValue(fieldValue, type);
     return await commandBus.execute(
       new UpsertAnnotationCommand(
         {
@@ -100,7 +97,7 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
         fieldSchema
       )
     );
-  }, [fieldSchema, fieldValue, path, currentLabelSchema]);
+  }, [fieldSchema, fieldValue, path, type]);
 
   const handleSave = useCallback(async () => {
     if (!fieldSchema) {
@@ -130,25 +127,49 @@ export default function PrimitiveEdit({ path }: PrimitiveEditProps) {
     }
   }, [path, persistData, setNotification, onExit]);
 
-  if (!primitiveSchema) {
+  const EditContent = () => {
+    const isJson = type === "dict";
+    const isDate = type === "date";
+    // todo - schemaio component is not working correctly for dict fields
+    // this works fine but ideally we should use the schemaio component for all fields
+    if (isJson) {
+      return (
+        <div
+          style={{ height: "400px", display: "flex", flexDirection: "column" }}
+        >
+          <JSONEditor
+            data={fieldValue as string}
+            onChange={handleChange}
+            errors={false}
+            scanning={false}
+          />
+        </div>
+      );
+    }
+    // todo - date editor when supported
+    // if (isDate) {
+    //   return <DateEditor data={fieldValue} onChange={handleChange} />;
+    // }
+    if (!primitiveSchema) {
+      return (
+        <Text variant={TextVariant.Label}>
+          Could not determine schema for path: {path}
+        </Text>
+      );
+    }
     return (
-      <Text variant={TextVariant.Label}>
-        Could not determine schema for path: {path}
-      </Text>
-    );
-  }
-
-  console.log("primitiveSchema", primitiveSchema);
-
-  return (
-    <Stack orientation={Orientation.Column}>
       <SchemaIOComponent
-        key={path}
         smartForm={true}
         schema={primitiveSchema}
         onChange={handleChange}
         data={fieldValue}
       />
+    );
+  };
+
+  return (
+    <Stack orientation={Orientation.Column}>
+      <EditContent />
       <Stack
         orientation={Orientation.Row}
         style={{

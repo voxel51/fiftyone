@@ -44,6 +44,7 @@ export default function RJSF(props: RJSFProps) {
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (props.onChange) {
+      // todo - primitive schemas need to be handled differently
       props.onChange(event.formData);
       return;
       // Filter out empty arrays that weren't in the original data

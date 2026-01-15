@@ -4,6 +4,14 @@ import type {
 } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { BOOLEAN_FIELD, STRING_FIELD } from "@fiftyone/utilities";
 
+export interface PrimitiveSchema {
+  type: string;
+  component?: string;
+  choices?: unknown[];
+  values?: string[];
+  range?: [number, number];
+}
+
 const getLabel = (value?: string) => {
   if (typeof value === "boolean") {
     return value ? "True" : "False";
@@ -58,7 +66,7 @@ export const createSlider = (name: string, range: [number, number]) => {
 
 export const createRadio = (name: string, choices: unknown[]) => {
   return {
-    type: "float",
+    type: "string",
     view: {
       name: "RadioGroup",
       label: name,
@@ -130,20 +138,6 @@ export const createToggle = (name: string) => {
   };
 };
 
-export const createJSONEditor = (name: string): SchemaType => {
-  return {
-    type: "string",
-    view: {
-      name: "CodeView",
-      label: name,
-      component: "CodeView",
-      language: "json",
-      readOnly: false,
-      height: 300,
-    },
-  };
-};
-
 export const createText = (name: string, type: string): SchemaType => {
   return {
     type,
@@ -154,14 +148,6 @@ export const createText = (name: string, type: string): SchemaType => {
     },
   };
 };
-
-export interface PrimitiveSchema {
-  type: string;
-  component?: string;
-  choices?: unknown[];
-  values?: string[];
-  range?: [number, number];
-}
 
 /**
  * Creates an array schema for numeric lists (float_list, int_list)
@@ -194,8 +180,6 @@ export function parsePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
-  console.log("schema", schema);
-
   if (schema.type === "list<float>" || schema.type === "list<int>") {
     return createNumericList(name, schema.values || []);
   }
@@ -210,6 +194,7 @@ export function parsePrimitiveSchema(
     }
     return createToggle(name);
   }
+
   if (schema.type === "str") {
     if (schema.component === "dropdown") {
       return createSelect(name, schema.values || []);
@@ -218,9 +203,7 @@ export function parsePrimitiveSchema(
     }
     return createText(name, "string");
   }
-  if (schema.type === "dict") {
-    return createJSONEditor(name);
-  }
+
   if (schema.type === "float" || schema.type === "int") {
     if (schema.range) {
       return createSlider(name, schema.range);
