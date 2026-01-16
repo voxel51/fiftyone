@@ -24,6 +24,7 @@ import {
   FRUSTUM_PLANE_OPACITY,
 } from "./state";
 import type { CameraExtrinsics, FrustumData, FrustumGeometry } from "./types";
+import { useFoLoader } from "../hooks/use-fo-loaders";
 
 /**
  * Formats extrinsics data for display in tooltip.
@@ -104,7 +105,6 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
     return points;
   }, [geometry]);
 
-  // Build far plane geometry
   const farPlaneGeometry = useMemo(() => {
     const geo = new BufferGeometry();
     const { farPlaneCorners } = geometry;
@@ -260,7 +260,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
  * Separate component for texture material to handle async texture loading.
  */
 function FrustumTextureMaterial({ imageUrl }: { imageUrl: string }) {
-  const texture = useLoader(TextureLoader, imageUrl);
+  const texture = useFoLoader(TextureLoader, imageUrl);
 
   return (
     <meshBasicMaterial
