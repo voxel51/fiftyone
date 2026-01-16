@@ -15,10 +15,10 @@ import { isSampleIsh } from "@fiftyone/looker/src/util";
 import {
   AnnotationLabel,
   datasetId as fosDatasetId,
+  generatedDatasetName as fosGeneratedDatasetName,
   isGeneratedView,
   modalSample,
   useRefreshSample,
-  view,
 } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
@@ -82,15 +82,10 @@ export const useRegisterAnnotationCommandHandlers = () => {
           return false;
         }
 
-        // Extract the generated dataset name from the view state if present
         const isGenerated = await snapshot.getPromise(isGeneratedView);
-        const generatedDatasetName = isGenerated
-          ? (await snapshot.getPromise(view))
-              ?.map(
-                (obj) => obj.kwargs.find(([key]) => key === "_state")?.[1]?.name
-              )
-              .filter(Boolean)?.[0]
-          : undefined;
+        const generatedDatasetName = await snapshot.getPromise(
+          fosGeneratedDatasetName
+        );
 
         if (sampleDeltas.length > 0) {
           const response = await patchSample({
