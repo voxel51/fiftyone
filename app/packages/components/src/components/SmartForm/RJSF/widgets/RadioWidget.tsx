@@ -30,19 +30,20 @@ export default function RadioWidget(props: WidgetProps) {
         value: String(val),
         label: String(enumNames[index] || val),
       })),
-    [schema]
+    [schema?.enum, schema?.enumNames]
   );
+  const isDisabled = disabled || readonly;
 
   const handleChange = (newValue: string) => {
-    if (disabled || readonly) {
+    if (isDisabled) {
       return;
     }
+
     // Convert back to original type if needed (number, etc.)
     const originalValue = enumValues.find((v) => String(v) === newValue);
     onChange(originalValue !== undefined ? originalValue : newValue);
   };
 
-  const isDisabled = disabled || readonly;
   // Convert value to string for RadioGroup, ensuring it matches one of the options
   const stringValue = useMemo(() => {
     if (value === undefined || value === null) {
@@ -52,7 +53,7 @@ export default function RadioWidget(props: WidgetProps) {
     // Check if the string value exists in enumValues
     const exists = enumValues.some((v) => String(v) === stringVal);
     return exists ? stringVal : "";
-  }, [schema]);
+  }, [value, schema?.enum, schema?.enumNames]);
 
   const radioComponent = (
     <div

@@ -115,7 +115,6 @@ export const createTags = (name: string, choices: string[]) => {
         value: choice,
       })),
     },
-    required: true,
   };
 };
 
@@ -169,7 +168,7 @@ export const createText = (name: string, type: string): SchemaType => {
 };
 
 /**
- * Creates an array schema for numeric lists (float_list, int_list)
+ * Creates an array schema for numeric lists: list<float> and list<int>
  */
 export const createNumericList = (name: string, choices: string[]) => {
   return {
@@ -188,7 +187,6 @@ export const createNumericList = (name: string, choices: string[]) => {
         value: choice,
       })),
     },
-    required: true,
   };
 };
 
