@@ -137,17 +137,22 @@ def _parse_sample_ids(request: Request) -> List[str]:
     return sample_ids
 
 
-def _parse_extrinsics_params(request: Request):
+def _parse_extrinsics_params(
+    request: Request, default_target_frame: str = "world"
+):
     """Parses extrinsics-related query params.
 
     Args:
         request: Starlette request
+        default_target_frame: Default value for target_frame if not provided
 
     Returns:
         Tuple of (source_frame, target_frame, chain_via)
     """
     source_frame = request.query_params.get("source_frame")
-    target_frame = request.query_params.get("target_frame")
+    target_frame = request.query_params.get(
+        "target_frame", default_target_frame
+    )
     chain_via_param = request.query_params.get("chain_via")
 
     chain_via: Optional[List[str]] = None
@@ -249,6 +254,65 @@ def _get_slice_sample(dataset, group_id: str, slice_name: str):
         return None, {"error": f"Slice '{slice_name}' not found in group"}
 
     return slice_sample, None
+
+
+def _find_best_target_frame(dataset, slices: List[str]) -> Optional[str]:
+    """Finds the target frame with the most coverage across slices.
+
+    Scans dataset.sensor_extrinsics to find which target_frame has
+    extrinsics defined for the most slices.
+
+    Args:
+        dataset: The dataset
+        slices: List of slice names to check coverage for
+
+    Returns:
+        The target frame with most coverage, or None if no extrinsics found
+    """
+    sensor_extrinsics = dataset.sensor_extrinsics or {}
+    if not sensor_extrinsics:
+        return None
+
+    # Count coverage for each target frame
+    target_counts = {}  # target_frame -> set of slices that have it
+
+    for key in sensor_extrinsics.keys():
+        # Parse key to get source and target
+        if "::" in key:
+            source, target = key.split("::", 1)
+        else:
+            source = key
+            target = "world"
+
+        # Only count if source matches one of our slices
+        if source in slices:
+            if target not in target_counts:
+                target_counts[target] = set()
+            target_counts[target].add(source)
+
+    if not target_counts:
+        return None
+
+    # Find target with most coverage
+    best_target = max(
+        target_counts.keys(), key=lambda t: len(target_counts[t])
+    )
+    return best_target
+
+
+def _has_successful_extrinsics(results: dict) -> bool:
+    """Checks if any result has non-null extrinsics.
+
+    Args:
+        results: Dict mapping slice names to result dicts
+
+    Returns:
+        True if at least one result has valid extrinsics
+    """
+    for result in results.values():
+        if result.get("extrinsics") is not None:
+            return True
+    return False
 
 
 class BatchIntrinsics(HTTPEndpoint):
@@ -493,8 +557,58 @@ class GroupExtrinsics(HTTPEndpoint):
                     "extrinsics": utils.json.serialize(extrinsics)
                 }
 
+        # If no successful extrinsics found and target_frame was defaulted,
+        # try to find the best available target
+        if not _has_successful_extrinsics(results):
+            # Check if target_frame was explicitly provided in request
+            explicit_target = request.query_params.get("target_frame")
+
+            if explicit_target is None:
+                # target_frame was defaulted - try to find best available
+                best_target = _find_best_target_frame(dataset, slices)
+
+                if best_target is not None and best_target != "world":
+                    logger.debug(
+                        "No extrinsics found with target_frame='world', "
+                        "retrying with best available target_frame='%s'",
+                        best_target,
+                    )
+                    target_frame = best_target
+
+                    # Re-collect results with new target_frame
+                    results = {}
+                    for slice_name in slices:
+                        slice_sample, error = _get_slice_sample(
+                            dataset, group_id, slice_name
+                        )
+                        if error:
+                            results[slice_name] = error
+                            continue
+
+                        try:
+                            extrinsics = dataset.resolve_extrinsics(
+                                slice_sample,
+                                source_frame=source_frame,
+                                target_frame=target_frame,
+                                chain_via=chain_via,
+                            )
+                        except ValueError as err:
+                            results[slice_name] = {"error": str(err)}
+                            continue
+
+                        if extrinsics is None:
+                            results[slice_name] = {"extrinsics": None}
+                        else:
+                            results[slice_name] = {
+                                "extrinsics": utils.json.serialize(extrinsics)
+                            }
+
         return utils.json.JSONResponse(
-            {"group_id": group_id, "results": results}
+            {
+                "group_id": group_id,
+                "target_frame": target_frame,
+                "results": results,
+            }
         )
 
 
