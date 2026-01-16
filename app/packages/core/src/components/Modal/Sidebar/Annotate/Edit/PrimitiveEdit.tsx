@@ -17,56 +17,12 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { useSampleValue } from "../useSampleValue";
 import { PrimitiveSchema, usePrimitiveSchema } from "./schemaHelpers";
+import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import useExit from "./useExit";
 
 interface PrimitiveEditProps {
   path: string;
   currentLabelSchema: PrimitiveSchema;
-}
-
-/**
- * processes dict fields by parsing string values to objects, returns
- * input value for other field types
- * @param fieldValue - the value of the field
- * @param type - the type of the field
- * @returns the processed value of the field
- */
-function processFieldValue(fieldValue: Primitive, type: string): Primitive {
-  if (type === "date" || type === "datetime") {
-    return new Date(fieldValue as string).getTime();
-  }
-  if (type !== "dict") {
-    return fieldValue;
-  }
-  const trimmedValue = (fieldValue as string).trim();
-  if (trimmedValue === "") {
-    return null;
-  }
-  try {
-    return JSON.parse(trimmedValue);
-  } catch (error) {
-    throw new Error(`Invalid JSON: ${trimmedValue}`);
-  }
-}
-
-/**
- * Convert raw value into a primitive of the format that we can
- * pass to SmartForm and handle dict fields correctly
- * @param type - the type of the field
- * @param value - the value of the field
- * @returns the initial value of the field
- */
-function getInitialValue(type: string, value: unknown): Primitive {
-  if (type === "dict") {
-    // If the value is null/undefined, initialize with empty JSON object
-    if (value === null || value === undefined) {
-      return "{}";
-    }
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
-    }
-  }
-  return value as Primitive;
 }
 
 const EditorContainer = styled.div`
@@ -91,8 +47,8 @@ export default function PrimitiveEdit({
   const fieldSchema = getFieldSchema(schema, path);
   const primitiveSchema = usePrimitiveSchema(path, currentLabelSchema);
 
-  const [fieldValue, setFieldValue] = useState<Primitive>(
-    getInitialValue(type, value)
+  const [fieldValue, setFieldValue] = useState<Primitive | Date>(
+    parseDatabaseValue(type, value)
   );
 
   const handleChange = (data: unknown) => {
@@ -101,7 +57,7 @@ export default function PrimitiveEdit({
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;
-    const dataToSave = processFieldValue(fieldValue, type);
+    const dataToSave = serializeFieldValue(fieldValue, type);
     return await commandBus.execute(
       new UpsertAnnotationCommand(
         {
@@ -156,10 +112,10 @@ export default function PrimitiveEdit({
         </EditorContainer>
       ) : isDate ? (
         <DatePicker
-          selected={fieldValue ? new Date(fieldValue as string) : null}
+          selected={fieldValue as Date}
           showTimeSelect={type === "datetime"}
           onChange={(date: Date | null) => {
-            handleChange(date ? date.toISOString() : null);
+            handleChange(date);
           }}
         />
       ) : (
