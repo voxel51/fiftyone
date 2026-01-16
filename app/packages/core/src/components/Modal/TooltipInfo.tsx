@@ -22,6 +22,16 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
+import { useAnnotationContextManager } from "./Sidebar/Annotate/useAnnotationContextManager";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+} from "@voxel51/voodo";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -505,11 +515,19 @@ const HiddenItemRow = ({
   );
 };
 
+const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
+
 const Header = ({ title }: { title: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const annotationContextManager = useAnnotationContextManager();
+
+  const closeTooltip = useCallback(() => {
+    setTooltipDetail(null);
+    setIsTooltipLocked(false);
+  }, [setIsTooltipLocked, setTooltipDetail]);
 
   return (
     <ContentHeader
@@ -519,15 +537,20 @@ const Header = ({ title }: { title: string }) => {
     >
       <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
-        <IconButton
-          size="small"
-          onClick={() => {
-            setTooltipDetail(null);
-            setIsTooltipLocked(false);
-          }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+          <Button
+            leadingIcon={EditIcon}
+            size={Size.Xs}
+            onClick={() => {
+              annotationContextManager.enter(title);
+              closeTooltip();
+            }}
+          ></Button>
+
+          <IconButton size="small" onClick={closeTooltip}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
       ) : (
         <CtrlToLock />
       )}
