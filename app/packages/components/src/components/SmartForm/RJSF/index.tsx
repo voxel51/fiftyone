@@ -3,6 +3,7 @@ import validator from "@rjsf/validator-ajv8";
 import React from "react";
 
 import { translateSchema } from "./translators";
+import { filterEmptyArrays } from "./utils";
 
 import templates from "./templates";
 import widgets from "./widgets";
@@ -12,21 +13,6 @@ export { isJSONSchema, isSchemaIOSchema } from "./translators";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import type { IChangeEvent } from "@rjsf/core";
 import { isObject, type RJSFSchema, type UiSchema } from "@rjsf/utils";
-
-export function filterEmptyArrays(
-  formData: Record<string, unknown>,
-  originalData: Record<string, unknown>
-) {
-  // Filter out empty arrays that weren't in the original data
-  // i.e. don't add `tags: []` if `tags` does not already exist on props.data
-  const filteredData = { ...formData };
-  Object.entries(filteredData).forEach(([key, value]) => {
-    if (!(key in originalData) && Array.isArray(value) && value.length === 0) {
-      delete filteredData[key];
-    }
-  });
-  return filteredData;
-}
 
 export interface RJSFProps {
   schema?: SchemaType;

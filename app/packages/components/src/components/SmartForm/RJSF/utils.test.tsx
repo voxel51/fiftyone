@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterEmptyArrays } from "./index";
+import { filterEmptyArrays } from "./utils";
 
 describe("filterEmptyArrays", () => {
   it("should remove empty arrays that don't exist in original data", () => {
