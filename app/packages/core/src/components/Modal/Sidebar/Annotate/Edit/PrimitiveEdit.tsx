@@ -52,6 +52,7 @@ export default function PrimitiveEdit({
   );
 
   const handleChange = (data: unknown) => {
+    console.log("data", data);
     setFieldValue(data as Primitive);
   };
 
