@@ -531,5 +531,206 @@ class TestPredictAllNegativeFieldExtraction:
         sample.get_field.assert_called_with("neg_detections")
 
 
+class TestVideoModelForwardPassIntegration:
+    """Integration tests for video model forward pass with negative prompts"""
+
+    def test_forward_pass_boxes_applies_negative_subtraction(self):
+        """Test video model _forward_pass_boxes applies negative region subtraction"""
+        import torch
+        pytest.importorskip("sam2")
+
+        from fiftyone.utils.sam2 import SegmentAnything2VideoModel
+
+        model = SegmentAnything2VideoModel.__new__(SegmentAnything2VideoModel)
+
+        h, w = 100, 100
+        model._curr_frame_width = w
+        model._curr_frame_height = h
+        model._curr_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(label="obj", bounding_box=[0.0, 0.0, 1.0, 1.0], index=0)
+            ])
+        ]
+        model._curr_negative_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(bounding_box=[0.4, 0.4, 0.2, 0.2])
+            ])
+        ]
+
+        mock_mask = torch.ones((1, 1, h, w), dtype=torch.float32)
+
+        model.model = mock.MagicMock()
+        model.model.init_state.return_value = "mock_state"
+        model.model.add_new_points_or_box.return_value = (None, None, None)
+        model.model.propagate_in_video.return_value = [
+            (0, [0], mock_mask)
+        ]
+
+        mock_video_reader = mock.MagicMock()
+        mock_sample = mock.MagicMock()
+
+        with mock.patch('fiftyone.utils.sam._to_abs_boxes') as mock_abs:
+            mock_abs.side_effect = lambda boxes, width, height, chunk_size=None: np.array([[
+                int(boxes[0][0] * width),
+                int(boxes[0][1] * height),
+                int((boxes[0][0] + boxes[0][2]) * width),
+                int((boxes[0][1] + boxes[0][3]) * height)
+            ]])
+            with mock.patch('fiftyone.utils.sam._mask_to_box', return_value=(0, 0, 100, 100)):
+                result = model._forward_pass_boxes(mock_video_reader, mock_sample)
+
+        assert 1 in result
+        det = result[1].detections[0]
+        assert det.mask[10, 10] == 1
+        assert det.mask[50, 50] == 0
+
+    def test_forward_pass_boxes_without_negative_prompts(self):
+        """Test video model _forward_pass_boxes works without negative prompts"""
+        import torch
+        pytest.importorskip("sam2")
+
+        from fiftyone.utils.sam2 import SegmentAnything2VideoModel
+
+        model = SegmentAnything2VideoModel.__new__(SegmentAnything2VideoModel)
+
+        h, w = 100, 100
+        model._curr_frame_width = w
+        model._curr_frame_height = h
+        model._curr_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(label="obj", bounding_box=[0.0, 0.0, 1.0, 1.0], index=0)
+            ])
+        ]
+        model._curr_negative_prompts = None
+
+        mock_mask = torch.ones((1, 1, h, w), dtype=torch.float32)
+
+        model.model = mock.MagicMock()
+        model.model.init_state.return_value = "mock_state"
+        model.model.add_new_points_or_box.return_value = (None, None, None)
+        model.model.propagate_in_video.return_value = [
+            (0, [0], mock_mask)
+        ]
+
+        mock_video_reader = mock.MagicMock()
+        mock_sample = mock.MagicMock()
+
+        with mock.patch('fiftyone.utils.sam._to_abs_boxes') as mock_abs:
+            mock_abs.return_value = np.array([[0, 0, 100, 100]])
+            with mock.patch('fiftyone.utils.sam._mask_to_box', return_value=(0, 0, 100, 100)):
+                result = model._forward_pass_boxes(mock_video_reader, mock_sample)
+
+        assert 1 in result
+        det = result[1].detections[0]
+        assert np.all(det.mask == 1)
+
+
+class TestVideoModelNegativeKeypoints:
+    """Test video model negative keypoint handling"""
+
+    def test_forward_pass_points_concatenates_negative_keypoints(self):
+        """Test that negative keypoints are concatenated with label=0"""
+        import torch
+        pytest.importorskip("sam2")
+
+        from fiftyone.utils.sam2 import SegmentAnything2VideoModel
+
+        model = SegmentAnything2VideoModel.__new__(SegmentAnything2VideoModel)
+
+        h, w = 100, 100
+        model._curr_frame_width = w
+        model._curr_frame_height = h
+        model._curr_prompts = [
+            fol.Keypoints(keypoints=[
+                fol.Keypoint(label="obj", points=[[0.5, 0.5]], index=0)
+            ])
+        ]
+        model._curr_negative_prompts = [
+            fol.Keypoints(keypoints=[
+                fol.Keypoint(points=[[0.2, 0.2], [0.8, 0.8]])
+            ])
+        ]
+
+        mock_mask = torch.ones((1, 1, h, w), dtype=torch.float32)
+
+        model.model = mock.MagicMock()
+        model.model.init_state.return_value = "mock_state"
+        model.model.propagate_in_video.return_value = [
+            (0, [0], mock_mask)
+        ]
+
+        captured_calls = []
+        def capture_add_points(inference_state, frame_idx, obj_id, points, labels):
+            captured_calls.append({'points': points.copy(), 'labels': labels.copy()})
+            return (None, None, None)
+
+        model.model.add_new_points_or_box.side_effect = capture_add_points
+
+        mock_video_reader = mock.MagicMock()
+        mock_sample = mock.MagicMock()
+
+        with mock.patch('fiftyone.utils.sam._to_sam_points') as mock_sam_points:
+            mock_sam_points.side_effect = lambda pts, w, h, kp: (
+                np.array([[int(p[0]*w), int(p[1]*h)] for p in pts]),
+                np.ones(len(pts), dtype=int)
+            )
+            with mock.patch('fiftyone.utils.sam._mask_to_box', return_value=(0, 0, 100, 100)):
+                model._forward_pass_points(mock_video_reader, mock_sample)
+
+        assert len(captured_calls) == 1
+        call = captured_calls[0]
+        assert len(call['points']) == 3
+        assert call['labels'][0] == 1
+        assert call['labels'][1] == 0
+        assert call['labels'][2] == 0
+
+    def test_forward_pass_points_without_negative_keypoints(self):
+        """Test video model _forward_pass_points works without negative keypoints"""
+        import torch
+        pytest.importorskip("sam2")
+
+        from fiftyone.utils.sam2 import SegmentAnything2VideoModel
+
+        model = SegmentAnything2VideoModel.__new__(SegmentAnything2VideoModel)
+
+        h, w = 100, 100
+        model._curr_frame_width = w
+        model._curr_frame_height = h
+        model._curr_prompts = [
+            fol.Keypoints(keypoints=[
+                fol.Keypoint(label="obj", points=[[0.5, 0.5]], index=0)
+            ])
+        ]
+        model._curr_negative_prompts = None
+
+        mock_mask = torch.ones((1, 1, h, w), dtype=torch.float32)
+
+        model.model = mock.MagicMock()
+        model.model.init_state.return_value = "mock_state"
+        model.model.propagate_in_video.return_value = [
+            (0, [0], mock_mask)
+        ]
+
+        captured_calls = []
+        def capture_add_points(inference_state, frame_idx, obj_id, points, labels):
+            captured_calls.append({'points': points.copy(), 'labels': labels.copy()})
+            return (None, None, None)
+
+        model.model.add_new_points_or_box.side_effect = capture_add_points
+
+        mock_video_reader = mock.MagicMock()
+        mock_sample = mock.MagicMock()
+
+        with mock.patch('fiftyone.utils.sam._to_sam_points') as mock_sam_points:
+            mock_sam_points.return_value = (np.array([[50, 50]]), np.array([1]))
+            with mock.patch('fiftyone.utils.sam._mask_to_box', return_value=(0, 0, 100, 100)):
+                model._forward_pass_points(mock_video_reader, mock_sample)
+
+        assert len(captured_calls) == 1
+        call = captured_calls[0]
+        assert len(call['points']) == 1
+        assert call['labels'][0] == 1
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
