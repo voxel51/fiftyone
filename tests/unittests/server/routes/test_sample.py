@@ -40,7 +40,7 @@ class CustomEmbeddedDoc(fo.EmbeddedDocument):
 # TODO: Enable when custom nested embedded document list fields are supported (FOEPD-2935)
 # #     custom_documents = fo.EmbeddedDocumentListField(
 # #         document_type=CustomEmbeddedDoc
-# #     )tum embedded documents currently not supported
+# #     )
 
 
 @pytest.fixture(name="dataset")
