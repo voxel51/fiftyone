@@ -4,29 +4,19 @@
  */
 
 import { Box3, Matrix4, Quaternion, Vector3 } from "three";
+import {
+  FRUSTUM_DEFAULT_ASPECT_RATIO,
+  FRUSTUM_DEFAULT_FOV_DEGREES,
+  FRUSTUM_DEPTH,
+  FRUSTUM_MAX_DEPTH,
+  FRUSTUM_MIN_DEPTH,
+  FRUSTUM_NEAR_PLANE_DISTANCE,
+} from "./constants";
 import type {
   CameraExtrinsics,
   CameraIntrinsics,
   FrustumGeometry,
 } from "./types";
-
-/** Static frustum depth */
-const STATIC_FRUSTUM_DEPTH = 1;
-
-/** Minimum frustum depth to ensure visibility */
-const MIN_FRUSTUM_DEPTH = 0.5;
-
-/** Maximum frustum depth to prevent overwhelming the scene */
-const MAX_FRUSTUM_DEPTH = 50;
-
-/** Default near plane distance (small offset from camera origin) */
-const NEAR_PLANE_DISTANCE = 0.01;
-
-/** Default field of view for frustum calculation when intrinsics unavailable */
-const DEFAULT_FOV_DEGREES = 60;
-
-/** Default aspect ratio when intrinsics unavailable */
-const DEFAULT_ASPECT_RATIO = 16 / 9;
 
 /**
  * Converts camera extrinsics to a Three.js transformation matrix.
@@ -64,12 +54,12 @@ export function extrinsicsToMatrix4(extrinsics: CameraExtrinsics): Matrix4 {
  */
 export function computeFrustumDepth(
   sceneBounds: Box3 | null,
-  scaleFactor: number = 0.15
+  scaleFactor: number = 0.1
 ): number {
-  return STATIC_FRUSTUM_DEPTH;
+  return FRUSTUM_DEPTH;
   // todo: need to "tune" proportionating with scene bbox more
   if (!sceneBounds || sceneBounds.isEmpty()) {
-    return STATIC_FRUSTUM_DEPTH;
+    return FRUSTUM_DEPTH;
   }
 
   const size = sceneBounds.getSize(new Vector3());
@@ -79,12 +69,12 @@ export function computeFrustumDepth(
   const depth = diagonal * scaleFactor;
 
   // Clamp to reasonable bounds
-  return Math.max(MIN_FRUSTUM_DEPTH, Math.min(MAX_FRUSTUM_DEPTH, depth));
+  return Math.max(FRUSTUM_MIN_DEPTH, Math.min(FRUSTUM_MAX_DEPTH, depth));
 }
 
 /**
- * Computes the frustum corner points from intrinsics.
- * Returns corners for both near and far planes.
+ * Computes the frustum corner points from intrinsics using pinhole camera projection.
+ * Properly handles off-center principal points for asymmetric frustums.
  *
  * @param intrinsics - Camera intrinsics (optional)
  * @param depth - Distance to far plane
@@ -101,7 +91,60 @@ export function computeFrustumCorners(
   farPlaneWidth: number;
   farPlaneHeight: number;
 } {
-  // Compute FOV and aspect from intrinsics or use defaults
+  // If we have full intrinsics, use pinhole camera projection for accurate asymmetric frustum
+  if (
+    intrinsics &&
+    intrinsics.fx &&
+    intrinsics.fy &&
+    intrinsics.width &&
+    intrinsics.height
+  ) {
+    const { fx, fy, cx, cy, width, height } = intrinsics;
+
+    // Compute corners using pinhole camera model
+    // A pixel (u, v) projects to ray direction: ((u - cx) / fx, (v - cy) / fy, 1)
+    // At depth d, the 3D point is: (d * (u - cx) / fx, d * (v - cy) / fy, d)
+    //
+    // Image corners (in pixel coordinates):
+    // - Top-left: (0, 0)
+    // - Top-right: (width, 0)
+    // - Bottom-right: (width, height)
+    // - Bottom-left: (0, height)
+
+    const computeCornerAt = (u: number, v: number, d: number): Vector3 => {
+      return new Vector3((d * (u - cx)) / fx, (d * (v - cy)) / fy, d);
+    };
+
+    // Near plane corners (CV convention: X=right, Y=down, Z=forward)
+    // Order: top-left, top-right, bottom-right, bottom-left
+    const nearCorners = [
+      computeCornerAt(0, 0, FRUSTUM_NEAR_PLANE_DISTANCE), // top-left
+      computeCornerAt(width, 0, FRUSTUM_NEAR_PLANE_DISTANCE), // top-right
+      computeCornerAt(width, height, FRUSTUM_NEAR_PLANE_DISTANCE), // bottom-right
+      computeCornerAt(0, height, FRUSTUM_NEAR_PLANE_DISTANCE), // bottom-left
+    ];
+
+    // Far plane corners
+    const farCorners = [
+      computeCornerAt(0, 0, depth), // top-left
+      computeCornerAt(width, 0, depth), // top-right
+      computeCornerAt(width, height, depth), // bottom-right
+      computeCornerAt(0, height, depth), // bottom-left
+    ];
+
+    // Compute far plane dimensions (may be asymmetric, so use actual corner distances)
+    const farPlaneWidth = farCorners[1].x - farCorners[0].x;
+    const farPlaneHeight = farCorners[3].y - farCorners[0].y;
+
+    return {
+      nearCorners,
+      farCorners,
+      farPlaneWidth,
+      farPlaneHeight,
+    };
+  }
+
+  // Fallback: use FOV-based symmetric frustum when full intrinsics unavailable
   let fovY: number;
   let aspectRatio: number;
 
@@ -112,15 +155,11 @@ export function computeFrustumCorners(
     const sensorHeight = intrinsics.height ?? intrinsics.cy * 2;
     fovY = 2 * Math.atan(sensorHeight / (2 * intrinsics.fy));
 
-    // Compute aspect ratio from sensor dimensions or focal lengths
-    if (intrinsics.width && intrinsics.height) {
-      aspectRatio = intrinsics.width / intrinsics.height;
-    } else {
-      aspectRatio = intrinsics.fx / intrinsics.fy;
-    }
+    // Compute aspect ratio from focal lengths
+    aspectRatio = intrinsics.fx / intrinsics.fy;
   } else {
-    fovY = (DEFAULT_FOV_DEGREES * Math.PI) / 180;
-    aspectRatio = DEFAULT_ASPECT_RATIO;
+    fovY = (FRUSTUM_DEFAULT_FOV_DEGREES * Math.PI) / 180;
+    aspectRatio = FRUSTUM_DEFAULT_ASPECT_RATIO;
   }
 
   // Override with image aspect ratio if provided (most accurate)
@@ -129,7 +168,7 @@ export function computeFrustumCorners(
   }
 
   // Compute half-dimensions at each plane distance
-  const nearHalfHeight = Math.tan(fovY / 2) * NEAR_PLANE_DISTANCE;
+  const nearHalfHeight = Math.tan(fovY / 2) * FRUSTUM_NEAR_PLANE_DISTANCE;
   const nearHalfWidth = nearHalfHeight * aspectRatio;
   const farHalfHeight = Math.tan(fovY / 2) * depth;
   const farHalfWidth = farHalfHeight * aspectRatio;
@@ -138,10 +177,10 @@ export function computeFrustumCorners(
   // In CV convention: X=right, Y=down, Z=forward
   // Order: top-left, top-right, bottom-right, bottom-left
   const nearCorners = [
-    new Vector3(-nearHalfWidth, -nearHalfHeight, NEAR_PLANE_DISTANCE),
-    new Vector3(nearHalfWidth, -nearHalfHeight, NEAR_PLANE_DISTANCE),
-    new Vector3(nearHalfWidth, nearHalfHeight, NEAR_PLANE_DISTANCE),
-    new Vector3(-nearHalfWidth, nearHalfHeight, NEAR_PLANE_DISTANCE),
+    new Vector3(-nearHalfWidth, -nearHalfHeight, FRUSTUM_NEAR_PLANE_DISTANCE),
+    new Vector3(nearHalfWidth, -nearHalfHeight, FRUSTUM_NEAR_PLANE_DISTANCE),
+    new Vector3(nearHalfWidth, nearHalfHeight, FRUSTUM_NEAR_PLANE_DISTANCE),
+    new Vector3(-nearHalfWidth, nearHalfHeight, FRUSTUM_NEAR_PLANE_DISTANCE),
   ];
 
   // Far plane corners

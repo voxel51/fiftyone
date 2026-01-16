@@ -2,7 +2,7 @@
  * Single frustum component that renders wireframe edges and a clickable far plane.
  */
 
-import { Line } from "@react-three/drei";
+import { Cone, Line } from "@react-three/drei";
 import { ThreeEvent, useLoader } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -17,12 +17,21 @@ import { formatNumber, quaternionToEuler } from "../utils";
 import {
   FRUSTUM_AXES_LINE_WIDTH,
   FRUSTUM_AXES_SIZE,
+  FRUSTUM_AXIS_ARROW_HEIGHT,
+  FRUSTUM_AXIS_ARROW_RADIUS,
+  FRUSTUM_AXIS_X_COLOR,
+  FRUSTUM_AXIS_Y_COLOR,
+  FRUSTUM_AXIS_Z_COLOR,
   FRUSTUM_COLOR,
   FRUSTUM_HOVER_COLOR,
   FRUSTUM_HOVER_OPACITY,
   FRUSTUM_LINE_WIDTH,
   FRUSTUM_PLANE_OPACITY,
-} from "./state";
+  FRUSTUM_TEXTURE_HOVER_OPACITY,
+  FRUSTUM_TEXTURE_OPACITY,
+  FRUSTUM_TOP_MARKER_BASE_HALF_WIDTH,
+  FRUSTUM_TOP_MARKER_HEIGHT,
+} from "./constants";
 import type { CameraExtrinsics, FrustumData, FrustumGeometry } from "./types";
 import { useFoLoader } from "../hooks/use-fo-loaders";
 
@@ -147,6 +156,37 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
     return geo;
   }, [geometry]);
 
+  // Build "up" indicator triangle at top of far plane
+  // In CV convention: Y-down, so "up" in image space is negative Y
+  const topMarkerPoints = useMemo(() => {
+    const { farPlaneCorners } = geometry;
+    const topLeft = new Vector3(...farPlaneCorners[0]);
+    const topRight = new Vector3(...farPlaneCorners[1]);
+
+    // Compute the top edge properties
+    const topMidpoint = topLeft.clone().add(topRight).multiplyScalar(0.5);
+    const edgeWidth = topLeft.distanceTo(topRight);
+
+    // Triangle base points
+    const baseHalfWidth = edgeWidth * FRUSTUM_TOP_MARKER_BASE_HALF_WIDTH;
+    const edgeDirection = topRight.clone().sub(topLeft).normalize();
+
+    const baseLeft = topMidpoint
+      .clone()
+      .sub(edgeDirection.clone().multiplyScalar(baseHalfWidth));
+    const baseRight = topMidpoint
+      .clone()
+      .add(edgeDirection.clone().multiplyScalar(baseHalfWidth));
+
+    // Apex height
+    const apexHeight = edgeWidth * FRUSTUM_TOP_MARKER_HEIGHT;
+    const apex = topMidpoint.clone();
+    apex.y -= apexHeight;
+
+    // Return points for triangle outline (closed loop)
+    return [baseLeft, apex, baseRight, baseLeft];
+  }, [geometry]);
+
   // Cleanup geometry on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
@@ -209,21 +249,53 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 
   return (
     <group matrix={geometry.transform} matrixAutoUpdate={false}>
+      {/* X axis */}
       <Line
         points={[axisOrigin, xAxisEnd]}
-        color="#ff0000"
+        color={FRUSTUM_AXIS_X_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />
+      {isHovered && (
+        <Cone
+          args={[FRUSTUM_AXIS_ARROW_RADIUS, FRUSTUM_AXIS_ARROW_HEIGHT, 8]}
+          position={[FRUSTUM_AXES_SIZE + FRUSTUM_AXIS_ARROW_HEIGHT / 2, 0, 0]}
+          rotation={[0, 0, -Math.PI / 2]}
+        >
+          <meshBasicMaterial color={FRUSTUM_AXIS_X_COLOR} />
+        </Cone>
+      )}
+
+      {/* Y axis */}
       <Line
         points={[axisOrigin, yAxisEnd]}
-        color="#00ff00"
+        color={FRUSTUM_AXIS_Y_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />
+      {isHovered && (
+        <Cone
+          args={[FRUSTUM_AXIS_ARROW_RADIUS, FRUSTUM_AXIS_ARROW_HEIGHT, 8]}
+          position={[0, FRUSTUM_AXES_SIZE + FRUSTUM_AXIS_ARROW_HEIGHT / 2, 0]}
+          rotation={[0, 0, 0]}
+        >
+          <meshBasicMaterial color={FRUSTUM_AXIS_Y_COLOR} />
+        </Cone>
+      )}
+
+      {/* Z axis */}
       <Line
         points={[axisOrigin, zAxisEnd]}
-        color="#0000ff"
+        color={FRUSTUM_AXIS_Z_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />
+      {isHovered && (
+        <Cone
+          args={[FRUSTUM_AXIS_ARROW_RADIUS, FRUSTUM_AXIS_ARROW_HEIGHT, 8]}
+          position={[0, 0, FRUSTUM_AXES_SIZE + FRUSTUM_AXIS_ARROW_HEIGHT / 2]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <meshBasicMaterial color={FRUSTUM_AXIS_Z_COLOR} />
+        </Cone>
+      )}
 
       {/* Wireframe edges */}
       <Line
@@ -233,15 +305,24 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
         segments
       />
 
+      {/* Top marker triangle (indicates "up" direction) */}
+      <Line
+        points={topMarkerPoints}
+        color={wireframeColor}
+        lineWidth={FRUSTUM_LINE_WIDTH}
+      />
+
       {/* Far plane (clickable) */}
+      {/* renderOrder brings hovered frustums to front when showing textures */}
       <mesh
         geometry={farPlaneGeometry}
         onPointerOver={handlePointerOver}
         onPointerOut={handlePointerOut}
         onClick={handleClick}
+        renderOrder={isHovered && showTexture ? 1 : 0}
       >
         {showTexture && imageUrl ? (
-          <FrustumTextureMaterial imageUrl={imageUrl} />
+          <FrustumTextureMaterial imageUrl={imageUrl} isHovered={isHovered} />
         ) : (
           <meshBasicMaterial
             color={wireframeColor}
@@ -259,14 +340,23 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 /**
  * Separate component for texture material to handle async texture loading.
  */
-function FrustumTextureMaterial({ imageUrl }: { imageUrl: string }) {
+function FrustumTextureMaterial({
+  imageUrl,
+  isHovered,
+}: {
+  imageUrl: string;
+  isHovered: boolean;
+}) {
   const texture = useFoLoader(TextureLoader, imageUrl);
+  const opacity = isHovered
+    ? FRUSTUM_TEXTURE_HOVER_OPACITY
+    : FRUSTUM_TEXTURE_OPACITY;
 
   return (
     <meshBasicMaterial
       map={texture}
       transparent
-      opacity={0.9}
+      opacity={opacity}
       side={DoubleSide}
       depthWrite={false}
     />
