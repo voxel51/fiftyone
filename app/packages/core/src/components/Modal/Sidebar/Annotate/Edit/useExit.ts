@@ -14,6 +14,7 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
+import { CommandContextManager } from "@fiftyone/commands";
 import {
   current,
   currentData,
@@ -73,10 +74,8 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-
-    // We are leaving editing mode, clear the stack
-    scene?.clearUndoRedoStack();
-
+    
+    CommandContextManager.instance().clearUndoRedoStack();
     if (!label || !revertLabel) {
       setSaved(null);
       setEditing(null);

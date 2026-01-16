@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Undoable } from "@fiftyone/commands";
 import type { Rect } from "../types";
-import type { Command } from "./Command";
 import { Movable } from "./MoveOverlayCommand";
 
 /**
@@ -19,7 +19,7 @@ export interface TransformOptions {
 /**
  * Command for transforming an overlay with undo/redo support.
  */
-export class TransformOverlayCommand implements Command {
+export class TransformOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 

@@ -1,5 +1,5 @@
 import { getFieldSchema, UpsertAnnotationCommand } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
 import type { BaseOverlay } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";

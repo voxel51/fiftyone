@@ -23,7 +23,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        value={getDefaultValue(data, choices)}
+        value={getDefaultValue(data, choices, multiple)}
         freeSolo={allowUserInput}
         size="small"
         onChange={(e, choice) => {
@@ -92,11 +92,22 @@ export default function AutocompleteView(props) {
 
 // TODO: move these functions to a utils file
 
-function getDefaultValue(defaultValue, choices = []) {
+function getDefaultValue(defaultValue, choices = [], multiple = false) {
+  if (multiple) {
+    // For multiple selection, ensure value is always an array
+    const values = Array.isArray(defaultValue)
+      ? defaultValue
+      : defaultValue != null
+      ? [defaultValue]
+      : [];
+    return values.map((v) => {
+      const choice = choices.find(({ value }) => value === v);
+      return choice || { value: v, label: v };
+    });
+  }
   const choice = choices.find(({ value }) => value === defaultValue);
   return choice || defaultValue;
 }
-
 function getValuesOnlySettingFromSchema(schema) {
   const { view = {} } = schema;
   const isObject = schema.type === "object";

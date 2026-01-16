@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Undoable } from "@fiftyone/commands";
 import type { Point, Rect } from "../types";
-import type { Command } from "./Command";
 
 /**
  * Interface for overlays that can be moved.
@@ -42,13 +42,13 @@ export interface Movable {
 /**
  * Command for moving an overlay with undo/redo support.
  */
-export class MoveOverlayCommand implements Command {
+export class MoveOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 
   constructor(
     private overlay: Movable,
-    private overlayId: string,
+    overlayId: string,
     private oldBounds: Rect,
     private newBounds: Rect
   ) {

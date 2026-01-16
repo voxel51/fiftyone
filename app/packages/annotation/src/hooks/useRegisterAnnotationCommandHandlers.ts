@@ -9,7 +9,7 @@ import {
   usePersistAnnotationDeltas,
   useUpsertLabel,
 } from "@fiftyone/annotation";
-import { useRegisterCommandHandler } from "@fiftyone/commands";
+import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { useCallback } from "react";
 import { DeleteAnnotationCommand, UpsertAnnotationCommand } from "../commands";
 
