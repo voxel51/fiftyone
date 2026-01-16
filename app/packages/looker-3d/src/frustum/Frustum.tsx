@@ -46,15 +46,15 @@ function formatExtrinsicsForTooltip(
   const euler = quaternionToEuler(extrinsics.quaternion);
 
   return {
-    position: `[${formatNumber(tx)}, ${formatNumber(ty)}, ${formatNumber(tz)}]`,
-    quaternion: `[${formatNumber(qx, 4)}, ${formatNumber(
-      qy,
+    position: `${formatNumber(tx)}, ${formatNumber(ty)}, ${formatNumber(tz)}`,
+    quaternion: `${formatNumber(qx, 4)}, ${formatNumber(qy, 4)}, ${formatNumber(
+      qz,
       4
-    )}, ${formatNumber(qz, 4)}, ${formatNumber(qw, 4)}]`,
-    rotation: `[${formatNumber(euler[0], 1)}°, ${formatNumber(
+    )}, ${formatNumber(qw, 4)}`,
+    rotation: `${formatNumber(euler[0], 1)}°, ${formatNumber(
       euler[1],
       1
-    )}°, ${formatNumber(euler[2], 1)}°]`,
+    )}°, ${formatNumber(euler[2], 1)}°`,
   };
 }
 
@@ -74,7 +74,7 @@ interface FrustumProps {
 export function Frustum({ frustumData, geometry }: FrustumProps) {
   const { sliceName, intrinsics, imageUrl } = frustumData;
   const { setHoverMetadata } = useFo3dContext();
-  const [showTexture, setShowTexture] = useState(false);
+  const [showTexture, setShowTexture] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
   // Only load texture if we have intrinsics and an image URL
@@ -199,10 +199,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
       e.stopPropagation();
       setIsHovered(true);
 
-      // Build attributes with extrinsics info
-      const attributes: Record<string, string | number | boolean> = {
-        slice: sliceName,
-      };
+      const attributes: Record<string, string | number | boolean> = {};
 
       // Add extrinsics data if available
       if (frustumData.extrinsics) {
