@@ -100,6 +100,12 @@ def get_sample(
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
+        logger.debug(
+            "If-Match condition failed for sample %s: %s != %s",
+            sample.id,
+            sample.last_modified_at,
+            if_last_modified_at,
+        )
         if sample.last_modified_at != if_last_modified_at:
             raise HTTPException(
                 status_code=412, detail="If-Match condition failed"
