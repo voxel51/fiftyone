@@ -27,11 +27,11 @@ logger = logging.getLogger(__name__)
 def datetimes_match(
     dt1: datetime.datetime, dt2: datetime.datetime, tolerance_ms: int = 1
 ) -> bool:
-    """Compare datetimes with tolerance for precision differences.
+    """Compare datetimes with tolerance for precision and timezone differences.
 
     When comparing datetimes from different sources (e.g., MongoDB vs parsed
-    ISO string), precision may differ. This function compares them with a
-    small tolerance to account for microsecond truncation.
+    ISO string), precision and timezone awareness may differ. This function
+    normalizes timezone awareness and compares with a small tolerance.
 
     Args:
         dt1: First datetime
@@ -41,6 +41,12 @@ def datetimes_match(
     Returns:
         True if the datetimes match within the tolerance
     """
+    # Normalize timezone awareness - treat naive datetimes as UTC
+    if dt1.tzinfo is None and dt2.tzinfo is not None:
+        dt1 = dt1.replace(tzinfo=datetime.timezone.utc)
+    elif dt2.tzinfo is None and dt1.tzinfo is not None:
+        dt2 = dt2.replace(tzinfo=datetime.timezone.utc)
+
     diff = abs((dt1 - dt2).total_seconds() * 1000)
     return diff <= tolerance_ms
 

@@ -1167,3 +1167,75 @@ class TestSampleFieldRoute:
         assert exc_info.value.status_code == 400
         assert str(patch_payload[0]) in exc_info.value.detail
         assert "non_existent_attr" in exc_info.value.detail
+
+
+class TestDatetimesMatch:
+    """Tests for the datetimes_match function"""
+
+    def test_identical_naive_datetimes(self):
+        """Tests that identical naive datetimes match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_identical_aware_datetimes(self):
+        """Tests that identical aware datetimes match."""
+        dt1 = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt2 = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_aware_vs_naive_same_time(self):
+        """Tests that aware and naive datetimes with same time match.
+
+        This is the exact failure case from the logs:
+        2026-01-16 13:30:33.657000+00:00 != 2026-01-16 13:30:33.657000
+        """
+        dt_aware = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt_naive = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        assert fors.datetimes_match(dt_aware, dt_naive) is True
+        assert fors.datetimes_match(dt_naive, dt_aware) is True
+
+    def test_different_datetimes_do_not_match(self):
+        """Tests that different datetimes do not match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(
+            2026, 1, 16, 13, 30, 34, 657000
+        )  # 1 second diff
+        assert fors.datetimes_match(dt1, dt2) is False
+
+    def test_microsecond_precision_within_tolerance(self):
+        """Tests that microsecond differences within 1ms tolerance match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657500)  # 500 µs diff
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_microsecond_precision_outside_tolerance(self):
+        """Tests that microsecond differences beyond 1ms tolerance don't match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 659000)  # 2 ms diff
+        assert fors.datetimes_match(dt1, dt2) is False
+
+    def test_custom_tolerance(self):
+        """Tests that custom tolerance works correctly."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 662000)  # 5 ms diff
+
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=1) is False
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=5) is True
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=10) is True
+
+    def test_mixed_timezone_awareness_different_times(self):
+        """Tests that mixed awareness with different times don't match."""
+        dt_aware = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt_naive = datetime.datetime(
+            2026, 1, 16, 13, 30, 35, 657000
+        )  # 2 sec diff
+        assert fors.datetimes_match(dt_aware, dt_naive) is False
