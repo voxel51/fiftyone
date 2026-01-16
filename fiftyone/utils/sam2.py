@@ -32,6 +32,50 @@ smutil = fou.lazy_import("sam2.utils.misc")
 logger = logging.getLogger(__name__)
 
 
+def _subtract_negative_box_regions(mask, neg_detections, width, height):
+    """Subtract negative bounding box regions from a segmentation mask.
+
+    Args:
+        mask: numpy array representing segmentation mask(s). Supports:
+            - 2D (H, W) for video model
+            - 3D (N, H, W) for image model
+            - 4D (N, 1, H, W) for image model
+        neg_detections: a :class:`fiftyone.core.labels.Detections` containing
+            negative prompt boxes, or None
+        width: image/frame width in pixels
+        height: image/frame height in pixels
+
+    Returns:
+        the modified mask with negative regions zeroed out
+    """
+    if not neg_detections or not isinstance(neg_detections, fol.Detections):
+        return mask
+
+    if len(neg_detections.detections) == 0:
+        return mask
+
+    for neg_det in neg_detections.detections:
+        box_xyxy = fosam._to_abs_boxes(
+            np.array([neg_det.bounding_box]), width, height, chunk_size=1
+        )
+        box_abs = np.round(box_xyxy.squeeze()).astype(int)
+        nx1, ny1, nx2, ny2 = (
+            max(0, box_abs[0]),
+            max(0, box_abs[1]),
+            min(width, box_abs[2]),
+            min(height, box_abs[3]),
+        )
+        if nx2 > nx1 and ny2 > ny1:
+            if mask.ndim == 2:
+                mask[ny1:ny2, nx1:nx2] = 0
+            elif mask.ndim == 3:
+                mask[:, ny1:ny2, nx1:nx2] = 0
+            else:
+                mask[:, 0, ny1:ny2, nx1:nx2] = 0
+
+    return mask
+
+
 class SegmentAnything2ImageModelConfig(
     fout.TorchImageModelConfig, fozm.HasZooModel
 ):
@@ -263,25 +307,11 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 multimask_output=False,
             )
 
-            # Subtract negative prompt regions from masks
             if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
-                neg_detections = self._curr_negative_prompts[idx]
-                if neg_detections and isinstance(neg_detections, fol.Detections) and len(neg_detections.detections) > 0:
-                    for neg_det in neg_detections.detections:
-                        neg_box = neg_det.bounding_box
-                        box_xyxy = fosam._to_abs_boxes(
-                            np.array([neg_box]), w, h, chunk_size=1
-                        )
-                        box_abs = np.round(box_xyxy.squeeze()).astype(int)
-                        nx1 = max(0, box_abs[0])
-                        ny1 = max(0, box_abs[1])
-                        nx2 = min(w, box_abs[2])
-                        ny2 = min(h, box_abs[3])
-                        if nx2 > nx1 and ny2 > ny1:
-                            if masks.ndim == 3:
-                                masks[:, ny1:ny2, nx1:nx2] = 0
-                            else:
-                                masks[:, 0, ny1:ny2, nx1:nx2] = 0
+                masks = _subtract_negative_box_regions(
+                    masks, self._curr_negative_prompts[idx], w, h
+                )
+
             if masks.ndim == 3:
                 masks = np.expand_dims(masks, axis=1)
             outputs.append(
@@ -535,25 +565,13 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
 
-                # Subtract negative prompt regions from mask
                 if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
-                    neg_frame_detections = self._curr_negative_prompts[out_frame_idx]
-                    if neg_frame_detections and isinstance(neg_frame_detections, fol.Detections) and len(neg_frame_detections.detections) > 0:
-                        for neg_det in neg_frame_detections.detections:
-                            neg_box = neg_det.bounding_box
-                            box_xyxy = fosam._to_abs_boxes(
-                                np.array([neg_box]),
-                                self._curr_frame_width,
-                                self._curr_frame_height,
-                                chunk_size=1,
-                            )
-                            box_abs = np.round(box_xyxy.squeeze()).astype(int)
-                            nx1 = max(0, box_abs[0])
-                            ny1 = max(0, box_abs[1])
-                            nx2 = min(self._curr_frame_width, box_abs[2])
-                            ny2 = min(self._curr_frame_height, box_abs[3])
-                            if nx2 > nx1 and ny2 > ny1:
-                                mask[ny1:ny2, nx1:nx2] = 0
+                    mask = _subtract_negative_box_regions(
+                        mask,
+                        self._curr_negative_prompts[out_frame_idx],
+                        self._curr_frame_width,
+                        self._curr_frame_height,
+                    )
 
                 box = fosam._mask_to_box(mask)
                 if box is None:
