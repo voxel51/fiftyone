@@ -19,20 +19,14 @@ import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classificatio
 const buildAnnotationLabel = (
   overlay: BaseOverlay
 ): AnnotationLabel | undefined => {
-  if (
-    overlay instanceof BoundingBoxOverlay &&
-    (overlay as BoundingBoxOverlay).label.label
-  ) {
+  if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
     return {
       type: "Detection",
       data: overlay.label as DetectionLabel,
       overlay,
       path: overlay.field,
     };
-  } else if (
-    overlay instanceof ClassificationOverlay &&
-    (overlay as ClassificationOverlay).label.label
-  ) {
+  } else if (overlay instanceof ClassificationOverlay && overlay.label.label) {
     return {
       type: "Classification",
       data: overlay.label as ClassificationLabel,
@@ -59,7 +53,7 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
       if (annotationLabel) {
         const labelDeltas = buildLabelDeltas(
           modalSample.sample,
-          buildAnnotationLabel(overlay),
+          annotationLabel,
           getFieldSchema(modalSampleSchema, overlay.field),
           "mutate"
         );

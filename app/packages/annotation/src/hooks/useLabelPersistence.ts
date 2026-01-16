@@ -1,32 +1,32 @@
-import { Field } from "@fiftyone/utilities";
+import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { AnnotationLabel, useModalSample } from "@fiftyone/state";
+import { type AnnotationLabel, useModalSample } from "@fiftyone/state";
 import { usePatchSample } from "./usePatchSample";
-import { handleLabelPersistence, LabelPersistenceArgs } from "../util";
+import { handleLabelPersistence, type LabelPersistenceArgs } from "../util";
 
 /**
  * Hook which returns a callback to persist label updates for a sample.
  *
  * @param sample Sample against which to apply label update
- * @param patchSample Function which handles the patch operation
+ * @param applyPatch Function which handles the patch operation
  * @param opType Operation type
  */
 const useLabelPersistenceWith = ({
   sample,
-  patchSample,
+  applyPatch,
   opType,
-}: Pick<LabelPersistenceArgs, "sample" | "patchSample" | "opType">) => {
+}: Pick<LabelPersistenceArgs, "sample" | "applyPatch" | "opType">) => {
   return useCallback(
     (annotationLabel: AnnotationLabel, schema: Field): Promise<boolean> => {
       return handleLabelPersistence({
         sample,
-        patchSample,
+        applyPatch,
         annotationLabel,
         schema,
         opType,
       });
     },
-    [opType, patchSample, sample]
+    [applyPatch, opType, sample]
   );
 };
 
@@ -39,7 +39,7 @@ export const useUpsertLabel = (): ((
 ) => Promise<boolean>) => {
   return useLabelPersistenceWith({
     sample: useModalSample()?.sample,
-    patchSample: usePatchSample(),
+    applyPatch: usePatchSample(),
     opType: "mutate",
   });
 };
@@ -54,7 +54,7 @@ export const useDeleteLabel = (): ((
 ) => Promise<boolean>) => {
   return useLabelPersistenceWith({
     sample: useModalSample()?.sample,
-    patchSample: usePatchSample(),
+    applyPatch: usePatchSample(),
     opType: "delete",
   });
 };

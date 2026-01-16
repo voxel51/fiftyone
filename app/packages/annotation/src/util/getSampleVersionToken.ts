@@ -20,9 +20,7 @@ export const getSampleVersionToken = ({
     return null;
   }
 
-  const isoTimestamp = parseTimestamp(
-    sample.last_modified_at as unknown as string
-  )?.toISOString();
+  const isoTimestamp = parseTimestamp(sample.last_modified_at)?.toISOString();
 
   // server doesn't like the iso timestamp ending in 'Z'
   if (isoTimestamp?.endsWith("Z")) {

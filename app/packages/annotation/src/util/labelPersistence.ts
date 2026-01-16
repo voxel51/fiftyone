@@ -69,7 +69,7 @@ export const doPatchSample = async ({
 
 export type LabelPersistenceArgs = {
   sample: Sample | null;
-  patchSample: (deltas: JSONDeltas) => Promise<boolean>;
+  applyPatch: (deltas: JSONDeltas) => Promise<boolean>;
   annotationLabel: AnnotationLabel | null;
   schema: Field;
   opType: OpType;
@@ -79,14 +79,14 @@ export type LabelPersistenceArgs = {
  * Handle persisting a label update for a sample.
  *
  * @param sample Sample to modify
- * @param patchSample Function which applies the calculated patch
+ * @param applyPatch Function which applies the calculated patch
  * @param annotationLabel Label to persist
  * @param schema Field schema for the label
  * @param opType Operation type
  */
 export const handleLabelPersistence = async ({
   sample,
-  patchSample,
+  applyPatch,
   annotationLabel,
   schema,
   opType,
@@ -113,5 +113,5 @@ export const handleLabelPersistence = async ({
     path: buildJsonPath(annotationLabel.path, delta.path),
   }));
 
-  return await patchSample(sampleDeltas);
+  return await applyPatch(sampleDeltas);
 };

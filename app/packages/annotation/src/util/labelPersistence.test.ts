@@ -40,7 +40,7 @@ describe("handleLabelPersistence", () => {
   it("should return false when sample is null", async () => {
     const result = await handleLabelPersistence({
       sample: null,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -53,7 +53,7 @@ describe("handleLabelPersistence", () => {
   it("should return false when annotationLabel is null", async () => {
     const result = await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: null,
       schema: mockSchema,
       opType: mockOpType,
@@ -70,7 +70,7 @@ describe("handleLabelPersistence", () => {
 
     await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -97,7 +97,7 @@ describe("handleLabelPersistence", () => {
 
     await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -124,7 +124,7 @@ describe("handleLabelPersistence", () => {
 
     await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -147,7 +147,7 @@ describe("handleLabelPersistence", () => {
 
     const result = await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -164,7 +164,7 @@ describe("handleLabelPersistence", () => {
 
     const result = await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -178,7 +178,7 @@ describe("handleLabelPersistence", () => {
 
     const result = await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -203,7 +203,7 @@ describe("handleLabelPersistence", () => {
 
     await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,
@@ -230,7 +230,7 @@ describe("handleLabelPersistence", () => {
     await expect(
       handleLabelPersistence({
         sample: mockSample,
-        patchSample: mockPatchSample,
+        applyPatch: mockPatchSample,
         annotationLabel: mockAnnotationLabel,
         schema: mockSchema,
         opType: mockOpType,
@@ -253,7 +253,7 @@ describe("handleLabelPersistence", () => {
 
     await handleLabelPersistence({
       sample: mockSample,
-      patchSample: mockPatchSample,
+      applyPatch: mockPatchSample,
       annotationLabel: mockAnnotationLabel,
       schema: mockSchema,
       opType: mockOpType,

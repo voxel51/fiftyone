@@ -12,13 +12,13 @@ export const useGetVersionTokenWith = ({
   sample,
 }: {
   sample: Sample | null;
-}): (() => string) => {
+}): (() => string | null) => {
   return useCallback(() => getSampleVersionToken({ sample }), [sample]);
 };
 
 /**
  * Hook which returns a version token getter for the current modal sample.
  */
-export const useGetVersionToken = (): (() => string) => {
+export const useGetVersionToken = (): (() => string | null) => {
   return useGetVersionTokenWith({ sample: useModalSample()?.sample });
 };
