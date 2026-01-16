@@ -16,7 +16,7 @@ import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { useSampleValue } from "../useSampleValue";
-import { PrimitiveSchema, usePrimitiveSchema } from "./schemaHelpers";
+import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import useExit from "./useExit";
 
@@ -45,7 +45,7 @@ export default function PrimitiveEdit({
   const value = useSampleValue(path);
 
   const fieldSchema = getFieldSchema(schema, path);
-  const primitiveSchema = usePrimitiveSchema(path, currentLabelSchema);
+  const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
 
   const [fieldValue, setFieldValue] = useState<Primitive | Date>(
     parseDatabaseValue(type, value)

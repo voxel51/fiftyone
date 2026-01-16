@@ -13,22 +13,18 @@ import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types
 import type { IChangeEvent } from "@rjsf/core";
 import { isObject, type RJSFSchema, type UiSchema } from "@rjsf/utils";
 
-function filterEmptyArrays(
+export function filterEmptyArrays(
   formData: Record<string, unknown>,
   originalData: Record<string, unknown>
 ) {
   // Filter out empty arrays that weren't in the original data
   // i.e. don't add `tags: []` if `tags` does not already exist on props.data
   const filteredData = { ...formData };
-  for (const key in filteredData) {
-    if (
-      !(key in originalData) &&
-      Array.isArray(filteredData[key]) &&
-      filteredData[key].length === 0
-    ) {
+  Object.entries(filteredData).forEach(([key, value]) => {
+    if (!(key in originalData) && Array.isArray(value) && value.length === 0) {
       delete filteredData[key];
     }
-  }
+  });
   return filteredData;
 }
 
@@ -64,7 +60,7 @@ export default function RJSF(props: RJSFProps) {
   const handleChange = (event: IChangeEvent, _id?: string) => {
     if (!props.onChange) return;
 
-    if (props.data && isObject(props.data) && isObject(event.formData)) {
+    if (isObject(props.data) && isObject(event.formData)) {
       return filterEmptyArrays(
         event.formData as Record<string, unknown>,
         props.data as Record<string, unknown>

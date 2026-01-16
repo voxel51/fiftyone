@@ -193,7 +193,7 @@ export const createNumericList = (name: string, choices: string[]) => {
 /**
  * Ruleset for rendering primitive fields based on their schema
  */
-export function applyPrimitiveRenderingRules(
+export function generatePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
@@ -228,8 +228,4 @@ export function applyPrimitiveRenderingRules(
     return createText(name, "number");
   }
   return undefined;
-}
-
-export function usePrimitiveSchema(name: string, schema: PrimitiveSchema) {
-  return applyPrimitiveRenderingRules(name, schema);
 }
