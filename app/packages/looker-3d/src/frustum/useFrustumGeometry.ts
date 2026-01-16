@@ -1,0 +1,58 @@
+/**
+ * Custom hook for computing frustum geometry from camera data.
+ */
+
+import { useMemo } from "react";
+import type { Box3 } from "three";
+import {
+  buildFrustumGeometry,
+  computeFrustumDepth,
+  isValidExtrinsics,
+} from "./builders";
+import type {
+  FrustumData,
+  FrustumGeometry,
+  UseFrustumGeometryResult,
+} from "./types";
+
+/**
+ * Computes frustum geometry for all provided frustum data.
+ *
+ * @param frustumData - Array of frustum data from useFrustumData
+ * @param sceneBounds - Bounding box of the scene for depth scaling
+ * @returns Map of slice name to computed frustum geometry
+ */
+
+export function useFrustumGeometry(
+  frustumData: FrustumData[],
+  sceneBounds: Box3 | null
+): UseFrustumGeometryResult {
+  const geometries = useMemo(() => {
+    const result = new Map<string, FrustumGeometry>();
+
+    if (!frustumData.length) {
+      return result;
+    }
+
+    const depth = computeFrustumDepth(sceneBounds);
+
+    for (const frustum of frustumData) {
+      if (!isValidExtrinsics(frustum.extrinsics)) {
+        continue;
+      }
+
+      const geometry = buildFrustumGeometry(
+        frustum.extrinsics,
+        frustum.intrinsics,
+        depth,
+        frustum.imageAspectRatio
+      );
+
+      result.set(frustum.sliceName, geometry);
+    }
+
+    return result;
+  }, [frustumData]);
+
+  return { geometries };
+}
