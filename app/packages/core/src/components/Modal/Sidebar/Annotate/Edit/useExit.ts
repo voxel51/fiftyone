@@ -16,16 +16,16 @@ import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
 import {
+  activePrimitiveAtom,
   current,
   currentOverlay,
   hasChanges,
-  primitivePath,
   savedLabel,
 } from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
-  const setPrimitive = useSetAtom(primitivePath);
+  const setPrimitive = useSetAtom(activePrimitiveAtom);
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);

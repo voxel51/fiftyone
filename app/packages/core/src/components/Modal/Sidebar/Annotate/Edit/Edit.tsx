@@ -17,10 +17,10 @@ import Position from "./Position";
 import Position3d from "./Position3d";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import {
+  activePrimitiveAtom,
   currentField,
   currentOverlay,
   currentType,
-  primitivePath,
 } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
@@ -49,7 +49,7 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
-  const primitive = useAtomValue(primitivePath);
+  const primitive = useAtomValue(activePrimitiveAtom);
 
   const clear = useClearModal();
   const exit = useExit();

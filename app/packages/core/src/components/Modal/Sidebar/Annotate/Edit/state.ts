@@ -21,7 +21,8 @@ export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | typeof PRIMITIVE | null
 >(null);
 
-export const primitivePath = atom<string | null>(null);
+// the path of the primitive that is currently being edited
+export const activePrimitiveAtom = atom<string | null>(null);
 
 export const hasChanges = atom((get) => {
   const label = get(currentData);

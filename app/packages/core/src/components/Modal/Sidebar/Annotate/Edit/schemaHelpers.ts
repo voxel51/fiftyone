@@ -91,7 +91,7 @@ export const createRadio = (name: string, choices: string[]) => {
       label: name,
       component: "RadioView",
       choices: choices.map((choice: string) => ({
-        label: getLabel(choice as string),
+        label: getLabel(choice),
         value: choice,
       })),
     },
@@ -170,7 +170,7 @@ export const createText = (name: string, type: string): SchemaType => {
 /**
  * Creates an array schema for numeric lists: list<float> and list<int>
  */
-export const createNumericList = (name: string, choices: string[]) => {
+export const createNumericList = (name: string, choices: number[]) => {
   return {
     type: "array",
     items: {

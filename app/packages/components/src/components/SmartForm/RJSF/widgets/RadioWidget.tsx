@@ -5,7 +5,7 @@
 
 import { WidgetProps } from "@rjsf/utils";
 import { FormField, RadioGroup, Size } from "@voxel51/voodo";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 
 export default function RadioWidget(props: WidgetProps) {
   const {
@@ -34,15 +34,17 @@ export default function RadioWidget(props: WidgetProps) {
   );
   const isDisabled = disabled || readonly;
 
-  const handleChange = (newValue: string) => {
-    if (isDisabled) {
-      return;
-    }
-
-    // Convert back to original type if needed (number, etc.)
-    const originalValue = enumValues.find((v) => String(v) === newValue);
-    onChange(originalValue !== undefined ? originalValue : newValue);
-  };
+  const handleChange = useCallback(
+    (newValue: string) => {
+      if (isDisabled) {
+        return;
+      }
+      // Convert back to original type if needed (number, etc.)
+      const originalValue = enumValues.find((v) => String(v) === newValue);
+      onChange(originalValue !== undefined ? originalValue : newValue);
+    },
+    [isDisabled, enumValues, onChange]
+  );
 
   // Convert value to string for RadioGroup, ensuring it matches one of the options
   const stringValue = useMemo(() => {
