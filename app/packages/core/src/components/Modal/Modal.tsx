@@ -18,6 +18,11 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -85,8 +90,6 @@ const Modal = () => {
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
-  const select = fos.useSelectSample();
-
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -121,72 +124,87 @@ const Modal = () => {
     [clearModal, jsonPanel, helpPanel]
   );
 
-  const keysHandler = useRecoilCallback(
+  const selectCallback = useRecoilCallback(
     ({ snapshot, set }) =>
-      async (e: KeyboardEvent) => {
-        const active = document.activeElement;
-
-        // Prevent shortcuts when interacting with any form field
-        if (
-          active?.tagName === "INPUT" ||
-          active?.tagName === "TEXTAREA" ||
-          active?.tagName === "SELECT"
-        ) {
-          return;
-        }
-
-        if (e.repeat) {
-          return;
-        }
-
-        if (e.altKey && e.code === "Space") {
-          const hoveringSampleId = (
-            await snapshot.getPromise(fos.hoveredSample)
-          )?._id;
-          if (hoveringSampleId) {
-            select(hoveringSampleId);
-          } else {
-            const modalSampleId = await snapshot.getPromise(fos.modalSampleId);
-            if (modalSampleId) {
-              select(modalSampleId);
+      async () => {
+        const current = await snapshot.getPromise(fos.modalSelector);
+        set(fos.selectedSamples, (selected) => {
+          const newSelected = new Set([...Array.from(selected)]);
+          if (current?.id) {
+            if (newSelected.has(current.id)) {
+              newSelected.delete(current.id);
+            } else {
+              newSelected.add(current.id);
             }
           }
-        } else if (e.key === "s") {
-          set(fos.sidebarVisible(true), (prev) => !prev);
-        } else if (e.key === "f") {
-          set(fos.fullscreen, (prev) => !prev);
-        } else if (e.key === "x") {
-          const current = await snapshot.getPromise(fos.modalSelector);
-          set(fos.selectedSamples, (selected) => {
-            const newSelected = new Set([...Array.from(selected)]);
-            if (current?.id) {
-              if (newSelected.has(current.id)) {
-                newSelected.delete(current.id);
-              } else {
-                newSelected.add(current.id);
-              }
-            }
-
-            return newSelected;
-          });
-        } else if (e.key === "Escape") {
-          const mediaType = await snapshot.getPromise(fos.mediaType);
-          const is3dVisible = await snapshot.getPromise(
-            fos.groupMediaIs3dVisible
-          );
-          if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
-            // we handle close logic in modal + other places
-            return;
-          }
-
-          await modalCloseHandler();
-        }
+          return newSelected;
+        });
       },
     []
   );
 
-  fos.useEventHandler(document, "keydown", keysHandler);
+  const sidebarFn = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        set(fos.sidebarVisible(true), (prev) => !prev);
+      },
+    []
+  );
 
+  const fullscreenFn = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        set(fos.fullscreen, (prev) => !prev);
+      },
+    []
+  );
+
+  const closeFn = useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        const mediaType = await snapshot.getPromise(fos.mediaType);
+        const is3dVisible = await snapshot.getPromise(
+          fos.groupMediaIs3dVisible
+        );
+        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+          // we handle close logic in modal + other places
+          return;
+        }
+
+        await modalCloseHandler();
+      },
+    [modalCloseHandler]
+  );
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalClose,
+      sequence: "Escape",
+      handler: closeFn,
+      label: "Close",
+      description: "Close the window."
+    },
+    {
+      commandId: KnownCommands.ModalFullScreenToggle,
+      sequence: "f",
+      handler: fullscreenFn,
+      label: "Fullscreen",
+      description: "Enter/Exit full screen mode"
+    },
+    {
+      commandId: KnownCommands.ModalSidebarToggle,
+      sequence: "s",
+      handler: sidebarFn,
+      label: "Sidebar",
+      description: "Show/Hide the sidebar"
+    },
+    {
+      commandId: KnownCommands.ModalSelect,
+      sequence: "x",
+      handler: selectCallback,
+      label: "Select",
+      description: "Select Sample"
+    }
+  ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
   const { closePanels } = useLookerHelpers();

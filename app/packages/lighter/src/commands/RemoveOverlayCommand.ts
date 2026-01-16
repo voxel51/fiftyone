@@ -2,14 +2,14 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Undoable } from "@fiftyone/commands";
 import type { Scene2D } from "../core/Scene2D";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
-import type { Command } from "./Command";
 
 /**
  * Command for removing an overlay from the scene with undo/redo support.
  */
-export class RemoveOverlayCommand implements Command {
+export class RemoveOverlayCommand implements Undoable {
   readonly id: string;
   readonly description: string;
 

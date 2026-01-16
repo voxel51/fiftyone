@@ -6,7 +6,7 @@ import {
   buildAnnotationPath,
   useAnnotationEventBus,
 } from "@fiftyone/annotation";
-import { useRegisterCommandHandler } from "@fiftyone/commands";
+import { useRegisterCommandHandler } from "@fiftyone/command-bus";
 import { JSONDeltas, patchSample } from "@fiftyone/core/src/client";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 import { parseTimestamp } from "@fiftyone/core/src/client/util";

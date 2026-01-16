@@ -1,6 +1,7 @@
 import { Tooltip } from "@fiftyone/components";
 import { useLighter } from "@fiftyone/lighter";
-import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
+import { current3dAnnotationModeAtom, 
+         isPolylineAnnotateActiveAtom} from "@fiftyone/looker-3d/src/state";
 import { is3DDataset, isPatchesView } from "@fiftyone/state";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
@@ -11,6 +12,7 @@ import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
+import { useUndoRedo } from "@fiftyone/commands";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -152,10 +154,10 @@ const Detection = () => {
 };
 
 export const Undo = () => {
-  const { undo, canUndo: enabled } = useLighter();
+  const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={enabled ? "" : "disabled"}>
+    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -174,11 +176,11 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, canRedo: enabled } = useLighter();
+  const { redo, redoEnabled } = useUndoRedo();
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={enabled ? "" : "disabled"}>
+      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"
