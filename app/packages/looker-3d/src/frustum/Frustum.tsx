@@ -9,13 +9,11 @@ import {
   BufferAttribute,
   BufferGeometry,
   DoubleSide,
-  Euler,
-  MathUtils,
-  Quaternion,
   TextureLoader,
   Vector3,
 } from "three";
 import { useFo3dContext } from "../fo3d/context";
+import { formatNumber, quaternionToEuler } from "../utils";
 import {
   FRUSTUM_AXES_LINE_WIDTH,
   FRUSTUM_AXES_SIZE,
@@ -28,30 +26,6 @@ import {
 import type { CameraExtrinsics, FrustumData, FrustumGeometry } from "./types";
 
 /**
- * Converts quaternion to Euler angles in degrees.
- */
-function quaternionToEulerDegrees(quat: [number, number, number, number]): {
-  x: number;
-  y: number;
-  z: number;
-} {
-  const q = new Quaternion(quat[0], quat[1], quat[2], quat[3]);
-  const euler = new Euler().setFromQuaternion(q, "XYZ");
-  return {
-    x: MathUtils.radToDeg(euler.x),
-    y: MathUtils.radToDeg(euler.y),
-    z: MathUtils.radToDeg(euler.z),
-  };
-}
-
-/**
- * Formats a number to a fixed precision string.
- */
-function fmt(n: number, decimals = 3): string {
-  return n.toFixed(decimals);
-}
-
-/**
  * Formats extrinsics data for display in tooltip.
  */
 function formatExtrinsicsForTooltip(
@@ -59,17 +33,23 @@ function formatExtrinsicsForTooltip(
 ): Record<string, string> {
   const [tx, ty, tz] = extrinsics.translation;
   const [qx, qy, qz, qw] = extrinsics.quaternion;
-  const euler = quaternionToEulerDegrees(extrinsics.quaternion);
+  const euler = quaternionToEuler(extrinsics.quaternion);
 
   return {
-    position: `[${fmt(tx)}, ${fmt(ty)}, ${fmt(tz)}]`,
-    quaternion: `[${fmt(qx, 4)}, ${fmt(qy, 4)}, ${fmt(qz, 4)}, ${fmt(qw, 4)}]`,
-    rotation: `[${fmt(euler.x, 1)}°, ${fmt(euler.y, 1)}°, ${fmt(euler.z, 1)}°]`,
+    position: `[${formatNumber(tx)}, ${formatNumber(ty)}, ${formatNumber(tz)}]`,
+    quaternion: `[${formatNumber(qx, 4)}, ${formatNumber(
+      qy,
+      4
+    )}, ${formatNumber(qz, 4)}, ${formatNumber(qw, 4)}]`,
+    rotation: `[${formatNumber(euler[0], 1)}°, ${formatNumber(
+      euler[1],
+      1
+    )}°, ${formatNumber(euler[2], 1)}°]`,
   };
 }
 
 interface FrustumProps {
-  /** Frustum data including slice name and optional image URL */
+  /** Frustum data including slice name and optional texture details */
   frustumData: FrustumData;
   /** Computed geometry for rendering */
   geometry: FrustumGeometry;
