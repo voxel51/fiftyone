@@ -160,7 +160,7 @@ export const Fo3dSceneContent = ({
 
       {isSceneInitialized && (
         <>
-          <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+          <ThreeDLabels sampleMap={{ fo3d: sample }} />
           <FrustumCollection />
         </>
       )}
