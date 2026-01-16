@@ -38,12 +38,6 @@ class CustomEmbeddedDoc(fo.EmbeddedDocument):
     polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
 
 
-# TODO: Enable when custom nested embedded document list fields are supported (FOEPD-2935)
-#     custom_documents = fo.EmbeddedDocumentListField(
-#         document_type=CustomEmbeddedDoc
-#     )
-
-
 @pytest.fixture(name="dataset")
 def fixture_dataset():
     """Creates a persistent dataset for testing."""
@@ -158,18 +152,6 @@ class TestSampleRoutes:
             embedded_doc_type=DynamicEmbeddedDocument,
         )
 
-        # sample["nested_doc"] = CustomNestedDoc(
-        #     custom_documents=[
-        #         CustomEmbeddedDoc(
-        #             classification=fol.Classification(),
-        #             detections=fol.Detections(),
-        #             polylines=fol.Polylines(),
-        #         ),
-        #         # empty doc which will (expectedly) fail initialization
-        #         CustomEmbeddedDoc,
-        #     ]
-        # )
-
         # embedded doc containing uninitialized fields will be auto-initialized
         sample["custom_doc"] = CustomEmbeddedDoc()
 
@@ -205,10 +187,14 @@ class TestSampleRoutes:
         return mock_request
 
     @pytest.mark.asyncio
-    async def test_update_detection(self, mutator, mock_request, sample):
+    async def test_update_detection(
+        self, mutator, mock_request, sample, dataset
+    ):
         """
         Tests updating an existing detection
         """
+        # Add primitive to schema for testing ADD operation
+        dataset.add_sample_field("reviewer", fo.StringField)
         label = "cat"
         confidence = 0.99
         bounding_box = [0.15, 0.15, 0.25, 0.25]
@@ -225,7 +211,7 @@ class TestSampleRoutes:
                     }
                 ],
             },
-            # "reviewer": "John Doe",
+            "reviewer": "John Doe",
             "tags": None,
         }
 
@@ -264,81 +250,11 @@ class TestSampleRoutes:
         assert updated_detection.bounding_box[0] == 0.15
         assert updated_detection.confidence == 0.99
 
-        # Verify CREATE (Primitive)
-        # assert sample.reviewer == "John Doe"
+        # Verify ADD top level primitive value
+        assert sample.reviewer == "John Doe"
 
         # Verify DELETE
         assert sample.tags == []
-
-    # TODO: enable once adding new labels is supported (FOEPD-2934)
-    # @pytest.mark.asyncio
-    # async def test_add_detection(self, mutator, mock_request, sample):
-    #     """
-    #     Tests adding a new detection
-    #     """
-    #     bounding_box = [0.15, 0.15, 0.25, 0.25]
-    #     confidence = 0.99
-    #     patch_payload = {
-    #         "ground_truth_2": {
-    #             "_cls": "Detections",
-    #             "detections": [
-    #                 {
-    #                     "_cls": "Detection",
-    #                     "label": "cat",
-    #                     "bounding_box": bounding_box,
-    #                     "confidence": confidence,
-    #                 }
-    #             ],
-    #         },
-    #     }
-    #     mock_request.body.return_value = json_payload(patch_payload)
-    #
-    #     #####
-    #     response = await mutator.patch(mock_request)
-    #     #####
-    #
-    #     sample.reload()
-    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
-    #         sample
-    #     )
-    #
-    #     response_dict = json.loads(response.body)
-    #     assert isinstance(response_dict, dict)
-    #
-    #     updated_detection = sample.ground_truth_2.detections[0]
-    #     assert updated_detection.bounding_box == bounding_box
-    #     assert updated_detection.confidence == confidence
-    #
-    # @pytest.mark.asyncio
-    # async def test_add_classification(self, mutator, mock_request, sample):
-    #     """
-    #     Tests adding a new classification
-    #     """
-    #     label = "sunny"
-    #     confidence = 0.99
-    #     patch_payload = {
-    #         "weather": {
-    #             "_cls": "Classification",
-    #             "label": label,
-    #             "confidence": confidence,
-    #         },
-    #     }
-    #     mock_request.body.return_value = json_payload(patch_payload)
-    #
-    #     #####
-    #     response = await mutator.patch(mock_request)
-    #     #####
-    #
-    #     sample.reload()
-    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
-    #         sample
-    #     )
-    #
-    #     response_dict = json.loads(response.body)
-    #     assert isinstance(response_dict, dict)
-    #     updated_detection = sample.weather
-    #     assert updated_detection.label == label
-    #     assert updated_detection.confidence == confidence
 
     @pytest.mark.asyncio
     async def test_dataset_not_found(self, mutator, mock_request):
@@ -551,64 +467,6 @@ class TestSampleRoutes:
             response_dict["empty_custom_doc"]["detections"]["detections"][0]
             == new_detection
         )
-
-    # TODO: enable once adding new labels to nested embedded document lists is supported (FOEPD-2935)
-    # @pytest.mark.asyncio
-    # async def test_patch_nested_fields(self, mutator, mock_request, sample):
-    #     new_detection = _create_dummy_instance(fol.Detection)
-    #
-    #     patch_payload = [
-    #         {
-    #             "op": "add",
-    #             "path": "/nested_doc/custom_documents/0/detections/detections/0",
-    #             "value": new_detection,
-    #         },
-    #     ]
-    #     mock_request.body.return_value = json_payload(patch_payload)
-    #     mock_request.headers["Content-Type"] = "application/json-patch+json"
-    #
-    #     #####
-    #     response = await mutator.patch(mock_request)
-    #     #####
-    #
-    #     assert response.status_code == 200
-    #
-    #     sample.reload()
-    #
-    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
-    #         sample
-    #     )
-    #     response_dict = json.loads(response.body)
-    #
-    #     assert (
-    #         response_dict["nested_doc"]["custom_documents"][0]["detections"][
-    #             "detections"
-    #         ][0]
-    #         == new_detection
-    #     )
-
-    # @pytest.mark.asyncio
-    # async def test_patch_init_nested_fields_failure(
-    #     self, mutator, mock_request
-    # ):
-    #     new_detection = _create_dummy_instance(fol.Detection)
-    #
-    #     patch_payload = [
-    #         {
-    #             "op": "add",
-    #             "path": "/nested_doc/custom_documents/1/detections/detections/0",
-    #             "value": new_detection,
-    #         },
-    #     ]
-    #     mock_request.body.return_value = json_payload(patch_payload)
-    #     mock_request.headers["Content-Type"] = "application/json-patch+json"
-    #
-    #     #####
-    #     response = await mutator.patch(mock_request)
-    #     #####
-    #
-    #     # auto-initialization not supported for lists of embedded documents
-    #     assert response.status_code == 500
 
     @pytest.mark.asyncio
     async def test_patch_rplc_primitive(self, mutator, mock_request, sample):
