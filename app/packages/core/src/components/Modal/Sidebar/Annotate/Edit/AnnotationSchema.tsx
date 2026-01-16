@@ -90,7 +90,6 @@ const createTags = (name: string, choices: string[]) => {
         value: choice,
       })),
     },
-    required: true,
   };
 };
 
