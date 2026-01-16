@@ -2,6 +2,8 @@ import * as fos from "@fiftyone/state";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type {
+  CuboidTransformData,
+  PolylinePointTransformData,
   ReconciledDetection3D,
   ReconciledLabels3D,
   ReconciledPolyline3D,
@@ -16,12 +18,12 @@ import {
 import {
   currentActiveAnnotationField3dAtom,
   reconciledLabels3DSelector,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
 } from "../state";
 
 interface UseReconciledLabels3DParams {
   rawOverlays: OverlayLabel[];
+  stagedPolylineTransforms: Record<string, PolylinePointTransformData>;
+  stagedCuboidTransforms: Record<string, CuboidTransformData>;
 }
 
 /**
@@ -62,15 +64,12 @@ function isPolylineOverlay(
  * 3. Creates labels for newly created items (in staged transforms only)
  * 4. Updates a public selector for downstream consumers
  * 5. Returns the reconciled labels for immediate use in rendering
- *
- * @param params.rawOverlays - The raw overlay data loaded from sample
- * @returns ReconciledLabels3D containing separate arrays for detections and polylines
  */
 export function useReconciledLabels3D({
   rawOverlays,
+  stagedPolylineTransforms,
+  stagedCuboidTransforms,
 }: UseReconciledLabels3DParams): ReconciledLabels3D {
-  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
-  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const setReconciledLabels3D = useSetRecoilState(reconciledLabels3DSelector);

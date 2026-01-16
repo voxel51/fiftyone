@@ -22,12 +22,6 @@ vi.mock("recoil", () => ({
     // Determine which atom is being accessed based on the atom's key or identity
     const atomKey = atom?.key || atom?.toString() || "";
 
-    if (atomKey.includes("stagedPolylineTransforms")) {
-      return mockStagedPolylineTransforms;
-    }
-    if (atomKey.includes("stagedCuboidTransforms")) {
-      return mockStagedCuboidTransforms;
-    }
     if (atomKey.includes("currentActiveAnnotationField")) {
       return mockCurrentActiveField;
     }
@@ -44,8 +38,6 @@ vi.mock("@fiftyone/state", () => ({
 }));
 
 vi.mock("../state", () => ({
-  stagedPolylineTransformsAtom: { key: "stagedPolylineTransforms" },
-  stagedCuboidTransformsAtom: { key: "stagedCuboidTransforms" },
   currentActiveAnnotationField3dAtom: { key: "currentActiveAnnotationField" },
   reconciledLabels3DSelector: { key: "reconciledLabels3DSelector" },
 }));
@@ -102,7 +94,11 @@ describe("useReconciledLabels3D", () => {
   describe("basic functionality", () => {
     it("returns empty arrays when rawOverlays is empty", () => {
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms: mockStagedPolylineTransforms ?? {},
+          stagedCuboidTransforms: mockStagedCuboidTransforms ?? {},
+        })
       );
 
       expect(result.current.detections).toEqual([]);
@@ -111,7 +107,11 @@ describe("useReconciledLabels3D", () => {
 
     it("syncs reconciled labels to state via effect", () => {
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms: mockStagedPolylineTransforms ?? {},
+          stagedCuboidTransforms: mockStagedCuboidTransforms ?? {},
+        })
       );
 
       // The useEffect should have called setReconciledLabels3D
@@ -124,7 +124,11 @@ describe("useReconciledLabels3D", () => {
       const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection] })
+        useReconciledLabels3D({
+          rawOverlays: [detection],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(1);
@@ -135,16 +139,20 @@ describe("useReconciledLabels3D", () => {
     it("merges detection with staged transform", () => {
       const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
 
-      mockStagedCuboidTransforms = {
+      const stagedCuboidTransforms = {
         "det-1": {
-          location: [10, 20, 30],
-          dimensions: [40, 50, 60],
-          rotation: [0.1, 0.2, 0.3],
+          location: [10, 20, 30] as [number, number, number],
+          dimensions: [40, 50, 60] as [number, number, number],
+          rotation: [0.1, 0.2, 0.3] as [number, number, number],
         },
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection] })
+        useReconciledLabels3D({
+          rawOverlays: [detection],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms,
+        })
       );
 
       expect(result.current.detections).toHaveLength(1);
@@ -154,15 +162,19 @@ describe("useReconciledLabels3D", () => {
     });
 
     it("creates new detection from staged transform when not in raw overlays", () => {
-      mockStagedCuboidTransforms = {
+      const stagedCuboidTransforms = {
         "new-det": {
-          location: [1, 2, 3],
-          dimensions: [4, 5, 6],
+          location: [1, 2, 3] as [number, number, number],
+          dimensions: [4, 5, 6] as [number, number, number],
         },
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms,
+        })
       );
 
       expect(result.current.detections).toHaveLength(1);
@@ -172,7 +184,7 @@ describe("useReconciledLabels3D", () => {
     });
 
     it("skips new detections missing required data (location or dimensions)", () => {
-      mockStagedCuboidTransforms = {
+      const stagedCuboidTransforms = {
         "incomplete-det": {
           location: [1, 2, 3],
           // Missing dimensions
@@ -180,7 +192,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms,
+        })
       );
 
       expect(result.current.detections).toHaveLength(0);
@@ -196,7 +212,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [invalidDetection] })
+        useReconciledLabels3D({
+          rawOverlays: [invalidDetection],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(0);
@@ -213,7 +233,11 @@ describe("useReconciledLabels3D", () => {
       ]);
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [polyline] })
+        useReconciledLabels3D({
+          rawOverlays: [polyline],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(1);
@@ -229,21 +253,25 @@ describe("useReconciledLabels3D", () => {
         ],
       ]);
 
-      mockStagedPolylineTransforms = {
+      const stagedPolylineTransforms = {
         "poly-1": {
           segments: [
             {
               points: [
                 [10, 20, 30],
                 [40, 50, 60],
-              ],
+              ] as [number, number, number][],
             },
           ],
         },
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [polyline] })
+        useReconciledLabels3D({
+          rawOverlays: [polyline],
+          stagedPolylineTransforms,
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(1);
@@ -256,14 +284,14 @@ describe("useReconciledLabels3D", () => {
     });
 
     it("creates new polyline from staged transform when not in raw overlays", () => {
-      mockStagedPolylineTransforms = {
+      const stagedPolylineTransforms = {
         "new-poly": {
           segments: [
             {
               points: [
                 [1, 2, 3],
                 [4, 5, 6],
-              ],
+              ] as [number, number, number][],
             },
           ],
           sampleId: mockCurrentSampleId,
@@ -271,7 +299,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms,
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(1);
@@ -281,14 +313,14 @@ describe("useReconciledLabels3D", () => {
     });
 
     it("skips new polylines for different sample", () => {
-      mockStagedPolylineTransforms = {
+      const stagedPolylineTransforms = {
         "other-sample-poly": {
           segments: [
             {
               points: [
                 [1, 2, 3],
                 [4, 5, 6],
-              ],
+              ] as [number, number, number][],
             },
           ],
           sampleId: "different-sample",
@@ -296,7 +328,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [] })
+        useReconciledLabels3D({
+          rawOverlays: [],
+          stagedPolylineTransforms,
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(0);
@@ -306,7 +342,11 @@ describe("useReconciledLabels3D", () => {
       const polyline = createPolylineOverlay("poly-1", []);
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [polyline] })
+        useReconciledLabels3D({
+          rawOverlays: [polyline],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(0);
@@ -322,7 +362,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [invalidPolyline] })
+        useReconciledLabels3D({
+          rawOverlays: [invalidPolyline],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.polylines).toHaveLength(0);
@@ -340,7 +384,11 @@ describe("useReconciledLabels3D", () => {
       ]);
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection, polyline] })
+        useReconciledLabels3D({
+          rawOverlays: [detection, polyline],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(1);
@@ -366,7 +414,11 @@ describe("useReconciledLabels3D", () => {
       ];
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: overlays })
+        useReconciledLabels3D({
+          rawOverlays: overlays,
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(2);
@@ -377,17 +429,21 @@ describe("useReconciledLabels3D", () => {
   describe("edge cases", () => {
     it("returns only existing overlays when currentSampleId is null", () => {
       mockCurrentSampleId = null;
-      mockStagedCuboidTransforms = {
+      const stagedCuboidTransforms = {
         "new-det": {
-          location: [1, 2, 3],
-          dimensions: [4, 5, 6],
+          location: [1, 2, 3] as [number, number, number],
+          dimensions: [4, 5, 6] as [number, number, number],
         },
       };
 
       const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection] })
+        useReconciledLabels3D({
+          rawOverlays: [detection],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms,
+        })
       );
 
       // Should process existing but not create new labels
@@ -395,26 +451,15 @@ describe("useReconciledLabels3D", () => {
       expect(result.current.detections[0]._id).toBe("det-1");
     });
 
-    it("handles null staged transforms", () => {
-      const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
-      mockStagedCuboidTransforms = null;
-      mockStagedPolylineTransforms = null;
-
-      const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection] })
-      );
-
-      expect(result.current.detections).toHaveLength(1);
-      expect(result.current.detections[0]._id).toBe("det-1");
-    });
-
     it("handles empty staged transforms", () => {
       const detection = createDetectionOverlay("det-1", [1, 2, 3], [4, 5, 6]);
-      mockStagedCuboidTransforms = {};
-      mockStagedPolylineTransforms = {};
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [detection] })
+        useReconciledLabels3D({
+          rawOverlays: [detection],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(1);
@@ -429,7 +474,11 @@ describe("useReconciledLabels3D", () => {
       };
 
       const { result } = renderHook(() =>
-        useReconciledLabels3D({ rawOverlays: [unknownOverlay] })
+        useReconciledLabels3D({
+          rawOverlays: [unknownOverlay],
+          stagedPolylineTransforms: {},
+          stagedCuboidTransforms: {},
+        })
       );
 
       expect(result.current.detections).toHaveLength(0);

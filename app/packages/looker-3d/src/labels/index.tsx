@@ -39,6 +39,8 @@ import {
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../state";
 import { Archetype3d } from "../types";
@@ -94,6 +96,9 @@ export const ThreeDLabels = ({
 
   const setEditingToExistingPolyline = useSetEditingToExistingPolyline();
   const setEditingToExistingCuboid = useSetEditingToExistingCuboid();
+
+  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
+  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -306,6 +311,8 @@ export const ThreeDLabels = ({
     polylines: reconciledPolyline3Ds,
   } = useReconciledLabels3D({
     rawOverlays,
+    stagedPolylineTransforms,
+    stagedCuboidTransforms,
   });
 
   const getOverlayColor = useCallback(
