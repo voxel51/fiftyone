@@ -147,5 +147,389 @@ class TestSAM2DetectionTypes:
         assert len(negative_keypoints.keypoints[0].points) == 2
 
 
+class TestSubtractNegativeBoxRegions:
+    """Test _subtract_negative_box_regions helper function directly"""
+
+    def test_2d_mask_single_box(self):
+        """Test subtraction on 2D mask (video model format)"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert result[15, 15] == 0
+        assert result[5, 5] == 1
+        assert result[50, 50] == 1
+
+    def test_3d_mask_single_box(self):
+        """Test subtraction on 3D mask (N, H, W)"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((3, 100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.2, 0.2, 0.3, 0.3])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        for i in range(3):
+            assert result[i, 35, 35] == 0
+            assert result[i, 10, 10] == 1
+
+    def test_4d_mask_single_box(self):
+        """Test subtraction on 4D mask (N, 1, H, W)"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((2, 1, 100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.5, 0.5, 0.2, 0.2])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        for i in range(2):
+            assert result[i, 0, 60, 60] == 0
+            assert result[i, 0, 10, 10] == 1
+
+    def test_multiple_boxes(self):
+        """Test subtraction with multiple negative boxes"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.0, 0.0, 0.2, 0.2]),
+            fol.Detection(bounding_box=[0.8, 0.8, 0.2, 0.2]),
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert result[10, 10] == 0
+        assert result[90, 90] == 0
+        assert result[50, 50] == 1
+
+    def test_returns_unmodified_for_none(self):
+        """Test that None detections returns mask unmodified"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        result = _subtract_negative_box_regions(mask, None, 100, 100)
+
+        assert np.all(result == 1)
+
+    def test_returns_unmodified_for_empty_detections(self):
+        """Test that empty detections list returns mask unmodified"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert np.all(result == 1)
+
+    def test_returns_unmodified_for_non_detections_type(self):
+        """Test that non-Detections type returns mask unmodified"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        keypoints = fol.Keypoints(keypoints=[
+            fol.Keypoint(points=[[0.5, 0.5]])
+        ])
+
+        result = _subtract_negative_box_regions(mask, keypoints, 100, 100)
+
+        assert np.all(result == 1)
+
+
+class TestSubtractNegativeBoxRegionsEdgeCases:
+    """Test edge cases for _subtract_negative_box_regions"""
+
+    def test_box_at_boundary(self):
+        """Test box that extends to image boundary"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.9, 0.9, 0.2, 0.2])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert result[95, 95] == 0
+        assert result[99, 99] == 0
+        assert result[85, 85] == 1
+
+    def test_box_completely_outside(self):
+        """Test box completely outside image bounds"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[1.5, 1.5, 0.2, 0.2])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert np.all(result == 1)
+
+    def test_zero_size_box(self):
+        """Test zero-size box does not modify mask"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.5, 0.5, 0.0, 0.0])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert np.all(result == 1)
+
+    def test_overlapping_boxes(self):
+        """Test overlapping boxes don't cause issues"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.2, 0.2, 0.4, 0.4]),
+            fol.Detection(bounding_box=[0.3, 0.3, 0.4, 0.4]),
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert result[40, 40] == 0
+        assert result[50, 50] == 0
+        assert result[10, 10] == 1
+
+    def test_full_image_box(self):
+        """Test box covering entire image"""
+        from fiftyone.utils.sam2 import _subtract_negative_box_regions
+
+        mask = np.ones((100, 100), dtype=np.float32)
+        neg = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.0, 0.0, 1.0, 1.0])
+        ])
+
+        result = _subtract_negative_box_regions(mask, neg, 100, 100)
+
+        assert np.all(result == 0)
+
+
+class TestImageModelForwardPassIntegration:
+    """Integration tests for image model forward pass with negative prompts"""
+
+    def test_forward_pass_applies_negative_subtraction(self):
+        """Test _forward_pass_boxes applies negative region subtraction"""
+        import torch
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+
+        h, w = 100, 100
+        model._curr_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(label="obj", bounding_box=[0.0, 0.0, 1.0, 1.0])
+            ])
+        ]
+        model._curr_classes = ["obj"]
+        model._curr_negative_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(bounding_box=[0.4, 0.4, 0.2, 0.2])
+            ])
+        ]
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.device = torch.device("cpu")
+        mock_predictor.predict.return_value = (
+            np.ones((1, h, w), dtype=np.float32),
+            np.array([0.95]),
+            None
+        )
+
+        model._load_predictor = mock.MagicMock(return_value=mock_predictor)
+
+        img = torch.ones((3, h, w))
+
+        def mock_to_abs_boxes(boxes, width, height, chunk_size=None):
+            box = boxes[0]
+            x1 = int(box[0] * width)
+            y1 = int(box[1] * height)
+            x2 = int((box[0] + box[2]) * width)
+            y2 = int((box[1] + box[3]) * height)
+            return np.array([[x1, y1, x2, y2]])
+
+        with mock.patch('fiftyone.utils.sam._to_sam_input', return_value=np.ones((h, w, 3))):
+            with mock.patch('fiftyone.utils.sam._to_abs_boxes', side_effect=mock_to_abs_boxes):
+                outputs = model._forward_pass_boxes([img])
+
+        result_mask = outputs[0]["masks"].numpy()
+        assert result_mask[0, 0, 50, 50] == 0
+        assert result_mask[0, 0, 10, 10] == 1
+
+    def test_forward_pass_without_negative_prompts(self):
+        """Test _forward_pass_boxes works without negative prompts"""
+        import torch
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+
+        h, w = 100, 100
+        model._curr_prompts = [
+            fol.Detections(detections=[
+                fol.Detection(label="obj", bounding_box=[0.0, 0.0, 0.5, 0.5])
+            ])
+        ]
+        model._curr_classes = ["obj"]
+        model._curr_negative_prompts = None
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.device = torch.device("cpu")
+        mock_predictor.predict.return_value = (
+            np.ones((1, h, w), dtype=np.float32),
+            np.array([0.95]),
+            None
+        )
+
+        model._load_predictor = mock.MagicMock(return_value=mock_predictor)
+
+        img = torch.ones((3, h, w))
+
+        with mock.patch('fiftyone.utils.sam._to_sam_input', return_value=np.ones((h, w, 3))):
+            with mock.patch('fiftyone.utils.sam._to_abs_boxes', return_value=np.array([[0, 0, 50, 50]])):
+                outputs = model._forward_pass_boxes([img])
+
+        result_mask = outputs[0]["masks"].numpy()
+        assert np.all(result_mask == 1)
+
+    def test_forward_pass_multiple_images_different_negatives(self):
+        """Test forward pass with multiple images having different negative prompts"""
+        import torch
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+
+        h, w = 100, 100
+        model._curr_prompts = [
+            fol.Detections(detections=[fol.Detection(label="a", bounding_box=[0, 0, 1, 1])]),
+            fol.Detections(detections=[fol.Detection(label="b", bounding_box=[0, 0, 1, 1])]),
+        ]
+        model._curr_classes = ["a", "b"]
+        model._curr_negative_prompts = [
+            fol.Detections(detections=[fol.Detection(bounding_box=[0.0, 0.0, 0.3, 0.3])]),
+            fol.Detections(detections=[fol.Detection(bounding_box=[0.7, 0.7, 0.3, 0.3])]),
+        ]
+
+        mock_predictor = mock.MagicMock()
+        mock_predictor.device = torch.device("cpu")
+        mock_predictor.predict.side_effect = lambda **kwargs: (
+            np.ones((1, h, w), dtype=np.float32),
+            np.array([0.95]),
+            None
+        )
+
+        model._load_predictor = mock.MagicMock(return_value=mock_predictor)
+
+        imgs = [torch.ones((3, h, w)), torch.ones((3, h, w))]
+
+        def mock_to_abs_boxes(boxes, width, height, chunk_size=None):
+            box = boxes[0]
+            x1 = int(box[0] * width)
+            y1 = int(box[1] * height)
+            x2 = int((box[0] + box[2]) * width)
+            y2 = int((box[1] + box[3]) * height)
+            return np.array([[x1, y1, x2, y2]])
+
+        with mock.patch('fiftyone.utils.sam._to_sam_input', return_value=np.ones((h, w, 3))):
+            with mock.patch('fiftyone.utils.sam._to_abs_boxes', side_effect=mock_to_abs_boxes):
+                outputs = model._forward_pass_boxes(imgs)
+
+        assert outputs[0]["masks"].numpy()[0, 0, 15, 15] == 0
+        assert outputs[0]["masks"].numpy()[0, 0, 85, 85] == 1
+        assert outputs[1]["masks"].numpy()[0, 0, 15, 15] == 1
+        assert outputs[1]["masks"].numpy()[0, 0, 85, 85] == 0
+
+
+class TestPredictAllNegativeFieldExtraction:
+    """Test predict_all extracts negative_prompt_field correctly"""
+
+    def test_extracts_negative_field_from_samples(self):
+        """Test predict_all extracts negative prompts from samples"""
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+        model._curr_negative_prompts = None
+        model.needs_fields = {
+            "prompt_field": "detections",
+            "negative_prompt_field": "neg_detections"
+        }
+
+        neg_det = fol.Detections(detections=[
+            fol.Detection(bounding_box=[0.1, 0.1, 0.2, 0.2])
+        ])
+
+        sample1 = mock.MagicMock()
+        sample1.get_field.return_value = neg_det
+        sample2 = mock.MagicMock()
+        sample2.get_field.return_value = None
+
+        model._get_field = mock.MagicMock(return_value="detections")
+        model._parse_samples = mock.MagicMock(return_value=(None, None, None))
+        model._predict_all = mock.MagicMock(return_value=[])
+
+        model.predict_all([], samples=[sample1, sample2])
+
+        assert model._curr_negative_prompts is not None
+        assert len(model._curr_negative_prompts) == 2
+        assert model._curr_negative_prompts[0] == neg_det
+        assert model._curr_negative_prompts[1] is None
+
+    def test_handles_missing_field_gracefully(self):
+        """Test predict_all handles samples missing the negative field"""
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+        model._curr_negative_prompts = None
+        model.needs_fields = {
+            "prompt_field": "detections",
+            "negative_prompt_field": "neg_detections"
+        }
+
+        sample = mock.MagicMock()
+        sample.id = "test123"
+        sample.get_field.side_effect = AttributeError("no field")
+
+        model._get_field = mock.MagicMock(return_value="detections")
+        model._parse_samples = mock.MagicMock(return_value=(None, None, None))
+        model._predict_all = mock.MagicMock(return_value=[])
+
+        model.predict_all([], samples=[sample])
+
+        assert model._curr_negative_prompts[0] is None
+
+    def test_strips_frames_prefix(self):
+        """Test predict_all strips frames. prefix from negative field"""
+        from fiftyone.utils.sam2 import SegmentAnything2ImageModel
+
+        model = SegmentAnything2ImageModel.__new__(SegmentAnything2ImageModel)
+        model._curr_negative_prompts = None
+        model.needs_fields = {
+            "prompt_field": "detections",
+            "negative_prompt_field": "frames.neg_detections"
+        }
+
+        sample = mock.MagicMock()
+        model._get_field = mock.MagicMock(return_value="detections")
+        model._parse_samples = mock.MagicMock(return_value=(None, None, None))
+        model._predict_all = mock.MagicMock(return_value=[])
+
+        model.predict_all([], samples=[sample])
+
+        sample.get_field.assert_called_with("neg_detections")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
