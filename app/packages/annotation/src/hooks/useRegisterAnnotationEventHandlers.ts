@@ -1,5 +1,5 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
-import { useCommandBus } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
 import { PersistAnnotationChanges } from "../commands";
 import { useNotification } from "@fiftyone/state";
 import { useCallback } from "react";
