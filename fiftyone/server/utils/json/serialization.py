@@ -4,11 +4,29 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
-from typing import Any
+import datetime
+from typing import Any, Union
 
 import fiftyone.core.labels as fol
 import fiftyone.core.sample as fos
+
+
+def _try_parse_datetime(value: str) -> Union[datetime.datetime, None]:
+    """Attempts to parse an ISO datetime string.
+
+    Args:
+        value: The string to parse
+
+    Returns:
+        The parsed datetime, or None if parsing fails.
+    """
+    try:
+        # Handle 'Z' suffix (UTC) by converting to +00:00
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        return datetime.datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def deserialize(value: Any) -> Any:
@@ -46,6 +64,9 @@ def deserialize(value: Any) -> Any:
                 )
 
             return cls.from_dict(value)
+        elif isinstance(value, str):
+            if parsed_dt := _try_parse_datetime(value):
+                return parsed_dt
 
     return value
 

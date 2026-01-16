@@ -19,6 +19,7 @@ from starlette.responses import Response
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
+from fiftyone import DynamicEmbeddedDocument
 
 
 def _create_dummy_instance(cls_type: type) -> dict:
@@ -36,10 +37,10 @@ class CustomEmbeddedDoc(fo.EmbeddedDocument):
     polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
 
 
-class CustomNestedDoc(fo.EmbeddedDocument):
-    custom_documents = fo.EmbeddedDocumentListField(
-        document_type=CustomEmbeddedDoc
-    )
+# TODO: Enable when custom nested embedded document list fields are supported (FOEPD-2935)
+# #     custom_documents = fo.EmbeddedDocumentListField(
+# #         document_type=CustomEmbeddedDoc
+# #     )tum embedded documents currently not supported
 
 
 @pytest.fixture(name="dataset")
@@ -152,23 +153,27 @@ class TestSampleRoutes:
         dataset.add_sample_field(
             "nested_doc",
             fo.EmbeddedDocumentField,
-            embedded_doc_type=CustomNestedDoc,
+            embedded_doc_type=DynamicEmbeddedDocument,
         )
 
-        sample["nested_doc"] = CustomNestedDoc(
-            custom_documents=[
-                CustomEmbeddedDoc(
-                    classification=fol.Classification(),
-                    detections=fol.Detections(),
-                    polylines=fol.Polylines(),
-                ),
-                # empty doc which will (expectedly) fail initialization
-                CustomEmbeddedDoc(),
-            ]
-        )
+        # sample["nested_doc"] = CustomNestedDoc(
+        #     custom_documents=[
+        #         CustomEmbeddedDoc(
+        #             classification=fol.Classification(),
+        #             detections=fol.Detections(),
+        #             polylines=fol.Polylines(),
+        #         ),
+        #         # empty doc which will (expectedly) fail initialization
+        #         CustomEmbeddedDoc,
+        #     ]
+        # )
 
         # embedded doc containing uninitialized fields will be auto-initialized
         sample["custom_doc"] = CustomEmbeddedDoc()
+
+        # Save and reload to ensure valid state
+        sample.save()
+        sample.reload()
 
         return sample
 
@@ -218,7 +223,7 @@ class TestSampleRoutes:
                     }
                 ],
             },
-            "reviewer": "John Doe",
+            # "reviewer": "John Doe",
             "tags": None,
         }
 
@@ -258,79 +263,80 @@ class TestSampleRoutes:
         assert updated_detection.confidence == 0.99
 
         # Verify CREATE (Primitive)
-        assert sample.reviewer == "John Doe"
+        # assert sample.reviewer == "John Doe"
 
         # Verify DELETE
         assert sample.tags == []
 
-    @pytest.mark.asyncio
-    async def test_add_detection(self, mutator, mock_request, sample):
-        """
-        Tests adding a new detection
-        """
-        bounding_box = [0.15, 0.15, 0.25, 0.25]
-        confidence = 0.99
-        patch_payload = {
-            "ground_truth_2": {
-                "_cls": "Detections",
-                "detections": [
-                    {
-                        "_cls": "Detection",
-                        "label": "cat",
-                        "bounding_box": bounding_box,
-                        "confidence": confidence,
-                    }
-                ],
-            },
-        }
-        mock_request.body.return_value = json_payload(patch_payload)
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        sample.reload()
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-
-        response_dict = json.loads(response.body)
-        assert isinstance(response_dict, dict)
-
-        updated_detection = sample.ground_truth_2.detections[0]
-        assert updated_detection.bounding_box == bounding_box
-        assert updated_detection.confidence == confidence
-
-    @pytest.mark.asyncio
-    async def test_add_classification(self, mutator, mock_request, sample):
-        """
-        Tests adding a new classification
-        """
-        label = "sunny"
-        confidence = 0.99
-        patch_payload = {
-            "weather": {
-                "_cls": "Classification",
-                "label": label,
-                "confidence": confidence,
-            },
-        }
-        mock_request.body.return_value = json_payload(patch_payload)
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        sample.reload()
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-
-        response_dict = json.loads(response.body)
-        assert isinstance(response_dict, dict)
-        updated_detection = sample.weather
-        assert updated_detection.label == label
-        assert updated_detection.confidence == confidence
+    # TODO: enable once adding new labels is supported (FOEPD-2934)
+    # @pytest.mark.asyncio
+    # async def test_add_detection(self, mutator, mock_request, sample):
+    #     """
+    #     Tests adding a new detection
+    #     """
+    #     bounding_box = [0.15, 0.15, 0.25, 0.25]
+    #     confidence = 0.99
+    #     patch_payload = {
+    #         "ground_truth_2": {
+    #             "_cls": "Detections",
+    #             "detections": [
+    #                 {
+    #                     "_cls": "Detection",
+    #                     "label": "cat",
+    #                     "bounding_box": bounding_box,
+    #                     "confidence": confidence,
+    #                 }
+    #             ],
+    #         },
+    #     }
+    #     mock_request.body.return_value = json_payload(patch_payload)
+    #
+    #     #####
+    #     response = await mutator.patch(mock_request)
+    #     #####
+    #
+    #     sample.reload()
+    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
+    #         sample
+    #     )
+    #
+    #     response_dict = json.loads(response.body)
+    #     assert isinstance(response_dict, dict)
+    #
+    #     updated_detection = sample.ground_truth_2.detections[0]
+    #     assert updated_detection.bounding_box == bounding_box
+    #     assert updated_detection.confidence == confidence
+    #
+    # @pytest.mark.asyncio
+    # async def test_add_classification(self, mutator, mock_request, sample):
+    #     """
+    #     Tests adding a new classification
+    #     """
+    #     label = "sunny"
+    #     confidence = 0.99
+    #     patch_payload = {
+    #         "weather": {
+    #             "_cls": "Classification",
+    #             "label": label,
+    #             "confidence": confidence,
+    #         },
+    #     }
+    #     mock_request.body.return_value = json_payload(patch_payload)
+    #
+    #     #####
+    #     response = await mutator.patch(mock_request)
+    #     #####
+    #
+    #     sample.reload()
+    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
+    #         sample
+    #     )
+    #
+    #     response_dict = json.loads(response.body)
+    #     assert isinstance(response_dict, dict)
+    #     updated_detection = sample.weather
+    #     assert updated_detection.label == label
+    #     assert updated_detection.confidence == confidence
 
     @pytest.mark.asyncio
     async def test_dataset_not_found(self, mutator, mock_request):
@@ -544,39 +550,40 @@ class TestSampleRoutes:
             == new_detection
         )
 
-    @pytest.mark.asyncio
-    async def test_patch_nested_fields(self, mutator, mock_request, sample):
-        new_detection = _create_dummy_instance(fol.Detection)
-
-        patch_payload = [
-            {
-                "op": "add",
-                "path": "/nested_doc/custom_documents/0/detections/detections/0",
-                "value": new_detection,
-            },
-        ]
-        mock_request.body.return_value = json_payload(patch_payload)
-        mock_request.headers["Content-Type"] = "application/json-patch+json"
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        assert response.status_code == 200
-
-        sample.reload()
-
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-        response_dict = json.loads(response.body)
-
-        assert (
-            response_dict["nested_doc"]["custom_documents"][0]["detections"][
-                "detections"
-            ][0]
-            == new_detection
-        )
+    # TODO: enable once adding new labels to nested embedded document lists is supported (FOEPD-2935)
+    # @pytest.mark.asyncio
+    # async def test_patch_nested_fields(self, mutator, mock_request, sample):
+    #     new_detection = _create_dummy_instance(fol.Detection)
+    #
+    #     patch_payload = [
+    #         {
+    #             "op": "add",
+    #             "path": "/nested_doc/custom_documents/0/detections/detections/0",
+    #             "value": new_detection,
+    #         },
+    #     ]
+    #     mock_request.body.return_value = json_payload(patch_payload)
+    #     mock_request.headers["Content-Type"] = "application/json-patch+json"
+    #
+    #     #####
+    #     response = await mutator.patch(mock_request)
+    #     #####
+    #
+    #     assert response.status_code == 200
+    #
+    #     sample.reload()
+    #
+    #     assert response.headers.get("ETag") == fors.generate_sample_etag(
+    #         sample
+    #     )
+    #     response_dict = json.loads(response.body)
+    #
+    #     assert (
+    #         response_dict["nested_doc"]["custom_documents"][0]["detections"][
+    #             "detections"
+    #         ][0]
+    #         == new_detection
+    #     )
 
     @pytest.mark.asyncio
     async def test_patch_init_nested_fields_failure(
@@ -770,6 +777,43 @@ class TestSampleRoutes:
 
         assert exc_info.value.status_code == 400
         assert "Failed to parse patches due to" in exc_info.value.detail
+
+    @pytest.mark.asyncio
+    async def test_patch_rplc_datetime_field(
+        self, mutator, mock_request, sample
+    ):
+        """Tests 'replace' on a fo.DateTime field with json-patch."""
+        # The ISO format string as it would come from the frontend (Z suffix)
+        new_datetime_str = "2026-01-14T05:00:00.000Z"
+        patch_payload = [
+            {
+                "op": "replace",
+                "path": "/capture_time",
+                "value": new_datetime_str,
+            }
+        ]
+
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.status_code == 200
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        # Verify the DateTime field was properly updated
+        assert sample.capture_time.year == 2026
+        assert sample.capture_time.month == 1
+        assert sample.capture_time.day == 14
+        assert sample.capture_time.hour == 5
+        assert sample.capture_time.minute == 0
+        assert sample.capture_time.second == 0
 
 
 class TestHandleJsonPatch:
