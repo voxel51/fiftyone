@@ -10,7 +10,8 @@ import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { activePrimitiveAtom, editing } from "./Edit/state";
+import { editing } from "./Edit/state";
+import useActivePrimitive from "./Edit/useActivePrimitive";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import { useSampleValue } from "./useSampleValue";
 
@@ -71,7 +72,7 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const field = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const value = useSampleValue(path);
   const timeZone = useRecoilValue(fos.timeZone);
-  const setPrimitivePath = useSetAtom(activePrimitiveAtom);
+  const [, setActivePrimitive] = useActivePrimitive();
   const { isReadOnly } = useReadOnly(path);
   const setEditingAtom = useSetAtom(editing);
 
@@ -93,7 +94,7 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const handleClick = () => {
     if (isReadOnly) return;
     setEditingAtom(PRIMITIVE);
-    setPrimitivePath(path);
+    setActivePrimitive(path);
   };
 
   return (

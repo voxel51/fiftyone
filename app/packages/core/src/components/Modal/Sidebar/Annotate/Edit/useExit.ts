@@ -15,17 +15,12 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import {
-  activePrimitiveAtom,
-  current,
-  currentOverlay,
-  hasChanges,
-  savedLabel,
-} from "./state";
+import { current, currentOverlay, hasChanges, savedLabel } from "./state";
+import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
-  const setPrimitive = useSetAtom(activePrimitiveAtom);
+  const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
@@ -80,7 +75,7 @@ export default function useExit(revertLabel = true) {
     const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
-      setPrimitive(null);
+      setActivePrimitive(null);
     };
 
     if (!label || !revertLabel) {
