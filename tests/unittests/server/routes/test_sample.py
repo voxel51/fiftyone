@@ -39,9 +39,9 @@ class CustomEmbeddedDoc(fo.EmbeddedDocument):
 
 
 # TODO: Enable when custom nested embedded document list fields are supported (FOEPD-2935)
-# #     custom_documents = fo.EmbeddedDocumentListField(
-# #         document_type=CustomEmbeddedDoc
-# #     )
+#     custom_documents = fo.EmbeddedDocumentListField(
+#         document_type=CustomEmbeddedDoc
+#     )
 
 
 @pytest.fixture(name="dataset")
@@ -112,7 +112,7 @@ class TestSampleRoutes:
             ]
         )
         sample["primitive_field"] = "initial_value"
-        sample["capture_time"] = datetime.datetime.now()
+        sample["capture_time"] = datetime.datetime.now(datetime.timezone.utc)
 
         dataset.add_sample(sample)
 
