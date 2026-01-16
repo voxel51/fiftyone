@@ -24,6 +24,27 @@ from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 logger = logging.getLogger(__name__)
 
 
+def datetimes_match(
+    dt1: datetime.datetime, dt2: datetime.datetime, tolerance_ms: int = 1
+) -> bool:
+    """Compare datetimes with tolerance for precision differences.
+
+    When comparing datetimes from different sources (e.g., MongoDB vs parsed
+    ISO string), precision may differ. This function compares them with a
+    small tolerance to account for microsecond truncation.
+
+    Args:
+        dt1: First datetime
+        dt2: Second datetime
+        tolerance_ms: Maximum allowed difference in milliseconds (default: 1)
+
+    Returns:
+        True if the datetimes match within the tolerance
+    """
+    diff = abs((dt1 - dt2).total_seconds() * 1000)
+    return diff <= tolerance_ms
+
+
 def get_if_last_modified_at(
     request: Request,
 ) -> Union[datetime.datetime, None]:
@@ -100,13 +121,13 @@ def get_sample(
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
-        logger.debug(
-            "If-Match condition failed for sample %s: %s != %s",
-            sample.id,
-            sample.last_modified_at,
-            if_last_modified_at,
-        )
-        if sample.last_modified_at != if_last_modified_at:
+        if not datetimes_match(sample.last_modified_at, if_last_modified_at):
+            logger.debug(
+                "If-Match condition failed for sample %s: %s != %s",
+                sample.id,
+                sample.last_modified_at,
+                if_last_modified_at,
+            )
             raise HTTPException(
                 status_code=412, detail="If-Match condition failed"
             )
