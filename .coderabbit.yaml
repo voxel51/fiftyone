@@ -36,6 +36,8 @@ reviews:
       - "WIP"
       - "DO NOT MERGE"
       - "DRAFT"
+      - "MERGE OSS"
+      - "OSS MERGE"
     drafts: false
     base_branches:
       - "develop"
