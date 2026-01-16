@@ -144,13 +144,9 @@ def add(
 
                     target.insert(idx, value)
         else:
-            # try:
             setattr(target, name, value)
-            # except AttributeError as err:
-            #     raise err
 
     except Exception as err:
-        print(err)
         raise ValueError(
             f"Unable to add value with path: {pointer.path}"
         ) from err
