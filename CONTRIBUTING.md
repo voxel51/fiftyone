@@ -2,7 +2,12 @@
 
 FiftyOne is open source and community contributions are welcome!
 
-If you haven’t already, we highly recommend reviewing the [contribution guide](https://docs.voxel51.com/contribute/index.html) to get a sense of how you can get involved with FiftyOne. There are many ways to contribute, and you don’t need to start by writing code. You can help by reporting bugs or sharing feedback, fixing issues or improving existing code, enhancing documentation or adding examples, building plugins such as models, datasets, panels, or tools, creating tutorials, recipes, or demos, or by helping answer questions and reviewing ideas from the community.
+If you haven’t already, we highly recommend reviewing the
+[contribution guide](https://docs.voxel51.com/contribute/index.html)
+to get a sense of how you can get involved with FiftyOne. There are 
+many ways to contribute, including reporting bugs, improving
+documentation, enhancing existing code, or helping the community through
+reviews and discussions.
 
 Don't be intimidated by the procedures outlined below. They are not dogmatic
 and are only meant to help guide development as the project and number of
