@@ -27,12 +27,12 @@ export default function Confirmation({ children }: PropsWithChildren) {
   const label = useAtomValue(current);
   useCreateCommand(
     KnownContexts.Modal,
-    "fo.modal.delete.annotation",
+    KnownCommands.ModalDeleteAnnotation,
     () => {
       confirmDelete();
     },
     () => {
-      return label ? true : false;
+      return !!label;
     },
     "Delete",
     "Delete label"
