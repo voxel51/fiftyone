@@ -402,8 +402,8 @@ myst:
             size_bytes = model.get("size_bytes")
             size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
             packages = req.get("packages") or []
-            supports_cpu = "yes" if req.get("cpu", {}).get("support") else "no"
-            supports_gpu = "yes" if req.get("gpu", {}).get("support") else "no"
+            supports_cpu = "yes" if (req.get("cpu") or {}).get("support") else "no"
+            supports_gpu = "yes" if (req.get("gpu") or {}).get("support") else "no"
             model_slug = re.sub(r"[^\w]", "_", name)
             safe_name = plugin_name.replace("-", "--").replace("_", "__")
 
