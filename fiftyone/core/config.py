@@ -156,11 +156,17 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_ML_BACKEND",
             default=None,
         )
+        self.default_model_batch_size = self.parse_int(
+            d,
+            "default_model_batch_size",
+            env_var="FIFTYONE_DEFAULT_MODEL_BATCH_SIZE",
+            default=1,
+        )
         self.default_batch_size = self.parse_int(
             d,
             "default_batch_size",
             env_var="FIFTYONE_DEFAULT_BATCH_SIZE",
-            default=None,
+            default=16,
         )
         self.default_batcher = self.parse_string(
             d,

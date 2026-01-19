@@ -58,11 +58,13 @@ def apply_model(
     classes=None,
     store_logits=False,
     batch_size=None,
+    dataloader_batch_size=None,
     num_workers=None,
     skip_failures=True,
     output_dir=None,
     rel_dir=None,
     progress=None,
+    prefetch_factor=None,
     **kwargs,
 ):
     """Applies the model to the samples in the collection.
@@ -87,8 +89,13 @@ def apply_model(
         store_logits (False): whether to store logits for the model
             predictions. This is only supported when the provided ``model`` has
             logits, ``model.has_logits == True``
-        batch_size (None): an optional batch size to use, if the model supports
-            batching
+        batch_size (None): an optional batch size to use for model forward
+            passes. If None, uses ``fiftyone.config.default_model_batch_size``
+        dataloader_batch_size (None): an optional batch size to use for data
+            iteration (DataLoader batching). If None, uses
+            ``fiftyone.config.default_batch_size``, falling back to
+            ``batch_size`` for backward compatibility. Only applicable for
+            Torch-based models
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
@@ -108,6 +115,9 @@ def apply_model(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        prefetch_factor: number of batches to prefetch across all workers. Only
+            applicable for Torch-based models. By default, this is set to
+            ``fiftyone.config.default_dataloader_prefetch_factor``
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -182,11 +192,18 @@ def apply_model(
         samples.media_type == fom.VIDEO and model.media_type == "image"
     )
 
+    data_batch_size, model_batch_size = _parse_batch_size(
+        batch_size=batch_size,
+        dataloader_batch_size=dataloader_batch_size,
+        model=model,
+    )
+
     use_data_loader = (
         isinstance(model, (SupportsGetItem, TorchModelMixin))
         and not process_video_frames
+        and data_batch_size is not None
+        and data_batch_size > 1
     )
-
     if num_workers is not None and not use_data_loader:
         logger.warning("Ignoring unsupported `num_workers` parameter")
 
@@ -227,6 +244,11 @@ def apply_model(
                 fou.SetAttributes(model, needs_fields=needs_fields)
             )
 
+        # Set model batch size for Torch models to enable sub-batching
+        if isinstance(model, fout.TorchImageModel):
+            context.enter_context(
+                fou.SetAttributes(model, model_batch_size=model_batch_size)
+            )
         context.enter_context(model)
 
         if model.media_type == "video":
@@ -241,19 +263,17 @@ def apply_model(
                 progress,
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
-
         if process_video_frames:
             label_field, _ = samples._handle_frame_field(label_field)
 
-            if batch_size is not None:
+            if data_batch_size is not None:
                 return _apply_image_model_to_frames_batch(
                     samples,
                     model,
                     label_field,
                     confidence_thresh,
                     classes,
-                    batch_size,
+                    data_batch_size,
                     skip_failures,
                     filename_maker,
                     progress,
@@ -277,22 +297,23 @@ def apply_model(
                 label_field,
                 confidence_thresh,
                 classes,
-                batch_size,
+                data_batch_size,
                 num_workers,
                 skip_failures,
                 filename_maker,
                 progress,
                 field_mapping,
+                prefetch_factor=prefetch_factor,
             )
 
-        if batch_size is not None:
+        if data_batch_size > 1:
             return _apply_image_model_batch(
                 samples,
                 model,
                 label_field,
                 confidence_thresh,
                 classes,
-                batch_size,
+                data_batch_size,
                 skip_failures,
                 filename_maker,
                 progress,
@@ -455,6 +476,7 @@ def _apply_image_model_data_loader(
     filename_maker,
     progress,
     field_mapping,
+    prefetch_factor=None,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
@@ -465,6 +487,7 @@ def _apply_image_model_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        prefetch_factor=prefetch_factor,
     )
 
     samples = _select_fields_for_inference(samples, model)
@@ -516,7 +539,7 @@ def _apply_image_model_data_loader(
                     exc_info=True,
                 )
 
-            pb.update(len(sample_batch))
+            pb.update(batch_size)
 
 
 def _apply_image_model_to_frames_single(
@@ -849,14 +872,26 @@ def _make_data_loader(
     num_workers,
     skip_failures,
     field_mapping,
+    prefetch_factor=None,
 ):
+    import torch
+
+    if batch_size is None:
+        raise ValueError("batch_size cannot be None")
     # This function supports DataLoaders that emit numpy arrays that can
     # therefore be used for non-Torch models; but we do not currently use this
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
     num_workers = fout.recommend_num_workers(num_workers)
-
+    # Avoid CPU oversubscription when using multiple DataLoader workers
+    # as this can lead to degraded performance:
+    # https://docs.pytorch.org/docs/stable/notes/multiprocessing.html#avoid-cpu-oversubscription
+    if num_workers > 0:
+        num_threads = torch.get_num_threads()
+        torch.set_num_threads(
+            min(max(fou.get_cpu_count() // num_workers, 1), num_threads)
+        )
     if model.has_collate_fn:
         user_collate_fn = model.collate_fn
     else:
@@ -868,9 +903,6 @@ def _make_data_loader(
         use_numpy=use_numpy,
         user_collate_fn=user_collate_fn,
     )
-
-    if batch_size is None:
-        batch_size = 1
 
     if isinstance(model, SupportsGetItem):
         get_item = model.build_get_item(field_mapping=field_mapping)
@@ -896,6 +928,7 @@ def _make_data_loader(
         pin_memory=pin_memory,
         persistent_workers=False,
         worker_init_fn=worker_init_fn,
+        prefetch_factor=prefetch_factor if num_workers else None,
     )
 
 
@@ -904,9 +937,11 @@ def compute_embeddings(
     model,
     embeddings_field=None,
     batch_size=None,
+    dataloader_batch_size=None,
     num_workers=None,
     skip_failures=True,
     progress=None,
+    prefetch_factor=None,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
@@ -931,8 +966,13 @@ def compute_embeddings(
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
-        batch_size (None): an optional batch size to use, if the model supports
-            batching
+        batch_size (None): an optional batch size to use for model forward
+            passes. If None, uses ``fiftyone.config.default_model_batch_size``
+        dataloader_batch_size (None): an optional batch size to use for data
+            iteration (DataLoader batching). If None, uses
+            ``fiftyone.config.default_batch_size``, falling back to
+            ``batch_size`` for backward compatibility. Only applicable for
+            Torch-based models
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch-based models
         skip_failures (True): whether to gracefully continue without raising an
@@ -941,6 +981,9 @@ def compute_embeddings(
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
+        prefetch_factor (None): number of batches to prefetch across all
+            workers. Only applicable for Torch-based models. By default, this
+            is set to ``fiftyone.config.default_dataloader_prefetch_factor``
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -1013,9 +1056,18 @@ def compute_embeddings(
         samples.media_type == fom.VIDEO and model.media_type == "image"
     )
 
+    # Parse batch sizes before determining execution path
+    data_batch_size, model_batch_size = _parse_batch_size(
+        batch_size=batch_size,
+        dataloader_batch_size=dataloader_batch_size,
+        model=model,
+    )
+
     use_data_loader = (
         isinstance(model, (SupportsGetItem, TorchModelMixin))
         and not process_video_frames
+        and data_batch_size is not None
+        and data_batch_size > 1
     )
 
     if num_workers is not None and not use_data_loader:
@@ -1038,6 +1090,11 @@ def compute_embeddings(
         if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
+        # Set model batch size for Torch models to enable sub-batching
+        if isinstance(model, fout.TorchImageModel):
+            context.enter_context(
+                fou.SetAttributes(model, model_batch_size=model_batch_size)
+            )
         context.enter_context(model)
 
         if model.media_type == "video":
@@ -1045,15 +1102,13 @@ def compute_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
             )
 
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
-
         if process_video_frames:
-            if batch_size is not None:
+            if data_batch_size is not None:
                 return _compute_frame_embeddings_batch(
                     samples,
                     model,
                     embeddings_field,
-                    batch_size,
+                    data_batch_size,
                     skip_failures,
                     progress,
                 )
@@ -1067,19 +1122,20 @@ def compute_embeddings(
                 samples,
                 model,
                 embeddings_field,
-                batch_size,
+                data_batch_size,
                 num_workers,
                 skip_failures,
                 progress,
                 field_mapping,
+                prefetch_factor=prefetch_factor,
             )
 
-        if batch_size is not None:
+        if data_batch_size is not None:
             return _compute_image_embeddings_batch(
                 samples,
                 model,
                 embeddings_field,
-                batch_size,
+                data_batch_size,
                 skip_failures,
                 progress,
             )
@@ -1194,6 +1250,7 @@ def _compute_image_embeddings_data_loader(
     skip_failures,
     progress,
     field_mapping,
+    prefetch_factor=None,
 ):
     data_loader = _make_data_loader(
         samples,
@@ -1202,6 +1259,7 @@ def _compute_image_embeddings_data_loader(
         num_workers,
         skip_failures,
         field_mapping,
+        prefetch_factor=prefetch_factor,
     )
 
     samples = _select_fields_for_embeddings(samples, embeddings_field)
@@ -1486,6 +1544,7 @@ def compute_patch_embeddings(
     alpha=None,
     handle_missing="skip",
     batch_size=None,
+    dataloader_batch_size=None,
     num_workers=None,
     skip_failures=True,
     progress=None,
@@ -1534,8 +1593,13 @@ def compute_patch_embeddings(
             -   "image": use the whole image as a single patch
             -   "error": raise an error
 
-        batch_size (None): an optional batch size to use, if the model supports
-            batching
+        batch_size (None): an optional batch size to use for model forward
+            passes. If None, uses ``fiftyone.config.default_model_batch_size``
+        dataloader_batch_size (None): an optional batch size to use for data
+            iteration (DataLoader batching). If None, uses
+            ``fiftyone.config.default_batch_size``, falling back to
+            ``batch_size`` for backward compatibility. Only applicable for
+            Torch-based models
         num_workers (None): the number of workers to use when loading images.
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an
@@ -1587,9 +1651,17 @@ def compute_patch_embeddings(
 
     process_video_frames = samples.media_type == fom.VIDEO
 
+    data_batch_size, model_batch_size = _parse_batch_size(
+        batch_size=batch_size,
+        dataloader_batch_size=dataloader_batch_size,
+        model=model,
+    )
+
     use_data_loader = (
         isinstance(model, (SupportsGetItem, TorchModelMixin))
         and not process_video_frames
+        and data_batch_size is not None
+        and data_batch_size > 1
     )
 
     if num_workers is not None and not use_data_loader:
@@ -1640,9 +1712,12 @@ def compute_patch_embeddings(
         if use_data_loader:
             context.enter_context(fou.SetAttributes(model, preprocess=False))
 
+        # Set model batch size for Torch models to enable sub-batching
+        if isinstance(model, fout.TorchImageModel):
+            context.enter_context(
+                fou.SetAttributes(model, model_batch_size=model_batch_size)
+            )
         context.enter_context(model)
-
-        batch_size = _parse_batch_size(batch_size, model, use_data_loader)
 
         if process_video_frames:
             return _embed_frame_patches(
@@ -1653,7 +1728,7 @@ def compute_patch_embeddings(
                 force_square,
                 alpha,
                 handle_missing,
-                batch_size,
+                data_batch_size,
                 skip_failures,
                 progress,
             )
@@ -1667,7 +1742,7 @@ def compute_patch_embeddings(
                 force_square,
                 alpha,
                 handle_missing,
-                batch_size,
+                data_batch_size,
                 num_workers,
                 skip_failures,
                 progress,
@@ -1681,7 +1756,7 @@ def compute_patch_embeddings(
             force_square,
             alpha,
             handle_missing,
-            batch_size,
+            data_batch_size,
             skip_failures,
             progress,
         )
@@ -1977,8 +2052,6 @@ def _make_patch_data_loader(
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
-    num_workers = fout.recommend_num_workers(num_workers)
-
     dataset = fout.TorchImagePatchesDataset(
         samples=samples,
         patches_field=patches_field,
@@ -2004,18 +2077,55 @@ def _patch_collate_fn(batch):
     return batch[0]  # return patches directly
 
 
-def _parse_batch_size(batch_size, model, use_data_loader):
+def _parse_batch_size(*, batch_size, dataloader_batch_size, model):
+    """Parses batch sizes for data iteration and model forward pass.
+
+    This function intelligently determines optimal batch sizes based on:
+    - User-provided values (highest priority)
+    - Model's recommended batch size (if specified)
+    - Global config defaults
+
+    Args:
+        batch_size: Model forward pass batch size (None uses model's recommendation
+                    or default_model_batch_size)
+        dataloader_batch_size: DataLoader batch size (None uses default_batch_size,
+                               then falls back to batch_size)
+        model: The model instance
+
+    Returns:
+        tuple: (data_batch_size, model_batch_size)
+    """
+    # Handle ragged batches - force both to 1
+    if model.ragged_batches:
+        if batch_size and batch_size > 1:
+            logger.warning("Model does not support batching.")
+        if dataloader_batch_size and dataloader_batch_size > 1:
+            logger.warning("Model does not support batching.")
+        return 1, 1
+
+    # Determine model batch size
     if batch_size is None:
-        batch_size = fo.config.default_batch_size
+        # Check if model specifies a recommended batch size
+        if hasattr(model, "recommended_batch_size"):
+            model_batch_size = model.recommended_batch_size
+        else:
+            model_batch_size = fo.config.default_model_batch_size
+    else:
+        # User explicitly set batch_size - respect their choice
+        model_batch_size = batch_size
 
-    if batch_size is not None and batch_size > 1 and model.ragged_batches:
-        logger.warning("Model does not support batching")
-        batch_size = None
+    # Determine DataLoader batch size
+    if dataloader_batch_size is None:
+        # Try config default first
+        data_batch_size = fo.config.default_batch_size
+        if data_batch_size is None:
+            # Fall back to model batch size for backward compatibility
+            data_batch_size = model_batch_size
+    else:
+        # User explicitly set dataloader_batch_size - respect their choice
+        data_batch_size = dataloader_batch_size
 
-    if use_data_loader and batch_size is None:
-        batch_size = 1
-
-    return batch_size
+    return data_batch_size, model_batch_size
 
 
 def _select_fields_for_patch_embeddings(samples, patches_field):
