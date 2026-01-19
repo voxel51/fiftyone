@@ -1,47 +1,42 @@
-import { useCallback, useEffect, useRef } from "react";
-import { CommandContext } from "../context";
-import { CommandFunction } from "../types";
+import { useCallback, useMemo } from "react";
+import { CommandContext, CommandContextManager } from "../context";
+import { useCommandContext } from "./useCommandContext";
+import { CommandHookReturn } from ".";
 
+export type CommandDescriptor = {
+  id: string;
+  label: string;
+  description: string;
+};
 /**
- * Hook to create and register a command in a given context.
- * The command is unregistered on unmount.
- * @param context An acquired context @see useCommandContext
- * @param id The id of the command
- * @param execFn The function to call when the command is executed
- * @param enablement A function to determine if the command is enabled
- * @param label The short name of the command, ie Edit, Save, etc
- * @param description A longer description fit for a tooltip
- * @returns A function to invoke the command
+ * Gets a previously registered command @see useCreateCommand.
+ * @param commandId A command id
+ * @param context The context the command is bound to.  If not
+ * provided the active context is checked.
+ * @returns A callback to invoke the command and the command object.
  */
 export const useCommand = (
-  context: CommandContext,
-  id: string,
-  execFn: CommandFunction,
-  enablement: () => boolean,
-  label?: string,
-  description?: string
-) => {
-  const exec = useRef(execFn);
-  const enable = useRef(enablement);
-  useEffect(() => {
-    exec.current = execFn;
-    enable.current = enablement;
-  }, [execFn, enablement]);
-
-  useEffect(() => {
-    const cmd = context.registerCommand(
-      id,
-      () => exec.current(),
-      () => enable.current(),
-      label,
-      description
+  commandId: string,
+  context?: string | CommandContext
+): CommandHookReturn => {
+  const boundContext = useCommandContext(context);
+  const command = useMemo(() => {
+    return boundContext.context.getCommand(commandId);
+  }, [commandId, boundContext.context]);
+  if (!command) {
+    throw new Error(
+      `useCommand: commandId ${commandId} could not be found in context ${boundContext.context.id}`
     );
-    return () => {
-      context.unregisterCommand(cmd.id);
-    };
-  }, [context, id, exec, enable, label, description]);
-
-  return useCallback(async () => {
-    return await context.executeCommand(id);
-  }, [id, context]);
+  }
+  const execute = useCallback(() => {
+    CommandContextManager.instance().executeCommand(commandId);
+  }, [commandId]);
+  return {
+    callback: execute,
+    descriptor: {
+      id: command.id,
+      label: command.label ?? "",
+      description: command.description ?? "",
+    },
+  };
 };

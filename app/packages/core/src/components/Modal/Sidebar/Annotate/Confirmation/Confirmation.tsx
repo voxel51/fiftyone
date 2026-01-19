@@ -1,4 +1,3 @@
-import { useKeydownHandler } from "@fiftyone/state";
 import type { PropsWithChildren } from "react";
 import { createContext, useCallback } from "react";
 import useDelete from "../Edit/useDelete";
@@ -6,10 +5,16 @@ import useExit from "../Edit/useExit";
 import useSave from "../Edit/useSave";
 import { useConfirmDelete } from "./useConfirmDelete";
 import useConfirmExit from "./useConfirmExit";
-
+import {
+  KnownCommands,
+  KnownContexts,
+  useCreateCommand,
+  useKeyBinding,
+} from "@fiftyone/commands";
+import { useAtomValue } from "jotai";
+import { current } from "../Edit/state";
 export const ConfirmationContext = createContext({
-  onDelete: () => { },
-  onExit: () => { },
+  onExit: () => {},
 });
 
 export default function Confirmation({ children }: PropsWithChildren) {
@@ -19,17 +24,28 @@ export default function Confirmation({ children }: PropsWithChildren) {
     useExit(),
     useSave()
   );
-
-  useKeydownHandler((e) => {
-    if (e.key === "Delete") {
+  const label = useAtomValue(current);
+  useCreateCommand(
+    KnownContexts.Modal,
+    "fo.modal.delete.annotation",
+    () => {
       confirmDelete();
-    }
-  });
+    },
+    () => {
+      return label ? true : false;
+    },
+    "Delete",
+    "Delete label"
+  );
 
+  useKeyBinding(
+    KnownCommands.ModalDeleteAnnotation,
+    "delete",
+    KnownContexts.Modal
+  );
   return (
     <ConfirmationContext.Provider
       value={{
-        onDelete: confirmDelete,
         onExit: useCallback(() => confirmExit(() => null), [confirmExit]),
       }}
     >
