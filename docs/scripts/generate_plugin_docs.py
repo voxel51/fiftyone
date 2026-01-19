@@ -463,7 +463,7 @@ myst:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    foz.register_zoo_model_source("{github_url}", overwrite=True)
+    foz.register_zoo_model_source("{github_url}")
 
     dataset = foz.load_zoo_dataset(
         "coco-2017",
