@@ -392,21 +392,21 @@ myst:
                 continue
 
             description = self._clean_description(model.get("description", ""))
-            tags = model.get("tags", [])
+            tags = model.get("tags") or []
             source = model.get("source", "")
             author = model.get("author")
             license_str = model.get("license")
             req = model.get("requirements") or {}
             size_bytes = model.get("size_bytes")
             size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
-            packages = req.get("packages", [])
+            packages = req.get("packages") or []
             supports_cpu = "yes" if req.get("cpu", {}).get("support") else "no"
             supports_gpu = "yes" if req.get("gpu", {}).get("support") else "no"
             model_slug = re.sub(r"[^\w]", "_", name)
             safe_name = plugin_name.replace("-", "--").replace("_", "__")
 
             content = f"""
-.. _model-zoo-{name}:
+.. _model-zoo-{model_slug}:
 
 {name}
 {"_" * len(name)}
