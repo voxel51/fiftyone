@@ -362,6 +362,8 @@ myst:
             if resp.status_code != 200:
                 return None
             data = resp.json()
+            if not isinstance(data, dict):
+                return None
             return data.get("models", [])
         except (requests.RequestException, ValueError) as e:
             logger.debug(f"No manifest found at {url}: {e}")
