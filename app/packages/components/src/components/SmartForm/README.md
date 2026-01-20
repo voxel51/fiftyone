@@ -107,6 +107,7 @@ interface SmartFormProps {
     data?: unknown; // Initial form data
     uiSchema?: UiSchema; // Override generated UI schema
     validator?: ValidatorType; // Custom JSON Schema validator (optional)
+    formProps?: FormProps; // Additional RJSF form props (e.g., liveValidate)
     onChange?: (data: unknown) => void; // Change handler
     onSubmit?: (data: unknown) => void; // Submit handler
 }
@@ -114,13 +115,21 @@ interface SmartFormProps {
 
 ### Prop Details
 
-- **`schema`**: SchemaIO format schema. Either `schema` or `jsonSchema` is required.
-- **`jsonSchema`**: JSON Schema format. Either `schema` or `jsonSchema` is required.
-- **`data`**: Initial form data to populate the form fields.
-- **`uiSchema`**: Custom UI Schema to override auto-generated UI configurations.
-- **`validator`**: Custom validator for JSON Schema validation. Defaults to `@rjsf/validator-ajv8` if not provided.
-- **`onChange`**: Callback fired when form data changes. Receives updated data.
-- **`onSubmit`**: Callback fired when form is submitted. Receives final data.
+-   **`schema`**: SchemaIO format schema. Either `schema` or `jsonSchema` is
+    required.
+-   **`jsonSchema`**: JSON Schema format. Either `schema` or `jsonSchema` is
+    required.
+-   **`data`**: Initial form data to populate the form fields.
+-   **`uiSchema`**: Custom UI Schema to override auto-generated UI
+    configurations.
+-   **`validator`**: Custom validator for JSON Schema validation. Defaults to
+    `@rjsf/validator-ajv8` if not provided.
+-   **`formProps`**: Additional props to pass to the underlying RJSF Form
+    component. Use this to enable features like `liveValidate: true` for
+    real-time validation.
+-   **`onChange`**: Callback fired when form data changes. Receives updated
+    data.
+-   **`onSubmit`**: Callback fired when form is submitted. Receives final data.
 
 ---
 
@@ -219,17 +228,16 @@ const uiSchema = {
 
 ### Validation
 
-SmartForm supports both live validation (as users type) and submit-time validation.
+SmartForm supports JSON Schema validation via the RJSF library. By default,
+validation occurs on form submission. To enable live validation (as users
+type), pass `liveValidate: true` in the `formProps`.
 
-#### Live Validation (Default)
+#### Enable Live Validation
 
-By default, SmartForm validates fields in real-time as users interact with the form:
+To validate fields in real-time as users interact with the form:
 
 ```tsx
-<SmartForm
-    schema={schema}
-    data={data}
-/>
+<SmartForm schema={schema} data={data} formProps={{ liveValidate: true }} />
 ```
 
 #### Custom Validator
@@ -246,10 +254,7 @@ const customValidator = customizeValidator({
     },
 });
 
-<SmartForm
-    schema={schema}
-    validator={customValidator}
-/>;
+<SmartForm schema={schema} validator={customValidator} />;
 ```
 
 #### Validation Example
@@ -272,10 +277,7 @@ const schema = {
     },
 };
 
-<SmartForm
-    schema={schema}
-    onChange={(data) => console.log(data)}
-/>;
+<SmartForm schema={schema} onChange={(data) => console.log(data)} />;
 ```
 
 ### Type Safety

@@ -539,12 +539,15 @@ const uiSchema = {
 
 ### Live Validation
 
-**Default Behavior (Live Validation Enabled):**
+**Enable Live Validation:**
+
+By default, validation occurs on form submission. To enable live validation as users type:
 
 ```tsx
 <SmartForm
     schema={schema}
     data={data}
+    formProps={{ liveValidate: true }}
     onChange={(data) => console.log(data)}
 />
 ```
@@ -553,10 +556,6 @@ const uiSchema = {
 - Validation errors appear inline as users type
 - Immediate feedback for incorrect input
 - Better user experience for complex forms
-
----
-
-### Disable Live Validation
 
 ---
 
@@ -676,11 +675,11 @@ function RegistrationForm() {
 ```
 
 **Features:**
-- Email pattern validation with live feedback
+- Email pattern validation
 - Password length requirement
 - Age range validation
 - Optional URL pattern validation
-- All validation errors shown simultaneously
+- All validation errors shown on submit (use `formProps={{ liveValidate: true }}` for live feedback)
 
 ---
 
