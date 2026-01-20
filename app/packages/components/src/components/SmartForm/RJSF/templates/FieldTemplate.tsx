@@ -26,17 +26,7 @@ export default function FieldTemplate(props: FieldTemplateProps) {
       }}
     >
       {children}
-      {errors && (
-        <Typography
-          variant="body2"
-          color="error"
-          sx={{
-            marginTop: 0.5,
-          }}
-        >
-          {errors}
-        </Typography>
-      )}
+      {errors}
       {help && (
         <Typography
           variant="body2"
