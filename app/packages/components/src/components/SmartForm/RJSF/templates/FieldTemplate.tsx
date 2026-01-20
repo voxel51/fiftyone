@@ -2,12 +2,13 @@
  * Minimal FieldTemplate
  */
 
-import React from "react";
-import { FieldTemplateProps } from "@rjsf/utils";
 import { Box, Typography } from "@mui/material";
+import { FieldTemplateProps } from "@rjsf/utils";
+import { Text, TextColor } from "@voxel51/voodo";
+import React from "react";
 
 export default function FieldTemplate(props: FieldTemplateProps) {
-  const { classNames, style, errors, help, children, hidden } = props;
+  const { classNames, style, rawErrors, help, children, hidden } = props;
 
   if (hidden) {
     return (
@@ -26,16 +27,8 @@ export default function FieldTemplate(props: FieldTemplateProps) {
       }}
     >
       {children}
-      {errors && (
-        <Typography
-          variant="body2"
-          color="error"
-          sx={{
-            marginTop: 0.5,
-          }}
-        >
-          {errors}
-        </Typography>
+      {Array.isArray(rawErrors) && rawErrors.length > 0 && (
+        <Text color={TextColor.Destructive}>{rawErrors.join(". ")}</Text>
       )}
       {help && (
         <Typography
