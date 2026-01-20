@@ -10,21 +10,10 @@ import templates from "./templates";
 export { isSchemaIOSchema, isJSONSchema } from "./translators";
 
 import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema, ValidatorType } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import type { RJSFSchema } from "@rjsf/utils";
+import type { SmartFormProps } from "../types";
 
-export interface RJSFProps {
-  schema?: SchemaType;
-  jsonSchema?: RJSFSchema;
-  uiSchema?: UiSchema;
-  data?: unknown;
-  onChange?: (data: unknown) => void;
-  onSubmit?: (data: unknown) => void;
-  validator?: ValidatorType;
-  liveValidate?: boolean;
-}
-
-export default function RJSF(props: RJSFProps) {
+export default function RJSF(props: SmartFormProps) {
   if (!props.schema && !props.jsonSchema) {
     console.log(
       "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
@@ -76,7 +65,7 @@ export default function RJSF(props: RJSFProps) {
 
   return (
     <Form
-      schema={schema}
+      schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={props.validator ?? validator}
       widgets={widgets}
@@ -84,7 +73,8 @@ export default function RJSF(props: RJSFProps) {
       formData={props.data}
       onChange={handleChange}
       onSubmit={handleSubmit}
-      liveValidate={props.liveValidate ?? true}
+      showErrorList={false}
+      {...props.formProps}
     />
   );
 }

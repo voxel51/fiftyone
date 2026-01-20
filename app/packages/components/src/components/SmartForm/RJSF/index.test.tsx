@@ -36,29 +36,6 @@ describe("RJSF Component", () => {
     delete (global as any).__rjsfFormProps;
   });
 
-  describe("liveValidate prop", () => {
-    it("should default liveValidate to true when not provided", () => {
-      render(<RJSF schema={simpleSchema} />);
-
-      const formProps = (global as any).__rjsfFormProps;
-      expect(formProps.liveValidate).toBe(true);
-    });
-
-    it("should use provided liveValidate value when true", () => {
-      render(<RJSF schema={simpleSchema} liveValidate={true} />);
-
-      const formProps = (global as any).__rjsfFormProps;
-      expect(formProps.liveValidate).toBe(true);
-    });
-
-    it("should use provided liveValidate value when false", () => {
-      render(<RJSF schema={simpleSchema} liveValidate={false} />);
-
-      const formProps = (global as any).__rjsfFormProps;
-      expect(formProps.liveValidate).toBe(false);
-    });
-  });
-
   describe("validator prop", () => {
     it("should use default validator when not provided", () => {
       render(<RJSF schema={simpleSchema} />);
@@ -83,27 +60,6 @@ describe("RJSF Component", () => {
   });
 
   describe("prop passthrough", () => {
-    it("should pass both liveValidate and validator props together", () => {
-      const customValidator: ValidatorType = {
-        validateFormData: vi.fn(),
-        toErrorList: vi.fn(),
-        isValid: vi.fn(),
-        rawValidation: vi.fn(),
-      };
-
-      render(
-        <RJSF
-          schema={simpleSchema}
-          liveValidate={false}
-          validator={customValidator}
-        />
-      );
-
-      const formProps = (global as any).__rjsfFormProps;
-      expect(formProps.liveValidate).toBe(false);
-      expect(formProps.validator).toBe(customValidator);
-    });
-
     it("should pass through onChange handler", () => {
       const onChange = vi.fn();
       render(<RJSF schema={simpleSchema} onChange={onChange} />);

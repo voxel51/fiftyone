@@ -84,13 +84,6 @@ describe("SmartForm Component", () => {
       expect(rjsfProps.onSubmit).toBe(onSubmit);
     });
 
-    it("should pass liveValidate prop to RJSF", () => {
-      render(<SmartForm schema={simpleSchema} liveValidate={false} />);
-
-      const rjsfProps = (global as any).__rjsfProps;
-      expect(rjsfProps.liveValidate).toBe(false);
-    });
-
     it("should pass validator prop to RJSF", () => {
       const customValidator: ValidatorType = {
         validateFormData: vi.fn(),
@@ -125,7 +118,6 @@ describe("SmartForm Component", () => {
           onChange={onChange}
           onSubmit={onSubmit}
           validator={customValidator}
-          liveValidate={false}
         />
       );
 
@@ -136,7 +128,6 @@ describe("SmartForm Component", () => {
       expect(rjsfProps.onChange).toBe(onChange);
       expect(rjsfProps.onSubmit).toBe(onSubmit);
       expect(rjsfProps.validator).toBe(customValidator);
-      expect(rjsfProps.liveValidate).toBe(false);
     });
   });
 });

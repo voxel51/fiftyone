@@ -107,7 +107,6 @@ interface SmartFormProps {
     data?: unknown; // Initial form data
     uiSchema?: UiSchema; // Override generated UI schema
     validator?: ValidatorType; // Custom JSON Schema validator (optional)
-    liveValidate?: boolean; // Enable live validation (default: true)
     onChange?: (data: unknown) => void; // Change handler
     onSubmit?: (data: unknown) => void; // Submit handler
 }
@@ -120,7 +119,6 @@ interface SmartFormProps {
 - **`data`**: Initial form data to populate the form fields.
 - **`uiSchema`**: Custom UI Schema to override auto-generated UI configurations.
 - **`validator`**: Custom validator for JSON Schema validation. Defaults to `@rjsf/validator-ajv8` if not provided.
-- **`liveValidate`**: When `true`, validates form fields in real-time as users type. Defaults to `true` for immediate feedback. Set to `false` to validate only on submit.
 - **`onChange`**: Callback fired when form data changes. Receives updated data.
 - **`onSubmit`**: Callback fired when form is submitted. Receives final data.
 
@@ -231,19 +229,6 @@ By default, SmartForm validates fields in real-time as users interact with the f
 <SmartForm
     schema={schema}
     data={data}
-    // liveValidate defaults to true
-/>
-```
-
-#### Disable Live Validation
-
-Validate only when the form is submitted:
-
-```tsx
-<SmartForm
-    schema={schema}
-    data={data}
-    liveValidate={false}
 />
 ```
 
@@ -264,7 +249,6 @@ const customValidator = customizeValidator({
 <SmartForm
     schema={schema}
     validator={customValidator}
-    liveValidate={true}
 />;
 ```
 
@@ -290,7 +274,6 @@ const schema = {
 
 <SmartForm
     schema={schema}
-    liveValidate={true} // Show errors as user types
     onChange={(data) => console.log(data)}
 />;
 ```

@@ -558,22 +558,6 @@ const uiSchema = {
 
 ### Disable Live Validation
 
-**Validate Only on Submit:**
-
-```tsx
-<SmartForm
-    schema={schema}
-    data={data}
-    liveValidate={false}
-    onSubmit={(data) => console.log("Valid data:", data)}
-/>
-```
-
-**Result:**
-- No validation errors shown while typing
-- Validation occurs only when form is submitted
-- Useful for simpler forms or when live validation is too aggressive
-
 ---
 
 ### Custom Validator
@@ -609,7 +593,6 @@ const schema = {
 <SmartForm
     schema={schema}
     validator={customValidator}
-    liveValidate={true}
 />;
 ```
 
@@ -685,7 +668,6 @@ function RegistrationForm() {
             schema={schema}
             data={formData}
             validator={validator}
-            liveValidate={true}
             onChange={setFormData}
             onSubmit={handleSubmit}
         />
