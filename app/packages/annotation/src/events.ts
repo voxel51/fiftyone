@@ -14,6 +14,17 @@ type MutationSuccess<T> = {
   type: T;
 };
 
+type PrimitiveMutationError = {
+  path: string;
+  type: "update";
+  error?: Error;
+};
+
+type PrimitiveMutationSuccess = {
+  path: string;
+  type: "update";
+};
+
 export type AnnotationEventGroup = {
   /**
    * Notification event emitted when a label is upserted successfully.
@@ -96,4 +107,12 @@ export type AnnotationEventGroup = {
   "annotation:cuboidCreationStarted": {
     position: [number, number, number];
   };
+  /**
+   * Notification event emitted when a primitive field is updated successfully.
+   */
+  "primitive:updateSuccess": PrimitiveMutationSuccess;
+  /**
+   * Notification event emitted when an error occurs while updating a primitive field.
+   */
+  "primitive:updateError": PrimitiveMutationError;
 };

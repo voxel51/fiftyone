@@ -10,7 +10,10 @@ import "./index.css";
 import "@voxel51/voodo/theme.css";
 import { useRouter } from "./routing";
 
-if (process.env.NODE_ENV === "development" && import.meta.env.VITE_DEV_WORKTREE_NAME) {
+if (
+  process.env.NODE_ENV === "development" &&
+  import.meta.env.VITE_DEV_WORKTREE_NAME
+) {
   document.title = `${document.title} (${import.meta.env.VITE_DEV_WORKTREE_NAME})`;
 }
 

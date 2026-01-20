@@ -15,17 +15,26 @@ import {
   modalSample,
   useRefreshSample,
 } from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
+import { Field, Primitive } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { DeleteAnnotationCommand, UpsertAnnotationCommand } from "../commands";
-import { OpType, buildJsonPath, buildLabelDeltas } from "../deltas";
+import {
+  DeleteAnnotationCommand,
+  UpdatePrimitiveCommand,
+  UpsertAnnotationCommand,
+} from "../commands";
+import {
+  OpType,
+  buildJsonPath,
+  buildLabelDeltas,
+  buildPrimitiveDeltas,
+} from "../deltas";
 
 /**
- * Hook that registers command handlers for annotation persistence.
+ * Hook that registers command handlers for sample mutations (annotations and primitives).
  * This should be called once in the composition root.
  */
-export const useRegisterAnnotationCommandHandlers = () => {
+export const useRegisterSampleMutationCommandHandlers = () => {
   const datasetId = useRecoilValue(fosDatasetId);
   const refreshSample = useRefreshSample();
   const eventBus = useAnnotationEventBus();
@@ -206,6 +215,72 @@ export const useRegisterAnnotationCommandHandlers = () => {
         }
       },
       [handlePersistence, eventBus]
+    )
+  );
+
+  // Handler for primitive field updates
+  const handlePrimitivePersistence = useRecoilCallback(
+    ({ snapshot }) =>
+      async (
+        path: string,
+        value: Primitive,
+        schema: Field
+      ): Promise<boolean> => {
+        const currentSample = (await snapshot.getPromise(modalSample))?.sample;
+
+        if (!currentSample) {
+          console.error("missing sample data!");
+          return false;
+        }
+
+        // Calculate deltas for the primitive field
+        const sampleDeltas = buildPrimitiveDeltas(
+          currentSample,
+          path,
+          value
+        ).map((delta) => ({
+          ...delta,
+          path: buildJsonPath(path, delta.path),
+        }));
+
+        return await handlePatchSample(sampleDeltas);
+      },
+    [handlePatchSample]
+  );
+
+  useRegisterCommandHandler(
+    UpdatePrimitiveCommand,
+    useCallback(
+      async (cmd) => {
+        try {
+          const success = await handlePrimitivePersistence(
+            cmd.path,
+            cmd.value,
+            cmd.schema
+          );
+
+          if (success) {
+            eventBus.dispatch("primitive:updateSuccess", {
+              path: cmd.path,
+              type: "update",
+            });
+          } else {
+            eventBus.dispatch("primitive:updateError", {
+              path: cmd.path,
+              type: "update",
+            });
+          }
+          return success;
+        } catch (error) {
+          eventBus.dispatch("primitive:updateError", {
+            path: cmd.path,
+            type: "update",
+            error: error as Error,
+          });
+          throw error;
+        }
+      },
+      [handlePrimitivePersistence, eventBus]
     )
   );
 };

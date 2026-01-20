@@ -12,7 +12,6 @@ import {
   ClassificationAnnotationLabel,
   DetectionAnnotationLabel,
   PolylineAnnotationLabel,
-  PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
 import { Field, Primitive, Schema } from "@fiftyone/utilities";
@@ -86,12 +85,12 @@ export const buildLabelDeltas = (
  * Build a list of JSON deltas for mutating the given sample and label.
  *
  * @param sample Sample containing unmodified label data
- * @param label Current label state (annotation label or primitive label)
+ * @param label Current label state
  * @param schema Field schema
  */
 export const buildMutationDeltas = (
   sample: Sample,
-  label: AnnotationLabel | PrimitiveValue,
+  label: AnnotationLabel,
   schema: Field
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
@@ -122,8 +121,6 @@ export const buildMutationDeltas = (
     } else if (isFieldType(schema, "Polyline")) {
       return buildPolylineMutationDeltas(sample, label);
     }
-  } else if (label.type === "Primitive") {
-    return buildPrimitiveMutationDelta(sample, label.path, label.data);
   }
 
   throw new Error(
@@ -226,9 +223,7 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <
-  T extends AnnotationLabel["data"] | Primitive
->(
+const buildSingleMutationDelta = <T extends AnnotationLabel["data"]>(
   sample: Sample,
   path: string,
   data: T
@@ -237,7 +232,14 @@ const buildSingleMutationDelta = <
   return generateJsonPatch(existingLabel, data);
 };
 
-const buildPrimitiveMutationDelta = (
+/**
+ * Build mutation deltas for a primitive (scalar) field.
+ *
+ * @param sample Sample containing unmodified data
+ * @param path Field path
+ * @param data New primitive value
+ */
+export const buildPrimitiveDeltas = (
   sample: Sample,
   path: string,
   data: Primitive
@@ -249,7 +251,7 @@ const buildPrimitiveMutationDelta = (
     return [];
   }
 
-  // Return a replace operation with empty path - buildJsonPath will prepend the label path
+  // Return a replace operation with empty path - buildJsonPath will prepend the field path
   return [{ op: "replace", path: "", value: data }];
 };
 

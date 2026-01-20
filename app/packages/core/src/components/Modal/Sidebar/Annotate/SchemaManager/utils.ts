@@ -32,11 +32,25 @@ export interface RichListItemOptions {
   canDrag?: boolean;
 }
 
-// Attribute configuration
+// Attribute configuration (matches API)
 export interface AttributeConfig {
   type: string;
-  values?: string[];
+  component?: string;
+  values?: (string | number)[];
+  range?: [number, number];
+  default?: string | number;
   read_only?: boolean;
+}
+
+// Form state for attribute editing (uses strings for form inputs)
+export interface AttributeFormData {
+  name: string;
+  type: string;
+  component: string;
+  values: string[];
+  range: { min: string; max: string } | null;
+  default: string;
+  read_only: boolean;
 }
 
 // Class configuration
@@ -154,4 +168,101 @@ export const buildFieldSecondaryContent = (
     return `${typeText} • ${formatAttributeCount(attrCount)}`;
   }
   return typeText;
+};
+
+/**
+ * Validate attribute name and return error message if invalid
+ */
+export const getAttributeNameError = (
+  name: string,
+  existingAttributes: string[],
+  currentAttribute?: string
+): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Attribute name cannot be empty";
+  const isDuplicate = existingAttributes.some(
+    (a) => a !== currentAttribute && a === trimmed
+  );
+  if (isDuplicate) return "Attribute name already exists";
+  return null;
+};
+
+// =============================================================================
+// Attribute Form Helpers
+// =============================================================================
+
+/**
+ * Create default form data for a new attribute
+ */
+export const createDefaultFormData = (): AttributeFormData => ({
+  name: "",
+  type: "str",
+  component: "text",
+  values: [],
+  range: null,
+  default: "",
+  read_only: false,
+});
+
+/**
+ * Convert AttributeConfig to form data for editing
+ */
+export const toFormData = (
+  name: string,
+  config: AttributeConfig
+): AttributeFormData => ({
+  name,
+  type: config.type,
+  component: config.component || "text",
+  values: config.values?.map(String) || [],
+  range: config.range
+    ? { min: String(config.range[0]), max: String(config.range[1]) }
+    : null,
+  default: config.default !== undefined ? String(config.default) : "",
+  read_only: config.read_only || false,
+});
+
+/**
+ * Convert form data to AttributeConfig for saving
+ * Converts values to numbers for numeric types
+ */
+export const toAttributeConfig = (
+  data: AttributeFormData,
+  isNumericType: boolean
+): AttributeConfig => {
+  // Convert values to numbers for numeric types
+  let values: (string | number)[] | undefined;
+  if (data.values.length > 0) {
+    values = isNumericType
+      ? data.values.map((v) => parseFloat(v)).filter((n) => !isNaN(n))
+      : data.values;
+  }
+
+  // Convert range to tuple
+  let range: [number, number] | undefined;
+  if (data.range) {
+    const min = parseFloat(data.range.min);
+    const max = parseFloat(data.range.max);
+    if (!isNaN(min) && !isNaN(max)) {
+      range = [min, max];
+    }
+  }
+
+  // Convert default to number for numeric types
+  let defaultValue: string | number | undefined;
+  if (data.default) {
+    defaultValue = isNumericType ? parseFloat(data.default) : data.default;
+    if (typeof defaultValue === "number" && isNaN(defaultValue)) {
+      defaultValue = undefined;
+    }
+  }
+
+  return {
+    type: data.type,
+    component: data.component || undefined,
+    values: values?.length ? values : undefined,
+    range,
+    default: defaultValue,
+    read_only: data.read_only || undefined,
+  };
 };

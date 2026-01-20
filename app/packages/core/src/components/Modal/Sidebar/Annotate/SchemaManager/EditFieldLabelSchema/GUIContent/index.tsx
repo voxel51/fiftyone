@@ -11,7 +11,7 @@ import {
   ListContainer,
   Section,
 } from "../../styled";
-import type { SchemaConfigType } from "../../utils";
+import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
 
@@ -70,6 +70,36 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config, onConfigChange]
   );
 
+  const handleAddAttribute = useCallback(
+    (name: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = { ...attributes, [name]: attrConfig };
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, newName: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = { ...attributes };
+      delete newAttributes[oldName];
+      newAttributes[newName] = attrConfig;
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newAttributes = { ...attributes };
+      delete newAttributes[name];
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
   if (scanning) {
     return (
       <ListContainer>
@@ -107,12 +137,9 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
       />
       <AttributesSection
         attributes={attributes}
-        onAddAttribute={() => {
-          // TODO: Implement add attribute
-        }}
-        onEditAttribute={(_name) => {
-          // TODO: Implement edit attribute
-        }}
+        onAddAttribute={handleAddAttribute}
+        onEditAttribute={handleEditAttribute}
+        onDeleteAttribute={handleDeleteAttribute}
       />
     </ListContainer>
   );

@@ -1,7 +1,6 @@
-import { getFieldSchema, UpsertAnnotationCommand } from "@fiftyone/annotation";
+import { getFieldSchema, UpdatePrimitiveCommand } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import * as fos from "@fiftyone/state";
-import { PrimitiveValue } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
 import {
   Button,
@@ -52,7 +51,6 @@ export default function PrimitiveEdit({
   );
 
   const handleChange = (data: unknown) => {
-    console.log("data", data);
     setFieldValue(data as Primitive);
   };
 
@@ -60,16 +58,9 @@ export default function PrimitiveEdit({
     if (!fieldSchema) return;
     const dataToSave = serializeFieldValue(fieldValue, type);
     return await commandBus.execute(
-      new UpsertAnnotationCommand(
-        {
-          type: "Primitive",
-          data: dataToSave,
-          path: path,
-        } as PrimitiveValue,
-        fieldSchema
-      )
+      new UpdatePrimitiveCommand(path, dataToSave, fieldSchema)
     );
-  }, [fieldSchema, fieldValue, path, type]);
+  }, [commandBus, fieldSchema, fieldValue, path, type]);
 
   const handleSave = useCallback(async () => {
     try {

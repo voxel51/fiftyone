@@ -1,4 +1,4 @@
-import { useRegisterAnnotationCommandHandlers } from "@fiftyone/annotation";
+import { useRegisterSampleMutationCommandHandlers } from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -58,7 +58,7 @@ const SpacesContainer = styled.div`
 `;
 
 const ModalCommandHandlersRegistration = () => {
-  useRegisterAnnotationCommandHandlers();
+  useRegisterSampleMutationCommandHandlers();
   return null;
 };
 
@@ -181,29 +181,29 @@ const Modal = () => {
       sequence: "Escape",
       handler: closeFn,
       label: "Close",
-      description: "Close the window."
+      description: "Close the window.",
     },
     {
       commandId: KnownCommands.ModalFullScreenToggle,
       sequence: "f",
       handler: fullscreenFn,
       label: "Fullscreen",
-      description: "Enter/Exit full screen mode"
+      description: "Enter/Exit full screen mode",
     },
     {
       commandId: KnownCommands.ModalSidebarToggle,
       sequence: "s",
       handler: sidebarFn,
       label: "Sidebar",
-      description: "Show/Hide the sidebar"
+      description: "Show/Hide the sidebar",
     },
     {
       commandId: KnownCommands.ModalSelect,
       sequence: "x",
       handler: selectCallback,
       label: "Select",
-      description: "Select Sample"
-    }
+      description: "Select Sample",
+    },
   ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
