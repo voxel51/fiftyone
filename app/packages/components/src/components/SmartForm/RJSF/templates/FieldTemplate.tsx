@@ -7,7 +7,7 @@ import { FieldTemplateProps } from "@rjsf/utils";
 import { Box, Typography } from "@mui/material";
 
 export default function FieldTemplate(props: FieldTemplateProps) {
-  const { classNames, style, errors, help, children, hidden } = props;
+  const { classNames, style, help, children, hidden } = props;
 
   if (hidden) {
     return (
@@ -26,7 +26,6 @@ export default function FieldTemplate(props: FieldTemplateProps) {
       }}
     >
       {children}
-      {errors}
       {help && (
         <Typography
           variant="body2"
