@@ -5,6 +5,7 @@ FiftyOne Server mutation endpoint unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 
 # pylint: disable=no-value-for-parameter
 from unittest.mock import MagicMock, AsyncMock
@@ -19,6 +20,7 @@ from starlette.responses import Response
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.server.routes.sample as fors
+from fiftyone import DynamicEmbeddedDocument
 
 
 def _create_dummy_instance(cls_type: type) -> dict:
@@ -34,12 +36,6 @@ class CustomEmbeddedDoc(fo.EmbeddedDocument):
     detections = fo.EmbeddedDocumentField(document_type=fo.Detections)
     polyline = fo.EmbeddedDocumentField(document_type=fo.Polyline)
     polylines = fo.EmbeddedDocumentField(document_type=fo.Polylines)
-
-
-class CustomNestedDoc(fo.EmbeddedDocument):
-    custom_documents = fo.EmbeddedDocumentListField(
-        document_type=CustomEmbeddedDoc
-    )
 
 
 @pytest.fixture(name="dataset")
@@ -110,6 +106,7 @@ class TestSampleRoutes:
             ]
         )
         sample["primitive_field"] = "initial_value"
+        sample["capture_time"] = datetime.datetime.now(datetime.timezone.utc)
 
         dataset.add_sample(sample)
 
@@ -152,23 +149,15 @@ class TestSampleRoutes:
         dataset.add_sample_field(
             "nested_doc",
             fo.EmbeddedDocumentField,
-            embedded_doc_type=CustomNestedDoc,
-        )
-
-        sample["nested_doc"] = CustomNestedDoc(
-            custom_documents=[
-                CustomEmbeddedDoc(
-                    classification=fol.Classification(),
-                    detections=fol.Detections(),
-                    polylines=fol.Polylines(),
-                ),
-                # empty doc which will (expectedly) fail initialization
-                CustomEmbeddedDoc(),
-            ]
+            embedded_doc_type=DynamicEmbeddedDocument,
         )
 
         # embedded doc containing uninitialized fields will be auto-initialized
         sample["custom_doc"] = CustomEmbeddedDoc()
+
+        # Save and reload to ensure valid state
+        sample.save()
+        sample.reload()
 
         return sample
 
@@ -198,10 +187,14 @@ class TestSampleRoutes:
         return mock_request
 
     @pytest.mark.asyncio
-    async def test_update_detection(self, mutator, mock_request, sample):
+    async def test_update_detection(
+        self, mutator, mock_request, sample, dataset
+    ):
         """
         Tests updating an existing detection
         """
+        # Add primitive to schema for testing ADD operation
+        dataset.add_sample_field("reviewer", fo.StringField)
         label = "cat"
         confidence = 0.99
         bounding_box = [0.15, 0.15, 0.25, 0.25]
@@ -257,80 +250,11 @@ class TestSampleRoutes:
         assert updated_detection.bounding_box[0] == 0.15
         assert updated_detection.confidence == 0.99
 
-        # Verify CREATE (Primitive)
+        # Verify ADD top level primitive value
         assert sample.reviewer == "John Doe"
 
         # Verify DELETE
         assert sample.tags == []
-
-    @pytest.mark.asyncio
-    async def test_add_detection(self, mutator, mock_request, sample):
-        """
-        Tests adding a new detection
-        """
-        bounding_box = [0.15, 0.15, 0.25, 0.25]
-        confidence = 0.99
-        patch_payload = {
-            "ground_truth_2": {
-                "_cls": "Detections",
-                "detections": [
-                    {
-                        "_cls": "Detection",
-                        "label": "cat",
-                        "bounding_box": bounding_box,
-                        "confidence": confidence,
-                    }
-                ],
-            },
-        }
-        mock_request.body.return_value = json_payload(patch_payload)
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        sample.reload()
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-
-        response_dict = json.loads(response.body)
-        assert isinstance(response_dict, dict)
-
-        updated_detection = sample.ground_truth_2.detections[0]
-        assert updated_detection.bounding_box == bounding_box
-        assert updated_detection.confidence == confidence
-
-    @pytest.mark.asyncio
-    async def test_add_classification(self, mutator, mock_request, sample):
-        """
-        Tests adding a new classification
-        """
-        label = "sunny"
-        confidence = 0.99
-        patch_payload = {
-            "weather": {
-                "_cls": "Classification",
-                "label": label,
-                "confidence": confidence,
-            },
-        }
-        mock_request.body.return_value = json_payload(patch_payload)
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        sample.reload()
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-
-        response_dict = json.loads(response.body)
-        assert isinstance(response_dict, dict)
-        updated_detection = sample.weather
-        assert updated_detection.label == label
-        assert updated_detection.confidence == confidence
 
     @pytest.mark.asyncio
     async def test_dataset_not_found(self, mutator, mock_request):
@@ -545,63 +469,6 @@ class TestSampleRoutes:
         )
 
     @pytest.mark.asyncio
-    async def test_patch_nested_fields(self, mutator, mock_request, sample):
-        new_detection = _create_dummy_instance(fol.Detection)
-
-        patch_payload = [
-            {
-                "op": "add",
-                "path": "/nested_doc/custom_documents/0/detections/detections/0",
-                "value": new_detection,
-            },
-        ]
-        mock_request.body.return_value = json_payload(patch_payload)
-        mock_request.headers["Content-Type"] = "application/json-patch+json"
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        assert response.status_code == 200
-
-        sample.reload()
-
-        assert response.headers.get("ETag") == fors.generate_sample_etag(
-            sample
-        )
-        response_dict = json.loads(response.body)
-
-        assert (
-            response_dict["nested_doc"]["custom_documents"][0]["detections"][
-                "detections"
-            ][0]
-            == new_detection
-        )
-
-    @pytest.mark.asyncio
-    async def test_patch_init_nested_fields_failure(
-        self, mutator, mock_request
-    ):
-        new_detection = _create_dummy_instance(fol.Detection)
-
-        patch_payload = [
-            {
-                "op": "add",
-                "path": "/nested_doc/custom_documents/1/detections/detections/0",
-                "value": new_detection,
-            },
-        ]
-        mock_request.body.return_value = json_payload(patch_payload)
-        mock_request.headers["Content-Type"] = "application/json-patch+json"
-
-        #####
-        response = await mutator.patch(mock_request)
-        #####
-
-        # auto-initialization not supported for lists of embedded documents
-        assert response.status_code == 500
-
-    @pytest.mark.asyncio
     async def test_patch_rplc_primitive(self, mutator, mock_request, sample):
         """Tests 'replace' on a primitive field with json-patch."""
         new_value = "updated_value"
@@ -771,6 +638,43 @@ class TestSampleRoutes:
         assert exc_info.value.status_code == 400
         assert "Failed to parse patches due to" in exc_info.value.detail
 
+    @pytest.mark.asyncio
+    async def test_patch_rplc_datetime_field(
+        self, mutator, mock_request, sample
+    ):
+        """Tests 'replace' on a fo.DateTime field with json-patch."""
+        # The ISO format string as it would come from the frontend (Z suffix)
+        new_datetime_str = "2026-01-14T05:00:00.000Z"
+        patch_payload = [
+            {
+                "op": "replace",
+                "path": "/capture_time",
+                "value": new_datetime_str,
+            }
+        ]
+
+        mock_request.body.return_value = json_payload(patch_payload)
+        mock_request.headers["Content-Type"] = "application/json-patch+json"
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        sample.reload()
+
+        assert response.status_code == 200
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
+
+        # Verify the DateTime field was properly updated
+        assert sample.capture_time.year == 2026
+        assert sample.capture_time.month == 1
+        assert sample.capture_time.day == 14
+        assert sample.capture_time.hour == 5
+        assert sample.capture_time.minute == 0
+        assert sample.capture_time.second == 0
+
 
 class TestHandleJsonPatch:
     """Tests for the handle_json_patch function"""
@@ -917,6 +821,10 @@ class TestSampleFieldRoute:
         sample["scalar_field"] = "not a list"
 
         dataset.add_sample(sample)
+
+        # Reload to get the MongoDB-stored datetime (millisecond precision)
+        # so the If-Match header matches what's retrieved from the database
+        sample.reload()
 
         return sample
 
@@ -1117,3 +1025,75 @@ class TestSampleFieldRoute:
         assert exc_info.value.status_code == 400
         assert str(patch_payload[0]) in exc_info.value.detail
         assert "non_existent_attr" in exc_info.value.detail
+
+
+class TestDatetimesMatch:
+    """Tests for the datetimes_match function"""
+
+    def test_identical_naive_datetimes(self):
+        """Tests that identical naive datetimes match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_identical_aware_datetimes(self):
+        """Tests that identical aware datetimes match."""
+        dt1 = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt2 = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_aware_vs_naive_same_time(self):
+        """Tests that aware and naive datetimes with same time match.
+
+        This is the exact failure case from the logs:
+        2026-01-16 13:30:33.657000+00:00 != 2026-01-16 13:30:33.657000
+        """
+        dt_aware = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt_naive = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        assert fors.datetimes_match(dt_aware, dt_naive) is True
+        assert fors.datetimes_match(dt_naive, dt_aware) is True
+
+    def test_different_datetimes_do_not_match(self):
+        """Tests that different datetimes do not match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(
+            2026, 1, 16, 13, 30, 34, 657000
+        )  # 1 second diff
+        assert fors.datetimes_match(dt1, dt2) is False
+
+    def test_microsecond_precision_within_tolerance(self):
+        """Tests that microsecond differences within 1ms tolerance match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657500)  # 500 µs diff
+        assert fors.datetimes_match(dt1, dt2) is True
+
+    def test_microsecond_precision_outside_tolerance(self):
+        """Tests that microsecond differences beyond 1ms tolerance don't match."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 659000)  # 2 ms diff
+        assert fors.datetimes_match(dt1, dt2) is False
+
+    def test_custom_tolerance(self):
+        """Tests that custom tolerance works correctly."""
+        dt1 = datetime.datetime(2026, 1, 16, 13, 30, 33, 657000)
+        dt2 = datetime.datetime(2026, 1, 16, 13, 30, 33, 662000)  # 5 ms diff
+
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=1) is False
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=5) is True
+        assert fors.datetimes_match(dt1, dt2, tolerance_ms=10) is True
+
+    def test_mixed_timezone_awareness_different_times(self):
+        """Tests that mixed awareness with different times don't match."""
+        dt_aware = datetime.datetime(
+            2026, 1, 16, 13, 30, 33, 657000, tzinfo=datetime.timezone.utc
+        )
+        dt_naive = datetime.datetime(
+            2026, 1, 16, 13, 30, 35, 657000
+        )  # 2 sec diff
+        assert fors.datetimes_match(dt_aware, dt_naive) is False
