@@ -1,3 +1,7 @@
+import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import { FormProps } from "@rjsf/core";
+import type { RJSFSchema, UiSchema } from "@rjsf/utils";
+
 export enum SmartFormInputs {
   String = "string",
   Number = "number",
@@ -40,4 +44,14 @@ export enum SmartFormComponents {
   PlotlyView = "PlotlyView",
   SliderView = "SliderView",
   ToggleView = "ToggleView",
+}
+
+export interface SmartFormProps {
+  schema?: SchemaType;
+  jsonSchema?: RJSFSchema;
+  uiSchema?: UiSchema;
+  data?: unknown;
+  onChange?: (data: unknown) => void;
+  onSubmit?: (data: unknown) => void;
+  formProps?: FormProps;
 }
