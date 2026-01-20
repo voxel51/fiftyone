@@ -23,6 +23,7 @@ describe("SmartForm Component", () => {
   };
 
   afterEach(() => {
+    vi.clearAllMocks();
     delete (global as any).__rjsfProps;
   });
 

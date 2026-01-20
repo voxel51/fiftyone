@@ -33,6 +33,7 @@ describe("RJSF Component", () => {
   };
 
   afterEach(() => {
+    vi.clearAllMocks();
     delete (global as any).__rjsfFormProps;
   });
 
