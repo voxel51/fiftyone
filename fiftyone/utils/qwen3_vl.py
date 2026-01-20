@@ -245,8 +245,11 @@ class Qwen3VLModel(fout.TorchImageModel):
                 img = img.cpu().numpy()
                 if img.shape[0] in (1, 3, 4):
                     img = np.transpose(img, (1, 2, 0))
+
+            if isinstance(img, np.ndarray) and np.issubdtype(img.dtype, np.floating):
                 if img.max() <= 1.0:
-                    img = np.clip(img * 255, 0, 255).astype(np.uint8)
+                    img = img * 255.0
+                img = np.clip(img, 0, 255).astype(np.uint8)
 
             if isinstance(img, np.ndarray):
                 img = PILImage.fromarray(img)
