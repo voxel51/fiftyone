@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CommandContext, CommandContextManager } from "../context";
 import { useCommandContext } from "./useCommandContext";
 import { CommandHookReturn } from ".";
@@ -20,23 +20,35 @@ export const useCommand = (
   context?: string | CommandContext
 ): CommandHookReturn => {
   const boundContext = useCommandContext(context);
-  const command = useMemo(() => {
-    return boundContext.context.getCommand(commandId);
+  const [descriptor, setDescriptor] = useState<CommandDescriptor>(() => {
+    const command = boundContext.context.getCommand(commandId);
+    return {
+      id: commandId,
+      label: command?.label ?? "",
+      description: command?.description ?? "",
+    };
+  });
+
+  useEffect(() => {
+    const update = () => {
+      const command = boundContext.context.getCommand(commandId);
+      setDescriptor({
+        id: commandId,
+        label: command?.label ?? "",
+        description: command?.description ?? "",
+      });
+    };
+
+    update();
+    return boundContext.context.subscribeCommands(update);
   }, [commandId, boundContext.context]);
-  if (!command) {
-    throw new Error(
-      `useCommand: commandId ${commandId} could not be found in context ${boundContext.context.id}`
-    );
-  }
+
   const execute = useCallback(() => {
     CommandContextManager.instance().executeCommand(commandId);
   }, [commandId]);
+
   return {
     callback: execute,
-    descriptor: {
-      id: command.id,
-      label: command.label ?? "",
-      description: command.description ?? "",
-    },
+    descriptor,
   };
 };
