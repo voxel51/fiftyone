@@ -1,6 +1,5 @@
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import { capitalize } from "lodash";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");

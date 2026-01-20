@@ -50,6 +50,7 @@ const ImportSchema = (
         attributes, and start annotating right away.
       </Typography>
       <MuiButton
+        data-cy={"open-schema-manager"}
         variant="contained"
         color="primary"
         disabled={disabled || !canManage}

@@ -2600,6 +2600,7 @@ __metadata:
     fast-json-patch: "npm:^3.1.1"
     framer-motion: "npm:^6.2.8"
     history: "npm:^5.3.0"
+    jotai-location: "npm:^0.6.2"
     json-edit-react: "npm:^1.28.2"
     lodash: "npm:^4.17.21"
     lru-cache: "npm:^11.0.1"
@@ -13712,6 +13713,15 @@ __metadata:
   bin:
     jest: bin/jest.js
   checksum: 10/97023d78446098c586faaa467fbf2c6b07ff06e2c85a19e3926adb5b0effe9ac60c4913ae03e2719f9c01ae8ffd8d92f6b262cedb9555ceeb5d19263d8c6362a
+  languageName: node
+  linkType: hard
+
+"jotai-location@npm:^0.6.2":
+  version: 0.6.2
+  resolution: "jotai-location@npm:0.6.2"
+  peerDependencies:
+    jotai: ">=1.11.0"
+  checksum: 10/2bc81d3e2a0bf8007c69074e0d9b68c55480f24280c9263d1a4638559a2e9ec46d2de9f04f60d5f41a31b5f27a91a149e954e0ac8f6ca31fd375a7f25c9d5ba0
   languageName: node
   linkType: hard
 
