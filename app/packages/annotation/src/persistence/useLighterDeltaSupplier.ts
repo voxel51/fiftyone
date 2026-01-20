@@ -48,28 +48,32 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
   return useCallback(() => {
     const sampleDeltas: JSONDeltas = [];
 
-    scene?.getAllOverlays().forEach((overlay) => {
-      const annotationLabel = buildAnnotationLabel(overlay);
-      if (annotationLabel) {
-        const labelDeltas = buildLabelDeltas(
-          modalSample.sample,
-          annotationLabel,
-          getFieldSchema(modalSampleSchema, overlay.field),
-          "mutate"
-        );
+    if (modalSample?.sample) {
+      // calculate diff for each overlay
+      scene?.getAllOverlays().forEach((overlay) => {
+        const annotationLabel = buildAnnotationLabel(overlay);
 
-        if (labelDeltas?.length > 0) {
-          sampleDeltas.push(
-            ...labelDeltas.map((delta) => ({
-              ...delta,
-              // convert label delta to sample delta
-              path: buildJsonPath(overlay.field, delta.path),
-            }))
+        if (annotationLabel) {
+          const labelDeltas = buildLabelDeltas(
+            modalSample.sample,
+            annotationLabel,
+            getFieldSchema(modalSampleSchema, overlay.field),
+            "mutate"
           );
+
+          if (labelDeltas?.length > 0) {
+            sampleDeltas.push(
+              ...labelDeltas.map((delta) => ({
+                ...delta,
+                // convert label delta to sample delta
+                path: buildJsonPath(overlay.field, delta.path),
+              }))
+            );
+          }
         }
-      }
-    });
+      });
+    }
 
     return sampleDeltas;
-  }, [modalSample.sample, modalSampleSchema, scene]);
+  }, [modalSample, modalSampleSchema, scene]);
 };
