@@ -87,6 +87,42 @@ describe("LoaderView", () => {
       // MUI CircularProgress renders with role="progressbar"
       expect(screen.getByRole("progressbar")).toBeTruthy();
     });
+
+    it("renders message instead of label when message is provided", () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load",
+            message: "Custom loading message",
+            label: "Loading data...",
+          },
+        },
+      });
+
+      render(<LoaderView {...props} />);
+
+      expect(screen.getByText("Custom loading message")).toBeTruthy();
+      expect(screen.queryByText("Loading data...")).toBeNull();
+    });
+
+    it("renders message next to spinner with placeholder_view", () => {
+      const props = createProps({
+        schema: {
+          view: {
+            operator: "@test/load",
+            message: "Fetching data...",
+            placeholder_view: {
+              view: { label: "Placeholder" },
+            },
+          },
+        },
+      });
+
+      render(<LoaderView {...props} />);
+
+      expect(screen.getByText("Fetching data...")).toBeTruthy();
+      expect(screen.getByTestId("dynamic-io")).toBeTruthy();
+    });
   });
 
   describe("operator execution", () => {
