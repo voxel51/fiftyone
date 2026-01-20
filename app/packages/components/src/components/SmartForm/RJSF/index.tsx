@@ -47,10 +47,11 @@ export default function RJSF(props: RJSFProps) {
     if (!props.onChange) return;
 
     if (isObject(props.data) && isObject(event.formData)) {
-      return filterEmptyArrays(
+      const filteredData = filterEmptyArrays(
         event.formData as Record<string, unknown>,
         props.data as Record<string, unknown>
       );
+      props.onChange(filteredData);
     } else {
       props.onChange(event.formData);
     }
