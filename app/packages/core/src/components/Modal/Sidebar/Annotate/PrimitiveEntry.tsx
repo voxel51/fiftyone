@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import {
   formatPrimitive,
   makePseudoField,
-  PRIMITIVE,
   type Primitive,
 } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
@@ -93,7 +92,6 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
 
   const handleClick = () => {
     if (isReadOnly) return;
-    setEditingAtom(PRIMITIVE);
     setActivePrimitive(path);
   };
 

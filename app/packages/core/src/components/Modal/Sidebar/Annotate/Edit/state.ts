@@ -6,7 +6,6 @@ import {
   DETECTIONS,
   POLYLINE,
   POLYLINES,
-  PRIMITIVE,
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
@@ -14,11 +13,12 @@ import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
+import { activePrimitiveAtom } from "./useActivePrimitive";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
 export const editing = atomWithReset<
-  PrimitiveAtom<AnnotationLabel> | LabelType | typeof PRIMITIVE | null
+  PrimitiveAtom<AnnotationLabel> | LabelType | null
 >(null);
 
 export const hasChanges = atom((get) => {
@@ -33,12 +33,10 @@ const IS_CLASSIFICIATION = new Set([CLASSIFICATION, CLASSIFICATIONS]);
 const IS_DETECTION = new Set([DETECTION, DETECTIONS]);
 const IS_POLYLINE = new Set([POLYLINE, POLYLINES]);
 const IS_LIST = new Set([CLASSIFICATIONS, DETECTIONS, POLYLINES]);
-const IS_PRIMITIVE = new Set([PRIMITIVE]);
 const IS = {
   [CLASSIFICATION]: IS_CLASSIFICIATION,
   [DETECTION]: IS_DETECTION,
   [POLYLINE]: IS_POLYLINE,
-  [PRIMITIVE]: IS_PRIMITIVE,
 };
 
 export type LabelType =
@@ -136,7 +134,7 @@ export const disabledFields = atomFamily((type: LabelType) =>
   })
 );
 
-export const currentType = atom<LabelType>((get) => {
+export const currentType = atom<LabelType | null>((get) => {
   const value = get(editing);
 
   if (typeof value === "string") {
@@ -151,11 +149,13 @@ export const currentType = atom<LabelType>((get) => {
       }
     }
   }
-
-  throw new Error("no type");
+  return null;
 });
 
-export const isEditing = atom((get) => get(editing) !== null);
+export const isEditing = atom((get) => {
+  if (get(activePrimitiveAtom) !== null) return true;
+  return get(editing) !== null;
+});
 
 export const isNew = atom((get) => {
   return typeof get(editing) === "string" || get(current)?.isNew;
@@ -166,7 +166,7 @@ const fieldsOfType = atomFamily((type: LabelType) =>
     const fields = new Array<string>();
 
     for (const field of get(activeLabelSchemas) ?? []) {
-      if (IS[type].has(get(fieldType(field)))) {
+      if (type && IS[type].has(get(fieldType(field)))) {
         fields.push(field);
       }
     }
