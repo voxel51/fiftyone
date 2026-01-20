@@ -58,7 +58,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
   return [
     [
-      { kind: EntryKind.GROUP, name: "Labels" },
+      { kind: EntryKind.GROUP, name: "LABELS" },
       ...(expanded ? entries : []),
     ] as SidebarEntry[],
     () => {},
