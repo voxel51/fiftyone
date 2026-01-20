@@ -1,0 +1,66 @@
+{
+    "schema": {
+        "type": "object",
+        "view": {
+            "component": "ObjectView"
+        },
+        "properties": {
+            "number": {
+                "type": "number",
+                "view": { "label": "Numeric Value" },
+                "multipleOf": 0.01
+            },
+            "string": {
+                "type": "string",
+                "view": { "label": "Text Value" }
+            },
+            "dropdown": {
+                "type": "array",
+                "view": {
+                    "name": "AutocompleteView",
+                    "label": "Autocomplete Dropdown",
+                    "component": "AutocompleteView",
+                    "allow_user_input": false,
+                    "choices": [
+                        {
+                            "label": "Option 1",
+                            "value": "option1"
+                        },
+                        {
+                            "label": "Option 2",
+                            "value": "option2"
+                        },
+                        {
+                            "label": "Option 3",
+                            "value": "option3"
+                        }
+                    ]
+                },
+                "required": true
+            },
+            "radio": {
+                "type": "string",
+                "view": {
+                    "name": "RadioGroup",
+                    "label": "Radio Buttons",
+                    "component": "RadioView",
+                    "choices": [
+                        {
+                            "label": "choiceA",
+                            "value": "choiceA"
+                        },
+                        {
+                            "label": "choiceB",
+                            "value": "choiceB"
+                        }
+                    ]
+                }
+            },
+            "checkbox": {
+                "type": "boolean",
+                "view": { "label": "Checkbox" }
+            }
+        }
+    },
+    "data": {}
+}

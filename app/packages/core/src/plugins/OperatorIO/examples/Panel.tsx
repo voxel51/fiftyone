@@ -1,8 +1,9 @@
 import { types } from "@fiftyone/operators";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { usePanelStatePartial } from "@fiftyone/spaces";
+import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
 import { Box, Button } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { SchemaIOComponent } from "../../SchemaIO";
 import { TabsView } from "../../SchemaIO/components";
 import { log, operatorToIOSchema } from "../utils";
@@ -13,7 +14,10 @@ import {
   simpleSchema,
 } from "./input.json";
 import { data, schema as outputSchema } from "./output.json";
-import { BUILT_IN_PANEL_PRIORITY_CONST } from "@fiftyone/utilities";
+import {
+  data as smartFormData,
+  schema as smartFormSchema,
+} from "./smart-form.json";
 
 // Panel enabled only in development environment for testing and debugging SchemaIO
 if (import.meta.env?.MODE === "development") {
@@ -73,6 +77,7 @@ function OperatorIO() {
                 { value: "output", label: "Output" },
                 { value: "inferred-input", label: "Inferred Input" },
                 { value: "basic-input", label: "Basic Input" },
+                { value: "smart-form", label: "Smart Form" },
               ],
             },
           }}
@@ -102,6 +107,33 @@ function OperatorIO() {
           </Button>
           <SchemaIOComponent schema={bSchema} onChange={log} data={basicData} />
         </Box>
+      )}
+      {mode === "smart-form" && (
+        <SchemaIOComponent
+          schema={smartFormSchema}
+          data={smartFormData}
+          onChange={log}
+          smartForm={true}
+          smartFormProps={{
+            extraErrors: {
+              number: {
+                __errors: ["Invalid value", "Must be between 1 and 10"],
+              },
+              string: {
+                __errors: ["String cannot be empty"],
+              },
+              dropdown: {
+                __errors: ["Selection is invalid"],
+              },
+              radio: {
+                __errors: ["Please select an option"],
+              },
+              checkbox: {
+                __errors: ["At least one option must be selected"],
+              },
+            },
+          }}
+        />
       )}
     </Box>
   );
