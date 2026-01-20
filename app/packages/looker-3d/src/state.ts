@@ -9,6 +9,7 @@ import type {
   AnnotationPlaneState,
   CuboidTransformData,
   PolylinePointTransformData,
+  ReconciledLabels3D,
   SegmentState,
   SelectedPoint,
   TransformMode,
@@ -22,6 +23,8 @@ import type {
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
+
+type LabelId = string;
 
 // =============================================================================
 // GENERAL 3D
@@ -474,7 +477,7 @@ export const hoveredVertexAtom = atom<{
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedPolylineTransformsAtom = atom<
-  Record<string, PolylinePointTransformData>
+  Record<LabelId, PolylinePointTransformData>
 >({
   key: "fo3d-stagedPolylineTransforms",
   default: {},
@@ -486,7 +489,7 @@ export const stagedPolylineTransformsAtom = atom<
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedCuboidTransformsAtom = atom<
-  Record<string, CuboidTransformData>
+  Record<LabelId, CuboidTransformData>
 >({
   key: "fo3d-stagedCuboidTransforms",
   default: {},
@@ -627,5 +630,39 @@ export const clearTransformStateSelector = selector({
       timestamp: null,
     });
     set(editSegmentsModeAtom, false);
+  },
+});
+
+/**
+ * Internal atom family keyed by sample ID storing reconciled label data.
+ */
+const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D, string>({
+  key: "fo3d-ReconciledLabels3D",
+  default: {
+    detections: [],
+    polylines: [],
+  },
+});
+
+/**
+ * Selector that provides access to reconciled labels for the current sample.
+ * This is the authoritative source for what labels will be rendered
+ * in the 3D viewer.
+ */
+export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
+  key: "fo3d-reconciledLabels3DSelector",
+  get: ({ get }) => {
+    const sampleId = get(fos.currentSampleId);
+    if (!sampleId) {
+      return { detections: [], polylines: [] };
+    }
+    return get(reconciledLabels3DAtomFamily(sampleId));
+  },
+  set: ({ get, set }, newValue) => {
+    const sampleId = get(fos.currentSampleId);
+    if (!sampleId || newValue instanceof DefaultValue) {
+      return;
+    }
+    set(reconciledLabels3DAtomFamily(sampleId), newValue);
   },
 });
