@@ -311,7 +311,8 @@ async def execute_or_delegate_operator(
                             stage.rerunnable = child.config.rerunnable
                         else:
                             logger.warning(
-                                f"Pipeline stage operator '{stage.operator_uri}' does not exist"
+                                "Pipeline stage operator '%s' does not exist"
+                                % stage.operator_uri
                             )
             except Exception as e:
                 return ExecutionResult(
