@@ -2,90 +2,53 @@
  * Text input widget that manages its own label
  */
 
-import React from "react";
 import { WidgetProps } from "@rjsf/utils";
-import { Box, TextField, Typography } from "@mui/material";
-import { useTheme } from "@fiftyone/components";
+import { FormField, Input, InputProps, InputType } from "@voxel51/voodo";
+import React from "react";
 
 export default function TextWidget(props: WidgetProps) {
   const {
-    id,
     label,
     value,
     disabled,
     readonly,
     autofocus,
-    required,
     onChange = () => {},
-    onBlur = () => {},
-    onFocus = () => {},
     placeholder,
     schema,
     rawErrors = [],
   } = props;
 
-  const theme = useTheme();
-
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
-  };
-
-  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
-    onBlur(id, event.target.value);
-  };
-
-  const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
-    onFocus(id, event.target.value);
   };
 
   const inputType =
     schema.type === "number" || schema.type === "integer" ? "number" : "text";
 
-  const inputProps: Record<string, any> = {
-    "data-1p-ignore": true,
-  };
-
+  const inputProps: InputProps = {};
   if (inputType === "number" && schema.multipleOf !== undefined) {
     inputProps.step = schema.multipleOf;
   }
 
+  const inputComponent = (
+    <Input
+      disabled={disabled || readonly}
+      autoFocus={autofocus}
+      type={inputType as InputType}
+      value={value ?? ""}
+      placeholder={placeholder}
+      onChange={handleChange}
+      error={rawErrors.length > 0}
+      {...inputProps}
+    />
+  );
+
   return (
-    <Box sx={{ width: "100%" }}>
-      {label && (
-        <Typography
-          component="label"
-          htmlFor={id}
-          variant="body1"
-          color="text.primary"
-          sx={{
-            display: "block",
-            marginBottom: 1,
-            fontWeight: 400,
-          }}
-        >
-          {label}
-          {required && (
-            <span style={{ color: theme.error.main, marginLeft: "4px" }}>
-              *
-            </span>
-          )}
-        </Typography>
-      )}
-      <TextField
-        id={id}
-        type={inputType}
-        value={value ?? ""}
-        placeholder={placeholder}
-        disabled={disabled || readonly}
-        autoFocus={autofocus}
-        error={rawErrors.length > 0}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onFocus={handleFocus}
-        fullWidth
-        size="small"
-        inputProps={inputProps}
-      />
-    </Box>
+    <FormField
+      control={inputComponent}
+      error={rawErrors.length > 0 ? rawErrors[0] : undefined}
+      label={label}
+    />
   );
 }
