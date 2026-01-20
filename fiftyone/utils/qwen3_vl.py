@@ -7,7 +7,7 @@ wrapper for the FiftyOne Model Zoo.
 |
 """
 
-import ast
+import json
 import logging
 
 import numpy as np
@@ -91,11 +91,11 @@ class Qwen3VLOutputProcessor(fout.OutputProcessor):
             if not json_str.startswith("["):
                 return detections
 
-            parsed = ast.literal_eval(json_str)
+            parsed = json.loads(json_str)
             if not isinstance(parsed, list):
                 parsed = [parsed]
 
-        except (ValueError, SyntaxError) as e:
+        except (json.JSONDecodeError, ValueError) as e:
             logger.debug("Could not parse model output: %s", e)
             return detections
 
@@ -200,7 +200,7 @@ class Qwen3VLModel(fout.TorchImageModel):
         pass
 
     def _load_model(self, config):
-        model_cls = getattr(transformers, "Qwen3VLForConditionalGeneration")
+        model_cls = transformers.Qwen3VLForConditionalGeneration
         dtype = torch.bfloat16 if self._using_gpu else torch.float32
 
         model = model_cls.from_pretrained(
@@ -246,7 +246,7 @@ class Qwen3VLModel(fout.TorchImageModel):
                 if img.shape[0] in (1, 3, 4):
                     img = np.transpose(img, (1, 2, 0))
                 if img.max() <= 1.0:
-                    img = (img * 255).astype(np.uint8)
+                    img = np.clip(img * 255, 0, 255).astype(np.uint8)
 
             if isinstance(img, np.ndarray):
                 img = PILImage.fromarray(img)
