@@ -2635,9 +2635,11 @@ def _load_image(image_path, use_numpy, force_rgb):
         flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
         return foui.read(image_path, flag=flag)
 
-    img = Image.open(image_path)
     if force_rgb:
-        img = img.convert("RGB")
+        with Image.open(image_path) as img:
+            img = img.convert("RGB")
+    else:
+        img = Image.open(image_path)
 
     return img
 
