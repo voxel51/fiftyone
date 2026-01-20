@@ -2644,6 +2644,22 @@ def _load_image(image_path, use_numpy, force_rgb):
     return img
 
 
+def _load_image(image_path, use_numpy, force_rgb):
+    if use_numpy:
+        if force_rgb:
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+
+    # Use context manager to prevent leaked file descriptors
+    with open(image_path, "rb") as f:
+        img = Image.open(f)
+        if force_rgb:
+            return img.convert("RGB")
+        img.load()
+        return img
+
+
 # taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19
 # as well as https://github.com/facebookresearch/detectron2/blob/main/detectron2/utils/comm.py
 class NumpySerializedList:
