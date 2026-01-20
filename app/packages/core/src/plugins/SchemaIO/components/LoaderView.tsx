@@ -24,6 +24,7 @@ export default function LoaderView(props: LoaderViewProps) {
     label = "Loading...",
     placeholder_view: placeholderView,
     dependencies,
+    message,
   } = view;
 
   const currentValue: LoaderValue = get(fullData, path) || { state: "idle" };
@@ -58,10 +59,23 @@ export default function LoaderView(props: LoaderViewProps) {
               view: { ...placeholderView.view, readOnly: true },
             }}
           />
-          <CircularProgress
-            size={16}
-            sx={{ position: "absolute", top: 12, right: 12 }}
-          />
+          <Box
+            sx={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
+            <CircularProgress size={16} />
+            {message && (
+              <Typography variant="body2" color="text.secondary">
+                {message}
+              </Typography>
+            )}
+          </Box>
         </Box>
       );
     }
@@ -72,7 +86,7 @@ export default function LoaderView(props: LoaderViewProps) {
       >
         <CircularProgress size={18} />
         <Typography variant="body2" color="text.secondary">
-          {label}
+          {message || label}
         </Typography>
       </Box>
     );
@@ -96,6 +110,7 @@ export type LoaderViewProps = {
       operator?: string;
       params?: Record<string, unknown>;
       label?: string;
+      message?: string;
       dependencies?: string[];
       placeholder_view?: {
         view?: Record<string, unknown>;
