@@ -914,10 +914,47 @@ class TestSampleFieldRoute:
             send=AsyncMock(),
         )
 
+    def _make_request(
+        self,
+        dataset_id,
+        sample_id,
+        field_path,
+        field_id,
+        etag,
+        body,
+        generated_dataset=None,
+        generated_sample_id=None,
+    ):
+        """Helper to construct a mock request for SampleField.patch()."""
+        mock_request = MagicMock(spec=Request)
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": sample_id,
+            "field_path": field_path,
+            "field_id": field_id,
+        }
+        mock_request.headers = {
+            "Content-Type": "application/json",
+            "If-Match": etag,
+        }
+        mock_request.body = AsyncMock(return_value=json_payload(body))
+
+        if generated_dataset or generated_sample_id:
+            mock_request.query_params = MagicMock()
+            mock_request.query_params.get = lambda key, default=None: {
+                "generated_dataset": generated_dataset,
+                "generated_sample_id": generated_sample_id,
+            }.get(key, default)
+        else:
+            mock_request.query_params = {}
+
+        return mock_request
+
     @pytest.fixture(name="mock_request")
     def fixture_mock_request(self, dataset_id, sample, if_match):
         """Helper to create a mock request object."""
         mock_request = MagicMock(spec=Request)
+
         mock_request.path_params = {
             "dataset_id": dataset_id,
             "sample_id": str(sample.id),
@@ -926,108 +963,6 @@ class TestSampleFieldRoute:
         }
         mock_request.headers = {"Content-Type": "application/json"}
         mock_request.query_params = {}
-
-        if if_match is not None:
-            mock_request.headers["If-Match"] = if_match
-
-        mock_request.body = AsyncMock(return_value=json_payload({}))
-
-        return mock_request
-
-    @pytest.fixture(name="mock_request_patches")
-    def fixture_mock_request_patches(
-        self, dataset_id, sample_with_patches, patches_view, if_match
-    ):
-        """Mock request for patches view tests."""
-        patches_dataset = patches_view._patches_dataset
-        patches_sample = patches_view.first()
-
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": str(sample_with_patches.id),
-            "field_path": "ground_truth.detections",
-            "field_id": str(self.PATCHES_DETECTION_ID),
-        }
-
-        def get_query_param(key, default=None):
-            params = {
-                "generated_dataset": patches_dataset.name,
-                "generated_sample_id": str(patches_sample.id),
-            }
-            return params.get(key, default)
-
-        mock_request.query_params = MagicMock()
-        mock_request.query_params.get = get_query_param
-        mock_request.headers = {"Content-Type": "application/json"}
-
-        if if_match is not None:
-            mock_request.headers["If-Match"] = if_match
-
-        mock_request.body = AsyncMock(return_value=json_payload({}))
-
-        return mock_request
-
-    @pytest.fixture(name="mock_request_eval_gt")
-    def fixture_mock_request_eval_gt(
-        self, dataset_id, sample_with_eval, eval_patches_view, if_match
-    ):
-        """Mock request for updating ground truth label in eval patches."""
-        patches_dataset = eval_patches_view._patches_dataset
-        patches_sample = eval_patches_view.match({"type": "tp"}).first()
-
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": str(sample_with_eval.id),
-            "field_path": "ground_truth.detections",
-            "field_id": str(self.GT_DETECTION_ID),
-        }
-
-        def get_query_param(key, default=None):
-            params = {
-                "generated_dataset": patches_dataset.name,
-                "generated_sample_id": str(patches_sample.id),
-            }
-            return params.get(key, default)
-
-        mock_request.query_params = MagicMock()
-        mock_request.query_params.get = get_query_param
-        mock_request.headers = {"Content-Type": "application/json"}
-
-        if if_match is not None:
-            mock_request.headers["If-Match"] = if_match
-
-        mock_request.body = AsyncMock(return_value=json_payload({}))
-
-        return mock_request
-
-    @pytest.fixture(name="mock_request_eval_pred")
-    def fixture_mock_request_eval_pred(
-        self, dataset_id, sample_with_eval, eval_patches_view, if_match
-    ):
-        """Mock request for updating prediction label in eval patches."""
-        patches_dataset = eval_patches_view._patches_dataset
-        patches_sample = eval_patches_view.match({"type": "tp"}).first()
-
-        mock_request = MagicMock()
-        mock_request.path_params = {
-            "dataset_id": dataset_id,
-            "sample_id": str(sample_with_eval.id),
-            "field_path": "predictions.detections",
-            "field_id": str(self.PRED_DETECTION_ID),
-        }
-
-        def get_query_param(key, default=None):
-            params = {
-                "generated_dataset": patches_dataset.name,
-                "generated_sample_id": str(patches_sample.id),
-            }
-            return params.get(key, default)
-
-        mock_request.query_params = MagicMock()
-        mock_request.query_params.get = get_query_param
-        mock_request.headers = {"Content-Type": "application/json"}
 
         if if_match is not None:
             mock_request.headers["If-Match"] = if_match
@@ -1207,63 +1142,97 @@ class TestSampleFieldRoute:
         assert str(patch_payload[0]) in exc_info.value.detail
         assert "non_existent_attr" in exc_info.value.detail
 
-    # --- Delete operation tests ---
-
     @pytest.mark.asyncio
-    async def test_delete_single_label(self, mutator, mock_request, sample):
-        """Tests deleting a single label from a list."""
-        delete_payload = [{"op": "remove", "path": "/"}]
-        mock_request.body.return_value = json_payload(delete_payload)
+    async def test_delete_single_label(self, mutator, dataset_id, sample):
+        """Tests SampleField.patch() to delete a detection via JSON Patch."""
+        # Route under test: PATCH /datasets/{dataset_id}/samples/{sample_id}/fields/{field_path}/{field_id}
+        # Operation: Remove a single detection from ground_truth.detections
+        assert len(sample.ground_truth.detections) == 2
 
-        response = await mutator.patch(mock_request)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_1),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
 
         sample.reload()
-
         assert response.status_code == 200
         assert len(sample.ground_truth.detections) == 1
         assert sample.ground_truth.detections[0].id == str(self.DETECTION_ID_2)
-        assert sample.ground_truth.detections[0].label == "dog"
 
     @pytest.mark.asyncio
-    async def test_delete_all_labels(self, mutator, mock_request, sample):
-        """Tests deleting all labels from a list one by one."""
-        delete_payload = [{"op": "remove", "path": "/"}]
-        mock_request.body.return_value = json_payload(delete_payload)
+    async def test_delete_all_labels_sequentially(
+        self, mutator, dataset_id, sample
+    ):
+        """Tests SampleField.patch() to delete all detections one by one."""
+        # Route under test: PATCH /datasets/{dataset_id}/samples/{sample_id}/fields/{field_path}/{field_id}
+        # Operation: Remove detections sequentially until list is empty
+        assert len(sample.ground_truth.detections) == 2
 
         # Delete first detection
-        await mutator.patch(mock_request)
+        #####
+        await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_1),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
         sample.reload()
         assert len(sample.ground_truth.detections) == 1
 
-        # Update mock to delete second detection
-        mock_request.path_params["field_id"] = str(self.DETECTION_ID_2)
-        mock_request.headers["If-Match"] = fors.generate_sample_etag(sample)
-
         # Delete second detection
-        response = await mutator.patch(mock_request)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_2),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
         sample.reload()
 
         assert response.status_code == 200
         assert len(sample.ground_truth.detections) == 0
 
-    # --- PatchesView syncing tests ---
-
     @pytest.mark.asyncio
     async def test_update_label_syncs_to_patches(
-        self, mutator, mock_request_patches, sample_with_patches, patches_view
+        self, mutator, dataset_id, sample_with_patches, patches_view
     ):
         """Tests that updating a label syncs directly to the generated dataset."""
         patches_dataset = patches_view._patches_dataset
-        patches_sample = patches_view.first()
-        patches_sample_id = str(patches_sample.id)
-
+        patches_sample_id = str(patches_view.first().id)
         new_label = "dog"
-        patch_payload = [
-            {"op": "replace", "path": "/label", "value": new_label}
-        ]
-        mock_request_patches.body.return_value = json_payload(patch_payload)
 
-        response = await mutator.patch(mock_request_patches)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_patches.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.PATCHES_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_patches),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
 
         assert response.status_code == 200
 
@@ -1279,19 +1248,27 @@ class TestSampleFieldRoute:
 
     @pytest.mark.asyncio
     async def test_delete_label_deletes_patches_sample(
-        self, mutator, mock_request_patches, sample_with_patches, patches_view
+        self, mutator, dataset_id, sample_with_patches, patches_view
     ):
         """Tests that deleting a label removes the generated sample directly."""
         patches_dataset = patches_view._patches_dataset
-        patches_sample = patches_view.first()
-        patches_sample_id = str(patches_sample.id)
-        initial_count = len(patches_dataset)
-        assert initial_count == 1
+        patches_sample_id = str(patches_view.first().id)
+        assert len(patches_dataset) == 1
 
-        delete_payload = [{"op": "remove", "path": "/"}]
-        mock_request_patches.body.return_value = json_payload(delete_payload)
-
-        response = await mutator.patch(mock_request_patches)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_patches.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.PATCHES_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_patches),
+                body=[{"op": "remove", "path": "/"}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
 
         assert response.status_code == 200
 
@@ -1303,28 +1280,35 @@ class TestSampleFieldRoute:
         with pytest.raises(KeyError):
             patches_dataset[patches_sample_id]
 
-    # --- EvaluationPatchesView syncing tests ---
-
     @pytest.mark.asyncio
     async def test_update_gt_label_syncs_to_eval_patches(
         self,
         mutator,
-        mock_request_eval_gt,
+        dataset_id,
         sample_with_eval,
         eval_patches_view,
     ):
         """Tests updating ground truth label syncs to evaluation patches."""
         patches_dataset = eval_patches_view._patches_dataset
-        patches_sample = eval_patches_view.match({"type": "tp"}).first()
-        patches_sample_id = str(patches_sample.id)
-
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
         new_label = "dog"
-        patch_payload = [
-            {"op": "replace", "path": "/label", "value": new_label}
-        ]
-        mock_request_eval_gt.body.return_value = json_payload(patch_payload)
 
-        response = await mutator.patch(mock_request_eval_gt)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.GT_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
 
         assert response.status_code == 200
 
@@ -1346,22 +1330,31 @@ class TestSampleFieldRoute:
     async def test_update_pred_label_syncs_to_eval_patches(
         self,
         mutator,
-        mock_request_eval_pred,
+        dataset_id,
         sample_with_eval,
         eval_patches_view,
     ):
         """Tests updating prediction label syncs to evaluation patches."""
         patches_dataset = eval_patches_view._patches_dataset
-        patches_sample = eval_patches_view.match({"type": "tp"}).first()
-        patches_sample_id = str(patches_sample.id)
-
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
         new_label = "dog"
-        patch_payload = [
-            {"op": "replace", "path": "/label", "value": new_label}
-        ]
-        mock_request_eval_pred.body.return_value = json_payload(patch_payload)
 
-        response = await mutator.patch(mock_request_eval_pred)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="predictions.detections",
+                field_id=str(self.PRED_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
 
         assert response.status_code == 200
 
@@ -1382,19 +1375,30 @@ class TestSampleFieldRoute:
     async def test_delete_gt_label_in_eval_patches(
         self,
         mutator,
-        mock_request_eval_gt,
+        dataset_id,
         sample_with_eval,
         eval_patches_view,
     ):
         """Tests deleting ground truth label removes it from evaluation patches."""
         patches_dataset = eval_patches_view._patches_dataset
-        patches_sample = eval_patches_view.match({"type": "tp"}).first()
-        patches_sample_id = str(patches_sample.id)
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
 
-        delete_payload = [{"op": "remove", "path": "/"}]
-        mock_request_eval_gt.body.return_value = json_payload(delete_payload)
-
-        response = await mutator.patch(mock_request_eval_gt)
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.GT_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "remove", "path": "/"}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
 
         assert response.status_code == 200
 
