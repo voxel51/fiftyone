@@ -1,34 +1,22 @@
-import {
-  BoundingBoxOverlay,
-  TransformOverlayCommand,
-  UpdateLabelCommand,
-  useLighter,
-} from "@fiftyone/lighter";
+import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
   selectedLabelForAnnotationAtom,
   stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
+import { AnnotationLabel } from "@fiftyone/state";
+import { current, currentOverlay, savedLabel } from "./state";
 import { CommandContextManager } from "@fiftyone/commands";
-import {
-  current,
-  currentData,
-  currentOverlay,
-  hasChanges,
-  savedLabel,
-} from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const hasChanged = useAtomValue(hasChanges);
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -74,8 +62,7 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-    
-    CommandContextManager.instance().clearUndoRedoStack();
+
     if (!label || !revertLabel) {
       setSaved(null);
       setEditing(null);
@@ -96,42 +83,21 @@ export default function useExit(revertLabel = true) {
       store.set(current, {
         ...unsaved,
         data: label,
-      });
+      } as AnnotationLabel);
+      scene?.discardChanges();
     }
-
-    if (overlay) {
-      scene?.executeCommand(
-        new UpdateLabelCommand(overlay, overlay.label, label)
-      );
-
-      if (
-        hasChanged &&
-        overlay instanceof BoundingBoxOverlay &&
-        overlay.label.bounding_box
-      ) {
-        scene?.executeCommand(
-          new TransformOverlayCommand(
-            overlay,
-            overlay.id,
-            overlay.getAbsoluteBounds(),
-            scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
-          )
-        );
-      }
-    }
-
     setSaved(null);
     setEditing(null);
+    //Make sure the undo stack is cleared
+    CommandContextManager.instance().clearUndoRedoStack();
   }, [
     scene,
     setEditing,
     setSaved,
-    overlay,
     revertLabel,
     removeOverlay,
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
   ]);
 }

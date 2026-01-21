@@ -248,4 +248,10 @@ export class CommandContextManager {
   public clearUndoRedoStack() {
     this.getActiveContext().clearUndoRedoStack();
   }
+
+  public undoAll() {
+    while (this.getActiveContext().canUndo()) {
+      this.getActiveContext().undo();
+    }
+  }
 }
