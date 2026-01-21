@@ -1,6 +1,6 @@
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import { translateSchema } from "./translators";
 import { filterEmptyArrays } from "./utils";
@@ -15,6 +15,18 @@ import { isObject, type RJSFSchema } from "@rjsf/utils";
 import { SmartFormProps } from "../types";
 
 export default function RJSF(props: SmartFormProps) {
+  const { formProps } = props;
+  const formRef = useRef<{ validateForm: () => boolean } | null>(null);
+
+  const { liveValidate } = formProps || {};
+
+  useEffect(() => {
+    if (formRef.current && liveValidate) {
+      // validate on mount if liveValidate is enabled
+      formRef.current.validateForm?.();
+    }
+  }, [liveValidate]);
+
   if (!props.schema && !props.jsonSchema) {
     console.log(
       "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
@@ -56,6 +68,7 @@ export default function RJSF(props: SmartFormProps) {
 
   return (
     <Form
+      ref={formRef}
       schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={validator}

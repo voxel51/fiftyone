@@ -114,25 +114,7 @@ function OperatorIO() {
           data={smartFormData}
           onChange={log}
           smartForm={true}
-          smartFormProps={{
-            extraErrors: {
-              number: {
-                __errors: ["Invalid value", "Must be between 1 and 10"],
-              },
-              string: {
-                __errors: ["String cannot be empty"],
-              },
-              dropdown: {
-                __errors: ["Selection is invalid"],
-              },
-              radio: {
-                __errors: ["Please select an option"],
-              },
-              checkbox: {
-                __errors: ["At least one option must be selected"],
-              },
-            },
-          }}
+          smartFormProps={{ liveValidate: "onChange" }}
         />
       )}
     </Box>
