@@ -2630,21 +2630,6 @@ def from_image_classification_dir_tree(dataset_dir):
 
 
 def _load_image(image_path, use_numpy, force_rgb):
-    # Load image from disk
-    if force_rgb:
-        img = cv2.imread(image_path, cv2.IMREAD_COLOR)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    else:
-        img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
-
-    if not use_numpy:
-        # convert to PIL Image for torchvision compatibility
-        img = Image.fromarray(img)
-
-    return img
-
-
-def _load_image(image_path, use_numpy, force_rgb):
     if use_numpy:
         if force_rgb:
             img = cv2.imread(image_path, cv2.IMREAD_COLOR)
