@@ -175,12 +175,12 @@ const fieldsOfType = atomFamily((type: LabelType) =>
 
     for (const field of get(activeLabelSchemas) ?? []) {
       if (IS[type].has(get(fieldType(field)))) {
-				const fieldSchema = get(labelSchemaData(field));
-				const isFieldReadOnly = fieldSchema?.read_only || false;
+        const fieldSchema = get(labelSchemaData(field));
+        const isFieldReadOnly = fieldSchema?.read_only || false;
 
-				if (!isFieldReadOnly) {
-					fields.push(field);
-				}
+        if (!isFieldReadOnly) {
+          fields.push(field);
+        }
       }
     }
 
