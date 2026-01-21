@@ -796,7 +796,7 @@ Storing camera calibration
 
 All |Dataset| instances have
 :meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>` and
-:meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
+:meth:`static_transforms <fiftyone.core.dataset.Dataset.static_transforms>`
 properties that you can use to store camera calibration parameters for
 multi-sensor datasets.
 
@@ -819,8 +819,8 @@ instances that define the internal parameters of each camera:
     }
     dataset.save()
 
-The :meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
-property is a dictionary mapping frame pairs to |SensorExtrinsics| instances
+The :meth:`static_transforms <fiftyone.core.dataset.Dataset.static_transforms>`
+property is a dictionary mapping frame pairs to |StaticTransform| instances
 that define the 6-DOF rigid transformations between coordinate frames. Keys
 should be formatted as ``"source_frame::target_frame"`` or simply
 ``"source_frame"`` (which implies ``"world"`` as the target):
@@ -831,23 +831,23 @@ should be formatted as ``"source_frame::target_frame"`` or simply
     import fiftyone as fo
 
     # Store sensor mounting positions relative to the vehicle center ("ego")
-    dataset.sensor_extrinsics = {
+    dataset.static_transforms = {
         # Left camera: 1.5m forward, 0.5m left, 1.2m up
-        "left::ego": fo.SensorExtrinsics(
+        "left::ego": fo.StaticTransform(
             translation=[1.5, 0.5, 1.2],
             quaternion=[0, 0, 0, 1],
             source_frame="left",
             target_frame="ego",
         ),
         # Right camera: 1.5m forward, 0.5m right, 1.2m up
-        "right::ego": fo.SensorExtrinsics(
+        "right::ego": fo.StaticTransform(
             translation=[1.5, -0.5, 1.2],
             quaternion=[0, 0, 0, 1],
             source_frame="right",
             target_frame="ego",
         ),
         # Lidar: centered, 2.0m up (roof-mounted)
-        "lidar::ego": fo.SensorExtrinsics(
+        "lidar::ego": fo.StaticTransform(
             translation=[0.0, 0.0, 2.0],
             quaternion=[0, 0, 0, 1],
             source_frame="lidar",
@@ -868,7 +868,7 @@ should be formatted as ``"source_frame::target_frame"`` or simply
     the dataset's
     :meth:`camera_intrinsics <fiftyone.core.dataset.Dataset.camera_intrinsics>`
     and
-    :meth:`sensor_extrinsics <fiftyone.core.dataset.Dataset.sensor_extrinsics>`
+    :meth:`static_transforms <fiftyone.core.dataset.Dataset.static_transforms>`
     properties in-place to save the changes to the database.
 
 Deleting a dataset
@@ -5823,7 +5823,7 @@ length, principal point, and lens distortion. FiftyOne provides several
 Sensor extrinsics
 -----------------
 
-The |SensorExtrinsics| class represents a 6-DOF rigid transformation between
+The |StaticTransform| class represents a 6-DOF rigid transformation between
 coordinate frames, defined by a translation vector and a rotation quaternion.
 
 .. code-block:: python
@@ -5832,7 +5832,7 @@ coordinate frames, defined by a translation vector and a rotation quaternion.
     import fiftyone as fo
 
     # Create a camera-to-ego transformation
-    extrinsics = fo.SensorExtrinsics(
+    extrinsics = fo.StaticTransform(
         translation=[1.5, 0.0, 1.2],  # [tx, ty, tz]
         quaternion=[0.0, 0.0, 0.0, 1.0],  # [qx, qy, qz, qw] (scalar-last)
         source_frame="camera_front",
@@ -5863,15 +5863,11 @@ You can also create extrinsics from a transformation matrix:
     T = np.eye(4)
     T[:3, 3] = [1.0, 2.0, 3.0]  # translation
 
-    extrinsics = fo.SensorExtrinsics.from_matrix(
+    extrinsics = fo.StaticTransform.from_matrix(
         T,
         source_frame="camera",
         target_frame="world",
     )
-
-.. note::
-
-    |CameraExtrinsics| is an alias for |SensorExtrinsics|.
 
 .. _resolving-calibration:
 
@@ -5930,14 +5926,14 @@ stored at the sample level:
     }
 
     # Store static sensor mounting positions relative to vehicle center ("ego")
-    dataset.sensor_extrinsics = {
-        "left::ego": fo.SensorExtrinsics(
+    dataset.static_transforms = {
+        "left::ego": fo.StaticTransform(
             translation=[1.5, 0.5, 1.2],
             quaternion=[0, 0, 0, 1],
             source_frame="left",
             target_frame="ego",
         ),
-        "right::ego": fo.SensorExtrinsics(
+        "right::ego": fo.StaticTransform(
             translation=[1.5, -0.5, 1.2],
             quaternion=[0, 0, 0, 1],
             source_frame="right",
@@ -5951,7 +5947,7 @@ stored at the sample level:
     sample = dataset.first()
 
     # Store dynamic ego pose at sample level (vehicle location in the world)
-    sample["ego_pose"] = fo.SensorExtrinsics(
+    sample["ego_pose"] = fo.StaticTransform(
         translation=[100.0, 50.0, 0.0],
         quaternion=[0, 0, 0, 1],
         source_frame="ego",
