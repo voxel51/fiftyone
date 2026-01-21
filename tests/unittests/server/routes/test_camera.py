@@ -14,9 +14,9 @@ from starlette.exceptions import HTTPException
 
 import fiftyone as fo
 from fiftyone.core.camera import (
-    DEFAULT_EXTRINSICS_TARGET_FRAME,
+    DEFAULT_TRANSFORM_TARGET_FRAME,
     PinholeCameraIntrinsics,
-    SensorExtrinsics,
+    StaticTransform,
 )
 import fiftyone.server.routes.camera as forc
 from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
@@ -59,10 +59,10 @@ def fixture_intrinsics_endpoint():
     )
 
 
-@pytest.fixture(name="extrinsics_endpoint")
-def fixture_extrinsics_endpoint():
-    """Returns the CameraExtrinsics endpoint instance."""
-    return forc.CameraExtrinsics(
+@pytest.fixture(name="transform_endpoint")
+def fixture_transform_endpoint():
+    """Returns the StaticTransforms endpoint instance."""
+    return forc.StaticTransforms(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -75,10 +75,10 @@ def fixture_batch_intrinsics_endpoint():
     )
 
 
-@pytest.fixture(name="batch_extrinsics_endpoint")
-def fixture_batch_extrinsics_endpoint():
-    """Returns the BatchCameraExtrinsics endpoint instance."""
-    return forc.BatchCameraExtrinsics(
+@pytest.fixture(name="batch_transform_endpoint")
+def fixture_batch_transform_endpoint():
+    """Returns the BatchStaticTransforms endpoint instance."""
+    return forc.BatchStaticTransforms(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -132,16 +132,16 @@ def fixture_multi_sample_dataset():
     ]
     dataset.add_samples(samples)
 
-    # Add both intrinsics and extrinsics to first sample
+    # Add both intrinsics and transform to first sample
     sample = dataset.first()
     sample["camera_intrinsics"] = PinholeCameraIntrinsics(
         fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
     )
-    sample["sensor_extrinsics"] = SensorExtrinsics(
+    sample["static_transforms"] = StaticTransform(
         translation=[1.0, 2.0, 3.0],
         quaternion=[0.0, 0.0, 0.0, 1.0],
         source_frame="camera",
-        target_frame=DEFAULT_EXTRINSICS_TARGET_FRAME,
+        target_frame=DEFAULT_TRANSFORM_TARGET_FRAME,
     )
     sample.save()
 
@@ -233,73 +233,73 @@ class TestCameraIntrinsicsRoute:
         assert f"Sample '{bad_sample_id}' not found" in exc_info.value.detail
 
 
-class TestCameraExtrinsicsRoute:
-    """Tests for CameraExtrinsics endpoint."""
+class TestStaticTransformsRoute:
+    """Tests for StaticTransforms endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_extrinsics_success(
-        self, extrinsics_endpoint, mock_request, dataset
+    async def test_get_transform_success(
+        self, transform_endpoint, mock_request, dataset
     ):
-        """Tests successfully retrieving camera extrinsics."""
-        extrinsics = SensorExtrinsics(
+        """Tests successfully retrieving camera transform."""
+        transform = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
         sample = dataset.first()
-        sample["sensor_extrinsics"] = extrinsics
+        sample["static_transforms"] = transform
         sample.save()
 
         # Need to query with matching source/target frames
         request = mock_request(
             query_params={
                 "source_frame": "camera",
-                "target_frame": DEFAULT_EXTRINSICS_TARGET_FRAME,
+                "target_frame": DEFAULT_TRANSFORM_TARGET_FRAME,
             }
         )
-        response = await extrinsics_endpoint.get(request)
+        response = await transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert "extrinsics" in data
-        assert data["extrinsics"] is not None
+        assert "transform" in data
+        assert data["transform"] is not None
 
     @pytest.mark.asyncio
-    async def test_get_extrinsics_returns_null(
-        self, extrinsics_endpoint, mock_request, dataset
+    async def test_get_transform_returns_null(
+        self, transform_endpoint, mock_request, dataset
     ):
-        """Tests that null is returned when no extrinsics exist."""
+        """Tests that null is returned when no transform exist."""
         request = mock_request()
-        response = await extrinsics_endpoint.get(request)
+        response = await transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert "extrinsics" in data
-        assert data["extrinsics"] is None
+        assert "transform" in data
+        assert data["transform"] is None
 
     @pytest.mark.asyncio
-    async def test_get_extrinsics_with_query_params(
-        self, extrinsics_endpoint, mock_request, dataset
+    async def test_get_transform_with_query_params(
+        self, transform_endpoint, mock_request, dataset
     ):
-        """Tests extrinsics retrieval with source_frame and target_frame."""
+        """Tests transform retrieval with source_frame and target_frame."""
         request = mock_request(
             query_params={
                 "source_frame": "camera",
-                "target_frame": DEFAULT_EXTRINSICS_TARGET_FRAME,
+                "target_frame": DEFAULT_TRANSFORM_TARGET_FRAME,
             }
         )
-        response = await extrinsics_endpoint.get(request)
+        response = await transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert "extrinsics" in data
+        assert "transform" in data
 
     @pytest.mark.asyncio
-    async def test_get_extrinsics_with_chain_via(
-        self, extrinsics_endpoint, mock_request, dataset
+    async def test_get_transform_with_chain_via(
+        self, transform_endpoint, mock_request, dataset
     ):
-        """Tests extrinsics retrieval with chain_via parameter."""
+        """Tests transform retrieval with chain_via parameter."""
         request = mock_request(
             query_params={
                 "source_frame": "camera",
@@ -307,15 +307,15 @@ class TestCameraExtrinsicsRoute:
                 "chain_via": "lidar, vehicle",
             }
         )
-        response = await extrinsics_endpoint.get(request)
+        response = await transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
-        assert "extrinsics" in data
+        assert "transform" in data
 
     @pytest.mark.asyncio
-    async def test_get_extrinsics_chain_via_parsing(
-        self, extrinsics_endpoint, mock_request, dataset
+    async def test_get_transform_chain_via_parsing(
+        self, transform_endpoint, mock_request, dataset
     ):
         """Tests that chain_via is correctly parsed from comma-separated string."""
         # This test verifies the parsing logic by checking behavior with
@@ -326,16 +326,16 @@ class TestCameraExtrinsicsRoute:
             }
         )
         # Should not raise an error - parsing should handle whitespace
-        response = await extrinsics_endpoint.get(request)
+        response = await transform_endpoint.get(request)
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_dataset_not_found(self, extrinsics_endpoint, mock_request):
+    async def test_dataset_not_found(self, transform_endpoint, mock_request):
         """Tests that 404 is raised for non-existent dataset."""
         request = mock_request(dataset_id_override="non-existent-dataset")
 
         with pytest.raises(HTTPException) as exc_info:
-            await extrinsics_endpoint.get(request)
+            await transform_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert (
@@ -344,7 +344,7 @@ class TestCameraExtrinsicsRoute:
 
     @pytest.mark.asyncio
     async def test_sample_not_found(
-        self, extrinsics_endpoint, mock_request, dataset
+        self, transform_endpoint, mock_request, dataset
     ):
         """Tests that 404 is raised for non-existent sample."""
         from bson import ObjectId
@@ -353,16 +353,16 @@ class TestCameraExtrinsicsRoute:
         request = mock_request(sample_id_override=bad_sample_id)
 
         with pytest.raises(HTTPException) as exc_info:
-            await extrinsics_endpoint.get(request)
+            await transform_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert f"Sample '{bad_sample_id}' not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
     async def test_invalid_chain_via_raises_400(
-        self, extrinsics_endpoint, mock_request, dataset
+        self, transform_endpoint, mock_request, dataset
     ):
-        """Tests that ValueError from resolve_extrinsics raises 400."""
+        """Tests that ValueError from resolve_transformation raises 400."""
         request = mock_request(
             query_params={
                 "source_frame": "camera",
@@ -371,14 +371,14 @@ class TestCameraExtrinsicsRoute:
             }
         )
 
-        # Mock resolve_extrinsics to raise ValueError
+        # Mock resolve_transformation to raise ValueError
         with patch.object(
             fo.Dataset,
-            "resolve_extrinsics",
+            "resolve_transformation",
             side_effect=ValueError("Frames don't chain properly"),
         ):
             with pytest.raises(HTTPException) as exc_info:
-                await extrinsics_endpoint.get(request)
+                await transform_endpoint.get(request)
 
             assert exc_info.value.status_code == 400
             assert "Frames don't chain properly" in exc_info.value.detail
@@ -499,19 +499,19 @@ class TestBatchCameraIntrinsicsRoute:
         )
 
 
-class TestBatchCameraExtrinsicsRoute:
-    """Tests for BatchCameraExtrinsics endpoint."""
+class TestBatchStaticTransformsRoute:
+    """Tests for BatchStaticTransforms endpoint."""
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_success(
+    async def test_batch_transform_success(
         self,
-        batch_extrinsics_endpoint,
+        batch_transform_endpoint,
         mock_batch_request,
         multi_sample_dataset,
         multi_sample_ids,
         multi_dataset_id,
     ):
-        """Tests successfully retrieving batch extrinsics."""
+        """Tests successfully retrieving batch transform."""
         # Need to query with matching source/target frames
         request = mock_batch_request(
             dataset_id_override=multi_dataset_id,
@@ -521,32 +521,32 @@ class TestBatchCameraExtrinsicsRoute:
                 "target_frame": "world",
             },
         )
-        response = await batch_extrinsics_endpoint.get(request)
+        response = await batch_transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
         assert len(data["results"]) == 3
 
-        # First sample has extrinsics
+        # First sample has transform
         first_result = data["results"][multi_sample_ids[0]]
-        assert "extrinsics" in first_result
-        assert first_result["extrinsics"] is not None
+        assert "transform" in first_result
+        assert first_result["transform"] is not None
 
-        # Other samples have null extrinsics
+        # Other samples have null transform
         for sample_id in multi_sample_ids[1:]:
-            assert data["results"][sample_id]["extrinsics"] is None
+            assert data["results"][sample_id]["transform"] is None
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_with_query_params(
+    async def test_batch_transform_with_query_params(
         self,
-        batch_extrinsics_endpoint,
+        batch_transform_endpoint,
         mock_batch_request,
         multi_sample_dataset,
         multi_sample_ids,
         multi_dataset_id,
     ):
-        """Tests batch extrinsics with source_frame, target_frame, chain_via."""
+        """Tests batch transform with source_frame, target_frame, chain_via."""
         request = mock_batch_request(
             dataset_id_override=multi_dataset_id,
             query_params={
@@ -556,21 +556,21 @@ class TestBatchCameraExtrinsicsRoute:
                 "chain_via": "lidar,vehicle",
             },
         )
-        response = await batch_extrinsics_endpoint.get(request)
+        response = await batch_transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_missing_param(
-        self, batch_extrinsics_endpoint, mock_batch_request
+    async def test_batch_transform_missing_param(
+        self, batch_transform_endpoint, mock_batch_request
     ):
         """Tests that 400 is raised when sample_ids is missing."""
         request = mock_batch_request(query_params={})
 
         with pytest.raises(HTTPException) as exc_info:
-            await batch_extrinsics_endpoint.get(request)
+            await batch_transform_endpoint.get(request)
 
         assert exc_info.value.status_code == 400
         assert (
@@ -579,14 +579,14 @@ class TestBatchCameraExtrinsicsRoute:
         )
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_empty_param(
-        self, batch_extrinsics_endpoint, mock_batch_request
+    async def test_batch_transform_empty_param(
+        self, batch_transform_endpoint, mock_batch_request
     ):
         """Tests that 400 is raised when sample_ids is empty."""
         request = mock_batch_request(query_params={"sample_ids": ""})
 
         with pytest.raises(HTTPException) as exc_info:
-            await batch_extrinsics_endpoint.get(request)
+            await batch_transform_endpoint.get(request)
 
         assert exc_info.value.status_code == 400
         assert (
@@ -595,9 +595,9 @@ class TestBatchCameraExtrinsicsRoute:
         )
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_partial_missing_samples(
+    async def test_batch_transform_partial_missing_samples(
         self,
-        batch_extrinsics_endpoint,
+        batch_transform_endpoint,
         mock_batch_request,
         multi_sample_dataset,
         multi_sample_ids,
@@ -613,14 +613,14 @@ class TestBatchCameraExtrinsicsRoute:
             dataset_id_override=multi_dataset_id,
             query_params={"sample_ids": ",".join(sample_ids)},
         )
-        response = await batch_extrinsics_endpoint.get(request)
+        response = await batch_transform_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
 
         # Valid samples should have results
-        assert "extrinsics" in data["results"][multi_sample_ids[0]]
+        assert "transform" in data["results"][multi_sample_ids[0]]
 
         # Missing sample should have error
         assert "error" in data["results"][bad_id]
@@ -629,8 +629,8 @@ class TestBatchCameraExtrinsicsRoute:
         )
 
     @pytest.mark.asyncio
-    async def test_batch_extrinsics_dataset_not_found(
-        self, batch_extrinsics_endpoint, mock_batch_request
+    async def test_batch_transform_dataset_not_found(
+        self, batch_transform_endpoint, mock_batch_request
     ):
         """Tests that 404 is raised for non-existent dataset."""
         request = mock_batch_request(
@@ -639,7 +639,7 @@ class TestBatchCameraExtrinsicsRoute:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await batch_extrinsics_endpoint.get(request)
+            await batch_transform_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert (

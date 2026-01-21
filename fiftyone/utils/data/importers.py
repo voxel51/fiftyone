@@ -732,13 +732,13 @@ def parse_dataset_info(dataset, info, overwrite=True):
         else:
             _update_no_overwrite(dataset.camera_intrinsics, camera_intrinsics)
 
-    sensor_extrinsics = info.pop("sensor_extrinsics", None)
-    if sensor_extrinsics:
-        sensor_extrinsics = dataset._parse_sensor_extrinsics(sensor_extrinsics)
+    static_transforms = info.pop("static_transforms", None)
+    if static_transforms:
+        static_transforms = dataset._parse_static_transforms(static_transforms)
         if overwrite:
-            dataset.sensor_extrinsics.update(sensor_extrinsics)
+            dataset.static_transforms.update(static_transforms)
         else:
-            _update_no_overwrite(dataset.sensor_extrinsics, sensor_extrinsics)
+            _update_no_overwrite(dataset.static_transforms, static_transforms)
 
     app_config = info.pop("app_config", None)
 

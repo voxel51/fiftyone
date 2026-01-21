@@ -56,11 +56,11 @@ class CameraIntrinsics(HTTPEndpoint):
         )
 
 
-class CameraExtrinsics(HTTPEndpoint):
-    """Camera extrinsics endpoint."""
+class StaticTransforms(HTTPEndpoint):
+    """Static transforms endpoint."""
 
     async def get(self, request: Request) -> JSONResponse:
-        """Retrieves camera/sensor extrinsics for a sample.
+        """Retrieves a static transform for a sample.
 
         Args:
             request: Starlette request with dataset_id and sample_id in path
@@ -68,7 +68,7 @@ class CameraExtrinsics(HTTPEndpoint):
                 query params
 
         Returns:
-            JSON response containing the extrinsics data, or null if not found
+            JSON response containing the transform data, or null if not found
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
@@ -84,7 +84,7 @@ class CameraExtrinsics(HTTPEndpoint):
             ]
 
         logger.debug(
-            "Received GET request for camera extrinsics for sample %s "
+            "Received GET request for static transform for sample %s "
             "in dataset %s (source_frame=%s, target_frame=%s, chain_via=%s)",
             sample_id,
             dataset_id,
@@ -97,7 +97,7 @@ class CameraExtrinsics(HTTPEndpoint):
         sample = get_sample_from_dataset(dataset, sample_id)
 
         try:
-            extrinsics = dataset.resolve_extrinsics(
+            transform = dataset.resolve_transformation(
                 sample,
                 source_frame=source_frame,
                 target_frame=target_frame,
@@ -107,11 +107,11 @@ class CameraExtrinsics(HTTPEndpoint):
             # ValueError can occur when chain_via frames don't chain
             raise HTTPException(status_code=400, detail=str(err)) from err
 
-        if extrinsics is None:
-            return utils.json.JSONResponse({"extrinsics": None})
+        if transform is None:
+            return utils.json.JSONResponse({"transform": None})
 
         return utils.json.JSONResponse(
-            {"extrinsics": utils.json.serialize(extrinsics)}
+            {"transform": utils.json.serialize(transform)}
         )
 
 
@@ -191,11 +191,11 @@ class BatchCameraIntrinsics(HTTPEndpoint):
         return utils.json.JSONResponse({"results": results})
 
 
-class BatchCameraExtrinsics(HTTPEndpoint):
-    """Batch camera extrinsics endpoint."""
+class BatchStaticTransforms(HTTPEndpoint):
+    """Batch static transforms endpoint."""
 
     async def get(self, request: Request) -> JSONResponse:
-        """Retrieves camera/sensor extrinsics for multiple samples.
+        """Retrieves static transforms for multiple samples.
 
         Args:
             request: Starlette request with dataset_id in path params,
@@ -204,7 +204,7 @@ class BatchCameraExtrinsics(HTTPEndpoint):
 
         Returns:
             JSON response containing results dict mapping sample_id to
-            extrinsics data, null, or error message
+            transform data, null, or error message
         """
         dataset_id = request.path_params["dataset_id"]
         sample_ids = _parse_sample_ids(request)
@@ -220,7 +220,7 @@ class BatchCameraExtrinsics(HTTPEndpoint):
             ]
 
         logger.debug(
-            "Received GET request for batch camera extrinsics for %d samples "
+            "Received GET request for batch static transforms for %d samples "
             "in dataset %s (source_frame=%s, target_frame=%s, chain_via=%s)",
             len(sample_ids),
             dataset_id,
@@ -242,7 +242,7 @@ class BatchCameraExtrinsics(HTTPEndpoint):
                 continue
 
             try:
-                extrinsics = dataset.resolve_extrinsics(
+                transform = dataset.resolve_transformation(
                     sample,
                     source_frame=source_frame,
                     target_frame=target_frame,
@@ -253,11 +253,11 @@ class BatchCameraExtrinsics(HTTPEndpoint):
                 results[sample_id] = {"error": str(err)}
                 continue
 
-            if extrinsics is None:
-                results[sample_id] = {"extrinsics": None}
+            if transform is None:
+                results[sample_id] = {"transform": None}
             else:
                 results[sample_id] = {
-                    "extrinsics": utils.json.serialize(extrinsics)
+                    "transform": utils.json.serialize(transform)
                 }
 
         return utils.json.JSONResponse({"results": results})
@@ -269,15 +269,15 @@ CameraRoutes = [
         CameraIntrinsics,
     ),
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/extrinsics",
-        CameraExtrinsics,
+        "/dataset/{dataset_id}/sample/{sample_id}/static_transforms",
+        StaticTransforms,
     ),
     (
         "/dataset/{dataset_id}/samples/intrinsics",
         BatchCameraIntrinsics,
     ),
     (
-        "/dataset/{dataset_id}/samples/extrinsics",
-        BatchCameraExtrinsics,
+        "/dataset/{dataset_id}/samples/static_transforms",
+        BatchStaticTransforms,
     ),
 ]
