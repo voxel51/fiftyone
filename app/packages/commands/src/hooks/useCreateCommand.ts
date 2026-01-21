@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommandContext } from "../context";
 import { CommandFunction } from "../types";
 import { resolveContext } from "./utils";
@@ -13,7 +13,8 @@ import { CommandHookReturn } from ".";
  * @param enablement A function to determine if the command is enabled
  * @param label The short name of the command, ie Edit, Save, etc
  * @param description A longer description fit for a tooltip
- * @returns A function to invoke the command
+ * @returns A function to invoke the command, a descriptor object,
+ * and a boolean indicating if the command is enabled
  */
 export const useCreateCommand = (
   context: CommandContext | string,
@@ -29,6 +30,7 @@ export const useCreateCommand = (
 
   const exec = useRef(execFn);
   const enable = useRef(enablement);
+  const [enabled, setEnabled] = useState(enablement());
 
   useEffect(() => {
     exec.current = execFn;
@@ -43,10 +45,22 @@ export const useCreateCommand = (
       label,
       description
     );
+
+    setEnabled(cmd.isEnabled());
+    const unsub = cmd.subscribe(() => setEnabled(cmd.isEnabled()));
+
     return () => {
+      unsub();
       boundContext.context.unregisterCommand(cmd.id);
     };
-  }, [boundContext, id, exec, enable, label, description]);
+  }, [boundContext, id, label, description]);
+
+  useEffect(() => {
+    const cmd = boundContext.context.getCommand(id);
+    if (cmd) {
+      setEnabled(cmd.isEnabled());
+    }
+  }, [enablement, id, boundContext]);
 
   return {
     callback: useCallback(() => {
@@ -57,5 +71,6 @@ export const useCreateCommand = (
       label: label ?? "",
       description: description ?? "",
     },
+    enabled,
   };
 };

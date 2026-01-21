@@ -13,34 +13,56 @@ export type CommandDescriptor = {
  * @param commandId A command id
  * @param context The context the command is bound to.  If not
  * provided the active context is checked.
- * @returns A callback to invoke the command and the command object.
+ * @returns A callback to invoke the command and the command object,
+ * a descriptor object, and a boolean indicating if the command is enabled.
  */
 export const useCommand = (
   commandId: string,
   context?: string | CommandContext
 ): CommandHookReturn => {
   const boundContext = useCommandContext(context);
-  const [descriptor, setDescriptor] = useState<CommandDescriptor>(() => {
+  const [state, setState] = useState<{
+    descriptor: CommandDescriptor;
+    enabled: boolean;
+  }>(() => {
     const command = boundContext.context.getCommand(commandId);
     return {
-      id: commandId,
-      label: command?.label ?? "",
-      description: command?.description ?? "",
+      descriptor: {
+        id: commandId,
+        label: command?.label ?? "",
+        description: command?.description ?? "",
+      },
+      enabled: command?.isEnabled() ?? false,
     };
   });
 
   useEffect(() => {
+    let unsubCommand: (() => void) | undefined;
     const update = () => {
       const command = boundContext.context.getCommand(commandId);
-      setDescriptor({
-        id: commandId,
-        label: command?.label ?? "",
-        description: command?.description ?? "",
+      setState({
+        descriptor: {
+          id: commandId,
+          label: command?.label ?? "",
+          description: command?.description ?? "",
+        },
+        enabled: command?.isEnabled() ?? false,
       });
+
+      if (unsubCommand) {
+        unsubCommand();
+        unsubCommand = undefined;
+      }
+
+      unsubCommand = command?.subscribe(update);
     };
 
     update();
-    return boundContext.context.subscribeCommands(update);
+    const unsubRegistry = boundContext.context.subscribeCommands(update);
+    return () => {
+      unsubRegistry();
+      unsubCommand?.();
+    };
   }, [commandId, boundContext.context]);
 
   const execute = useCallback(() => {
@@ -49,6 +71,7 @@ export const useCommand = (
 
   return {
     callback: execute,
-    descriptor,
+    descriptor: state.descriptor,
+    enabled: state.enabled,
   };
 };
