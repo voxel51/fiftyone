@@ -1,7 +1,7 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -20,6 +20,7 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
+  readOnlyOverride,
 } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
@@ -49,6 +50,7 @@ export default function Edit() {
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const setReadOnlyOverride = useSetAtom(readOnlyOverride);
 
   const clear = useClearModal();
   const exit = useExit();
@@ -57,6 +59,11 @@ export default function Edit() {
     clear();
     exit();
   }, useSave());
+
+  // Reset read-only override when switching to a different label
+  useEffect(() => {
+    setReadOnlyOverride(false);
+  }, [overlay?.id, field, setReadOnlyOverride]);
 
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {

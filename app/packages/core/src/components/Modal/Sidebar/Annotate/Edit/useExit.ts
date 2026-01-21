@@ -20,12 +20,14 @@ import {
   currentData,
   currentOverlay,
   hasChanges,
+  readOnlyOverride,
   savedLabel,
 } from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
+  const setReadOnlyOverride = useSetAtom(readOnlyOverride);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const hasChanged = useAtomValue(hasChanges);
@@ -74,7 +76,10 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-    
+
+    // Reset read-only override when exiting edit mode
+    setReadOnlyOverride(false);
+
     CommandContextManager.instance().clearUndoRedoStack();
     if (!label || !revertLabel) {
       setSaved(null);
@@ -126,6 +131,7 @@ export default function useExit(revertLabel = true) {
     scene,
     setEditing,
     setSaved,
+    setReadOnlyOverride,
     overlay,
     revertLabel,
     removeOverlay,
