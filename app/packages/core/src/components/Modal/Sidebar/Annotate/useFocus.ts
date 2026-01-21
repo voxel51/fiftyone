@@ -31,7 +31,6 @@ export default function useFocus() {
 
     const label = STORE.get(labelMap)[id];
     if (id && label) {
-      console.debug("saving label");
       STORE.set(savedLabel, STORE.get(label)?.data);
       STORE.set(editing, label);
       scene?.selectOverlay(id, { ignoreSideEffects: true });
