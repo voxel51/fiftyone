@@ -3730,11 +3730,12 @@ class SampleCollection(object):
         type has a visual representation, that field is handled by the App's
         builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
         Primitive attributes of label types are configured via the
-        ``attributes`` setting.
+        ``attributes`` setting. The order of primitive attributes is configured
+        via the optional ``active_attributes``. If ``active_attributes`` is not
+        provided, all attributes are shown.
 
         When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
-
 
         All :class:`fiftyone.core.labels.Label` types are resolved by this
         method except :class:`fiftyone.core.labels.GeoLocation`,

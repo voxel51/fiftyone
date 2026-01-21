@@ -120,6 +120,9 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     type has a visual representation, that field is handled by the App's
     builtin annotation UI, e.g. ``bounding_box`` for a ``detection``. Primitive
     attributes of label types are configured via the ``attributes`` setting.
+    The order of primitive attributes is configured via the optional
+    ``active_attributes``. If ``active_attributes`` is not provided, all
+    attributes are shown.
 
     When a label is marked is ``read_only``, all its attributes inherit the
     setting as well.
