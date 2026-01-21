@@ -22,6 +22,8 @@ const SaveFooter = ({ readOnly = false }: FooterProps) => {
   const changes = useAtomValue(hasChanges);
   const saving = useAtomValue(isSavingAtom);
 
+  if (readOnly) return null;
+
   return (
     <>
       <Stack direction="row" spacing={1}>
@@ -34,7 +36,7 @@ const SaveFooter = ({ readOnly = false }: FooterProps) => {
         </MuiButton>
 
         <MuiButton
-          disabled={!changes || saving || readOnly}
+          disabled={!changes || saving}
           onClick={() => {
             onSave();
           }}
@@ -46,10 +48,8 @@ const SaveFooter = ({ readOnly = false }: FooterProps) => {
       </Stack>
 
       <RoundButton
-        className={saving || readOnly ? "disabled" : ""}
-        onClick={
-          saving || readOnly ? undefined : showCancel ? onExitConfirm : onDelete
-        }
+        className={saving ? "disabled" : ""}
+        onClick={saving ? undefined : showCancel ? onExitConfirm : onDelete}
       >
         {showCancel ? (
           "Cancel"
