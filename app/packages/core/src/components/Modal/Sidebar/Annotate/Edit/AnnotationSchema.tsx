@@ -36,7 +36,8 @@ const getLabel = (value) => {
 
 const createInput = (
   name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+  { ftype, multipleOf }: { ftype: string; multipleOf: number },
+  readOnly?: boolean
 ): SchemaType => {
   const type =
     ftype === STRING_FIELD
@@ -51,6 +52,7 @@ const createInput = (
       name: "PrimitiveView",
       label: name,
       component: "PrimitiveView",
+      readOnly,
     },
   };
 
@@ -61,13 +63,14 @@ const createInput = (
   return schema;
 };
 
-const createRadio = (name: string, choices) => {
+const createRadio = (name: string, choices, readOnly?: boolean) => {
   return {
     type: "string",
     view: {
       name: "RadioGroup",
       label: name,
       component: "RadioView",
+      readOnly,
       choices: choices.map((choice) => ({
         label: getLabel(choice),
         value: choice,
@@ -76,7 +79,7 @@ const createRadio = (name: string, choices) => {
   };
 };
 
-const createTags = (name: string, choices: string[]) => {
+const createTags = (name: string, choices: string[], readOnly?: boolean) => {
   return {
     type: "array",
     view: {
@@ -84,6 +87,7 @@ const createTags = (name: string, choices: string[]) => {
       label: name,
       component: "AutocompleteView",
       allow_user_input: false,
+      readOnly,
       choices: choices.map((choice) => ({
         name: "Choice",
         label: getLabel(choice),
@@ -94,13 +98,14 @@ const createTags = (name: string, choices: string[]) => {
   };
 };
 
-const createSelect = (name: string, choices: string[]) => {
+const createSelect = (name: string, choices: string[], readOnly?: boolean) => {
   return {
     type: "string",
     view: {
       name: "DropdownView",
       label: name,
       component: "DropdownView",
+      readOnly,
       choices: choices.map((choice) => ({
         name: "Choice",
         label: getLabel(choice),
@@ -110,14 +115,14 @@ const createSelect = (name: string, choices: string[]) => {
   };
 };
 
-const useSchema = () => {
+const useSchema = (readOnly?: boolean) => {
   const config = useAtomValue(currentSchema);
 
   return useMemo(() => {
     const properties: Record<string, any> = {};
 
     const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? []);
+    properties.label = createSelect("label", config?.classes ?? [], readOnly);
 
     for (const attr in attributes) {
       if (attr === "id") {
@@ -125,15 +130,15 @@ const useSchema = () => {
       }
 
       if (attributes[attr].component === "text") {
-        properties[attr] = createInput(attr, attributes[attr]);
+        properties[attr] = createInput(attr, attributes[attr], readOnly);
       }
 
       if (attributes[attr].component === "radio") {
-        properties[attr] = createRadio(attr, attributes[attr].values);
+        properties[attr] = createRadio(attr, attributes[attr].values, readOnly);
       }
 
       if (attributes[attr].component === "dropdown") {
-        properties[attr] = createTags(attr, attributes[attr].values);
+        properties[attr] = createTags(attr, attributes[attr].values, readOnly);
       }
     }
 
@@ -144,7 +149,7 @@ const useSchema = () => {
       },
       properties,
     };
-  }, [config]);
+  }, [config, readOnly]);
 };
 
 const useHandleChanges = () => {
@@ -178,7 +183,7 @@ export interface AnnotationSchemaProps {
 }
 
 const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
-  const schema = useSchema();
+  const schema = useSchema(readOnly);
   const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
@@ -200,7 +205,6 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
         smartForm={true}
         schema={schema}
         data={data}
-        readOnly={readOnly}
         onChange={async (changes) => {
           if (readOnly) return;
 

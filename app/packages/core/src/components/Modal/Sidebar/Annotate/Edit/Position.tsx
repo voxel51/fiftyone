@@ -10,7 +10,7 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 import { useAtom, useAtomValue } from "jotai";
 
-const createInput = (name: string) => {
+const createInput = (name: string, readOnly?: boolean) => {
   return {
     [name]: {
       type: "number",
@@ -18,6 +18,7 @@ const createInput = (name: string) => {
         name: "View",
         label: name,
         component: "FieldView",
+        readOnly,
       },
       multipleOf: 0.01,
     },
@@ -40,7 +41,11 @@ interface Coordinates {
   dimensions: { width?: number; height?: number };
 }
 
-export default function Position() {
+export interface PositionProps {
+  readOnly?: boolean;
+}
+
+export default function Position({ readOnly = false }: PositionProps) {
   const [state, setState] = useState<Coordinates>({
     position: {},
     dimensions: {},
@@ -110,16 +115,16 @@ export default function Position() {
               type: "object",
               view: createStack(),
               properties: {
-                ...createInput("x"),
-                ...createInput("y"),
+                ...createInput("x", readOnly),
+                ...createInput("y", readOnly),
               },
             },
             dimensions: {
               type: "object",
               view: createStack(),
               properties: {
-                ...createInput("width"),
-                ...createInput("height"),
+                ...createInput("width", readOnly),
+                ...createInput("height", readOnly),
               },
             },
           },
@@ -127,6 +132,7 @@ export default function Position() {
         data={state}
         onChange={(data: Coordinates) => {
           if (
+            readOnly ||
             !(overlay instanceof BoundingBoxOverlay) ||
             !overlay.hasValidBounds()
           ) {

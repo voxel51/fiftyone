@@ -94,8 +94,12 @@ export default function Edit() {
         <Content>
           <Id />
           <Field />
-          {type === DETECTION && overlay && !is3dDetection && <Position />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d />}
+          {type === DETECTION && overlay && !is3dDetection && (
+            <Position readOnly={isReadOnly} />
+          )}
+          {type === DETECTION && overlay && is3dDetection && (
+            <Position3d readOnly={isReadOnly} />
+          )}
           {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema readOnly={isReadOnly} />}
         </Content>
