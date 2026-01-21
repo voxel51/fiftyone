@@ -1,4 +1,5 @@
 import {
+  useAnnotationEventHandler,
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
@@ -23,12 +24,8 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import { useAnnotationContextManager } from "./Sidebar/Annotate/useAnnotationContextManager";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -66,12 +63,26 @@ const SpacesContainer = styled.div`
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
-  const modalMode = useModalMode();
 
+  const modalMode = useModalMode();
   const { isEnabled: enableAutoSave } = useFeature({
     feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
   });
   useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+
+  const contextManager = useAnnotationContextManager();
+
+  useAnnotationEventHandler(
+    "annotation:enterAnnotationMode",
+    useCallback((evt) => contextManager.enter(evt.path, evt.labelId), [
+      contextManager,
+    ])
+  );
+
+  useAnnotationEventHandler(
+    "annotation:exitAnnotationMode",
+    useCallback(() => contextManager.exit(), [contextManager])
+  );
 
   return <Fragment />;
 };

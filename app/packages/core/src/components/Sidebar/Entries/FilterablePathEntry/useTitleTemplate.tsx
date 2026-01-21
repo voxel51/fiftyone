@@ -11,9 +11,9 @@ import {
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
-import { useAnnotationContextManager } from "../../../Modal/Sidebar/Annotate/useAnnotationContextManager";
-import { Icon as VoodoIcon, Size, IconName, Clickable } from "@voxel51/voodo";
+import { Clickable, Icon as VoodoIcon, IconName, Size } from "@voxel51/voodo";
 import { Stack } from "@mui/material";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
@@ -86,7 +86,7 @@ const useTitleTemplate = ({
     const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
-    const annotationContextManager = useAnnotationContextManager();
+    const { enterAnnotationMode } = useAnnotationController();
     const [hovering, setHovering] = useState(false);
 
     return (
@@ -106,7 +106,7 @@ const useTitleTemplate = ({
             >
               {PATH_OVERRIDES[path] || path}
               {hovering && canAnnotate && modal && (
-                <Clickable onClick={() => annotationContextManager.enter(path)}>
+                <Clickable onClick={() => enterAnnotationMode(path)}>
                   <VoodoIcon name={IconName.Edit} size={Size.Sm} />
                 </Clickable>
               )}

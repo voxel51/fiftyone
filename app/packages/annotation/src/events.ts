@@ -108,4 +108,17 @@ export type AnnotationEventGroup = {
   "annotation:cuboidCreationStarted": {
     position: [number, number, number];
   };
+
+  /**
+   * Notification event emitted when entering annotation mode.
+   */
+  "annotation:enterAnnotationMode": {
+    path?: string;
+    labelId?: string;
+  };
+
+  /**
+   * Notification event emitted when exiting annotation mode.
+   */
+  "annotation:exitAnnotationMode": void;
 };

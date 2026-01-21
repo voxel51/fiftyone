@@ -22,7 +22,6 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
-import { useAnnotationContextManager } from "./Sidebar/Annotate/useAnnotationContextManager";
 import {
   Button,
   Icon,
@@ -32,6 +31,7 @@ import {
   Spacing,
   Stack,
 } from "@voxel51/voodo";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -373,7 +373,7 @@ export const TooltipInfo = React.memo(() => {
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
-        <Header title={detail.field} />
+        <Header title={detail.field} labelId={detail.label.id} />
         <Border color={detail.color} id={detail.label.id} />
         <TooltipContentDiv>
           {detail.label.tags && detail.label.tags.length > 0 && (
@@ -517,12 +517,12 @@ const HiddenItemRow = ({
 
 const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
 
-const Header = ({ title }: { title: string }) => {
+const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const annotationContextManager = useAnnotationContextManager();
+  const { enterAnnotationMode } = useAnnotationController();
 
   const closeTooltip = useCallback(() => {
     setTooltipDetail(null);
@@ -542,7 +542,7 @@ const Header = ({ title }: { title: string }) => {
             leadingIcon={EditIcon}
             size={Size.Xs}
             onClick={() => {
-              annotationContextManager.enter(title);
+              enterAnnotationMode(title, labelId);
               closeTooltip();
             }}
           ></Button>

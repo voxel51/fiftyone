@@ -1,16 +1,12 @@
 import { useCallback, useMemo } from "react";
-import { useSetAtom } from "jotai";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
-import { ANNOTATE, EXPLORE, modalMode } from "../jotai";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { ModalMode, modalMode } from "../jotai";
 import {
   activeFields,
   fieldSchema,
-  modalSample,
   ModalSample,
+  modalSample,
   State,
 } from "../recoil";
 import { Schema } from "@fiftyone/utilities";
@@ -27,7 +23,7 @@ export const useActiveModalFields = () =>
 /**
  * Manager which supports switching modal modes.
  */
-export interface ModalModeManager {
+export interface ModalModeController {
   /**
    * Switch to annotate mode in the modal.
    */
@@ -40,19 +36,28 @@ export interface ModalModeManager {
 }
 
 /**
- * Hook which provides a {@link ModalModeManager}.
+ * Hook which provides a {@link ModalModeController}.
  */
-export const useModalModeManager = (): ModalModeManager => {
+export const useModalModeController = (): ModalModeController => {
   const setMode = useSetAtom(modalMode);
 
-  const activateAnnotateMode = useCallback(() => setMode(ANNOTATE), [setMode]);
-  const activateExploreMode = useCallback(() => setMode(EXPLORE), [setMode]);
+  const activateAnnotateMode = useCallback(() => setMode(ModalMode.ANNOTATE), [
+    setMode,
+  ]);
+  const activateExploreMode = useCallback(() => setMode(ModalMode.EXPLORE), [
+    setMode,
+  ]);
 
   return useMemo(() => ({ activateAnnotateMode, activateExploreMode }), [
     activateExploreMode,
     activateAnnotateMode,
   ]);
 };
+
+/**
+ * Get the current modal mode.
+ */
+export const useModalMode = () => useAtomValue(modalMode);
 
 /**
  * Get the current modal sample data.
