@@ -2,7 +2,7 @@ import type { SidebarEntry } from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { labelsExpanded } from "./GroupEntry";
+import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
 import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
 
@@ -58,7 +58,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
   return [
     [
-      { kind: EntryKind.GROUP, name: "LABELS" },
+      { kind: EntryKind.GROUP, name: LABELS_GROUP_NAME },
       ...(expanded ? entries : []),
     ] as SidebarEntry[],
     () => {},
