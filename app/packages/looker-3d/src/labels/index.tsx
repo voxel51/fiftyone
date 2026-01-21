@@ -4,6 +4,7 @@ import {
   activeLabelSchemas,
   labelSchemaData,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import { readOnlyOverride } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -172,10 +173,12 @@ export const ThreeDLabels = ({
     ) => {
       if (isSegmenting) return;
       if (mode === "annotate") {
-        // Check if field is read-only
+        // Check if field is read-only and if override is active
         const store = getDefaultStore();
         const fieldSchema = store.get(labelSchemaData(label.path));
-        const isReadOnly = !!fieldSchema?.read_only;
+        const isFieldReadOnly = !!fieldSchema?.read_only;
+        const override = store.get(readOnlyOverride);
+        const isReadOnly = isFieldReadOnly && !override;
 
         annotationEventBus.dispatch("annotation:3dLabelSelected", {
           id: label._id ?? label["id"],

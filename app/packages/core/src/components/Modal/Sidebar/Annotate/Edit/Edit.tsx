@@ -65,6 +65,15 @@ export default function Edit() {
     setReadOnlyOverride(false);
   }, [overlay?.id, field, setReadOnlyOverride]);
 
+  // Update overlay draggable/resizeable based on read-only state
+  useEffect(() => {
+    if (!overlay) return;
+
+    overlay.setDraggable?.(!isReadOnly);
+    overlay.setResizeable?.(!isReadOnly);
+    overlay.markDirty?.();
+  }, [overlay, isReadOnly]);
+
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
       pointerDownTarget = event.target;
