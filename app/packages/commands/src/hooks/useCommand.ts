@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CommandContext, CommandContextManager } from "../context";
+import { CommandContext } from "../context";
 import { useCommandContext } from "./useCommandContext";
 import { CommandHookReturn } from ".";
 
