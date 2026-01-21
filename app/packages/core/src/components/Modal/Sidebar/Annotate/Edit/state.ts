@@ -119,9 +119,9 @@ export const currentFieldIsReadOnlyBaseAtom = atom((get) => {
  * Returns true if field is read-only AND override is not active.
  */
 export const currentFieldIsReadOnlyAtom = atom((get) => {
-  const isFieldReadOnly = get(currentFieldIsReadOnlyBaseAtom);
-  const override = get(readOnlyOverrideAtom);
-  return isFieldReadOnly && !override;
+  const currentFieldIsReadOnlyBase = get(currentFieldIsReadOnlyBaseAtom);
+  const readOnlyOverride = get(readOnlyOverrideAtom);
+  return currentFieldIsReadOnlyBase && !readOnlyOverride;
 });
 
 export const currentOverlay = atom((get) => {
