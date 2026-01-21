@@ -2,6 +2,8 @@
  * Constants for SchemaManager
  */
 
+import { IconName } from "@voxel51/voodo";
+
 // Tab IDs for GUI/JSON toggle
 export const TAB_GUI = "gui" as const;
 export const TAB_JSON = "json" as const;
@@ -26,3 +28,115 @@ const SYSTEM_READ_ONLY_FIELDS_SET = new Set<string>(
 
 export const isSystemReadOnlyField = (fieldName: string): boolean =>
   SYSTEM_READ_ONLY_FIELDS_SET.has(fieldName);
+
+// =============================================================================
+// Attribute Type & Component Constants
+// =============================================================================
+
+// Attribute type options for dropdown
+
+export const ATTRIBUTE_TYPE_OPTIONS = [
+  { id: "str", data: { label: "String" } },
+  { id: "int", data: { label: "Integer" } },
+  { id: "float", data: { label: "Float" } },
+  { id: "bool", data: { label: "Boolean" } },
+  { id: "date", data: { label: "Date" } },
+  { id: "datetime", data: { label: "Datetime" } },
+  { id: "dict", data: { label: "Dictionary" } },
+  { id: "id", data: { label: "ID" } },
+  { id: "list<str>", data: { label: "String list" } },
+  { id: "list<int>", data: { label: "Integer list" } },
+  { id: "list<float>", data: { label: "Float list" } },
+];
+// Component options by type (matches annotation/constants.py)
+export const COMPONENT_OPTIONS: Record<
+  string,
+  Array<{ id: string; label: string; icon?: IconName }>
+> = {
+  // STR_COMPONENTS = {dropdown, radio, text}
+  str: [
+    { id: "text", label: "Text" },
+    { id: "radio", label: "Radio", icon: IconName.Radio },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+  ],
+  // FLOAT_INT_COMPONENTS = {dropdown, radio, slider, text}
+  int: [
+    { id: "text", label: "Text" },
+    { id: "slider", label: "Slider" },
+    { id: "radio", label: "Radio", icon: IconName.Radio },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+  ],
+  float: [
+    { id: "text", label: "Text" },
+    { id: "slider", label: "Slider" },
+    { id: "radio", label: "Radio", icon: IconName.Radio },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+  ],
+  // BOOL_COMPONENTS = {checkbox, toggle}
+  bool: [
+    { id: "toggle", label: "Toggle" },
+    { id: "checkbox", label: "Checkbox", icon: IconName.Checkbox },
+  ],
+  // DATE_DATETIME_COMPONENTS = {datepicker}
+  date: [{ id: "datepicker", label: "Date picker" }],
+  datetime: [{ id: "datepicker", label: "Date picker" }],
+  // DICT_COMPONENTS = {json}
+  dict: [{ id: "json", label: "JSON editor" }],
+  // ID_COMPONENTS = {text}
+  id: [{ id: "text", label: "Text" }],
+  // STR_LIST_COMPONENTS = {checkboxes, dropdown, text}
+  "list<str>": [
+    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text" },
+  ],
+  // FLOAT_INT_LIST_COMPONENTS = {checkboxes, dropdown, text}
+  "list<int>": [
+    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text" },
+  ],
+  "list<float>": [
+    { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
+    { id: "dropdown", label: "Dropdown", icon: IconName.Search },
+    { id: "text", label: "Text" },
+  ],
+};
+
+// Threshold for auto-switching radio to dropdown
+export const RADIO_MAX_VALUES = 5;
+
+// Types that are numeric (values must be numbers)
+export const NUMERIC_TYPES = ["int", "float", "list<int>", "list<float>"];
+
+// Types that don't need/support a default value
+export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict"];
+
+// List types
+export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
+
+/**
+ * Get default component for a type
+ */
+export const getDefaultComponent = (type: string): string => {
+  switch (type) {
+    case "str":
+    case "int":
+    case "float":
+    case "id":
+      return "text";
+    case "bool":
+      return "toggle";
+    case "date":
+    case "datetime":
+      return "datepicker";
+    case "dict":
+      return "json";
+    case "list<str>":
+    case "list<int>":
+    case "list<float>":
+      return "checkboxes";
+    default:
+      return "text";
+  }
+};

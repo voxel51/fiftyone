@@ -4,7 +4,11 @@
 
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
-import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
+import {
+  getDefaultComponent,
+  NUMERIC_TYPES,
+  SYSTEM_READ_ONLY_FIELD_NAME,
+} from "./constants";
 
 // =============================================================================
 // Types
@@ -32,10 +36,13 @@ export interface RichListItemOptions {
   canDrag?: boolean;
 }
 
-// Attribute configuration
+// Attribute configuration (matches API)
 export interface AttributeConfig {
   type: string;
-  values?: string[];
+  component?: string;
+  values?: (string | number)[];
+  range?: [number, number];
+  default?: string | number;
   read_only?: boolean;
 }
 
@@ -48,6 +55,17 @@ export interface ClassConfig {
 export interface SchemaConfigType {
   classes?: string[];
   attributes?: Record<string, AttributeConfig>;
+}
+
+// Form state for attribute editing (uses strings for form inputs)
+export interface AttributeFormData {
+  name: string;
+  type: string;
+  component: string;
+  values: string[];
+  range: { min: string; max: string } | null;
+  default: string;
+  read_only: boolean;
 }
 
 // =============================================================================
@@ -174,80 +192,145 @@ export const buildFieldSecondaryContent = (
 };
 
 // =============================================================================
-// Attribute Form State Types and Helpers
+// Attribute Form Helpers
 // =============================================================================
 
 /**
- * Form state for attribute editing
+ * Create default form data for a new attribute
  */
-export interface AttributeFormState {
-  name: string;
-  attributeType: string;
-  componentType: string;
-  values: string[];
-  readOnly: boolean;
-}
-
-/**
- * Create default attribute form state
- */
-export const createDefaultAttributeFormState = (): AttributeFormState => ({
+export const createDefaultFormData = (): AttributeFormData => ({
   name: "",
-  attributeType: "string_list",
-  componentType: "checkbox",
+  type: "str",
+  component: "text",
   values: [],
-  readOnly: false,
+  range: null,
+  default: "",
+  read_only: false,
 });
 
 /**
- * Map display type back to attribute type and component type
+ * Convert AttributeConfig to form data for editing
  */
-export const parseAttributeType = (
-  type: string
-): { attributeType: string; componentType: string } => {
-  if (["checkbox", "dropdown", "radio"].includes(type)) {
-    return { attributeType: "string_list", componentType: type };
-  }
-  return { attributeType: type, componentType: "checkbox" };
-};
-
-/**
- * Map internal type to display type
- */
-export const getInternalType = (
-  attributeType: string,
-  componentType: string
-): string => {
-  if (attributeType === "string_list") {
-    return componentType; // checkbox, dropdown, or radio
-  }
-  return attributeType; // text, number, select
-};
-
-/**
- * Convert AttributeConfig to form state
- */
-export const attributeConfigToFormState = (
+export const toFormData = (
   name: string,
   config: AttributeConfig
-): AttributeFormState => {
-  const { attributeType, componentType } = parseAttributeType(config.type);
+): AttributeFormData => ({
+  name,
+  type: config.type,
+  component: config.component || getDefaultComponent(config.type),
+  values: config.values?.map(String) || [],
+  range: config.range
+    ? { min: String(config.range[0]), max: String(config.range[1]) }
+    : null,
+  default: config.default !== undefined ? String(config.default) : "",
+  read_only: config.read_only || false,
+});
+
+/**
+ * Convert form data to AttributeConfig for saving
+ * Converts values to numbers for numeric types
+ */
+export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
+  const isNumeric = NUMERIC_TYPES.includes(data.type);
+
+  // Convert values to numbers for numeric types
+  let values: (string | number)[] | undefined;
+  if (data.values.length > 0) {
+    values = isNumeric
+      ? data.values.map((v) => parseFloat(v)).filter((n) => !isNaN(n))
+      : data.values;
+  }
+
+  // Convert range to tuple
+  let range: [number, number] | undefined;
+  if (data.range && data.range.min !== "" && data.range.max !== "") {
+    const min = parseFloat(data.range.min);
+    const max = parseFloat(data.range.max);
+    if (!isNaN(min) && !isNaN(max)) {
+      range = [min, max];
+    }
+  }
+
+  // Convert default to number for numeric types
+  let defaultValue: string | number | undefined;
+  if (data.default) {
+    defaultValue = isNumeric ? parseFloat(data.default) : data.default;
+    if (typeof defaultValue === "number" && isNaN(defaultValue)) {
+      defaultValue = undefined;
+    }
+  }
+
   return {
-    name,
-    attributeType,
-    componentType,
-    values: config.values || [],
-    readOnly: config.read_only || false,
+    type: data.type,
+    component: data.component || undefined,
+    values: values?.length ? values : undefined,
+    range,
+    default: defaultValue,
+    read_only: data.read_only || undefined,
   };
 };
 
 /**
- * Convert form state to AttributeConfig
+ * Validate attribute form data and return error message if invalid
+ * Returns null if form is valid
  */
-export const formStateToAttributeConfig = (
-  state: AttributeFormState
-): AttributeConfig => ({
-  type: getInternalType(state.attributeType, state.componentType),
-  values: state.values.length > 0 ? state.values : undefined,
-  read_only: state.readOnly || undefined,
-});
+export const getAttributeFormError = (
+  data: AttributeFormData
+): string | null => {
+  const isNumeric = NUMERIC_TYPES.includes(data.type);
+
+  // Slider requires valid range
+  if (isNumeric && data.component === "slider") {
+    if (!data.range || data.range.min === "" || data.range.max === "") {
+      return "Slider requires min and max range values";
+    }
+    const min = parseFloat(data.range.min);
+    const max = parseFloat(data.range.max);
+    if (isNaN(min) || isNaN(max) || min >= max) {
+      return "Min must be less than max";
+    }
+  }
+
+  // Radio and dropdown require values
+  if (data.component === "radio" || data.component === "dropdown") {
+    if (data.values.length === 0) {
+      return "At least one value is required";
+    }
+  }
+
+  // Checkboxes require values
+  if (data.component === "checkboxes") {
+    if (data.values.length === 0) {
+      return "At least one value is required";
+    }
+  }
+
+  // Validate default is within range (if range is set)
+  if (isNumeric && data.range && data.default) {
+    const { min, max } = data.range;
+    if (min !== "" && max !== "") {
+      const minNum = parseFloat(min);
+      const maxNum = parseFloat(max);
+      const defaultNum = parseFloat(data.default);
+      if (
+        !isNaN(defaultNum) &&
+        !isNaN(minNum) &&
+        !isNaN(maxNum) &&
+        minNum < maxNum
+      ) {
+        if (defaultNum < minNum || defaultNum > maxNum) {
+          return `Default must be between ${min} and ${max}`;
+        }
+      }
+    }
+  }
+
+  // Validate default is within values (if values are set)
+  if (data.values.length > 0 && data.default) {
+    if (!data.values.includes(data.default)) {
+      return "Default must be within provided values";
+    }
+  }
+
+  return null;
+};

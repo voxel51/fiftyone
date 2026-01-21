@@ -23,12 +23,13 @@ import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import {
-  attributeConfigToFormState,
-  formStateToAttributeConfig,
+  getAttributeFormError,
   getAttributeNameError,
   getAttributeTypeLabel,
+  toAttributeConfig,
+  toFormData,
   type AttributeConfig,
-  type AttributeFormState,
+  type AttributeFormData,
 } from "../../utils";
 import AddAttributeCard from "./AddAttributeCard";
 import AttributeFormContent from "./AttributeFormContent";
@@ -58,14 +59,14 @@ const AttributesSection = ({
   const [isAdding, setIsAdding] = useState(false);
   const [editingAttribute, setEditingAttribute] = useState<string | null>(null);
   const [editingFormState, setEditingFormState] =
-    useState<AttributeFormState | null>(null);
+    useState<AttributeFormData | null>(null);
 
   const existingAttributeNames = useMemo(
     () => Object.keys(attributes),
     [attributes]
   );
 
-  const editError =
+  const editNameError =
     editingAttribute && editingFormState
       ? getAttributeNameError(
           editingFormState.name,
@@ -73,6 +74,12 @@ const AttributesSection = ({
           editingAttribute
         )
       : null;
+
+  const editFormError = editingFormState
+    ? getAttributeFormError(editingFormState)
+    : null;
+
+  const editError = editNameError || editFormError;
 
   const handleAddSave = useCallback(
     (name: string, config: AttributeConfig) => {
@@ -87,7 +94,7 @@ const AttributesSection = ({
       const config = attributes[name];
       if (config) {
         setEditingAttribute(name);
-        setEditingFormState(attributeConfigToFormState(name, config));
+        setEditingFormState(toFormData(name, config));
       }
     },
     [attributes]
@@ -98,7 +105,7 @@ const AttributesSection = ({
     onEditAttribute(
       editingAttribute,
       editingFormState.name.trim(),
-      formStateToAttributeConfig(editingFormState)
+      toAttributeConfig(editingFormState)
     );
     setEditingAttribute(null);
     setEditingFormState(null);
@@ -118,7 +125,7 @@ const AttributesSection = ({
       const typeLabel = getAttributeTypeLabel(config.type);
       const optionCount = config.values?.length;
       const secondaryParts = [typeLabel];
-      if (optionCount !== undefined) {
+      if (optionCount !== undefined && optionCount > 0) {
         secondaryParts.push(
           `${optionCount} option${optionCount !== 1 ? "s" : ""}`
         );
@@ -155,7 +162,7 @@ const AttributesSection = ({
               <AttributeFormContent
                 formState={editingFormState}
                 onFormStateChange={setEditingFormState}
-                nameError={editError}
+                nameError={editNameError}
               />
             ),
           } as ListItemProps,

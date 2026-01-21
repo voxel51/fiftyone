@@ -1,15 +1,11 @@
 /**
- * Attribute form content component (shared between add and edit).
+ * Attribute form content component for add/edit attribute.
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
-  Clickable,
-  Icon,
-  IconName,
   Input,
   Orientation,
-  RichList,
   Select,
   Size,
   Spacing,
@@ -19,182 +15,24 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import type { RichListItem } from "../../utils";
-import React, { useState } from "react";
-import { createRichListItem, type AttributeFormState } from "../../utils";
+import { useCallback } from "react";
+import {
+  ATTRIBUTE_TYPE_OPTIONS,
+  COMPONENT_OPTIONS,
+  LIST_TYPES,
+  NO_DEFAULT_TYPES,
+  NUMERIC_TYPES,
+  RADIO_MAX_VALUES,
+  getDefaultComponent,
+} from "../../constants";
+import { type AttributeFormData } from "../../utils";
+import ComponentTypeButton from "./ComponentTypeButton";
+import RangeInput from "./RangeInput";
+import ValuesList from "./ValuesList";
 
-// Attribute type options for the dropdown
-const ATTRIBUTE_TYPE_OPTIONS = [
-  { id: "string_list", data: { label: "String list" } },
-  { id: "text", data: { label: "Text" } },
-  { id: "number", data: { label: "Number" } },
-  { id: "select", data: { label: "Object selector" } },
-];
-
-// Component type options (only shown for string_list type)
-const COMPONENT_TYPE_OPTIONS = [
-  { id: "checkbox", data: { label: "Checkboxes", icon: IconName.Checkbox } },
-  { id: "dropdown", data: { label: "Dropdown", icon: IconName.Search } },
-  { id: "radio", data: { label: "Radio", icon: IconName.Radio } },
-];
-
-// Component type button for attribute form
-interface ComponentTypeButtonProps {
-  icon: IconName;
-  label: string;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-const ComponentTypeButton = ({
-  icon,
-  label,
-  isSelected,
-  onClick,
-}: ComponentTypeButtonProps) => (
-  <Clickable onClick={onClick}>
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "8px 12px",
-        borderRadius: 6,
-        border: isSelected
-          ? "1px solid var(--fo-palette-primary-main, #FF6D04)"
-          : "1px solid var(--fo-palette-divider, #333)",
-        backgroundColor: isSelected ? "rgba(255, 109, 4, 0.1)" : "transparent",
-        cursor: "pointer",
-        minWidth: 100,
-      }}
-    >
-      <Icon
-        name={icon}
-        size={Size.Md}
-        color={isSelected ? "#FF6D04" : undefined}
-      />
-      <Text variant={TextVariant.Md}>{label}</Text>
-    </div>
-  </Clickable>
-);
-
-// Values list component for attribute editing
-interface ValuesListProps {
-  values: string[];
-  onValuesChange: (values: string[]) => void;
-}
-
-const ValuesList = ({ values, onValuesChange }: ValuesListProps) => {
-  const [newValue, setNewValue] = useState("");
-
-  const handleAddValue = () => {
-    const trimmed = newValue.trim();
-    if (trimmed && !values.includes(trimmed)) {
-      onValuesChange([...values, trimmed]);
-      setNewValue("");
-    }
-  };
-
-  const handleDeleteValue = (index: number) => {
-    const newValues = values.filter((_, i) => i !== index);
-    onValuesChange(newValues);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddValue();
-    }
-  };
-
-  const valueListItems = values.map((value, index) =>
-    createRichListItem({
-      id: `value-${index}`,
-      canDrag: true,
-      primaryContent: value,
-      actions: (
-        <Clickable
-          onClick={() => handleDeleteValue(index)}
-          style={{ padding: 4 }}
-        >
-          <Icon name={IconName.Delete} size={Size.Md} />
-        </Clickable>
-      ),
-    })
-  );
-
-  const handleOrderChange = (newItems: RichListItem[]) => {
-    const newValues = newItems.map((item) => {
-      const index = parseInt(item.id.replace("value-", ""), 10);
-      return values[index];
-    });
-    onValuesChange(newValues);
-  };
-
-  return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 8,
-        }}
-      >
-        <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-          Values
-        </Text>
-        <Clickable
-          onClick={handleAddValue}
-          style={{ display: "flex", alignItems: "center", gap: 4 }}
-        >
-          <Icon name={IconName.Add} size={Size.Sm} />
-          <Text variant={TextVariant.Sm}>Add value</Text>
-        </Clickable>
-      </div>
-      {values.length === 0 ? (
-        <div style={{ padding: "16px", textAlign: "center" }}>
-          <Input
-            value={newValue}
-            onChange={(e) => setNewValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Enter a value and press Enter"
-          />
-          {values.length === 0 && !newValue && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Secondary}
-              style={{ marginTop: 8 }}
-            >
-              No values yet
-            </Text>
-          )}
-        </div>
-      ) : (
-        <>
-          <RichList
-            listItems={valueListItems}
-            draggable={true}
-            onOrderChange={handleOrderChange}
-          />
-          <div style={{ marginTop: 8 }}>
-            <Input
-              value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Add another value"
-            />
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-// Main form content props
 interface AttributeFormContentProps {
-  formState: AttributeFormState;
-  onFormStateChange: (state: AttributeFormState) => void;
+  formState: AttributeFormData;
+  onFormStateChange: (state: AttributeFormData) => void;
   nameError: string | null;
 }
 
@@ -207,7 +45,158 @@ const AttributeFormContent = ({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
 
-  const showComponentType = formState.attributeType === "string_list";
+  const isNumericType = NUMERIC_TYPES.includes(formState.type);
+  const isIntegerType =
+    formState.type === "int" || formState.type === "list<int>";
+  const isListType = LIST_TYPES.includes(formState.type);
+  const supportsDefault = !NO_DEFAULT_TYPES.includes(formState.type);
+  const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
+
+  // Handle type change - reset to default component and clear type-specific fields
+  const handleTypeChange = useCallback(
+    (newType: string) => {
+      const newSupportsDefault = !NO_DEFAULT_TYPES.includes(newType);
+      onFormStateChange({
+        ...formState,
+        type: newType,
+        component: getDefaultComponent(newType),
+        values: [],
+        range: null,
+        // Clear default if new type doesn't support it
+        default: newSupportsDefault ? formState.default : "",
+      });
+    },
+    [formState, onFormStateChange]
+  );
+
+  // Handle component change - reset relevant fields
+  const handleComponentChange = useCallback(
+    (newComponent: string) => {
+      const updates: Partial<AttributeFormData> = { component: newComponent };
+
+      // For numeric types, reset fields based on new component
+      if (isNumericType) {
+        if (newComponent === "text") {
+          updates.values = [];
+          updates.range = null;
+        } else if (newComponent === "slider") {
+          updates.values = [];
+          if (!formState.range) {
+            updates.range = { min: "", max: "" };
+          }
+        } else if (newComponent === "radio" || newComponent === "dropdown") {
+          updates.range = null;
+        }
+      }
+
+      onFormStateChange({ ...formState, ...updates });
+    },
+    [formState, onFormStateChange, isNumericType]
+  );
+
+  // Handle values change - auto-switch component if needed
+  const handleValuesChange = useCallback(
+    (newValues: string[]) => {
+      let newComponent = formState.component;
+
+      // For numeric types with radio, switch to dropdown if values > 5
+      if (isNumericType && formState.component === "radio") {
+        if (newValues.length > RADIO_MAX_VALUES) {
+          newComponent = "dropdown";
+        }
+      }
+
+      // For string type, auto-select component based on values count
+      if (formState.type === "str") {
+        if (newValues.length === 0) {
+          newComponent = "text";
+        } else if (newValues.length <= RADIO_MAX_VALUES) {
+          newComponent = "radio";
+        } else {
+          newComponent = "dropdown";
+        }
+      }
+
+      // For list types, auto-select based on values count
+      if (isListType) {
+        if (newValues.length <= RADIO_MAX_VALUES) {
+          newComponent = "checkboxes";
+        } else {
+          newComponent = "dropdown";
+        }
+      }
+
+      onFormStateChange({
+        ...formState,
+        values: newValues,
+        component: newComponent,
+      });
+    },
+    [formState, onFormStateChange, isNumericType, isListType]
+  );
+
+  // Determine what to show based on type and component
+  const showComponentButtons = componentOptions.length > 1;
+
+  // For int/float: show values only for radio/dropdown components
+  const showValuesForNumeric =
+    isNumericType &&
+    (formState.component === "radio" || formState.component === "dropdown");
+
+  // For str: show values for radio/dropdown
+  const showValuesForStr =
+    formState.type === "str" &&
+    (formState.component === "radio" || formState.component === "dropdown");
+
+  // For list types: show values for checkboxes/dropdown (not text)
+  const showValuesForList =
+    isListType &&
+    (formState.component === "checkboxes" ||
+      formState.component === "dropdown");
+
+  const showValues =
+    showValuesForNumeric || showValuesForStr || showValuesForList;
+
+  // Show range only for int/float with slider component (not list types)
+  const showRange =
+    (formState.type === "int" || formState.type === "float") &&
+    formState.component === "slider";
+
+  // Validate default value is within range or values
+  const getDefaultError = (): string | null => {
+    if (!formState.default) return null;
+
+    // Validate against range (for slider)
+    if (showRange && formState.range) {
+      const { min, max } = formState.range;
+      if (min !== "" && max !== "") {
+        const minNum = parseFloat(min);
+        const maxNum = parseFloat(max);
+        const defaultNum = parseFloat(formState.default);
+        if (!isNaN(defaultNum) && minNum < maxNum) {
+          if (defaultNum < minNum || defaultNum > maxNum) {
+            return `Default must be between ${min} and ${max}`;
+          }
+        }
+      }
+    }
+
+    // Validate against values (for radio/dropdown/checkboxes)
+    if (showValues && formState.values.length > 0) {
+      if (!formState.values.includes(formState.default)) {
+        return "Default must be within provided values";
+      }
+    }
+
+    return null;
+  };
+  const defaultError = getDefaultError();
+
+  // Check if values are required for current component
+  const valuesRequired =
+    formState.component === "radio" ||
+    formState.component === "dropdown" ||
+    formState.component === "checkboxes";
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
@@ -231,7 +220,7 @@ const AttributeFormContent = ({
         />
         {nameError && (
           <Text
-            variant={TextVariant.Md}
+            variant={TextVariant.Sm}
             color={TextColor.Destructive}
             style={{ marginTop: 4 }}
           >
@@ -250,54 +239,93 @@ const AttributeFormContent = ({
           Attribute type
         </Text>
         <Select
-          options={ATTRIBUTE_TYPE_OPTIONS}
-          value={formState.attributeType}
           exclusive
+          portal
+          value={formState.type}
           onChange={(value) => {
             if (typeof value === "string") {
-              onFormStateChange({ ...formState, attributeType: value });
+              handleTypeChange(value);
             }
           }}
+          options={ATTRIBUTE_TYPE_OPTIONS}
         />
       </div>
 
-      {/* Component type selection (only for string_list) */}
-      {showComponentType && (
+      {/* Component type buttons */}
+      {showComponentButtons && (
         <div>
           <Text
             variant={TextVariant.Md}
             color={TextColor.Secondary}
             style={{ marginBottom: 8 }}
           >
-            Component type
+            Input type
           </Text>
-          <div style={{ display: "flex", gap: 8 }}>
-            {COMPONENT_TYPE_OPTIONS.map((opt) => (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
-                icon={opt.data.icon}
-                label={opt.data.label}
-                isSelected={formState.componentType === opt.id}
-                onClick={() =>
-                  onFormStateChange({ ...formState, componentType: opt.id })
-                }
+                icon={opt.icon}
+                label={opt.label}
+                isSelected={formState.component === opt.id}
+                onClick={() => handleComponentChange(opt.id)}
               />
             ))}
           </div>
         </div>
       )}
 
-      {/* Values list (only for string_list) */}
-      {showComponentType && (
+      {/* Values list */}
+      {showValues && (
         <ValuesList
           values={formState.values}
-          onValuesChange={(values) =>
-            onFormStateChange({ ...formState, values })
-          }
+          onValuesChange={handleValuesChange}
+          isNumeric={isNumericType}
+          isInteger={isIntegerType}
+          required={valuesRequired}
         />
       )}
 
-      {/* Read-only toggle (only when M4 flag enabled) */}
+      {/* Range input */}
+      {showRange && (
+        <RangeInput
+          range={formState.range}
+          onRangeChange={(range) => onFormStateChange({ ...formState, range })}
+        />
+      )}
+
+      {/* Default value - only for types that support it */}
+      {supportsDefault && (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: 8 }}
+          >
+            Default (optional)
+          </Text>
+          <Input
+            type={isNumericType ? "number" : "text"}
+            value={formState.default}
+            onChange={(e) =>
+              onFormStateChange({ ...formState, default: e.target.value })
+            }
+            placeholder={isNumericType ? "Default number" : "Default value"}
+            error={!!defaultError}
+          />
+          {defaultError && (
+            <Text
+              variant={TextVariant.Sm}
+              color={TextColor.Destructive}
+              style={{ marginTop: 4 }}
+            >
+              {defaultError}
+            </Text>
+          )}
+        </div>
+      )}
+
+      {/* Read-only toggle */}
       {isM4Enabled && (
         <div>
           <div
@@ -310,16 +338,15 @@ const AttributeFormContent = ({
           >
             <Text variant={TextVariant.Md}>Read-only</Text>
             <Toggle
-              checked={formState.readOnly}
+              checked={formState.read_only}
               onChange={(checked) =>
-                onFormStateChange({ ...formState, readOnly: checked })
+                onFormStateChange({ ...formState, read_only: checked })
               }
               size={Size.Sm}
             />
           </div>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            When enabled, annotators can view this attribute but cannot edit its
-            values.
+            When enabled, annotators can view but cannot edit values.
           </Text>
         </div>
       )}
