@@ -4706,28 +4706,28 @@ class DatasetTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_sensor_extrinsics(self):
+    def test_static_transforms(self):
         dataset = fo.Dataset()
 
-        extrinsics = fo.SensorExtrinsics(
+        extrinsics = fo.StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+        dataset.static_transforms = {"camera_front::ego": extrinsics}
 
         dataset.reload()
-        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+        self.assertIn("camera_front::ego", dataset.static_transforms)
         self.assertEqual(
-            dataset.sensor_extrinsics["camera_front::ego"].source_frame,
+            dataset.static_transforms["camera_front::ego"].source_frame,
             "camera_front",
         )
         self.assertEqual(
-            dataset.sensor_extrinsics["camera_front::ego"].target_frame, "ego"
+            dataset.static_transforms["camera_front::ego"].target_frame, "ego"
         )
 
-        dataset.sensor_extrinsics["camera_front::ego"].translation = [
+        dataset.static_transforms["camera_front::ego"].translation = [
             2.0,
             0.0,
             1.5,
@@ -4736,21 +4736,21 @@ class DatasetTests(unittest.TestCase):
 
         dataset.reload()
         self.assertEqual(
-            dataset.sensor_extrinsics["camera_front::ego"].translation[0], 2.0
+            dataset.static_transforms["camera_front::ego"].translation[0], 2.0
         )
 
         # Multiple transforms
-        extrinsics2 = fo.SensorExtrinsics(
+        extrinsics2 = fo.StaticTransform(
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
             target_frame="world",
         )
-        dataset.sensor_extrinsics["ego::world"] = extrinsics2
+        dataset.static_transforms["ego::world"] = extrinsics2
         dataset.save()
 
         dataset.reload()
-        self.assertEqual(len(dataset.sensor_extrinsics), 2)
+        self.assertEqual(len(dataset.static_transforms), 2)
 
     @drop_datasets
     def test_dataset_info_import_export(self):
@@ -4792,14 +4792,14 @@ class DatasetTests(unittest.TestCase):
             ),
         }
 
-        dataset.sensor_extrinsics = {
-            "camera_front::ego": fo.SensorExtrinsics(
+        dataset.static_transforms = {
+            "camera_front::ego": fo.StaticTransform(
                 translation=[1.5, 0.0, 1.2],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 source_frame="camera_front",
                 target_frame="ego",
             ),
-            "ego::world": fo.SensorExtrinsics(
+            "ego::world": fo.StaticTransform(
                 translation=[0.0, 0.0, 0.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 source_frame="ego",
@@ -4831,8 +4831,8 @@ class DatasetTests(unittest.TestCase):
             self._assert_camera_intrinsics_equal(
                 dataset2.camera_intrinsics, dataset.camera_intrinsics
             )
-            self._assert_sensor_extrinsics_equal(
-                dataset2.sensor_extrinsics, dataset.sensor_extrinsics
+            self._assert_static_transforms_equal(
+                dataset2.static_transforms, dataset.static_transforms
             )
 
         with etau.TempDir() as tmp_dir:
@@ -4861,8 +4861,8 @@ class DatasetTests(unittest.TestCase):
             self._assert_camera_intrinsics_equal(
                 dataset3.camera_intrinsics, dataset.camera_intrinsics
             )
-            self._assert_sensor_extrinsics_equal(
-                dataset3.sensor_extrinsics, dataset.sensor_extrinsics
+            self._assert_static_transforms_equal(
+                dataset3.static_transforms, dataset.static_transforms
             )
 
     def _assert_camera_intrinsics_equal(self, actual, expected):
@@ -4907,7 +4907,7 @@ class DatasetTests(unittest.TestCase):
                     actual_intrinsics.p2, expected_intrinsics.p2
                 )
 
-    def _assert_sensor_extrinsics_equal(self, actual, expected):
+    def _assert_static_transforms_equal(self, actual, expected):
         self.assertEqual(set(actual.keys()), set(expected.keys()))
 
         for key in expected:
