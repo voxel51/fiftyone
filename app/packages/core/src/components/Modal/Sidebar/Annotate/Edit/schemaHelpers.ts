@@ -168,6 +168,24 @@ export const createText = (name: string, type: string): SchemaType => {
 };
 
 /**
+ * Creates a read-only schema that renders the value as text (label + value).
+ * Uses LabelValueView—no input field, just plain text.
+ */
+export const createReadOnly = (
+  name: string,
+): SchemaType => {
+  console.log("createReadOnly", name);
+  return {
+    type: 'string',
+    view: {
+      name: "LabelValueView",
+      label: name,
+      component: "LabelValueView"
+    },
+  };
+};
+
+/**
  * Creates an array schema for numeric lists: list<float> and list<int>
  */
 export const createNumericList = (name: string, choices: number[]) => {

@@ -40,4 +40,5 @@ export enum SmartFormComponents {
   PlotlyView = "PlotlyView",
   SliderView = "SliderView",
   ToggleView = "ToggleView",
+  LabelValueView = "LabelValueView",
 }

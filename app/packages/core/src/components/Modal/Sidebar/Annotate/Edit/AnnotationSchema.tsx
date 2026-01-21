@@ -9,6 +9,7 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
   createInput,
   createRadio,
+  createReadOnly,
   createSelect,
   createTags,
 } from "./schemaHelpers";
@@ -33,6 +34,11 @@ const useSchema = () => {
         continue;
       }
 
+      if (attributes[attr].read_only) {
+        properties[attr] = createReadOnly(attr);
+        continue;
+      }
+
       if (attributes[attr].component === "text") {
         properties[attr] = createInput(attr, attributes[attr]);
       }
@@ -44,6 +50,12 @@ const useSchema = () => {
       if (attributes[attr].component === "dropdown") {
         properties[attr] = createTags(attr, attributes[attr].values);
       }
+
+      // // if schema manager sets an attribute to read-only pass
+      // // it along to the smartform component
+      // if (config?.attributes[attr]?.read_only) {
+      //   properties[attr].view.read_only = true;
+      // }
     }
 
     return {
