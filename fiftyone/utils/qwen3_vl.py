@@ -88,7 +88,7 @@ class Qwen3VLOutputProcessor(fout.OutputProcessor):
                 json_str = json_str[:-3]
             json_str = json_str.strip()
 
-            if not json_str.startswith("["):
+            if not (json_str.startswith("[") or json_str.startswith("{")):
                 return detections
 
             parsed = json.loads(json_str)
@@ -110,10 +110,10 @@ class Qwen3VLOutputProcessor(fout.OutputProcessor):
                 continue
 
             x1, y1, x2, y2 = bbox
-            x1 = x1 / 1000.0
-            y1 = y1 / 1000.0
-            x2 = x2 / 1000.0
-            y2 = y2 / 1000.0
+            x1 = float(np.clip(x1 / 1000.0, 0.0, 1.0))
+            y1 = float(np.clip(y1 / 1000.0, 0.0, 1.0))
+            x2 = float(np.clip(x2 / 1000.0, 0.0, 1.0))
+            y2 = float(np.clip(y2 / 1000.0, 0.0, 1.0))
 
             w = x2 - x1
             h = y2 - y1
