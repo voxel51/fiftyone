@@ -16,13 +16,13 @@ import warnings
 
 import cv2
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 import fiftyone.core.fields as fof
 from fiftyone.core.odm.embedded_document import (
     DynamicEmbeddedDocument,
     EmbeddedDocument,
 )
+import fiftyone.utils.transforms as fout
 
 #: Supported 3D camera axis conventions
 CAMERA_CONVENTION_OPENCV = "opencv"
@@ -697,9 +697,7 @@ class StaticTransform(DynamicEmbeddedDocument):
         if self.quaternion is None:
             return np.eye(3, dtype=np.float64)
 
-        # scipy uses scalar-last convention [x, y, z, w]
-        q = np.array(self.quaternion, dtype=np.float64)
-        return Rotation.from_quat(q).as_matrix()
+        return fout.quaternion_to_rotation_matrix(self.quaternion)
 
     @property
     def transform_matrix(self) -> np.ndarray:
@@ -756,7 +754,7 @@ class StaticTransform(DynamicEmbeddedDocument):
                 stacklevel=2,
             )
 
-        quat = Rotation.from_matrix(R).as_quat()
+        quat = fout.rotation_matrix_to_quaternion(R)
 
         return cls(
             translation=t.tolist(),
@@ -775,19 +773,10 @@ class StaticTransform(DynamicEmbeddedDocument):
         Returns:
             a :class:`StaticTransform` representing the inverse transform
         """
-        R = self.rotation_matrix
-        t = np.array(self.translation or [0, 0, 0], dtype=np.float64)
+        T_inv = fout.invert_transform_matrix(self.transform_matrix)
 
-        # Inverse: R_inv = R^T, t_inv = -R^T @ t
-        R_inv = R.T
-        t_inv = -R_inv @ t
-
-        # Convert back to quaternion
-        quat_inv = Rotation.from_matrix(R_inv).as_quat()
-
-        return StaticTransform(
-            translation=t_inv.tolist(),
-            quaternion=quat_inv.tolist(),
+        return StaticTransform.from_matrix(
+            T_inv,
             source_frame=self.target_frame,
             target_frame=self.source_frame,
         )
@@ -826,12 +815,10 @@ class StaticTransform(DynamicEmbeddedDocument):
                 f"A->B composed with B->C gives A->C."
             )
 
-        # A->B
-        T_self = self.transform_matrix
-        # B->C
-        T_other = other.transform_matrix
-        # T_AC = T_BC @ T_AB
-        T_composed = T_other @ T_self
+        # compose_transforms(A->B, B->C) = A->C
+        T_composed = fout.compose_transforms(
+            self.transform_matrix, other.transform_matrix
+        )
 
         return StaticTransform.from_matrix(
             T_composed,
@@ -1095,11 +1082,9 @@ class CameraProjector:
             points_h = np.hstack([points, ones])
             points = (self._reference_to_camera @ points_h.T).T[:, :3]
 
-        # Handle OpenGL convention (flip z and y)
+        # Convert to OpenCV for projection
         if self.camera_convention == CAMERA_CONVENTION_OPENGL:
-            points = points.copy()
-            points[:, 1] = -points[:, 1]
-            points[:, 2] = -points[:, 2]
+            points = fout.opengl_to_opencv_points(points)
 
         # Check for points behind camera
         z = points[:, 2]
@@ -1167,8 +1152,7 @@ class CameraProjector:
         points_3d = np.column_stack([x_cam, y_cam, z_cam])
 
         if self.camera_convention == CAMERA_CONVENTION_OPENGL:
-            points_3d[:, 1] = -points_3d[:, 1]
-            points_3d[:, 2] = -points_3d[:, 2]
+            points_3d = fout.opencv_to_opengl_points(points_3d)
 
         # Transform to reference frame if requested
         if not in_camera_frame and self.camera_to_reference is not None:
