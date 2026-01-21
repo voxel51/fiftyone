@@ -2,8 +2,20 @@
 Camera calibration data model for multi-sensor geometry workflows.
 
 This module provides first-class data models for camera intrinsics and
-extrinsics, enabling 3D-to-2D projection, 2D-to-3D unprojection, and
-multi-sensor fusion workflows.
+static transforms (poses), enabling 3D-to-2D projection, 2D-to-3D unprojection,
+and multi-sensor fusion workflows.
+
+Key classes:
+
+-   :class:`CameraIntrinsics`: Base class for camera intrinsic parameters
+-   :class:`PinholeCameraIntrinsics`: Pinhole model (no distortion)
+-   :class:`OpenCVCameraIntrinsics`: OpenCV model with radial/tangential distortion
+-   :class:`OpenCVFisheyeCameraIntrinsics`: Fisheye model with equidistant projection
+-   :class:`StaticTransform`: Rigid 6-DOF transformation (rotation + translation)
+-   :class:`CameraProjector`: Utility for projecting/unprojecting points
+
+For low-level transformation utilities (quaternion math, coordinate system
+conversions, matrix operations), see :mod:`fiftyone.utils.transforms`.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

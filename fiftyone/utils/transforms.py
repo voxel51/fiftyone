@@ -3,16 +3,20 @@ Pure mathematical 3D transformation utilities.
 
 This module provides stateless functions for 3D transformations including:
 
-- Quaternion operations (conversion, multiplication, inversion)
-- Transform matrix construction and decomposition
-- Coordinate system conversions (OpenCV, OpenGL, ROS, etc.)
-- Point transformation utilities
+-   Quaternion operations (conversion, multiplication, inversion)
+-   Transform matrix construction and decomposition
+-   Coordinate system conversions (OpenCV, OpenGL, ROS, etc.)
+-   Point transformation utilities
 
 All functions use numpy arrays and follow consistent conventions:
-- Quaternions use [qx, qy, qz, qw] (scalar-last) format
-- Rotation matrices are 3x3 numpy arrays
-- Transform matrices are 4x4 homogeneous matrices
-- Points are Nx3 numpy arrays
+
+-   Quaternions use [qx, qy, qz, qw] (scalar-last) format
+-   Rotation matrices are 3x3 numpy arrays
+-   Transform matrices are 4x4 homogeneous matrices
+-   Points are Nx3 numpy arrays
+
+For high-level camera and transform data models that persist to the database,
+see :mod:`fiftyone.core.camera`.
 
 | Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

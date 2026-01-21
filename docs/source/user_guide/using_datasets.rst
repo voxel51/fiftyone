@@ -5840,7 +5840,7 @@ coordinate frames, defined by a translation vector and a rotation quaternion.
     )
 
     # Access the 4x4 transformation matrix
-    T = extrinsics.extrinsic_matrix
+    T = extrinsics.transform_matrix
 
     # Get the 3x3 rotation matrix
     R = extrinsics.rotation_matrix
@@ -5869,6 +5869,12 @@ You can also create extrinsics from a transformation matrix:
         target_frame="world",
     )
 
+.. note::
+
+    For low-level transformation utilities such as quaternion math, coordinate
+    system conversions (OpenCV, OpenGL, ROS, etc.), and matrix operations, see
+    the :mod:`fiftyone.utils.transforms` module.
+
 .. _resolving-calibration:
 
 Resolving calibration
@@ -5876,7 +5882,7 @@ Resolving calibration
 
 When working with samples, you can resolve camera calibration parameters using
 the :meth:`resolve_intrinsics() <fiftyone.core.dataset.Dataset.resolve_intrinsics>`
-and :meth:`resolve_extrinsics() <fiftyone.core.dataset.Dataset.resolve_extrinsics>`
+and :meth:`resolve_transformation() <fiftyone.core.dataset.Dataset.resolve_transformation>`
 methods. These methods implement a resolution chain that checks multiple
 sources in order of precedence.
 
@@ -5959,7 +5965,7 @@ stored at the sample level:
     intrinsics = dataset.resolve_intrinsics(sample)
 
     # Resolve full transform chain: left camera -> ego -> world
-    extrinsics = dataset.resolve_extrinsics(
+    extrinsics = dataset.resolve_transformation(
         sample,
         source_frame="left",
         target_frame="world",
