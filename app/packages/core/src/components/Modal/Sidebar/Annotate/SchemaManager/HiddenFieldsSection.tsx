@@ -6,6 +6,7 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Collapse, Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -16,7 +17,6 @@ import {
   Size,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { labelSchemaData } from "../state";
@@ -58,7 +58,7 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
           anchor={Anchor.Bottom}
           portal
         >
-          <Clickable onClick={() => setField(path)}>
+          <Clickable data-cy={"edit"} onClick={() => setField(path)}>
             <Icon name={IconName.Edit} size={Size.Md} />
           </Clickable>
         </Tooltip>
@@ -88,6 +88,7 @@ const HiddenFieldsSection = () => {
           data: {
             canSelect: hasSchema && !isSystemReadOnly,
             canDrag: false,
+            "data-cy": `field-row-${path}`,
             primaryContent: path,
             secondaryContent: buildFieldSecondaryContent(
               fieldTypes[path],
@@ -110,7 +111,7 @@ const HiddenFieldsSection = () => {
   }
 
   return (
-    <>
+    <div data-cy="hidden-fields">
       <GUISectionHeader>
         <CollapsibleHeader
           onClick={() => setExpanded((v) => !v)}
@@ -141,7 +142,7 @@ const HiddenFieldsSection = () => {
           onSelected={handleSelected}
         />
       </Collapse>
-    </>
+    </div>
   );
 };
 

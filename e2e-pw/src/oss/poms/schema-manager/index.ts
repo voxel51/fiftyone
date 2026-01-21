@@ -29,7 +29,7 @@ export class SchemaManagerPom {
   }
 
   getFieldRow(field: string) {
-    return new FieldRowPom(field, this);
+    return new FieldRowPom(this.page, field, this);
   }
 }
 

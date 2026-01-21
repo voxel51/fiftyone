@@ -82,6 +82,10 @@ export class ModalSidebarPom {
   async toggleSidebarGroup(name: string) {
     await this.locator.getByTestId(`sidebar-group-entry-${name}`).click();
   }
+
+  async toggleMode(mode: "annotate" | "explore") {
+    await this.locator.getByTestId(mode).click();
+  }
 }
 
 class SidebarAsserter {

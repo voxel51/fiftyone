@@ -7,6 +7,7 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -17,7 +18,6 @@ import {
   Size,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import {
@@ -26,9 +26,9 @@ import {
   fieldAttributeCount,
   fieldType,
 } from "../state";
+import { Item } from "./Components";
 import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
 import { GUISectionHeader } from "./styled";
-import { Item } from "./Components";
 import { buildFieldSecondaryContent } from "./utils";
 
 /**
@@ -43,7 +43,7 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable onClick={() => setField(path)}>
+      <Clickable data-cy="edit" onClick={() => setField(path)}>
         <Icon name={IconName.Edit} size={Size.Md} />
       </Clickable>
     </Tooltip>
@@ -105,6 +105,7 @@ const ActiveFieldsSection = () => {
         data: {
           canSelect: true,
           canDrag: true,
+          "data-cy": `field-row-${path}`,
           primaryContent: path,
           secondaryContent: buildFieldSecondaryContent(
             fieldTypes[path],
@@ -145,7 +146,7 @@ const ActiveFieldsSection = () => {
 
   if (!fields?.length) {
     return (
-      <>
+      <div data-cy={"active-fields"}>
         <GUISectionHeader>
           <Typography variant="body1" fontWeight={500}>
             Active fields
@@ -162,7 +163,7 @@ const ActiveFieldsSection = () => {
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
         </Item>
-      </>
+      </div>
     );
   }
 

@@ -146,10 +146,17 @@ const Modal = () => {
 
   return createPortal(
     <ModalBackground onClick={() => show(false)}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
+      <ModalContainer
+        data-cy="schema-manager"
+        onClick={(e) => e.stopPropagation()}
+      >
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => show(false)} />
+          <CloseButton
+            color="secondary"
+            data-cy="close-schema-manager"
+            onClick={() => show(false)}
+          />
         </ModalHeader>
 
         <Subheading />

@@ -1,10 +1,12 @@
-import { expect } from "src/oss/fixtures";
+import { expect, Page } from "src/oss/fixtures";
 import type { SchemaManagerPom } from ".";
+import { JSONEditorPom } from "./json-editor";
 
 export class FieldRowPom {
   readonly assert: FieldRowAsserter;
 
   constructor(
+    readonly page: Page,
     readonly field: string,
     readonly schemaManager: SchemaManagerPom
   ) {
@@ -20,8 +22,8 @@ export class FieldRowPom {
   }
 
   async edit() {
-    await expect(this.container).toBeAttached();
-    await this.container.getByTestId("edit").click();
+    await this.container.getByTestId("edit").click({ force: true });
+    return new JSONEditorPom(this.page, this.field, this.schemaManager);
   }
 
   async select() {

@@ -3,7 +3,6 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-import { createBlankImage } from "src/shared/media-factory/image";
 
 const datasetName = getUniqueDatasetNameWithPrefix("image-classification");
 
@@ -25,24 +24,19 @@ const test = base.extend<{
   },
 });
 
-const writeImage = async () => {
-  await createBlankImage({
+test.afterAll(async ({ foWebServer }) => {
+  await foWebServer.stopWebServer();
+});
+
+test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
+  await foWebServer.startWebServer();
+  await mediaFactory.createBlankImage({
     outputPath: "/tmp/blank.png",
     width: 50,
     height: 50,
     fillColor: "#ffffff",
     hideLogs: true,
   });
-};
-
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
-test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
-  await foWebServer.startWebServer();
-
-  await writeImage();
 
   await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
@@ -69,7 +63,7 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
 });
 
 test.describe.serial("image classification", () => {
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  test.beforeEach(async ({ fiftyoneLoader, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
@@ -80,7 +74,11 @@ test.describe.serial("image classification", () => {
     await modal.sidebar.setMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isVisible();
-    await schemaManager.getFieldRow("classification").edit();
+    const row = schemaManager.getFieldRow("classification");
+    const jsonEditor = await row.edit();
+
+    throw new Error(await jsonEditor.getJSON());
+
     await schemaManager.close();
     await schemaManager.assert.isHidden();
   });
