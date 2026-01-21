@@ -149,32 +149,35 @@ const useSchema = () => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (typeof data === "string") {
-          if (schema?.ftype === FLOAT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseFloat(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
-
-          if (schema?.ftype === INT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseInt(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
+      if (typeof data === "string") {
+        if (schema?.ftype === FLOAT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseFloat(data);
+          return Number.isFinite(parsed) ? parsed : null;
         }
 
-        return data;
-      },
+        if (schema?.ftype === INT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseInt(data);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+      }
+
+      return data;
+    },
     []
   );
 };
 
-const AnnotationSchema = () => {
+export interface AnnotationSchemaProps {
+  readOnly?: boolean;
+}
+
+const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const schema = useSchema();
   const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
@@ -197,7 +200,10 @@ const AnnotationSchema = () => {
         smartForm={true}
         schema={schema}
         data={data}
+        readOnly={readOnly}
         onChange={async (changes) => {
+          if (readOnly) return;
+
           const result = Object.fromEntries(
             await Promise.all(
               Object.entries(changes).map(async ([key, value]) => [

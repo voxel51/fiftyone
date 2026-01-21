@@ -10,7 +10,11 @@ import useExit from "./useExit";
 import useSave, { isSavingAtom } from "./useSave";
 import { Stack } from "@mui/material";
 
-const SaveFooter = () => {
+export interface FooterProps {
+  readOnly?: boolean;
+}
+
+const SaveFooter = ({ readOnly = false }: FooterProps) => {
   const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
   const onSave = useSave();
   const onDiscard = useExit();
@@ -30,7 +34,7 @@ const SaveFooter = () => {
         </MuiButton>
 
         <MuiButton
-          disabled={!changes || saving}
+          disabled={!changes || saving || readOnly}
           onClick={() => {
             onSave();
           }}
@@ -42,8 +46,10 @@ const SaveFooter = () => {
       </Stack>
 
       <RoundButton
-        className={saving ? "disabled" : ""}
-        onClick={saving ? undefined : showCancel ? onExitConfirm : onDelete}
+        className={saving || readOnly ? "disabled" : ""}
+        onClick={
+          saving || readOnly ? undefined : showCancel ? onExitConfirm : onDelete
+        }
       >
         {showCancel ? (
           "Cancel"
@@ -64,12 +70,12 @@ const CancelFooter = () => {
   return <Button onClick={onExit}>Cancel</Button>;
 };
 
-export default function Footer() {
+export default function Footer({ readOnly = false }: FooterProps) {
   const field = useAtomValue(currentField);
 
   return (
     <Row style={{ flexDirection: "row-reverse" }}>
-      {!field ? <CancelFooter /> : <SaveFooter />}
+      {!field ? <CancelFooter /> : <SaveFooter readOnly={readOnly} />}
     </Row>
   );
 }

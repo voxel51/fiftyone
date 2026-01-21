@@ -15,7 +15,12 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import { currentField, currentOverlay, currentType } from "./state";
+import {
+  currentField,
+  currentFieldIsReadOnlyAtom,
+  currentOverlay,
+  currentType,
+} from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
 
@@ -43,6 +48,7 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
   const clear = useClearModal();
   const exit = useExit();
@@ -91,9 +97,9 @@ export default function Edit() {
           {type === DETECTION && overlay && !is3dDetection && <Position />}
           {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema />}
+          {field && <AnnotationSchema readOnly={isReadOnly} />}
         </Content>
-        <Footer />
+        <Footer readOnly={isReadOnly} />
       </ContentContainer>
     </Confirmation>
   );
