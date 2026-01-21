@@ -276,6 +276,7 @@ class Qwen3VLModel(fout.TorchImageModel):
             generated_ids = self._model.generate(
                 **inputs,
                 max_new_tokens=self.config.max_new_tokens,
+                do_sample=False,
             )
 
             generated_ids_trimmed = [
