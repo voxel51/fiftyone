@@ -58,23 +58,47 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
+ * Build the annotation path for a label, adjusting for generated datasets.
+ *
+ * For generated views (patches/evaluation patches), we need to return the path
+ * to the list field in the source sample so the backend can find the label by ID.
+ *
+ * @param label The annotation label
+ * @param isGenerated Whether this is from a generated dataset
+ * @returns The adjusted path for the annotation
+ */
+export const buildAnnotationPath = (
+  label: AnnotationLabel,
+  isGenerated: boolean
+): string => {
+  let basePath = label.path;
+  if (isGenerated) {
+    // Patches views flatten the structure so we need to adjust the path to reflect the sample.
+    if (label.type === "Detection") basePath = `${basePath}.detections`;
+  }
+  return basePath;
+};
+
+/**
  * Build JSON-patch-compatible deltas for the specified changes to the sample.
  *
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  * @param schema Field schema
  * @param opType Operation type
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildLabelDeltas = (
   sample: Sample,
   label: AnnotationLabel,
   schema: Field,
-  opType: OpType
+  opType: OpType,
+  isGenerated = false
 ) => {
   if (opType === "mutate") {
-    return buildMutationDeltas(sample, label, schema);
+    return buildMutationDeltas(sample, label, schema, isGenerated);
   } else if (opType === "delete") {
-    return buildDeletionDeltas(sample, label, schema);
+    return buildDeletionDeltas(sample, label, schema, isGenerated);
   } else {
     throw new Error(`Unsupported opType ${opType}`);
   }
@@ -86,11 +110,13 @@ export const buildLabelDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  * @param schema Field schema
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildMutationDeltas = (
   sample: Sample,
   label: AnnotationLabel,
-  schema: Field
+  schema: Field,
+  isGenerated = false
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
   // inferred data model differences.
@@ -98,7 +124,7 @@ export const buildMutationDeltas = (
   // element with an implied structure.
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
-      return buildDetectionsMutationDelta(sample, label);
+      return buildDetectionsMutationDelta(sample, label, isGenerated);
     } else if (isFieldType(schema, "Detection")) {
       return buildDetectionMutationDelta(sample, label);
     }
@@ -127,12 +153,20 @@ export const buildMutationDeltas = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  * @param schema Field schema
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildDeletionDeltas = (
   sample: Sample,
   label: AnnotationLabel,
-  schema: Field
+  schema: Field,
+  isGenerated = false
 ): JSONDeltas => {
+  // For generated views, deletion is always a simple remove of the label
+  // The backend handles removing from the source sample's list
+  if (isGenerated) {
+    return [{ op: "remove", path: "/" }];
+  }
+
   // todo refactor to reduce code duplication
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
@@ -155,7 +189,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else if (isFieldType(schema, "Detection")) {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
@@ -178,7 +212,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else if (isFieldType(schema, "Classification")) {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
@@ -199,7 +233,7 @@ export const buildDeletionDeltas = (
         ),
       });
     } else {
-      return [{ op: "remove", path: "" }];
+      return [{ op: "remove", path: "/" }];
     }
   }
 
@@ -253,18 +287,28 @@ export const buildDetectionMutationDelta = (
  *
  * @param sample Sample containing unmodified label data
  * @param label Current label state
+ * @param isGenerated Whether this is from a generated view
  */
 export const buildDetectionsMutationDelta = (
   sample: Sample,
-  label: DetectionAnnotationLabel
+  label: DetectionAnnotationLabel,
+  isGenerated = false
 ): JSONDeltas => {
-  const existingLabel = <DetectionsParent>(
+  const container = <DetectionsParent>(
     extractNestedField(sample, label.path)
   ) ?? {
     detections: [],
   };
 
-  const newArray = [...existingLabel.detections];
+  // For generated views, compare individual labels (backend applies to individual label)
+  if (isGenerated) {
+    const existingDetection =
+      container.detections?.find((det) => det._id === label.data._id) ?? {};
+    return generateJsonPatch(existingDetection, makeDetectionLabel(label));
+  }
+
+  // For regular samples, compare containers
+  const newArray = [...container.detections];
   upsertArrayElement(
     newArray,
     makeDetectionLabel(label),
@@ -272,11 +316,11 @@ export const buildDetectionsMutationDelta = (
   );
 
   const newLabel = {
-    ...existingLabel,
+    ...container,
     detections: newArray,
   };
 
-  return generateJsonPatch(existingLabel, newLabel);
+  return generateJsonPatch(container, newLabel);
 };
 
 /**
@@ -295,7 +339,7 @@ export const buildClassificationMutationDeltas = (
 /**
  * Build a list of JSON deltas for the given sample and classification label.
  *
- * This method assumes that the detection exists as part of a parent
+ * This method assumes that the classification exists as part of a parent
  * `fo.Classifications` field.
  *
  * @param sample Sample containing unmodified label data
@@ -305,13 +349,13 @@ export const buildClassificationsMutationDeltas = (
   sample: Sample,
   label: ClassificationAnnotationLabel
 ): JSONDeltas => {
-  const existingLabel = <ClassificationsParent>(
+  const container = <ClassificationsParent>(
     extractNestedField(sample, label.path)
   ) ?? {
     classifications: [],
   };
 
-  const newArray = [...existingLabel.classifications];
+  const newArray = [...container.classifications];
   upsertArrayElement(
     newArray,
     { ...label.data },
@@ -319,11 +363,11 @@ export const buildClassificationsMutationDeltas = (
   );
 
   const newLabel = {
-    ...existingLabel,
+    ...container,
     classifications: newArray,
   };
 
-  return generateJsonPatch(existingLabel, newLabel);
+  return generateJsonPatch(container, newLabel);
 };
 
 /**
@@ -355,13 +399,11 @@ export const buildPolylinesMutationDeltas = (
   sample: Sample,
   label: PolylineAnnotationLabel
 ): JSONDeltas => {
-  const existingLabel = <{ polylines: PolylineLabel[] }>(
-    extractNestedField(sample, label.path)
-  ) ?? {
+  const container = <PolylinesParent>extractNestedField(sample, label.path) ?? {
     polylines: [],
   };
 
-  const newArray = [...existingLabel.polylines];
+  const newArray = [...container.polylines];
   upsertArrayElement(
     newArray,
     { ...label.data },
@@ -369,11 +411,11 @@ export const buildPolylinesMutationDeltas = (
   );
 
   const newLabel = {
-    ...existingLabel,
+    ...container,
     polylines: newArray,
   };
 
-  return generateJsonPatch(existingLabel, newLabel);
+  return generateJsonPatch(container, newLabel);
 };
 
 /**
@@ -401,16 +443,17 @@ const upsertArrayElement = <T>(
 };
 
 /**
- * Build a JSON-patch-compatible path from the sample root.
+ * Build a JSON-patch-compatible path from the root object.
  *
  * @param labelPath Dot-delimited path to label field
  * @param operationPath Slash-delimited JSON-patch path to mutation field
  */
 export const buildJsonPath = (
-  labelPath: string,
+  labelPath: string | null,
   operationPath: string
 ): string => {
-  const parts = labelPath.split(".");
+  // labelPath will be null when building paths for sample field updates
+  const parts = labelPath?.split(".") || [];
   parts.push(
     ...operationPath
       .split("/")
