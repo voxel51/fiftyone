@@ -1,5 +1,5 @@
 import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 
@@ -54,8 +54,8 @@ export default function useDelete() {
 
       await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
-      removeOverlay(label.overlay.id);
       setter();
+      removeOverlay(label.overlay.id);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label}" successfully deleted.`,
@@ -63,6 +63,7 @@ export default function useDelete() {
       });
       exit();
     } catch (error) {
+      console.error(error);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label ?? "Label"

@@ -2,15 +2,17 @@ import { type AnnotationLabel } from "@fiftyone/state";
 import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
+import { capitalize } from "lodash";
 import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
-
-export const CLASSIFICATION = "classification";
-export const CLASSIFICATIONS = "classifications";
-export const DETECTION = "detection";
-export const DETECTIONS = "detections";
-export const POLYLINE = "polyline";
-export const POLYLINES = "polylines";
+import {
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
@@ -113,12 +115,14 @@ export const disabledFields = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = new Set<string>();
     const map = get(labelsByPath);
-    for (const path of get(fieldsOfType(type))) {
-      if (IS_LIST.has(get(labelSchemaData(path)).type)) {
-        continue;
-      }
 
-      if (!map[path]?.length) {
+    for (const path of get(fieldsOfType(type))) {
+      const rawType = get(labelSchemaData(path)).type;
+      const schemaType = capitalize(rawType);
+      const isListType = IS_LIST.has(schemaType);
+      const hasLabels = map[path]?.length > 0;
+
+      if (isListType || !hasLabels) {
         continue;
       }
 
@@ -139,7 +143,7 @@ export const currentType = atom<LabelType>((get) => {
   const type = get(current)?.type;
   if (type) {
     for (const [kind, values] of Object.entries(IS)) {
-      if (values.has(type.toLowerCase())) {
+      if (values.has(type)) {
         return kind as LabelType;
       }
     }
@@ -157,6 +161,7 @@ export const isNew = atom((get) => {
 const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
+
     for (const field of get(activeLabelSchemas) ?? []) {
       if (IS[type].has(get(fieldType(field)))) {
         fields.push(field);
@@ -170,6 +175,7 @@ const fieldsOfType = atomFamily((type: LabelType) =>
 export const defaultField = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = get(disabledFields(type));
+
     for (const path of get(fieldsOfType(type))) {
       if (!disabled.has(path)) {
         return path;

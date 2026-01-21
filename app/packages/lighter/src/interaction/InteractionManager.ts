@@ -3,7 +3,6 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -203,13 +202,11 @@ export class InteractionManager {
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
-
   constructor(
     private canvas: HTMLCanvasElement,
-    private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string
+    sceneId: string,
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
@@ -468,7 +465,7 @@ export class InteractionManager {
    * Handles keyboard events for undo/redo shortcuts and shift modifier to maintain aspect ratio.
    * @param event - The keyboard event.
    */
-  private handleKeyDown = (event: KeyboardEvent): void => {
+  private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
     const activeElement = document.activeElement;
     if (
@@ -479,31 +476,6 @@ export class InteractionManager {
     ) {
       return;
     }
-
-    // Handle undo: Ctrl+Z (or Cmd+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === "z" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.undoRedoManager.undo();
-      return;
-    }
-
-    // Handle redo: Ctrl+Y or Ctrl+Shift+Z (or Cmd+Y/Cmd+Shift+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      ((event.key === "y" && !event.shiftKey) ||
-        (event.key === "z" && event.shiftKey))
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.undoRedoManager.redo();
-      return;
-    }
-
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
@@ -534,7 +506,7 @@ export class InteractionManager {
 
     const distance = Math.sqrt(
       Math.pow(point.x - this.clickStartPoint.x, 2) +
-        Math.pow(point.y - this.clickStartPoint.y, 2)
+      Math.pow(point.y - this.clickStartPoint.y, 2)
     );
     const duration = now - this.clickStartTime;
 
@@ -663,7 +635,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-        Math.pow(point.y - this.lastClickPoint.y, 2)
+      Math.pow(point.y - this.lastClickPoint.y, 2)
     );
 
     return (
