@@ -44,8 +44,8 @@ export const useCommand = (
   }, [commandId, boundContext.context]);
 
   const execute = useCallback(() => {
-    CommandContextManager.instance().executeCommand(commandId);
-  }, [commandId]);
+    boundContext.context.executeCommand(commandId);
+  }, [commandId, boundContext.context]);
 
   return {
     callback: execute,
