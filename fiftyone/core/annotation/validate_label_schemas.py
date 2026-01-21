@@ -417,7 +417,11 @@ def _validate_label_field_label_schema(
         if key not in settings:
             _raise_unknown_setting_error(key, field_name)
 
-        if key == foac.ATTRIBUTES:
+        if key == foac.ACTIVE_ATTRIBUTES:
+            _validate_active_attributes(
+                field_name, value, label_schema.get(foac.ATTRIBUTES, None)
+            )
+        elif key == foac.ATTRIBUTES:
             _validate_attributes(collection, field_name, class_name, value)
         elif key == foac.COMPONENT and value not in foac.STR_COMPONENTS:
             _raise_component_error(field_name, value)
@@ -452,6 +456,26 @@ def _raise_unknown_setting_error(name, field_name):
     raise ValueError(f"unknown setting '{name}' for '{field_name}' field")
 
 
+def _validate_active_attributes(field_name, active_attributes, attributes):
+    if not isinstance(active_attributes, list):
+        raise ValueError(
+            "'active_attributes' setting must be a list of attribute names "
+            f"for field {field_name}"
+        )
+
+    for attr in active_attributes:
+        if attr not in attributes:
+            raise ValueError(
+                f"'active_attributes' value '{attr}' is not defined in "
+                f"'attributes' for field {field_name}"
+            )
+
+    if len(set(active_attributes)) < len(active_attributes):
+        raise ValueError(
+            f"'active_attributes' has duplicate values for field {field_name}"
+        )
+
+
 def _validate_attribute(
     attribute,
     class_name,
@@ -469,7 +493,7 @@ def _validate_attribute(
 
     if attribute == foac.LABEL:
         raise ValueError(
-            f"'label' attribute for field {field_name} is configured via "
+            f"'label' attribute for field '{field_name}' is configured via "
             "'classes' for label fields"
         )
 
@@ -573,7 +597,7 @@ def _validate_default_list(
 
     if not isinstance(value, list):
         raise ValueError(
-            f"'default' setting for field {field_name} must be a list"
+            f"'default' setting for field '{field_name}' must be a list"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:

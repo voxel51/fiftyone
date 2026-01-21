@@ -823,3 +823,69 @@ class LabelSchemaValidationTests(unittest.TestCase):
                 },
                 fields="detections",
             )
+
+    @drop_datasets
+    def test_validate_activate_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(label="one", index=1),
+            )
+        )
+        dataset.add_dynamic_sample_fields()
+
+        validate_label_schemas(
+            dataset,
+            {
+                "active_attributes": ["id", "index"],
+                "attributes": {
+                    "id": {
+                        "component": "text",
+                        "read_only": True,
+                        "type": "id",
+                    },
+                    "index": {"component": "text", "type": "int"},
+                },
+                "type": "detection",
+            },
+            fields="detection",
+        )
+
+        # 'active_attributes' has value not in 'attributes'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "active_attributes": ["missing"],
+                    "attributes": {
+                        "id": {
+                            "component": "text",
+                            "read_only": True,
+                            "type": "id",
+                        },
+                        "index": {"component": "text", "type": "int"},
+                    },
+                    "type": "detection",
+                },
+                fields="detection",
+            )
+
+        # duplicate 'active_attributes'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "active_attributes": ["id", "index", "id"],
+                    "attributes": {
+                        "id": {
+                            "component": "text",
+                            "read_only": True,
+                            "type": "id",
+                        },
+                        "index": {"component": "text", "type": "int"},
+                    },
+                    "type": "detection",
+                },
+                fields="detection",
+            )
