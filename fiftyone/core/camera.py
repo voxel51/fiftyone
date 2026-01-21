@@ -32,8 +32,8 @@ SUPPORTED_CAMERA_CONVENTIONS = (
     CAMERA_CONVENTION_OPENGL,
 )
 
-#: Default target frame for sensor extrinsics
-DEFAULT_EXTRINSICS_TARGET_FRAME = "world"
+#: Default target frame for static transforms
+DEFAULT_TRANSFORM_TARGET_FRAME = "world"
 
 
 class ProjectionModel(ABC):
@@ -337,7 +337,7 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
         return OpenCVProjectionModel()
 
     def camera_matrix_3x4(
-        self, extrinsics: Optional["SensorExtrinsics"] = None
+        self, transform: Optional["StaticTransform"] = None
     ) -> np.ndarray:
         """Returns the 3x4 camera projection matrix P = K @ [R|t].
 
@@ -345,20 +345,20 @@ class CameraIntrinsics(DynamicEmbeddedDocument):
         pre-corrected in the image.
 
         Args:
-            extrinsics: optional extrinsics defining the world-to-camera
+            transform: optional transform defining the world-to-camera
                 transformation (i.e., source_frame=world, target_frame=camera).
-                If your extrinsics are camera-to-world, call
-                ``extrinsics.inverse()`` first.
+                If your transform is camera-to-world, call
+                ``transform.inverse()`` first.
 
         Returns:
             a (3, 4) numpy array
         """
         K = self.intrinsic_matrix
-        if extrinsics is None:
+        if transform is None:
             return K @ np.hstack([np.eye(3), np.zeros((3, 1))])
         else:
-            R = extrinsics.rotation_matrix
-            t = extrinsics.translation
+            R = transform.rotation_matrix
+            t = transform.translation
             if t is None:
                 t = np.zeros((3, 1))
             else:
@@ -594,7 +594,7 @@ class OpenCVFisheyeCameraIntrinsics(CameraIntrinsics):
         return FisheyeProjectionModel()
 
 
-class SensorExtrinsics(DynamicEmbeddedDocument):
+class StaticTransform(DynamicEmbeddedDocument):
     """Represents a rigid 3D transformation (6-DOF pose).
 
     Stored as translation + quaternion for efficiency. Defines transformation
@@ -621,14 +621,14 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
 
     Attributes:
         rotation_matrix: the 3x3 rotation matrix R
-        extrinsic_matrix: the 4x4 homogeneous transformation matrix
+        transform_matrix: the 4x4 homogeneous transformation matrix
 
     Example::
 
         import fiftyone as fo
 
         # Camera to ego transformation
-        extrinsics = fo.SensorExtrinsics(
+        transform = fo.StaticTransform(
             translation=[1.5, 0.0, 1.2],
             # identity rotation
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -637,7 +637,7 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         )
 
         # Access the 4x4 transformation matrix
-        T = extrinsics.extrinsic_matrix
+        T = transform.transform_matrix
     """
 
     translation = fof.ListField(
@@ -655,12 +655,12 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         super().__init__(*args, **kwargs)
         if self.source_frame is None:
             raise ValueError(
-                "source_frame is required for SensorExtrinsics. "
+                "source_frame is required for StaticTransform. "
                 "Please specify the source coordinate frame name."
             )
 
     def validate(self, clean=True):
-        """Validates the extrinsics data.
+        """Validates the transform data.
 
         This method is called by mongoengine during save/validation.
         """
@@ -702,7 +702,7 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         return Rotation.from_quat(q).as_matrix()
 
     @property
-    def extrinsic_matrix(self) -> np.ndarray:
+    def transform_matrix(self) -> np.ndarray:
         """Returns the 4x4 homogeneous transformation matrix.
 
         The matrix has the form::
@@ -728,8 +728,8 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         source_frame: Optional[str] = None,
         target_frame: Optional[str] = None,
         **kwargs,
-    ) -> "SensorExtrinsics":
-        """Creates a SensorExtrinsics instance from a 3x4 or 4x4 matrix.
+    ) -> "StaticTransform":
+        """Creates a StaticTransform instance from a 3x4 or 4x4 matrix.
 
         Args:
             matrix: a (3, 4) or (4, 4) transformation matrix [R|t]
@@ -738,7 +738,7 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
             **kwargs: additional fields to set on the instance
 
         Returns:
-            a :class:`SensorExtrinsics` instance
+            a :class:`StaticTransform` instance
         """
         matrix = np.asarray(matrix, dtype=np.float64)
         if matrix.shape not in ((3, 4), (4, 4)):
@@ -766,14 +766,14 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
             **kwargs,
         )
 
-    def inverse(self) -> "SensorExtrinsics":
+    def inverse(self) -> "StaticTransform":
         """Returns the inverse transformation.
 
         If this transform is source_frame -> target_frame, the inverse is
         target_frame -> source_frame.
 
         Returns:
-            a :class:`SensorExtrinsics` representing the inverse transform
+            a :class:`StaticTransform` representing the inverse transform
         """
         R = self.rotation_matrix
         t = np.array(self.translation or [0, 0, 0], dtype=np.float64)
@@ -785,14 +785,14 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
         # Convert back to quaternion
         quat_inv = Rotation.from_matrix(R_inv).as_quat()
 
-        return SensorExtrinsics(
+        return StaticTransform(
             translation=t_inv.tolist(),
             quaternion=quat_inv.tolist(),
             source_frame=self.target_frame,
             target_frame=self.source_frame,
         )
 
-    def compose(self, other: "SensorExtrinsics") -> "SensorExtrinsics":
+    def compose(self, other: "StaticTransform") -> "StaticTransform":
         """Composes this transform with another.
 
         If self is A->B and other is B->C, the result is A->C.
@@ -802,12 +802,12 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
             So T_AC = T_BC @ T_AB (other @ self)
 
         Args:
-            other: another :class:`SensorExtrinsics` to compose with.
+            other: another :class:`StaticTransform` to compose with.
                 The source_frame of ``other`` should match target_frame of
                 ``self`` for the frames to chain correctly.
 
         Returns:
-            a :class:`SensorExtrinsics` representing the composed transform
+            a :class:`StaticTransform` representing the composed transform
 
         Raises:
             ValueError: if the frames don't chain (self.target_frame !=
@@ -827,23 +827,19 @@ class SensorExtrinsics(DynamicEmbeddedDocument):
             )
 
         # A->B
-        T_self = self.extrinsic_matrix
+        T_self = self.transform_matrix
         # B->C
-        T_other = other.extrinsic_matrix
+        T_other = other.transform_matrix
         # T_AC = T_BC @ T_AB
         T_composed = T_other @ T_self
 
-        return SensorExtrinsics.from_matrix(
+        return StaticTransform.from_matrix(
             T_composed,
             # A
             source_frame=self.source_frame,
             # C
             target_frame=other.target_frame,
         )
-
-
-# Alias for generality
-CameraExtrinsics = SensorExtrinsics
 
 
 class CameraIntrinsicsRef(EmbeddedDocument):
@@ -866,14 +862,14 @@ class CameraIntrinsicsRef(EmbeddedDocument):
     ref = fof.StringField(required=True)
 
 
-class SensorExtrinsicsRef(EmbeddedDocument):
-    """Reference to dataset-level sensor extrinsics.
+class StaticTransformRef(EmbeddedDocument):
+    """Reference to dataset-level static transform.
 
-    Use this to reference extrinsics stored at the dataset level rather than
-    embedding the full extrinsics data in each sample.
+    Use this to reference transforms stored at the dataset level rather than
+    embedding the full transform data in each sample.
 
     Args:
-        ref: the key in ``dataset.sensor_extrinsics``, either
+        ref: the key in ``dataset.static_transforms``, either
             "source_frame::target_frame" or just "source_frame" (implies
             target is "world")
 
@@ -881,28 +877,24 @@ class SensorExtrinsicsRef(EmbeddedDocument):
 
         import fiftyone as fo
 
-        # Reference dataset-level extrinsics (field name can be anything)
-        sample["extrinsics"] = [
-            fo.SensorExtrinsicsRef(ref="camera_front::ego"),
+        # Reference dataset-level transform (field name can be anything)
+        sample["transform"] = [
+            fo.StaticTransformRef(ref="camera_front::ego"),
         ]
     """
 
     ref = fof.StringField(required=True)
 
 
-# Alias for generality
-CameraExtrinsicsRef = SensorExtrinsicsRef
-
-
 class CameraProjector:
     """Utility class for projecting points between 3D and 2D.
 
-    Combines camera intrinsics and optional extrinsics to perform projection
+    Combines camera intrinsics and optional transforms to perform projection
     and unprojection operations.
 
     Args:
         intrinsics: a :class:`CameraIntrinsics` instance
-        camera_to_reference (None): optional :class:`SensorExtrinsics`
+        camera_to_reference (None): optional :class:`StaticTransform`
             defining the **camera-to-reference** transformation (i.e., the
             camera's pose in the reference frame). If provided, 3D points
             passed to :meth:`project` are assumed to be in the reference
@@ -921,8 +913,8 @@ class CameraProjector:
             +x right, +y down, origin at top-left
 
     Important:
-        **Extrinsics direction**: This class expects **camera-to-reference**
-        extrinsics, NOT reference-to-camera. If you have a reference-to-camera
+        **Transform direction**: This class expects **camera-to-reference**
+        transforms, NOT reference-to-camera. If you have a reference-to-camera
         transform (e.g., world-to-camera), invert it first::
 
             projector = fo.CameraProjector(intrinsics, world_to_cam.inverse())
@@ -943,8 +935,8 @@ class CameraProjector:
         points_3d = np.array([[0, 0, 10], [1, 2, 10]])
         points_2d = projector.project(points_3d, in_camera_frame=True)
 
-        # Project world points using camera-to-world extrinsics
-        cam_to_world = fo.SensorExtrinsics(
+        # Project world points using camera-to-world transform
+        cam_to_world = fo.StaticTransform(
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -958,7 +950,7 @@ class CameraProjector:
     def __init__(
         self,
         intrinsics: CameraIntrinsics,
-        camera_to_reference: Optional[SensorExtrinsics] = None,
+        camera_to_reference: Optional[StaticTransform] = None,
         camera_convention: str = "opencv",
     ):
         if camera_convention not in SUPPORTED_CAMERA_CONVENTIONS:
@@ -967,9 +959,9 @@ class CameraProjector:
                 f"got '{camera_convention}'"
             )
 
-        # Validate extrinsics direction and warn if it looks backwards
+        # Validate transform direction and warn if it looks backwards
         if camera_to_reference is not None:
-            self._validate_extrinsics_direction(camera_to_reference)
+            self._validate_transform_direction(camera_to_reference)
 
         self.intrinsics = intrinsics
         self.camera_to_reference = camera_to_reference
@@ -980,12 +972,12 @@ class CameraProjector:
     def from_reference_to_camera(
         cls,
         intrinsics: CameraIntrinsics,
-        reference_to_camera: SensorExtrinsics,
+        reference_to_camera: StaticTransform,
         camera_convention: str = "opencv",
     ) -> "CameraProjector":
-        """Creates a CameraProjector from reference-to-camera extrinsics.
+        """Creates a CameraProjector from reference-to-camera transform.
 
-        Use this constructor if your extrinsics transform points FROM the
+        Use this constructor if your transform converts points FROM the
         reference frame TO the camera frame (e.g., world-to-camera). This
         is common when loading from some datasets or calibration tools.
 
@@ -994,7 +986,7 @@ class CameraProjector:
 
         Args:
             intrinsics: a :class:`CameraIntrinsics` instance
-            reference_to_camera: a :class:`SensorExtrinsics` that transforms
+            reference_to_camera: a :class:`StaticTransform` that transforms
                 points from the reference frame to the camera frame
             camera_convention: "opencv" or "opengl"
 
@@ -1003,8 +995,8 @@ class CameraProjector:
 
         Example::
 
-            # If you have world-to-camera extrinsics:
-            world_to_cam = fo.SensorExtrinsics(
+            # If you have world-to-camera transform:
+            world_to_cam = fo.StaticTransform(
                 translation=[...],
                 quaternion=[...],
                 source_frame="world",
@@ -1020,10 +1012,10 @@ class CameraProjector:
             camera_convention=camera_convention,
         )
 
-    def _validate_extrinsics_direction(
-        self, extrinsics: SensorExtrinsics
+    def _validate_transform_direction(
+        self, transform: StaticTransform
     ) -> None:
-        """Warns if extrinsics appear to be in the wrong direction."""
+        """Warns if transform appears to be in the wrong direction."""
         reference_keywords = (
             "world",
             "global",
@@ -1034,8 +1026,8 @@ class CameraProjector:
         )
         camera_keywords = ("cam", "camera", "sensor", "image")
 
-        src = (extrinsics.source_frame or "").lower()
-        tgt = (extrinsics.target_frame or "").lower()
+        src = (transform.source_frame or "").lower()
+        tgt = (transform.target_frame or "").lower()
 
         # Check if source_frame looks like a reference frame (not a camera)
         src_looks_like_reference = any(kw in src for kw in reference_keywords)
@@ -1043,12 +1035,12 @@ class CameraProjector:
 
         if src_looks_like_reference or tgt_looks_like_camera:
             warnings.warn(
-                f"CameraProjector expects camera-to-reference extrinsics, "
-                f"but received source_frame='{extrinsics.source_frame}', "
-                f"target_frame='{extrinsics.target_frame}'. "
-                f"This looks like reference-to-camera extrinsics. "
+                f"CameraProjector expects camera-to-reference transform, "
+                f"but received source_frame='{transform.source_frame}', "
+                f"target_frame='{transform.target_frame}'. "
+                f"This looks like reference-to-camera transform. "
                 f"If so, either:\n"
-                f"  1. Call extrinsics.inverse() before passing to CameraProjector\n"
+                f"  1. Call transform.inverse() before passing to CameraProjector\n"
                 f"  2. Use CameraProjector.from_reference_to_camera() instead\n"
                 f"Expected: source_frame=<camera_name>, "
                 f"target_frame=<reference_frame>",
@@ -1070,7 +1062,7 @@ class CameraProjector:
     def _reference_to_camera(self) -> Optional[np.ndarray]:
         """Returns the reference-to-camera transformation matrix."""
         if self.camera_to_reference is not None:
-            return self.camera_to_reference.inverse().extrinsic_matrix
+            return self.camera_to_reference.inverse().transform_matrix
         return None
 
     def project(
@@ -1180,7 +1172,7 @@ class CameraProjector:
 
         # Transform to reference frame if requested
         if not in_camera_frame and self.camera_to_reference is not None:
-            T = self.camera_to_reference.extrinsic_matrix
+            T = self.camera_to_reference.transform_matrix
             ones = np.ones((points_3d.shape[0], 1))
             points_h = np.hstack([points_3d, ones])
             points_3d = (T @ points_h.T).T[:, :3]
