@@ -19,7 +19,15 @@ from starlette.requests import Request
 
 import fiftyone as fo
 from fiftyone.server import decorators, utils
-from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
+from fiftyone.server.utils.datasets import (
+    get_dataset,
+    get_sample_from_dataset,
+    sync_to_generated_dataset,
+)
+from fiftyone.server.utils.json.jsonpatch import (
+    apply as apply_jsonpatch,
+    RootDeleteError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -371,27 +379,30 @@ def _handle_top_level_patch(
 
 
 def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
-    """Applies a list of JSON patch operations to a target object."""
+    """Applies a list of JSON patch operations to a target object.
+
+    Raises:
+        RootDeleteError: If the patches represent a root delete operation.
+            The caller must handle deletion at the parent level.
+        HTTPException: If patches fail to parse or apply.
+    """
     try:
-        patches = utils.json.parse_jsonpatch(
-            patch_list, transform_fn=utils.json.deserialize
+        _, errors = apply_jsonpatch(
+            target, patch_list, transform_fn=utils.json.deserialize
         )
+    except RootDeleteError:
+        # JSON Patch RFC defines remove as removing a value from within a document,
+        # so we re-raise to signal the caller to handle deletion on the parent object.
+        raise
     except Exception as err:
         raise HTTPException(
             status_code=400,
             detail=f"Failed to parse patches due to: {err}",
         ) from err
 
-    errors = []
-    for i, p in enumerate(patches):
-        try:
-            p.apply(target)
-        except Exception as e:
-            patch_str = str(patch_list[i])
-            logger.error("Error applying patch `%s`: %s", patch_str, e)
-            errors.append(f"Error applying patch `{patch_str}`: {e}")
-
     if errors:
+        for error in errors:
+            logger.error(error)
         raise HTTPException(
             status_code=400,
             detail=json_util.dumps(errors),
@@ -479,75 +490,141 @@ class SampleField(HTTPEndpoint):
     async def patch(self, request: Request, data: dict) -> dict:
         """Applies a list of field updates to a sample field in a list by id.
 
+        This endpoint handles updates to individual labels within a list field
+        (e.g., a specific detection in a detections field). When the annotation
+        is part of a generated dataset (like patches views), changes are
+        synchronized to both the source and generated datasets.
+
         See: https://datatracker.ietf.org/doc/html/rfc6902
 
         Args:
-            request: Starlette request with dataset_id and sample_id in path
-            params
-            data: patch of type op, path, value.
+            request: Starlette request with dataset_id, sample_id, field_path,
+                and field_id in path params. May include 'generated_dataset'
+                query parameter for generated dataset syncing.
+            data: JSON patch operations to apply
 
         Returns:
-            the final state of the sample as a dict
+            The final state of the updated field as a dict
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
         path = request.path_params["field_path"]
         field_id = request.path_params["field_id"]
+        generated_dataset_name = request.query_params.get("generated_dataset")
+        generated_sample_id = request.query_params.get("generated_sample_id")
 
         logger.info(
-            (
-                "Received patch request for field %s with ID %s on sample %s "
-                "in dataset %s"
-            ),
+            "Received patch request for field %s with ID %s on sample %s "
+            "in dataset %s%s",
             path,
             field_id,
             sample_id,
             dataset_id,
+            f" (generated_dataset={generated_dataset_name})"
+            if generated_dataset_name
+            else "",
         )
 
         if_last_modified_at = get_if_last_modified_at(request)
         if if_last_modified_at is None:
+            logger.debug(
+                "Invalid or missing If-Match header for sample %s in dataset %s",
+                sample_id,
+                dataset_id,
+            )
             raise HTTPException(
                 status_code=400, detail="Invalid If-Match header"
             )
 
-        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
+        # Skip checking the last_modified_at on the src when editing through a generated dataset as the
+        # timestamp reflect the generated sample's last_modified_at, not the source sample's timestamp.
+        source_if_match = (
+            None if generated_dataset_name else if_last_modified_at
+        )
 
+        # Load the source sample
+        logger.debug(
+            "Loading source sample %s from dataset %s", sample_id, dataset_id
+        )
+        sample = get_sample(dataset_id, sample_id, source_if_match)
+
+        # Get the field list from the source sample
         try:
+            logger.debug("Getting field '%s' from sample", path)
             field_list = sample.get_field(path)
         except Exception as err:
-            logger.debug('Field "%s" not found in sample %s', path, sample_id)
+            logger.warning(
+                "Field '%s' not found in sample '%s' from dataset '%s': %s",
+                path,
+                sample_id,
+                dataset_id,
+                err,
+            )
             raise HTTPException(
                 status_code=404,
                 detail=f"Field '{path}' not found in sample '{sample_id}'",
             ) from err
 
+        # Validate that the field is a list
         if not isinstance(field_list, list):
+            logger.warning(
+                "Field '%s' is not a list in sample '%s' (type: %s)",
+                path,
+                sample_id,
+                type(field_list).__name__,
+            )
             raise HTTPException(
                 status_code=400, detail=f"Field '{path}' is not a list"
             )
 
-        field = next((f for f in field_list if f.id == field_id), None)
+        # field_id is the label ID in the source sample
+        # (for patches views, it's also the generated sample's _id)
+        field = next((f for f in field_list if str(f.id) == field_id), None)
         if field is None:
             logger.debug(
-                "Field with id '%s' not found in field '%s'", field_id, path
+                "Field with id %s not found in field %s", field_id, path
             )
             raise HTTPException(
                 status_code=404,
-                detail=(
-                    f"Field with id '{field_id}' not found in field "
-                    f"'{path}'"
-                ),
+                detail=f"Field with id '{field_id}' not found in field '{path}'",
             )
 
-        handle_json_patch(field, data)
+        # Apply patches - RootDeleteError signals deletion is needed
+        try:
+            handle_json_patch(field, data)
+            is_delete = False
+        except RootDeleteError:
+            field_list.remove(field)
+            is_delete = True
 
-        etag = save_sample(sample, if_last_modified_at)
+        # Save the source sample
+        etag = save_sample(sample, source_if_match)
 
-        updated_field = next((f for f in field_list if f.id == field_id), None)
+        # Sync to generated dataset and return updated sample if applicable
+        if generated_dataset_name and generated_sample_id:
+            try:
+                generated_sample = sync_to_generated_dataset(
+                    generated_dataset_name,
+                    generated_sample_id,
+                    path,
+                    field_id,
+                    data,
+                    delete=is_delete,
+                )
+                if generated_sample is not None:
+                    return utils.json.JSONResponse(
+                        utils.json.serialize(generated_sample),
+                        headers={"ETag": etag},
+                    )
+            except Exception as err:
+                logger.error(
+                    "Failed to sync to generated dataset: %s",
+                    err,
+                    exc_info=True,
+                )
 
         return utils.json.JSONResponse(
-            utils.json.serialize(updated_field), headers={"ETag": etag}
+            utils.json.serialize(sample), headers={"ETag": etag}
         )
 
 

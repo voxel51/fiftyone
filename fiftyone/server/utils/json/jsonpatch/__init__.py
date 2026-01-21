@@ -6,7 +6,7 @@ Apply JSON patch to python objects.
 |
 """
 
-from typing import Any, Callable, Iterable, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 
 from fiftyone.server.utils.json.jsonpatch.methods import (
@@ -28,6 +28,18 @@ from fiftyone.server.utils.json.jsonpatch.patch import (
     Replace,
     Test,
 )
+
+
+class RootDeleteError(Exception):
+    """Raised when a root delete operation is detected.
+
+    A root delete is a single remove operation with path "/" that indicates
+    the entire target object should be deleted. This cannot be applied via
+    normal JSON patch operations since the target cannot remove itself.
+    The caller must handle deletion at the parent level.
+    """
+
+    pass
 
 
 __PATCH_MAP = {
@@ -87,3 +99,78 @@ def parse(
             raise ValueError(f"Invalid operation '{op_str}'") from err
 
     return parsed if not return_one else parsed[0]
+
+
+def apply(
+    target: Any,
+    patches: Union[dict[str, Any], Iterable[dict[str, Any]]],
+    *,
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> tuple[Any, list[str]]:
+    """Parse and apply JSON patch operations to a target object.
+
+    Args:
+        target: The object to apply patches to
+        patches: JSON patch operations (dict or list of dicts)
+        transform_fn: Optional function to transform values before applying
+
+    Returns:
+        A tuple of (target, errors) where errors is a list of error messages
+        for any patches that failed to apply
+
+    Raises:
+        RootDeleteError: If the patches represent a root delete operation
+            (single remove with path "/"). The caller must handle deletion
+            at the parent level.
+    """
+    # Check for root delete before parsing - this is a special case that
+    # cannot be handled by normal patch application
+    patches_list = [patches] if isinstance(patches, dict) else list(patches)
+    if is_root_delete(patches_list):
+        raise RootDeleteError(
+            "Root delete detected. Delete must be handled at parent level."
+        )
+
+    parsed = parse(patches, transform_fn=transform_fn)
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+
+    errors = []
+    for i, p in enumerate(parsed):
+        try:
+            p.apply(target)
+        except Exception as e:
+            errors.append(f"Error applying patch `{patches_list[i]}`: {e}")
+
+    return target, errors
+
+
+def is_root_delete(patches: Union[List[Dict[str, Any]], List[Patch]]) -> bool:
+    """Check if the patches represent a full delete of the root target.
+
+    A root delete is a single remove operation targeting the root path ("/"),
+    indicating the entire object should be deleted.
+
+    This function accepts either raw patch dictionaries or parsed Patch objects.
+
+    Args:
+        patches: List of patch operations (raw dicts or parsed Patch objects)
+
+    Returns:
+        True if the patches represent a root delete, False otherwise
+    """
+    if len(patches) != 1:
+        return False
+
+    patch = patches[0]
+
+    # Handle parsed Patch objects
+    if isinstance(patch, Patch):
+        return isinstance(patch, Remove) and patch.path == "/"
+
+    # Handle raw dictionaries
+    return patch.get("op") == "remove" and patch.get("path") == "/"
+
+
+# Backwards compatibility alias
+is_full_delete = is_root_delete

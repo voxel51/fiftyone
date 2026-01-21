@@ -173,3 +173,96 @@ class TestParse:
                     if "value" in patch
                 ]
             )
+
+
+class TestIsRootDelete:
+    """Tests for jsonpatch.is_root_delete utility function."""
+
+    @pytest.mark.parametrize(
+        "operations,expected",
+        [
+            # True case
+            pytest.param(
+                [{"op": "remove", "path": "/"}],
+                True,
+                id="single_remove_at_root",
+            ),
+            # False cases
+            pytest.param(
+                [{"op": "remove", "path": "/label"}],
+                False,
+                id="remove_at_non_root",
+            ),
+            pytest.param(
+                [{"op": "replace", "path": "/", "value": {}}],
+                False,
+                id="non_remove_at_root",
+            ),
+            pytest.param(
+                [
+                    {"op": "remove", "path": "/"},
+                    {"op": "add", "path": "/label", "value": "cat"},
+                ],
+                False,
+                id="multiple_ops",
+            ),
+            pytest.param([], False, id="empty_list"),
+            pytest.param([{"op": "remove"}], False, id="missing_path_key"),
+            pytest.param(
+                [{"op": "remove", "path": None}], False, id="none_path_value"
+            ),
+        ],
+    )
+    def test_with_raw_dicts(self, operations, expected):
+        """Test is_root_delete with raw dictionary operations."""
+        assert jsonpatch.is_root_delete(operations) is expected
+
+    @pytest.mark.parametrize(
+        "operations,expected",
+        [
+            pytest.param(
+                [{"op": "remove", "path": "/"}], True, id="remove_at_root"
+            ),
+            pytest.param(
+                [{"op": "remove", "path": "/label"}],
+                False,
+                id="remove_at_non_root",
+            ),
+        ],
+    )
+    def test_with_parsed_patch(self, operations, expected):
+        """Test is_root_delete with parsed Patch objects."""
+        parsed = jsonpatch.parse(operations)
+        assert jsonpatch.is_root_delete(parsed) is expected
+
+
+class TestApplyRootDeleteError:
+    """Tests for RootDeleteError raised by jsonpatch.apply."""
+
+    def test_apply_raises_root_delete_error(self):
+        """apply() raises RootDeleteError for root delete operations."""
+        target = {"label": "cat"}
+        operations = [{"op": "remove", "path": "/"}]
+
+        with pytest.raises(jsonpatch.RootDeleteError):
+            jsonpatch.apply(target, operations)
+
+    def test_apply_does_not_raise_for_non_root_delete(self):
+        """apply() does not raise RootDeleteError for non-root operations."""
+        target = {"label": "cat", "confidence": 0.9}
+        operations = [{"op": "remove", "path": "/confidence"}]
+
+        result, errors = jsonpatch.apply(target, operations)
+        assert errors == []
+        assert "confidence" not in result
+
+    def test_apply_does_not_raise_for_multiple_operations(self):
+        """apply() does not raise RootDeleteError for multiple operations."""
+        target = {"label": "cat"}
+        operations = [
+            {"op": "remove", "path": "/"},
+            {"op": "add", "path": "/label", "value": "dog"},
+        ]
+
+        result, errors = jsonpatch.apply(target, operations)
+        assert errors == []
