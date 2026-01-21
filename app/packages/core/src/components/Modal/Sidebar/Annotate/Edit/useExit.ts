@@ -20,14 +20,14 @@ import {
   currentData,
   currentOverlay,
   hasChanges,
-  readOnlyOverride,
+  readOnlyOverrideAtom,
   savedLabel,
 } from "./state";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const setSaved = useSetAtom(savedLabel);
-  const setReadOnlyOverride = useSetAtom(readOnlyOverride);
+  const setReadOnlyOverride = useSetAtom(readOnlyOverrideAtom);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const hasChanged = useAtomValue(hasChanges);

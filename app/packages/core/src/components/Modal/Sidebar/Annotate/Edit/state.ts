@@ -20,7 +20,7 @@ export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
  * Atom to track whether read-only has been overridden for the current editing session.
  * This allows users with canEditLabels permission to temporarily bypass read-only restrictions.
  */
-export const readOnlyOverride = atom<boolean>(false);
+export const readOnlyOverrideAtom = atom<boolean>(false);
 
 export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | null
@@ -103,7 +103,7 @@ export const currentField = atom(
 /**
  * Base atom that checks if the current field is marked as read-only in the schema.
  */
-export const currentFieldIsReadOnlyBase = atom((get) => {
+export const currentFieldIsReadOnlyBaseAtom = atom((get) => {
   const field = get(currentField);
 
   if (!field) {
@@ -119,8 +119,8 @@ export const currentFieldIsReadOnlyBase = atom((get) => {
  * Returns true if field is read-only AND override is not active.
  */
 export const currentFieldIsReadOnlyAtom = atom((get) => {
-  const isFieldReadOnly = get(currentFieldIsReadOnlyBase);
-  const override = get(readOnlyOverride);
+  const isFieldReadOnly = get(currentFieldIsReadOnlyBaseAtom);
+  const override = get(readOnlyOverrideAtom);
   return isFieldReadOnly && !override;
 });
 

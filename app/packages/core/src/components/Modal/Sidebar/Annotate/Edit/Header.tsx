@@ -11,10 +11,11 @@ import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 import {
-  currentFieldIsReadOnlyBase,
+  currentFieldIsReadOnlyAtom,
+  currentFieldIsReadOnlyBaseAtom,
   currentOverlay,
   currentType,
-  readOnlyOverride,
+  readOnlyOverrideAtom,
 } from "./state";
 import useColor from "./useColor";
 
@@ -30,8 +31,11 @@ const Header = () => {
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
-  const isFieldReadOnly = useAtomValue(currentFieldIsReadOnlyBase);
-  const [override, setOverride] = useAtom(readOnlyOverride);
+  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const currentFieldIsReadOnlyBase = useAtomValue(
+    currentFieldIsReadOnlyBaseAtom
+  );
+  const [readOnlyOverride, setReadOnlyOverride] = useAtom(readOnlyOverrideAtom);
 
   // Kebab menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -46,12 +50,12 @@ const Header = () => {
   };
 
   const handleToggleReadOnly = () => {
-    setOverride(!override);
+    setReadOnlyOverride(!readOnlyOverride);
     handleMenuClose();
   };
 
   // Show menu if user can edit labels and field is read-only
-  const showMenu = canEditLabels.enabled && isFieldReadOnly;
+  const showMenu = canEditLabels.enabled && currentFieldIsReadOnlyBase;
 
   return (
     <Row>
@@ -62,10 +66,10 @@ const Header = () => {
         <Icon fill={color} />
         <div>{type}</div>
       </ItemLeft>
-      {isFieldReadOnly && <span>Read-only</span>}
+      {currentFieldIsReadOnly && <span>Read-only</span>}
       {!isAnnotatingPolyline && !isAnnotatingCuboid && (
         <ItemRight>
-          {!isFieldReadOnly && (
+          {!currentFieldIsReadOnly && (
             <>
               <Undo />
               <Redo />
@@ -98,7 +102,9 @@ const Header = () => {
                 }}
               >
                 <MenuItem onClick={handleToggleReadOnly}>
-                  {override ? "Re-enable read-only" : "Disable read-only"}
+                  {readOnlyOverride
+                    ? "Re-enable read-only"
+                    : "Disable read-only"}
                 </MenuItem>
               </Menu>
             </>

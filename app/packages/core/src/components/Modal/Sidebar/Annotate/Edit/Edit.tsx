@@ -20,7 +20,7 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
-  readOnlyOverride,
+  readOnlyOverrideAtom,
 } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
@@ -50,7 +50,7 @@ export default function Edit() {
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const setReadOnlyOverride = useSetAtom(readOnlyOverride);
+  const setReadOnlyOverride = useSetAtom(readOnlyOverrideAtom);
 
   const clear = useClearModal();
   const exit = useExit();
