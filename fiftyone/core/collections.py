@@ -663,13 +663,13 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement camera_intrinsics")
 
     @property
-    def sensor_extrinsics(self):
-        """The sensor extrinsics of the underlying dataset.
+    def static_transforms(self):
+        """The static transforms of the underlying dataset.
 
-        See :meth:`fiftyone.core.dataset.Dataset.sensor_extrinsics` for more
+        See :meth:`fiftyone.core.dataset.Dataset.static_transforms` for more
         information.
         """
-        raise NotImplementedError("Subclass must implement sensor_extrinsics")
+        raise NotImplementedError("Subclass must implement static_transforms")
 
     def has_skeleton(self, field):
         """Determines whether this collection has a keypoint skeleton for the
@@ -11208,8 +11208,8 @@ class SampleCollection(object):
         if self.camera_intrinsics:
             d["camera_intrinsics"] = self._serialize_camera_intrinsics()
 
-        if self.sensor_extrinsics:
-            d["sensor_extrinsics"] = self._serialize_sensor_extrinsics()
+        if self.static_transforms:
+            d["static_transforms"] = self._serialize_static_transforms()
 
         if self.media_type == fom.GROUP:
             view = self.select_group_slices(_allow_mixed=True)
@@ -11883,8 +11883,8 @@ class SampleCollection(object):
     def _serialize_camera_intrinsics(self):
         return self._root_dataset._doc.field_to_mongo("camera_intrinsics")
 
-    def _serialize_sensor_extrinsics(self):
-        return self._root_dataset._doc.field_to_mongo("sensor_extrinsics")
+    def _serialize_static_transforms(self):
+        return self._root_dataset._doc.field_to_mongo("static_transforms")
 
     def _parse_camera_intrinsics(self, camera_intrinsics):
         if not camera_intrinsics:
@@ -11894,12 +11894,12 @@ class SampleCollection(object):
             "camera_intrinsics", camera_intrinsics
         )
 
-    def _parse_sensor_extrinsics(self, sensor_extrinsics):
-        if not sensor_extrinsics:
-            return sensor_extrinsics
+    def _parse_static_transforms(self, static_transforms):
+        if not static_transforms:
+            return static_transforms
 
         return self._root_dataset._doc.field_to_python(
-            "sensor_extrinsics", sensor_extrinsics
+            "static_transforms", static_transforms
         )
 
     def _to_fields_str(self, field_schema):
