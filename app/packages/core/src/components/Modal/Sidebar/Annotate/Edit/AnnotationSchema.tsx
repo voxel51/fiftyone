@@ -104,6 +104,9 @@ const AnnotationSchema = () => {
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
+        smartFormProps={{
+          liveValidate: "onChange",
+        }}
         schema={schema}
         data={data}
         onChange={async (changes) => {

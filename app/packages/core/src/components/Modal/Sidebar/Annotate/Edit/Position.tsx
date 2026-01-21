@@ -100,6 +100,7 @@ export default function Position() {
       <SchemaIOComponent
         key={overlay?.id}
         smartForm={true}
+        smartFormProps={{ liveValidate: "onChange" }}
         schema={{
           type: "object",
           view: {

@@ -1,5 +1,5 @@
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
-import { FormProps } from "@rjsf/core";
+import type { FormProps } from "@rjsf/core";
 import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 
 export enum SmartFormInputs {
