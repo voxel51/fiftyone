@@ -398,12 +398,12 @@ class DatasetView(foc.SampleCollection):
         self._root_dataset.camera_intrinsics = intrinsics
 
     @property
-    def sensor_extrinsics(self):
-        return self._root_dataset.sensor_extrinsics
+    def static_transforms(self):
+        return self._root_dataset.static_transforms
 
-    @sensor_extrinsics.setter
-    def sensor_extrinsics(self, extrinsics):
-        self._root_dataset.sensor_extrinsics = extrinsics
+    @static_transforms.setter
+    def static_transforms(self, transforms):
+        self._root_dataset.static_transforms = transforms
 
     def summary(self):
         """Returns a string summary of the view.
