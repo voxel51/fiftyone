@@ -466,7 +466,7 @@ class Sample(HTTPEndpoint):
             utils.json.serialize(sample), headers={"ETag": etag}
         )
 
-    def _handle_patch(self, sample: fo.Sample, data: dict) -> dict:
+    def _handle_patch(self, sample: fo.Sample, data: dict) -> fo.Sample:
         errors = {}
         for field_name, value in data.items():
             try:
@@ -487,7 +487,7 @@ class SampleField(HTTPEndpoint):
     """Sample field endpoints."""
 
     @decorators.route
-    async def patch(self, request: Request, data: dict) -> dict:
+    async def patch(self, request: Request, data: List[dict]) -> dict:
         """Applies a list of field updates to a sample field in a list by id.
 
         This endpoint handles updates to individual labels within a list field
@@ -600,8 +600,8 @@ class SampleField(HTTPEndpoint):
         # Save the source sample
         etag = save_sample(sample, source_if_match)
 
-        # Sync to generated dataset and return updated sample if applicable
         if generated_dataset_name and generated_sample_id:
+            # Sync changes to generated dataset
             try:
                 generated_sample = sync_to_generated_dataset(
                     generated_dataset_name,
