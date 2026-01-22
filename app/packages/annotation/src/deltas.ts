@@ -29,6 +29,7 @@ import {
   Primitive,
   Schema,
   STRING_FIELD,
+  UUID_FIELD,
 } from "@fiftyone/utilities";
 import { get } from "lodash";
 
@@ -87,7 +88,7 @@ const SUPPORTED_PRIMITIVE_FTYPES = new Set([
   INT_FIELD,
   OBJECT_ID_FIELD,
   STRING_FIELD,
-  "fiftyone.core.fields.UUIDField",
+  UUID_FIELD,
 ]);
 
 /**
