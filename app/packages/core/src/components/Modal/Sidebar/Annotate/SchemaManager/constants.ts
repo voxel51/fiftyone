@@ -2,6 +2,17 @@
  * Constants for SchemaManager
  */
 
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import { IconName } from "@voxel51/voodo";
 
 // Tab IDs for GUI/JSON toggle
@@ -113,32 +124,56 @@ export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict", "id"];
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
 
-// Primitive field types (ftype values, not label types like Detection, Classification)
-// These are the capitalized field type names returned by fieldType atom
+// Primitive field types - full Python class names from @fiftyone/utilities
+// Used to check if a field is a primitive type (not a label type like Detection)
+export const PRIMITIVE_FIELD_CLASSES = new Set([
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+]);
+
+// Map full Python class name to schema type (e.g. "float")
+export const FIELD_CLASS_TO_SCHEMA_TYPE: Record<string, string> = {
+  [BOOLEAN_FIELD]: "bool",
+  [DATE_FIELD]: "date",
+  [DATE_TIME_FIELD]: "datetime",
+  [DICT_FIELD]: "dict",
+  [FLOAT_FIELD]: "float",
+  [INT_FIELD]: "int",
+  [OBJECT_ID_FIELD]: "id",
+  [STRING_FIELD]: "str",
+};
+
+// Primitive field types - capitalized short names returned by fieldType atom
+// The atom does capitalize(schema.type) where type is "str", "float", etc.
 export const PRIMITIVE_FIELD_TYPES = new Set([
-  "String",
+  "Str",
   "Int",
   "Float",
-  "Boolean",
+  "Bool",
   "Date",
   "Datetime",
   "Dict",
   "List",
-  "Objectid",
-  "Uuid",
+  "Id",
 ]);
 
 // Map field type (e.g. "Float") to schema type (e.g. "float")
 export const FIELD_TYPE_TO_SCHEMA_TYPE: Record<string, string> = {
-  String: "str",
+  Str: "str",
   Int: "int",
   Float: "float",
-  Boolean: "bool",
+  Bool: "bool",
   Date: "date",
   Datetime: "datetime",
   Dict: "dict",
-  Objectid: "id",
-  Uuid: "id",
+  Id: "id",
 };
 
 // Get schema type from field type
