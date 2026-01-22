@@ -104,9 +104,6 @@ export const COMPONENT_OPTIONS: Record<
   ],
 };
 
-// Threshold for auto-switching radio to dropdown
-export const RADIO_MAX_VALUES = 5;
-
 // Types that are numeric (values must be numbers)
 export const NUMERIC_TYPES = ["int", "float", "list<int>", "list<float>"];
 
@@ -115,6 +112,53 @@ export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict", "id"];
 
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
+
+// Primitive field types (ftype values, not label types like Detection, Classification)
+// These are the capitalized field type names returned by fieldType atom
+export const PRIMITIVE_FIELD_TYPES = new Set([
+  "String",
+  "Int",
+  "Float",
+  "Boolean",
+  "Date",
+  "Datetime",
+  "Dict",
+  "List",
+  "Objectid",
+  "Uuid",
+]);
+
+// Map field type (e.g. "Float") to schema type (e.g. "float")
+export const FIELD_TYPE_TO_SCHEMA_TYPE: Record<string, string> = {
+  String: "str",
+  Int: "int",
+  Float: "float",
+  Boolean: "bool",
+  Date: "date",
+  Datetime: "datetime",
+  Dict: "dict",
+  Objectid: "id",
+  Uuid: "id",
+};
+
+// Get schema type from field type
+export const getSchemaTypeFromFieldType = (fieldType: string): string => {
+  return FIELD_TYPE_TO_SCHEMA_TYPE[fieldType] || "str";
+};
+
+/**
+ * Check if component type needs a range (slider only).
+ */
+export const componentNeedsRange = (component: string): boolean =>
+  component === "slider";
+
+/**
+ * Check if component type needs values (radio, dropdown, checkboxes).
+ */
+export const componentNeedsValues = (component: string): boolean =>
+  component === "radio" ||
+  component === "dropdown" ||
+  component === "checkboxes";
 
 /**
  * Get default component for a type

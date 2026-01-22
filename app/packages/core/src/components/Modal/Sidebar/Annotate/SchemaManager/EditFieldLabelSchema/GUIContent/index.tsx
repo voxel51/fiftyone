@@ -4,7 +4,10 @@
 
 import { LoadingSpinner } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { fieldType } from "../../../state";
+import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import {
   EditSectionHeader,
   EmptyStateBox,
@@ -14,6 +17,7 @@ import {
 import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
+import PrimitiveFieldContent from "./PrimitiveFieldContent";
 
 // Re-export types for external use
 export type {
@@ -23,12 +27,21 @@ export type {
 } from "../../utils";
 
 interface GUIContentProps {
+  field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
-const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
+const GUIContent = ({
+  field,
+  config,
+  scanning,
+  onConfigChange,
+}: GUIContentProps) => {
+  const fType = useAtomValue(fieldType(field));
+  const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
+
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
     () => config?.attributes || {},
@@ -101,6 +114,21 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     },
     [config, attributes, onConfigChange]
   );
+
+  // Primitive field types show a different UI
+  if (isPrimitive && fType) {
+    return (
+      <ListContainer>
+        <Section>
+          <PrimitiveFieldContent
+            fieldType={fType}
+            config={config}
+            onConfigChange={onConfigChange}
+          />
+        </Section>
+      </ListContainer>
+    );
+  }
 
   if (scanning) {
     return (
