@@ -141,6 +141,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
 
         {isM4Enabled && activeTab === TAB_GUI ? (
           <GUIContent
+            field={field}
             config={schemaData}
             scanning={labelSchema.isScanning}
             onConfigChange={labelSchema.updateConfig}

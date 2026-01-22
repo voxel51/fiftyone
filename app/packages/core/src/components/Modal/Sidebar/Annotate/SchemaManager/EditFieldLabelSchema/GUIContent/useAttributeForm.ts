@@ -10,7 +10,8 @@ import {
   LIST_TYPES,
   NO_DEFAULT_TYPES,
   NUMERIC_TYPES,
-  RADIO_MAX_VALUES,
+  componentNeedsRange,
+  componentNeedsValues,
   getDefaultComponent,
 } from "../../constants";
 import {
@@ -65,25 +66,8 @@ export default function useAttributeForm({
   const componentOptions = COMPONENT_OPTIONS[formState.type] || [];
 
   // Visibility flags
-  const showValuesForNumeric =
-    isNumericType &&
-    (formState.component === "radio" || formState.component === "dropdown");
-
-  const showValuesForStr =
-    formState.type === "str" &&
-    (formState.component === "radio" || formState.component === "dropdown");
-
-  const showValuesForList =
-    isListType &&
-    (formState.component === "checkboxes" ||
-      formState.component === "dropdown");
-
-  const showValues =
-    showValuesForNumeric || showValuesForStr || showValuesForList;
-
-  const showRange =
-    (formState.type === "int" || formState.type === "float") &&
-    formState.component === "slider";
+  const showValues = componentNeedsValues(formState.component);
+  const showRange = isNumericType && componentNeedsRange(formState.component);
 
   // Validation - field-specific errors
   const formErrors = useMemo(
@@ -116,65 +100,22 @@ export default function useAttributeForm({
 
   const handleComponentChange = useCallback(
     (newComponent: string) => {
-      const updates: Partial<AttributeFormData> = { component: newComponent };
-
-      if (isNumericType) {
-        if (newComponent === "text") {
-          updates.values = [];
-          updates.range = null;
-        } else if (newComponent === "slider") {
-          updates.values = [];
-          if (!formState.range) {
-            updates.range = { min: "", max: "" };
-          }
-        } else if (newComponent === "radio" || newComponent === "dropdown") {
-          updates.range = null;
-        }
-      }
-
-      onFormStateChange({ ...formState, ...updates });
+      // Reset to initial state when switching component
+      onFormStateChange({
+        ...formState,
+        component: newComponent,
+        values: [],
+        range: null,
+      });
     },
-    [formState, onFormStateChange, isNumericType]
+    [formState, onFormStateChange]
   );
 
   const handleValuesChange = useCallback(
     (newValues: string[]) => {
-      let newComponent = formState.component;
-
-      // For numeric types with radio, switch to dropdown if values > 5
-      if (isNumericType && formState.component === "radio") {
-        if (newValues.length > RADIO_MAX_VALUES) {
-          newComponent = "dropdown";
-        }
-      }
-
-      // For string type, auto-select component based on values count
-      if (formState.type === "str") {
-        if (newValues.length === 0) {
-          newComponent = "text";
-        } else if (newValues.length <= RADIO_MAX_VALUES) {
-          newComponent = "radio";
-        } else {
-          newComponent = "dropdown";
-        }
-      }
-
-      // For list types, auto-select based on values count
-      if (isListType) {
-        if (newValues.length <= RADIO_MAX_VALUES) {
-          newComponent = "checkboxes";
-        } else {
-          newComponent = "dropdown";
-        }
-      }
-
-      onFormStateChange({
-        ...formState,
-        values: newValues,
-        component: newComponent,
-      });
+      onFormStateChange({ ...formState, values: newValues });
     },
-    [formState, onFormStateChange, isNumericType, isListType]
+    [formState, onFormStateChange]
   );
 
   const handleRangeChange = useCallback(
