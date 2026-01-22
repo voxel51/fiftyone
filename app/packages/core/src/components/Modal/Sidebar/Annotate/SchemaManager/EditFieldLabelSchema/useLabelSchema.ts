@@ -3,10 +3,10 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
-import { labelSchemaData } from "../../state";
+import { currentField, labelSchemaData } from "../../state";
 import { currentLabelSchema } from "../state";
 
 // =============================================================================
@@ -30,12 +30,14 @@ const useDiscard = (field: string) => {
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
       setCurrent(saved ?? defaultLabelSchema);
+      setCurrentField(null);
     },
   };
 };
@@ -94,6 +96,7 @@ const useSave = (field: string) => {
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const [current] = useCurrentLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
@@ -127,6 +130,7 @@ const useSave = (field: string) => {
         callback: () => {
           setSaved(current);
           setIsSaving(false);
+          setCurrentField(null);
         },
       });
     },
