@@ -3732,7 +3732,7 @@ class SampleCollection(object):
         Primitive attributes of label types are configured via the
         ``attributes`` list.
 
-        When a label is marked is ``read_only``, all its attributes inherit the
+        When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
 
         All :class:`fiftyone.core.labels.Label` types are resolved by this
