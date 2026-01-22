@@ -101,8 +101,8 @@ export class CommandContext {
    * @see Undoable
    * @param action an action to execute
    */
-  public async executeAction(action: Action) {
-    await this.actions.execute(action);
+  public executeAction(action: Action) {
+    this.actions.execute(action);
   }
 
   /**
