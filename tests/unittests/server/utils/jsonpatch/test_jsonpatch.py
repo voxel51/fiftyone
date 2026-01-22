@@ -255,7 +255,8 @@ class TestApplyRootDeleteError:
         result, errors = jsonpatch.apply(target, operations)
         assert errors == []
         assert "confidence" not in result
-        assert "label" in result and result["label"] == "cat"
+        assert "label" in result
+        assert result["label"] == "cat"
 
     def test_apply_does_not_raise_for_multiple_operations(self):
         """apply() does not raise RootDeleteError for multiple operations."""
@@ -267,4 +268,5 @@ class TestApplyRootDeleteError:
 
         result, errors = jsonpatch.apply(target, operations)
         assert errors == []
-        assert "label" in result and result["label"] == "dog"
+        assert "label" in result
+        assert result["label"] == "dog"
