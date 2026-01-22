@@ -148,7 +148,6 @@ TYPES_TO_FIELD_TYPE = {
     FLOAT: fof.FloatField,
     INT: fof.IntField,
     STR: fof.StringField,
-    BOOL_LIST: fof.BooleanField,
     FLOAT_LIST: fof.FloatField,
     INT_LIST: fof.IntField,
     STR_LIST: fof.StringField,
