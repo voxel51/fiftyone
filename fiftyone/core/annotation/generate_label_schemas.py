@@ -398,6 +398,7 @@ def _handle_float_or_int(
     if mn != mx:
         settings[foac.COMPONENT] = foac.SLIDER
         settings[foac.RANGE] = [mn, mx]
+        settings[foac.STEP] = foac.DEFAULT_STEP
 
     return settings
 
