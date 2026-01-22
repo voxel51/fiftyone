@@ -43,7 +43,6 @@ export const ATTRIBUTE_TYPE_OPTIONS = [
   { id: "date", data: { label: "Date" } },
   { id: "datetime", data: { label: "Datetime" } },
   { id: "dict", data: { label: "Dictionary" } },
-  { id: "id", data: { label: "ID" } },
   { id: "list<str>", data: { label: "String list" } },
   { id: "list<int>", data: { label: "Integer list" } },
   { id: "list<float>", data: { label: "Float list" } },
@@ -84,8 +83,6 @@ export const COMPONENT_OPTIONS: Record<
   ],
   // DICT_COMPONENTS = {json}
   dict: [{ id: "json", label: "JSON editor", icon: IconName.JSON }],
-  // ID_COMPONENTS = {text}
-  id: [{ id: "text", label: "Text", icon: IconName.Text }],
   // STR_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<str>": [
     { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
@@ -125,7 +122,6 @@ export const getDefaultComponent = (type: string): string => {
     case "str":
     case "int":
     case "float":
-    case "id":
       return "text";
     case "bool":
       return "toggle";
