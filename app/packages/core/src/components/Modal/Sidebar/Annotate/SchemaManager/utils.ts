@@ -4,7 +4,11 @@
 
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
-import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
+import {
+  getDefaultComponent,
+  NUMERIC_TYPES,
+  SYSTEM_READ_ONLY_FIELD_NAME,
+} from "./constants";
 
 // =============================================================================
 // Types
@@ -32,10 +36,13 @@ export interface RichListItemOptions {
   canDrag?: boolean;
 }
 
-// Attribute configuration
+// Attribute configuration (matches API)
 export interface AttributeConfig {
   type: string;
-  values?: string[];
+  component?: string;
+  values?: (string | number)[];
+  range?: [number, number];
+  default?: string | number;
   read_only?: boolean;
 }
 
@@ -48,6 +55,17 @@ export interface ClassConfig {
 export interface SchemaConfigType {
   classes?: string[];
   attributes?: Record<string, AttributeConfig>;
+}
+
+// Form state for attribute editing (uses strings for form inputs)
+export interface AttributeFormData {
+  name: string;
+  type: string;
+  component: string;
+  values: string[];
+  range: { min: string; max: string } | null;
+  default: string;
+  read_only: boolean;
 }
 
 // =============================================================================
@@ -128,6 +146,23 @@ export const getClassNameError = (
 };
 
 /**
+ * Validate attribute name and return error message if invalid
+ */
+export const getAttributeNameError = (
+  name: string,
+  existingAttributes: string[],
+  currentAttribute?: string
+): string | null => {
+  const trimmed = name.trim();
+  if (!trimmed) return "Attribute name cannot be empty";
+  const isDuplicate = existingAttributes.some(
+    (a) => a !== currentAttribute && a === trimmed
+  );
+  if (isDuplicate) return "Attribute name already exists";
+  return null;
+};
+
+/**
  * Format attribute count text
  */
 export const formatAttributeCount = (count: number): string => {
@@ -155,3 +190,160 @@ export const buildFieldSecondaryContent = (
   }
   return typeText;
 };
+
+// =============================================================================
+// Attribute Form Helpers
+// =============================================================================
+
+/**
+ * Create default form data for a new attribute
+ */
+export const createDefaultFormData = (): AttributeFormData => ({
+  name: "",
+  type: "str",
+  component: "text",
+  values: [],
+  range: null,
+  default: "",
+  read_only: false,
+});
+
+/**
+ * Convert AttributeConfig to form data for editing
+ */
+export const toFormData = (
+  name: string,
+  config: AttributeConfig
+): AttributeFormData => ({
+  name,
+  type: config.type,
+  component: config.component || getDefaultComponent(config.type),
+  values: config.values?.map(String) || [],
+  range: config.range
+    ? { min: String(config.range[0]), max: String(config.range[1]) }
+    : null,
+  default: config.default !== undefined ? String(config.default) : "",
+  read_only: config.read_only || false,
+});
+
+/**
+ * Convert form data to AttributeConfig for saving
+ * Converts values to numbers for numeric types
+ */
+export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
+  const isNumeric = NUMERIC_TYPES.includes(data.type);
+
+  // Convert values to numbers for numeric types
+  let values: (string | number)[] | undefined;
+  if (data.values.length > 0) {
+    values = isNumeric
+      ? data.values.map((v) => parseFloat(v)).filter((n) => !isNaN(n))
+      : data.values;
+  }
+
+  // Convert range to tuple
+  let range: [number, number] | undefined;
+  if (data.range && data.range.min !== "" && data.range.max !== "") {
+    const min = parseFloat(data.range.min);
+    const max = parseFloat(data.range.max);
+    if (!isNaN(min) && !isNaN(max)) {
+      range = [min, max];
+    }
+  }
+
+  // Convert default to number for numeric types
+  let defaultValue: string | number | undefined;
+  if (data.default) {
+    defaultValue = isNumeric ? parseFloat(data.default) : data.default;
+    if (typeof defaultValue === "number" && isNaN(defaultValue)) {
+      defaultValue = undefined;
+    }
+  }
+
+  return {
+    type: data.type,
+    component: data.component || undefined,
+    values: values?.length ? values : undefined,
+    range,
+    default: defaultValue,
+    read_only: data.read_only || undefined,
+  };
+};
+
+/**
+ * Field-specific validation errors for attribute form
+ */
+export interface AttributeFormErrors {
+  values: string | null;
+  range: string | null;
+  default: string | null;
+}
+
+/**
+ * Validate attribute form data and return field-specific errors.
+ * Used for both UI display and canSave logic.
+ */
+export const getAttributeFormErrors = (
+  data: AttributeFormData
+): AttributeFormErrors => {
+  const errors: AttributeFormErrors = {
+    values: null,
+    range: null,
+    default: null,
+  };
+
+  const isNumeric = NUMERIC_TYPES.includes(data.type);
+  const needsValues =
+    data.component === "radio" ||
+    data.component === "dropdown" ||
+    data.component === "checkboxes";
+  const needsRange = isNumeric && data.component === "slider";
+
+  // Values validation
+  if (needsValues && data.values.length === 0) {
+    errors.values = "At least one value is required";
+  }
+
+  // Range validation (for slider)
+  if (needsRange) {
+    if (!data.range || data.range.min === "" || data.range.max === "") {
+      errors.range = "Min and max are required";
+    } else {
+      const min = parseFloat(data.range.min);
+      const max = parseFloat(data.range.max);
+      if (isNaN(min) || isNaN(max)) {
+        errors.range = "Min and max must be valid numbers";
+      } else if (min >= max) {
+        errors.range = "Min must be less than max";
+      }
+    }
+  }
+
+  // Default validation (only if there's a default value)
+  if (data.default) {
+    // Check against range
+    if (needsRange && data.range && !errors.range) {
+      const min = parseFloat(data.range.min);
+      const max = parseFloat(data.range.max);
+      const defaultNum = parseFloat(data.default);
+      if (!isNaN(defaultNum) && (defaultNum < min || defaultNum > max)) {
+        errors.default = `Default must be between ${data.range.min} and ${data.range.max}`;
+      }
+    }
+
+    // Check against values
+    if (needsValues && data.values.length > 0 && !errors.values) {
+      if (!data.values.includes(data.default)) {
+        errors.default = "Default must be one of the provided values";
+      }
+    }
+  }
+
+  return errors;
+};
+
+/**
+ * Check if form has any validation errors
+ */
+export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
+  !!(errors.values || errors.range || errors.default);
