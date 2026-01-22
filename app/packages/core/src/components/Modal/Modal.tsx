@@ -7,6 +7,7 @@ import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
@@ -65,11 +66,12 @@ const SpacesContainer = styled.div`
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  const modalMode = useModalMode();
 
   const { isEnabled: enableAutoSave } = useFeature({
     feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
   });
-  useAutoSave(enableAutoSave);
+  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
 
   return <Fragment />;
 };

@@ -1,6 +1,8 @@
 import { fieldSchema, modalSample, ModalSample, State } from "../recoil";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { Schema } from "@fiftyone/utilities";
+import { modalMode } from "../jotai";
+import { useAtomValue } from "jotai";
 
 /**
  * Get the current modal sample data.
@@ -23,3 +25,8 @@ export const useModalSample = (): ModalSample | undefined => {
  */
 export const useModalSampleSchema = (): Schema =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+
+/**
+ * Get the current modal mode.
+ */
+export const useModalMode = () => useAtomValue(modalMode);

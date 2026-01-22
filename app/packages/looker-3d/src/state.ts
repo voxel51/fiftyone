@@ -3,7 +3,13 @@ import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
-import { atom, atomFamily, DefaultValue, selector } from "recoil";
+import {
+  atom,
+  atomFamily,
+  DefaultValue,
+  selector,
+  useRecoilValue,
+} from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
@@ -666,3 +672,11 @@ export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
     set(reconciledLabels3DAtomFamily(sampleId), newValue);
   },
 });
+
+/**
+ * Hook which provides the reconciled 3D labels for the current sample.
+ * This is the authoritative source for what labels will be rendered
+ * in the 3D viewer.
+ */
+export const useReconciledLabels3D = () =>
+  useRecoilValue(reconciledLabels3DSelector);
