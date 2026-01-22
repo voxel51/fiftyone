@@ -1,6 +1,7 @@
 import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
 import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
@@ -11,6 +12,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const activeFields = useAtomValue(activeLabelSchemas);
   const state = useAtomValue(labelsState);
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
+  const expanded = useAtomValue(labelsExpanded);
 
   const entries = useMemo(() => {
     if (state !== LabelsState.COMPLETE) {
@@ -56,7 +58,13 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     return result as SidebarEntry[];
   }, [atoms, activeFields, state, primitiveEntries]);
 
-  return [entries, () => {}];
+  return [
+    [
+      { kind: EntryKind.GROUP, name: LABELS_GROUP_NAME },
+      ...(expanded ? entries : []),
+    ] as SidebarEntry[],
+    () => {},
+  ];
 };
 
 export default useEntries;

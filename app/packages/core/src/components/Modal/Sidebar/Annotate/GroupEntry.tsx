@@ -45,6 +45,7 @@ const GroupDiv = styled.div`
   outline: none;
   font-weight: bold;
   color: ${({ theme }) => theme.text.secondary};
+  text-transform: uppercase;
 `;
 
 const Round = styled.div`
@@ -80,20 +81,23 @@ const Toggle = ({ name }: { name: string }) => {
   );
 };
 
+export const LABELS_GROUP_NAME = "Labels";
+export const PRIMITIVES_GROUP_NAME = "Primitives";
+
 export const labelsExpanded = atom(true);
 export const primitivesExpanded = atom(true);
 
 const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
-  Labels: labelsExpanded,
-  PRIMITIVES: primitivesExpanded,
+  [LABELS_GROUP_NAME]: labelsExpanded,
+  [PRIMITIVES_GROUP_NAME]: primitivesExpanded,
 };
 
 const labelsCount = atom((get) => get(labels).length);
 export const primitivesCount = atom(0);
 
 const COUNT_ATOMS: Record<string, typeof labelsCount> = {
-  Labels: labelsCount,
-  PRIMITIVES: primitivesCount,
+  [LABELS_GROUP_NAME]: labelsCount,
+  [PRIMITIVES_GROUP_NAME]: primitivesCount,
 };
 
 const Group = React.memo(({ name }: { name: string }) => {
