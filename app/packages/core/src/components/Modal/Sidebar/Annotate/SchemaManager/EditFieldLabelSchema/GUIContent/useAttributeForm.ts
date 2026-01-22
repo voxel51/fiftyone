@@ -40,6 +40,7 @@ interface UseAttributeFormResult {
   // Validation errors (field-specific)
   valuesError: string | null;
   rangeError: string | null;
+  stepError: string | null;
   defaultError: string | null;
   hasFormError: boolean;
 
@@ -164,6 +165,7 @@ export default function useAttributeForm({
     // Validation errors
     valuesError: formErrors.values,
     rangeError: formErrors.range,
+    stepError: formErrors.step,
     defaultError: formErrors.default,
     hasFormError: hasAttributeFormError(formErrors),
 

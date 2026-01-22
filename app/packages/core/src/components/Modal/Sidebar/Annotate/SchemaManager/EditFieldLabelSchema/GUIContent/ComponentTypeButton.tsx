@@ -33,15 +33,16 @@ const ComponentTypeButton = ({
         style={{
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 8,
           padding: "8px 12px",
           borderRadius: 6,
           border: isSelected
             ? `1px solid ${theme.voxel[500]}`
-            : "1px solid var(--fo-palette-divider, #333)",
+            : `1px solid ${theme.primary.plainBorder}`,
           backgroundColor: isSelected ? `${theme.voxel[500]}1A` : "transparent",
           cursor: "pointer",
-          minWidth: 80,
+          flex: 1,
         }}
       >
         <Icon
