@@ -61,7 +61,7 @@ const FilterableEntry = ({
   const onClick = useOnClick({ modal, path });
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
-  const canAnnotate = useCanAnnotate();
+  const { showAnnotationTab: canAnnotate } = useCanAnnotate();
 
   return (
     <RegularEntry

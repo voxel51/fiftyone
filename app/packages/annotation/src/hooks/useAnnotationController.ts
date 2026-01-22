@@ -13,7 +13,7 @@ export interface AnnotationController {
    * @param path If provided, initializes and activates a field schema for the specified path
    * @param labelId If provided, activates the specified label for editing
    */
-  enterAnnotationMode(path?: string, labelId?: string): void;
+  enterAnnotationMode(path?: string, labelId?: string): Promise<void>;
 
   /**
    * Exit annotation mode.

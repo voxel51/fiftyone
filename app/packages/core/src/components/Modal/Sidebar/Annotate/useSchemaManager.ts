@@ -230,7 +230,7 @@ const operatorAsPromise = <T, R>(
       response: OperatorResponse<R>
     ) => {
       if (response.error) {
-        reject(response.error);
+        reject(new Error(response.error));
       } else {
         resolve(response.result);
       }

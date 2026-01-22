@@ -1,5 +1,4 @@
 import {
-  useAnnotationEventHandler,
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,

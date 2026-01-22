@@ -140,7 +140,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // initialize and activate field schema if specified
       if (field) {
-        result = await initializeFieldSchema(field, labelId);
+        result = await initializeFieldSchema(field);
       }
 
       if (labelId) {
