@@ -91,6 +91,7 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
+  const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const [current] = useCurrentLabelSchema(field);
 
@@ -98,15 +99,36 @@ const useSave = (field: string) => {
     isSaving,
     save: () => {
       setIsSaving(true);
-      update.execute(
-        { field, label_schema: current },
-        {
-          callback: () => {
-            setSaved(current);
-            setIsSaving(false);
-          },
+
+      // Identify new attributes (ones that don't exist in saved or default schema)
+      const currentAttrs =
+        (current as { attributes?: Record<string, unknown> })?.attributes || {};
+      const savedAttrs =
+        (savedLabelSchema as { attributes?: Record<string, unknown> })
+          ?.attributes || {};
+      const defaultAttrs =
+        (defaultLabelSchema as { attributes?: Record<string, unknown> })
+          ?.attributes || {};
+
+      const newAttributes: Record<string, unknown> = {};
+      for (const [name, config] of Object.entries(currentAttrs)) {
+        // Attribute is new if it doesn't exist in saved or default schema
+        if (!(name in savedAttrs) && !(name in defaultAttrs)) {
+          newAttributes[name] = config;
         }
-      );
+      }
+
+      const params: Record<string, unknown> = { field, label_schema: current };
+      if (Object.keys(newAttributes).length > 0) {
+        params.new_attributes = newAttributes;
+      }
+
+      update.execute(params, {
+        callback: () => {
+          setSaved(current);
+          setIsSaving(false);
+        },
+      });
     },
     savedLabelSchema,
   };
