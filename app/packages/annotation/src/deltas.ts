@@ -15,7 +15,21 @@ import {
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import { Field, Primitive, Schema } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  Field,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  Primitive,
+  Schema,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import { get } from "lodash";
 
 /**
@@ -57,6 +71,58 @@ type FieldType =
 
 const isFieldType = (field: Field, fieldType: FieldType): boolean => {
   return field?.embeddedDocType === `fiftyone.core.labels.${fieldType}`;
+};
+
+/**
+ * Supported primitive field types for annotation editing.
+ * Matches SUPPORTED_PRIMITIVES in fiftyone/core/annotation/constants.py
+ */
+const SUPPORTED_PRIMITIVE_FTYPES = new Set([
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  "fiftyone.core.fields.UUIDField",
+]);
+
+/**
+ * Supported subfield types for list primitives.
+ * Matches SUPPORTED_LISTS_OF_PRIMITIVES in fiftyone/core/annotation/constants.py
+ */
+const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+]);
+
+/**
+ * Check if the field schema represents a supported primitive type.
+ */
+const isPrimitiveFieldType = (field: Field): boolean => {
+  if (!field?.ftype) {
+    return false;
+  }
+
+  if (SUPPORTED_PRIMITIVE_FTYPES.has(field.ftype)) {
+    return true;
+  }
+
+  // Check list of primitives (e.g., list<string>, list<int>, list<float>)
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield &&
+    SUPPORTED_LIST_PRIMITIVE_SUBFIELDS.has(field.subfield)
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 /**
@@ -122,12 +188,16 @@ export const buildMutationDeltas = (
     } else if (isFieldType(schema, "Polyline")) {
       return buildPolylineMutationDeltas(sample, label);
     }
-  } else if (label.type === "Primitive") {
-    return buildPrimitiveMutationDelta(sample, label.path, label.data);
+  } else if (isPrimitiveFieldType(schema)) {
+    return buildPrimitiveMutationDelta(
+      sample,
+      label.path,
+      (label as PrimitiveValue).data
+    );
   }
 
   throw new Error(
-    `Unsupported label type '${label.type}' for path '${label.path}'`
+    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`
   );
 };
 
