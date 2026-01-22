@@ -1,8 +1,12 @@
 import type { Sample } from "@fiftyone/looker";
 import type { Field } from "@fiftyone/utilities";
 import { type JSONDeltas, patchSample } from "@fiftyone/core/src/client";
-import { buildJsonPath, buildLabelDeltas, type OpType } from "../deltas";
-import type { AnnotationLabel } from "@fiftyone/state";
+import {
+  buildJsonPath,
+  buildLabelDeltas,
+  LabelProxy,
+  type OpType,
+} from "../deltas";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
 import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 
@@ -70,7 +74,7 @@ export const doPatchSample = async ({
 export type LabelPersistenceArgs = {
   sample: Sample | null;
   applyPatch: (deltas: JSONDeltas) => Promise<boolean>;
-  annotationLabel: AnnotationLabel | null;
+  annotationLabel: LabelProxy | null;
   schema: Field;
   opType: OpType;
 };
