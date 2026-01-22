@@ -223,29 +223,37 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
         is_list_type = attr_type.startswith("list<")
         if component in values_components or is_list_type:
             values = attr_schema.get("values")
-            if values is not None:
-                if not isinstance(values, list):
-                    raise ValueError(
-                        f"Values for attribute '{attr_name}' must be a list, "
-                        f"got {type(values).__name__}"
-                    )
-                # For list types, validate element types
-                if is_list_type:
-                    expected_elem = attr_type.split("<")[1].rstrip(">")
-                    type_map = {
-                        "str": str,
-                        "int": int,
-                        "float": (int, float),
-                        "bool": bool,
-                    }
-                    expected_type = type_map.get(expected_elem)
-                    if expected_type:
-                        for i, val in enumerate(values):
-                            if not isinstance(val, expected_type):
-                                raise ValueError(
-                                    f"Value at index {i} for attribute '{attr_name}' "
-                                    f"must be {expected_elem}, got {type(val).__name__}"
-                                )
+
+            # Require non-empty values for value-driven components
+            if values is None or values == []:
+                raise ValueError(
+                    f"Values for attribute '{attr_name}' must be a non-empty list "
+                    f"for value-driven components"
+                )
+
+            if not isinstance(values, list):
+                raise ValueError(
+                    f"Values for attribute '{attr_name}' must be a list, "
+                    f"got {type(values).__name__}"
+                )
+
+            # For list types, validate element types
+            if is_list_type:
+                expected_elem = attr_type.split("<")[1].rstrip(">")
+                type_map = {
+                    "str": str,
+                    "int": int,
+                    "float": (int, float),
+                    "bool": bool,
+                }
+                expected_type = type_map.get(expected_elem)
+                if expected_type:
+                    for i, val in enumerate(values):
+                        if not isinstance(val, expected_type):
+                            raise ValueError(
+                                f"Value at index {i} for attribute '{attr_name}' "
+                                f"must be {expected_elem}, got {type(val).__name__}"
+                            )
 
     # Get the label field to determine the path for attributes
     label_field = dataset.get_field(field)
