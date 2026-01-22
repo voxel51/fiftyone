@@ -33,6 +33,8 @@ interface PrimitiveFieldContentProps {
   config: SchemaConfigType | undefined;
   /** Callback when config changes */
   onConfigChange?: (config: SchemaConfigType) => void;
+  /** Use larger, primary-colored labels */
+  largeLabels?: boolean;
 }
 
 interface TouchedFields {
@@ -46,6 +48,7 @@ const PrimitiveFieldContent = ({
   fieldType,
   config,
   onConfigChange,
+  largeLabels = false,
 }: PrimitiveFieldContentProps) => {
   // Track which fields have been touched (blurred)
   const [touched, setTouched] = useState<TouchedFields>({
@@ -256,13 +259,13 @@ const PrimitiveFieldContent = ({
       {componentOptions.length > 0 && (
         <div>
           <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
+            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
             style={{ marginBottom: 8 }}
           >
             Input type
           </Text>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ width: "100%", display: "flex", gap: 8 }}>
             {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
@@ -270,6 +273,7 @@ const PrimitiveFieldContent = ({
                 label={opt.label}
                 isSelected={component === opt.id}
                 onClick={() => handleComponentChange(opt.id)}
+                largeText={largeLabels}
               />
             ))}
           </div>
@@ -285,6 +289,7 @@ const PrimitiveFieldContent = ({
             isNumeric={isNumericType}
             isInteger={isIntegerType}
             error={touched.values ? errors.values : null}
+            largeLabels={largeLabels}
           />
         </div>
       )}
@@ -296,6 +301,7 @@ const PrimitiveFieldContent = ({
             range={range}
             onRangeChange={handleRangeChange}
             error={touched.range ? errors.range : null}
+            largeLabels={largeLabels}
           />
         </div>
       )}
@@ -304,8 +310,8 @@ const PrimitiveFieldContent = ({
       {showRange && (
         <div>
           <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
+            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
             style={{ marginBottom: 8 }}
           >
             Step (optional)
@@ -335,8 +341,8 @@ const PrimitiveFieldContent = ({
       {supportsDefault && (
         <div>
           <Text
-            variant={TextVariant.Md}
-            color={TextColor.Secondary}
+            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
             style={{ marginBottom: 8 }}
           >
             Default (optional)
