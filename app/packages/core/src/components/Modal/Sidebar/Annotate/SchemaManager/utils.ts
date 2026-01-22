@@ -44,6 +44,7 @@ export interface AttributeConfig {
   component?: string;
   values?: (string | number)[];
   range?: [number, number];
+  step?: number;
   default?: string | number;
   read_only?: boolean;
 }
@@ -53,10 +54,19 @@ export interface ClassConfig {
   attributes?: Record<string, AttributeConfig>;
 }
 
-// Schema configuration
+// Schema configuration (for both label types and primitive fields)
 export interface SchemaConfigType {
+  // For label types (Detection, Classification, etc.)
   classes?: string[];
   attributes?: Record<string, AttributeConfig>;
+  // For primitive fields (and label class config)
+  type?: string;
+  component?: string;
+  values?: (string | number)[];
+  range?: [number, number];
+  step?: number;
+  default?: string | number;
+  read_only?: boolean;
 }
 
 // Form state for attribute editing (uses strings for form inputs)
@@ -66,6 +76,7 @@ export interface AttributeFormData {
   component: string;
   values: string[];
   range: { min: string; max: string } | null;
+  step: string;
   default: string;
   read_only: boolean;
 }
@@ -200,12 +211,16 @@ export const buildFieldSecondaryContent = (
 /**
  * Create default form data for a new attribute
  */
+// Default step value for slider (matches backend DEFAULT_STEP)
+export const DEFAULT_STEP = "0.001";
+
 export const createDefaultFormData = (): AttributeFormData => ({
   name: "",
   type: "str",
   component: "text",
   values: [],
   range: null,
+  step: "",
   default: "",
   read_only: false,
 });
@@ -225,6 +240,7 @@ export const toFormData = (
   range: config.range
     ? { min: String(config.range[0]), max: String(config.range[1]) }
     : null,
+  step: config.step !== undefined ? String(config.step) : "",
   default: config.default !== undefined ? String(config.default) : "",
   read_only: config.read_only || false,
 });
@@ -263,11 +279,21 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
+  // Convert step to number (only relevant for slider, optional)
+  let step: number | undefined;
+  if (data.step) {
+    const stepNum = parseFloat(data.step);
+    if (!isNaN(stepNum) && stepNum > 0) {
+      step = stepNum;
+    }
+  }
+
   return {
     type: data.type,
     component: data.component || undefined,
     values: values?.length ? values : undefined,
     range,
+    step,
     default: defaultValue,
     read_only: data.read_only || undefined,
   };
