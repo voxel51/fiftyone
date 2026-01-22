@@ -150,8 +150,85 @@ class UpdateLabelSchema(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         label_schema = ctx.params.get("label_schema", None)
+        new_attributes = ctx.params.get("new_attributes", None)
+
+        # Create new attribute fields first if specified
+        if new_attributes:
+            _add_new_attributes(ctx.dataset, field, new_attributes)
+            # Reload to ensure schema changes are visible before validation
+            ctx.dataset.reload()
+
         ctx.dataset.update_label_schema(field, label_schema)
         return {"label_schema": label_schema}
+
+
+def _add_new_attributes(dataset, field, new_attributes):
+    """Add new attribute fields to the dataset schema.
+
+    Args:
+        dataset: the dataset
+        field: the label field name (e.g., "ground_truth")
+        new_attributes: dict mapping attribute names to their schema info
+            e.g., {"sensor": {"type": "radio", "values": ["a", "b"]}}
+    """
+    import fiftyone.core.fields as fof
+    import fiftyone.core.labels as fol
+
+    # Get the label field to determine the path for attributes
+    label_field = dataset.get_field(field)
+    if label_field is None:
+        return
+
+    # Handle list fields (e.g., Detections which wraps Detection)
+    if isinstance(label_field, fof.ListField):
+        label_field = label_field.field
+
+    if not isinstance(label_field, fof.EmbeddedDocumentField):
+        return
+
+    # Determine the base path for attributes
+    # For Detections, attributes are on the inner Detection objects
+    if issubclass(label_field.document_type, fol._HasLabelList):
+        list_field = label_field.document_type._LABEL_LIST_FIELD
+        base_path = f"{field}.{list_field}"
+    else:
+        base_path = field
+
+    # Map label schema types to field types
+    type_to_ftype = {
+        "str": fof.StringField,
+        "int": fof.IntField,
+        "float": fof.FloatField,
+        "bool": fof.BooleanField,
+        "date": fof.DateField,
+        "datetime": fof.DateTimeField,
+        "dict": fof.DictField,
+    }
+
+    list_types = {
+        "list<str>": fof.StringField,
+        "list<int>": fof.IntField,
+        "list<float>": fof.FloatField,
+        "list<bool>": fof.BooleanField,
+    }
+
+    for attr_name, attr_schema in new_attributes.items():
+        attr_type = attr_schema.get("type", "str")
+        attr_path = f"{base_path}.{attr_name}"
+
+        # Check if field already exists
+        existing = dataset.get_field(attr_path)
+        if existing is not None:
+            continue
+
+        # Determine field type
+        if attr_type in list_types:
+            ftype = fof.ListField
+            subfield = list_types[attr_type]()
+            dataset.add_sample_field(attr_path, ftype, subfield=subfield)
+        elif attr_type in type_to_ftype:
+            ftype = type_to_ftype[attr_type]
+            dataset.add_sample_field(attr_path, ftype)
 
 
 class ValidateLabelSchemas(foo.Operator):
