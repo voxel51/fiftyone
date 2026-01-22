@@ -65,6 +65,7 @@ const PrimitiveFieldContent = ({
   const range = config?.range
     ? { min: String(config.range[0]), max: String(config.range[1]) }
     : null;
+  const step = config?.step !== undefined ? String(config.step) : "";
   const defaultValue =
     config?.default !== undefined ? String(config.default) : "";
 
@@ -139,6 +140,7 @@ const PrimitiveFieldContent = ({
       };
       delete newConfig.values;
       delete newConfig.range;
+      delete newConfig.step;
 
       setTouched({ values: false, range: false, default: false });
       onConfigChange(newConfig);
@@ -178,6 +180,20 @@ const PrimitiveFieldContent = ({
             range: [min, max],
           });
         }
+      }
+    },
+    [config, onConfigChange]
+  );
+
+  const handleStepChange = useCallback(
+    (value: string) => {
+      if (!onConfigChange) return;
+      const stepNum = parseFloat(value);
+      if (!isNaN(stepNum) && stepNum > 0) {
+        onConfigChange({
+          ...config,
+          step: stepNum,
+        });
       }
     },
     [config, onConfigChange]
@@ -251,6 +267,26 @@ const PrimitiveFieldContent = ({
             range={range}
             onRangeChange={handleRangeChange}
             error={touched.range ? errors.range : null}
+          />
+        </div>
+      )}
+
+      {/* Step input (for slider) */}
+      {showRange && (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: 8 }}
+          >
+            Step (optional)
+          </Text>
+          <Input
+            type="number"
+            value={step}
+            onChange={(e) => handleStepChange(e.target.value)}
+            placeholder="0.001"
+            step="any"
           />
         </div>
       )}

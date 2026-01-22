@@ -49,6 +49,7 @@ interface UseAttributeFormResult {
   handleComponentChange: (component: string) => void;
   handleValuesChange: (values: string[]) => void;
   handleRangeChange: (range: { min: string; max: string } | null) => void;
+  handleStepChange: (step: string) => void;
   handleDefaultChange: (defaultValue: string) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
 }
@@ -92,6 +93,7 @@ export default function useAttributeForm({
         component: getDefaultComponent(newType),
         values: [],
         range: null,
+        step: "",
         default: newSupportsDefault ? formState.default : "",
       });
     },
@@ -106,6 +108,7 @@ export default function useAttributeForm({
         component: newComponent,
         values: [],
         range: null,
+        step: "",
       });
     },
     [formState, onFormStateChange]
@@ -121,6 +124,13 @@ export default function useAttributeForm({
   const handleRangeChange = useCallback(
     (range: { min: string; max: string } | null) => {
       onFormStateChange({ ...formState, range });
+    },
+    [formState, onFormStateChange]
+  );
+
+  const handleStepChange = useCallback(
+    (step: string) => {
+      onFormStateChange({ ...formState, step });
     },
     [formState, onFormStateChange]
   );
@@ -163,6 +173,7 @@ export default function useAttributeForm({
     handleComponentChange,
     handleValuesChange,
     handleRangeChange,
+    handleStepChange,
     handleDefaultChange,
     handleReadOnlyChange,
   };
