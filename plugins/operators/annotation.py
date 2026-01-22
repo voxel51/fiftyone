@@ -155,8 +155,6 @@ class UpdateLabelSchema(foo.Operator):
         # Create new attribute fields first if specified
         if new_attributes:
             _add_new_attributes(ctx.dataset, field, new_attributes)
-            # Reload to ensure schema changes are visible before validation
-            ctx.dataset.reload()
 
         ctx.dataset.update_label_schema(field, label_schema)
         return {"label_schema": label_schema}
@@ -174,25 +172,42 @@ def _add_new_attributes(dataset, field, new_attributes):
     import fiftyone.core.fields as fof
     import fiftyone.core.labels as fol
 
+    print(
+        f"[DEBUG] _add_new_attributes called with field={field}, new_attributes={new_attributes}"
+    )
+
     # Get the label field to determine the path for attributes
     label_field = dataset.get_field(field)
+    print(f"[DEBUG] label_field type: {type(label_field)}")
     if label_field is None:
+        print("[DEBUG] label_field is None, returning")
         return
 
     # Handle list fields (e.g., Detections which wraps Detection)
     if isinstance(label_field, fof.ListField):
+        print("[DEBUG] label_field is ListField, getting inner field")
         label_field = label_field.field
 
     if not isinstance(label_field, fof.EmbeddedDocumentField):
+        print(
+            f"[DEBUG] label_field is not EmbeddedDocumentField, returning. Type: {type(label_field)}"
+        )
         return
+
+    print(f"[DEBUG] document_type: {label_field.document_type}")
+    print(
+        f"[DEBUG] is _HasLabelList: {issubclass(label_field.document_type, fol._HasLabelList)}"
+    )
 
     # Determine the base path for attributes
     # For Detections, attributes are on the inner Detection objects
     if issubclass(label_field.document_type, fol._HasLabelList):
         list_field = label_field.document_type._LABEL_LIST_FIELD
         base_path = f"{field}.{list_field}"
+        print(f"[DEBUG] Using base_path for _HasLabelList: {base_path}")
     else:
         base_path = field
+        print(f"[DEBUG] Using base_path: {base_path}")
 
     # Map label schema types to field types
     type_to_ftype = {
@@ -215,20 +230,28 @@ def _add_new_attributes(dataset, field, new_attributes):
     for attr_name, attr_schema in new_attributes.items():
         attr_type = attr_schema.get("type", "str")
         attr_path = f"{base_path}.{attr_name}"
+        print(
+            f"[DEBUG] Processing attr_name={attr_name}, attr_type={attr_type}, attr_path={attr_path}"
+        )
 
         # Check if field already exists
         existing = dataset.get_field(attr_path)
         if existing is not None:
+            print(f"[DEBUG] Field already exists: {existing}")
             continue
 
         # Determine field type
         if attr_type in list_types:
             ftype = fof.ListField
             subfield = list_types[attr_type]()
+            print(f"[DEBUG] Adding list field: {attr_path}")
             dataset.add_sample_field(attr_path, ftype, subfield=subfield)
         elif attr_type in type_to_ftype:
             ftype = type_to_ftype[attr_type]
+            print(f"[DEBUG] Adding field: {attr_path} with type {ftype}")
             dataset.add_sample_field(attr_path, ftype)
+        else:
+            print(f"[DEBUG] Unknown attr_type: {attr_type}, not adding field")
 
 
 class ValidateLabelSchemas(foo.Operator):
