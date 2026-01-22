@@ -83,6 +83,8 @@ export const COMPONENT_OPTIONS: Record<
   ],
   // DICT_COMPONENTS = {json}
   dict: [{ id: "json", label: "JSON editor", icon: IconName.JSON }],
+  // ID_COMPONENTS = {text} - for existing ObjectIdField/UUIDField attributes
+  id: [{ id: "text", label: "Text", icon: IconName.Text }],
   // STR_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<str>": [
     { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
@@ -109,7 +111,7 @@ export const RADIO_MAX_VALUES = 5;
 export const NUMERIC_TYPES = ["int", "float", "list<int>", "list<float>"];
 
 // Types that don't need/support a default value
-export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict"];
+export const NO_DEFAULT_TYPES = ["bool", "date", "datetime", "dict", "id"];
 
 // List types
 export const LIST_TYPES = ["list<str>", "list<int>", "list<float>"];
