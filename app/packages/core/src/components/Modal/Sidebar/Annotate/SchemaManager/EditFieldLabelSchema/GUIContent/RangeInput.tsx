@@ -4,50 +4,64 @@
 
 import { Input, Text, TextColor, TextVariant } from "@voxel51/voodo";
 
+const LABEL_MARGIN_BOTTOM = "0.5rem";
+
 interface RangeInputProps {
   range: { min: string; max: string } | null;
   onRangeChange: (range: { min: string; max: string }) => void;
   /** Validation error from parent */
   error?: string | null;
+  /** Use larger, primary-colored labels */
+  largeLabels?: boolean;
 }
 
 const RangeInput = ({
   range,
   onRangeChange,
   error = null,
+  largeLabels = false,
 }: RangeInputProps) => {
   const min = range?.min || "";
   const max = range?.max || "";
 
+  const labelVariant = largeLabels ? TextVariant.Xl : TextVariant.Md;
+  const labelColor = largeLabels ? TextColor.Primary : TextColor.Secondary;
+
   return (
     <div>
-      <Text
-        variant={TextVariant.Md}
-        color={TextColor.Secondary}
-        style={{ marginBottom: 8 }}
-      >
-        Range
-      </Text>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <Input
-          type="number"
-          value={min}
-          onChange={(e) => onRangeChange({ min: e.target.value, max })}
-          placeholder="Min"
-          style={{ flex: 1 }}
-          error={!!error}
-        />
-        <Text variant={TextVariant.Md} color={TextColor.Secondary}>
-          to
-        </Text>
-        <Input
-          type="number"
-          value={max}
-          onChange={(e) => onRangeChange({ min, max: e.target.value })}
-          placeholder="Max"
-          style={{ flex: 1 }}
-          error={!!error}
-        />
+      <div style={{ width: "100%", display: "flex", gap: "1rem" }}>
+        <div style={{ flex: 1 }}>
+          <Text
+            variant={labelVariant}
+            color={labelColor}
+            style={{ marginBottom: LABEL_MARGIN_BOTTOM }}
+          >
+            Min
+          </Text>
+          <Input
+            type="number"
+            value={min}
+            onChange={(e) => onRangeChange({ min: e.target.value, max })}
+            placeholder="Minimum value"
+            error={!!error}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <Text
+            variant={labelVariant}
+            color={labelColor}
+            style={{ marginBottom: LABEL_MARGIN_BOTTOM }}
+          >
+            Max
+          </Text>
+          <Input
+            type="number"
+            value={max}
+            onChange={(e) => onRangeChange({ min, max: e.target.value })}
+            placeholder="Maximum value"
+            error={!!error}
+          />
+        </div>
       </div>
       {error && (
         <Text

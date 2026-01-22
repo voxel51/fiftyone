@@ -23,6 +23,8 @@ interface ValuesListProps {
   isInteger?: boolean;
   /** Validation error from parent (e.g., "At least one value is required") */
   error?: string | null;
+  /** Use larger, primary-colored labels */
+  largeLabels?: boolean;
 }
 
 const ValuesList = ({
@@ -31,6 +33,7 @@ const ValuesList = ({
   isNumeric = false,
   isInteger = false,
   error = null,
+  largeLabels = false,
 }: ValuesListProps) => {
   const [newValue, setNewValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
@@ -106,7 +109,10 @@ const ValuesList = ({
           marginBottom: "0.5rem",
         }}
       >
-        <Text variant={TextVariant.Md} color={TextColor.Secondary}>
+        <Text
+          variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+          color={largeLabels ? TextColor.Primary : TextColor.Secondary}
+        >
           Values
         </Text>
         <Clickable onClick={handleAddValue}>
@@ -134,11 +140,13 @@ const ValuesList = ({
         </Text>
       )}
       {values.length > 0 && (
-        <RichList
-          listItems={valueListItems}
-          draggable={true}
-          onOrderChange={handleOrderChange}
-        />
+        <div style={{ marginTop: "0.5rem" }}>
+          <RichList
+            listItems={valueListItems}
+            draggable={true}
+            onOrderChange={handleOrderChange}
+          />
+        </div>
       )}
       {error && (
         <Text

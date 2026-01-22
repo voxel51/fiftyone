@@ -124,6 +124,7 @@ const GUIContent = ({
             fieldType={fType}
             config={config}
             onConfigChange={onConfigChange}
+            largeLabels
           />
         </Section>
       </ListContainer>
