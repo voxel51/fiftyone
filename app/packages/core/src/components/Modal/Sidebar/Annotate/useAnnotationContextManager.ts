@@ -1,5 +1,5 @@
 import { useSchemaManager } from "./useSchemaManager";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   type ContextManager,
   DefaultContextManager,
@@ -7,8 +7,7 @@ import {
 } from "@fiftyone/state";
 import useCanManageSchema from "./useCanManageSchema";
 import { useActiveLabelSchema, useLabelSchema } from "./state";
-import { useLighter } from "@fiftyone/lighter";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtomValue } from "jotai";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -55,7 +54,6 @@ export interface AnnotationContextManager {
   exit: () => void;
 }
 
-const activeLabelIdAtom = atom<string | null>(null);
 const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
 
 /**
@@ -63,33 +61,15 @@ const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
  */
 export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
-  const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const [, setLabelSchema] = useLabelSchema();
   const [, setActiveLabelSchema] = useActiveLabelSchema();
   const schemaManager = useSchemaManager();
   const { enabled: canManageSchema } = useCanManageSchema();
-  const { scene } = useLighter();
-
-  const targetOverlay = activeLabelId
-    ? scene
-        ?.getAllOverlays()
-        ?.find(
-          (overlay) =>
-            overlay.id === activeLabelId || overlay.label?._id === activeLabelId
-        )
-    : null;
-
-  useEffect(() => {
-    if (scene && targetOverlay) {
-      scene.selectOverlay(targetOverlay.id);
-      setActiveLabelId(null);
-    }
-  }, [scene, targetOverlay]);
 
   const initializeFieldSchema = useCallback(
-    async (field?: string, labelId?: string) => {
+    async (field: string) => {
       // activate only the specified field
       setActiveFields([field]);
 
@@ -126,9 +106,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveLabelSchema(listSchemaResponse.active_label_schemas);
 
-        // set active label ID to trigger selection
-        setActiveLabelId(labelId);
-
         return {
           status: InitializationStatus.Success,
         };
@@ -144,7 +121,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       canManageSchema,
       schemaManager,
       setActiveFields,
-      setActiveLabelId,
       setActiveLabelSchema,
       setLabelSchema,
     ]
@@ -160,14 +136,22 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         callback: () => setActiveFields(activeFields),
       });
 
+      let result: EnterResult;
+
       // initialize and activate field schema if specified
       if (field) {
-        return initializeFieldSchema(field, labelId);
+        result = await initializeFieldSchema(field, labelId);
       }
 
-      return {
-        status: InitializationStatus.Success,
-      };
+      if (labelId) {
+        // todo handle label id
+      }
+
+      return (
+        result ?? {
+          status: InitializationStatus.Success,
+        }
+      );
     },
     [activeFields, contextManager, initializeFieldSchema, setActiveFields]
   );
