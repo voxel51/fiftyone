@@ -10,6 +10,9 @@ const IMAGES = {
 };
 
 const datasetName = getUniqueDatasetNameWithPrefix(`media-field`);
+const keyboardNavDatasetName = getUniqueDatasetNameWithPrefix(
+  `media-field-keyboard-nav`
+);
 
 const test = base.extend<{
   grid: GridPom;
@@ -92,5 +95,124 @@ test.describe.serial("media field", () => {
     // move off of looker to hide controls
     await page.mouse.move(0, 0);
     await expect(modal.looker).toHaveScreenshot("modal-media-field.png");
+  });
+});
+
+test.describe.serial("media field keyboard navigation", () => {
+  const KEYBOARD_NAV_IMAGES = {
+    field1: "#ff0000", // red
+    field2: "#00ff00", // green
+    field3: "#0000ff", // blue
+  };
+
+  test.beforeAll(async ({ fiftyoneLoader }) => {
+    // Create distinct colored images for each media field
+    const createPromises = Object.entries(KEYBOARD_NAV_IMAGES).map(
+      ([key, color]) =>
+        createBlankImage({
+          outputPath: `/tmp/${key}-keyboard-nav.png`,
+          width: 100,
+          height: 100,
+          fillColor: color,
+          hideLogs: true,
+        })
+    );
+    await Promise.all(createPromises);
+
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+
+      dataset = fo.Dataset("${keyboardNavDatasetName}")
+      dataset.persistent = True
+
+      dataset.add_sample(
+          fo.Sample(
+              filepath="/tmp/field1-keyboard-nav.png",
+              field2="/tmp/field2-keyboard-nav.png",
+              field3="/tmp/field3-keyboard-nav.png",
+          )
+      )
+
+      # Configure multiple media fields for keyboard navigation
+      dataset.app_config.media_fields = ["filepath", "field2", "field3"]
+      dataset.app_config.modal_media_field = "filepath"
+      dataset.save()
+    `);
+  });
+
+  test("PageDown navigates to next media field", async ({
+    fiftyoneLoader,
+    grid,
+    modal,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, keyboardNavDatasetName);
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+
+    // initial screenshot (field1 - red)
+    await modal.hideControls();
+    const initialScreenshot = await modal.looker.screenshot();
+
+    // (field2 - green)
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(500);
+
+    const afterPageDownScreenshot = await modal.looker.screenshot();
+
+    // Screenshots should be different
+    expect(initialScreenshot).not.toEqual(afterPageDownScreenshot);
+  });
+
+  test("PageUp navigates to previous media field", async ({
+    fiftyoneLoader,
+    grid,
+    modal,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, keyboardNavDatasetName);
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+
+    // Navigate forward (field2 - green)
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(500);
+
+    const afterPageDownScreenshot = await modal.looker.screenshot();
+
+    // Navigate back (field1 - red)
+    await page.keyboard.press("PageUp");
+    await page.waitForTimeout(500);
+
+    const afterPageUpScreenshot = await modal.looker.screenshot();
+
+    // Screenshots should be different
+    expect(afterPageDownScreenshot).not.toEqual(afterPageUpScreenshot);
+  });
+
+  test("media field navigation wraps around", async ({
+    fiftyoneLoader,
+    grid,
+    modal,
+    page,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, keyboardNavDatasetName);
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+
+    const initialScreenshot = await modal.looker.screenshot();
+
+    // Cycle through all fields
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(300);
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(300);
+    await page.keyboard.press("PageDown");
+    await page.waitForTimeout(500);
+
+    const afterCycleScreenshot = await modal.looker.screenshot();
+
+    // Should be the same
+    expect(initialScreenshot).toEqual(afterCycleScreenshot);
   });
 });
