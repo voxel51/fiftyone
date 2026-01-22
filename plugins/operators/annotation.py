@@ -6,6 +6,8 @@ Annotation label schemas operators
 |
 """
 
+import logging
+
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
@@ -13,6 +15,8 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.operators as foo
+
+logger = logging.getLogger(__name__)
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -160,7 +164,7 @@ class UpdateLabelSchema(foo.Operator):
         return {"label_schema": label_schema}
 
 
-def _add_new_attributes(dataset, field, new_attributes):
+def _add_new_attributes(dataset, field, new_attributes) -> None:
     """Add new attribute fields to the dataset schema.
 
     Args:
@@ -168,46 +172,20 @@ def _add_new_attributes(dataset, field, new_attributes):
         field: the label field name (e.g., "ground_truth")
         new_attributes: dict mapping attribute names to their schema info
             e.g., {"sensor": {"type": "radio", "values": ["a", "b"]}}
+
+    Raises:
+        TypeError: if new_attributes or attr_schema is not a dict
+        ValueError: if attr_name is not a string, attr_type is invalid,
+            or required values are missing/malformed
     """
     import fiftyone.core.fields as fof
     import fiftyone.core.labels as fol
 
-    print(
-        f"[DEBUG] _add_new_attributes called with field={field}, new_attributes={new_attributes}"
-    )
-
-    # Get the label field to determine the path for attributes
-    label_field = dataset.get_field(field)
-    print(f"[DEBUG] label_field type: {type(label_field)}")
-    if label_field is None:
-        print("[DEBUG] label_field is None, returning")
-        return
-
-    # Handle list fields (e.g., Detections which wraps Detection)
-    if isinstance(label_field, fof.ListField):
-        print("[DEBUG] label_field is ListField, getting inner field")
-        label_field = label_field.field
-
-    if not isinstance(label_field, fof.EmbeddedDocumentField):
-        print(
-            f"[DEBUG] label_field is not EmbeddedDocumentField, returning. Type: {type(label_field)}"
+    # Validate new_attributes is a dict
+    if not isinstance(new_attributes, dict):
+        raise TypeError(
+            f"new_attributes must be a dict, got {type(new_attributes).__name__}"
         )
-        return
-
-    print(f"[DEBUG] document_type: {label_field.document_type}")
-    print(
-        f"[DEBUG] is _HasLabelList: {issubclass(label_field.document_type, fol._HasLabelList)}"
-    )
-
-    # Determine the base path for attributes
-    # For Detections, attributes are on the inner Detection objects
-    if issubclass(label_field.document_type, fol._HasLabelList):
-        list_field = label_field.document_type._LABEL_LIST_FIELD
-        base_path = f"{field}.{list_field}"
-        print(f"[DEBUG] Using base_path for _HasLabelList: {base_path}")
-    else:
-        base_path = field
-        print(f"[DEBUG] Using base_path: {base_path}")
 
     # Map label schema types to field types
     type_to_ftype = {
@@ -227,31 +205,101 @@ def _add_new_attributes(dataset, field, new_attributes):
         "list<bool>": fof.BooleanField,
     }
 
+    # Components that require values
+    values_components = {"radio", "dropdown", "checkboxes"}
+
+    # Validate each attribute entry up-front
+    for attr_name, attr_schema in new_attributes.items():
+        if not isinstance(attr_name, str):
+            raise ValueError(
+                f"Attribute name must be a string, got {type(attr_name).__name__}"
+            )
+
+        if not isinstance(attr_schema, dict):
+            raise TypeError(
+                f"Attribute schema for '{attr_name}' must be a dict, "
+                f"got {type(attr_schema).__name__}"
+            )
+
+        attr_type = attr_schema.get("type", "str")
+        if not isinstance(attr_type, str):
+            raise ValueError(
+                f"Attribute type for '{attr_name}' must be a string, "
+                f"got {type(attr_type).__name__}"
+            )
+
+        # Validate type is known
+        if attr_type not in type_to_ftype and attr_type not in list_types:
+            raise ValueError(
+                f"Unknown attribute type '{attr_type}' for attribute '{attr_name}'"
+            )
+
+        # Validate values for components that require them
+        component = attr_schema.get("component")
+        if component in values_components or attr_type in list_types:
+            values = attr_schema.get("values")
+            if values is not None:
+                if not isinstance(values, list):
+                    raise ValueError(
+                        f"Values for attribute '{attr_name}' must be a list, "
+                        f"got {type(values).__name__}"
+                    )
+                # For list types, validate element types
+                if attr_type in list_types:
+                    expected_elem = attr_type.split("<")[1].rstrip(">")
+                    type_map = {
+                        "str": str,
+                        "int": int,
+                        "float": (int, float),
+                        "bool": bool,
+                    }
+                    expected_type = type_map.get(expected_elem)
+                    if expected_type:
+                        for i, val in enumerate(values):
+                            if not isinstance(val, expected_type):
+                                raise ValueError(
+                                    f"Value at index {i} for attribute '{attr_name}' "
+                                    f"must be {expected_elem}, got {type(val).__name__}"
+                                )
+
+    # Get the label field to determine the path for attributes
+    label_field = dataset.get_field(field)
+    if label_field is None:
+        return
+
+    # Handle list fields (e.g., Detections which wraps Detection)
+    if isinstance(label_field, fof.ListField):
+        label_field = label_field.field
+
+    if not isinstance(label_field, fof.EmbeddedDocumentField):
+        return
+
+    # Determine the base path for attributes
+    # For Detections, attributes are on the inner Detection objects
+    if issubclass(label_field.document_type, fol._HasLabelList):
+        list_field = label_field.document_type._LABEL_LIST_FIELD
+        base_path = f"{field}.{list_field}"
+    else:
+        base_path = field
+
+    # Process validated attributes
     for attr_name, attr_schema in new_attributes.items():
         attr_type = attr_schema.get("type", "str")
         attr_path = f"{base_path}.{attr_name}"
-        print(
-            f"[DEBUG] Processing attr_name={attr_name}, attr_type={attr_type}, attr_path={attr_path}"
-        )
 
         # Check if field already exists
         existing = dataset.get_field(attr_path)
         if existing is not None:
-            print(f"[DEBUG] Field already exists: {existing}")
             continue
 
-        # Determine field type
+        # Determine field type and add to dataset
         if attr_type in list_types:
             ftype = fof.ListField
             subfield = list_types[attr_type]()
-            print(f"[DEBUG] Adding list field: {attr_path}")
             dataset.add_sample_field(attr_path, ftype, subfield=subfield)
-        elif attr_type in type_to_ftype:
-            ftype = type_to_ftype[attr_type]
-            print(f"[DEBUG] Adding field: {attr_path} with type {ftype}")
-            dataset.add_sample_field(attr_path, ftype)
         else:
-            print(f"[DEBUG] Unknown attr_type: {attr_type}, not adding field")
+            ftype = type_to_ftype[attr_type]
+            dataset.add_sample_field(attr_path, ftype)
 
 
 class ValidateLabelSchemas(foo.Operator):
