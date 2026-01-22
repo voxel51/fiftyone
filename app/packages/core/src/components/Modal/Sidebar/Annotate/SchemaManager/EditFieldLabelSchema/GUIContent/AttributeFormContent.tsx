@@ -124,7 +124,7 @@ const AttributeFormContent = ({
         >
           Input type
         </Text>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {componentOptions.map((opt) => (
             <ComponentTypeButton
               key={opt.id}
