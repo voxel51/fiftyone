@@ -1,18 +1,8 @@
 /**
- * Add attribute card component using RichList item style.
+ * Add attribute card component.
+ * Uses the shared AttributeCard for rendering.
  */
 
-import {
-  Clickable,
-  Icon,
-  IconName,
-  Orientation,
-  RichList,
-  Size,
-  Spacing,
-  Stack,
-} from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useState } from "react";
 import {
   createDefaultFormData,
@@ -22,7 +12,7 @@ import {
   type AttributeConfig,
   type AttributeFormData,
 } from "../../utils";
-import AttributeFormContent from "./AttributeFormContent";
+import AttributeCard from "./AttributeCard";
 
 interface AddAttributeCardProps {
   existingAttributes: string[];
@@ -56,43 +46,17 @@ const AddAttributeCard = ({
     }
   };
 
-  const listItem = {
-    id: "__new_attribute__",
-    data: {
-      canSelect: false,
-      canDrag: false,
-      primaryContent: "New attribute",
-      actions: (
-        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-          <Clickable onClick={onCancel} style={{ padding: 4 }}>
-            <Icon name={IconName.Delete} size={Size.Md} />
-          </Clickable>
-          <Clickable
-            onClick={handleSave}
-            style={{
-              padding: 4,
-              opacity: canSave ? 1 : 0.5,
-              cursor: canSave ? "pointer" : "not-allowed",
-            }}
-          >
-            <Icon name={IconName.Check} size={Size.Md} />
-          </Clickable>
-        </Stack>
-      ),
-      additionalContent: (
-        <AttributeFormContent
-          formState={formState}
-          onFormStateChange={handleFormStateChange}
-          nameError={showError ? nameError : null}
-        />
-      ),
-    } as ListItemProps,
-  };
-
   return (
-    <div style={{ marginBottom: "1rem" }}>
-      <RichList listItems={[listItem]} draggable={false} />
-    </div>
+    <AttributeCard
+      id="__new_attribute__"
+      title="New attribute"
+      formState={formState}
+      onFormStateChange={handleFormStateChange}
+      nameError={showError ? nameError : null}
+      canSave={canSave}
+      onSave={handleSave}
+      onCancel={onCancel}
+    />
   );
 };
 

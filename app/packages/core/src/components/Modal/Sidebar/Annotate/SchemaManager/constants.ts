@@ -51,55 +51,57 @@ export const ATTRIBUTE_TYPE_OPTIONS = [
 // Component options by type (matches annotation/constants.py)
 export const COMPONENT_OPTIONS: Record<
   string,
-  Array<{ id: string; label: string; icon?: IconName }>
+  Array<{ id: string; label: string; icon: IconName }>
 > = {
   // STR_COMPONENTS = {dropdown, radio, text}
   str: [
-    { id: "text", label: "Text" },
+    { id: "text", label: "Text", icon: IconName.Text },
     { id: "radio", label: "Radio", icon: IconName.Radio },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
   ],
   // FLOAT_INT_COMPONENTS = {dropdown, radio, slider, text}
   int: [
-    { id: "text", label: "Text" },
-    { id: "slider", label: "Slider" },
+    { id: "text", label: "Text", icon: IconName.Text },
+    { id: "slider", label: "Slider", icon: IconName.Slider },
     { id: "radio", label: "Radio", icon: IconName.Radio },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
   ],
   float: [
-    { id: "text", label: "Text" },
-    { id: "slider", label: "Slider" },
+    { id: "text", label: "Text", icon: IconName.Text },
+    { id: "slider", label: "Slider", icon: IconName.Slider },
     { id: "radio", label: "Radio", icon: IconName.Radio },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
   ],
   // BOOL_COMPONENTS = {checkbox, toggle}
   bool: [
-    { id: "toggle", label: "Toggle" },
+    { id: "toggle", label: "Toggle", icon: IconName.Toggle },
     { id: "checkbox", label: "Checkbox", icon: IconName.Checkbox },
   ],
   // DATE_DATETIME_COMPONENTS = {datepicker}
-  date: [{ id: "datepicker", label: "Date picker" }],
-  datetime: [{ id: "datepicker", label: "Date picker" }],
+  date: [{ id: "datepicker", label: "Date picker", icon: IconName.DateRange }],
+  datetime: [
+    { id: "datepicker", label: "Date picker", icon: IconName.DateRange },
+  ],
   // DICT_COMPONENTS = {json}
-  dict: [{ id: "json", label: "JSON editor" }],
+  dict: [{ id: "json", label: "JSON editor", icon: IconName.JSON }],
   // ID_COMPONENTS = {text}
-  id: [{ id: "text", label: "Text" }],
+  id: [{ id: "text", label: "Text", icon: IconName.Text }],
   // STR_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<str>": [
     { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text" },
+    { id: "text", label: "Text", icon: IconName.Text },
   ],
   // FLOAT_INT_LIST_COMPONENTS = {checkboxes, dropdown, text}
   "list<int>": [
     { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text" },
+    { id: "text", label: "Text", icon: IconName.Text },
   ],
   "list<float>": [
     { id: "checkboxes", label: "Checkboxes", icon: IconName.Checkbox },
     { id: "dropdown", label: "Dropdown", icon: IconName.Search },
-    { id: "text", label: "Text" },
+    { id: "text", label: "Text", icon: IconName.Text },
   ],
 };
 

@@ -12,7 +12,7 @@ import {
 } from "@voxel51/voodo";
 
 interface ComponentTypeButtonProps {
-  icon?: IconName;
+  icon: IconName;
   label: string;
   isSelected: boolean;
   onClick: () => void;
@@ -40,13 +40,11 @@ const ComponentTypeButton = ({
         minWidth: 80,
       }}
     >
-      {icon && (
-        <Icon
-          name={icon}
-          size={Size.Md}
-          color={isSelected ? "#FF6D04" : undefined}
-        />
-      )}
+      <Icon
+        name={icon}
+        size={Size.Md}
+        color={isSelected ? "#FF6D04" : undefined}
+      />
       <Text variant={TextVariant.Md}>{label}</Text>
     </div>
   </Clickable>

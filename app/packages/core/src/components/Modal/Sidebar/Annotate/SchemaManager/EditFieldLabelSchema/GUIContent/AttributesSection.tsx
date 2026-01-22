@@ -32,7 +32,7 @@ import {
   type AttributeFormData,
 } from "../../utils";
 import AddAttributeCard from "./AddAttributeCard";
-import AttributeFormContent from "./AttributeFormContent";
+import { createAttributeCardItem } from "./AttributeCard";
 import EditAction from "./EditAction";
 
 interface AttributesSectionProps {
@@ -120,8 +120,22 @@ const AttributesSection = ({
   }, [editingAttribute, onDeleteAttribute]);
 
   const listItems = useMemo(() => {
-    const attrEntries = Object.entries(attributes);
-    return attrEntries.map(([name, config]) => {
+    return Object.entries(attributes).map(([name, config]) => {
+      // Editing mode: use shared card item creator
+      if (name === editingAttribute && editingFormState) {
+        return createAttributeCardItem({
+          id: name,
+          title: "Edit attribute",
+          formState: editingFormState,
+          onFormStateChange: setEditingFormState,
+          nameError: editNameError,
+          canSave: !editError,
+          onSave: handleEditSave,
+          onCancel: handleDeleteAttribute,
+        });
+      }
+
+      // Display mode: show attribute summary
       const typeLabel = getAttributeTypeLabel(config.type);
       const optionCount = config.values?.length;
       const secondaryParts = [typeLabel];
@@ -129,44 +143,6 @@ const AttributesSection = ({
         secondaryParts.push(
           `${optionCount} option${optionCount !== 1 ? "s" : ""}`
         );
-      }
-
-      if (name === editingAttribute && editingFormState) {
-        return {
-          id: name,
-          data: {
-            canSelect: false,
-            canDrag: false,
-            primaryContent: "Edit attribute",
-            actions: (
-              <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-                <Clickable
-                  onClick={handleDeleteAttribute}
-                  style={{ padding: 4 }}
-                >
-                  <Icon name={IconName.Delete} size={Size.Md} />
-                </Clickable>
-                <Clickable
-                  onClick={handleEditSave}
-                  style={{
-                    padding: 4,
-                    opacity: editError ? 0.5 : 1,
-                    cursor: editError ? "not-allowed" : "pointer",
-                  }}
-                >
-                  <Icon name={IconName.Check} size={Size.Md} />
-                </Clickable>
-              </Stack>
-            ),
-            additionalContent: (
-              <AttributeFormContent
-                formState={editingFormState}
-                onFormStateChange={setEditingFormState}
-                nameError={editNameError}
-              />
-            ),
-          } as ListItemProps,
-        };
       }
 
       return {
@@ -203,6 +179,7 @@ const AttributesSection = ({
     attributes,
     editingAttribute,
     editingFormState,
+    editNameError,
     editError,
     isM4Enabled,
     handleDeleteAttribute,
