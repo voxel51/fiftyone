@@ -1,62 +1,143 @@
 import { Page, expect } from "src/oss/fixtures";
+import type { EventUtils } from "src/shared/event-utils";
 import { FieldRowPom } from "./field-row";
 
+/**
+ * The schema manager modal accessible via the sample modal's 'Annotate' tab
+ */
 export class SchemaManagerPom {
   readonly assert: SchemaManagerAsserter;
 
-  constructor(readonly page: Page) {
+  constructor(readonly page: Page, readonly eventUtils: EventUtils) {
     this.assert = new SchemaManagerAsserter(this);
   }
 
-  get container() {
+  /**
+   * The schema manager locator
+   */
+  get locator() {
     return this.page.getByTestId("schema-manager");
   }
 
-  get activeFieldsContainer() {
-    return this.container.getByTestId("active-fields");
+  /**
+   * The active fields section locator
+   */
+  get activeFields() {
+    return this.locator.getByTestId("active-fields");
   }
 
-  get hiddenFieldsContainer() {
-    return this.container.getByTestId("hidden-fields");
+  /**
+   * The hidden fields section locator
+   */
+  get hiddenFields() {
+    return this.locator.getByTestId("hidden-fields");
   }
 
+  /**
+   * Close the modal
+   */
   async close() {
     await this.page.getByTestId("close-schema-manager").click();
   }
 
+  /**
+   * Open the schema manager modal. The sample modal must be open for the
+   * schema manager modal to open
+   */
   async open() {
     await this.page.getByTestId("open-schema-manager").click();
   }
 
+  /**
+   * Get a field row by field name
+   *
+   * @param field The field name
+   * @returns a field row POM
+   */
   getFieldRow(field: string) {
-    return new FieldRowPom(this.page, field, this);
+    return new FieldRowPom(this.page, this.eventUtils, field, this);
   }
 }
 
+/**
+ * Schema manager modal asserter
+ */
 class SchemaManagerAsserter {
   constructor(private readonly schemaManagerPom: SchemaManagerPom) {}
 
+  /**
+   * Is the field row in the active fields section
+   *
+   * @param field the field name
+   */
   async isActiveFieldRow(field: string) {
     await expect(
-      this.schemaManagerPom.activeFieldsContainer.filter({
-        has: this.schemaManagerPom.getFieldRow(field).container,
+      this.schemaManagerPom.activeFields.filter({
+        has: this.schemaManagerPom.getFieldRow(field).locator,
       })
     ).toBeVisible();
   }
 
+  /**
+   * Is the field row in the hidden fields section
+   *
+   * @param field the field name
+   */
   async isHiddenFieldRow(field: string) {
     await expect(
-      this.schemaManagerPom.hiddenFieldsContainer.filter({
-        has: this.schemaManagerPom.getFieldRow(field).container,
+      this.schemaManagerPom.hiddenFields.filter({
+        has: this.schemaManagerPom.getFieldRow(field).locator,
       })
     ).toBeVisible();
   }
 
-  async isHidden() {
-    await expect(this.schemaManagerPom.container).toBeHidden();
+  /**
+   * Is schema manager modal closed
+   *
+   * @param field the field name
+   */
+  async isClosed() {
+    await expect(this.schemaManagerPom.locator).toBeHidden();
   }
 
-  async isVisible() {
-    await expect(this.schemaManagerPom.container).toBeVisible();
+  /**
+   * Is schema manager modal open
+   *
+   * @param field the field name
+   */
+  async isOpen() {
+    await expect(this.schemaManagerPom.locator).toBeVisible();
+  }
+
+  /**
+   * Are the provided field rows in the hidden fields section
+   *
+   * @param fields a list of name and type rows, .e.g 'id' and 'system'
+   */
+  async hasActiveFieldRows(fields: { name: string; type: string }[]) {
+    const promises = [];
+    for (const { name, type } of fields) {
+      const row = this.schemaManagerPom.getFieldRow(name);
+      promises.push(row.assert.isActiveField());
+      promises.push(row.assert.hasType(type));
+    }
+
+    await Promise.all(promises);
+  }
+
+  /**
+   * Are the provided field rows in the active fields section
+   *
+   * @param fields a list of name and type rows, .e.g 'id' and 'system'
+   */
+  async hasHiddenFieldRows(fields: { name: string; type: string }[]) {
+    const promises = [];
+    for (const { name, type } of fields) {
+      const row = this.schemaManagerPom.getFieldRow(name);
+      promises.push(row.assert.isHiddenField());
+      promises.push(row.assert.hasType(type));
+    }
+
+    await Promise.all(promises);
   }
 }

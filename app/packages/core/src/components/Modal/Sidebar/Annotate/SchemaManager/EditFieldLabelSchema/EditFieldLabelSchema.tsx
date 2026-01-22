@@ -20,14 +20,14 @@ import {
   removeFromActiveSchemas,
 } from "../../state";
 import Footer from "../Footer";
+import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
+import { currentField } from "../state";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
-import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { currentField } from "../state";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isEnabled: isM4Enabled } = useFeature({
@@ -126,6 +126,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             />
           )}
           <Button
+            data-cy={"scan"}
             size={Size.Md}
             variant={Variant.Secondary}
             onClick={labelSchema.scan}
@@ -163,6 +164,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         leftContent={
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Toggle
+              data-cy={"toggle-visibility"}
               size={Size.Md}
               checked={isFieldVisible}
               onChange={handleToggleVisibility}

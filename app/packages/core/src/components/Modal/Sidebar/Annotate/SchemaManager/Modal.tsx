@@ -104,7 +104,12 @@ const SchemaManagerFooter = () => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+        <Button
+          data-cy="move-fields"
+          size={Size.Md}
+          variant={Variant.Secondary}
+          onClick={onMove}
+        >
           {isMovingToVisible ? (
             <Icon
               name={IconName.ChevronTop}

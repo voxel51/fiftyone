@@ -44,6 +44,9 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        contextOptions: {
+          permissions: ["clipboard-read"],
+        },
         channel: "chromium",
         bypassCSP: true,
         launchOptions: { args: ["--disable-web-security"] },

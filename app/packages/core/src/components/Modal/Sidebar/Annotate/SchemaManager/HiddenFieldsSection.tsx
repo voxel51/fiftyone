@@ -48,9 +48,15 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
 
   return (
     <span className="flex items-center gap-2">
-      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {isUnsupported && (
+        <Pill data-cy="pill" size={Size.Md}>
+          Unsupported
+        </Pill>
+      )}
       {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
-        <Pill size={Size.Md}>Read-only</Pill>
+        <Pill data-cy="pill" size={Size.Md}>
+          Read-only
+        </Pill>
       )}
       {!isSystemReadOnly && !isUnsupported && (
         <Tooltip
