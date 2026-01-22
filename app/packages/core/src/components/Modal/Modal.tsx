@@ -74,20 +74,6 @@ const ModalCommandHandlersRegistration = () => {
   });
   useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
 
-  const contextManager = useAnnotationContextManager();
-
-  useAnnotationEventHandler(
-    "annotation:enterAnnotationMode",
-    useCallback((evt) => contextManager.enter(evt.path, evt.labelId), [
-      contextManager,
-    ])
-  );
-
-  useAnnotationEventHandler(
-    "annotation:exitAnnotationMode",
-    useCallback(() => contextManager.exit(), [contextManager])
-  );
-
   return <Fragment />;
 };
 

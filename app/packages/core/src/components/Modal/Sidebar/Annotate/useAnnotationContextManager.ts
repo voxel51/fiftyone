@@ -4,7 +4,6 @@ import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
-  useModalModeController,
 } from "@fiftyone/state";
 import useCanManageSchema from "./useCanManageSchema";
 import { useActiveLabelSchema, useLabelSchema } from "./state";
@@ -69,7 +68,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const [activeFields, setActiveFields] = useActiveModalFields();
   const [, setLabelSchema] = useLabelSchema();
   const [, setActiveLabelSchema] = useActiveLabelSchema();
-  const modalModeController = useModalModeController();
   const schemaManager = useSchemaManager();
   const { enabled: canManageSchema } = useCanManageSchema();
   const { scene } = useLighter();
@@ -162,9 +160,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         callback: () => setActiveFields(activeFields),
       });
 
-      // enter annotate mode
-      modalModeController.activateAnnotateMode();
-
       // initialize and activate field schema if specified
       if (field) {
         return initializeFieldSchema(field, labelId);
@@ -174,19 +169,12 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         status: InitializationStatus.Success,
       };
     },
-    [
-      activeFields,
-      contextManager,
-      initializeFieldSchema,
-      modalModeController,
-      setActiveFields,
-    ]
+    [activeFields, contextManager, initializeFieldSchema, setActiveFields]
   );
 
   const exit = useCallback(() => {
-    modalModeController.activateExploreMode();
     contextManager.exit();
-  }, [contextManager, modalModeController]);
+  }, [contextManager]);
 
   return useMemo(() => ({ enter, exit }), [enter, exit]);
 };
