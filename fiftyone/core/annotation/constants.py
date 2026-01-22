@@ -139,6 +139,22 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
+### Label schema type to field type
+TYPES_TO_FIELD_TYPE = {
+    BOOL: fof.BooleanField,
+    DATE: fof.DateField,
+    DATETIME: fof.DateTimeField,
+    DICT: fof.DictField,
+    FLOAT: fof.FloatField,
+    INT: fof.IntField,
+    STR: fof.StringField,
+    BOOL_LIST: fof.BooleanField,
+    FLOAT_LIST: fof.FloatField,
+    INT_LIST: fof.IntField,
+    STR_LIST: fof.StringField,
+}
+
+
 ### Heuristics
 
 
