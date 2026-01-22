@@ -94,8 +94,23 @@ const getDatasetName = (): string => {
   }
 };
 
-export const modalMode = atomWithStorage<"explore" | "annotate">(
+/**
+ * Operating mode of the modal.
+ */
+export enum ModalMode {
+  /**
+   * Annotation mode, offering inline editing capabilities.
+   */
+  ANNOTATE = "annotate",
+
+  /**
+   * Exploration mode, offering read-only sample inspection.
+   */
+  EXPLORE = "explore",
+}
+
+export const modalMode = atomWithStorage<ModalMode>(
   "modalMode",
-  "explore",
-  createDatasetKeyedStorage<"explore" | "annotate">(getDatasetName)
+  ModalMode.EXPLORE,
+  createDatasetKeyedStorage<ModalMode>(getDatasetName)
 );

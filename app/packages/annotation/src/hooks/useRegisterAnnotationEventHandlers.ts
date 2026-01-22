@@ -33,6 +33,8 @@ export const useRegisterAnnotationEventHandlers = () => {
     "annotation:persistenceError",
     useCallback(
       ({ error }) => {
+        console.error(error);
+
         setNotification({
           msg: `Error saving changes: ${error}`,
           variant: "error",

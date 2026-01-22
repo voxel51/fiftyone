@@ -1,36 +1,35 @@
-import { DeltaSupplier } from "./deltaSupplier";
-import { buildJsonPath, buildLabelDeltas, getFieldSchema } from "../deltas";
+import type { DeltaSupplier } from "./deltaSupplier";
 import {
-  BaseOverlay,
+  type BaseOverlay,
   BoundingBoxOverlay,
   ClassificationOverlay,
   useLighter,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
 import type { JSONDeltas } from "@fiftyone/core";
-import {
-  AnnotationLabel,
-  useModalSample,
-  useModalSampleSchema,
-} from "@fiftyone/state";
-import { DetectionLabel } from "@fiftyone/looker";
-import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import type { DetectionLabel } from "@fiftyone/looker";
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { useGetLabelDelta } from "./useGetLabelDelta";
+import type { LabelProxy } from "../deltas";
 
-const buildAnnotationLabel = (
-  overlay: BaseOverlay
-): AnnotationLabel | undefined => {
+/**
+ * Build a {@link LabelProxy} instance from a reconciled 3d label.
+ *
+ * @param overlay Lighter overlay
+ */
+const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
+    const bounds = overlay.getRelativeBounds();
     return {
       type: "Detection",
       data: overlay.label as DetectionLabel,
-      overlay,
+      boundingBox: [bounds.x, bounds.y, bounds.width, bounds.height],
       path: overlay.field,
     };
   } else if (overlay instanceof ClassificationOverlay && overlay.label.label) {
     return {
       type: "Classification",
       data: overlay.label as ClassificationLabel,
-      overlay,
       path: overlay.field,
     };
   }
@@ -42,38 +41,15 @@ const buildAnnotationLabel = (
  */
 export const useLighterDeltaSupplier = (): DeltaSupplier => {
   const { scene } = useLighter();
-  const modalSample = useModalSample();
-  const modalSampleSchema = useModalSampleSchema();
+  const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
 
   return useCallback(() => {
     const sampleDeltas: JSONDeltas = [];
 
-    if (modalSample?.sample) {
-      // calculate diff for each overlay
-      scene?.getAllOverlays().forEach((overlay) => {
-        const annotationLabel = buildAnnotationLabel(overlay);
-
-        if (annotationLabel) {
-          const labelDeltas = buildLabelDeltas(
-            modalSample.sample,
-            annotationLabel,
-            getFieldSchema(modalSampleSchema, overlay.field),
-            "mutate"
-          );
-
-          if (labelDeltas?.length > 0) {
-            sampleDeltas.push(
-              ...labelDeltas.map((delta) => ({
-                ...delta,
-                // convert label delta to sample delta
-                path: buildJsonPath(overlay.field, delta.path),
-              }))
-            );
-          }
-        }
-      });
-    }
+    scene?.getAllOverlays()?.forEach((overlay) => {
+      sampleDeltas.push(...getLabelDelta(overlay, overlay.field));
+    });
 
     return sampleDeltas;
-  }, [modalSample, modalSampleSchema, scene]);
+  }, [getLabelDelta, scene]);
 };
