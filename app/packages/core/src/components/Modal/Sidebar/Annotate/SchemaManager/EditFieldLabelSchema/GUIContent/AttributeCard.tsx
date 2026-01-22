@@ -17,6 +17,7 @@ interface AttributeCardProps {
   canSave: boolean;
   onSave: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
 const AttributeCard = ({
@@ -27,12 +28,18 @@ const AttributeCard = ({
   canSave,
   onSave,
   onCancel,
+  onDelete,
 }: AttributeCardProps) => {
   const listItem = createRichListItem({
     id: mode === "add" ? "__new_attribute__" : formState.name,
     primaryContent: mode === "add" ? "New attribute" : "Edit attribute",
     actions: (
-      <CardActions onDelete={onCancel} onSave={onSave} canSave={canSave} />
+      <CardActions
+        onCancel={onCancel}
+        onDelete={onDelete}
+        onSave={onSave}
+        canSave={canSave}
+      />
     ),
     additionalContent: (
       <AttributeFormContent

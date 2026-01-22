@@ -125,6 +125,11 @@ const ClassesSection = ({
     setEditingName("");
   }, [editingClass, editingName, editError, onEditClass]);
 
+  const handleCancelEdit = useCallback(() => {
+    setEditingClass(null);
+    setEditingName("");
+  }, []);
+
   const handleDeleteClass = useCallback(() => {
     if (editingClass) {
       onDeleteClass(editingClass);
@@ -143,6 +148,7 @@ const ClassesSection = ({
               primaryContent: "Edit class",
               actions: (
                 <CardActions
+                  onCancel={handleCancelEdit}
                   onDelete={handleDeleteClass}
                   onSave={handleEditSave}
                   canSave={!editError}
@@ -173,6 +179,7 @@ const ClassesSection = ({
       editingName,
       editError,
       handleEditSave,
+      handleCancelEdit,
       handleDeleteClass,
       handleStartEdit,
     ]

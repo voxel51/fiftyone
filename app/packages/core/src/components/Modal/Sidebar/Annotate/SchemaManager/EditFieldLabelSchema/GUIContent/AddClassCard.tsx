@@ -60,7 +60,7 @@ const AddClassCard = ({
     id: "__new__",
     primaryContent: "New class",
     actions: (
-      <CardActions onDelete={onCancel} onSave={handleSave} canSave={canSave} />
+      <CardActions onCancel={onCancel} onSave={handleSave} canSave={canSave} />
     ),
     additionalContent: (
       <Stack orientation={Orientation.Column} spacing={Spacing.Md}>

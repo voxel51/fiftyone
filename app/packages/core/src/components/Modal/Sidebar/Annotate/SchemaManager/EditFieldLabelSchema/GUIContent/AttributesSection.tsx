@@ -65,6 +65,7 @@ const AttributesSection = ({
     editNameError,
     canEdit,
     startEdit,
+    cancelEdit,
     deleteEditing,
     handleEditFormChange,
     saveEdit,
@@ -153,7 +154,8 @@ const AttributesSection = ({
           nameError={editNameError}
           canSave={canEdit}
           onSave={saveEdit}
-          onCancel={deleteEditing}
+          onCancel={cancelEdit}
+          onDelete={deleteEditing}
         />
       )}
 
