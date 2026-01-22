@@ -251,6 +251,8 @@ class TestQwen3VLModelConfig:
         assert config.prompt is None
         assert config.classes is None
         assert config.max_new_tokens == 4096
+        assert config.embedding_dim is None
+        assert config.normalize_embeddings is True
 
     def test_custom_config(self):
         """Test custom configuration values"""
@@ -265,6 +267,20 @@ class TestQwen3VLModelConfig:
         assert config.name_or_path == "Qwen/Qwen3-VL-8B-Instruct"
         assert config.classes == ["person", "car"]
         assert config.max_new_tokens == 2048
+
+    def test_embedding_config(self):
+        """Test embedding-specific configuration"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({
+            "name_or_path": "Qwen/Qwen3-VL-Embedding-2B",
+            "embedding_dim": 512,
+            "normalize_embeddings": False,
+        })
+
+        assert config.name_or_path == "Qwen/Qwen3-VL-Embedding-2B"
+        assert config.embedding_dim == 512
+        assert config.normalize_embeddings is False
 
 
 class TestQwen3VLPromptGeneration:
@@ -306,6 +322,65 @@ class TestQwen3VLPromptGeneration:
         prompt = model._get_prompt()
 
         assert prompt == custom
+
+
+class TestQwen3VLEmbeddingMode:
+    """Test embedding mode functionality"""
+
+    def test_has_embeddings_detection_mode(self):
+        """Test has_embeddings is False when output_processor is set"""
+        from fiftyone.utils.qwen3_vl import (
+            Qwen3VLModel,
+            Qwen3VLModelConfig,
+            Qwen3VLOutputProcessor,
+        )
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = Qwen3VLOutputProcessor()
+
+        assert model.has_embeddings is False
+
+    def test_has_embeddings_embedding_mode(self):
+        """Test has_embeddings is True when output_processor is None"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._output_processor = None
+
+        assert model.has_embeddings is True
+
+    def test_prepare_image_pil(self):
+        """Test _prepare_image with PIL input"""
+        from PIL import Image
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        img = Image.new("RGB", (100, 100), color="red")
+        result = model._prepare_image(img)
+
+        assert isinstance(result, Image.Image)
+
+    def test_prepare_image_numpy(self):
+        """Test _prepare_image with numpy input"""
+        from PIL import Image
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        img = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+        result = model._prepare_image(img)
+
+        assert isinstance(result, Image.Image)
+
+    def test_prepare_image_float_normalized(self):
+        """Test _prepare_image with float normalized numpy array"""
+        from PIL import Image
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        img = np.random.rand(100, 100, 3).astype(np.float32)
+        result = model._prepare_image(img)
+
+        assert isinstance(result, Image.Image)
 
 
 if __name__ == "__main__":
