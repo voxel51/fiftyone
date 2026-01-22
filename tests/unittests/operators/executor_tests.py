@@ -5,25 +5,25 @@ FiftyOne operation execution tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import copy
 import unittest
 from unittest import mock
+from unittest.mock import patch
 
 import bson
 import pytest
-from unittest.mock import patch
 
 import fiftyone as fo
-from fiftyone.operators import constants
-import fiftyone.operators.types as types
+from fiftyone.operators import OperatorConfig, constants
 from fiftyone.operators.delegated import DelegatedOperationService
-from fiftyone.operators.operator import Operator, PipelineOperator
 from fiftyone.operators.executor import (
-    execute_or_delegate_operator,
-    ExecutionResult,
     ExecutionContext,
+    ExecutionResult,
+    execute_or_delegate_operator,
 )
-from fiftyone.operators import OperatorConfig
+from fiftyone.operators.operator import Operator, PipelineOperator
+import fiftyone.operators.types as types
 
 
 class TestOperatorExecutionContext(unittest.TestCase):
@@ -396,3 +396,43 @@ class TestPipeline:
             "Failed to execute pipeline stage[0]: Operator failed"
             in result.error_message
         )
+
+    @pytest.mark.asyncio
+    async def test_pipeline_resolves_rerunnable(
+        self, list_operators, setup_operators
+    ):
+        pipeline = types.Pipeline()
+        pipeline.stage(
+            self.PREFIX + "op0",
+            name="stage1",
+            params={"message": "Hello from pipeline!"},
+        )
+        pipeline.stage(self.PREFIX + "op1", name="stage2", params={})
+        pipeline.stage(
+            self.PREFIX + "op2",
+            name="stage3",
+            params={},
+            rerunnable=False,
+        )
+
+        pipeline_operator, operators = setup_operators
+        operators[0].config.rerunnable = True
+        operators[1].config.rerunnable = False
+        operators[2].config.rerunnable = True
+
+        list_operators.return_value = [pipeline_operator] + operators
+        pipeline_operator.resolve_pipeline.return_value = pipeline
+
+        #####
+        result = await execute_or_delegate_operator(
+            operator_uri=self.PREFIX + "pipeline",
+            request_params={
+                "dataset_name": "test_dataset",
+            },
+        )
+        #####
+
+        assert pipeline.stages[0].rerunnable is True
+        assert pipeline.stages[1].rerunnable is False
+        assert pipeline.stages[2].rerunnable is False
+        assert isinstance(result, ExecutionResult)

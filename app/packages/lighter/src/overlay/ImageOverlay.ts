@@ -217,15 +217,16 @@ export class ImageOverlay
     const bounds = this.currentBounds;
     if (!bounds) return;
 
+    // Set the base width/height (at scale = 1)
+    this.imgElement.style.width = `${bounds.width}px`;
+    this.imgElement.style.height = `${bounds.height}px`;
+
     // Calculate the transformed position based on viewport
     const transformedX = bounds.x * scale + viewportX;
     const transformedY = bounds.y * scale + viewportY;
-    const transformedWidth = bounds.width * scale;
-    const transformedHeight = bounds.height * scale;
 
-    this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px)`;
-    this.imgElement.style.width = `${transformedWidth}px`;
-    this.imgElement.style.height = `${transformedHeight}px`;
+    // Use CSS transform for both translation and scaling
+    this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px) scale(${scale})`;
   }
 
   /**
