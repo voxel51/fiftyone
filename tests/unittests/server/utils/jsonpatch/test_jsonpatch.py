@@ -179,7 +179,7 @@ class TestIsRootDelete:
     """Tests for jsonpatch.is_root_delete utility function."""
 
     @pytest.mark.parametrize(
-        "operations,expected",
+        ("operations", "expected"),
         [
             # True case
             pytest.param(
@@ -218,7 +218,7 @@ class TestIsRootDelete:
         assert jsonpatch.is_root_delete(operations) is expected
 
     @pytest.mark.parametrize(
-        "operations,expected",
+        ("operations", "expected"),
         [
             pytest.param(
                 [{"op": "remove", "path": "/"}], True, id="remove_at_root"

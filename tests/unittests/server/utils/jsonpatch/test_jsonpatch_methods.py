@@ -11,7 +11,7 @@ from unittest import mock
 import jsonpointer
 import pytest
 
-from fiftyone.server.utils.json.jsonpatch import methods
+from fiftyone.server.utils.json.jsonpatch import RootDeleteError, methods
 from fiftyone.server.utils.json.jsonpatch.methods import (
     get,
     add,
@@ -260,7 +260,7 @@ class TestRemove:
     def test_path_is_root(person: Person):
         """Test that attempting to remove the root raises ValueError."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(RootDeleteError):
             ####
             remove(person, "")
             ####

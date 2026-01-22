@@ -10,6 +10,7 @@ from typing import TypeVar, Union
 
 import jsonpointer
 
+from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 
 T = TypeVar("T")
 V = TypeVar("V")
@@ -219,11 +220,13 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     """
 
     pointer = to_json_pointer(path)
-    # Root path "/" has parts=[''], empty path "" has parts=[]
-    if pointer.path == "/" or not pointer.parts:
-        # Clear the root document instead of raising an error
-        # This allows root delete to work as part of multi-operation
-        # patches like replace
+    # Empty path "" has parts=[], should raise error
+    if not pointer.parts:
+        raise RootDeleteError("Cannot remove the root document")
+
+    # Root path "/" has parts=[''], clear instead of raising
+    # This allows root delete to work as part of multi-operation patches
+    if pointer.path == "/":
         if hasattr(src, "clear"):
             src.clear()
         return src
