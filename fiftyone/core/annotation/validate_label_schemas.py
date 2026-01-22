@@ -464,7 +464,7 @@ def _validate_attribute(
     attribute = label_schema.pop(foac.NAME, None)
     if attribute is None:
         raise ValueError(
-            f"missing 'name' in 'attributes' for field {field_name}"
+            f"missing 'name' in 'attributes' for field '{field_name}'"
         )
 
     if attribute not in subfields:
