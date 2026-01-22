@@ -269,6 +269,24 @@ export class CommandContext {
     );
   }
   /**
+   * Registers a listener to the local CommandRegistry and all parent
+   * context's CommandRegistry to be notified of all command changes
+   * in the heirarchy.
+   * @param listener the listener
+   */
+  public subscribeCommands(listener: () => void): () => void {
+    const unsubLocal = this.commands.addListener(listener);
+    if (this.parent) {
+      const unsubParent = this.parent.subscribeCommands(listener);
+      return () => {
+        unsubLocal();
+        unsubParent();
+      };
+    }
+    return unsubLocal;
+  }
+
+  /**
    * Unregisters a previously registered command.  No-op if
    * it isn't registered.
    * @param id the id of a previously registered command

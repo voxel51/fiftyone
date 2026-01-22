@@ -74,8 +74,7 @@
 .. |OpenCVCameraIntrinsics| replace:: :class:`OpenCVCameraIntrinsics <fiftyone.core.camera.OpenCVCameraIntrinsics>`
 .. |OpenCVFisheyeCameraIntrinsics| replace:: :class:`OpenCVFisheyeCameraIntrinsics <fiftyone.core.camera.OpenCVFisheyeCameraIntrinsics>`
 .. |CameraIntrinsicsRef| replace:: :class:`CameraIntrinsicsRef <fiftyone.core.camera.CameraIntrinsicsRef>`
-.. |SensorExtrinsics| replace:: :class:`SensorExtrinsics <fiftyone.core.camera.SensorExtrinsics>`
-.. |CameraExtrinsics| replace:: :class:`CameraExtrinsics <fiftyone.core.camera.CameraExtrinsics>`
+.. |StaticTransform| replace:: :class:`StaticTransform <fiftyone.core.camera.StaticTransform>`
 .. |CameraProjector| replace:: :class:`CameraProjector <fiftyone.core.camera.CameraProjector>`
 
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
