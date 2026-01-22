@@ -417,11 +417,7 @@ def _validate_label_field_label_schema(
         if key not in settings:
             _raise_unknown_setting_error(key, field_name)
 
-        if key == foac.ACTIVE_ATTRIBUTES:
-            _validate_active_attributes(
-                field_name, value, label_schema.get(foac.ATTRIBUTES, None)
-            )
-        elif key == foac.ATTRIBUTES:
+        if key == foac.ATTRIBUTES:
             _validate_attributes(collection, field_name, class_name, value)
         elif key == foac.COMPONENT and value not in foac.STR_COMPONENTS:
             _raise_component_error(field_name, value)
@@ -456,28 +452,7 @@ def _raise_unknown_setting_error(name, field_name):
     raise ValueError(f"unknown setting '{name}' for '{field_name}' field")
 
 
-def _validate_active_attributes(field_name, active_attributes, attributes):
-    if not isinstance(active_attributes, list):
-        raise ValueError(
-            "'active_attributes' setting must be a list of attribute names "
-            f"for field {field_name}"
-        )
-
-    for attr in active_attributes:
-        if attr not in attributes:
-            raise ValueError(
-                f"'active_attributes' value '{attr}' is not defined in "
-                f"'attributes' for field {field_name}"
-            )
-
-    if len(set(active_attributes)) < len(active_attributes):
-        raise ValueError(
-            f"'active_attributes' has duplicate values for field {field_name}"
-        )
-
-
 def _validate_attribute(
-    attribute,
     class_name,
     collection,
     field_name,
@@ -485,6 +460,13 @@ def _validate_attribute(
     path,
     subfields,
 ):
+    label_schema = dict(**label_schema)
+    attribute = label_schema.pop(foac.NAME, None)
+    if attribute is None:
+        raise ValueError(
+            f"missing 'name' in 'attributes' for field {field_name}"
+        )
+
     if attribute not in subfields:
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
@@ -520,9 +502,9 @@ def _validate_attribute(
 
 
 def _validate_attributes(collection, field_name, class_name, attributes):
-    if not isinstance(attributes, dict):
+    if not isinstance(attributes, list):
         raise ValueError(
-            f"'attributes' setting for field '{field_name}' must be a 'dict'"
+            f"'attributes' setting for field '{field_name}' must be a 'list'"
         )
 
     field: fof.EmbeddedDocumentField = collection.get_field(field_name)
@@ -533,10 +515,9 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
     subfields = {f.name: f for f in field.fields}
     exceptions = []
-    for attribute, label_schema in attributes.items():
+    for label_schema in attributes:
         try:
             _validate_attribute(
-                attribute,
                 class_name,
                 collection,
                 field_name,
