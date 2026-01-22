@@ -1,17 +1,8 @@
 import React from "react";
 import RJSF from "./RJSF";
+import { SmartFormProps } from "./types";
 
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
-
-export interface SmartFormProps {
-  schema?: SchemaType;
-  jsonSchema?: RJSFSchema;
-  uiSchema?: UiSchema;
-  data?: unknown;
-  onChange?: (data: unknown) => void;
-  onSubmit?: (data: unknown) => void;
-}
+export type { SmartFormProps };
 
 export default function SmartForm(props: SmartFormProps) {
   // potentially support RJSF alternatives here
