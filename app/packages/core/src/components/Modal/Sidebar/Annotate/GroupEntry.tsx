@@ -82,7 +82,7 @@ const Toggle = ({ name }: { name: string }) => {
 };
 
 export const LABELS_GROUP_NAME = "Labels";
-export const PRIMITIVES_GROUP_NAME = "Primitives";
+export const PRIMITIVES_GROUP_NAME = "PRIMITIVES";
 
 export const labelsExpanded = atom(true);
 export const primitivesExpanded = atom(true);
