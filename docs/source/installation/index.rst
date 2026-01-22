@@ -15,7 +15,7 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.9 - 3.12**.
+**Python 3.9 - 3.14**.
 
 On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
