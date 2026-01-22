@@ -5,6 +5,8 @@
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
+  componentNeedsRange,
+  componentNeedsValues,
   getDefaultComponent,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -217,6 +219,7 @@ export const toFormData = (
 ): AttributeFormData => ({
   name,
   type: config.type,
+  // component should come from backend, additional fallback to be safe
   component: config.component || getDefaultComponent(config.type),
   values: config.values?.map(String) || [],
   range: config.range
@@ -293,11 +296,8 @@ export const getAttributeFormErrors = (
   };
 
   const isNumeric = NUMERIC_TYPES.includes(data.type);
-  const needsValues =
-    data.component === "radio" ||
-    data.component === "dropdown" ||
-    data.component === "checkboxes";
-  const needsRange = isNumeric && data.component === "slider";
+  const needsValues = componentNeedsValues(data.component);
+  const needsRange = isNumeric && componentNeedsRange(data.component);
 
   // Values validation
   if (needsValues && data.values.length === 0) {
