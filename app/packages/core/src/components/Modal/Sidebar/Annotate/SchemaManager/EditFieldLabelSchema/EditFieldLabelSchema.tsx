@@ -1,16 +1,12 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
-  Button,
-  Icon,
-  IconName,
   Size,
   Text,
   TextColor,
   TextVariant,
   Toggle,
   ToggleSwitch,
-  Variant,
 } from "@voxel51/voodo";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
@@ -20,21 +16,19 @@ import {
   removeFromActiveSchemas,
 } from "../../state";
 import Footer from "../Footer";
-import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
+import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { currentField } from "../state";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
   const labelSchema = useLabelSchema(field);
-  const setCurrentField = useSetAtom(currentField);
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const [activeFields] = useAtom(activeLabelSchemas);
   const addToActive = useSetAtom(addToActiveSchemas);
@@ -91,11 +85,18 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
 
   return (
     <EditContainer>
-      <Header field={field} setField={setCurrentField} />
+      <Header field={field} />
 
       {isM4Enabled && (
-        <div className="my-4">
-          <div className="flex items-center justify-between mb-1">
+        <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "0.25rem",
+            }}
+          >
             <Text variant={TextVariant.Xl}>Read-only</Text>
             <Toggle
               size={Size.Md}
@@ -111,9 +112,25 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         </div>
       )}
 
+      {isM4Enabled && (
+        <div
+          style={{
+            borderTop: "1px solid var(--fo-palette-divider)",
+            marginBottom: "1rem",
+          }}
+        />
+      )}
+
       <SchemaSection>
-        <Label variant="body2">Schema</Label>
-        <TabsRow>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem",
+          }}
+        >
+          <Text variant={TextVariant.Xl}>Schema</Text>
           {isM4Enabled && (
             <ToggleSwitch
               size={Size.Md}
@@ -125,19 +142,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               ]}
             />
           )}
-          <Button
-            size={Size.Md}
-            variant={Variant.Secondary}
-            onClick={labelSchema.scan}
-          >
-            <Icon
-              name={IconName.Refresh}
-              size={Size.Md}
-              style={{ marginRight: 4 }}
-            />
-            Scan
-          </Button>
-        </TabsRow>
+        </div>
 
         {isM4Enabled && activeTab === TAB_GUI ? (
           <GUIContent
