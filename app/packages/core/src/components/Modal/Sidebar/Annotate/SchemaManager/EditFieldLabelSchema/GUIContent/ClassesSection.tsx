@@ -2,6 +2,7 @@
  * Classes section component for managing class names.
  */
 
+import Close from "@mui/icons-material/Close";
 import {
   Button,
   Checkbox,
@@ -127,6 +128,11 @@ const ClassesSection = ({
     setEditingName("");
   }, [editingClass, editingName, editError, onEditClass]);
 
+  const handleCancelEdit = useCallback(() => {
+    setEditingClass(null);
+    setEditingName("");
+  }, []);
+
   const handleDeleteClass = useCallback(() => {
     if (editingClass) {
       onDeleteClass(editingClass);
@@ -145,6 +151,9 @@ const ClassesSection = ({
               primaryContent: "Edit class",
               actions: (
                 <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+                  <Clickable onClick={handleCancelEdit} style={{ padding: 4 }}>
+                    <Close sx={{ fontSize: 20 }} />
+                  </Clickable>
                   <Clickable onClick={handleDeleteClass} style={{ padding: 4 }}>
                     <Icon name={IconName.Delete} size={Size.Md} />
                   </Clickable>
@@ -185,6 +194,7 @@ const ClassesSection = ({
       editingName,
       editError,
       handleEditSave,
+      handleCancelEdit,
       handleDeleteClass,
       handleStartEdit,
     ]

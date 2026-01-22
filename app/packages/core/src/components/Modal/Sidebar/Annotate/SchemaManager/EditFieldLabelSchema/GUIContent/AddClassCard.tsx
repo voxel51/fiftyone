@@ -2,6 +2,7 @@
  * Add class card component using RichList item style.
  */
 
+import Close from "@mui/icons-material/Close";
 import {
   Checkbox,
   Clickable,
@@ -64,7 +65,7 @@ const AddClassCard = ({
     actions: (
       <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
         <Clickable onClick={onCancel} style={{ padding: 4 }}>
-          <Icon name={IconName.Delete} size={Size.Md} />
+          <Close sx={{ fontSize: 20 }} />
         </Clickable>
         <Clickable
           onClick={handleSave}

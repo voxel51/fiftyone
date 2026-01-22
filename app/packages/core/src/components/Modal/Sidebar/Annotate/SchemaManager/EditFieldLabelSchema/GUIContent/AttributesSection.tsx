@@ -111,6 +111,11 @@ const AttributesSection = ({
     setEditingFormState(null);
   }, [editingAttribute, editingFormState, editError, onEditAttribute]);
 
+  const handleCancelEdit = useCallback(() => {
+    setEditingAttribute(null);
+    setEditingFormState(null);
+  }, []);
+
   const handleDeleteAttribute = useCallback(() => {
     if (editingAttribute) {
       onDeleteAttribute(editingAttribute);
@@ -131,7 +136,8 @@ const AttributesSection = ({
           nameError: editNameError,
           canSave: !editError,
           onSave: handleEditSave,
-          onCancel: handleDeleteAttribute,
+          onCancel: handleCancelEdit,
+          onDelete: handleDeleteAttribute,
         });
       }
 
@@ -182,6 +188,7 @@ const AttributesSection = ({
     editNameError,
     editError,
     isM4Enabled,
+    handleCancelEdit,
     handleDeleteAttribute,
     handleEditSave,
     handleStartEdit,

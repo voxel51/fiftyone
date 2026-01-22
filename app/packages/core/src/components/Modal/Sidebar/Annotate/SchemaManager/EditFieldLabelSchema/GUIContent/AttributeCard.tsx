@@ -3,6 +3,7 @@
  * Used by both AddAttributeCard and AttributesSection edit mode.
  */
 
+import Close from "@mui/icons-material/Close";
 import {
   Clickable,
   Icon,
@@ -32,8 +33,10 @@ interface AttributeCardProps {
   canSave: boolean;
   /** Save button click handler */
   onSave: () => void;
-  /** Cancel/delete button click handler */
+  /** Cancel button click handler (X icon) */
   onCancel: () => void;
+  /** Optional delete button click handler (trash icon) - only shown if provided */
+  onDelete?: () => void;
   /** Optional: render the card without RichList wrapper (for embedding in existing lists) */
   embedded?: boolean;
 }
@@ -50,6 +53,7 @@ export const createAttributeCardItem = ({
   canSave,
   onSave,
   onCancel,
+  onDelete,
 }: Omit<AttributeCardProps, "embedded">): {
   id: string;
   data: ListItemProps;
@@ -62,8 +66,13 @@ export const createAttributeCardItem = ({
     actions: (
       <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
         <Clickable onClick={onCancel} style={{ padding: 4 }}>
-          <Icon name={IconName.Delete} size={Size.Md} />
+          <Close sx={{ fontSize: 20 }} />
         </Clickable>
+        {onDelete && (
+          <Clickable onClick={onDelete} style={{ padding: 4 }}>
+            <Icon name={IconName.Delete} size={Size.Md} />
+          </Clickable>
+        )}
         <Clickable
           onClick={onSave}
           style={{
