@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
-import "vitest/config";
 import relay from "vite-plugin-relay";
+import "vitest/config";
 
 const { DISABLE_COVERAGE } = process.env;
 
