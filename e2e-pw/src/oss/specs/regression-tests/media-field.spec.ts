@@ -150,13 +150,13 @@ test.describe.serial("media field keyboard navigation", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
-    // initial screenshot (field1 - red)
+    // Initial screenshot
     await modal.hideControls();
     const initialScreenshot = await modal.looker.screenshot();
 
-    // (field2 - green)
+    // Go to next media field
     await page.keyboard.press("PageDown");
-    await page.waitForTimeout(500);
+    await modal.waitForSampleLoadDomAttribute();
 
     const afterPageDownScreenshot = await modal.looker.screenshot();
 
@@ -174,15 +174,15 @@ test.describe.serial("media field keyboard navigation", () => {
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
-    // Navigate forward (field2 - green)
+    // Navigate forward
     await page.keyboard.press("PageDown");
-    await page.waitForTimeout(500);
+    await modal.waitForSampleLoadDomAttribute();
 
     const afterPageDownScreenshot = await modal.looker.screenshot();
 
-    // Navigate back (field1 - red)
+    // Navigate back
     await page.keyboard.press("PageUp");
-    await page.waitForTimeout(500);
+    await modal.waitForSampleLoadDomAttribute();
 
     const afterPageUpScreenshot = await modal.looker.screenshot();
 
@@ -204,11 +204,11 @@ test.describe.serial("media field keyboard navigation", () => {
 
     // Cycle through all fields
     await page.keyboard.press("PageDown");
-    await page.waitForTimeout(300);
+    await modal.waitForSampleLoadDomAttribute();
     await page.keyboard.press("PageDown");
-    await page.waitForTimeout(300);
+    await modal.waitForSampleLoadDomAttribute();
     await page.keyboard.press("PageDown");
-    await page.waitForTimeout(500);
+    await modal.waitForSampleLoadDomAttribute();
 
     const afterCycleScreenshot = await modal.looker.screenshot();
 
