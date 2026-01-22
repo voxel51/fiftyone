@@ -197,15 +197,26 @@ const PrimitiveFieldContent = ({
       // Update local state immediately for typing
       setRange(newRange);
 
-      // Sync to config when both values are valid
-      if (onConfigChange && newRange.min !== "" && newRange.max !== "") {
+      // Always sync to config to keep external state in sync
+      if (onConfigChange) {
         const min = parseFloat(newRange.min);
         const max = parseFloat(newRange.max);
-        if (!isNaN(min) && !isNaN(max)) {
+
+        // If both values are valid numbers, set the range; otherwise clear it
+        if (
+          newRange.min !== "" &&
+          newRange.max !== "" &&
+          !isNaN(min) &&
+          !isNaN(max)
+        ) {
           onConfigChange({
             ...config,
             range: [min, max],
           });
+        } else {
+          // Clear range from config when either field is empty or invalid
+          const { range: _, ...configWithoutRange } = config || {};
+          onConfigChange(configWithoutRange);
         }
       }
     },
