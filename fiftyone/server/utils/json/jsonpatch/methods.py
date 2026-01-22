@@ -144,10 +144,7 @@ def add(
 
                     target.insert(idx, value)
         else:
-            try:
-                setattr(target, name, value)
-            except AttributeError as err:
-                raise err
+            setattr(target, name, value)
 
     except Exception as err:
         raise ValueError(

@@ -4,8 +4,8 @@ import {
   fieldTypes,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
-  currentActiveAnnotationField3dAtom,
   current3dAnnotationModeAtom,
+  currentActiveAnnotationField3dAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
@@ -24,7 +24,7 @@ export const FieldSelection = () => {
 
   const schemaFields = useMemo(
     () =>
-      Object.keys(activeSchema ?? {}).filter((field) => {
+      (activeSchema ?? []).filter((field) => {
         const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
         if (isPolylineAnnotateActive) {
           return thisFieldType === "polyline" || thisFieldType === "polylines";
