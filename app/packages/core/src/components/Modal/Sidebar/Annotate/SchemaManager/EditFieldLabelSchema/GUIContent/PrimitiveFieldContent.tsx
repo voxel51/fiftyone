@@ -228,15 +228,22 @@ const PrimitiveFieldContent = ({
       // Update local state immediately for typing
       setStep(value);
 
+      if (!onConfigChange) return;
+
+      // Clear step from config when input is empty
+      if (value === "") {
+        const { step: _, ...configWithoutStep } = config || {};
+        onConfigChange(configWithoutStep);
+        return;
+      }
+
       // Sync to config when valid
-      if (onConfigChange && value !== "") {
-        const stepNum = parseFloat(value);
-        if (!isNaN(stepNum) && stepNum > 0) {
-          onConfigChange({
-            ...config,
-            step: stepNum,
-          });
-        }
+      const stepNum = parseFloat(value);
+      if (!isNaN(stepNum) && stepNum > 0) {
+        onConfigChange({
+          ...config,
+          step: stepNum,
+        });
       }
     },
     [config, onConfigChange]
