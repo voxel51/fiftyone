@@ -3655,8 +3655,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.fields.UUIDField`
             -   ``int``: :class:`fiftyone.core.fields.IntField` or
                 :class:`fiftyone.core.fields.FrameNumberField`
-            -   ``list<bool>``: :class:`fiftyone.core.fields.ListField` of
-                :class:`fiftyone.core.fields.BooleanField`
             -   ``list<int>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.IntField`
             -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
@@ -3683,8 +3681,7 @@ class SampleCollection(object):
             -   ``text``: the default when ``scan_samples`` is ``False`` or
                 distinct finite bounds are not found
 
-        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components
-        are:
+        Supported ``list<float>`` and ``list<int>`` components are:
 
             -   ``checkboxes``
             -   ``dropdown``
