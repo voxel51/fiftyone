@@ -18,6 +18,15 @@ import Position3d from "./Position3d";
 import { currentField, currentOverlay, currentType } from "./state";
 import useExit from "./useExit";
 import useSave from "./useSave";
+import {
+  KnownCommands,
+  KnownContexts,
+  useCreateCommand,
+  useKeyBinding,
+} from "@fiftyone/commands";
+import { useConfirmDelete } from "../Confirmation/useConfirmDelete";
+import useDelete from "./useDelete";
+import { current } from "../Edit/state";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -46,6 +55,29 @@ export default function Edit() {
 
   const clear = useClearModal();
   const exit = useExit();
+
+  const onDelete = useDelete();
+  const { confirmDelete } = useConfirmDelete(onDelete);
+  const label = useAtomValue(current);
+
+  useCreateCommand(
+    KnownContexts.Modal,
+    KnownCommands.ModalDeleteAnnotation,
+    () => {
+      confirmDelete();
+    },
+    () => {
+      return !!label;
+    },
+    "Delete",
+    "Delete label"
+  );
+
+  useKeyBinding(
+    KnownCommands.ModalDeleteAnnotation,
+    "delete",
+    KnownContexts.Modal
+  );
 
   const { confirmExit } = useConfirmExit(() => {
     clear();

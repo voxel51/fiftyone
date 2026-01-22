@@ -14,6 +14,7 @@ import {
   stagedCuboidTransformsAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
 interface CreateCuboidRendererProps {
@@ -292,7 +293,7 @@ export const CreateCuboidRenderer = ({
           Number(previewCuboid.quaternion[3].toFixed(7)),
         ];
 
-        const transformData = {
+        const transformData: CuboidTransformData = {
           location,
           dimensions,
           quaternion,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from "react";
-import { CommandContext, CommandContextManager } from "../context";
+import { CommandContext } from "../context";
 import { Command } from "../types";
+import { resolveContext } from "./utils";
 
 /**
  * Registers a keybinding to a specific command in a context.
@@ -11,10 +12,10 @@ import { Command } from "../types";
 export const useKeyBinding = (
   command: string | Command,
   binding: string,
-  context?: CommandContext
+  context?: CommandContext | string
 ) => {
   const resolvedCtx = useMemo(() => {
-    return context ?? CommandContextManager.instance().getActiveContext();
+    return resolveContext(context);
   }, [context]);
 
   useEffect(() => {
@@ -24,16 +25,16 @@ export const useKeyBinding = (
     }
     let cmd: Command | undefined;
     if (typeof command === "string") {
-      cmd = resolvedCtx.getCommand(command);
+      cmd = resolvedCtx.context.getCommand(command);
     } else {
       cmd = command;
     }
     if (cmd) {
-      resolvedCtx.bindKey(binding, cmd.id);
+      resolvedCtx.context.bindKey(binding, cmd.id);
     }
     return () => {
       if (cmd) {
-        resolvedCtx.unbindKey(binding);
+        resolvedCtx.context.unbindKey(binding);
       }
     };
   }, [resolvedCtx, command, binding]);

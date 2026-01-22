@@ -1,4 +1,8 @@
-import { useRegisterAnnotationCommandHandlers } from "@fiftyone/annotation";
+import {
+  useAutoSave,
+  useRegisterAnnotationCommandHandlers,
+  useRegisterAnnotationEventHandlers,
+} from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -7,7 +11,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { Fragment, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -23,6 +27,7 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -59,7 +64,14 @@ const SpacesContainer = styled.div`
 
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
-  return null;
+  useRegisterAnnotationEventHandlers();
+
+  const { isEnabled: enableAutoSave } = useFeature({
+    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
+  });
+  useAutoSave(enableAutoSave);
+
+  return <Fragment />;
 };
 
 const Modal = () => {
@@ -181,29 +193,29 @@ const Modal = () => {
       sequence: "Escape",
       handler: closeFn,
       label: "Close",
-      description: "Close the window."
+      description: "Close the window.",
     },
     {
       commandId: KnownCommands.ModalFullScreenToggle,
       sequence: "f",
       handler: fullscreenFn,
       label: "Fullscreen",
-      description: "Enter/Exit full screen mode"
+      description: "Enter/Exit full screen mode",
     },
     {
       commandId: KnownCommands.ModalSidebarToggle,
       sequence: "s",
       handler: sidebarFn,
       label: "Sidebar",
-      description: "Show/Hide the sidebar"
+      description: "Show/Hide the sidebar",
     },
     {
       commandId: KnownCommands.ModalSelect,
       sequence: "x",
       handler: selectCallback,
       label: "Select",
-      description: "Select Sample"
-    }
+      description: "Select Sample",
+    },
   ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
 

@@ -1185,12 +1185,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
-    def sensor_extrinsics(self):
+    def static_transforms(self):
         """A dict mapping frame relationships to
-        :class:`fiftyone.core.camera.SensorExtrinsics` instances that define
-        the extrinsic parameters (poses) for sensors in the dataset.
+        :class:`fiftyone.core.camera.StaticTransform` instances that define
+        the transformation parameters (poses) for sensors in the dataset.
 
-        Extrinsics are keyed by ``"source_frame::target_frame"`` (e.g.,
+        Transforms are keyed by ``"source_frame::target_frame"`` (e.g.,
         ``"camera_front::ego"``) or just ``"source_frame"`` which implies
         transformation to the ``"world"`` frame.
 
@@ -1200,15 +1200,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset = fo.Dataset()
 
-            # Set extrinsics for sensors
-            dataset.sensor_extrinsics = {
-                "camera_front::ego": fo.SensorExtrinsics(
+            # Set transforms for sensors
+            dataset.static_transforms = {
+                "camera_front::ego": fo.StaticTransform(
                     translation=[1.5, 0.0, 1.2],
                     quaternion=[0.0, 0.0, 0.0, 1.0],
                     source_frame="camera_front",
                     target_frame="ego",
                 ),
-                "lidar::ego": fo.SensorExtrinsics(
+                "lidar::ego": fo.StaticTransform(
                     translation=[0.0, 0.0, 2.0],
                     quaternion=[0.0, 0.0, 0.0, 1.0],
                     source_frame="lidar",
@@ -1216,26 +1216,26 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ),
             }
 
-            # Edit existing extrinsics
-            dataset.sensor_extrinsics["camera_front::ego"].translation[0] = 1.6
+            # Edit existing transforms
+            dataset.static_transforms["camera_front::ego"].translation[0] = 1.6
             dataset.save()  # must save after edits
         """
-        return self._doc.sensor_extrinsics
+        return self._doc.static_transforms
 
-    @sensor_extrinsics.setter
-    def sensor_extrinsics(self, extrinsics):
-        self._validate_sensor_extrinsics(extrinsics)
-        self._doc.sensor_extrinsics = extrinsics
+    @static_transforms.setter
+    def static_transforms(self, transforms):
+        self._validate_static_transforms(transforms)
+        self._doc.static_transforms = transforms
         self.save()
 
-    def add_extrinsics(self, extrinsics):
-        """Adds sensor extrinsics to the dataset.
+    def add_static_transform(self, transform):
+        """Adds a static transform to the dataset.
 
-        This method provides a convenient way to add extrinsics without
+        This method provides a convenient way to add transforms without
         manually constructing the ``"source_frame::target_frame"`` key.
 
         Args:
-            extrinsics: a :class:`fiftyone.core.camera.SensorExtrinsics`
+            transform: a :class:`fiftyone.core.camera.StaticTransform`
                 instance with ``source_frame`` set (``target_frame`` defaults
                 to "world" if not specified)
 
@@ -1245,9 +1245,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             dataset = fo.Dataset()
 
-            # Add extrinsics for camera to ego transformation
-            dataset.add_extrinsics(
-                fo.SensorExtrinsics(
+            # Add transform for camera to ego transformation
+            dataset.add_static_transform(
+                fo.StaticTransform(
                     translation=[1.5, 0.0, 1.2],
                     quaternion=[0.0, 0.0, 0.0, 1.0],
                     source_frame="camera_front",
@@ -1255,54 +1255,54 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 )
             )
 
-            # Add extrinsics for lidar (target_frame defaults to "world")
-            dataset.add_extrinsics(
-                fo.SensorExtrinsics(
+            # Add transform for lidar (target_frame defaults to "world")
+            dataset.add_static_transform(
+                fo.StaticTransform(
                     translation=[0.0, 0.0, 2.0],
                     quaternion=[0.0, 0.0, 0.0, 1.0],
                     source_frame="lidar",
                 )
             )
 
-            # Verify extrinsics were added
-            print(dataset.sensor_extrinsics.keys())
+            # Verify transforms were added
+            print(dataset.static_transforms.keys())
             # dict_keys(['camera_front::ego', 'lidar::world'])
         """
-        if not isinstance(extrinsics, focam.SensorExtrinsics):
+        if not isinstance(transform, focam.StaticTransform):
             raise TypeError(
-                f"Expected SensorExtrinsics, got {type(extrinsics).__name__}"
+                f"Expected StaticTransform, got {type(transform).__name__}"
             )
 
-        if extrinsics.source_frame is None:
-            raise ValueError("extrinsics.source_frame must be set")
+        if transform.source_frame is None:
+            raise ValueError("transform.source_frame must be set")
 
         # Default target_frame to world if not specified
-        if extrinsics.target_frame is None:
-            extrinsics.target_frame = focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+        if transform.target_frame is None:
+            transform.target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
 
-        key = f"{extrinsics.source_frame}::{extrinsics.target_frame}"
+        key = f"{transform.source_frame}::{transform.target_frame}"
 
-        current = dict(self._doc.sensor_extrinsics or {})
-        current[key] = extrinsics
-        self._validate_sensor_extrinsics({key: extrinsics})
-        self._doc.sensor_extrinsics = current
+        current = dict(self._doc.static_transforms or {})
+        current[key] = transform
+        self._validate_static_transforms({key: transform})
+        self._doc.static_transforms = current
         self.save()
 
-    def _validate_sensor_extrinsics(self, extrinsics):
-        """Validates that extrinsics dict keys match object fields.
+    def _validate_static_transforms(self, transforms):
+        """Validates that transforms dict keys match object fields.
 
         Args:
-            extrinsics: a dict mapping keys to SensorExtrinsics instances
+            transforms: a dict mapping keys to StaticTransform instances
 
         Raises:
             ValueError: if a key doesn't match the object's source_frame and
                 target_frame fields
         """
-        if extrinsics is None:
+        if transforms is None:
             return
 
-        for key, value in extrinsics.items():
-            if not isinstance(value, focam.SensorExtrinsics):
+        for key, value in transforms.items():
+            if not isinstance(value, focam.StaticTransform):
                 continue
 
             # Parse key to get expected frames
@@ -1311,7 +1311,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             expected_target = (
                 parts[1]
                 if len(parts) > 1
-                else focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                else focam.DEFAULT_TRANSFORM_TARGET_FRAME
             )
 
             if value.source_frame is None:
@@ -1328,7 +1328,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
             # Treat target_frame=None as world for comparison
             actual_target = (
-                value.target_frame or focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
             )
             if actual_target != expected_target:
                 raise ValueError(
@@ -1381,25 +1381,25 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return None
 
-    def resolve_extrinsics(
+    def resolve_transformation(
         self, sample, source_frame=None, target_frame=None, chain_via=None
     ):
-        """Resolves sensor extrinsics for the given sample.
+        """Resolves a static transform for the given sample.
 
         Resolution precedence:
 
             1. If sample has a field with a
-               :class:`fiftyone.core.camera.SensorExtrinsics` or
-               :class:`fiftyone.core.camera.SensorExtrinsicsRef` value (or a
+               :class:`fiftyone.core.camera.StaticTransform` or
+               :class:`fiftyone.core.camera.StaticTransformRef` value (or a
                list of them) with matching source/target frames, use it
 
-            2. Look up in ``dataset.sensor_extrinsics`` using the key format
+            2. Look up in ``dataset.static_transforms`` using the key format
                ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
                target is ``"world"``)
 
             3. If sample is from a grouped dataset and ``source_frame`` is None,
                infer source_frame from group slice name and look up in
-               ``dataset.sensor_extrinsics``
+               ``dataset.static_transforms``
 
             4. If ``chain_via`` is provided and no direct match is found,
                chain transforms through the intermediate frames
@@ -1417,23 +1417,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 transforms
 
         Returns:
-            a :class:`fiftyone.core.camera.SensorExtrinsics`, or None if not
+            a :class:`fiftyone.core.camera.StaticTransform`, or None if not
             found
 
         Example::
 
             # Direct lookup
-            transform = dataset.resolve_extrinsics(sample, "camera", "world")
+            transform = dataset.resolve_transformation(sample, "camera", "world")
 
             # Chain through intermediate frame
-            transform = dataset.resolve_extrinsics(
+            transform = dataset.resolve_transformation(
                 sample, "camera", "world", chain_via=["ego"]
             )
         """
-        extrinsics = self.sensor_extrinsics or {}
+        transforms = self.static_transforms or {}
 
         if target_frame is None:
-            target_frame = focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+            target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
 
         # Try to infer source_frame from group slice if not provided
         if source_frame is None:
@@ -1451,73 +1451,73 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         pass
 
         # Try direct resolution first
-        result = self._resolve_extrinsics_direct(
-            sample, source_frame, target_frame, extrinsics
+        result = self._resolve_transformation_direct(
+            sample, source_frame, target_frame, transforms
         )
         if result is not None:
             return result
 
         # If chain_via is provided, try chaining through intermediate frames
         if chain_via is not None and source_frame is not None:
-            return self._resolve_extrinsics_chain(
-                sample, source_frame, target_frame, chain_via, extrinsics
+            return self._resolve_transformation_chain(
+                sample, source_frame, target_frame, chain_via, transforms
             )
 
         return None
 
-    def _resolve_extrinsics_direct(
-        self, sample, source_frame, target_frame, extrinsics
+    def _resolve_transformation_direct(
+        self, sample, source_frame, target_frame, transforms
     ):
-        """Directly resolve extrinsics without chaining."""
-        # Check for sample-level extrinsics by matching type
+        """Directly resolve transform without chaining."""
+        # Check for sample-level transforms by matching type
         for _, value in sample.iter_fields():
             if isinstance(value, list):
                 for item in value:
                     if isinstance(
                         item,
-                        (focam.SensorExtrinsics, focam.SensorExtrinsicsRef),
+                        (focam.StaticTransform, focam.StaticTransformRef),
                     ):
-                        ext = self._resolve_single_extrinsics(
+                        t = self._resolve_single_transformation(
                             item, source_frame, target_frame
                         )
-                        if ext is not None:
-                            return ext
+                        if t is not None:
+                            return t
             elif isinstance(
-                value, (focam.SensorExtrinsics, focam.SensorExtrinsicsRef)
+                value, (focam.StaticTransform, focam.StaticTransformRef)
             ):
-                ext = self._resolve_single_extrinsics(
+                t = self._resolve_single_transformation(
                     value, source_frame, target_frame
                 )
-                if ext is not None:
-                    return ext
+                if t is not None:
+                    return t
 
         if source_frame is None:
             return None
 
-        # Look up in dataset-level extrinsics
+        # Look up in dataset-level transforms
         key = f"{source_frame}::{target_frame}"
-        if key in extrinsics:
-            return extrinsics[key]
+        if key in transforms:
+            return transforms[key]
 
         # Try without target frame (implies world)
         if (
-            target_frame == focam.DEFAULT_EXTRINSICS_TARGET_FRAME
-            and source_frame in extrinsics
+            target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            and source_frame in transforms
         ):
-            return extrinsics[source_frame]
+            return transforms[source_frame]
 
         return None
 
-    def _resolve_extrinsics_chain(
-        self, sample, source_frame, target_frame, chain_via, extrinsics
+    def _resolve_transformation_chain(
+        self, sample, source_frame, target_frame, chain_via, transforms
     ):
-        """Resolve extrinsics by chaining through intermediate frames."""
+        """Resolve transform by chaining through intermediate frames."""
         frames = [source_frame] + list(chain_via) + [target_frame]
 
         result = None
         for src, tgt in zip(frames, frames[1:]):
-            transform = self._resolve_extrinsics_direct(
-                sample, src, tgt, extrinsics
+            transform = self._resolve_transformation_direct(
+                sample, src, tgt, transforms
             )
 
             if transform is None:
@@ -1530,22 +1530,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return result
 
-    def _resolve_single_extrinsics(self, value, source_frame, target_frame):
-        """Helper to resolve a single extrinsics value."""
-        extrinsics = self.sensor_extrinsics or {}
+    def _resolve_single_transformation(
+        self, value, source_frame, target_frame
+    ):
+        """Helper to resolve a single transform value."""
+        transforms = self.static_transforms or {}
 
-        if isinstance(value, focam.SensorExtrinsics):
+        if isinstance(value, focam.StaticTransform):
             val_target = (
-                value.target_frame or focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
             )
             if (
                 value.source_frame == source_frame
                 and val_target == target_frame
             ):
                 return value
-        elif isinstance(value, focam.SensorExtrinsicsRef):
+        elif isinstance(value, focam.StaticTransformRef):
             # Look up the reference
-            ref_value = extrinsics.get(value.ref)
+            ref_value = transforms.get(value.ref)
             if ref_value is not None:
                 # Parse the ref to check frames
                 parts = value.ref.split("::", 1)
@@ -1553,7 +1555,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 ref_target = (
                     parts[1]
                     if len(parts) > 1
-                    else focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                    else focam.DEFAULT_TRANSFORM_TARGET_FRAME
                 )
                 if ref_source == source_frame and ref_target == target_frame:
                     return ref_value
@@ -1565,7 +1567,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Computes a composed transformation between coordinate frames.
 
-        This method chains multiple extrinsics transforms to compute the
+        This method chains multiple static transforms to compute the
         transformation from ``source_frame`` to ``target_frame``, optionally
         through intermediate frames.
 
@@ -1576,7 +1578,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 names to chain through (e.g., ["ego"])
 
         Returns:
-            a :class:`fiftyone.core.camera.SensorExtrinsics` representing the
+            a :class:`fiftyone.core.camera.StaticTransform` representing the
             composed transformation, or None if the chain cannot be resolved
 
         Example::
@@ -1586,7 +1588,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "camera_front", "world", intermediate_frames=["ego"]
             )
         """
-        extrinsics = self.sensor_extrinsics or {}
+        transforms = self.static_transforms or {}
 
         if intermediate_frames is None:
             intermediate_frames = []
@@ -1597,14 +1599,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for src, tgt in zip(frames, frames[1:]):
             # Try direct lookup
             key = f"{src}::{tgt}"
-            transform = extrinsics.get(key)
+            transform = transforms.get(key)
 
             # Try with implied world target
             if (
                 transform is None
-                and tgt == focam.DEFAULT_EXTRINSICS_TARGET_FRAME
+                and tgt == focam.DEFAULT_TRANSFORM_TARGET_FRAME
             ):
-                transform = extrinsics.get(src)
+                transform = transforms.get(src)
 
             if transform is None:
                 return None
@@ -8508,8 +8510,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset._doc.camera_intrinsics = dataset._parse_camera_intrinsics(
             d.get("camera_intrinsics", {})
         )
-        dataset._doc.sensor_extrinsics = dataset._parse_sensor_extrinsics(
-            d.get("sensor_extrinsics", {})
+        dataset._doc.static_transforms = dataset._parse_static_transforms(
+            d.get("static_transforms", {})
         )
 
         dataset.save()
@@ -10356,8 +10358,8 @@ def _merge_dataset_doc(
 
         if doc.camera_intrinsics is not None:
             curr_doc.camera_intrinsics.update(doc.camera_intrinsics)
-        if doc.sensor_extrinsics is not None:
-            curr_doc.sensor_extrinsics.update(doc.sensor_extrinsics)
+        if doc.static_transforms is not None:
+            curr_doc.static_transforms.update(doc.static_transforms)
 
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
@@ -10377,9 +10379,9 @@ def _merge_dataset_doc(
             _update_no_overwrite(
                 curr_doc.camera_intrinsics, doc.camera_intrinsics
             )
-        if doc.sensor_extrinsics is not None:
+        if doc.static_transforms is not None:
             _update_no_overwrite(
-                curr_doc.sensor_extrinsics, doc.sensor_extrinsics
+                curr_doc.static_transforms, doc.static_transforms
             )
 
         if doc.default_classes and not curr_doc.default_classes:
