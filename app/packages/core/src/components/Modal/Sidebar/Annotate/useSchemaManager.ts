@@ -101,7 +101,7 @@ export type SetActiveSchemaRequest = {
 
 export type SetActiveSchemaResponse = EmptyBody;
 
-export type UpdateSchemRequest = {
+export type UpdateSchemaRequest = {
   field: string;
   label_schema: FieldSchema;
 };
@@ -123,7 +123,7 @@ export type ValidateSchemaResponse = {
  */
 export interface SchemaManager {
   /**
-   * Activate a schema or list of schema, making it available for annotation.
+   * Activate one or more schema, making them available for annotation.
    *
    * @param request Activation request
    */
@@ -132,72 +132,142 @@ export interface SchemaManager {
   ) => Promise<ActivateSchemaResponse>;
 
   /**
-   * Create a new schema or set of schema.
-   * @param request
+   * Create one or more new schema.
+   *
+   * @param request Creation request
    */
   createSchema: (request: CreateSchemaRequest) => Promise<CreateSchemaResponse>;
+
+  /**
+   * Deactivate one or more schema, removing them from the annotation view.
+   *
+   * @param request Deactivation request
+   */
   deactivateSchema: (
     request: DeactivateFieldsRequest
   ) => Promise<DeactivateFieldsResponse>;
+
+  /**
+   * Delete one or more schema, removing them from annotation management.
+   *
+   * @param request Deletion request
+   */
   deleteSchema: (request: DeleteSchemaRequest) => Promise<DeleteSchemaResponse>;
+
+  /**
+   * List the available schema.
+   *
+   * @param request List request
+   */
   listSchema: (request: ListSchemaRequest) => Promise<ListSchemaResponse>;
+
+  /**
+   * Set the active schema.
+   *
+   * @param request Set request
+   */
   setActiveSchema: (
     request: SetActiveSchemaRequest
   ) => Promise<SetActiveSchemaResponse>;
-  updateSchema: (request: UpdateSchemRequest) => Promise<UpdateSchemaResponse>;
+
+  /**
+   * Update one or more schema definitions.
+   *
+   * @param request Update request
+   */
+  updateSchema: (request: UpdateSchemaRequest) => Promise<UpdateSchemaResponse>;
+
+  /**
+   * Validate one or more schema.
+   *
+   * @param request Validation request
+   */
   validateSchema: (
     request: ValidateSchemaRequest
   ) => Promise<ValidateSchemaResponse>;
 }
 
+/**
+ * Data type representing an operator's execution response.
+ */
 type OperatorResponse<T> = {
   result: T;
   error?: string;
 };
 
+/**
+ * Type representing a callback method to be invoked when an operator completes
+ * execution.
+ */
 type OperatorCallback<T> = (response: OperatorResponse<T>) => void;
 
+/**
+ * Type representing an operator.
+ *
+ * This type is an incomplete definition and exists for type-safety of
+ * logic in this file.
+ */
+type Operator<T, R> = {
+  execute: (request: T, options: { callback?: OperatorCallback<R> }) => void;
+};
+
+/**
+ * Convert an operator's execution into a `Promise`.
+ *
+ * This method will invoke the provided operator with the using the provided
+ * request object. The returned promise will resolve once execution is complete
+ * and a result is available.
+ *
+ * @param operator Operator to execute
+ * @param request Request body
+ */
+const operatorAsPromise = <T, R>(
+  operator: Operator<T, R>,
+  request: T
+): Promise<R> => {
+  return new Promise((resolve, reject) => {
+    const operatorCallback: OperatorCallback<R> = (
+      response: OperatorResponse<R>
+    ) => {
+      if (response.error) {
+        reject(response.error);
+      } else {
+        resolve(response.result);
+      }
+    };
+
+    operator.execute(request, { callback: operatorCallback });
+  });
+};
+
+/**
+ * Hook which provides a valid {@link SchemaManager} instance.
+ */
 export const useSchemaManager = (): SchemaManager => {
-  const operatorAsPromise = <T, R>(operator, request: T): Promise<R> => {
-    return new Promise((resolve, reject) => {
-      const operatorCallback: OperatorCallback<R> = (
-        response: OperatorResponse<R>
-      ) => {
-        if (response.error) {
-          reject(response.error);
-        } else {
-          resolve(response.result);
-        }
-      };
-
-      operator.execute(request, { callback: operatorCallback });
-    });
-  };
-
   const activateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/activate_label_schemas"
-  );
+  ) as Operator<ActivateSchemaRequest, SetActiveSchemaResponse>;
   const createSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/generate_label_schemas"
-  );
+  ) as Operator<CreateSchemaRequest, CreateSchemaResponse>;
   const deactivateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/deactivate_label_schemas"
-  );
+  ) as Operator<DeactivateFieldsRequest, DeactivateFieldsResponse>;
   const deleteSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/delete_label_schemas"
-  );
+  ) as Operator<DeleteSchemaRequest, DeleteSchemaResponse>;
   const listSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/get_label_schemas"
-  );
+  ) as Operator<ListSchemaRequest, ListSchemaResponse>;
   const setActiveSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/set_active_label_schemas"
-  );
+  ) as Operator<SetActiveSchemaRequest, SetActiveSchemaResponse>;
   const updateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/update_label_schema"
-  );
+  ) as Operator<UpdateSchemaRequest, UpdateSchemaResponse>;
   const validateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/validate_label_schemas"
-  );
+  ) as Operator<ValidateSchemaRequest, ValidateSchemaResponse>;
 
   const activateSchema = useCallback(
     (request: ActivateSchemaRequest): Promise<ActivateSchemaResponse> => {
@@ -242,7 +312,7 @@ export const useSchemaManager = (): SchemaManager => {
   );
 
   const updateSchema = useCallback(
-    (request: UpdateSchemRequest): Promise<UpdateSchemaResponse> => {
+    (request: UpdateSchemaRequest): Promise<UpdateSchemaResponse> => {
       return operatorAsPromise(updateSchemaOperator, request);
     },
     [updateSchemaOperator]

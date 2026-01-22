@@ -6,6 +6,13 @@ type CallbackConfig = {
   greedy?: boolean;
 };
 
+/**
+ * A context manager provides support for stateful transitions into and out-of
+ * some logical context.
+ *
+ * Callbacks can be registered to be executed when entering or exiting the
+ * context.
+ */
 export interface ContextManager {
   /**
    * Enter the context, triggering all registered enter callbacks.
@@ -28,9 +35,10 @@ export interface ContextManager {
 
   /**
    * Register a callback to be invoked on context {@link exit}.
+   *
    * @param config Callback config
    *  - if greedy is true, callback will be given priority and prevent other callbacks from firing
-   *. - if persistent is true, callback will not be removed after being invoked
+   *  - if persistent is true, callback will not be removed after being invoked
    */
   registerExitCallback(config: CallbackConfig): void;
 
@@ -56,6 +64,8 @@ export class DefaultContextManager implements ContextManager {
   }
 
   registerEnterCallback(config: CallbackConfig): void {
+    // configs are handled in list order;
+    // if greedy, prepend to the list to give priority
     if (config.greedy) {
       this.enterCallbacks.unshift(config);
     } else {
@@ -64,6 +74,8 @@ export class DefaultContextManager implements ContextManager {
   }
 
   registerExitCallback(config: CallbackConfig): void {
+    // configs are handled in list order;
+    // if greedy, prepend to the list to give priority
     if (config.greedy) {
       this.exitCallbacks.unshift(config);
     } else {
@@ -119,11 +131,8 @@ export class DefaultContextManager implements ContextManager {
    * @private
    */
   private cull(configs: CallbackConfig[]): void {
-    const configCmp = (a: CallbackConfig, b: CallbackConfig) =>
-      a.callback === b.callback;
-
     for (const config of configs) {
-      const cmpFn = (cfg: CallbackConfig) => configCmp(cfg, config);
+      const cmpFn = (cfg: CallbackConfig) => cfg === config;
 
       let index = this.enterCallbacks.findIndex(cmpFn);
       if (index >= 0) {
