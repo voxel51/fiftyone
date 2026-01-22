@@ -17,6 +17,7 @@ interface ComponentTypeButtonProps {
   label: string;
   isSelected: boolean;
   onClick: () => void;
+  largeText?: boolean;
 }
 
 const ComponentTypeButton = ({
@@ -24,35 +25,41 @@ const ComponentTypeButton = ({
   label,
   isSelected,
   onClick,
+  largeText = false,
 }: ComponentTypeButtonProps) => {
   const theme = useTheme();
 
   return (
-    <Clickable onClick={onClick}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          padding: "8px 12px",
-          borderRadius: 6,
-          border: isSelected
-            ? `1px solid ${theme.voxel[500]}`
-            : `1px solid ${theme.primary.plainBorder}`,
-          backgroundColor: isSelected ? `${theme.voxel[500]}1A` : "transparent",
-          cursor: "pointer",
-          flex: 1,
-        }}
-      >
-        <Icon
-          name={icon}
-          size={Size.Md}
-          color={isSelected ? theme.voxel[500] : undefined}
-        />
-        <Text variant={TextVariant.Md}>{label}</Text>
-      </div>
-    </Clickable>
+    <div style={{ flex: 1 }}>
+      <Clickable onClick={onClick}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            padding: "8px 12px",
+            borderRadius: 6,
+            border: isSelected
+              ? `1px solid ${theme.voxel[500]}`
+              : `1px solid ${theme.primary.softBorder}`,
+            backgroundColor: isSelected
+              ? `${theme.voxel[500]}1A`
+              : "transparent",
+            cursor: "pointer",
+          }}
+        >
+          <Icon
+            name={icon}
+            size={Size.Md}
+            color={isSelected ? theme.voxel[500] : undefined}
+          />
+          <Text variant={largeText ? TextVariant.Lg : TextVariant.Md}>
+            {label}
+          </Text>
+        </div>
+      </Clickable>
+    </div>
   );
 };
 
