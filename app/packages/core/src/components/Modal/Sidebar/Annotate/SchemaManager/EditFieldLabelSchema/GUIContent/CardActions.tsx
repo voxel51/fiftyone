@@ -45,7 +45,6 @@ const CardActions = ({
         padding: 4,
         opacity: canSave ? 1 : 0.5,
         cursor: canSave ? "pointer" : "not-allowed",
-        pointerEvents: canSave ? "auto" : "none",
       }}
     >
       <Icon name={IconName.Check} size={Size.Md} />
