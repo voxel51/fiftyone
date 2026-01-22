@@ -67,11 +67,11 @@ export type CreateSchemaResponse = {
   label_schema: AnnotationSchema;
 };
 
-export type DeactivateFieldsRequest = {
+export type DeactivateSchemaRequest = {
   fields?: string[];
 };
 
-export type DeactivateFieldsResponse = EmptyBody;
+export type DeactivateSchemaResponse = EmptyBody;
 
 export type DeleteSchemaRequest = {
   fields?: string[];
@@ -144,8 +144,8 @@ export interface SchemaManager {
    * @param request Deactivation request
    */
   deactivateSchema: (
-    request: DeactivateFieldsRequest
-  ) => Promise<DeactivateFieldsResponse>;
+    request: DeactivateSchemaRequest
+  ) => Promise<DeactivateSchemaResponse>;
 
   /**
    * Delete one or more schema, removing them from annotation management.
@@ -214,8 +214,8 @@ type Operator<T, R> = {
 /**
  * Convert an operator's execution into a `Promise`.
  *
- * This method will invoke the provided operator with the using the provided
- * request object. The returned promise will resolve once execution is complete
+ * This method will invoke the provided operator using the provided request
+ * object. The returned promise will resolve once execution is complete
  * and a result is available.
  *
  * @param operator Operator to execute
@@ -246,13 +246,13 @@ const operatorAsPromise = <T, R>(
 export const useSchemaManager = (): SchemaManager => {
   const activateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/activate_label_schemas"
-  ) as Operator<ActivateSchemaRequest, SetActiveSchemaResponse>;
+  ) as Operator<ActivateSchemaRequest, ActivateSchemaResponse>;
   const createSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/generate_label_schemas"
   ) as Operator<CreateSchemaRequest, CreateSchemaResponse>;
   const deactivateSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/deactivate_label_schemas"
-  ) as Operator<DeactivateFieldsRequest, DeactivateFieldsResponse>;
+  ) as Operator<DeactivateSchemaRequest, DeactivateSchemaResponse>;
   const deleteSchemaOperator = useOperatorExecutor(
     "@voxel51/operators/delete_label_schemas"
   ) as Operator<DeleteSchemaRequest, DeleteSchemaResponse>;
@@ -284,7 +284,7 @@ export const useSchemaManager = (): SchemaManager => {
   );
 
   const deactivateSchema = useCallback(
-    (request: DeactivateFieldsRequest): Promise<DeactivateFieldsResponse> => {
+    (request: DeactivateSchemaRequest): Promise<DeactivateSchemaResponse> => {
       return operatorAsPromise(deactivateSchemaOperator, request);
     },
     [deactivateSchemaOperator]
