@@ -223,10 +223,13 @@ def _validate_float_int_field_label_schema(
     settings = foac.FLOAT_INT_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     _range = label_schema.get(foac.RANGE, None)
+    _step = label_schema.get(foac.STEP, None)
     values = label_schema.get(foac.VALUES, None)
     if component == foac.SLIDER:
         _validate_range_setting(field_name, _range, _type)
-        settings = settings.union({foac.RANGE})
+        if _step is not None:
+            _validate_step_setting(field_name, _step)
+        settings = settings.union(foac.SLIDER_SETTINGS)
     elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, _type)
         settings = settings.union({foac.VALUES})
@@ -587,6 +590,15 @@ def _validate_range_setting(field_name, value, _type):
 
     raise ValueError(
         f"invalid 'range' setting '{value}' for field '{field_name}'"
+    )
+
+
+def _validate_step_setting(field_name, value):
+    if isinstance(value, (int, float)) and value > 0:
+        return
+
+    raise ValueError(
+        f"invalid 'step' setting '{value}' for field '{field_name}'"
     )
 
 
