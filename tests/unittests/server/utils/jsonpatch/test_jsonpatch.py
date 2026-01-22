@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 
+from fiftyone.server.utils.json.jsonpatch.exceptions import RootDeleteError
 from fiftyone.server.utils.json import jsonpatch
 
 
@@ -244,7 +245,7 @@ class TestApplyRootDeleteError:
         target = {"label": "cat"}
         operations = [{"op": "remove", "path": "/"}]
 
-        with pytest.raises(jsonpatch.RootDeleteError):
+        with pytest.raises(RootDeleteError):
             jsonpatch.apply(target, operations)
 
     def test_apply_does_not_raise_for_non_root_delete(self):

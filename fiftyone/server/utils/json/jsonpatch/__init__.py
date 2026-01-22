@@ -8,7 +8,7 @@ Apply JSON patch to python objects.
 
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
-
+from fiftyone.server.utils.json.jsonpatch.exceptions import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
     add,
     copy,
@@ -28,19 +28,6 @@ from fiftyone.server.utils.json.jsonpatch.patch import (
     Replace,
     Test,
 )
-
-
-class RootDeleteError(Exception):
-    """Raised when a root delete operation is detected.
-
-    A root delete is a single remove operation with path "/" that indicates
-    the entire target object should be deleted. This cannot be applied via
-    normal JSON patch operations since the target cannot remove itself.
-    The caller must handle deletion at the parent level.
-    """
-
-    pass
-
 
 __PATCH_MAP = {
     Operation.ADD: Add,
@@ -131,7 +118,7 @@ def apply(
             "Root delete detected. Delete must be handled at parent level."
         )
 
-    parsed = parse(patches, transform_fn=transform_fn)
+    parsed = parse(patches_list, transform_fn=transform_fn)
     if not isinstance(parsed, list):
         parsed = [parsed]
 
@@ -170,7 +157,3 @@ def is_root_delete(patches: Union[List[Dict[str, Any]], List[Patch]]) -> bool:
 
     # Handle raw dictionaries
     return patch.get("op") == "remove" and patch.get("path") == "/"
-
-
-# Backwards compatibility alias
-is_full_delete = is_root_delete

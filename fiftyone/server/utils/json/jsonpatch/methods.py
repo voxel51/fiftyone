@@ -224,13 +224,6 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     if not pointer.parts:
         raise RootDeleteError("Cannot remove the root document")
 
-    # Root path "/" has parts=[''], clear instead of raising
-    # This allows root delete to work as part of multi-operation patches
-    if pointer.path == "/":
-        if hasattr(src, "clear"):
-            src.clear()
-        return src
-
     target = get(src, jsonpointer.JsonPointer.from_parts(pointer.parts[:-1]))
     name = pointer.parts[-1]
 
