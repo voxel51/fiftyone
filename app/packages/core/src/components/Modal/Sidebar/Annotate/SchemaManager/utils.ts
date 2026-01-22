@@ -305,6 +305,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
 export interface AttributeFormErrors {
   values: string | null;
   range: string | null;
+  step: string | null;
   default: string | null;
 }
 
@@ -318,6 +319,7 @@ export const getAttributeFormErrors = (
   const errors: AttributeFormErrors = {
     values: null,
     range: null,
+    step: null,
     default: null,
   };
 
@@ -341,6 +343,21 @@ export const getAttributeFormErrors = (
         errors.range = "Min and max must be valid numbers";
       } else if (min >= max) {
         errors.range = "Min must be less than max";
+      }
+    }
+  }
+
+  // Step validation (for slider, optional but must be valid if provided)
+  if (needsRange && data.step && !errors.range) {
+    const stepNum = parseFloat(data.step);
+    if (isNaN(stepNum) || stepNum <= 0) {
+      errors.step = "Step must be a positive number";
+    } else if (data.range) {
+      const min = parseFloat(data.range.min);
+      const max = parseFloat(data.range.max);
+      const rangeSize = max - min;
+      if (stepNum >= rangeSize) {
+        errors.step = "Step must be smaller than the range";
       }
     }
   }
@@ -372,4 +389,4 @@ export const getAttributeFormErrors = (
  * Check if form has any validation errors
  */
 export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
-  !!(errors.values || errors.range || errors.default);
+  !!(errors.values || errors.range || errors.step || errors.default);
