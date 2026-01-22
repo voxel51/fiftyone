@@ -14,6 +14,8 @@ from fiftyone.core.annotation.validate_label_schemas import (
     ValidationErrors,
     validate_label_schemas,
 )
+import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.operators as foo
 
 logger = logging.getLogger(__name__)
@@ -178,9 +180,6 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
         ValueError: if attr_name is not a string, attr_type is invalid,
             or required values are missing/malformed
     """
-    import fiftyone.core.fields as fof
-    import fiftyone.core.labels as fol
-
     # Validate new_attributes is a dict
     if not isinstance(new_attributes, dict):
         raise TypeError(
@@ -188,22 +187,7 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
         )
 
     # Map label schema types to field types
-    type_to_ftype = {
-        "str": fof.StringField,
-        "int": fof.IntField,
-        "float": fof.FloatField,
-        "bool": fof.BooleanField,
-        "date": fof.DateField,
-        "datetime": fof.DateTimeField,
-        "dict": fof.DictField,
-    }
-
-    list_types = {
-        "list<str>": fof.StringField,
-        "list<int>": fof.IntField,
-        "list<float>": fof.FloatField,
-        "list<bool>": fof.BooleanField,
-    }
+    type_to_ftype = foac.TYPES_TO_FIELD_TYPE
 
     # Components that require values
     values_components = {"radio", "dropdown", "checkboxes"}
@@ -229,14 +213,15 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
             )
 
         # Validate type is known
-        if attr_type not in type_to_ftype and attr_type not in list_types:
+        if attr_type not in type_to_ftype:
             raise ValueError(
                 f"Unknown attribute type '{attr_type}' for attribute '{attr_name}'"
             )
 
         # Validate values for components that require them
         component = attr_schema.get("component")
-        if component in values_components or attr_type in list_types:
+        is_list_type = attr_type.startswith("list<")
+        if component in values_components or is_list_type:
             values = attr_schema.get("values")
             if values is not None:
                 if not isinstance(values, list):
@@ -245,7 +230,7 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
                         f"got {type(values).__name__}"
                     )
                 # For list types, validate element types
-                if attr_type in list_types:
+                if is_list_type:
                     expected_elem = attr_type.split("<")[1].rstrip(">")
                     type_map = {
                         "str": str,
@@ -293,9 +278,9 @@ def _add_new_attributes(dataset, field, new_attributes) -> None:
             continue
 
         # Determine field type and add to dataset
-        if attr_type in list_types:
+        if attr_type.startswith("list<"):
             ftype = fof.ListField
-            subfield = list_types[attr_type]()
+            subfield = type_to_ftype[attr_type]()
             dataset.add_sample_field(attr_path, ftype, subfield=subfield)
         else:
             ftype = type_to_ftype[attr_type]
