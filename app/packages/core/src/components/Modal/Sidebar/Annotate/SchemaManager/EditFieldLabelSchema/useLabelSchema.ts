@@ -10,6 +10,25 @@ import { currentField, labelSchemaData } from "../../state";
 import { currentLabelSchema } from "../state";
 
 // =============================================================================
+// Types & Helpers
+// =============================================================================
+
+/** Shape of a label schema with optional attributes */
+interface LabelSchema {
+  attributes?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** Safely extract attributes from a schema value */
+const getAttributes = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object" && "attributes" in value) {
+    const attrs = (value as LabelSchema).attributes;
+    return attrs && typeof attrs === "object" ? attrs : {};
+  }
+  return {};
+};
+
+// =============================================================================
 // Internal Hooks
 // =============================================================================
 
@@ -104,14 +123,9 @@ const useSave = (field: string) => {
       setIsSaving(true);
 
       // Identify new attributes (ones that don't exist in saved or default schema)
-      const currentAttrs =
-        (current as { attributes?: Record<string, unknown> })?.attributes || {};
-      const savedAttrs =
-        (savedLabelSchema as { attributes?: Record<string, unknown> })
-          ?.attributes || {};
-      const defaultAttrs =
-        (defaultLabelSchema as { attributes?: Record<string, unknown> })
-          ?.attributes || {};
+      const currentAttrs = getAttributes(current);
+      const savedAttrs = getAttributes(savedLabelSchema);
+      const defaultAttrs = getAttributes(defaultLabelSchema);
 
       const newAttributes: Record<string, unknown> = {};
       for (const [name, config] of Object.entries(currentAttrs)) {
@@ -127,9 +141,18 @@ const useSave = (field: string) => {
       }
 
       update.execute(params, {
-        callback: () => {
-          setSaved(current);
+        callback: (result) => {
+          // Always reset saving state
           setIsSaving(false);
+
+          // Check for errors in the result
+          if (result.error) {
+            console.error("Failed to save label schema:", result.error);
+            return;
+          }
+
+          // Only update state on success
+          setSaved(current);
           setCurrentField(null);
         },
       });

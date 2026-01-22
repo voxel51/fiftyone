@@ -364,18 +364,29 @@ export const getAttributeFormErrors = (
 
   // Default validation (only if there's a default value)
   if (data.default) {
-    // Check against range
-    if (needsRange && data.range && !errors.range) {
+    const defaultNum = parseFloat(data.default);
+
+    // For numeric types, validate that default is a valid number
+    if (isNumeric && isNaN(defaultNum)) {
+      errors.default = "Default must be a valid number";
+    }
+
+    // Check against range (only if default is a valid number)
+    if (!errors.default && needsRange && data.range && !errors.range) {
       const min = parseFloat(data.range.min);
       const max = parseFloat(data.range.max);
-      const defaultNum = parseFloat(data.default);
-      if (!isNaN(defaultNum) && (defaultNum < min || defaultNum > max)) {
+      if (defaultNum < min || defaultNum > max) {
         errors.default = `Default must be between ${data.range.min} and ${data.range.max}`;
       }
     }
 
     // Check against values
-    if (needsValues && data.values.length > 0 && !errors.values) {
+    if (
+      !errors.default &&
+      needsValues &&
+      data.values.length > 0 &&
+      !errors.values
+    ) {
       if (!data.values.includes(data.default)) {
         errors.default = "Default must be one of the provided values";
       }

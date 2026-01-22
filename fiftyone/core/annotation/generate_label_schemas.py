@@ -317,7 +317,10 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     if isinstance(field, fof.BooleanField):
         fn = _handle_bool
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        fn = _handle_float_or_int
+        is_int = isinstance(field, fof.IntField)
+        fn = lambda c, f, il, s, ss: _handle_float_or_int(
+            c, f, il, s, ss, is_int
+        )
     elif isinstance(field, fof.StringField):
         fn = _handle_str
 
@@ -392,7 +395,7 @@ def _handle_bool(collection, field_name, is_list, settings, scan_samples):
 
 
 def _handle_float_or_int(
-    collection, field_name, is_list, settings, scan_samples
+    collection, field_name, is_list, settings, scan_samples, is_int=False
 ):
     settings[foac.COMPONENT] = foac.TEXT
     if is_list or not scan_samples:
@@ -402,7 +405,7 @@ def _handle_float_or_int(
     if mn != mx:
         settings[foac.COMPONENT] = foac.SLIDER
         settings[foac.RANGE] = [mn, mx]
-        settings[foac.STEP] = foac.DEFAULT_STEP
+        settings[foac.STEP] = 1 if is_int else foac.DEFAULT_STEP
 
     return settings
 
