@@ -1,47 +1,77 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CommandContext } from "../context";
-import { CommandFunction } from "../types";
+import { useCommandContext } from "./useCommandContext";
+import { CommandHookReturn } from ".";
 
+export type CommandDescriptor = {
+  id: string;
+  label: string;
+  description: string;
+};
 /**
- * Hook to create and register a command in a given context.
- * The command is unregistered on unmount.
- * @param context An acquired context @see useCommandContext
- * @param id The id of the command
- * @param execFn The function to call when the command is executed
- * @param enablement A function to determine if the command is enabled
- * @param label The short name of the command, ie Edit, Save, etc
- * @param description A longer description fit for a tooltip
- * @returns A function to invoke the command
+ * Gets a previously registered command @see useCreateCommand.
+ * @param commandId A command id
+ * @param context The context the command is bound to.  If not
+ * provided the active context is checked.
+ * @returns A callback to invoke the command and the command object,
+ * a descriptor object, and a boolean indicating if the command is enabled.
  */
 export const useCommand = (
-  context: CommandContext,
-  id: string,
-  execFn: CommandFunction,
-  enablement: () => boolean,
-  label?: string,
-  description?: string
-) => {
-  const exec = useRef(execFn);
-  const enable = useRef(enablement);
-  useEffect(() => {
-    exec.current = execFn;
-    enable.current = enablement;
-  }, [execFn, enablement]);
-
-  useEffect(() => {
-    const cmd = context.registerCommand(
-      id,
-      () => exec.current(),
-      () => enable.current(),
-      label,
-      description
-    );
-    return () => {
-      context.unregisterCommand(cmd.id);
+  commandId: string,
+  context?: string | CommandContext
+): CommandHookReturn => {
+  const boundContext = useCommandContext(context);
+  const [state, setState] = useState<{
+    descriptor: CommandDescriptor;
+    enabled: boolean;
+  }>(() => {
+    const command = boundContext.context.getCommand(commandId);
+    return {
+      descriptor: {
+        id: commandId,
+        label: command?.label ?? "",
+        description: command?.description ?? "",
+      },
+      enabled: command?.isEnabled() ?? false,
     };
-  }, [context, id, exec, enable, label, description]);
+  });
 
-  return useCallback(async () => {
-    return await context.executeCommand(id);
-  }, [id, context]);
+  useEffect(() => {
+    let unsubCommand: (() => void) | undefined;
+    const update = () => {
+      const command = boundContext.context.getCommand(commandId);
+      setState({
+        descriptor: {
+          id: commandId,
+          label: command?.label ?? "",
+          description: command?.description ?? "",
+        },
+        enabled: command?.isEnabled() ?? false,
+      });
+
+      if (unsubCommand) {
+        unsubCommand();
+        unsubCommand = undefined;
+      }
+
+      unsubCommand = command?.subscribe(update);
+    };
+
+    update();
+    const unsubRegistry = boundContext.context.subscribeCommands(update);
+    return () => {
+      unsubRegistry();
+      unsubCommand?.();
+    };
+  }, [commandId, boundContext.context]);
+
+  const execute = useCallback(() => {
+    boundContext.context.executeCommand(commandId);
+  }, [commandId, boundContext.context]);
+
+  return {
+    callback: execute,
+    descriptor: state.descriptor,
+    enabled: state.enabled,
+  };
 };

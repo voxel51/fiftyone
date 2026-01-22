@@ -14,10 +14,6 @@ import { createDebouncedNavigator } from "./debouncedNavigator";
 import {
   KnownCommands,
   KnownContexts,
-  KnownContexts,
-  useCommand,
-  useCommandContext,
-  useKeyBinding,
   useKeyBindings,
 } from "@fiftyone/commands";
 
@@ -143,20 +139,22 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   );
 
   const keyBindings = useMemo(() => {
-    return [{
-      commandId: KnownCommands.ModalPreviousSample,
-      sequence: "ArrowLeft",
-      handler: previous,
-      label: "Previous",
-      description: "Previous Sample"
-    },
-    {
-      commandId: KnownCommands.ModalNextSample,
-      sequence: "ArrowRight",
-      handler: next,
-      label: "Next",
-      description: "Next Sample"
-    }]
+    return [
+      {
+        commandId: KnownCommands.ModalPreviousSample,
+        sequence: "ArrowLeft",
+        handler: previous,
+        label: "Previous",
+        description: "Previous Sample",
+      },
+      {
+        commandId: KnownCommands.ModalNextSample,
+        sequence: "ArrowRight",
+        handler: next,
+        label: "Next",
+        description: "Next Sample",
+      },
+    ];
   }, [previous, next]);
 
   useKeyBindings(KnownContexts.Modal, keyBindings);

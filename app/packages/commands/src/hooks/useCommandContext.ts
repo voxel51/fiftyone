@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { CommandContext, CommandContextManager } from "../context";
+import { resolveContext } from "./utils";
 
 /**
  * Hook to create or bind to an existing context.  Used with useCommand, useKeyBinding to
@@ -20,43 +21,25 @@ export const useCommandContext = (
   activate: () => void;
   deactivate: () => void;
 } => {
-  const existed = useRef(false);
   const boundContext = useMemo(() => {
-    if (typeof context === "string") {
-      const existing =
-        CommandContextManager.instance().getCommandContext(context);
-      if (existing) {
-        existed.current = true;
-        return existing;
-      }
-      return CommandContextManager.instance().createCommandContext(
-        context,
-        inheritCurrent ?? true
-      );
-    }
-    if (context) {
-      existed.current = true;
-      return context;
-    }
-    existed.current = true;
-    return CommandContextManager.instance().getActiveContext();
+    return resolveContext(context, inheritCurrent);
   }, [context, inheritCurrent]);
 
   useEffect(() => {
     return () => {
-      if (!existed.current) {
-        CommandContextManager.instance().deleteContext(boundContext.id);
+      if (!boundContext.existed) {
+        CommandContextManager.instance().deleteContext(boundContext.context.id);
       }
     };
   }, [boundContext]);
 
   const activate = useCallback(() => {
-    CommandContextManager.instance().pushContext(boundContext);
-  }, [boundContext]);
+    CommandContextManager.instance().pushContext(boundContext.context);
+  }, [boundContext.context]);
 
   const deactivate = useCallback(() => {
-    CommandContextManager.instance().popContext(boundContext.id);
-  }, [boundContext]);
+    CommandContextManager.instance().popContext(boundContext.context.id);
+  }, [boundContext.context.id]);
 
-  return { context: boundContext, activate, deactivate };
+  return { context: boundContext.context, activate, deactivate };
 };

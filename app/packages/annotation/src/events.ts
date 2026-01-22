@@ -16,6 +16,18 @@ type MutationSuccess<T> = {
 
 export type AnnotationEventGroup = {
   /**
+   * Notification event emitted when aggregate annotation persistence is requested.
+   */
+  "annotation:persistenceRequested": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is successful.
+   */
+  "annotation:persistenceSuccess": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is unsuccessful.
+   */
+  "annotation:persistenceError": { error?: Error };
+  /**
    * Notification event emitted when a label is upserted successfully.
    */
   "annotation:upsertSuccess": MutationSuccess<"upsert">;
