@@ -25,7 +25,11 @@ import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { useAnnotationContextManager } from "./Sidebar/Annotate/useAnnotationContextManager";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;

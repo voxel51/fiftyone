@@ -10,8 +10,6 @@ import {
   State,
 } from "../recoil";
 import { Schema } from "@fiftyone/utilities";
-import { modalMode } from "../jotai";
-import { useAtomValue } from "jotai";
 
 /**
  * Hook which provides the modal's current active paths,
@@ -80,8 +78,3 @@ export const useModalSample = (): ModalSample | undefined => {
  */
 export const useModalSampleSchema = (): Schema =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
-
-/**
- * Get the current modal mode.
- */
-export const useModalMode = () => useAtomValue(modalMode);
