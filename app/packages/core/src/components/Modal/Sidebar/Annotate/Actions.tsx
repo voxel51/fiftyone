@@ -230,16 +230,19 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
-          if (!hasPolylineFieldsInSchema) {
-            // When no polyline-compatible fields exist in the schema, we set `editing`
-            // to the string "Polyline" (a LabelType).
-            setEditing("Polyline");
+          if (isPolylineAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
             return;
           }
 
-          setCurrent3dAnnotationMode(
-            isPolylineAnnotateActive ? null : "polyline"
-          );
+          if (!hasPolylineFieldsInSchema) {
+            // When no polyline-compatible fields exist in the schema, we set `editing`
+            // to the string "Polyline" (a LabelType).
+            setEditing(POLYLINE);
+            return;
+          }
+
+          setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
         }}
       >
         <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
@@ -278,15 +281,19 @@ export const ThreeDCuboids = () => {
       <Square
         $active={isCuboidAnnotateActive}
         onClick={() => {
+          if (isCuboidAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
+            return;
+          }
+
           if (!hasCuboidFieldsInSchema) {
             // When no cuboid-compatible fields exist in the schema, we set `editing`
             // to the string "Detection" (a LabelType).
-            setEditing("Detection");
+            setEditing(DETECTION);
             return;
           }
-          setCurrent3dAnnotationMode(
-            isCuboidAnnotateActive ? null : ANNOTATION_CUBOID
-          );
+
+          setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
         }}
       >
         <CuboidIcon />
