@@ -1812,10 +1812,7 @@ def recommend_num_workers(num_workers=None):
         # https://stackoverflow.com/q/20222534
         return 0
 
-    try:
-        default = fou.get_cpu_count() // 2
-    except Exception:
-        default = 4
+    default = fou.get_cpu_count() // 2
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default

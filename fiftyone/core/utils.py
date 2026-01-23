@@ -2874,26 +2874,20 @@ def _recommend_num_workers(
     num_workers, default_num_workers, config_default, max_workers
 ):
     """Helper for recommending number of workers."""
-    try:
-        if num_workers is None:
-            # Order:
-            # 1. Configured default
-            # 2. Passed-in default
-            # 3. System CPU count
-            num_workers = (
-                config_default
-                if config_default is not None
-                else (
-                    default_num_workers
-                    if default_num_workers is not None
-                    else get_cpu_count()
-                )
+    if num_workers is None:
+        # Order:
+        # 1. Configured default
+        # 2. Passed-in default
+        # 3. System CPU count
+        num_workers = (
+            config_default
+            if config_default is not None
+            else (
+                default_num_workers
+                if default_num_workers is not None
+                else get_cpu_count()
             )
-    except Exception:
-        logger.debug(
-            "recommend_pool_workers: falling back to 4", exc_info=True
         )
-        num_workers = 4
 
     num_workers = int(num_workers)
     if max_workers is not None:
@@ -3110,6 +3104,9 @@ def get_cpu_count():
         return multiprocessing.cpu_count()
 
     except Exception:
+        logger.debug(
+            "Unable to determine CPU count, defaulting to 1", exc_info=True
+        )
         return 1
 
 
