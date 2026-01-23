@@ -3,6 +3,12 @@ import {
   current3dAnnotationModeAtom,
   currentActiveAnnotationField3dAtom,
 } from "@fiftyone/looker-3d/src/state";
+import {
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import { useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { use3dAnnotationFields } from "../use3dAnnotationFields";
@@ -19,16 +25,23 @@ export const FieldSelection = () => {
   const predicate = useCallback(
     (fieldType: string) => {
       if (isPolylineAnnotateActive) {
-        return fieldType === "polyline" || fieldType === "polylines";
+        return (
+          fieldType === POLYLINE.toLocaleLowerCase() ||
+          fieldType === POLYLINES.toLocaleLowerCase()
+        );
       }
       if (isCuboidAnnotateActive) {
-        return fieldType === "detection" || fieldType === "detections";
+        return (
+          fieldType === DETECTION.toLocaleLowerCase() ||
+          fieldType === DETECTIONS.toLocaleLowerCase()
+        );
       }
+
       return (
-        fieldType === "detection" ||
-        fieldType === "detections" ||
-        fieldType === "polyline" ||
-        fieldType === "polylines"
+        fieldType === DETECTION.toLocaleLowerCase() ||
+        fieldType === DETECTIONS.toLocaleLowerCase() ||
+        fieldType === POLYLINE.toLocaleLowerCase() ||
+        fieldType === POLYLINES.toLocaleLowerCase()
       );
     },
     [isPolylineAnnotateActive, isCuboidAnnotateActive]

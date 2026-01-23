@@ -196,9 +196,7 @@ export const ThreeDPolylines = () => {
   );
 
   const polylineFields = use3dAnnotationFields(
-    (fieldType) =>
-      fieldType.toLocaleLowerCase() === DETECTION.toLocaleLowerCase() ||
-      fieldType.toLocaleLowerCase() === DETECTIONS.toLocaleLowerCase()
+    (fieldType) => fieldType === DETECTIONS.toLocaleLowerCase()
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
@@ -240,8 +238,8 @@ export const ThreeDCuboids = () => {
 
   const cuboidFields = use3dAnnotationFields(
     (fieldType) =>
-      fieldType.toLocaleLowerCase() === DETECTION.toLocaleLowerCase() ||
-      fieldType.toLocaleLowerCase() === DETECTIONS.toLocaleLowerCase()
+      fieldType === DETECTION.toLocaleLowerCase() ||
+      fieldType === DETECTIONS.toLocaleLowerCase()
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
