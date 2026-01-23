@@ -215,6 +215,8 @@ export const ThreeDPolylines = () => {
         $active={isPolylineAnnotateActive}
         onClick={() => {
           if (!hasPolylineFieldsInSchema) {
+            // When no polyline-compatible fields exist in the schema, we set `editing`
+            // to the string "Polyline" (a LabelType).
             setEditing("Polyline");
             return;
           }
@@ -258,6 +260,8 @@ export const ThreeDCuboids = () => {
         $active={isCuboidAnnotateActive}
         onClick={() => {
           if (!hasCuboidFieldsInSchema) {
+            // When no cuboid-compatible fields exist in the schema, we set `editing`
+            // to the string "Detection" (a LabelType).
             setEditing("Detection");
             return;
           }
