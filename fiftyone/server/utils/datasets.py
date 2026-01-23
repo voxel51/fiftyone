@@ -6,7 +6,7 @@ Dataset and sample helper utilities for FiftyOne server routes.
 |
 """
 
-from typing import Any, Dict, List
+from typing import Any
 import logging
 from starlette.exceptions import HTTPException
 
@@ -79,7 +79,7 @@ def sync_to_generated_dataset(
     generated_sample_id: str,
     field_path: str,
     label_id: str,
-    patch_operations: List[Dict[str, Any]],
+    patch_operations: list[dict[str, Any]],
     *,
     delete: bool = False,
 ) -> fo.Sample:
