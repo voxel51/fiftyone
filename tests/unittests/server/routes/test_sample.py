@@ -14,8 +14,8 @@ import json
 from bson import ObjectId, json_util
 import pytest
 from starlette.exceptions import HTTPException
+from starlette.requests import Request
 from starlette.responses import Response
-
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -792,14 +792,24 @@ class TestHandleJsonPatch:
 
 
 class TestSampleFieldRoute:
-    """Tests for sample field routes"""
+    """Tests for sample field routes including delete operations and
+    generated dataset syncing (PatchesView and EvaluationPatchesView).
+    """
 
+    # IDs for basic tests
     DETECTION_ID_1 = ObjectId()
     DETECTION_ID_2 = ObjectId()
 
+    # IDs for patches view tests
+    PATCHES_DETECTION_ID = ObjectId()
+
+    # IDs for evaluation patches view tests
+    GT_DETECTION_ID = ObjectId()
+    PRED_DETECTION_ID = ObjectId()
+
     @pytest.fixture(name="sample")
     def fixture_sample(self, dataset):
-        """Creates a persistent dataset for testing."""
+        """Creates a sample with two detections for basic tests."""
         sample = fo.Sample(filepath="/tmp/test_sample_field.jpg")
 
         sample["ground_truth"] = fol.Detections(
@@ -828,20 +838,123 @@ class TestSampleFieldRoute:
 
         return sample
 
+    @pytest.fixture(name="sample_with_patches")
+    def fixture_sample_with_patches(self, dataset):
+        """Creates a sample for patches view tests."""
+        sample = fo.Sample(filepath="/tmp/test_patches.jpg")
+
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.PATCHES_DETECTION_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.2, 0.2],
+                    confidence=0.9,
+                ),
+            ]
+        )
+
+        dataset.add_sample(sample)
+        sample.reload()
+
+        return sample
+
+    @pytest.fixture(name="patches_view")
+    def fixture_patches_view(self, dataset, sample_with_patches):
+        """Creates a patches view from the dataset."""
+        return dataset.to_patches("ground_truth")
+
+    @pytest.fixture(name="sample_with_eval")
+    def fixture_sample_with_eval(self, dataset):
+        """Creates a sample with ground truth and predictions for evaluation."""
+        sample = fo.Sample(filepath="/tmp/test_eval_patches.jpg")
+
+        sample["ground_truth"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.GT_DETECTION_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.3, 0.3],
+                ),
+            ]
+        )
+
+        sample["predictions"] = fol.Detections(
+            detections=[
+                fol.Detection(
+                    id=self.PRED_DETECTION_ID,
+                    label="cat",
+                    bounding_box=[0.1, 0.1, 0.3, 0.3],
+                    confidence=0.9,
+                ),
+            ]
+        )
+
+        dataset.add_sample(sample)
+        sample.reload()
+
+        return sample
+
+    @pytest.fixture(name="eval_patches_view")
+    def fixture_eval_patches_view(self, dataset, sample_with_eval):
+        """Creates an evaluation patches view from the dataset."""
+        dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+        )
+        return dataset.to_evaluation_patches("eval")
+
     @pytest.fixture(name="mutator")
-    def test_mutator(self):
-        """Returns the Sample fields route mutator."""
+    def fixture_mutator(self):
+        """Returns the SampleField route mutator."""
         return fors.SampleField(
             scope={"type": "http"},
             receive=AsyncMock(),
             send=AsyncMock(),
         )
 
+    def _make_request(
+        self,
+        dataset_id,
+        sample_id,
+        field_path,
+        field_id,
+        etag,
+        body,
+        generated_dataset=None,
+        generated_sample_id=None,
+    ):
+        """Helper to construct a mock request for SampleField.patch()."""
+        mock_request = MagicMock(spec=Request)
+        mock_request.path_params = {
+            "dataset_id": dataset_id,
+            "sample_id": sample_id,
+            "field_path": field_path,
+            "field_id": field_id,
+        }
+        mock_request.headers = {
+            "Content-Type": "application/json",
+            "If-Match": etag,
+        }
+        mock_request.body = AsyncMock(return_value=json_payload(body))
+
+        if generated_dataset or generated_sample_id:
+            mock_request.query_params = MagicMock()
+            mock_request.query_params.get = lambda key, default=None: {
+                "generated_dataset": generated_dataset,
+                "generated_sample_id": generated_sample_id,
+            }.get(key, default)
+        else:
+            mock_request.query_params = {}
+
+        return mock_request
+
     @pytest.fixture(name="mock_request")
     def fixture_mock_request(self, dataset_id, sample, if_match):
         """Helper to create a mock request object."""
-        mock_request = MagicMock()
-        mock_request = MagicMock()
+        mock_request = MagicMock(spec=Request)
+
         mock_request.path_params = {
             "dataset_id": dataset_id,
             "sample_id": str(sample.id),
@@ -849,6 +962,7 @@ class TestSampleFieldRoute:
             "field_id": str(self.DETECTION_ID_1),
         }
         mock_request.headers = {"Content-Type": "application/json"}
+        mock_request.query_params = {}
 
         if if_match is not None:
             mock_request.headers["If-Match"] = if_match
@@ -880,9 +994,10 @@ class TestSampleFieldRoute:
             sample
         )
 
-        # check response body
-        assert response_dict["label"] == new_label
-        assert response_dict["_id"]["$oid"] == str(self.DETECTION_ID_1)
+        # check response body - route returns the full sample
+        updated_detection = response_dict["ground_truth"]["detections"][0]
+        assert updated_detection["label"] == new_label
+        assert updated_detection["_id"]["$oid"] == str(self.DETECTION_ID_1)
 
         # check database state
         detection1 = sample.ground_truth.detections[0]
@@ -945,6 +1060,7 @@ class TestSampleFieldRoute:
         # Update the sample to change its last_modified_at
         sample["primitive_field"] = "new_value"
         sample.save()
+        sample.reload()
 
         patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
 
@@ -1026,6 +1142,274 @@ class TestSampleFieldRoute:
         assert str(patch_payload[0]) in exc_info.value.detail
         assert "non_existent_attr" in exc_info.value.detail
 
+    @pytest.mark.asyncio
+    async def test_delete_single_label(self, mutator, dataset_id, sample):
+        """Tests SampleField.patch() to delete a detection via JSON Patch."""
+        # Route under test: PATCH /datasets/{dataset_id}/samples/{sample_id}/fields/{field_path}/{field_id}
+        # Operation: Remove a single detection from ground_truth.detections
+        assert len(sample.ground_truth.detections) == 2
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_1),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
+
+        sample.reload()
+        assert response.status_code == 200
+        assert len(sample.ground_truth.detections) == 1
+        assert sample.ground_truth.detections[0].id == str(self.DETECTION_ID_2)
+
+    @pytest.mark.asyncio
+    async def test_delete_all_labels_sequentially(
+        self, mutator, dataset_id, sample
+    ):
+        """Tests SampleField.patch() to delete all detections one by one."""
+        # Route under test: PATCH /datasets/{dataset_id}/samples/{sample_id}/fields/{field_path}/{field_id}
+        # Operation: Remove detections sequentially until list is empty
+        assert len(sample.ground_truth.detections) == 2
+
+        # Delete first detection
+        #####
+        await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_1),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
+        sample.reload()
+        assert len(sample.ground_truth.detections) == 1
+
+        # Delete second detection
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.DETECTION_ID_2),
+                etag=fors.generate_sample_etag(sample),
+                body=[{"op": "remove", "path": "/"}],
+            )
+        )
+        #####
+        sample.reload()
+
+        assert response.status_code == 200
+        assert len(sample.ground_truth.detections) == 0
+
+    @pytest.mark.asyncio
+    async def test_update_label_syncs_to_patches(
+        self, mutator, dataset_id, sample_with_patches, patches_view
+    ):
+        """Tests that updating a label syncs directly to the generated dataset."""
+        patches_dataset = patches_view._patches_dataset
+        patches_sample_id = str(patches_view.first().id)
+        new_label = "dog"
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_patches.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.PATCHES_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_patches),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
+
+        assert response.status_code == 200
+
+        # Verify source sample is updated
+        sample_with_patches.reload()
+        assert (
+            sample_with_patches.ground_truth.detections[0].label == new_label
+        )
+
+        # Verify generated sample was updated directly
+        updated_patches_sample = patches_dataset[patches_sample_id]
+        assert updated_patches_sample.ground_truth.label == new_label
+
+    @pytest.mark.asyncio
+    async def test_delete_label_deletes_patches_sample(
+        self, mutator, dataset_id, sample_with_patches, patches_view
+    ):
+        """Tests that deleting a label removes the generated sample directly."""
+        patches_dataset = patches_view._patches_dataset
+        patches_sample_id = str(patches_view.first().id)
+        assert len(patches_dataset) == 1
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_patches.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.PATCHES_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_patches),
+                body=[{"op": "remove", "path": "/"}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
+
+        assert response.status_code == 200
+
+        # Verify source sample label is deleted
+        sample_with_patches.reload()
+        assert len(sample_with_patches.ground_truth.detections) == 0
+
+        # Verify the specific generated sample was deleted from the dataset
+        with pytest.raises(KeyError):
+            patches_dataset[patches_sample_id]
+
+    @pytest.mark.asyncio
+    async def test_update_gt_label_syncs_to_eval_patches(
+        self,
+        mutator,
+        dataset_id,
+        sample_with_eval,
+        eval_patches_view,
+    ):
+        """Tests updating ground truth label syncs to evaluation patches."""
+        patches_dataset = eval_patches_view._patches_dataset
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
+        new_label = "dog"
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.GT_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
+
+        assert response.status_code == 200
+
+        # Verify source sample gt is updated
+        sample_with_eval.reload()
+        assert sample_with_eval.ground_truth.detections[0].label == new_label
+
+        # Verify generated sample gt was updated directly
+        updated_patches_sample = patches_dataset[patches_sample_id]
+        assert (
+            updated_patches_sample.ground_truth.detections[0].label
+            == new_label
+        )
+
+        # Verify predictions field was not affected
+        assert updated_patches_sample.predictions.detections[0].label == "cat"
+
+    @pytest.mark.asyncio
+    async def test_update_pred_label_syncs_to_eval_patches(
+        self,
+        mutator,
+        dataset_id,
+        sample_with_eval,
+        eval_patches_view,
+    ):
+        """Tests updating prediction label syncs to evaluation patches."""
+        patches_dataset = eval_patches_view._patches_dataset
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
+        new_label = "dog"
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="predictions.detections",
+                field_id=str(self.PRED_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "replace", "path": "/label", "value": new_label}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
+
+        assert response.status_code == 200
+
+        # Verify source sample predictions is updated
+        sample_with_eval.reload()
+        assert sample_with_eval.predictions.detections[0].label == new_label
+
+        # Verify generated sample pred was updated directly
+        updated_patches_sample = patches_dataset[patches_sample_id]
+        assert (
+            updated_patches_sample.predictions.detections[0].label == new_label
+        )
+
+        # Verify ground_truth field was not affected
+        assert updated_patches_sample.ground_truth.detections[0].label == "cat"
+
+    @pytest.mark.asyncio
+    async def test_delete_gt_label_in_eval_patches(
+        self,
+        mutator,
+        dataset_id,
+        sample_with_eval,
+        eval_patches_view,
+    ):
+        """Tests deleting ground truth label removes it from evaluation patches."""
+        patches_dataset = eval_patches_view._patches_dataset
+        patches_sample_id = str(
+            eval_patches_view.match({"type": "tp"}).first().id
+        )
+
+        #####
+        response = await mutator.patch(
+            self._make_request(
+                dataset_id=dataset_id,
+                sample_id=str(sample_with_eval.id),
+                field_path="ground_truth.detections",
+                field_id=str(self.GT_DETECTION_ID),
+                etag=fors.generate_sample_etag(sample_with_eval),
+                body=[{"op": "remove", "path": "/"}],
+                generated_dataset=patches_dataset.name,
+                generated_sample_id=patches_sample_id,
+            )
+        )
+        #####
+
+        assert response.status_code == 200
+
+        # Verify source sample gt is deleted
+        sample_with_eval.reload()
+        assert len(sample_with_eval.ground_truth.detections) == 0
+
+        # Verify the generated sample was deleted
+        with pytest.raises(KeyError):
+            patches_dataset[patches_sample_id]
+
 
 class TestDatetimesMatch:
     """Tests for the datetimes_match function"""
@@ -1097,3 +1481,32 @@ class TestDatetimesMatch:
             2026, 1, 16, 13, 30, 35, 657000
         )  # 2 sec diff
         assert fors.datetimes_match(dt_aware, dt_naive) is False
+
+
+class TestRootDeleteError:
+    """Tests for RootDeleteError handling in route"""
+
+    def test_handle_json_patch_raises_root_delete_error(self):
+        """Tests that handle_json_patch raises RootDeleteError for root delete."""
+        from fiftyone.server.utils.json.jsonpatch import RootDeleteError
+
+        target = fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2])
+        operations = [
+            {"op": "remove", "path": "/"},
+            {"op": "add", "path": "/label", "value": "dog"},
+        ]
+
+        with pytest.raises(RootDeleteError):
+            fors.handle_json_patch(target, operations)
+
+        assert target is not None  # Ensure target remains unchanged
+        assert target.label == "cat"
+
+    def test_handle_json_patch_applies_normal_operations(self):
+        """Tests that handle_json_patch applies non-delete operations."""
+        target = fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2])
+        operations = [{"op": "replace", "path": "/label", "value": "dog"}]
+
+        result = fors.handle_json_patch(target, operations)
+
+        assert result.label == "dog"
