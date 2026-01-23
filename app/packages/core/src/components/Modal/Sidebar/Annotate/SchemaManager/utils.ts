@@ -211,8 +211,8 @@ export const buildFieldSecondaryContent = (
 /**
  * Create default form data for a new attribute
  */
-// Default step value for slider (matches backend DEFAULT_STEP)
-export const DEFAULT_STEP = "0.001";
+// Default step value for slider (matches backend DEFAULT_STEP in constants.py)
+export const DEFAULT_STEP = 0.001;
 
 export const createDefaultFormData = (): AttributeFormData => ({
   name: "",
@@ -330,6 +330,11 @@ export const getAttributeFormErrors = (
   // Values validation
   if (needsValues && data.values.length === 0) {
     errors.values = "At least one value is required";
+  } else if (needsValues && isNumeric) {
+    const invalid = data.values.find((v) => isNaN(parseFloat(v)));
+    if (invalid !== undefined) {
+      errors.values = "Values must be valid numbers";
+    }
   }
 
   // Range validation (for slider)

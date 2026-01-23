@@ -95,11 +95,14 @@ const GUIContent = ({
   const handleEditAttribute = useCallback(
     (oldName: string, newName: string, attrConfig: AttributeConfig) => {
       if (!config) return;
-      const newAttributes = { ...attributes };
-      if (oldName !== newName) {
-        delete newAttributes[oldName];
+      const newAttributes: Record<string, AttributeConfig> = {};
+      for (const [key, value] of Object.entries(attributes)) {
+        if (key === oldName) {
+          newAttributes[newName] = attrConfig;
+        } else {
+          newAttributes[key] = value;
+        }
       }
-      newAttributes[newName] = attrConfig;
       onConfigChange?.({ ...config, attributes: newAttributes });
     },
     [config, attributes, onConfigChange]
