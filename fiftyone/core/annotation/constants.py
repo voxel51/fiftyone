@@ -146,6 +146,7 @@ TYPES_TO_FIELD_TYPE = {
     DATETIME: fof.DateTimeField,
     DICT: fof.DictField,
     FLOAT: fof.FloatField,
+    ID: fof.ObjectIdField,
     INT: fof.IntField,
     STR: fof.StringField,
     FLOAT_LIST: fof.FloatField,

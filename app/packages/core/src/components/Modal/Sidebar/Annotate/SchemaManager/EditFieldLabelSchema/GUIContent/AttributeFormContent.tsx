@@ -52,6 +52,7 @@ const AttributeFormContent = ({
     // Validation errors
     valuesError,
     rangeError,
+    stepError,
     defaultError,
 
     // Handlers
@@ -60,6 +61,7 @@ const AttributeFormContent = ({
     handleComponentChange,
     handleValuesChange,
     handleRangeChange,
+    handleStepChange,
     handleDefaultChange,
     handleReadOnlyChange,
   } = useAttributeForm({ formState, onFormStateChange });
@@ -154,6 +156,9 @@ const AttributeFormContent = ({
           range={formState.range}
           onRangeChange={handleRangeChange}
           error={rangeError}
+          step={formState.step}
+          onStepChange={handleStepChange}
+          stepError={stepError}
         />
       )}
 
