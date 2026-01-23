@@ -57,18 +57,11 @@ pip install fiftyone
 
 ### Installation options
 
-FiftyOne supports Python 3.9 - 3.14.
+FiftyOne supports Python 3.9 - 3.13.
 
-> **Note:** Some optional dependencies have limited support on newer Python
-> versions:
->
-> -   **Python 3.13+**: 3D visualization features (`open3d`) and geometry
->     utilities (`shapely`) are not available
-> -   **Python 3.14**: TensorFlow integration is not available (TensorFlow
->     doesn't support 3.14 yet)
->
-> All core FiftyOne functionality and PyTorch integration work on all supported
-> versions.
+> **Note:** On Python 3.13, some optional dependencies are not available: 3D
+> visualization features (`open3d`) and geometry utilities (`shapely`). All
+> core FiftyOne functionality and PyTorch/TensorFlow integration work normally.
 
 For most users, we recommend installing the latest release version of FiftyOne
 via `pip` as shown above.
@@ -102,7 +95,7 @@ App.
 
 You'll need the following tools installed:
 
--   [Python](https://www.python.org) (3.9 - 3.14)
+-   [Python](https://www.python.org) (3.9 - 3.13)
 -   [Node.js](https://nodejs.org) - on Linux, we recommend using
     [nvm](https://github.com/nvm-sh/nvm) to install an up-to-date version.
 -   [Yarn](https://yarnpkg.com) - once Node.js is installed, you can
@@ -333,7 +326,7 @@ brew install ffmpeg
 ⚠️ The version of Python that is available in the Microsoft Store is **not
 recommended** ⚠️
 
-Download a Python 3.9 - 3.14 installer from
+Download a Python 3.9 - 3.13 installer from
 [python.org](https://www.python.org/downloads/). Make sure to pick a 64-bit
 version. For example, this
 [Python 3.10.11 installer](https://www.python.org/ftp/python/3.10.11/python-3.10.11-amd64.exe).

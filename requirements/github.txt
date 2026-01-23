@@ -1,12 +1,12 @@
 -r test.txt
 # fiftyone doesn't work successfully with numpy>=2.0 on Python < 3.13
 # constrain it so that tests are successful.
-# On Python 3.13+, newer TensorFlow versions require numpy 2.x support
+# On Python 3.13, newer TensorFlow versions require numpy 2.x support
 numpy<2; python_version < "3.13"
 numpy>=2; python_version >= "3.13"
 pydicom>=2.2.0
 shapely>=1.7.1; python_version < "3.13"
-tensorflow; python_version < "3.14"
-tensorflow-datasets; python_version < "3.14"
+tensorflow
+tensorflow-datasets
 torch
 torchvision

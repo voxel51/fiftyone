@@ -8,7 +8,7 @@ pytest-cov==4.0.0
 pytest-mock==3.10.0
 pytest-asyncio
 shapely; python_version < "3.13"
-tensorflow; python_version < "3.14"
+tensorflow
 torch>=2.2.2
 torchvision>=0.17.2
 twine>=3

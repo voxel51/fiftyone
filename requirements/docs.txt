@@ -1,6 +1,6 @@
 # fiftyone requirements
 pycocotools
-tensorflow; python_version < "3.14"
+tensorflow
 torch
 torchvision
 typing_extensions==4.15.0
