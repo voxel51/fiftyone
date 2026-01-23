@@ -314,9 +314,11 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
         fn = _handle_bool
     elif isinstance(field, (fof.FloatField, fof.IntField)):
         is_int = isinstance(field, fof.IntField)
-        fn = lambda c, f, il, s, ss: _handle_float_or_int(
-            c, f, il, s, ss, is_int
-        )
+
+        def _handle_numeric(c, f, il, s, ss, _is_int=is_int):
+            return _handle_float_or_int(c, f, il, s, ss, _is_int)
+
+        fn = _handle_numeric
     elif isinstance(field, fof.StringField):
         fn = _handle_str
 
