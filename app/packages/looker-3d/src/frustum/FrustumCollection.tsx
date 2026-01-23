@@ -14,7 +14,7 @@ import { useFrustumGeometry } from "./useFrustumGeometry";
  *
  * This component:
  * 1. Checks if frustums should be visible (global toggle)
- * 2. Fetches extrinsics/intrinsics data for all non-3D slices
+ * 2. Fetches static transform/intrinsics data for all non-3D slices
  * 3. Computes frustum geometry based on scene bounds
  * 4. Renders individual Frustum components for each slice
  */
@@ -22,7 +22,7 @@ export function FrustumCollection() {
   const isVisible = useFrustumsVisible();
   const { sceneBoundingBox } = useFo3dContext();
 
-  // Fetch frustum data (extrinsics, intrinsics, image URLs)
+  // Fetch frustum data (static transforms, intrinsics, image URLs)
   const { data: frustumData, isLoading, error } = useFrustumData();
 
   // Compute geometry for all frustums
@@ -48,7 +48,7 @@ export function FrustumCollection() {
       {frustumData.map((frustum) => {
         const geometry = geometries.get(frustum.sliceName);
 
-        // Skip if geometry couldn't be computed (invalid extrinsics)
+        // Skip if geometry couldn't be computed (invalid static transform)
         if (!geometry) {
           return null;
         }

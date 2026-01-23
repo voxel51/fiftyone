@@ -72,7 +72,7 @@ class StaticTransforms(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
-        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+        source_frame, target_frame, chain_via = _parse_transform_params(
             request
         )
 
@@ -137,10 +137,10 @@ def _parse_sample_ids(request: Request) -> List[str]:
     return sample_ids
 
 
-def _parse_extrinsics_params(
+def _parse_transform_params(
     request: Request, default_target_frame: str = "world"
 ):
-    """Parses extrinsics-related query params.
+    """Parses transform-related query params.
 
     Args:
         request: Starlette request
@@ -259,24 +259,24 @@ def _get_slice_sample(dataset, group_id: str, slice_name: str):
 def _find_best_target_frame(dataset, slices: List[str]) -> Optional[str]:
     """Finds the target frame with the most coverage across slices.
 
-    Scans dataset.sensor_extrinsics to find which target_frame has
-    extrinsics defined for the most slices.
+    Scans dataset.static_transforms to find which target_frame has
+    transforms defined for the most slices.
 
     Args:
         dataset: The dataset
         slices: List of slice names to check coverage for
 
     Returns:
-        The target frame with most coverage, or None if no extrinsics found
+        The target frame with most coverage, or None if no transforms found
     """
-    sensor_extrinsics = dataset.sensor_extrinsics or {}
-    if not sensor_extrinsics:
+    static_transforms = dataset.static_transforms or {}
+    if not static_transforms:
         return None
 
     # Count coverage for each target frame
     target_counts = {}  # target_frame -> set of slices that have it
 
-    for key in sensor_extrinsics.keys():
+    for key in static_transforms.keys():
         # Parse key to get source and target
         if "::" in key:
             source, target = key.split("::", 1)
@@ -300,17 +300,17 @@ def _find_best_target_frame(dataset, slices: List[str]) -> Optional[str]:
     return best_target
 
 
-def _has_successful_extrinsics(results: dict) -> bool:
-    """Checks if any result has non-null extrinsics.
+def _has_successful_static_transform(results: dict) -> bool:
+    """Checks if any result has non-null staticTransform.
 
     Args:
         results: Dict mapping slice names to result dicts
 
     Returns:
-        True if at least one result has valid extrinsics
+        True if at least one result has valid staticTransform
     """
     for result in results.values():
-        if result.get("extrinsics") is not None:
+        if result.get("staticTransform") is not None:
             return True
     return False
 
@@ -379,7 +379,7 @@ class BatchStaticTransforms(HTTPEndpoint):
         """
         dataset_id = request.path_params["dataset_id"]
         sample_ids = _parse_sample_ids(request)
-        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+        source_frame, target_frame, chain_via = _parse_transform_params(
             request
         )
 
@@ -486,14 +486,14 @@ class GroupIntrinsics(HTTPEndpoint):
         )
 
 
-class GroupExtrinsics(HTTPEndpoint):
-    """Group camera extrinsics endpoint.
+class GroupStaticTransforms(HTTPEndpoint):
+    """Group static transforms endpoint.
 
-    Retrieves extrinsics for multiple slices belonging to a group.
+    Retrieves static transforms for multiple slices belonging to a group.
     """
 
     async def get(self, request: Request) -> JSONResponse:
-        """Retrieves camera/sensor extrinsics for slices in a sample's group.
+        """Retrieves static transforms for slices in a sample's group.
 
         Args:
             request: Starlette request with dataset_id and sample_id in path
@@ -502,11 +502,11 @@ class GroupExtrinsics(HTTPEndpoint):
 
         Returns:
             JSON response containing results dict mapping slice name to
-            extrinsics data, null, or error message
+            staticTransform data, null, or error message
         """
         dataset_id = request.path_params["dataset_id"]
         sample_id = request.path_params["sample_id"]
-        source_frame, target_frame, chain_via = _parse_extrinsics_params(
+        source_frame, target_frame, chain_via = _parse_transform_params(
             request
         )
 
@@ -518,7 +518,7 @@ class GroupExtrinsics(HTTPEndpoint):
         slices = _get_group_slices(dataset, _parse_slices(request))
 
         logger.debug(
-            "Received GET request for group camera extrinsics for sample %s "
+            "Received GET request for group static transforms for sample %s "
             "in dataset %s (group_id=%s, slices=%s, source_frame=%s, "
             "target_frame=%s, chain_via=%s)",
             sample_id,
@@ -540,7 +540,7 @@ class GroupExtrinsics(HTTPEndpoint):
                 continue
 
             try:
-                extrinsics = dataset.resolve_extrinsics(
+                transform = dataset.resolve_transformation(
                     slice_sample,
                     source_frame=source_frame,
                     target_frame=target_frame,
@@ -550,16 +550,16 @@ class GroupExtrinsics(HTTPEndpoint):
                 results[slice_name] = {"error": str(err)}
                 continue
 
-            if extrinsics is None:
-                results[slice_name] = {"extrinsics": None}
+            if transform is None:
+                results[slice_name] = {"staticTransform": None}
             else:
                 results[slice_name] = {
-                    "extrinsics": utils.json.serialize(extrinsics)
+                    "staticTransform": utils.json.serialize(transform)
                 }
 
-        # If no successful extrinsics found and target_frame was defaulted,
+        # If no successful transforms found and target_frame was defaulted,
         # try to find the best available target
-        if not _has_successful_extrinsics(results):
+        if not _has_successful_static_transform(results):
             # Check if target_frame was explicitly provided in request
             explicit_target = request.query_params.get("target_frame")
 
@@ -569,7 +569,7 @@ class GroupExtrinsics(HTTPEndpoint):
 
                 if best_target is not None and best_target != "world":
                     logger.debug(
-                        "No extrinsics found with target_frame='world', "
+                        "No transforms found with target_frame='world', "
                         "retrying with best available target_frame='%s'",
                         best_target,
                     )
@@ -586,7 +586,7 @@ class GroupExtrinsics(HTTPEndpoint):
                             continue
 
                         try:
-                            extrinsics = dataset.resolve_extrinsics(
+                            transform = dataset.resolve_transformation(
                                 slice_sample,
                                 source_frame=source_frame,
                                 target_frame=target_frame,
@@ -596,11 +596,13 @@ class GroupExtrinsics(HTTPEndpoint):
                             results[slice_name] = {"error": str(err)}
                             continue
 
-                        if extrinsics is None:
-                            results[slice_name] = {"extrinsics": None}
+                        if transform is None:
+                            results[slice_name] = {"staticTransform": None}
                         else:
                             results[slice_name] = {
-                                "extrinsics": utils.json.serialize(extrinsics)
+                                "staticTransform": utils.json.serialize(
+                                    transform
+                                )
                             }
 
         return utils.json.JSONResponse(
@@ -626,8 +628,8 @@ CameraRoutes = [
         GroupIntrinsics,
     ),
     (
-        "/dataset/{dataset_id}/sample/{sample_id}/group/extrinsics",
-        GroupExtrinsics,
+        "/dataset/{dataset_id}/sample/{sample_id}/group/static_transforms",
+        GroupStaticTransforms,
     ),
     (
         "/dataset/{dataset_id}/samples/intrinsics",

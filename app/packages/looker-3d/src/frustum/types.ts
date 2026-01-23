@@ -5,10 +5,10 @@
 import type { Matrix4 } from "three";
 
 /**
- * Camera extrinsics (pose) data from the API.
+ * Static transform (pose) data from the API.
  * Represents a rigid 3D transformation (translation + rotation).
  */
-export interface CameraExtrinsics {
+export interface StaticTransform {
   /** Translation vector [tx, ty, tz] */
   translation: [number, number, number];
   /** Quaternion [qx, qy, qz, qw] in scalar-last convention */
@@ -46,8 +46,8 @@ export interface CameraIntrinsics {
 export interface FrustumData {
   /** Name of the slice this frustum represents */
   sliceName: string;
-  /** Camera extrinsics (pose) - null if not available */
-  extrinsics: CameraExtrinsics | null;
+  /** Static transform (pose) - null if not available */
+  staticTransform: StaticTransform | null;
   /** Camera intrinsics - null if not available */
   intrinsics: CameraIntrinsics | null;
   /** Whether there was an error fetching this slice's data */
@@ -81,15 +81,14 @@ export interface FrustumGeometry {
 }
 
 /**
- * API response for group extrinsics endpoint.
+ * API response for group static transforms endpoint.
  */
-export interface GroupExtrinsicsResponse {
+export interface GroupStaticTransformResponse {
   group_id: string;
   results: {
     [sliceName: string]:
-      | { extrinsics: CameraExtrinsics }
-      | { error: string }
-      | { extrinsics: null };
+      | { staticTransform: StaticTransform | null }
+      | { error: string };
   };
 }
 
@@ -100,9 +99,8 @@ export interface GroupIntrinsicsResponse {
   group_id: string;
   results: {
     [sliceName: string]:
-      | { intrinsics: CameraIntrinsics }
-      | { error: string }
-      | { intrinsics: null };
+      | { intrinsics: CameraIntrinsics | null }
+      | { error: string };
   };
 }
 
@@ -110,7 +108,7 @@ export interface GroupIntrinsicsResponse {
  * Hook result for useFrustumData.
  */
 export interface UseFrustumDataResult {
-  /** Array of frustum data for all non-current slices with valid extrinsics */
+  /** Array of frustum data for all non-current slices with valid static transforms */
   data: FrustumData[];
   /** Whether data is currently being fetched */
   isLoading: boolean;

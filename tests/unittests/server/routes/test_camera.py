@@ -655,10 +655,10 @@ def fixture_group_intrinsics_endpoint():
     )
 
 
-@pytest.fixture(name="group_extrinsics_endpoint")
-def fixture_group_extrinsics_endpoint():
-    """Returns the GroupExtrinsics endpoint instance."""
-    return forc.GroupExtrinsics(
+@pytest.fixture(name="group_static_transforms_endpoint")
+def fixture_group_static_transforms_endpoint():
+    """Returns the GroupStaticTransforms endpoint instance."""
+    return forc.GroupStaticTransforms(
         scope={"type": "http"}, receive=AsyncMock(), send=AsyncMock()
     )
 
@@ -683,16 +683,16 @@ def fixture_grouped_dataset():
     ]
     dataset.add_samples(samples)
 
-    # Add intrinsics and extrinsics to some samples
+    # Add intrinsics and static transforms to some samples
     left_sample = dataset.select_group_slices("left").first()
     left_sample["camera_intrinsics"] = PinholeCameraIntrinsics(
         fx=1000.0, fy=1000.0, cx=960.0, cy=540.0
     )
-    left_sample["sensor_extrinsics"] = SensorExtrinsics(
+    left_sample["static_transform"] = StaticTransform(
         translation=[1.0, 0.0, 0.0],
         quaternion=[0.0, 0.0, 0.0, 1.0],
         source_frame="left_camera",
-        target_frame=DEFAULT_EXTRINSICS_TARGET_FRAME,
+        target_frame=DEFAULT_TRANSFORM_TARGET_FRAME,
     )
     left_sample.save()
 
@@ -700,11 +700,11 @@ def fixture_grouped_dataset():
     right_sample["camera_intrinsics"] = PinholeCameraIntrinsics(
         fx=800.0, fy=800.0, cx=640.0, cy=480.0
     )
-    right_sample["sensor_extrinsics"] = SensorExtrinsics(
+    right_sample["static_transform"] = StaticTransform(
         translation=[-1.0, 0.0, 0.0],
         quaternion=[0.0, 0.0, 0.0, 1.0],
         source_frame="right_camera",
-        target_frame=DEFAULT_EXTRINSICS_TARGET_FRAME,
+        target_frame=DEFAULT_TRANSFORM_TARGET_FRAME,
     )
     right_sample.save()
 
@@ -911,18 +911,18 @@ class TestGroupIntrinsicsRoute:
 
 
 class TestGroupExtrinsicsRoute:
-    """Tests for GroupExtrinsics endpoint."""
+    """Tests for GroupStaticTransforms endpoint."""
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_all_slices(
+    async def test_get_group_static_transforms_all_slices(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
-        """Tests retrieving extrinsics for all slices in a group."""
+        """Tests retrieving static transforms for all slices in a group."""
         request = mock_group_request()
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
@@ -935,21 +935,21 @@ class TestGroupExtrinsicsRoute:
         assert "right" in data["results"]
         assert "lidar" in data["results"]
 
-        # left and right have extrinsics, lidar doesn't
-        assert "extrinsics" in data["results"]["left"]
-        assert "extrinsics" in data["results"]["right"]
-        assert data["results"]["lidar"]["extrinsics"] is None
+        # left and right have staticTransform, lidar doesn't
+        assert "staticTransform" in data["results"]["left"]
+        assert "staticTransform" in data["results"]["right"]
+        assert data["results"]["lidar"]["staticTransform"] is None
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_specific_slices(
+    async def test_get_group_static_transforms_specific_slices(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
-        """Tests retrieving extrinsics for specific slices only."""
+        """Tests retrieving static transforms for specific slices only."""
         request = mock_group_request(query_params={"slices": "left,right"})
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
@@ -962,36 +962,36 @@ class TestGroupExtrinsicsRoute:
         assert "lidar" not in data["results"]
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_with_query_params(
+    async def test_get_group_static_transforms_with_query_params(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
-        """Tests extrinsics retrieval with source_frame and target_frame."""
+        """Tests static transforms retrieval with source_frame and target_frame."""
         request = mock_group_request(
             query_params={
                 "slices": "left",
                 "source_frame": "left_camera",
-                "target_frame": DEFAULT_EXTRINSICS_TARGET_FRAME,
+                "target_frame": DEFAULT_TRANSFORM_TARGET_FRAME,
             }
         )
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
         assert "left" in data["results"]
-        assert data["results"]["left"]["extrinsics"] is not None
+        assert data["results"]["left"]["staticTransform"] is not None
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_with_chain_via(
+    async def test_get_group_static_transforms_with_chain_via(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
-        """Tests extrinsics retrieval with chain_via parameter."""
+        """Tests static transforms retrieval with chain_via parameter."""
         request = mock_group_request(
             query_params={
                 "slices": "left",
@@ -1000,16 +1000,16 @@ class TestGroupExtrinsicsRoute:
                 "chain_via": "vehicle",
             }
         )
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_slices_whitespace_handling(
+    async def test_get_group_static_transforms_slices_whitespace_handling(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
@@ -1017,7 +1017,7 @@ class TestGroupExtrinsicsRoute:
         request = mock_group_request(
             query_params={"slices": "  left  ,  right  "}
         )
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
@@ -1026,9 +1026,9 @@ class TestGroupExtrinsicsRoute:
         assert "right" in data["results"]
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_invalid_slice(
+    async def test_get_group_static_transforms_invalid_slice(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
@@ -1036,34 +1036,34 @@ class TestGroupExtrinsicsRoute:
         request = mock_group_request(
             query_params={"slices": "left,nonexistent_slice"}
         )
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)
         assert "results" in data
 
-        # Valid slice should have extrinsics
-        assert "extrinsics" in data["results"]["left"]
+        # Valid slice should have staticTransform
+        assert "staticTransform" in data["results"]["left"]
 
         # Invalid slice should have error
         assert "error" in data["results"]["nonexistent_slice"]
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_non_grouped_sample(
-        self, group_extrinsics_endpoint, mock_request, dataset
+    async def test_get_group_static_transforms_non_grouped_sample(
+        self, group_static_transforms_endpoint, mock_request, dataset
     ):
         """Tests that 400 is raised for non-grouped sample."""
         request = mock_request()
 
         with pytest.raises(HTTPException) as exc_info:
-            await group_extrinsics_endpoint.get(request)
+            await group_static_transforms_endpoint.get(request)
 
         assert exc_info.value.status_code == 400
         assert "does not belong to a group" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_dataset_not_found(
-        self, group_extrinsics_endpoint, mock_group_request
+    async def test_get_group_static_transforms_dataset_not_found(
+        self, group_static_transforms_endpoint, mock_group_request
     ):
         """Tests that 404 is raised for non-existent dataset."""
         request = mock_group_request(
@@ -1071,7 +1071,7 @@ class TestGroupExtrinsicsRoute:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            await group_extrinsics_endpoint.get(request)
+            await group_static_transforms_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert (
@@ -1079,8 +1079,11 @@ class TestGroupExtrinsicsRoute:
         )
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_sample_not_found(
-        self, group_extrinsics_endpoint, mock_group_request, grouped_dataset
+    async def test_get_group_static_transforms_sample_not_found(
+        self,
+        group_static_transforms_endpoint,
+        mock_group_request,
+        grouped_dataset,
     ):
         """Tests that 404 is raised for non-existent sample."""
         from bson import ObjectId
@@ -1089,19 +1092,19 @@ class TestGroupExtrinsicsRoute:
         request = mock_group_request(sample_id_override=bad_sample_id)
 
         with pytest.raises(HTTPException) as exc_info:
-            await group_extrinsics_endpoint.get(request)
+            await group_static_transforms_endpoint.get(request)
 
         assert exc_info.value.status_code == 404
         assert f"Sample '{bad_sample_id}' not found" in exc_info.value.detail
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_value_error_handling(
+    async def test_get_group_static_transforms_value_error_handling(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
-        """Tests that ValueError from resolve_extrinsics is captured."""
+        """Tests that ValueError from resolve_transformation is captured."""
         request = mock_group_request(
             query_params={
                 "slices": "left",
@@ -1109,13 +1112,13 @@ class TestGroupExtrinsicsRoute:
             }
         )
 
-        # Mock resolve_extrinsics to raise ValueError
+        # Mock resolve_transformation to raise ValueError
         with patch.object(
             fo.Dataset,
-            "resolve_extrinsics",
+            "resolve_transformation",
             side_effect=ValueError("Frames don't chain properly"),
         ):
-            response = await group_extrinsics_endpoint.get(request)
+            response = await group_static_transforms_endpoint.get(request)
 
             assert response.status_code == 200
             data = json.loads(response.body)
@@ -1126,15 +1129,15 @@ class TestGroupExtrinsicsRoute:
             )
 
     @pytest.mark.asyncio
-    async def test_get_group_extrinsics_returns_group_id(
+    async def test_get_group_static_transforms_returns_group_id(
         self,
-        group_extrinsics_endpoint,
+        group_static_transforms_endpoint,
         mock_group_request,
         grouped_dataset,
     ):
         """Tests that response includes the group_id."""
         request = mock_group_request()
-        response = await group_extrinsics_endpoint.get(request)
+        response = await group_static_transforms_endpoint.get(request)
 
         assert response.status_code == 200
         data = json.loads(response.body)

@@ -1,5 +1,5 @@
 /**
- * Custom hook for fetching camera extrinsics and intrinsics data.
+ * Custom hook for fetching camera static transforms and intrinsics data.
  */
 
 import * as fos from "@fiftyone/state";
@@ -8,11 +8,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useImageSlicesIfAvailable } from "../annotation/useImageSlicesIfAvailable";
 import type {
-  CameraExtrinsics,
   CameraIntrinsics,
   FrustumData,
-  GroupExtrinsicsResponse,
   GroupIntrinsicsResponse,
+  GroupStaticTransformResponse,
+  StaticTransform,
   UseFrustumDataResult,
 } from "./types";
 
@@ -35,10 +35,10 @@ function loadImageDimensions(
 }
 
 /**
- * Fetches camera frustum data (extrinsics and intrinsics) for all 2D slices
+ * Fetches camera frustum data (static transforms and intrinsics) for all 2D slices
  * in a grouped dataset.
  *
- * @returns FrustumData for all non-3D slices with valid extrinsics
+ * @returns FrustumData for all non-3D slices with valid static transforms
  */
 export function useFrustumData(): UseFrustumDataResult {
   const [data, setData] = useState<FrustumData[]>([]);
@@ -79,21 +79,23 @@ export function useFrustumData(): UseFrustumDataResult {
           throw new Error("Fetch function not initialized");
         }
 
-        // Fetch both extrinsics and intrinsics in parallel
-        const [extrinsicsResponse, intrinsicsResponse] = await Promise.all([
-          fetch<void, GroupExtrinsicsResponse>(
-            "GET",
-            `/dataset/${encodeURIComponent(
-              datasetId
-            )}/sample/${encodeURIComponent(sampleId)}/group/extrinsics`
-          ),
-          fetch<void, GroupIntrinsicsResponse>(
-            "GET",
-            `/dataset/${encodeURIComponent(
-              datasetId
-            )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
-          ),
-        ]);
+        // Fetch both static transforms and intrinsics in parallel
+        const [staticTransformResponse, intrinsicsResponse] = await Promise.all(
+          [
+            fetch<void, GroupStaticTransformResponse>(
+              "GET",
+              `/dataset/${encodeURIComponent(
+                datasetId
+              )}/sample/${encodeURIComponent(sampleId)}/group/static_transforms`
+            ),
+            fetch<void, GroupIntrinsicsResponse>(
+              "GET",
+              `/dataset/${encodeURIComponent(
+                datasetId
+              )}/sample/${encodeURIComponent(sampleId)}/group/intrinsics`
+            ),
+          ]
+        );
 
         // Build frustum data for each non-3D slice
         const frustums: FrustumData[] = [];
@@ -103,26 +105,27 @@ export function useFrustumData(): UseFrustumDataResult {
             continue;
           }
 
-          const extrinsicsResult = extrinsicsResponse.results[sliceName];
+          const staticTransformResult =
+            staticTransformResponse.results[sliceName];
           const intrinsicsResult = intrinsicsResponse.results[sliceName];
 
-          if (extrinsicsResult && "error" in extrinsicsResult) {
+          if (staticTransformResult && "error" in staticTransformResult) {
             frustums.push({
               sliceName,
-              extrinsics: null,
+              staticTransform: null,
               intrinsics: null,
               hasError: true,
-              errorMessage: extrinsicsResult.error,
+              errorMessage: staticTransformResult.error,
             });
             continue;
           }
 
-          const extrinsics =
-            extrinsicsResult && "extrinsics" in extrinsicsResult
-              ? (extrinsicsResult.extrinsics as CameraExtrinsics | null)
+          const staticTransform =
+            staticTransformResult && "staticTransform" in staticTransformResult
+              ? (staticTransformResult.staticTransform as StaticTransform | null)
               : null;
 
-          if (!extrinsics) {
+          if (!staticTransform) {
             continue;
           }
 
@@ -135,7 +138,7 @@ export function useFrustumData(): UseFrustumDataResult {
 
           frustums.push({
             sliceName,
-            extrinsics,
+            staticTransform,
             intrinsics,
             imageUrl,
           });

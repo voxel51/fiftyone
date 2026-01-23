@@ -10,18 +10,18 @@ export { Frustum } from "./Frustum";
 export { FrustumCollection } from "./FrustumCollection";
 
 // Hooks
+export { useFrustumsVisible, useToggleFrustums } from "./hooks";
 export { useFrustumData } from "./useFrustumData";
 export { useFrustumGeometry } from "./useFrustumGeometry";
-export { useFrustumsVisible, useToggleFrustums } from "./hooks";
 
 // Types
 export type {
-  CameraExtrinsics,
   CameraIntrinsics,
   FrustumData,
   FrustumGeometry,
-  GroupExtrinsicsResponse,
   GroupIntrinsicsResponse,
+  GroupStaticTransformResponse,
+  StaticTransform,
   UseFrustumDataResult,
   UseFrustumGeometryResult,
 } from "./types";
@@ -31,7 +31,7 @@ export {
   buildFrustumGeometry,
   computeFrustumCorners,
   computeFrustumDepth,
-  extrinsicsToMatrix4,
   getCameraPosition,
-  isValidExtrinsics,
+  isValidStaticTransform,
+  staticTransformToMatrix4,
 } from "./builders";

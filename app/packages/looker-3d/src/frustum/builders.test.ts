@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildFrustumGeometry,
   computeFrustumCorners,
-  extrinsicsToMatrix4,
   getCameraPosition,
-  isValidExtrinsics,
+  isValidStaticTransform,
+  staticTransformToMatrix4,
 } from "./builders";
-import type { CameraExtrinsics, CameraIntrinsics } from "./types";
+import type { CameraIntrinsics, StaticTransform } from "./types";
 
 describe("computeFrustumCorners", () => {
   describe("with full intrinsics (pinhole camera model)", () => {
@@ -182,14 +182,14 @@ describe("computeFrustumCorners", () => {
   });
 });
 
-describe("extrinsicsToMatrix4", () => {
+describe("staticTransformToMatrix4", () => {
   it("creates identity-like matrix for zero translation and identity quaternion", () => {
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [0, 0, 0],
       quaternion: [0, 0, 0, 1], // identity quaternion
     };
 
-    const matrix = extrinsicsToMatrix4(extrinsics);
+    const matrix = staticTransformToMatrix4(staticTransform);
 
     // Should be close to identity matrix
     const identity = new Matrix4();
@@ -199,12 +199,12 @@ describe("extrinsicsToMatrix4", () => {
   });
 
   it("applies translation correctly", () => {
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [1, 2, 3],
       quaternion: [0, 0, 0, 1],
     };
 
-    const matrix = extrinsicsToMatrix4(extrinsics);
+    const matrix = staticTransformToMatrix4(staticTransform);
     const position = new Vector3();
     position.setFromMatrixPosition(matrix);
 
@@ -215,12 +215,12 @@ describe("extrinsicsToMatrix4", () => {
 
   it("applies rotation correctly", () => {
     // 90 degree rotation around Z axis
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [0, 0, 0],
       quaternion: [0, 0, Math.SQRT1_2, Math.SQRT1_2],
     };
 
-    const matrix = extrinsicsToMatrix4(extrinsics);
+    const matrix = staticTransformToMatrix4(staticTransform);
 
     // Apply to a point to verify rotation
     const point = new Vector3(1, 0, 0);
@@ -233,12 +233,12 @@ describe("extrinsicsToMatrix4", () => {
 
   it("normalizes quaternion to handle floating point errors", () => {
     // Slightly non-normalized quaternion
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [0, 0, 0],
       quaternion: [0, 0, 0, 1.0001],
     };
 
-    const matrix = extrinsicsToMatrix4(extrinsics);
+    const matrix = staticTransformToMatrix4(staticTransform);
 
     // Should still produce valid rotation (close to identity)
     const quaternion = new Quaternion();
@@ -251,36 +251,36 @@ describe("extrinsicsToMatrix4", () => {
   });
 });
 
-describe("isValidExtrinsics", () => {
-  it("returns true for valid extrinsics", () => {
-    const extrinsics: CameraExtrinsics = {
+describe("isValidStaticTransform", () => {
+  it("returns true for valid static transform", () => {
+    const staticTransform: StaticTransform = {
       translation: [1, 2, 3],
       quaternion: [0, 0, 0, 1],
     };
-    expect(isValidExtrinsics(extrinsics)).toBe(true);
+    expect(isValidStaticTransform(staticTransform)).toBe(true);
   });
 
   it("returns false for null", () => {
-    expect(isValidExtrinsics(null)).toBe(false);
+    expect(isValidStaticTransform(null)).toBe(false);
   });
 
   it("returns false for invalid translation", () => {
     expect(
-      isValidExtrinsics({
+      isValidStaticTransform({
         translation: [1, 2] as any,
         quaternion: [0, 0, 0, 1],
       })
     ).toBe(false);
 
     expect(
-      isValidExtrinsics({
+      isValidStaticTransform({
         translation: [1, 2, NaN],
         quaternion: [0, 0, 0, 1],
       })
     ).toBe(false);
 
     expect(
-      isValidExtrinsics({
+      isValidStaticTransform({
         translation: [1, 2, Infinity],
         quaternion: [0, 0, 0, 1],
       })
@@ -289,14 +289,14 @@ describe("isValidExtrinsics", () => {
 
   it("returns false for invalid quaternion", () => {
     expect(
-      isValidExtrinsics({
+      isValidStaticTransform({
         translation: [1, 2, 3],
         quaternion: [0, 0, 0] as any,
       })
     ).toBe(false);
 
     expect(
-      isValidExtrinsics({
+      isValidStaticTransform({
         translation: [1, 2, 3],
         quaternion: [0, 0, 0, NaN],
       })
@@ -306,12 +306,12 @@ describe("isValidExtrinsics", () => {
 
 describe("getCameraPosition", () => {
   it("returns translation as Vector3", () => {
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [1, 2, 3],
       quaternion: [0, 0, 0, 1],
     };
 
-    const position = getCameraPosition(extrinsics);
+    const position = getCameraPosition(staticTransform);
 
     expect(position).toBeInstanceOf(Vector3);
     expect(position.x).toBe(1);
@@ -322,7 +322,7 @@ describe("getCameraPosition", () => {
 
 describe("buildFrustumGeometry", () => {
   it("builds complete geometry with all required fields", () => {
-    const extrinsics: CameraExtrinsics = {
+    const staticTransform: StaticTransform = {
       translation: [0, 0, 0],
       quaternion: [0, 0, 0, 1],
     };
@@ -335,7 +335,7 @@ describe("buildFrustumGeometry", () => {
       height: 480,
     };
 
-    const geometry = buildFrustumGeometry(extrinsics, intrinsics, 1);
+    const geometry = buildFrustumGeometry(staticTransform, intrinsics, 1);
 
     expect(geometry.corners).toBeInstanceOf(Float32Array);
     expect(geometry.corners.length).toBe(24); // 8 corners * 3 components
@@ -347,13 +347,13 @@ describe("buildFrustumGeometry", () => {
     expect(geometry.transform).toBeInstanceOf(Matrix4);
   });
 
-  it("applies extrinsics transform to geometry", () => {
-    const extrinsics: CameraExtrinsics = {
+  it("applies static transform to geometry", () => {
+    const staticTransform: StaticTransform = {
       translation: [10, 20, 30],
       quaternion: [0, 0, 0, 1],
     };
 
-    const geometry = buildFrustumGeometry(extrinsics, null, 1);
+    const geometry = buildFrustumGeometry(staticTransform, null, 1);
 
     // Transform should encode the translation
     const position = new Vector3();

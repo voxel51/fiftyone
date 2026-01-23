@@ -29,14 +29,14 @@ import {
   FRUSTUM_TOP_MARKER_BASE_HALF_WIDTH,
   FRUSTUM_TOP_MARKER_HEIGHT,
 } from "./constants";
-import type { CameraExtrinsics, FrustumData, FrustumGeometry } from "./types";
+import type { FrustumData, FrustumGeometry, StaticTransform } from "./types";
 
-function formatExtrinsicsForTooltip(
-  extrinsics: CameraExtrinsics
+function formatStaticTransformForTooltip(
+  staticTransform: StaticTransform
 ): Record<string, string> {
-  const [tx, ty, tz] = extrinsics.translation;
-  const [qx, qy, qz, qw] = extrinsics.quaternion;
-  const euler = quaternionToEuler(extrinsics.quaternion);
+  const [tx, ty, tz] = staticTransform.translation;
+  const [qx, qy, qz, qw] = staticTransform.quaternion;
+  const euler = quaternionToEuler(staticTransform.quaternion);
 
   return {
     position: `${formatNumber(tx)}, ${formatNumber(ty)}, ${formatNumber(tz)}`,
@@ -154,13 +154,13 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 
       const attributes: Record<string, string | number | boolean> = {};
 
-      if (frustumData.extrinsics) {
-        const extrinsicsInfo = formatExtrinsicsForTooltip(
-          frustumData.extrinsics
+      if (frustumData.staticTransform) {
+        const transformInfo = formatStaticTransformForTooltip(
+          frustumData.staticTransform
         );
-        attributes.position = extrinsicsInfo.position;
-        attributes.quaternion = extrinsicsInfo.quaternion;
-        attributes.rotation = extrinsicsInfo.rotation;
+        attributes.position = transformInfo.position;
+        attributes.quaternion = transformInfo.quaternion;
+        attributes.rotation = transformInfo.rotation;
       }
 
       setHoverMetadata({
@@ -169,7 +169,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
         attributes,
       });
     },
-    [sliceName, frustumData.extrinsics, setHoverMetadata]
+    [sliceName, frustumData.staticTransform, setHoverMetadata]
   );
 
   const handlePointerOut = useCallback(

@@ -7,7 +7,7 @@ import type { Box3 } from "three";
 import {
   buildFrustumGeometry,
   computeFrustumDepth,
-  isValidExtrinsics,
+  isValidStaticTransform,
 } from "./builders";
 import type {
   FrustumData,
@@ -37,12 +37,12 @@ export function useFrustumGeometry(
     const depth = computeFrustumDepth(sceneBounds);
 
     for (const frustum of frustumData) {
-      if (!isValidExtrinsics(frustum.extrinsics)) {
+      if (!isValidStaticTransform(frustum.staticTransform)) {
         continue;
       }
 
       const geometry = buildFrustumGeometry(
-        frustum.extrinsics,
+        frustum.staticTransform,
         frustum.intrinsics,
         depth,
         frustum.imageAspectRatio

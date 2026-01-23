@@ -13,30 +13,32 @@ import {
   FRUSTUM_NEAR_PLANE_DISTANCE,
 } from "./constants";
 import type {
-  CameraExtrinsics,
   CameraIntrinsics,
   FrustumGeometry,
+  StaticTransform,
 } from "./types";
 
 /**
- * Converts camera extrinsics to a Three.js transformation matrix.
+ * Converts static transform to a Three.js transformation matrix.
  *
- * @param extrinsics - Camera extrinsics with translation and quaternion
+ * @param staticTransform - Static transform with translation and quaternion
  * @returns Matrix4 transformation matrix
  */
-export function extrinsicsToMatrix4(extrinsics: CameraExtrinsics): Matrix4 {
+export function staticTransformToMatrix4(
+  staticTransform: StaticTransform
+): Matrix4 {
   const matrix = new Matrix4();
   const position = new Vector3(
-    extrinsics.translation[0],
-    extrinsics.translation[1],
-    extrinsics.translation[2]
+    staticTransform.translation[0],
+    staticTransform.translation[1],
+    staticTransform.translation[2]
   );
   // Normalize quaternion to ensure valid rotation (handles floating point errors)
   const quaternion = new Quaternion(
-    extrinsics.quaternion[0],
-    extrinsics.quaternion[1],
-    extrinsics.quaternion[2],
-    extrinsics.quaternion[3]
+    staticTransform.quaternion[0],
+    staticTransform.quaternion[1],
+    staticTransform.quaternion[2],
+    staticTransform.quaternion[3]
   ).normalize();
 
   matrix.compose(position, quaternion, new Vector3(1, 1, 1));
@@ -202,14 +204,14 @@ export function computeFrustumCorners(
 /**
  * Builds complete frustum geometry from camera parameters.
  *
- * @param extrinsics - Camera extrinsics for transformation
+ * @param staticTransform - Static transform for transformation
  * @param intrinsics - Camera intrinsics for shape (optional)
  * @param depth - Frustum depth (distance from camera to far plane)
  * @param imageAspectRatio - Optional aspect ratio from actual image (overrides intrinsics)
  * @returns FrustumGeometry with all data needed for rendering
  */
 export function buildFrustumGeometry(
-  extrinsics: CameraExtrinsics,
+  staticTransform: StaticTransform,
   intrinsics: CameraIntrinsics | null,
   depth: number,
   imageAspectRatio?: number
@@ -245,7 +247,7 @@ export function buildFrustumGeometry(
   );
 
   // Compute transformation matrix
-  const transform = extrinsicsToMatrix4(extrinsics);
+  const transform = staticTransformToMatrix4(staticTransform);
 
   return {
     corners,
@@ -259,17 +261,17 @@ export function buildFrustumGeometry(
 }
 
 /**
- * Validates if extrinsics data is usable for frustum rendering.
+ * Validates if static transform data is usable for frustum rendering.
  *
- * @param extrinsics - Camera extrinsics to validate
- * @returns true if extrinsics can be used for rendering
+ * @param staticTransform - Static transform to validate
+ * @returns true if static transform can be used for rendering
  */
-export function isValidExtrinsics(
-  extrinsics: CameraExtrinsics | null
-): extrinsics is CameraExtrinsics {
-  if (!extrinsics) return false;
+export function isValidStaticTransform(
+  staticTransform: StaticTransform | null
+): staticTransform is StaticTransform {
+  if (!staticTransform) return false;
 
-  const { translation, quaternion } = extrinsics;
+  const { translation, quaternion } = staticTransform;
 
   // Check translation is valid array of 3 numbers
   if (
@@ -293,15 +295,15 @@ export function isValidExtrinsics(
 }
 
 /**
- * Gets the camera origin position from extrinsics.
+ * Gets the camera origin position from static transform.
  *
- * @param extrinsics - Camera extrinsics
+ * @param staticTransform - Static transform
  * @returns Vector3 position of camera origin
  */
-export function getCameraPosition(extrinsics: CameraExtrinsics): Vector3 {
+export function getCameraPosition(staticTransform: StaticTransform): Vector3 {
   return new Vector3(
-    extrinsics.translation[0],
-    extrinsics.translation[1],
-    extrinsics.translation[2]
+    staticTransform.translation[0],
+    staticTransform.translation[1],
+    staticTransform.translation[2]
   );
 }
