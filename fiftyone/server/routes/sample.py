@@ -616,11 +616,11 @@ class SampleField(HTTPEndpoint):
                         utils.json.serialize(generated_sample),
                         headers={"ETag": etag},
                     )
-            except Exception as err:
-                logger.error(
-                    "Failed to sync to generated dataset: %s",
-                    err,
-                    exc_info=True,
+            except Exception:
+                logger.exception(
+                    "Failed to sync to generated dataset `%s` associated with dataset `%s`",
+                    generated_dataset_name,
+                    dataset_id,
                 )
 
         return utils.json.JSONResponse(
