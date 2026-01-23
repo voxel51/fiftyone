@@ -544,8 +544,9 @@ class SampleField(HTTPEndpoint):
                 status_code=400, detail="Invalid If-Match header"
             )
 
-        # Skip checking the last_modified_at on the src when editing through a generated dataset as the
-        # timestamp reflect the generated sample's last_modified_at, not the source sample's timestamp.
+        # Skip checking the last_modified_at on the src when editing through a
+        # generated dataset as the timestamp reflect the generated sample's
+        # last_modified_at, not the source sample's timestamp.
         source_if_match = (
             None if generated_dataset_name else if_last_modified_at
         )
