@@ -294,8 +294,10 @@ export const PainterFactory = (requestColor) => ({
     // performance reasons
     // For subsequent mask updates, the maskData.buffer is already a single channel
     if (
-      maskData.channels === 4 &&
-      targets.length === label.mask.image.byteLength
+      (maskData.channels === 4 &&
+        targets.length === label.mask.image.byteLength) ||
+      (maskData.channels === 3 &&
+        targets.length === overlay.length * maskData.channels)
     ) {
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
