@@ -152,6 +152,7 @@ export const FIELD_CLASS_TO_SCHEMA_TYPE: Record<string, string> = {
 
 // Primitive field types - capitalized short names returned by fieldType atom
 // The atom does capitalize(schema.type) where type is "str", "float", etc.
+// Note: capitalize() only capitalizes the first letter, so "list<int>" becomes "List<int>"
 export const PRIMITIVE_FIELD_TYPES = new Set([
   "Str",
   "Int",
@@ -161,6 +162,9 @@ export const PRIMITIVE_FIELD_TYPES = new Set([
   "Datetime",
   "Dict",
   "List",
+  "List<str>",
+  "List<int>",
+  "List<float>",
   "Id",
 ]);
 
@@ -174,11 +178,32 @@ export const FIELD_TYPE_TO_SCHEMA_TYPE: Record<string, string> = {
   Datetime: "datetime",
   Dict: "dict",
   Id: "id",
+  // List types (capitalize() only capitalizes first letter)
+  "List<str>": "list<str>",
+  "List<int>": "list<int>",
+  "List<float>": "list<float>",
 };
 
 // Get schema type from field type
 export const getSchemaTypeFromFieldType = (fieldType: string): string => {
-  return FIELD_TYPE_TO_SCHEMA_TYPE[fieldType] || "str";
+  // Check direct mapping first
+  if (FIELD_TYPE_TO_SCHEMA_TYPE[fieldType]) {
+    return FIELD_TYPE_TO_SCHEMA_TYPE[fieldType];
+  }
+
+  // Handle list patterns like "List<str>", "List<int>", etc.
+  const listMatch = fieldType.match(/^List<(.+)>$/i);
+  if (listMatch) {
+    const innerType = listMatch[1].toLowerCase();
+    const innerSchemaType =
+      FIELD_TYPE_TO_SCHEMA_TYPE[
+        innerType.charAt(0).toUpperCase() + innerType.slice(1)
+      ] || "str";
+    return `list<${innerSchemaType}>`;
+  }
+
+  // Default to "str" for unknown types
+  return "str";
 };
 
 /**
