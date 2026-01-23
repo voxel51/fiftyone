@@ -22,6 +22,8 @@ import {
   currentType,
   readOnlyOverrideAtom,
 } from "./state";
+import PrimitiveWrapper from "./PrimitiveWrapper";
+import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
 import useSave from "./useSave";
 import {
@@ -60,6 +62,7 @@ export default function Edit() {
   const type = useAtomValue(currentType);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const setReadOnlyOverride = useSetAtom(readOnlyOverrideAtom);
+  const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
   const exit = useExit();
@@ -134,6 +137,7 @@ export default function Edit() {
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
     <Confirmation>
@@ -141,13 +145,10 @@ export default function Edit() {
         <Header />
         <Content>
           <Id />
-          <Field />
-          {type === DETECTION && overlay && !is3dDetection && (
-            <Position readOnly={isReadOnly} />
-          )}
-          {type === DETECTION && overlay && is3dDetection && (
-            <Position3d readOnly={isReadOnly} />
-          )}
+          {!primitiveEditingActive && <Field />}
+          {primitiveEditingActive && <PrimitiveWrapper />}
+          {type === DETECTION && overlay && !is3dDetection && <Position />}
+          {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema readOnly={isReadOnly} />}
         </Content>

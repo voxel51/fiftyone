@@ -21,7 +21,7 @@ import useColor from "./useColor";
 
 const Header = () => {
   const type = useAtomValue(currentType);
-  const Icon = ICONS[type.toLowerCase()];
+  const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
   const { onExit } = useContext(ConfirmationContext);
 
@@ -63,8 +63,8 @@ const Header = () => {
         <Round onClick={onExit}>
           <Back />
         </Round>
-        <Icon fill={color} />
-        <div>{type}</div>
+        {Icon && <Icon fill={color} />}
+        <div>Edit {type}</div>
       </ItemLeft>
       {currentFieldIsReadOnly && <span>Read-only</span>}
       {!isAnnotatingPolyline && !isAnnotatingCuboid && (
