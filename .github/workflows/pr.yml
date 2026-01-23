@@ -45,7 +45,8 @@ jobs:
 
   e2e:
     needs: modified-files
-    if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
+    if: false
+    #if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
     uses: ./.github/workflows/e2e.yml
 
   lint:

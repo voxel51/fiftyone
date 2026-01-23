@@ -3,8 +3,8 @@
 # constrain it so that tests are successful.
 numpy<2
 pydicom>=2.2.0
-shapely>=1.7.1
-tensorflow
-tensorflow-datasets
+shapely>=1.7.1; python_version < "3.13"
+tensorflow; python_version < "3.14"
+tensorflow-datasets; python_version < "3.14"
 torch
 torchvision

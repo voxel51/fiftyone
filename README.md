@@ -59,9 +59,16 @@ pip install fiftyone
 
 FiftyOne supports Python 3.9 - 3.14.
 
-> **Note:** 3D visualization features that depend on `open3d` are not available
-> on Python 3.13+ as `open3d` does not yet provide wheels for these versions.
-> All other functionality works normally.
+> **Note:** Some optional dependencies have limited support on newer Python
+> versions:
+>
+> -   **Python 3.13+**: 3D visualization features (`open3d`) and geometry
+>     utilities (`shapely`) are not available
+> -   **Python 3.14**: TensorFlow integration is not available (TensorFlow
+>     doesn't support 3.14 yet)
+>
+> All core FiftyOne functionality and PyTorch integration work on all supported
+> versions.
 
 For most users, we recommend installing the latest release version of FiftyOne
 via `pip` as shown above.
