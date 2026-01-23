@@ -1,9 +1,5 @@
-/**
- * Single frustum component that renders wireframe edges and a clickable far plane.
- */
-
 import { Cone, Line } from "@react-three/drei";
-import { ThreeEvent, useLoader } from "@react-three/fiber";
+import { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BufferAttribute,
@@ -13,6 +9,7 @@ import {
   Vector3,
 } from "three";
 import { useFo3dContext } from "../fo3d/context";
+import { useFoLoader } from "../hooks/use-fo-loaders";
 import { formatNumber, quaternionToEuler } from "../utils";
 import {
   FRUSTUM_AXES_LINE_WIDTH,
@@ -33,11 +30,7 @@ import {
   FRUSTUM_TOP_MARKER_HEIGHT,
 } from "./constants";
 import type { CameraExtrinsics, FrustumData, FrustumGeometry } from "./types";
-import { useFoLoader } from "../hooks/use-fo-loaders";
 
-/**
- * Formats extrinsics data for display in tooltip.
- */
 function formatExtrinsicsForTooltip(
   extrinsics: CameraExtrinsics
 ): Record<string, string> {
@@ -59,34 +52,22 @@ function formatExtrinsicsForTooltip(
 }
 
 interface FrustumProps {
-  /** Frustum data including slice name and optional texture details */
   frustumData: FrustumData;
-  /** Computed geometry for rendering */
   geometry: FrustumGeometry;
 }
 
-/**
- * Renders a single camera frustum with:
- * - Wireframe edges (always visible)
- * - Semi-transparent far plane (for click interaction)
- * - Optional image texture on far plane (when clicked, if intrinsics available)
- */
 export function Frustum({ frustumData, geometry }: FrustumProps) {
   const { sliceName, intrinsics, imageUrl } = frustumData;
   const { setHoverMetadata } = useFo3dContext();
   const [showTexture, setShowTexture] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Only load texture if we have intrinsics and an image URL
   const canShowTexture = Boolean(intrinsics && imageUrl);
-
-  // Compute colors based on hover state
   const wireframeColor = isHovered ? FRUSTUM_HOVER_COLOR : FRUSTUM_COLOR;
   const planeOpacity = isHovered
     ? FRUSTUM_HOVER_OPACITY
     : FRUSTUM_PLANE_OPACITY;
 
-  // Build wireframe line points from geometry
   const linePoints = useMemo(() => {
     const points: Vector3[] = [];
     const { corners, lineIndices } = geometry;
@@ -118,36 +99,16 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
     const geo = new BufferGeometry();
     const { farPlaneCorners } = geometry;
 
-    // Create vertices for two triangles forming a quad
-    // Order: top-left, top-right, bottom-right, bottom-left
     const vertices = new Float32Array([
-      // Triangle 1: top-left, top-right, bottom-right
       ...farPlaneCorners[0],
       ...farPlaneCorners[1],
       ...farPlaneCorners[2],
-      // Triangle 2: top-left, bottom-right, bottom-left
       ...farPlaneCorners[0],
       ...farPlaneCorners[2],
       ...farPlaneCorners[3],
     ]);
 
-    // UV coordinates for texture mapping
-    const uvs = new Float32Array([
-      // Triangle 1
-      0,
-      1, // top-left
-      1,
-      1, // top-right
-      1,
-      0, // bottom-right
-      // Triangle 2
-      0,
-      1, // top-left
-      1,
-      0, // bottom-right
-      0,
-      0, // bottom-left
-    ]);
+    const uvs = new Float32Array([0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0]);
 
     geo.setAttribute("position", new BufferAttribute(vertices, 3));
     geo.setAttribute("uv", new BufferAttribute(uvs, 2));
@@ -156,18 +117,13 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
     return geo;
   }, [geometry]);
 
-  // Build "up" indicator triangle at top of far plane
-  // In CV convention: Y-down, so "up" in image space is negative Y
   const topMarkerPoints = useMemo(() => {
     const { farPlaneCorners } = geometry;
     const topLeft = new Vector3(...farPlaneCorners[0]);
     const topRight = new Vector3(...farPlaneCorners[1]);
 
-    // Compute the top edge properties
     const topMidpoint = topLeft.clone().add(topRight).multiplyScalar(0.5);
     const edgeWidth = topLeft.distanceTo(topRight);
-
-    // Triangle base points
     const baseHalfWidth = edgeWidth * FRUSTUM_TOP_MARKER_BASE_HALF_WIDTH;
     const edgeDirection = topRight.clone().sub(topLeft).normalize();
 
@@ -178,16 +134,13 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
       .clone()
       .add(edgeDirection.clone().multiplyScalar(baseHalfWidth));
 
-    // Apex height
     const apexHeight = edgeWidth * FRUSTUM_TOP_MARKER_HEIGHT;
     const apex = topMidpoint.clone();
     apex.y -= apexHeight;
 
-    // Return points for triangle outline (closed loop)
     return [baseLeft, apex, baseRight, baseLeft];
   }, [geometry]);
 
-  // Cleanup geometry on unmount to prevent memory leaks
   useEffect(() => {
     return () => {
       farPlaneGeometry.dispose();
@@ -201,7 +154,6 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 
       const attributes: Record<string, string | number | boolean> = {};
 
-      // Add extrinsics data if available
       if (frustumData.extrinsics) {
         const extrinsicsInfo = formatExtrinsicsForTooltip(
           frustumData.extrinsics
@@ -302,15 +254,13 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
         segments
       />
 
-      {/* Top marker triangle (indicates "up" direction) */}
+      {/* Top marker */}
       <Line
         points={topMarkerPoints}
         color={wireframeColor}
         lineWidth={FRUSTUM_LINE_WIDTH}
       />
 
-      {/* Far plane (clickable) */}
-      {/* renderOrder brings hovered frustums to front when showing textures */}
       <mesh
         geometry={farPlaneGeometry}
         onPointerOver={handlePointerOver}
@@ -334,9 +284,6 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
   );
 }
 
-/**
- * Separate component for texture material to handle async texture loading.
- */
 function FrustumTextureMaterial({
   imageUrl,
   isHovered,
