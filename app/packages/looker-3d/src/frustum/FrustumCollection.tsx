@@ -5,9 +5,11 @@
 import { Suspense } from "react";
 import { useFo3dContext } from "../fo3d/context";
 import { Frustum } from "./Frustum";
-import { useFrustumsVisible } from "./hooks";
-import { useFrustumData } from "./useFrustumData";
-import { useFrustumGeometry } from "./useFrustumGeometry";
+import {
+  useComputeFrustumGeometry,
+  useFetchFrustumParameters,
+} from "./hooks/internal";
+import { useFrustums } from "./hooks/public";
 
 /**
  * Renders camera frustums for all 2D slices in a grouped dataset.
@@ -19,14 +21,17 @@ import { useFrustumGeometry } from "./useFrustumGeometry";
  * 4. Renders individual Frustum components for each slice
  */
 export function FrustumCollection() {
-  const isVisible = useFrustumsVisible();
+  const { isVisible } = useFrustums();
   const { sceneBoundingBox } = useFo3dContext();
 
   // Fetch frustum data (static transforms, intrinsics, image URLs)
-  const { data: frustumData, isLoading, error } = useFrustumData();
+  const { data: frustumData, isLoading, error } = useFetchFrustumParameters();
 
   // Compute geometry for all frustums
-  const { geometries } = useFrustumGeometry(frustumData, sceneBoundingBox);
+  const { geometries } = useComputeFrustumGeometry(
+    frustumData,
+    sceneBoundingBox
+  );
 
   // Don't render if toggle is off
   if (!isVisible) {

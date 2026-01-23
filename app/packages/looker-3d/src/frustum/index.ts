@@ -10,9 +10,7 @@ export { Frustum } from "./Frustum";
 export { FrustumCollection } from "./FrustumCollection";
 
 // Hooks
-export { useFrustumsVisible, useToggleFrustums } from "./hooks";
-export { useFrustumData } from "./useFrustumData";
-export { useFrustumGeometry } from "./useFrustumGeometry";
+export { useFrustumActions, useFrustums } from "./hooks/public";
 
 // Types
 export type {
@@ -22,8 +20,6 @@ export type {
   GroupIntrinsicsResponse,
   GroupStaticTransformResponse,
   StaticTransform,
-  UseFrustumDataResult,
-  UseFrustumGeometryResult,
 } from "./types";
 
 // Builders (for testing)

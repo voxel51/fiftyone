@@ -270,7 +270,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
         onClick={handleClick}
         renderOrder={isHovered && showTexture ? 1 : 0}
       >
-        {showTexture && imageUrl ? (
+        {canShowTexture && showTexture && imageUrl ? (
           <FrustumTextureMaterial imageUrl={imageUrl} isHovered={isHovered} />
         ) : (
           <meshBasicMaterial

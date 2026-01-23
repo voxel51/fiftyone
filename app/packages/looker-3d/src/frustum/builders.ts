@@ -1,6 +1,5 @@
 /**
  * Pure functions for frustum geometry calculation.
- * These functions are isolated from React and Three.js for testability.
  */
 
 import { Box3, Matrix4, Quaternion, Vector3 } from "three";
@@ -150,23 +149,30 @@ export function computeFrustumCorners(
   let fovY: number;
   let aspectRatio: number;
 
-  if (intrinsics && intrinsics.fx && intrinsics.fy) {
+  // Compute fovY from intrinsics if available
+  if (intrinsics && intrinsics.fy) {
     // Compute vertical FOV from focal length
     // FOV = 2 * atan(sensorHeight / (2 * fy))
     // Assuming cy * 2 approximates sensor height
     const sensorHeight = intrinsics.height ?? intrinsics.cy * 2;
     fovY = 2 * Math.atan(sensorHeight / (2 * intrinsics.fy));
-
-    // Compute aspect ratio from focal lengths
-    aspectRatio = intrinsics.fx / intrinsics.fy;
   } else {
     fovY = (FRUSTUM_DEFAULT_FOV_DEGREES * Math.PI) / 180;
-    aspectRatio = FRUSTUM_DEFAULT_ASPECT_RATIO;
   }
 
-  // Override with image aspect ratio if provided (most accurate)
+  // Compute aspect ratio with priority:
+  // 1. imageAspectRatio parameter (most accurate - from actual image dimensions)
+  // 2. intrinsics.width / intrinsics.height (explicit image dimensions in intrinsics)
+  // 3. intrinsics.fx / intrinsics.fy (pixel aspect ratio - last resort)
+  // 4. FRUSTUM_DEFAULT_ASPECT_RATIO (final fallback)
   if (imageAspectRatio !== undefined && imageAspectRatio > 0) {
     aspectRatio = imageAspectRatio;
+  } else if (intrinsics?.width && intrinsics?.height) {
+    aspectRatio = intrinsics.width / intrinsics.height;
+  } else if (intrinsics?.fx && intrinsics?.fy) {
+    aspectRatio = intrinsics.fx / intrinsics.fy;
+  } else {
+    aspectRatio = FRUSTUM_DEFAULT_ASPECT_RATIO;
   }
 
   // Compute half-dimensions at each plane distance

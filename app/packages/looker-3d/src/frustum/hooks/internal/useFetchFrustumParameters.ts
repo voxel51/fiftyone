@@ -1,20 +1,15 @@
-/**
- * Custom hook for fetching camera static transforms and intrinsics data.
- */
-
 import * as fos from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useCallback, useEffect, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { useImageSlicesIfAvailable } from "../annotation/useImageSlicesIfAvailable";
+import { useImageSlicesIfAvailable } from "../../../annotation/useImageSlicesIfAvailable";
 import type {
   CameraIntrinsics,
   FrustumData,
   GroupIntrinsicsResponse,
   GroupStaticTransformResponse,
   StaticTransform,
-  UseFrustumDataResult,
-} from "./types";
+} from "../../types";
 
 /**
  * Loads an image and returns its dimensions.
@@ -40,7 +35,7 @@ function loadImageDimensions(
  *
  * @returns FrustumData for all non-3D slices with valid static transforms
  */
-export function useFrustumData(): UseFrustumDataResult {
+export function useFetchFrustumParameters() {
   const [data, setData] = useState<FrustumData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);

@@ -2,10 +2,11 @@ import { useTheme } from "@fiftyone/components";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import type { MouseEvent } from "react";
 import { ActionItem } from "../containers";
-import { useToggleFrustums } from "../frustum/hooks";
+import { useFrustumActions, useFrustums } from "../frustum";
 
 export const ToggleFrustums = () => {
-  const { isVisible, toggle } = useToggleFrustums();
+  const { isVisible } = useFrustums();
+  const { toggle } = useFrustumActions();
   const { primary } = useTheme();
 
   return (

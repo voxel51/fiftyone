@@ -103,25 +103,3 @@ export interface GroupIntrinsicsResponse {
       | { error: string };
   };
 }
-
-/**
- * Hook result for useFrustumData.
- */
-export interface UseFrustumDataResult {
-  /** Array of frustum data for all non-current slices with valid static transforms */
-  data: FrustumData[];
-  /** Whether data is currently being fetched */
-  isLoading: boolean;
-  /** Error if fetch failed */
-  error: Error | null;
-  /** Function to manually refetch data */
-  refetch: () => void;
-}
-
-/**
- * Hook result for useFrustumGeometry.
- */
-export interface UseFrustumGeometryResult {
-  /** Map of slice name to computed frustum geometry */
-  geometries: Map<string, FrustumGeometry>;
-}
