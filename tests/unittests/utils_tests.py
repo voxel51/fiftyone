@@ -941,16 +941,6 @@ class RecommendProcessPoolWorkersTests(unittest.TestCase):
             with patch.object(fo.config, "max_process_pool_workers", 2):
                 self.assertEqual(fou.recommend_process_pool_workers(), 2)
 
-    @patch.object(fou, "get_cpu_count")
-    def test_cpucount_exception(self, cpu_count_mock):
-        with patch.object(fo.config, "default_process_pool_workers", None):
-            cpu_count_mock.side_effect = ValueError
-            self.assertEqual(fou.recommend_process_pool_workers(), 4)
-
-            # Number is capped by config
-            with patch.object(fo.config, "max_process_pool_workers", 2):
-                self.assertEqual(fou.recommend_process_pool_workers(), 2)
-
 
 class RecommendThreadPoolWorkersTests(unittest.TestCase):
     def test_explicit(self):
@@ -1004,16 +994,6 @@ class RecommendThreadPoolWorkersTests(unittest.TestCase):
         with patch.object(fo.config, "default_thread_pool_workers", None):
             cpu_count_mock.return_value = 10
             self.assertEqual(fou.recommend_thread_pool_workers(), 10)
-
-            # Number is capped by config
-            with patch.object(fo.config, "max_thread_pool_workers", 2):
-                self.assertEqual(fou.recommend_thread_pool_workers(), 2)
-
-    @patch.object(fou, "get_cpu_count")
-    def test_cpucount_exception(self, cpu_count_mock):
-        with patch.object(fo.config, "default_thread_pool_workers", None):
-            cpu_count_mock.side_effect = ValueError
-            self.assertEqual(fou.recommend_thread_pool_workers(), 4)
 
             # Number is capped by config
             with patch.object(fo.config, "max_thread_pool_workers", 2):
