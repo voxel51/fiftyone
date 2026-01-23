@@ -236,8 +236,8 @@ export const ThreeDPolylines = () => {
           }
 
           if (!hasPolylineFieldsInSchema) {
-            // When no polyline-compatible fields exist in the schema, we set `editing`
-            // to the string "Polyline" (a LabelType).
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
             setEditing(POLYLINE);
             return;
           }
@@ -287,8 +287,8 @@ export const ThreeDCuboids = () => {
           }
 
           if (!hasCuboidFieldsInSchema) {
-            // When no cuboid-compatible fields exist in the schema, we set `editing`
-            // to the string "Detection" (a LabelType).
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
             setEditing(DETECTION);
             return;
           }
