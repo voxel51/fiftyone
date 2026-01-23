@@ -27,6 +27,14 @@ import fiftyone.utils.iou as foui
 
 from decorators import drop_datasets, use_local_plugins
 
+# Check if shapely is available (not available on Python 3.13+)
+try:
+    import shapely
+
+    SHAPELY_AVAILABLE = True
+except ImportError:
+    SHAPELY_AVAILABLE = False
+
 
 class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
     pass
@@ -1970,6 +1978,10 @@ class DetectionsTests(unittest.TestCase):
 
         self._evaluate_coco(dataset, kwargs)
 
+    @unittest.skipIf(
+        not SHAPELY_AVAILABLE,
+        "shapely not available (unsupported on Python 3.13+)",
+    )
     @drop_datasets
     def test_evaluate_polylines_coco(self):
         dataset = self._make_polylines_dataset()
@@ -1991,6 +2003,10 @@ class DetectionsTests(unittest.TestCase):
 
         self._evaluate_open_images(dataset, kwargs)
 
+    @unittest.skipIf(
+        not SHAPELY_AVAILABLE,
+        "shapely not available (unsupported on Python 3.13+)",
+    )
     @drop_datasets
     def test_evaluate_polylines_open_images(self):
         dataset = self._make_polylines_dataset()
