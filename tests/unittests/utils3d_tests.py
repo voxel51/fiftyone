@@ -7,12 +7,12 @@ FiftyOne 3D utilities unit tests.
 """
 
 import os
+import sys
 import tempfile
 import unittest
 
 import numpy as np
 import numpy.testing as nptest
-import open3d as o3d
 from PIL import Image
 
 import fiftyone as fo
@@ -21,11 +21,24 @@ import fiftyone.utils.utils3d as fou3d
 
 from decorators import drop_datasets
 
+# Skip all tests in this module if open3d is not available
+# (e.g., on Python 3.13+ where open3d doesn't have wheels yet)
+try:
+    import open3d as o3d
+
+    OPEN3D_AVAILABLE = True
+except ImportError:
+    OPEN3D_AVAILABLE = False
+    o3d = None
+
 
 def get_abs_path(relative_path):
     return os.path.join(os.path.dirname(__file__), relative_path)
 
 
+@unittest.skipIf(
+    not OPEN3D_AVAILABLE, "open3d not available (unsupported on Python 3.13+)"
+)
 class BaseOrthographicProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -80,6 +93,9 @@ class BaseOrthographicProjectionTests(unittest.TestCase):
         o3d.io.write_point_cloud(self.test_pcd_path, pc, write_ascii=True)
 
 
+@unittest.skipIf(
+    not OPEN3D_AVAILABLE, "open3d not available (unsupported on Python 3.13+)"
+)
 class OrthographicProjectionTests(BaseOrthographicProjectionTests):
     @drop_datasets
     def test_params_validation(self):
@@ -242,6 +258,9 @@ class OrthographicProjectionTests(BaseOrthographicProjectionTests):
         )
 
 
+@unittest.skipIf(
+    not OPEN3D_AVAILABLE, "open3d not available (unsupported on Python 3.13+)"
+)
 class ParsePointCloudTests(BaseOrthographicProjectionTests):
     def test_rotation_matrix_from_projection_normal(self):
         # By default, the projection normal is set to (0, 0, 1)
