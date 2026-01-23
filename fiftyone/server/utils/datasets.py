@@ -6,7 +6,7 @@ Dataset and sample helper utilities for FiftyOne server routes.
 |
 """
 
-from typing import Any
+from typing import Any, Union
 import logging
 from starlette.exceptions import HTTPException
 
@@ -82,7 +82,7 @@ def sync_to_generated_dataset(
     patch_operations: list[dict[str, Any]],
     *,
     delete: bool = False,
-) -> fo.Sample:
+) -> Union[fo.Sample, None]:
     """Sync annotation changes to a generated dataset sample.
 
     Resolves the generated dataset and sample, then applies the changes.
@@ -144,6 +144,8 @@ def sync_to_generated_dataset(
         )
         return generated_sample
 
+    # Applying changes to a sample field modifies the sample in place, so we just
+    # need to save the sample to persist the changes
     generated_sample.save()
     logger.info("Synced changes to generated sample %s", generated_sample._id)
 
