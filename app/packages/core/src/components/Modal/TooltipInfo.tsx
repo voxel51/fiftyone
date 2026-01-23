@@ -1,5 +1,6 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
@@ -523,6 +524,7 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const { enterAnnotationMode } = useAnnotationController();
+  const modalMode = useModalMode();
 
   const closeTooltip = useCallback(() => {
     setTooltipDetail(null);
@@ -538,14 +540,16 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          <Button
-            leadingIcon={EditIcon}
-            size={Size.Xs}
-            onClick={() => {
-              enterAnnotationMode(title, labelId);
-              closeTooltip();
-            }}
-          ></Button>
+          {modalMode === ModalMode.EXPLORE && (
+            <Button
+              leadingIcon={EditIcon}
+              size={Size.Xs}
+              onClick={() => {
+                enterAnnotationMode(title, labelId);
+                closeTooltip();
+              }}
+            ></Button>
+          )}
 
           <IconButton size="small" onClick={closeTooltip}>
             <CloseIcon fontSize="small" />
