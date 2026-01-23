@@ -40,7 +40,7 @@ export default function useFocus() {
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
-      (payload) => {
+      async (payload) => {
         if (payload.ignoreSideEffects) {
           return;
         }
@@ -55,8 +55,8 @@ export default function useFocus() {
 
         // there are unsaved changes, ask for confirmation
         scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
+        await onSave();
         onExit();
-        onSave();
 
         scene?.deselectOverlay(id, {
           ignoreSideEffects: true,

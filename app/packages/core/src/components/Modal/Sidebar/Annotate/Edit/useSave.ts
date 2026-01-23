@@ -75,12 +75,9 @@ export default function useSave() {
   }, [
     label,
     isSaving,
-    setSaving,
     schema,
     commandBus,
-    setter,
     scene,
-    saved,
     exit,
     setNotification,
     addOverlay,

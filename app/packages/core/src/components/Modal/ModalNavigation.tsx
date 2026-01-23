@@ -127,16 +127,16 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   }, [nextNavigator, previousNavigator]);
   const onExit = useExit();
   const onSave = useSave();
-  const next = useCallback(() => {
-    onSave();
+  const next = useCallback(async () => {
+    await onSave();
     onExit();
     nextNavigator.navigate();
   }, [nextNavigator, onExit, onSave]);
 
-  const previous = useCallback(() => {
-    previousNavigator.navigate();
-    onSave();
+  const previous = useCallback(async () => {
+    await onSave();
     onExit();
+    previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);
 
   const keyBindings = useMemo(() => {
