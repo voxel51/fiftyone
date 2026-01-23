@@ -24,6 +24,7 @@ from fiftyone.server.utils.datasets import (
     get_sample_from_dataset,
     sync_to_generated_dataset,
 )
+from fiftyone.server.utils.json.encoder import JSONResponse
 from fiftyone.server.utils.json.jsonpatch import (
     apply as apply_jsonpatch,
     RootDeleteError,
@@ -414,7 +415,7 @@ class Sample(HTTPEndpoint):
     """Sample endpoints."""
 
     @decorators.route
-    async def patch(self, request: Request, data: dict) -> dict:
+    async def patch(self, request: Request, data: dict) -> JSONResponse:
         """Applies a list of field updates to a sample.
 
         See: https://datatracker.ietf.org/doc/html/rfc6902
@@ -487,7 +488,7 @@ class SampleField(HTTPEndpoint):
     """Sample field endpoints."""
 
     @decorators.route
-    async def patch(self, request: Request, data: List[dict]) -> dict:
+    async def patch(self, request: Request, data: List[dict]) -> JSONResponse:
         """Applies a list of field updates to a sample field in a list by id.
 
         This endpoint handles updates to individual labels within a list field
