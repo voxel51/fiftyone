@@ -136,18 +136,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
       async (cmd) => {
         try {
           const labelId = cmd.label.data._id;
-          const labelProxy = convertToLabelProxy(cmd.label);
-
-          if (!labelProxy) {
-            eventBus.dispatch("annotation:deleteError", {
-              labelId,
-              type: "delete",
-              error: new Error("Failed to convert label to proxy"),
-            });
-            return false;
-          }
-
-          const success = await deleteLabel(labelProxy, cmd.schema);
+          const success = await deleteLabel(cmd.label, cmd.schema);
 
           if (success) {
             eventBus.dispatch("annotation:deleteSuccess", {
