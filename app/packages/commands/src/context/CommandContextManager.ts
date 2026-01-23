@@ -12,6 +12,7 @@ import { CommandContext } from "./CommandContext";
 export enum KnownContexts {
   Default = "fo.default",
   Modal = "fo.modal",
+  ModalAnnotate = "fo.modal.annotate",
 }
 
 export enum KnownCommands {
