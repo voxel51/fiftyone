@@ -7,7 +7,7 @@ export const UNDEFINED_LIGHTER_SCENE_ID = "UNDEFINED_LIGHTER_SCENE";
  * Factory function that creates a type-safe event handler hook for Lighter events.
  * The returned hook automatically registers/unregisters handlers on mount/unmount.
  *
- * @param sceneId - Scene ID to use as the channel ID.
+ * @param eventChannel - Value to use as the channel ID
  * @returns A hook function that registers event handlers with automatic cleanup
  *
  * @example
@@ -18,5 +18,5 @@ export const UNDEFINED_LIGHTER_SCENE_ID = "UNDEFINED_LIGHTER_SCENE";
  * }, []));
  * ```
  */
-export const useLighterEventHandler = (sceneId: string) =>
-  createUseEventHandler<LighterEventGroup>(sceneId);
+export const useLighterEventHandler = (eventChannel: string) =>
+  createUseEventHandler<LighterEventGroup>(eventChannel);

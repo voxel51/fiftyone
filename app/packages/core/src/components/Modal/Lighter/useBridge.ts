@@ -24,10 +24,10 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  * 1. We listen to certain events from "FiftyOne state" world and react to them, or
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
-export const useBridge = (scene: Scene2D | null, sceneId: string) => {
-  useLighterTooltipEventHandler(scene, sceneId);
-  const eventBus = useLighterEventBus(sceneId);
-  const useEventHandler = useLighterEventHandler(sceneId);
+export const useBridge = (scene: Scene2D | null) => {
+  useLighterTooltipEventHandler(scene);
+  const eventBus = useLighterEventBus(scene?.getEventChannel());
+  const useEventHandler = useLighterEventHandler(scene?.getEventChannel());
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
 

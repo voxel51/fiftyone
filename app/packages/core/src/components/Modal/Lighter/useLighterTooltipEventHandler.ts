@@ -18,9 +18,8 @@ import { useRecoilCallback } from "recoil";
  */
 export const useLighterTooltipEventHandler = (
   scene: Scene2D,
-  sceneId: string
 ) => {
-  const useEventHandler = useLighterEventHandler(sceneId);
+  const useEventHandler = useLighterEventHandler(scene?.getEventChannel());
 
   const tooltip = fos.useTooltip();
 
