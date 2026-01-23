@@ -104,6 +104,9 @@ const useSave = (field: string) => {
           callback: () => {
             setSaved(current);
             setIsSaving(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-save-complete")
+            );
           },
         }
       );
@@ -129,6 +132,9 @@ const useScan = (field: string) => {
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-scan-complete")
+            );
           },
         }
       );
@@ -163,8 +169,14 @@ const useValidate = (field: string) => {
               if (!result.result.errors.length) {
                 setCurrent(parsed);
                 setIsValid(true);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-valid-json")
+                );
               } else {
                 setIsValid(false);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-invalid-json")
+                );
               }
               setIsValidating(false);
             },

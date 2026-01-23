@@ -31,8 +31,7 @@ export class JSONEditorPom {
   get locator() {
     return this.schemaManager.locator
       .getByTestId("json-editor")
-      .locator(".monaco-editor")
-      .nth(0);
+      .locator(".monaco-editor");
   }
 
   /**
@@ -56,6 +55,7 @@ export class JSONEditorPom {
    */
   async getJSON() {
     await this.selectAllJSON();
+    await this.page.keyboard.press("ControlOrMeta+KeyC");
     const text = await this.page.evaluate(() => navigator.clipboard.readText());
     return JSON.parse(text) as JSONValue;
   }
@@ -64,10 +64,7 @@ export class JSONEditorPom {
    * Select all the text within the code editor
    */
   async selectAllJSON() {
-    await this.locator.click();
-    // select all text twice, once is not enough for "all text" surprisingly
-    await this.page.keyboard.press("ControlOrMeta+KeyA");
-    await this.page.keyboard.press("ControlOrMeta+KeyA");
+    await this.locator.click({ clickCount: 4 });
   }
 
   /**
@@ -102,21 +99,15 @@ export class JSONEditorPom {
     const event = this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-save-complete"
     );
-    await this.locator.getByTestId("save").click();
+    await this.schemaManager.footer.getByTestId("primary-button").click();
     await event;
   }
 
   /**
    * Discard the unsaved changes
-   *
-   *
    */
   async discard() {
-    const event = this.eventUtils.getEventReceivedPromiseForPredicate(
-      "schema-manager-discard-complete"
-    );
-    await this.locator.getByTestId("discard").click();
-    await event;
+    await this.schemaManager.footer.getByTestId("secondary-button").click();
   }
 
   /**
@@ -124,6 +115,28 @@ export class JSONEditorPom {
    */
   async toggleVisibility() {
     await this.locator.getByTestId("toggle-visibility").click();
+  }
+
+  /**
+   * Wait for JSON validation to yield an invalid response
+   *
+   * @returns A promise
+   */
+  async expectInvalidJSON() {
+    return this.eventUtils.getEventReceivedPromiseForPredicate(
+      "schema-manager-invalid-json"
+    );
+  }
+
+  /**
+   * Wait for JSON validation to yield an valid response
+   *
+   * @returns A promise
+   */
+  async expectValidJSON() {
+    return this.eventUtils.getEventReceivedPromiseForPredicate(
+      "schema-manager-valid-json"
+    );
   }
 }
 

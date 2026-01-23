@@ -42,7 +42,11 @@ const Heading = () => {
 
   return (
     <ItemLeft>
-      <BackButton color="secondary" onClick={() => setField(null)} />
+      <BackButton
+        data-cy="schema-manager-back"
+        color="secondary"
+        onClick={() => setField(null)}
+      />
       <Typography variant="h5">Edit field schema</Typography>
     </ItemLeft>
   );

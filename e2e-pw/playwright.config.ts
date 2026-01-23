@@ -45,7 +45,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         contextOptions: {
-          permissions: ["clipboard-read"],
+          permissions: ["clipboard-read", "clipboard-write"],
         },
         channel: "chromium",
         bypassCSP: true,

@@ -44,16 +44,17 @@ export class FieldRowPom {
    * Get the type for the field row, e.g. 'int' or 'str'
    */
   async getType() {
-    return await this.locator
-      .locator(".text-content-text-secondary ")
+    const text = await this.locator
+      .locator("span.text-content-text-secondary")
       .textContent();
+    return text.split(" ")[0];
   }
 
   /**
    * Check the checkbox, if it exists
    */
   async check() {
-    await this.checkbox.click();
+    await this.checkbox.click({ force: true });
     await this.assert.isChecked(true);
   }
 
@@ -76,7 +77,7 @@ export class FieldRowPom {
    * Uncheck the checkbox, if it exists
    */
   async uncheck() {
-    await this.checkbox.click();
+    await this.checkbox.click({ force: true });
     await this.assert.isChecked(false);
   }
 }

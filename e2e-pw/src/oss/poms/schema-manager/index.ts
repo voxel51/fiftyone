@@ -27,6 +27,13 @@ export class SchemaManagerPom {
   }
 
   /**
+   * The footer, if present
+   */
+  get footer() {
+    return this.locator.getByTestId("edit-field-footer");
+  }
+
+  /**
    * The hidden fields section locator
    */
   get hiddenFields() {
@@ -34,10 +41,17 @@ export class SchemaManagerPom {
   }
 
   /**
+   * Go back using the top-left arrow
+   */
+  async back() {
+    await this.locator.getByTestId("schema-manager-back").click();
+  }
+
+  /**
    * Close the modal
    */
   async close() {
-    await this.page.getByTestId("close-schema-manager").click();
+    await this.locator.getByTestId("close-schema-manager").click();
   }
 
   /**
@@ -57,6 +71,13 @@ export class SchemaManagerPom {
   getFieldRow(field: string) {
     return new FieldRowPom(this.page, this.eventUtils, field, this);
   }
+
+  /**
+   * Move the checked fields
+   */
+  async moveFields() {
+    await this.locator.getByTestId("move-fields").click();
+  }
 }
 
 /**
@@ -71,11 +92,10 @@ class SchemaManagerAsserter {
    * @param field the field name
    */
   async isActiveFieldRow(field: string) {
-    await expect(
-      this.schemaManagerPom.activeFields.filter({
-        has: this.schemaManagerPom.getFieldRow(field).locator,
-      })
-    ).toBeVisible();
+    const locator = this.schemaManagerPom.activeFields.getByTestId(
+      `field-row-${field}`
+    );
+    await expect(locator).toBeAttached();
   }
 
   /**
@@ -84,11 +104,10 @@ class SchemaManagerAsserter {
    * @param field the field name
    */
   async isHiddenFieldRow(field: string) {
-    await expect(
-      this.schemaManagerPom.hiddenFields.filter({
-        has: this.schemaManagerPom.getFieldRow(field).locator,
-      })
-    ).toBeVisible();
+    const locator = this.schemaManagerPom.hiddenFields.getByTestId(
+      `field-row-${field}`
+    );
+    await expect(locator).toBeAttached();
   }
 
   /**

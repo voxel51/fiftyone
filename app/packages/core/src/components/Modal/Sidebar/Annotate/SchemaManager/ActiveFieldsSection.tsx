@@ -146,7 +146,7 @@ const ActiveFieldsSection = () => {
 
   if (!fields?.length) {
     return (
-      <div data-cy={"active-fields"}>
+      <div>
         <GUISectionHeader>
           <Typography variant="body1" fontWeight={500}>
             Active fields
@@ -183,6 +183,7 @@ const ActiveFieldsSection = () => {
         <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
       <RichList
+        data-cy={"active-fields"}
         listItems={listItems}
         draggable={true}
         onOrderChange={handleOrderChange}

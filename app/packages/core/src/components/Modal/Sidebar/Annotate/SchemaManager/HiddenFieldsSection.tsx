@@ -143,6 +143,7 @@ const HiddenFieldsSection = () => {
       </GUISectionHeader>
       <Collapse in={expanded}>
         <RichList
+          data-cy={"hidden-fields"}
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}

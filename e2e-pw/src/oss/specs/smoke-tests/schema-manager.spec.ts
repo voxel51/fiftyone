@@ -19,8 +19,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  schemaManager: async ({ page }, use) => {
-    await use(new SchemaManagerPom(page));
+  schemaManager: async ({ page, eventUtils }, use) => {
+    await use(new SchemaManagerPom(page, eventUtils));
   },
 });
 
@@ -62,24 +62,74 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   dataset.save()`);
 });
 
-test.describe.serial("image classification", () => {
+test.describe.serial("schema manager", () => {
   test.beforeEach(async ({ fiftyoneLoader, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
   });
 
-  test("JSON view", async ({ modal, schemaManager }) => {
+  test("JSON view configuration", async ({ modal, schemaManager }) => {
     await modal.assert.isOpen();
     await modal.sidebar.setMode("annotate");
     await schemaManager.open();
-    await schemaManager.assert.isVisible();
+    await schemaManager.assert.isOpen();
     const row = schemaManager.getFieldRow("classification");
     const jsonEditor = await row.edit();
 
-    throw new Error(await jsonEditor.getJSON());
+    await jsonEditor.assert.hasJSON({
+      attributes: {
+        confidence: { type: "float", component: "text" },
+        id: { type: "id", component: "text", read_only: true },
+        tags: { type: "list<str>", component: "text" },
+      },
+      component: "text",
+      type: "classification",
+    });
 
+    // Test validation
+    const invalid = jsonEditor.expectInvalidJSON();
+    await jsonEditor.setJSON({
+      component: "wrong",
+      type: "classification",
+    });
+    await invalid;
+    await jsonEditor.assert.hasErrors([
+      "invalid component 'wrong' for field 'classification'",
+    ]);
+
+    const valid = jsonEditor.expectValidJSON();
+    await jsonEditor.setJSON({
+      component: "text",
+      type: "classification",
+    });
+    await valid;
+    await jsonEditor.assert.hasJSON({
+      component: "text",
+      type: "classification",
+    });
+
+    // Test save
+    await jsonEditor.save();
+    await schemaManager.back();
+
+    // Activate
+    await row.assert.hasCheckbox();
+    await row.check();
+    await schemaManager.moveFields();
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: "classification", type: "classification" },
+    ]);
+
+    // Hide
+    await row.check();
+    await schemaManager.moveFields();
+    await schemaManager.assert.hasHiddenFieldRows([
+      { name: "classification", type: "classification" },
+    ]);
+
+    // Close
     await schemaManager.close();
-    await schemaManager.assert.isHidden();
+    await schemaManager.assert.isClosed();
   });
 });
