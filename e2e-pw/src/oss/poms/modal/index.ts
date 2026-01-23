@@ -3,7 +3,6 @@ import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalPanelPom } from "../panels/modal-panel";
-import { SchemaManagerPom } from "../schema-manager";
 import { UrlPom } from "../url";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
@@ -23,7 +22,6 @@ export class ModalPom {
   readonly imavid: ModalImaAsVideoControlsPom;
   readonly looker3dControls: Looker3DControlsPom;
   readonly panel: ModalPanelPom;
-  readonly schemaManager: SchemaManagerPom;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
@@ -44,7 +42,6 @@ export class ModalPom {
     this.imavid = new ModalImaAsVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
-    this.schemaManager = new SchemaManagerPom(page);
     this.sidebar = new ModalSidebarPom(page);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);

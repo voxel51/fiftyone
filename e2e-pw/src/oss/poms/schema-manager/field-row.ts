@@ -47,7 +47,7 @@ export class FieldRowPom {
     const text = await this.locator
       .locator("span.text-content-text-secondary")
       .textContent();
-    return text.split(" ")[0];
+    return (text ?? "").split(" ")[0];
   }
 
   /**

@@ -62,6 +62,16 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   dataset.save()`);
 });
 
+const DEFAULT_LABEL_SCHEMA = {
+  attributes: {
+    confidence: { type: "float", component: "text" },
+    id: { type: "id", component: "text", read_only: true },
+    tags: { type: "list<str>", component: "text" },
+  },
+  component: "text",
+  type: "classification",
+};
+
 test.describe.serial("schema manager", () => {
   test.beforeEach(async ({ fiftyoneLoader, page }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
@@ -70,24 +80,18 @@ test.describe.serial("schema manager", () => {
   });
 
   test("JSON view configuration", async ({ modal, schemaManager }) => {
+    // Init
     await modal.assert.isOpen();
     await modal.sidebar.setMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
+
+    // Configure
     const row = schemaManager.getFieldRow("classification");
     const jsonEditor = await row.edit();
+    await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
-    await jsonEditor.assert.hasJSON({
-      attributes: {
-        confidence: { type: "float", component: "text" },
-        id: { type: "id", component: "text", read_only: true },
-        tags: { type: "list<str>", component: "text" },
-      },
-      component: "text",
-      type: "classification",
-    });
-
-    // Test validation
+    // Unsuccessful validation
     const invalid = jsonEditor.expectInvalidJSON();
     await jsonEditor.setJSON({
       component: "wrong",
@@ -98,18 +102,26 @@ test.describe.serial("schema manager", () => {
       "invalid component 'wrong' for field 'classification'",
     ]);
 
+    // Discard
+    await jsonEditor.discard();
+    await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
+
+    // Successful validation
     const valid = jsonEditor.expectValidJSON();
     await jsonEditor.setJSON({
       component: "text",
       type: "classification",
     });
     await valid;
+
+    // Scan
+    await jsonEditor.scan();
     await jsonEditor.assert.hasJSON({
       component: "text",
       type: "classification",
     });
 
-    // Test save
+    // Save
     await jsonEditor.save();
     await schemaManager.back();
 

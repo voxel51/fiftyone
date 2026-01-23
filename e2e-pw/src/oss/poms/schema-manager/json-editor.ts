@@ -88,7 +88,7 @@ export class JSONEditorPom {
     const event = this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-scan-complete"
     );
-    await this.locator.getByTestId("scan").click();
+    await this.schemaManager.locator.getByTestId("scan").click();
     await event;
   }
 
@@ -114,7 +114,7 @@ export class JSONEditorPom {
    * Toggle the visibility, i.e. make the field active or hidden
    */
   async toggleVisibility() {
-    await this.locator.getByTestId("toggle-visibility").click();
+    await this.schemaManager.locator.getByTestId("toggle-visibility").click();
   }
 
   /**
@@ -129,7 +129,7 @@ export class JSONEditorPom {
   }
 
   /**
-   * Wait for JSON validation to yield an valid response
+   * Wait for JSON validation to yield a valid response
    *
    * @returns A promise
    */

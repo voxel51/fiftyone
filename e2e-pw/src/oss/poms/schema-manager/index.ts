@@ -112,8 +112,6 @@ class SchemaManagerAsserter {
 
   /**
    * Is schema manager modal closed
-   *
-   * @param field the field name
    */
   async isClosed() {
     await expect(this.schemaManagerPom.locator).toBeHidden();
@@ -121,8 +119,6 @@ class SchemaManagerAsserter {
 
   /**
    * Is schema manager modal open
-   *
-   * @param field the field name
    */
   async isOpen() {
     await expect(this.schemaManagerPom.locator).toBeVisible();
