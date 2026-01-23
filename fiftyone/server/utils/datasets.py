@@ -80,6 +80,7 @@ def sync_to_generated_dataset(
     field_path: str,
     label_id: str,
     patch_operations: List[Dict[str, Any]],
+    *,
     delete: bool = False,
 ) -> fo.Sample:
     """Sync annotation changes to a generated dataset sample.
