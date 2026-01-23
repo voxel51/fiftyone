@@ -2870,24 +2870,67 @@ def get_multiprocessing_context():
     return multiprocessing.get_context()
 
 
-def recommend_thread_pool_workers(num_workers=None):
-    """Recommends a number of workers for a thread pool.
+def _recommend_num_workers(
+    num_workers, default_num_workers, config_default, max_workers
+):
+    """Helper for recommending number of workers."""
+    try:
+        if num_workers is None:
+            # Order:
+            # 1. Configured default
+            # 2. Passed-in default
+            # 3. System CPU count
+            num_workers = (
+                config_default
+                if config_default is not None
+                else (
+                    default_num_workers
+                    if default_num_workers is not None
+                    else get_cpu_count()
+                )
+            )
+    except Exception:
+        logger.debug(
+            "recommend_pool_workers: falling back to 4", exc_info=True
+        )
+        num_workers = 4
 
-    If a ``fo.config.max_thread_pool_workers`` is set, this limit is applied.
+    num_workers = int(num_workers)
+    if max_workers is not None:
+        num_workers = min(num_workers, max_workers)
+    num_workers = max(num_workers, 0)
+
+    return num_workers
+
+
+def recommend_thread_pool_workers(num_workers=None, default_num_workers=None):
+    """Recommends a number of workers for a process pool.
+
+    If the number is 0, that means no threading is recommended.
+
+    If ``num_workers`` is None, the following order is used to determine the
+    number of workers:
+
+    - The configured (``fo.config``) default number of workers
+    - The passed-in default number of workers (``default_num_workers``)
+    - The system CPU count
+
+    If ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
         num_workers (None): a suggested number of workers
+        default_num_workers (None): a default number of workers to use if
+            ``num_workers`` is None and no configured default is set
 
     Returns:
-        a number of workers
+        a number of workers. 0 means no threading
     """
-    if num_workers is None:
-        num_workers = get_cpu_count()
-
-    if fo.config.max_thread_pool_workers is not None:
-        num_workers = min(num_workers, fo.config.max_thread_pool_workers)
-
-    return num_workers
+    return _recommend_num_workers(
+        num_workers,
+        default_num_workers,
+        fo.config.default_thread_pool_workers,
+        fo.config.max_thread_pool_workers,
+    )
 
 
 def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
@@ -2915,36 +2958,16 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
     Returns:
         a number of workers. 0 means no multiprocessing
     """
-    try:
-        # "daemonic processes are not allowed to have children"
-        if multiprocessing.current_process().daemon:
-            num_workers = 0
-        elif num_workers is None:
-            # Order:
-            # 1. Configured default
-            # 2. Passed-in default
-            # 3. System CPU count
-            num_workers = (
-                fo.config.default_process_pool_workers
-                if fo.config.default_process_pool_workers is not None
-                else (
-                    default_num_workers
-                    if default_num_workers is not None
-                    else get_cpu_count()
-                )
-            )
-    except Exception:
-        logger.debug(
-            "recommend_process_pool_workers: falling back to 4", exc_info=True
-        )
-        num_workers = 4
+    # "daemonic processes are not allowed to have children"
+    if multiprocessing.current_process().daemon:
+        num_workers = 0
 
-    num_workers = int(num_workers)
-    if fo.config.max_process_pool_workers is not None:
-        num_workers = min(num_workers, fo.config.max_process_pool_workers)
-    num_workers = max(num_workers, 0)
-
-    return num_workers
+    return _recommend_num_workers(
+        num_workers,
+        default_num_workers,
+        fo.config.default_process_pool_workers,
+        fo.config.max_process_pool_workers,
+    )
 
 
 def _parse_cpuset(cpuset_str):
