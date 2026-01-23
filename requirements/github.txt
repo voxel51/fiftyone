@@ -3,7 +3,7 @@
 # constrain it so that tests are successful.
 # On Python 3.13, newer TensorFlow versions require numpy 2.x support
 numpy<2; python_version < "3.13"
-numpy>=2; python_version >= "3.13"
+numpy>=2.1; python_version >= "3.13"
 pydicom>=2.2.0
 shapely>=1.7.1; python_version < "3.13"
 tensorflow
