@@ -618,6 +618,8 @@ class SampleField(HTTPEndpoint):
                         headers={"ETag": etag},
                     )
             except Exception:
+                # Log instead of throwing since the source of truth has been
+                # successfully updated
                 logger.exception(
                     "Failed to sync to generated dataset `%s` associated with dataset `%s`",
                     generated_dataset_name,

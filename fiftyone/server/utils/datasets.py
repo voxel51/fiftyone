@@ -91,7 +91,7 @@ def sync_to_generated_dataset(
         generated_sample_id: ID of the sample in the generated dataset
         field_path: Path to the field being modified (in source dataset terms)
         label_id: The ID of the label being modified
-        patch_operations: JSON patch operations to apply
+        patch_operations: List of JSON patch operations
         delete: Whether this is a delete operation (pre-computed by caller)
 
     Returns:
@@ -107,7 +107,6 @@ def sync_to_generated_dataset(
 
     if delete:
         # Delete the generated sample when deleting the src label field
-
         generated_dataset.delete_samples(str(generated_sample._id))
         logger.info("Deleted generated sample %s", generated_sample._id)
         return None
@@ -134,21 +133,15 @@ def sync_to_generated_dataset(
         # Update single label fields directly
         target = field_value
 
-    # Apply patches - RootDeleteError would have been caught by caller
-    try:
-        _, errors = apply_jsonpatch(
-            target, patch_operations, transform_fn=deserialize
-        )
-    except RootDeleteError:
-        # Should not reach here if delete flag was passed correctly
-        generated_dataset.delete_samples(str(generated_sample._id))
-        logger.info("Deleted generated sample %s", generated_sample._id)
-        return None
-
+    # Apply patches
+    _, errors = apply_jsonpatch(
+        target, patch_operations, transform_fn=deserialize
+    )
     if errors:
-        for error in errors:
-            logger.error(error)
-        raise HTTPException(status_code=400, detail=errors)
+        logger.error(
+            "Failed to apply patches, generated sample not saved: %s", errors
+        )
+        return generated_sample
 
     generated_sample.save()
     logger.info("Synced changes to generated sample %s", generated_sample._id)
