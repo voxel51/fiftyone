@@ -10,7 +10,7 @@ export default function Header({ field }: { field: string }) {
     <FieldRow style={{ marginTop: "1rem" }}>
       <FieldColumn>
         <Text
-          variant={TextVariant.Xl}
+          variant={TextVariant.Lg}
           color={TextColor.Primary}
           className="mb-2 block"
         >
@@ -20,7 +20,7 @@ export default function Header({ field }: { field: string }) {
       </FieldColumn>
       <FieldColumn>
         <Text
-          variant={TextVariant.Xl}
+          variant={TextVariant.Lg}
           color={TextColor.Primary}
           className="mb-2 block"
         >

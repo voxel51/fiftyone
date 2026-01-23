@@ -110,7 +110,7 @@ const ValuesList = ({
         }}
       >
         <Text
-          variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+          variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
           color={largeLabels ? TextColor.Primary : TextColor.Secondary}
         >
           Values

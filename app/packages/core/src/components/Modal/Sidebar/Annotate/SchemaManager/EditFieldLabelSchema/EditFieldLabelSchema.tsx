@@ -1,12 +1,16 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import {
+  Button,
+  Icon,
+  IconName,
   Size,
   Text,
   TextColor,
   TextVariant,
   Toggle,
   ToggleSwitch,
+  Variant,
 } from "@voxel51/voodo";
 import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
@@ -29,7 +33,11 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
   const labelSchema = useLabelSchema(field);
-  const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
+  const showScanButton = !labelSchema.savedLabelSchema;
+  // Default to JSON tab when scan button is shown (no existing schema)
+  const [activeTab, setActiveTab] = useState<TabId>(
+    showScanButton ? TAB_JSON : TAB_GUI
+  );
   const [activeFields] = useAtom(activeLabelSchemas);
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
@@ -97,7 +105,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               marginBottom: "0.25rem",
             }}
           >
-            <Text variant={TextVariant.Xl}>Read-only</Text>
+            <Text variant={TextVariant.Lg}>Read-only</Text>
             <Toggle
               size={Size.Md}
               disabled={labelSchema.isReadOnlyRequired}
@@ -122,6 +130,9 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
       )}
 
       <SchemaSection>
+        <Text variant={TextVariant.Lg} style={{ marginBottom: "0.5rem" }}>
+          Schema
+        </Text>
         <div
           style={{
             display: "flex",
@@ -130,17 +141,30 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             marginBottom: "1rem",
           }}
         >
-          <Text variant={TextVariant.Xl}>Schema</Text>
           {isM4Enabled && (
             <ToggleSwitch
               size={Size.Md}
-              defaultIndex={0}
+              defaultIndex={showScanButton ? 1 : 0}
               onChange={handleTabChange}
               tabs={[
                 { id: TAB_GUI, data: { label: "GUI" } },
                 { id: TAB_JSON, data: { label: "JSON" } },
               ]}
             />
+          )}
+          {showScanButton && (
+            <Button
+              size={Size.Md}
+              variant={Variant.Secondary}
+              onClick={labelSchema.scan}
+            >
+              <Icon
+                name={IconName.Refresh}
+                size={Size.Md}
+                style={{ marginRight: 4 }}
+              />
+              Scan
+            </Button>
           )}
         </div>
 
@@ -167,14 +191,18 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
 
       <Footer
         leftContent={
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Toggle
-              size={Size.Md}
-              checked={isFieldVisible}
-              onChange={handleToggleVisibility}
-            />
-            <Text variant={TextVariant.Lg}>Visible field</Text>
-          </div>
+          !showScanButton ? (
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <Toggle
+                size={Size.Md}
+                checked={isFieldVisible}
+                onChange={handleToggleVisibility}
+              />
+              <Text variant={TextVariant.Lg}>Visible field</Text>
+            </div>
+          ) : undefined
         }
         secondaryButton={{
           onClick: labelSchema.discard,
