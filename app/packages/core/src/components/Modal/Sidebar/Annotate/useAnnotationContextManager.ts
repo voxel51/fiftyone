@@ -7,7 +7,7 @@ import {
 } from "@fiftyone/state";
 import useCanManageSchema from "./useCanManageSchema";
 import { useActiveLabelSchema, useLabelSchema } from "./state";
-import { atom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue } from "jotai";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -52,15 +52,35 @@ export interface AnnotationContextManager {
    * Any active paths which were set before calling {@link enter} will be restored.
    */
   exit: () => void;
+
+  /**
+   * The label ID which triggered entrance into annotation.
+   *
+   * todo - this is required due to some chicken-and-egg behavior with renderer
+   *  and label init; we should move all annotation init logic into this
+   *  context manager and remove this.
+   */
+  entranceLabelId: string | null;
+
+  /**
+   * Clear the entrance label ID value.
+   *
+   * todo - this is required due to some chicken-and-egg behavior with renderer
+   *  and label init; we should move all annotation init logic into this
+   *  context manager and remove this.
+   */
+  clearEntranceLabelId: () => void;
 }
 
 const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
+const activeLabelIdAtom = atom<string | null>(null);
 
 /**
  * Hook which provides an {@link AnnotationContextManager}.
  */
 export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
+  const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const [, setLabelSchema] = useLabelSchema();
@@ -144,7 +164,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       }
 
       if (labelId) {
-        // todo handle label id
+        setActiveLabelId(labelId);
       }
 
       return (
@@ -153,12 +173,26 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         }
       );
     },
-    [activeFields, contextManager, initializeFieldSchema, setActiveFields]
+    [
+      activeFields,
+      contextManager,
+      initializeFieldSchema,
+      setActiveFields,
+      setActiveLabelId,
+    ]
   );
 
   const exit = useCallback(() => {
     contextManager.exit();
   }, [contextManager]);
 
-  return useMemo(() => ({ enter, exit }), [enter, exit]);
+  return useMemo(
+    () => ({
+      clearEntranceLabelId: () => setActiveLabelId(null),
+      enter,
+      entranceLabelId: activeLabelId,
+      exit,
+    }),
+    [activeLabelId, enter, exit, setActiveLabelId]
+  );
 };

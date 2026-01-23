@@ -1,6 +1,11 @@
 import { useLighter } from "@fiftyone/lighter";
-import type { AnnotationLabel, ModalSample } from "@fiftyone/state";
-import { activeFields, field, modalSample } from "@fiftyone/state";
+import {
+  activeFields,
+  AnnotationLabel,
+  field,
+  ModalSample,
+  modalSample,
+} from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
@@ -13,18 +18,19 @@ import {
 } from "recoil";
 import type { LabelType } from "./Edit/state";
 import { activeLabelSchemas } from "./state";
-import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
+import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
+import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 
 const handleSample = async ({
-  addLabel,
+  createLabel,
   getFieldType,
   paths,
   sample,
   schemas,
 }: {
-  addLabel: ReturnType<typeof useAddAnnotationLabel>;
+  createLabel: ReturnType<typeof useCreateAnnotationLabel>;
   getFieldType: (path: string) => Promise<LabelType>;
   paths: { [key: string]: string };
   sample: ModalSample;
@@ -43,10 +49,7 @@ const handleSample = async ({
 
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
-    for (const data of array) {
-      const label = addLabel(path, type, data);
-      labels.push(label);
-    }
+    labels.push(...array.map((data) => createLabel(path, type, data)));
   }
 
   return labels.sort((a, b) =>
@@ -113,7 +116,8 @@ export default function useLabels() {
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
-  const addLabel = useAddAnnotationLabel();
+  const addLabel = useAddAnnotationLabelToRenderer();
+  const createLabel = useCreateAnnotationLabel();
   const { scene } = useLighter();
 
   const getFieldType = useRecoilCallback(
@@ -142,19 +146,19 @@ export default function useLabels() {
     ) {
       setLoading(LabelsState.LOADING);
       handleSample({
-        addLabel,
+        createLabel,
         paths,
         sample: modalSampleData.contents,
         getFieldType,
         schemas: active,
       }).then((result) => {
-        setLoading(LabelsState.COMPLETE);
         setLabels(result);
+        result.forEach((annotationLabel) => addLabel(annotationLabel));
+        setLoading(LabelsState.COMPLETE);
       });
     }
   }, [
     active,
-    addLabel,
     getFieldType,
     loadingState,
     modalSampleData,
