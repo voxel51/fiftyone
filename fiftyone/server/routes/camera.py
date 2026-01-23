@@ -227,14 +227,14 @@ def _get_group_slices(dataset, slices: List[str]) -> List[str]:
     if slices:
         return slices
 
-    slices = dataset.group_slices or []
-    if not slices:
+    available_slices = dataset.group_slices or []
+    if not available_slices:
         raise HTTPException(
             status_code=400,
             detail="No slices available for this group",
         )
 
-    return slices
+    return available_slices
 
 
 def _get_slice_sample(dataset, group_id: str, slice_name: str):
@@ -318,6 +318,56 @@ def _has_successful_static_transform(results: dict) -> bool:
         if result.get("staticTransform") is not None:
             return True
     return False
+
+
+def _collect_static_transforms(
+    dataset,
+    group_id: str,
+    slices: List[str],
+    source_frame: str,
+    target_frame: str,
+    chain_via: Optional[str],
+) -> dict:
+    """Collects static transforms for all slices in a group.
+
+    Args:
+        dataset: The FiftyOne dataset
+        group_id: The group ID to fetch transforms for
+        slices: List of slice names to collect transforms from
+        source_frame: The source coordinate frame
+        target_frame: The target coordinate frame
+        chain_via: Optional intermediate frame for chaining transforms
+
+    Returns:
+        Dict mapping slice names to result dicts containing either
+        staticTransform data, null, or error message
+    """
+    results = {}
+    for slice_name in slices:
+        slice_sample, error = _get_slice_sample(dataset, group_id, slice_name)
+        if error:
+            results[slice_name] = error
+            continue
+
+        try:
+            transform = dataset.resolve_transformation(
+                slice_sample,
+                source_frame=source_frame,
+                target_frame=target_frame,
+                chain_via=chain_via,
+            )
+        except ValueError as err:
+            results[slice_name] = {"error": str(err)}
+            continue
+
+        if transform is None:
+            results[slice_name] = {"staticTransform": None}
+        else:
+            results[slice_name] = {
+                "staticTransform": utils.json.serialize(transform)
+            }
+
+    return results
 
 
 class BatchIntrinsics(HTTPEndpoint):
@@ -535,32 +585,9 @@ class GroupStaticTransforms(HTTPEndpoint):
             chain_via,
         )
 
-        results = {}
-        for slice_name in slices:
-            slice_sample, error = _get_slice_sample(
-                dataset, group_id, slice_name
-            )
-            if error:
-                results[slice_name] = error
-                continue
-
-            try:
-                transform = dataset.resolve_transformation(
-                    slice_sample,
-                    source_frame=source_frame,
-                    target_frame=target_frame,
-                    chain_via=chain_via,
-                )
-            except ValueError as err:
-                results[slice_name] = {"error": str(err)}
-                continue
-
-            if transform is None:
-                results[slice_name] = {"staticTransform": None}
-            else:
-                results[slice_name] = {
-                    "staticTransform": utils.json.serialize(transform)
-                }
+        results = _collect_static_transforms(
+            dataset, group_id, slices, source_frame, target_frame, chain_via
+        )
 
         # If no successful transforms found and target_frame was defaulted,
         # try to find the best available target
@@ -581,34 +608,14 @@ class GroupStaticTransforms(HTTPEndpoint):
                     target_frame = best_target
 
                     # Re-collect results with new target_frame
-                    results = {}
-                    for slice_name in slices:
-                        slice_sample, error = _get_slice_sample(
-                            dataset, group_id, slice_name
-                        )
-                        if error:
-                            results[slice_name] = error
-                            continue
-
-                        try:
-                            transform = dataset.resolve_transformation(
-                                slice_sample,
-                                source_frame=source_frame,
-                                target_frame=target_frame,
-                                chain_via=chain_via,
-                            )
-                        except ValueError as err:
-                            results[slice_name] = {"error": str(err)}
-                            continue
-
-                        if transform is None:
-                            results[slice_name] = {"staticTransform": None}
-                        else:
-                            results[slice_name] = {
-                                "staticTransform": utils.json.serialize(
-                                    transform
-                                )
-                            }
+                    results = _collect_static_transforms(
+                        dataset,
+                        group_id,
+                        slices,
+                        source_frame,
+                        target_frame,
+                        chain_via,
+                    )
 
         return utils.json.JSONResponse(
             {

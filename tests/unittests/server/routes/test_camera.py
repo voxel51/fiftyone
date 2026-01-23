@@ -322,7 +322,7 @@ class TestStaticTransformsRoute:
         # whitespace-padded values
         request = mock_request(
             query_params={
-                "chain_via": "  frame1  ,  frame2  ,  ",  # Extra whitespace
+                "chain_via": "  frame1  ,  frame2  ,  ",
             }
         )
         # Should not raise an error - parsing should handle whitespace
@@ -910,8 +910,8 @@ class TestGroupIntrinsicsRoute:
         assert len(data["group_id"]) == 24
 
 
-class TestGroupExtrinsicsRoute:
-    """Tests for GroupStaticTransforms endpoint."""
+class TestGroupStaticTransformsRoute:
+    """Tests for GroupStaticTransformsRoute endpoint."""
 
     @pytest.mark.asyncio
     async def test_get_group_static_transforms_all_slices(
