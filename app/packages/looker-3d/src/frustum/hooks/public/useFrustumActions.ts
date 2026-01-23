@@ -15,14 +15,11 @@ export function useFrustumActions() {
 
   const toggle = useCallback(() => {
     setIsVisible((prev) => !prev);
-  }, [setIsVisible]);
+  }, []);
 
-  const setVisible = useCallback(
-    (visible: boolean) => {
-      setIsVisible(visible);
-    },
-    [setIsVisible]
-  );
+  const setVisible = useCallback((visible: boolean) => {
+    setIsVisible(visible);
+  }, []);
 
   return { toggle, setVisible };
 }

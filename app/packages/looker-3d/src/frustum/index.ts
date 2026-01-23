@@ -5,14 +5,11 @@
  * in the fo3d viewer for grouped datasets.
  */
 
-// Components
 export { Frustum } from "./Frustum";
 export { FrustumCollection } from "./FrustumCollection";
 
-// Hooks
 export { useFrustumActions, useFrustums } from "./hooks/public";
 
-// Types
 export type {
   CameraIntrinsics,
   FrustumData,
@@ -22,7 +19,6 @@ export type {
   StaticTransform,
 } from "./types";
 
-// Builders (for testing)
 export {
   buildFrustumGeometry,
   computeFrustumCorners,

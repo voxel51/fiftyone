@@ -142,7 +142,7 @@ export function useFetchFrustumParameters() {
 
         if (cancelled) return;
 
-        // Load image dimensions in parallel to get accurate aspect ratios
+        // Load image dimensions in parallel to get aspect ratios
         const frustumsWithAspectRatios = await Promise.all(
           frustums.map(async (frustum) => {
             if (!frustum.imageUrl) {

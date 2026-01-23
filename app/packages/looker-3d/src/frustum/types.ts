@@ -1,7 +1,3 @@
-/**
- * TypeScript interfaces for camera frustum visualization.
- */
-
 import type { Matrix4 } from "three";
 
 /**

@@ -10,7 +10,7 @@ export const ToggleFrustums = () => {
   const { primary } = useTheme();
 
   return (
-    <ActionItem title="Toggle Camera Frustums (F)">
+    <ActionItem title="Toggle Camera Frustums">
       <VideocamIcon
         sx={{ fontSize: 24 }}
         style={{

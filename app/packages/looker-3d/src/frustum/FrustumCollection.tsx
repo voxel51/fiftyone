@@ -24,26 +24,21 @@ export function FrustumCollection() {
   const { isVisible } = useFrustums();
   const { sceneBoundingBox } = useFo3dContext();
 
-  // Fetch frustum data (static transforms, intrinsics, image URLs)
   const { data: frustumData, isLoading, error } = useFetchFrustumParameters();
 
-  // Compute geometry for all frustums
   const { geometries } = useComputeFrustumGeometry(
     frustumData,
     sceneBoundingBox
   );
 
-  // Don't render if toggle is off
   if (!isVisible) {
     return null;
   }
 
-  // Don't render while loading or if there's an error
   if (isLoading || error) {
     return null;
   }
 
-  // Don't render if no frustum data
   if (!frustumData.length) {
     return null;
   }

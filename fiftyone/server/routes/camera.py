@@ -199,9 +199,6 @@ def _get_group_info(dataset, sample, sample_id: str):
     if group_field is not None:
         group_info = getattr(sample, group_field, None)
 
-    if group_info is None and group_field == "group":
-        group_info = getattr(sample, "group", None)
-
     if group_info is None:
         raise HTTPException(
             status_code=400,
@@ -326,7 +323,7 @@ def _collect_static_transforms(
     slices: List[str],
     source_frame: str,
     target_frame: str,
-    chain_via: Optional[str],
+    chain_via: Optional[List[str]],
 ) -> dict:
     """Collects static transforms for all slices in a group.
 
@@ -336,7 +333,7 @@ def _collect_static_transforms(
         slices: List of slice names to collect transforms from
         source_frame: The source coordinate frame
         target_frame: The target coordinate frame
-        chain_via: Optional intermediate frame for chaining transforms
+        chain_via: Optional list of intermediate frames for chaining transforms
 
     Returns:
         Dict mapping slice names to result dicts containing either
