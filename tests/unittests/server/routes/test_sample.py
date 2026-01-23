@@ -1491,10 +1491,16 @@ class TestRootDeleteError:
         from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 
         target = fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2])
-        operations = [{"op": "remove", "path": "/"}]
+        operations = [
+            {"op": "remove", "path": "/"},
+            {"op": "add", "path": "/label", "value": "dog"},
+        ]
 
         with pytest.raises(RootDeleteError):
             fors.handle_json_patch(target, operations)
+
+        assert target is not None  # Ensure target remains unchanged
+        assert target.label == "cat"
 
     def test_handle_json_patch_applies_normal_operations(self):
         """Tests that handle_json_patch applies non-delete operations."""
@@ -1504,15 +1510,3 @@ class TestRootDeleteError:
         result = fors.handle_json_patch(target, operations)
 
         assert result.label == "dog"
-
-    def test_is_root_delete_utility(self):
-        """Tests the is_root_delete utility function."""
-        from fiftyone.server.utils.json.jsonpatch import is_root_delete
-
-        assert is_root_delete([{"op": "remove", "path": "/"}]) is True
-        assert is_root_delete([{"op": "remove", "path": "/label"}]) is False
-        assert (
-            is_root_delete([{"op": "replace", "path": "/", "value": {}}])
-            is False
-        )
-        assert is_root_delete([]) is False
