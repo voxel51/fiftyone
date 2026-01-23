@@ -29,9 +29,7 @@ export class JSONEditorPom {
    * The code editor's locator
    */
   get locator() {
-    return this.schemaManager.locator
-      .getByTestId("json-editor")
-      .locator(".monaco-editor");
+    return this.schemaManager.locator.locator(".monaco-editor");
   }
 
   /**
