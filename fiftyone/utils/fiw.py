@@ -144,6 +144,7 @@ def _load_split(split_dir, tags, labels_path, progress=None):
             family_dir = os.path.join(split_dir, family)
             mid_csv_path = os.path.join(split_dir, family, "mid.csv")
             if not os.path.isfile(mid_csv_path):
+                logger.warning("Skipping family %s: mid.csv not found", family)
                 continue
 
             labels = pd.read_csv(mid_csv_path)
@@ -266,7 +267,6 @@ def _get_name(labels, member_id):
     if "Name" not in labels.columns:
         return None
 
-    names = labels["Name"]
     row = labels.loc[labels["MID"] == member_id]
     if len(row) > 0:
         return row["Name"].values[0]
@@ -460,14 +460,14 @@ def _organize_fids_structure(families_dir, dataset_dir):
         len(families_with_relationships)
     )
 
-    random.seed(42)
+    rng = random.Random(42)
 
     if len(families_with_relationships) >= 10:
         n_val = max(1, len(families_with_relationships) // 10)
         n_test = max(1, len(families_with_relationships) // 10)
 
         shuffled = families_with_relationships.copy()
-        random.shuffle(shuffled)
+        rng.shuffle(shuffled)
 
         val_families = set(shuffled[:n_val])
         test_families = set(shuffled[n_val:n_val + n_test])
@@ -726,12 +726,17 @@ def _get_dataset_info(dataset_dir, split):
     )
     jpg_matches = etau.get_glob_matches(split_img_glob)
 
+    split_img_glob_jpeg = os.path.join(
+        dataset_dir, split, "data", "*", "*", "*.jpeg"
+    )
+    jpeg_matches = etau.get_glob_matches(split_img_glob_jpeg)
+
     split_img_glob_png = os.path.join(
         dataset_dir, split, "data", "*", "*", "*.png"
     )
     png_matches = etau.get_glob_matches(split_img_glob_png)
 
-    num_samples = len(jpg_matches) + len(png_matches)
+    num_samples = len(jpg_matches) + len(jpeg_matches) + len(png_matches)
 
     return num_samples, classes
 
