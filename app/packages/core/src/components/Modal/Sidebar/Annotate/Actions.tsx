@@ -1,13 +1,23 @@
 import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
-import { ANNOTATION_CUBOID } from "@fiftyone/looker-3d/src/constants";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+} from "@fiftyone/looker-3d/src/constants";
 import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION, DETECTIONS } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useSetAtom } from "jotai";
+import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
@@ -196,11 +206,17 @@ export const ThreeDPolylines = () => {
   );
 
   const polylineFields = use3dAnnotationFields(
-    (fieldType) => fieldType === DETECTIONS.toLocaleLowerCase()
+    useCallback(
+      (fieldType) =>
+        fieldType === POLYLINE.toLocaleLowerCase() ||
+        fieldType === POLYLINES.toLocaleLowerCase(),
+      []
+    )
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
-  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+  const isPolylineAnnotateActive =
+    current3dAnnotationMode === ANNOTATION_POLYLINE;
 
   return (
     <Tooltip
@@ -239,9 +255,12 @@ export const ThreeDCuboids = () => {
   );
 
   const cuboidFields = use3dAnnotationFields(
-    (fieldType) =>
-      fieldType === DETECTION.toLocaleLowerCase() ||
-      fieldType === DETECTIONS.toLocaleLowerCase()
+    useCallback(
+      (fieldType) =>
+        fieldType === DETECTION.toLocaleLowerCase() ||
+        fieldType === DETECTIONS.toLocaleLowerCase(),
+      []
+    )
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;

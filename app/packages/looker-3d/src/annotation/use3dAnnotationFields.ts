@@ -3,7 +3,7 @@ import {
   fieldTypes,
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import { useAtomValue } from "jotai";
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 type FieldPredicate = (fieldType: string) => boolean;
 
@@ -18,20 +18,13 @@ export const use3dAnnotationFields = (predicate: FieldPredicate): string[] => {
   const activeSchema = useAtomValue(activeLabelSchemas);
   const fieldTypesVal = useAtomValue(fieldTypes);
 
-  const predicateRef = useRef(predicate);
-  predicateRef.current = predicate;
-
   const fields = useMemo(
     () =>
       (activeSchema ?? []).filter((field) => {
-        if (typeof predicateRef.current !== "function") {
-          return false;
-        }
-
-        const fieldType = fieldTypesVal[field]?.toLocaleLowerCase();
-        return predicateRef.current(fieldType);
+        const fieldType = (fieldTypesVal[field] ?? "").toLocaleLowerCase();
+        return predicate(fieldType);
       }),
-    [activeSchema, fieldTypesVal]
+    [activeSchema, fieldTypesVal, predicate]
   );
 
   return fields;
