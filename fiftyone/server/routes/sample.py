@@ -512,7 +512,14 @@ class SampleField(HTTPEndpoint):
         path = request.path_params["field_path"]
         field_id = request.path_params["field_id"]
         generated_dataset_name = request.query_params.get("generated_dataset")
-        generated_sample_id = request.query_params.get("generated_sample_id")
+        # If the generated sample_id is the same as the id of the object
+        # in the field we are modifying on the source,
+        # the generated_sample_id may be omitted
+        generated_sample_id = (
+            request.query_params.get("generated_sample_id", field_id)
+            if generated_dataset_name
+            else None
+        )
 
         logger.info(
             "Received patch request for field %s with ID %s on sample %s "
