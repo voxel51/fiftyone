@@ -387,7 +387,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         HTTPException: If patches fail to parse or apply.
     """
     try:
-        _, errors = apply_jsonpatch(
+        target, errors = apply_jsonpatch(
             target, patch_list, transform_fn=utils.json.deserialize
         )
     except RootDeleteError:

@@ -6,7 +6,7 @@ Apply JSON patch to python objects.
 |
 """
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 from fiftyone.server.utils.json.jsonpatch.exceptions import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
@@ -106,17 +106,10 @@ def apply(
         for any patches that failed to apply
 
     Raises:
-        RootDeleteError: If the patches represent a root delete operation
-            (single remove with path "/"). The caller must handle deletion
-            at the parent level.
+        RootDeleteError: If a remove operation targets the root. The caller
+            must handle deletion at the parent level.
     """
-    # Check for root delete before parsing - this is a special case that
-    # cannot be handled by normal patch application
     patches_list = [patches] if isinstance(patches, dict) else list(patches)
-    if is_root_delete(patches_list):
-        raise RootDeleteError(
-            "Root delete detected. Delete must be handled at parent level."
-        )
 
     parsed = parse(patches_list, transform_fn=transform_fn)
     if not isinstance(parsed, list):
@@ -125,35 +118,10 @@ def apply(
     errors = []
     for i, p in enumerate(parsed):
         try:
-            p.apply(target)
+            target = p.apply(target)
+        except RootDeleteError:
+            raise
         except Exception as e:
             errors.append(f"Error applying patch `{patches_list[i]}`: {e}")
 
     return target, errors
-
-
-def is_root_delete(patches: Union[List[Dict[str, Any]], List[Patch]]) -> bool:
-    """Check if the patches represent a full delete of the root target.
-
-    A root delete is a single remove operation targeting the root path ("/"),
-    indicating the entire object should be deleted.
-
-    This function accepts either raw patch dictionaries or parsed Patch objects.
-
-    Args:
-        patches: List of patch operations (raw dicts or parsed Patch objects)
-
-    Returns:
-        True if the patches represent a root delete, False otherwise
-    """
-    if len(patches) != 1:
-        return False
-
-    patch = patches[0]
-
-    # Handle parsed Patch objects
-    if isinstance(patch, Patch):
-        return isinstance(patch, Remove) and patch.path == "/"
-
-    # Handle raw dictionaries
-    return patch.get("op") == "remove" and patch.get("path") == "/"
