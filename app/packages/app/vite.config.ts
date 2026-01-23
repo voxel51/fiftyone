@@ -27,6 +27,9 @@ async function loadConfig() {
       },
       dedupe: ["react", "react-dom", "react/jsx-runtime"],
     },
+    optimizeDeps: {
+      exclude: ["@fiftyone/looker"],
+    },
     build: {
       rollupOptions: {
         onwarn(warning, warn) {
