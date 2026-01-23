@@ -15,5 +15,3 @@ class RootDeleteError(Exception):
     normal JSON patch operations since the target cannot remove itself.
     The caller must handle deletion at the parent level.
     """
-
-    pass
