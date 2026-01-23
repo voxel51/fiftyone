@@ -51,11 +51,7 @@ const convertToLabelProxy = (
     }
 
     // For 3D detections, no bounding box needed
-    return {
-      type: DETECTION,
-      data: annotationLabel.data,
-      path: annotationLabel.path,
-    };
+    return annotationLabel;
   } else if (annotationLabel.type === CLASSIFICATION) {
     return {
       type: CLASSIFICATION,
