@@ -59,6 +59,7 @@ export function useFetchFrustumParameters() {
     if (!isGroup || !datasetId || !sampleId || allNon3dSlices.length === 0) {
       setData([]);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
