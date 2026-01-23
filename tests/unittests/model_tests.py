@@ -6,6 +6,7 @@ FiftyOne model inference unit tests.
 |
 """
 import os
+from packaging.version import Version
 import random
 import string
 import unittest
@@ -21,7 +22,8 @@ import fiftyone.utils.image as foui
 from decorators import drop_datasets
 
 # Check numpy version (some tests have issues with numpy 2.x)
-NUMPY_2_OR_LATER = tuple(map(int, np.__version__.split(".")[:2])) >= (2, 0)
+
+NUMPY_2_OR_LATER = Version(np.__version__) >= Version("2.0.0")
 
 
 class MockImageModel(fo.EmbeddingsMixin, fo.Model):
