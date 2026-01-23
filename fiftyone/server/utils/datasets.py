@@ -14,16 +14,13 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.core.labels as fol
 
-from fiftyone.server.utils.json.jsonpatch import (
-    apply as apply_jsonpatch,
-    RootDeleteError,
-)
+from fiftyone.server.utils.json.jsonpatch import apply as apply_jsonpatch
 from fiftyone.server.utils.json.serialization import deserialize
 
 logger = logging.getLogger(__name__)
 
 
-def get_dataset(dataset_identifier: str):
+def get_dataset(dataset_identifier: str) -> fo.Dataset:
     """Loads a dataset by ID, falling back to name if not found.
 
     Args:
@@ -45,6 +42,9 @@ def get_dataset(dataset_identifier: str):
     try:
         return foo.load_dataset(name=dataset_identifier)
     except ValueError as err:
+        logger.debug(
+            "Dataset not found with name or id `%s`", dataset_identifier
+        )
         raise HTTPException(
             status_code=404,
             detail=f"Dataset '{dataset_identifier}' not found",
