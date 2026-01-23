@@ -4,8 +4,7 @@
  */
 
 import { RichList } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
-import type { AttributeFormData } from "../../utils";
+import type { AttributeFormData, ListItemProps } from "../../utils";
 import AttributeFormContent from "./AttributeFormContent";
 import CardActions from "./CardActions";
 
@@ -59,7 +58,7 @@ export const createAttributeCardItem = ({
         nameError={nameError}
       />
     ),
-  } as ListItemProps,
+  },
 });
 
 /**
