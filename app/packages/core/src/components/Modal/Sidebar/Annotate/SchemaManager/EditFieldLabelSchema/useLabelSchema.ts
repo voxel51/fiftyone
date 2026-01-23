@@ -3,11 +3,30 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
-import { labelSchemaData } from "../../state";
+import { currentField, labelSchemaData } from "../../state";
 import { currentLabelSchema } from "../state";
+
+// =============================================================================
+// Types & Helpers
+// =============================================================================
+
+/** Shape of a label schema with optional attributes */
+interface LabelSchema {
+  attributes?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** Safely extract attributes from a schema value */
+const getAttributes = (value: unknown): Record<string, unknown> => {
+  if (value && typeof value === "object" && "attributes" in value) {
+    const attrs = (value as LabelSchema).attributes;
+    return attrs && typeof attrs === "object" ? attrs : {};
+  }
+  return {};
+};
 
 // =============================================================================
 // Internal Hooks
@@ -30,12 +49,14 @@ const useDiscard = (field: string) => {
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
       setCurrent(saved ?? defaultLabelSchema);
+      setCurrentField(null);
     },
   };
 };
@@ -91,22 +112,50 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
+  const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const [current] = useCurrentLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
     save: () => {
       setIsSaving(true);
-      update.execute(
-        { field, label_schema: current },
-        {
-          callback: () => {
-            setSaved(current);
-            setIsSaving(false);
-          },
+
+      // Identify new attributes (ones that don't exist in saved or default schema)
+      const currentAttrs = getAttributes(current);
+      const savedAttrs = getAttributes(savedLabelSchema);
+      const defaultAttrs = getAttributes(defaultLabelSchema);
+
+      const newAttributes: Record<string, unknown> = {};
+      for (const [name, config] of Object.entries(currentAttrs)) {
+        // Attribute is new if it doesn't exist in saved or default schema
+        if (!(name in savedAttrs) && !(name in defaultAttrs)) {
+          newAttributes[name] = config;
         }
-      );
+      }
+
+      const params: Record<string, unknown> = { field, label_schema: current };
+      if (Object.keys(newAttributes).length > 0) {
+        params.new_attributes = newAttributes;
+      }
+
+      update.execute(params, {
+        callback: (result) => {
+          // Always reset saving state
+          setIsSaving(false);
+
+          // Check for errors in the result
+          if (result.error) {
+            console.error("Failed to save label schema:", result.error);
+            return;
+          }
+
+          // Only update state on success
+          setSaved(current);
+          setCurrentField(null);
+        },
+      });
     },
     savedLabelSchema,
   };

@@ -223,10 +223,13 @@ def _validate_float_int_field_label_schema(
     settings = foac.FLOAT_INT_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     _range = label_schema.get(foac.RANGE, None)
+    _step = label_schema.get(foac.STEP, None)
     values = label_schema.get(foac.VALUES, None)
     if component == foac.SLIDER:
         _validate_range_setting(field_name, _range, _type)
-        settings = settings.union({foac.RANGE})
+        if _step is not None:
+            _validate_step_setting(field_name, _step, _range, _type)
+        settings = settings.union(foac.SLIDER_SETTINGS)
     elif component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, _type)
         settings = settings.union({foac.VALUES})
@@ -588,6 +591,29 @@ def _validate_range_setting(field_name, value, _type):
     raise ValueError(
         f"invalid 'range' setting '{value}' for field '{field_name}'"
     )
+
+
+def _validate_step_setting(field_name, value, _range=None, _type=None):
+    if not isinstance(value, (int, float)) or value <= 0:
+        raise ValueError(
+            f"invalid 'step' setting '{value}' for field '{field_name}'"
+        )
+
+    # Validate step is smaller than range
+    if _range is not None:
+        range_size = _range[1] - _range[0]
+        if value >= range_size:
+            raise ValueError(
+                f"'step' setting {value} must be less than range size "
+                f"{range_size} for field '{field_name}'"
+            )
+
+    # For integer types, step should be an integer
+    if _type is int and not isinstance(value, int):
+        raise ValueError(
+            f"'step' setting {value} must be an integer for integer field "
+            f"'{field_name}'"
+        )
 
 
 def _validate_read_only(field_name, value, require=False):

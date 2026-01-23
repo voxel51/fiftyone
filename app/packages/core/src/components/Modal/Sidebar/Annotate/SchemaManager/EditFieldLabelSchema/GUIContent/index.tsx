@@ -4,16 +4,20 @@
 
 import { LoadingSpinner } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { fieldType } from "../../../state";
+import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import {
   EditSectionHeader,
   EmptyStateBox,
   ListContainer,
   Section,
 } from "../../styled";
-import type { SchemaConfigType } from "../../utils";
+import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
+import PrimitiveFieldContent from "./PrimitiveFieldContent";
 
 // Re-export types for external use
 export type {
@@ -23,12 +27,21 @@ export type {
 } from "../../utils";
 
 interface GUIContentProps {
+  field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
-const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
+const GUIContent = ({
+  field,
+  config,
+  scanning,
+  onConfigChange,
+}: GUIContentProps) => {
+  const fType = useAtomValue(fieldType(field));
+  const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
+
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
     () => config?.attributes || {},
@@ -70,6 +83,57 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config, onConfigChange]
   );
 
+  const handleAddAttribute = useCallback(
+    (name: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = { [name]: attrConfig, ...attributes };
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, newName: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes: Record<string, AttributeConfig> = {};
+      for (const [key, value] of Object.entries(attributes)) {
+        if (key === oldName) {
+          newAttributes[newName] = attrConfig;
+        } else {
+          newAttributes[key] = value;
+        }
+      }
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newAttributes = { ...attributes };
+      delete newAttributes[name];
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  // Primitive field types show a different UI
+  if (isPrimitive && fType) {
+    return (
+      <ListContainer>
+        <Section>
+          <PrimitiveFieldContent
+            fieldType={fType}
+            config={config}
+            onConfigChange={onConfigChange}
+            largeLabels
+          />
+        </Section>
+      </ListContainer>
+    );
+  }
+
   if (scanning) {
     return (
       <ListContainer>
@@ -107,12 +171,9 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
       />
       <AttributesSection
         attributes={attributes}
-        onAddAttribute={() => {
-          // TODO: Implement add attribute
-        }}
-        onEditAttribute={(_name) => {
-          // TODO: Implement edit attribute
-        }}
+        onAddAttribute={handleAddAttribute}
+        onEditAttribute={handleEditAttribute}
+        onDeleteAttribute={handleDeleteAttribute}
       />
     </ListContainer>
   );

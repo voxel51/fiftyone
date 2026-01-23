@@ -53,6 +53,7 @@ DEFAULT = "default"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
+STEP = "step"
 TYPE = "type"
 VALUES = "values"
 
@@ -82,6 +83,7 @@ FLOAT_SETTINGS = {PRECISION}
 FLOAT_INT_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 ID_SETTINGS = ALL_TYPES_SETTINGS
 LABEL_SETTINGS = ALL_TYPES_SETTINGS.union({ATTRIBUTES, DEFAULT})
+SLIDER_SETTINGS = {RANGE, STEP}
 STR_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 STR_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
@@ -137,10 +139,27 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
+### Label schema type to field type
+TYPES_TO_FIELD_TYPE = {
+    BOOL: fof.BooleanField,
+    DATE: fof.DateField,
+    DATETIME: fof.DateTimeField,
+    DICT: fof.DictField,
+    FLOAT: fof.FloatField,
+    ID: fof.ObjectIdField,
+    INT: fof.IntField,
+    STR: fof.StringField,
+    FLOAT_LIST: fof.FloatField,
+    INT_LIST: fof.IntField,
+    STR_LIST: fof.StringField,
+}
+
+
 ### Heuristics
 
 
 CHECKBOXES_OR_RADIO_THRESHOLD = 5
+DEFAULT_STEP = 0.001
 VALUES_THRESHOLD = 1000
 
 

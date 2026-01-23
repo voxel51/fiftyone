@@ -65,6 +65,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             {
                 "component": "slider",
                 "range": [0.0, 1.0],
+                "step": 0.001,
                 "type": "float",
             },
         )
@@ -87,6 +88,7 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             {
                 "component": "slider",
                 "range": [0, 1],
+                "step": 1,
                 "type": "int",
             },
         )
