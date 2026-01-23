@@ -52,7 +52,7 @@ export function useFrustumGeometry(
     }
 
     return result;
-  }, [frustumData]);
+  }, [frustumData, sceneBounds]);
 
   return { geometries };
 }

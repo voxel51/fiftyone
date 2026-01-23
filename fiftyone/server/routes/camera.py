@@ -179,10 +179,11 @@ def _parse_slices(request: Request) -> List[str]:
     return []
 
 
-def _get_group_info(sample, sample_id: str):
+def _get_group_info(dataset, sample, sample_id: str):
     """Gets group info from a sample, validating it belongs to a group.
 
     Args:
+        dataset: The dataset the sample belongs to
         sample: The sample to get group info from
         sample_id: The sample ID (for error messages)
 
@@ -192,10 +193,14 @@ def _get_group_info(sample, sample_id: str):
     Returns:
         The group info object
     """
-    try:
-        group_info = sample.group
-    except AttributeError:
-        group_info = None
+    group_info = None
+    group_field = dataset.group_field
+
+    if group_field is not None:
+        group_info = getattr(sample, group_field, None)
+
+    if group_info is None and group_field == "group":
+        group_info = getattr(sample, "group", None)
 
     if group_info is None:
         raise HTTPException(
@@ -450,7 +455,7 @@ class GroupIntrinsics(HTTPEndpoint):
         dataset = get_dataset(dataset_id)
         sample = get_sample_from_dataset(dataset, sample_id)
 
-        group_info = _get_group_info(sample, sample_id)
+        group_info = _get_group_info(dataset, sample, sample_id)
         group_id = group_info.id
         slices = _get_group_slices(dataset, _parse_slices(request))
 
@@ -513,7 +518,7 @@ class GroupStaticTransforms(HTTPEndpoint):
         dataset = get_dataset(dataset_id)
         sample = get_sample_from_dataset(dataset, sample_id)
 
-        group_info = _get_group_info(sample, sample_id)
+        group_info = _get_group_info(dataset, sample, sample_id)
         group_id = group_info.id
         slices = _get_group_slices(dataset, _parse_slices(request))
 

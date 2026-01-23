@@ -31,6 +31,13 @@ import {
 } from "./constants";
 import type { FrustumData, FrustumGeometry, StaticTransform } from "./types";
 
+// Module-level axis vectors
+// These are module-scoped and are stable across renders
+const AXIS_ORIGIN = new Vector3(0, 0, 0);
+const X_AXIS_END = new Vector3(FRUSTUM_AXES_SIZE, 0, 0);
+const Y_AXIS_END = new Vector3(0, FRUSTUM_AXES_SIZE, 0);
+const Z_AXIS_END = new Vector3(0, 0, FRUSTUM_AXES_SIZE);
+
 function formatStaticTransformForTooltip(
   staticTransform: StaticTransform
 ): Record<string, string> {
@@ -191,16 +198,11 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
     [canShowTexture]
   );
 
-  const axisOrigin = new Vector3(0, 0, 0);
-  const xAxisEnd = new Vector3(FRUSTUM_AXES_SIZE, 0, 0);
-  const yAxisEnd = new Vector3(0, FRUSTUM_AXES_SIZE, 0);
-  const zAxisEnd = new Vector3(0, 0, FRUSTUM_AXES_SIZE);
-
   return (
     <group matrix={geometry.transform} matrixAutoUpdate={false}>
       {/* X axis */}
       <Line
-        points={[axisOrigin, xAxisEnd]}
+        points={[AXIS_ORIGIN, X_AXIS_END]}
         color={FRUSTUM_AXIS_X_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />
@@ -216,7 +218,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 
       {/* Y axis */}
       <Line
-        points={[axisOrigin, yAxisEnd]}
+        points={[AXIS_ORIGIN, Y_AXIS_END]}
         color={FRUSTUM_AXIS_Y_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />
@@ -232,7 +234,7 @@ export function Frustum({ frustumData, geometry }: FrustumProps) {
 
       {/* Z axis */}
       <Line
-        points={[axisOrigin, zAxisEnd]}
+        points={[AXIS_ORIGIN, Z_AXIS_END]}
         color={FRUSTUM_AXIS_Z_COLOR}
         lineWidth={FRUSTUM_AXES_LINE_WIDTH}
       />

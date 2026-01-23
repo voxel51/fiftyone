@@ -28,14 +28,11 @@ export function useToggleFrustums(): {
 
   const toggle = useCallback(() => {
     setIsVisible((prev) => !prev);
-  }, [setIsVisible]);
+  }, []);
 
-  const setVisible = useCallback(
-    (visible: boolean) => {
-      setIsVisible(visible);
-    },
-    [setIsVisible]
-  );
+  const setVisible = useCallback((visible: boolean) => {
+    setIsVisible(visible);
+  }, []);
 
   return { isVisible, toggle, setVisible };
 }
