@@ -1813,7 +1813,7 @@ def recommend_num_workers(num_workers=None):
         return 0
 
     try:
-        default = multiprocessing.cpu_count() // 2
+        default = fou.get_cpu_count() // 2
     except Exception:
         default = 4
 
