@@ -392,8 +392,8 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
             target, patch_list, transform_fn=utils.json.deserialize
         )
     except RootDeleteError:
-        # JSON Patch RFC defines remove as removing a value from within a document,
-        # so we re-raise to signal the caller to handle deletion on the parent object.
+        # Re-raise to handle deletion at parent level rather than fail to delete
+        # Enables signaling the deletion of a sample from a generated dataset
         raise
     except Exception as err:
         raise HTTPException(
