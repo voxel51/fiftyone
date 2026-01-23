@@ -5,11 +5,9 @@ import {
   type Primitive,
 } from "@fiftyone/utilities";
 import { animated } from "@react-spring/web";
-import { useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { editing } from "./Edit/state";
 import useActivePrimitive from "./Edit/useActivePrimitive";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
 import { useSampleValue } from "./useSampleValue";
@@ -73,7 +71,6 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const timeZone = useRecoilValue(fos.timeZone);
   const [, setActivePrimitive] = useActivePrimitive();
   const { isReadOnly } = useReadOnly(path);
-  const setEditingAtom = useSetAtom(editing);
 
   const formatted = useMemo(() => {
     if (value === undefined || value === null) return null;
@@ -102,7 +99,7 @@ const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
       style={{ cursor: isReadOnly ? "default" : "pointer" }}
     >
       <Header>
-        <div>{field.name || path}</div>
+        <div>{path}</div>
         <FormattedValue>{formatted}</FormattedValue>
       </Header>
     </Container>
