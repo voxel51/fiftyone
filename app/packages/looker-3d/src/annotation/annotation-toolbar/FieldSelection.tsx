@@ -1,53 +1,40 @@
 import { useTheme } from "@fiftyone/components";
 import {
-  activeLabelSchemas,
-  fieldTypes,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
-import {
   current3dAnnotationModeAtom,
   currentActiveAnnotationField3dAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { use3dAnnotationFields } from "../use3dAnnotationFields";
 
 export const FieldSelection = () => {
   const [currentActiveField, setCurrentActiveField] = useRecoilState(
     currentActiveAnnotationField3dAtom
   );
-  const activeSchema = useAtomValue(activeLabelSchemas);
-  const fieldTypesVal = useAtomValue(fieldTypes);
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
-  const schemaFields = useMemo(
-    () =>
-      (activeSchema ?? []).filter((field) => {
-        const thisFieldType = fieldTypesVal[field].toLocaleLowerCase();
-        if (isPolylineAnnotateActive) {
-          return thisFieldType === "polyline" || thisFieldType === "polylines";
-        }
-        if (isCuboidAnnotateActive) {
-          return (
-            thisFieldType === "detection" || thisFieldType === "detections"
-          );
-        }
-        return (
-          thisFieldType === "detection" ||
-          thisFieldType === "detections" ||
-          thisFieldType === "polyline" ||
-          thisFieldType === "polylines"
-        );
-      }),
-    [
-      activeSchema,
-      fieldTypesVal,
-      isPolylineAnnotateActive,
-      isCuboidAnnotateActive,
-    ]
+  const predicate = useCallback(
+    (fieldType: string) => {
+      if (isPolylineAnnotateActive) {
+        return fieldType === "polyline" || fieldType === "polylines";
+      }
+      if (isCuboidAnnotateActive) {
+        return fieldType === "detection" || fieldType === "detections";
+      }
+      return (
+        fieldType === "detection" ||
+        fieldType === "detections" ||
+        fieldType === "polyline" ||
+        fieldType === "polylines"
+      );
+    },
+    [isPolylineAnnotateActive, isCuboidAnnotateActive]
   );
+
+  const schemaFields = use3dAnnotationFields(predicate);
 
   const theme = useTheme() as any;
 

@@ -1,18 +1,20 @@
+import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
-import { useLighter } from "@fiftyone/lighter";
-import { current3dAnnotationModeAtom, 
-         isPolylineAnnotateActiveAtom} from "@fiftyone/looker-3d/src/state";
+import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
+import { ANNOTATION_CUBOID } from "@fiftyone/looker-3d/src/constants";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
+import { CLASSIFICATION, DETECTION, DETECTIONS } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { useSetAtom } from "jotai";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
-import { useUndoRedo } from "@fiftyone/commands";
 
 const ActionsDiv = styled.div`
   align-items: center;
@@ -188,9 +190,18 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
+  const setEditing = useSetAtom(editing);
   const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
     current3dAnnotationModeAtom
   );
+
+  const polylineFields = use3dAnnotationFields(
+    (fieldType) =>
+      fieldType.toLocaleLowerCase() === DETECTION.toLocaleLowerCase() ||
+      fieldType.toLocaleLowerCase() === DETECTIONS.toLocaleLowerCase()
+  );
+
+  const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
 
   return (
@@ -205,6 +216,11 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
+          if (!hasPolylineFieldsInSchema) {
+            setEditing("Polyline");
+            return;
+          }
+
           setCurrent3dAnnotationMode(
             isPolylineAnnotateActive ? null : "polyline"
           );
@@ -217,10 +233,19 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
+  const setEditing = useSetAtom(editing);
   const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
     current3dAnnotationModeAtom
   );
-  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
+
+  const cuboidFields = use3dAnnotationFields(
+    (fieldType) =>
+      fieldType.toLocaleLowerCase() === DETECTION.toLocaleLowerCase() ||
+      fieldType.toLocaleLowerCase() === DETECTIONS.toLocaleLowerCase()
+  );
+
+  const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
+  const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
     <Tooltip
@@ -234,7 +259,13 @@ export const ThreeDCuboids = () => {
       <Square
         $active={isCuboidAnnotateActive}
         onClick={() => {
-          setCurrent3dAnnotationMode(isCuboidAnnotateActive ? null : "cuboid");
+          if (!hasCuboidFieldsInSchema) {
+            setEditing("Detection");
+            return;
+          }
+          setCurrent3dAnnotationMode(
+            isCuboidAnnotateActive ? null : ANNOTATION_CUBOID
+          );
         }}
       >
         <CuboidIcon />
