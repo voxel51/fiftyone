@@ -1,5 +1,6 @@
 -r test.txt
-
+# fiftyone doesn't work successfully with numpy>2.0
+# constrain it so that tests are successful.
 numpy<2
 pydicom>=2.2.0
 shapely>=1.7.1

@@ -9,12 +9,27 @@ import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import {
   AnnotationLabel,
-  ClassificationAnnotationLabel,
   DetectionAnnotationLabel,
-  PolylineAnnotationLabel,
+  PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import { Field, Schema } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  Field,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  OBJECT_ID_FIELD,
+  Primitive,
+  Schema,
+  STRING_FIELD,
+  UUID_FIELD,
+} from "@fiftyone/utilities";
+import { get } from "lodash";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -58,6 +73,85 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
+ * Supported primitive field types for annotation editing.
+ * Matches SUPPORTED_PRIMITIVES in fiftyone/core/annotation/constants.py
+ */
+const SUPPORTED_PRIMITIVE_FTYPES = new Set([
+  BOOLEAN_FIELD,
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  DICT_FIELD,
+  FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  INT_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
+  UUID_FIELD,
+]);
+
+/**
+ * Supported subfield types for list primitives.
+ * Matches SUPPORTED_LISTS_OF_PRIMITIVES in fiftyone/core/annotation/constants.py
+ */
+const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
+  BOOLEAN_FIELD,
+  FLOAT_FIELD,
+  INT_FIELD,
+  STRING_FIELD,
+]);
+
+/**
+ * Check if the field schema represents a supported primitive type.
+ */
+const isPrimitiveFieldType = (field: Field): boolean => {
+  if (!field?.ftype) {
+    return false;
+  }
+
+  if (SUPPORTED_PRIMITIVE_FTYPES.has(field.ftype)) {
+    return true;
+  }
+
+  // Check list of primitives (e.g., list<string>, list<int>, list<float>)
+  if (
+    field.ftype === LIST_FIELD &&
+    field.subfield &&
+    SUPPORTED_LIST_PRIMITIVE_SUBFIELDS.has(field.subfield)
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Helper type encapsulating label metadata relevant to delta calculations.
+ */
+type LabelMetadata<T> = {
+  type: Extract<FieldType, "Detection" | "Classification" | "Polyline">;
+  path: string;
+  data: T;
+};
+
+/**
+ * {@link LabelMetadata} detection subtype which includes a 2D bounding box.
+ */
+type Detection2DMetadata = LabelMetadata<DetectionLabel> & {
+  type: "Detection";
+  boundingBox: [number, number, number, number];
+};
+
+/**
+ * Proxy type for an annotation label.
+ *
+ * This type represents a union of valid {@link LabelMetadata} variants.
+ */
+export type LabelProxy =
+  | LabelMetadata<ClassificationLabel | DetectionLabel | PolylineLabel>
+  | Detection2DMetadata
+  | PrimitiveValue;
+
+/**
  * Build JSON-patch-compatible deltas for the specified changes to the sample.
  *
  * @param sample Sample containing unmodified label data
@@ -67,7 +161,7 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
  */
 export const buildLabelDeltas = (
   sample: Sample,
-  label: AnnotationLabel,
+  label: LabelProxy,
   schema: Field,
   opType: OpType
 ) => {
@@ -84,12 +178,12 @@ export const buildLabelDeltas = (
  * Build a list of JSON deltas for mutating the given sample and label.
  *
  * @param sample Sample containing unmodified label data
- * @param label Current label state
+ * @param label Current label state (annotation label or primitive label)
  * @param schema Field schema
  */
 export const buildMutationDeltas = (
   sample: Sample,
-  label: AnnotationLabel,
+  label: LabelProxy,
   schema: Field
 ): JSONDeltas => {
   // Need to branch on single element vs. list-based mutations due to
@@ -98,9 +192,15 @@ export const buildMutationDeltas = (
   // element with an implied structure.
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
-      return buildDetectionsMutationDelta(sample, label);
+      return buildDetectionsMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     } else if (isFieldType(schema, "Detection")) {
-      return buildDetectionMutationDelta(sample, label);
+      return buildDetectionMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
@@ -110,14 +210,26 @@ export const buildMutationDeltas = (
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
-      return buildPolylinesMutationDeltas(sample, label);
+      return buildPolylinesMutationDeltas(
+        sample,
+        label as LabelMetadata<PolylineLabel>
+      );
     } else if (isFieldType(schema, "Polyline")) {
-      return buildPolylineMutationDeltas(sample, label);
+      return buildPolylineMutationDeltas(
+        sample,
+        label as LabelMetadata<PolylineLabel>
+      );
     }
+  } else if (isPrimitiveFieldType(schema)) {
+    return buildPrimitiveMutationDelta(
+      sample,
+      label.path,
+      (label as PrimitiveValue).data
+    );
   }
 
   throw new Error(
-    `Unsupported label type '${label.type}' for path '${label.path}'`
+    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`
   );
 };
 
@@ -130,7 +242,7 @@ export const buildMutationDeltas = (
  */
 export const buildDeletionDeltas = (
   sample: Sample,
-  label: AnnotationLabel,
+  label: LabelProxy,
   schema: Field
 ): JSONDeltas => {
   // todo refactor to reduce code duplication
@@ -216,13 +328,31 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <T extends AnnotationLabel["data"]>(
+const buildSingleMutationDelta = <
+  T extends AnnotationLabel["data"] | Primitive
+>(
   sample: Sample,
   path: string,
   data: T
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
   return generateJsonPatch(existingLabel, data);
+};
+
+const buildPrimitiveMutationDelta = (
+  sample: Sample,
+  path: string,
+  data: Primitive
+): JSONDeltas => {
+  const existingValue = get(sample, path) as Primitive;
+
+  // If the value hasn't changed, return empty deltas
+  if (existingValue === data) {
+    return [];
+  }
+
+  // Return a replace operation with empty path - buildJsonPath will prepend the label path
+  return [{ op: "replace", path: "", value: data }];
 };
 
 /**
@@ -236,7 +366,7 @@ const buildSingleMutationDelta = <T extends AnnotationLabel["data"]>(
  */
 export const buildDetectionMutationDelta = (
   sample: Sample,
-  label: DetectionAnnotationLabel
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
 ): JSONDeltas => {
   return buildSingleMutationDelta(
     sample,
@@ -256,7 +386,7 @@ export const buildDetectionMutationDelta = (
  */
 export const buildDetectionsMutationDelta = (
   sample: Sample,
-  label: DetectionAnnotationLabel
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
 ): JSONDeltas => {
   const existingLabel = <DetectionsParent>(
     extractNestedField(sample, label.path)
@@ -287,7 +417,7 @@ export const buildDetectionsMutationDelta = (
  */
 export const buildClassificationMutationDeltas = (
   sample: Sample,
-  label: ClassificationAnnotationLabel
+  label: LabelMetadata<ClassificationLabel>
 ): JSONDeltas => {
   return buildSingleMutationDelta(sample, label.path, label.data);
 };
@@ -303,7 +433,7 @@ export const buildClassificationMutationDeltas = (
  */
 export const buildClassificationsMutationDeltas = (
   sample: Sample,
-  label: ClassificationAnnotationLabel
+  label: LabelMetadata<ClassificationLabel>
 ): JSONDeltas => {
   const existingLabel = <ClassificationsParent>(
     extractNestedField(sample, label.path)
@@ -337,7 +467,7 @@ export const buildClassificationsMutationDeltas = (
  */
 export const buildPolylineMutationDeltas = (
   sample: Sample,
-  label: PolylineAnnotationLabel
+  label: LabelMetadata<PolylineLabel>
 ): JSONDeltas => {
   return buildSingleMutationDelta(sample, label.path, label.data);
 };
@@ -353,7 +483,7 @@ export const buildPolylineMutationDeltas = (
  */
 export const buildPolylinesMutationDeltas = (
   sample: Sample,
-  label: PolylineAnnotationLabel
+  label: LabelMetadata<PolylineLabel>
 ): JSONDeltas => {
   const existingLabel = <{ polylines: PolylineLabel[] }>(
     extractNestedField(sample, label.path)
@@ -456,26 +586,26 @@ const getFieldSchemaHelper = (
 };
 
 /**
- * Create a {@link DetectionLabel} from a {@link DetectionAnnotationLabel}.
+ * Create a {@link DetectionLabel} from a {@link LabelMetadata} instance.
  *
  * @param label Source label
  */
 const makeDetectionLabel = (
-  label: DetectionAnnotationLabel
+  label: LabelMetadata<DetectionLabel> | Detection2DMetadata
 ): DetectionLabel => {
   if (isDetection3d(label.data)) {
     return label.data;
   }
 
-  const bounds = label.overlay.getRelativeBounds();
+  const boundingBox = (label as Detection2DMetadata).boundingBox;
 
   return {
     ...label.data,
     bounding_box: [
-      bounds.x || 0,
-      bounds.y || 0,
-      bounds.width || 0,
-      bounds.height || 0,
+      boundingBox[0] || 0,
+      boundingBox[1] || 0,
+      boundingBox[2] || 0,
+      boundingBox[3] || 0,
     ],
   };
 };

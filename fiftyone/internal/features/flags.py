@@ -13,5 +13,7 @@ FeatureFlag = Literal[
     "VFF_EXP_ANNOTATION",
     # annotation milestone 4 features
     "VFF_ANNOTATION_M4",
+    # annotation auto-save features
+    "VFF_ANNOTATION_AUTO_SAVE",
 ]
 """Enumeration of active feature flags."""

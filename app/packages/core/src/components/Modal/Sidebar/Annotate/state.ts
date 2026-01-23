@@ -61,7 +61,7 @@ export const activePaths = atom(
 export const fieldType = atomFamily((path: string) =>
   atom((get) => {
     const legacyData = get(labelSchemaData(path));
-    return legacyData?.type;
+    return legacyData?.type ? capitalize(legacyData.type) : undefined;
   })
 );
 

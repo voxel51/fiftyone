@@ -46,7 +46,7 @@ export default function CodeView(props) {
           setUserChanged();
         }}
         language={language}
-        options={{ readOnly }}
+        options={{ readOnly, lineNumbers: "on" }}
         onMount={(editor) => {
           if (autoFocus(props)) {
             editor.focus();

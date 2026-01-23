@@ -91,11 +91,9 @@ from .core.camera import (
     PinholeCameraIntrinsics,
     OpenCVCameraIntrinsics,
     OpenCVFisheyeCameraIntrinsics,
-    SensorExtrinsics,
-    CameraExtrinsics,
+    StaticTransform,
     CameraIntrinsicsRef,
-    SensorExtrinsicsRef,
-    CameraExtrinsicsRef,
+    StaticTransformRef,
     CameraProjector,
 )
 from .core.frame import Frame

@@ -58,10 +58,10 @@ export class CommandRegistry {
    * @param id The command id
    * @returns true if the command was registered and enabled and executed.
    */
-  public async executeCommand(id: string): Promise<boolean> {
+  public executeCommand(id: string): boolean {
     const command = this.getCommand(id);
     if (command && command.isEnabled()) {
-      const result = await command.execute();
+      const result = command.execute();
       if (result && isUndoable(result)) {
         //enable undo/redo
         this.actionManager.push(result as Undoable);
@@ -90,6 +90,9 @@ export class CommandRegistry {
    */
   public addListener(listener: () => void) {
     this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   /**
