@@ -1,7 +1,7 @@
 """
 FiftyOne Zoo Datasets provided natively by the library.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1435,17 +1435,19 @@ class FIWDataset(FiftyOneDataset):
         utilities for FIW.
 
     In order to load the FIW dataset, you must download the source data
-    manually. The directory should be organized in the following format::
+    manually. The directory should contain the official FIW structure::
 
         source_dir/
-            train-faces/
+            FIDs/
                 F0001/
                     MID1/
-                    MID2/
-                ...
-            test-public-faces/
-            test-public-lists/
-            train_relationships.csv
+                        *.jpg
+                    mid.csv
+                F0002/
+                    ...
+            FIW_PIDs.csv (optional)
+            FIW_FIDs.csv (optional)
+            FIW_RIDs.csv (optional)
 
     You can register at
     https://docs.google.com/forms/d/e/1FAIpQLSd5_hbg-7QlrqE9V4MJShgww308yCxHlj6VOLctETX6aYLQgg/viewform
@@ -1460,7 +1462,7 @@ class FIWDataset(FiftyOneDataset):
 
         dataset = foz.load_zoo_dataset(
             "fiw",
-            split="test",
+            split="train",
             source_dir=source_dir,
         )
 
