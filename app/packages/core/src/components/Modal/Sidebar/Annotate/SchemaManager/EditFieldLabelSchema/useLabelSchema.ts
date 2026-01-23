@@ -50,7 +50,7 @@ const useHasChanges = (one: unknown, two: unknown) => {
   }, [one, two]);
 };
 
-const useReadOnly = (field: string) => {
+export const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {

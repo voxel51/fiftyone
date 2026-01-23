@@ -1,17 +1,18 @@
-import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
+import React from "react";
 
 import { translateSchema } from "./translators";
+import { filterEmptyArrays } from "./utils";
 
-import widgets from "./widgets";
 import templates from "./templates";
+import widgets from "./widgets";
 
-export { isSchemaIOSchema, isJSONSchema } from "./translators";
+export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
-import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import type { IChangeEvent } from "@rjsf/core";
+import { isObject, type RJSFSchema, type UiSchema } from "@rjsf/utils";
 
 export interface RJSFProps {
   schema?: SchemaType;
@@ -43,26 +44,16 @@ export default function RJSF(props: RJSFProps) {
   }
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
-    if (props.onChange) {
-      // Filter out empty arrays that weren't in the original data
-      // i.e. don't add `tags: []` if `tags` does not already exist on props.data
-      const filteredData = { ...event.formData };
-      if (
-        props.data &&
-        typeof props.data === "object" &&
-        typeof filteredData === "object"
-      ) {
-        for (const key in filteredData) {
-          if (
-            !(key in props.data) &&
-            Array.isArray(filteredData[key]) &&
-            filteredData[key].length === 0
-          ) {
-            delete filteredData[key];
-          }
-        }
-      }
+    if (!props.onChange) return;
+
+    if (isObject(props.data) && isObject(event.formData)) {
+      const filteredData = filterEmptyArrays(
+        event.formData as Record<string, unknown>,
+        props.data as Record<string, unknown>
+      );
       props.onChange(filteredData);
+    } else {
+      props.onChange(event.formData);
     }
   };
 

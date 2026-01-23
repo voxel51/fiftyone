@@ -68,7 +68,7 @@ describe("CommandContextManager", () => {
     );
   });
 
-  it("can invoke a key binding", async () => {
+  it("can invoke a key binding", () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -86,7 +86,7 @@ describe("CommandContextManager", () => {
     expect(execFn).toBeCalledTimes(1);
   });
 
-  it("can invoke an inherited binding", async () => {
+  it("can invoke an inherited binding", () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -109,7 +109,7 @@ describe("CommandContextManager", () => {
     expect(execFn).toBeCalledTimes(1);
   });
 
-  it("does not invoke a non-inherited default binding", async () => {
+  it("does not invoke a non-inherited default binding", () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -132,7 +132,7 @@ describe("CommandContextManager", () => {
     expect(execFn).toBeCalledTimes(0);
   });
 
-  it("can perform undo/redo on an inherited context", async () => {
+  it("can perform undo/redo on an inherited context", () => {
     const undoFn = vi.fn(() => {
       return;
     });
