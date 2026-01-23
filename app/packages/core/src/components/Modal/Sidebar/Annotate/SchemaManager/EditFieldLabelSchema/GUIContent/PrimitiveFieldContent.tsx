@@ -277,9 +277,9 @@ const PrimitiveFieldContent = ({
       {componentOptions.length > 0 && (
         <div>
           <Text
-            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
             color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: "0.5rem" }}
           >
             Input type
           </Text>
@@ -328,9 +328,9 @@ const PrimitiveFieldContent = ({
       {showRange && (
         <div>
           <Text
-            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
             color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: "0.5rem" }}
           >
             Step (optional)
           </Text>
@@ -359,9 +359,9 @@ const PrimitiveFieldContent = ({
       {supportsDefault && (
         <div>
           <Text
-            variant={largeLabels ? TextVariant.Xl : TextVariant.Md}
+            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
             color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: "0.5rem" }}
           >
             Default (optional)
           </Text>
