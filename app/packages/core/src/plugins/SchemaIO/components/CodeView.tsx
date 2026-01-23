@@ -1,10 +1,10 @@
 import Editor from "@monaco-editor/react";
 import { Box, useColorScheme } from "@mui/material";
 import React from "react";
-import HeaderView from "./HeaderView";
-import autoFocus from "../utils/auto-focus";
-import { getComponentProps } from "../utils";
 import { useKey } from "../hooks";
+import { getComponentProps } from "../utils";
+import autoFocus from "../utils/auto-focus";
+import HeaderView from "./HeaderView";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
@@ -46,7 +46,7 @@ export default function CodeView(props) {
           setUserChanged();
         }}
         language={language}
-        options={{ readOnly }}
+        options={{ readOnly, lineNumbers: "on" }}
         onMount={(editor) => {
           if (autoFocus(props)) {
             editor.focus();
