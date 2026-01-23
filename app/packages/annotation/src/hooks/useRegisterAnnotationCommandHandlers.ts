@@ -134,9 +134,8 @@ export const useRegisterAnnotationCommandHandlers = () => {
     DeleteAnnotationCommand,
     useCallback(
       async (cmd) => {
-        const labelId = cmd.label.data._id;
         try {
-          // Convert AnnotationLabel to LabelProxy if needed
+          const labelId = cmd.label.data._id;
           const labelProxy = convertToLabelProxy(cmd.label);
 
           if (!labelProxy) {
@@ -164,7 +163,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
           return success;
         } catch (error) {
           eventBus.dispatch("annotation:deleteError", {
-            labelId,
+            labelId: cmd?.label?.data?._id,
             type: "delete",
             error: error as Error,
           });
