@@ -33,7 +33,7 @@ const RangeInput = ({
   const min = range?.min || "";
   const max = range?.max || "";
 
-  const labelVariant = largeLabels ? TextVariant.Xl : TextVariant.Md;
+  const labelVariant = largeLabels ? TextVariant.Lg : TextVariant.Md;
   const labelColor = largeLabels ? TextColor.Primary : TextColor.Secondary;
 
   return (

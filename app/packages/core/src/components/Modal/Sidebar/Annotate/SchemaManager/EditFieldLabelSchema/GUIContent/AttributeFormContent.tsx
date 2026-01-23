@@ -73,7 +73,7 @@ const AttributeFormContent = ({
         <Text
           variant={TextVariant.Md}
           color={TextColor.Secondary}
-          style={{ marginBottom: 8 }}
+          style={{ marginBottom: "0.5rem" }}
         >
           Name
         </Text>
@@ -100,7 +100,7 @@ const AttributeFormContent = ({
         <Text
           variant={TextVariant.Md}
           color={TextColor.Secondary}
-          style={{ marginBottom: 8 }}
+          style={{ marginBottom: "0.5rem" }}
         >
           Attribute type
         </Text>
@@ -122,7 +122,7 @@ const AttributeFormContent = ({
         <Text
           variant={TextVariant.Md}
           color={TextColor.Secondary}
-          style={{ marginBottom: 8 }}
+          style={{ marginBottom: "0.5rem" }}
         >
           Input type
         </Text>
@@ -168,7 +168,7 @@ const AttributeFormContent = ({
           <Text
             variant={TextVariant.Md}
             color={TextColor.Secondary}
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: "0.5rem" }}
           >
             Default (optional)
           </Text>
