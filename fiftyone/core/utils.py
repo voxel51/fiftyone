@@ -3068,10 +3068,12 @@ def get_cpu_count():
         # Python >= 3.13 adds this function which is more accurate to what the
         # process can actually use than cpu_count()
         # https://docs.python.org/3/library/os.html#os.process_cpu_count
-        process_cpu_count_fn = getattr(os, "process_cpu_count", lambda: None)
-        cpu_count = process_cpu_count_fn
-        if cpu_count is not None:
-            return cpu_count
+        try:
+            cpu_count = os.process_cpu_count()  # pylint: disable=no-member
+            if cpu_count is not None:
+                return cpu_count
+        except Exception:
+            pass
 
         # On linux if python < 3.13, we can manually check the affinity which
         # tells us the number of CPUs available to the process rather than the

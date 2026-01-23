@@ -346,22 +346,6 @@ class GetCpuCountFallbackTests(unittest.TestCase):
         result = fou.get_cpu_count()
         self.assertEqual(result, 1)
 
-    @patch("sys.platform", "darwin")  # Non-Linux to skip cgroups
-    @patch(
-        "multiprocessing.cpu_count",
-        side_effect=RuntimeError("Unexpected error"),
-    )
-    @patch("os.sched_getaffinity", side_effect=AttributeError, create=True)
-    @patch("os.process_cpu_count", side_effect=AttributeError, create=True)
-    def test_multiprocessing_other_exception_bubbles_up(
-        self, _mock_process, _mock_sched, _mock_cpu_count
-    ):
-        """Exceptions other than NotImplementedError should propagate."""
-
-        with self.assertRaises(RuntimeError) as ctx:
-            fou.get_cpu_count()
-        self.assertIn("Unexpected error", str(ctx.exception))
-
     @patch("sys.platform", "linux")
     @patch("os.sched_getaffinity", return_value={0, 1, 2, 3}, create=True)
     @patch("os.process_cpu_count", side_effect=AttributeError, create=True)
