@@ -24,16 +24,17 @@ vi.mock("@fiftyone/commands", () => ({
 // Define atoms inline in the mock factory to avoid hoisting issues
 vi.mock("@fiftyone/state", async () => {
   const { atom } = await import("recoil");
+  // prevent duplicate keys
+  const selectedMediaFieldAtom = atom({
+    key: "test-selectedMediaField-modal",
+    default: "filepath",
+  });
   return {
     mediaFields: atom({
       key: "test-mediaFields",
       default: [] as string[],
     }),
-    selectedMediaField: () =>
-      atom({
-        key: "test-selectedMediaField-modal",
-        default: "filepath",
-      }),
+    selectedMediaField: () => selectedMediaFieldAtom,
   };
 });
 

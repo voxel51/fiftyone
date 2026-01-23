@@ -173,6 +173,7 @@ test.describe.serial("media field keyboard navigation", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, keyboardNavDatasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
+    await modal.hideControls();
 
     // Navigate forward
     await page.keyboard.press("PageDown");
@@ -199,6 +200,7 @@ test.describe.serial("media field keyboard navigation", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, keyboardNavDatasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
+    await modal.hideControls();
 
     const initialScreenshot = await modal.looker.screenshot();
 
