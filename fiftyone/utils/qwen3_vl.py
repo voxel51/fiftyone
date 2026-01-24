@@ -368,6 +368,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
 
         if isinstance(img, torch.Tensor):
             img = img.cpu().numpy()
+            # Transpose CHW to HWC if first dim is channels and last dim is not
             if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
                 img = np.transpose(img, (1, 2, 0))
 
