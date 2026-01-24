@@ -382,6 +382,21 @@ class TestQwen3VLEmbeddingMode:
 
         assert isinstance(result, Image.Image)
 
+    def test_prepare_image_hwc_small_height(self):
+        """Test _prepare_image with HWC tensors where height is 1, 3, or 4"""
+        import torch
+        from PIL import Image
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+
+        for height in [1, 3, 4]:
+            img = torch.randint(0, 255, (height, 224, 3), dtype=torch.uint8)
+            result = model._prepare_image(img)
+
+            assert isinstance(result, Image.Image)
+            assert result.size == (224, height)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
