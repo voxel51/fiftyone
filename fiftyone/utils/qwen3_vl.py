@@ -112,6 +112,7 @@ class Qwen3VLOutputProcessor(fout.OutputProcessor):
                 continue
 
             x1, y1, x2, y2 = bbox
+            # Qwen3-VL outputs bbox_2d in 0-1000 normalized scale, convert to 0-1
             x1 = float(np.clip(x1 / 1000.0, 0.0, 1.0))
             y1 = float(np.clip(y1 / 1000.0, 0.0, 1.0))
             x2 = float(np.clip(x2 / 1000.0, 0.0, 1.0))
