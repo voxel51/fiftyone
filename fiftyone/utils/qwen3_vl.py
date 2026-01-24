@@ -82,6 +82,7 @@ class Qwen3VLOutputProcessor(fout.OutputProcessor):
             return detections
 
         try:
+            # Model wraps JSON output in markdown code blocks
             if json_str.startswith("```json"):
                 json_str = json_str[7:]
             if json_str.startswith("```"):
