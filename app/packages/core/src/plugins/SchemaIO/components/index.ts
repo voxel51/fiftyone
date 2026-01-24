@@ -31,6 +31,7 @@ export { default as LabelValueView } from "./LabelValueView";
 export { default as LazyFieldView } from "./LazyFieldView";
 export { default as LinkView } from "./LinkView";
 export { default as ListView } from "./ListView";
+export { default as LoaderView } from "./LoaderView";
 export { default as LoadingView } from "./LoadingView";
 export { default as MapView } from "./MapView";
 export { default as MarkdownView } from "./MarkdownView";
