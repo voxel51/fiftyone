@@ -207,7 +207,8 @@ export const deleteValue = atom(null, (get, set) => {
   const data = get(current);
 
   if (!data) {
-    throw new Error("no current label");
+    // Label may have already been cleared in another view.
+    return;
   }
 
   set(
