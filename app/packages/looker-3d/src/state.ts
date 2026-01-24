@@ -20,7 +20,11 @@ import type {
   SelectedPoint,
   TransformMode,
 } from "./annotation/types";
-import { SHADE_BY_HEIGHT } from "./constants";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+  SHADE_BY_HEIGHT,
+} from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type {
   Actions,
@@ -430,7 +434,9 @@ export const cuboidCreationStateAtom = atom<CuboidCreationState>({
  * Can be 'cuboid', 'polyline', or null (no annotation mode active).
  * Persisted in session storage to maintain state across page reloads.
  */
-export const current3dAnnotationModeAtom = atom<"cuboid" | "polyline" | null>({
+export const current3dAnnotationModeAtom = atom<
+  typeof ANNOTATION_CUBOID | typeof ANNOTATION_POLYLINE | null
+>({
   key: "fo3d-current3dAnnotationMode",
   default: null,
   effects: [
