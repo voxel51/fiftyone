@@ -5,6 +5,7 @@ FiftyOne dataset types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import eta.core.utils as etau
 
 
@@ -96,6 +97,32 @@ class UnlabeledVideoDataset(UnlabeledDataset):
         return super().get_dataset_exporter_cls()
 
 
+class UnlabeledAudioDataset(UnlabeledDataset):
+    """Base type for datasets that represent an unlabeled collection of audio."""
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.UnlabeledAudioDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.UnlabeledAudioDatasetImporter`
+            class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.UnlabeledAudioDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.UnlabeledAudioDatasetExporter`
+            class
+        """
+        return super().get_dataset_exporter_cls()
+
+
 class LabeledDataset(Dataset):
     """Base type for datasets that represent a collection of data samples and
     their associated labels.
@@ -155,6 +182,34 @@ class LabeledVideoDataset(LabeledDataset):
 
         Returns:
             a :class:`fiftyone.utils.data.exporters.LabeledVideoDatasetExporter`
+            class
+        """
+        return super().get_dataset_exporter_cls()
+
+
+class LabeledAudioDataset(LabeledDataset):
+    """Base type for datasets that represent a collection of audio and their
+    associated labels.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.LabeledAudioDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.LabeledAudioDatasetImporter`
+            class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.LabeledAudioDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.LabeledAudioDatasetExporter`
             class
         """
         return super().get_dataset_exporter_cls()
@@ -276,6 +331,25 @@ class VideoDirectory(UnlabeledImageDataset):
         import fiftyone.utils.data as foud
 
         return foud.VideoDirectoryExporter
+
+
+class AudioDirectory(UnlabeledAudioDataset):
+    """A directory of audio files.
+
+    See :ref:`this page <AudioDirectory-import>` for importing datasets of this
+    type, and see :ref:`this page <AudioDirectory-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.AudioDirectoryImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.AudioDirectoryExporter
 
 
 class MediaDirectory(UnlabeledDataset):
