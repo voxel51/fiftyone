@@ -21,6 +21,8 @@ import GUIView, {
   useActivateFields,
   useDeactivateFields,
 } from "./GUIView";
+import NewFieldSchema from "./NewFieldSchema";
+import { isNewFieldMode } from "./state";
 import {
   BackButton,
   CloseButton,
@@ -35,6 +37,16 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const [field, setField] = useAtom(currentField);
+  const [newFieldMode, setNewFieldMode] = useAtom(isNewFieldMode);
+
+  if (newFieldMode) {
+    return (
+      <ItemLeft>
+        <BackButton color="secondary" onClick={() => setNewFieldMode(false)} />
+        <Typography variant="h5">New field schema</Typography>
+      </ItemLeft>
+    );
+  }
 
   if (!field) {
     return <Typography variant="h5">Schema manager</Typography>;
@@ -64,6 +76,11 @@ const Subheading = () => {
 
 const Page = () => {
   const field = useAtomValue(currentField);
+  const newFieldMode = useAtomValue(isNewFieldMode);
+
+  if (newFieldMode) {
+    return <NewFieldSchema />;
+  }
 
   if (field) {
     return <EditFieldLabelSchema field={field} />;

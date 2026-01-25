@@ -6,11 +6,12 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Typography } from "@mui/material";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
+import { Button, Size, ToggleSwitch, Variant } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import { activeSchemaTab, labelSchemasData } from "../state";
+import { isNewFieldMode } from "./state";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
 import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
@@ -33,8 +34,29 @@ export { selectedActiveFields, selectedHiddenFields } from "./state";
  * GUI content - field list with drag-drop
  */
 const GUIContent = () => {
+  const setNewFieldMode = useSetAtom(isNewFieldMode);
+
+  const handleNewField = useCallback(() => {
+    setNewFieldMode(true);
+  }, [setNewFieldMode]);
+
   return (
     <>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginBottom: "0.5rem",
+        }}
+      >
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={handleNewField}
+        >
+          New field
+        </Button>
+      </div>
       <ActiveFieldsSection />
       <HiddenFieldsSection />
     </>
