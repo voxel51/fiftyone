@@ -62,8 +62,9 @@ const Heading = () => {
 
 const Subheading = () => {
   const field = useAtomValue(currentField);
+  const newFieldMode = useAtomValue(isNewFieldMode);
 
-  if (field) {
+  if (field || newFieldMode) {
     return null;
   }
 
