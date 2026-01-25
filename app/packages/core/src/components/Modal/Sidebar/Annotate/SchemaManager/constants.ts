@@ -44,7 +44,13 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 // Attribute Type & Component Constants
 // =============================================================================
 
-// Attribute type options for dropdown
+// Label type options for new field creation
+export const LABEL_TYPE_OPTIONS = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "classification", data: { label: "Classification" } },
+];
+
+// Attribute type options for dropdown (also used for primitive field creation)
 
 export const ATTRIBUTE_TYPE_OPTIONS = [
   { id: "str", data: { label: "String" } },
