@@ -4,7 +4,6 @@
  */
 
 import {
-  Input,
   Orientation,
   Spacing,
   Stack,
@@ -39,7 +38,6 @@ interface PrimitiveFieldContentProps {
 interface TouchedFields {
   values: boolean;
   range: boolean;
-  step: boolean;
 }
 
 const PrimitiveFieldContent = ({
@@ -52,7 +50,6 @@ const PrimitiveFieldContent = ({
   const [touched, setTouched] = useState<TouchedFields>({
     values: false,
     range: false,
-    step: false,
   });
 
   // Convert field type to schema type (e.g., "Float" -> "float")
@@ -65,14 +62,11 @@ const PrimitiveFieldContent = ({
   const component = config?.component || componentOptions[0]?.id || "text";
   const values = config?.values?.map(String) || [];
 
-  // Local state for range and step inputs (to allow typing partial values)
+  // Local state for range input (to allow typing partial values)
   const [range, setRange] = useState<{ min: string; max: string } | null>(
     config?.range
       ? { min: String(config.range[0]), max: String(config.range[1]) }
       : null
-  );
-  const [step, setStep] = useState(
-    config?.step !== undefined ? String(config.step) : ""
   );
 
   // Derived state
@@ -88,7 +82,6 @@ const PrimitiveFieldContent = ({
     const result = {
       values: null as string | null,
       range: null as string | null,
-      step: null as string | null,
     };
 
     // Values validation - required for radio/dropdown/checkboxes
@@ -111,23 +104,8 @@ const PrimitiveFieldContent = ({
       }
     }
 
-    // Step validation (optional but must be valid if provided)
-    if (showRange && step && !result.range) {
-      const stepNum = parseFloat(step);
-      if (isNaN(stepNum) || stepNum <= 0) {
-        result.step = "Step must be a positive number";
-      } else if (range) {
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        const rangeSize = max - min;
-        if (stepNum >= rangeSize) {
-          result.step = "Step must be smaller than the range";
-        }
-      }
-    }
-
     return result;
-  }, [showValues, showRange, values, range, step]);
+  }, [showValues, showRange, values, range]);
 
   // Handlers
   const handleComponentChange = useCallback(
@@ -140,12 +118,10 @@ const PrimitiveFieldContent = ({
       };
       delete newConfig.values;
       delete newConfig.range;
-      delete newConfig.step;
 
       // Reset local state
       setRange(null);
-      setStep("");
-      setTouched({ values: false, range: false, step: false });
+      setTouched({ values: false, range: false });
       onConfigChange(newConfig);
     },
     [config, onConfigChange]
@@ -191,32 +167,6 @@ const PrimitiveFieldContent = ({
           const { range: _, ...configWithoutRange } = config || {};
           onConfigChange(configWithoutRange);
         }
-      }
-    },
-    [config, onConfigChange]
-  );
-
-  const handleStepChange = useCallback(
-    (value: string) => {
-      // Update local state immediately for typing
-      setStep(value);
-
-      if (!onConfigChange) return;
-
-      // Clear step from config when input is empty
-      if (value === "") {
-        const { step: _, ...configWithoutStep } = config || {};
-        onConfigChange(configWithoutStep);
-        return;
-      }
-
-      // Sync to config when valid
-      const stepNum = parseFloat(value);
-      if (!isNaN(stepNum) && stepNum > 0) {
-        onConfigChange({
-          ...config,
-          step: stepNum,
-        });
       }
     },
     [config, onConfigChange]
@@ -276,37 +226,6 @@ const PrimitiveFieldContent = ({
             error={touched.range ? errors.range : null}
             largeLabels={largeLabels}
           />
-        </div>
-      )}
-
-      {/* Step input (for slider) */}
-      {showRange && (
-        <div>
-          <Text
-            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Step (optional)
-          </Text>
-          <Input
-            type="number"
-            value={step}
-            onChange={(e) => handleStepChange(e.target.value)}
-            onBlur={() => handleBlur("step")}
-            placeholder="0.001"
-            step="any"
-            error={touched.step && !!errors.step}
-          />
-          {touched.step && errors.step && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {errors.step}
-            </Text>
-          )}
         </div>
       )}
     </Stack>

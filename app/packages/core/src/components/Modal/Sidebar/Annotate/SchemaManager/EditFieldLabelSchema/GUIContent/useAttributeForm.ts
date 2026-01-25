@@ -40,7 +40,6 @@ interface UseAttributeFormResult {
   // Validation errors (field-specific)
   valuesError: string | null;
   rangeError: string | null;
-  stepError: string | null;
   defaultError: string | null;
   hasFormError: boolean;
 
@@ -50,7 +49,6 @@ interface UseAttributeFormResult {
   handleComponentChange: (component: string) => void;
   handleValuesChange: (values: string[]) => void;
   handleRangeChange: (range: { min: string; max: string } | null) => void;
-  handleStepChange: (step: string) => void;
   handleDefaultChange: (defaultValue: string) => void;
   handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
@@ -95,7 +93,6 @@ export default function useAttributeForm({
         component: getDefaultComponent(newType),
         values: [],
         range: null,
-        step: "",
         default: newSupportsDefault ? formState.default : "",
         listDefault: [],
       });
@@ -118,7 +115,6 @@ export default function useAttributeForm({
         component: newComponent,
         values: preserveValues ? formState.values : [],
         range: null,
-        step: "",
         listDefault: [],
       });
     },
@@ -135,13 +131,6 @@ export default function useAttributeForm({
   const handleRangeChange = useCallback(
     (range: { min: string; max: string } | null) => {
       onFormStateChange({ ...formState, range });
-    },
-    [formState, onFormStateChange]
-  );
-
-  const handleStepChange = useCallback(
-    (step: string) => {
-      onFormStateChange({ ...formState, step });
     },
     [formState, onFormStateChange]
   );
@@ -182,7 +171,6 @@ export default function useAttributeForm({
     // Validation errors
     valuesError: formErrors.values,
     rangeError: formErrors.range,
-    stepError: formErrors.step,
     defaultError: formErrors.default,
     hasFormError: hasAttributeFormError(formErrors),
 
@@ -192,7 +180,6 @@ export default function useAttributeForm({
     handleComponentChange,
     handleValuesChange,
     handleRangeChange,
-    handleStepChange,
     handleDefaultChange,
     handleListDefaultChange,
     handleReadOnlyChange,
