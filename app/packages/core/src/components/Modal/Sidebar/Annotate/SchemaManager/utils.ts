@@ -8,6 +8,7 @@ import {
   componentNeedsRange,
   componentNeedsValues,
   getDefaultComponent,
+  LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
 } from "./constants";
@@ -45,7 +46,7 @@ export interface AttributeConfig {
   values?: (string | number)[];
   range?: [number, number];
   step?: number;
-  default?: string | number;
+  default?: string | number | (string | number)[]; // Array for list types
   read_only?: boolean;
 }
 
@@ -78,6 +79,7 @@ export interface AttributeFormData {
   range: { min: string; max: string } | null;
   step: string;
   default: string;
+  listDefault: (string | number)[]; // For list types
   read_only: boolean;
 }
 
@@ -222,6 +224,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
   range: null,
   step: "",
   default: "",
+  listDefault: [],
   read_only: false,
 });
 
@@ -231,19 +234,38 @@ export const createDefaultFormData = (): AttributeFormData => ({
 export const toFormData = (
   name: string,
   config: AttributeConfig
-): AttributeFormData => ({
-  name,
-  type: config.type,
-  // component should come from backend, additional fallback to be safe
-  component: config.component || getDefaultComponent(config.type),
-  values: config.values?.map(String) || [],
-  range: config.range
-    ? { min: String(config.range[0]), max: String(config.range[1]) }
-    : null,
-  step: config.step !== undefined ? String(config.step) : "",
-  default: config.default !== undefined ? String(config.default) : "",
-  read_only: config.read_only || false,
-});
+): AttributeFormData => {
+  const isListType = LIST_TYPES.includes(config.type);
+
+  // Handle default value - could be array for list types
+  let defaultStr = "";
+  let listDefault: (string | number)[] = [];
+  if (config.default !== undefined) {
+    if (Array.isArray(config.default)) {
+      listDefault = config.default;
+    } else if (isListType) {
+      // Single value for list type - wrap in array
+      listDefault = [config.default];
+    } else {
+      defaultStr = String(config.default);
+    }
+  }
+
+  return {
+    name,
+    type: config.type,
+    // component should come from backend, additional fallback to be safe
+    component: config.component || getDefaultComponent(config.type),
+    values: config.values?.map(String) || [],
+    range: config.range
+      ? { min: String(config.range[0]), max: String(config.range[1]) }
+      : null,
+    step: config.step !== undefined ? String(config.step) : "",
+    default: defaultStr,
+    listDefault,
+    read_only: config.read_only || false,
+  };
+};
 
 /**
  * Convert form data to AttributeConfig for saving
@@ -251,6 +273,7 @@ export const toFormData = (
  */
 export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
   const isNumeric = NUMERIC_TYPES.includes(data.type);
+  const isListType = LIST_TYPES.includes(data.type);
 
   // Convert values to numbers for numeric types
   let values: (string | number)[] | undefined;
@@ -270,9 +293,15 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
     }
   }
 
-  // Convert default to number for numeric types
-  let defaultValue: string | number | undefined;
-  if (data.default) {
+  // Convert default to appropriate type
+  let defaultValue: string | number | (string | number)[] | undefined;
+  if (isListType) {
+    // For list types, use listDefault array
+    if (data.listDefault && data.listDefault.length > 0) {
+      defaultValue = data.listDefault;
+    }
+  } else if (data.default) {
+    // For non-list types, convert to number if numeric
     defaultValue = isNumeric ? parseFloat(data.default) : data.default;
     if (typeof defaultValue === "number" && isNaN(defaultValue)) {
       defaultValue = undefined;
