@@ -483,11 +483,15 @@ class CreateAndActivateField(foo.Operator):
             _create_primitive_field(
                 ctx.dataset, field_name, field_type, read_only
             )
-            # Generate schema for primitive fields (these work fine)
+            # Generate base schema for primitive fields
             label_schema = ctx.dataset.generate_label_schemas(
                 fields=field_name,
                 scan_samples=False,
             )
+            # Merge user-provided config (component, values, range, etc.)
+            schema_config = ctx.params.get("schema_config")
+            if schema_config:
+                label_schema.update(schema_config)
 
         # 3. Set the label schema
         # For label fields, we bypass validation because field.fields is empty
