@@ -105,11 +105,18 @@ export default function useAttributeForm({
 
   const handleComponentChange = useCallback(
     (newComponent: string) => {
-      // Reset to initial state when switching component
+      const oldComponent = formState.component;
+      const oldNeedsValues = componentNeedsValues(oldComponent);
+      const newNeedsValues = componentNeedsValues(newComponent);
+
+      // Preserve values when switching between components that both use values
+      // (e.g., radio <-> dropdown <-> checkboxes)
+      const preserveValues = oldNeedsValues && newNeedsValues;
+
       onFormStateChange({
         ...formState,
         component: newComponent,
-        values: [],
+        values: preserveValues ? formState.values : [],
         range: null,
         step: "",
         listDefault: [],
