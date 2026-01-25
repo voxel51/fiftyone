@@ -11,12 +11,6 @@ interface RangeInputProps {
   onRangeChange: (range: { min: string; max: string }) => void;
   /** Validation error for range from parent */
   error?: string | null;
-  /** Step value for slider */
-  step?: string;
-  /** Step change handler */
-  onStepChange?: (step: string) => void;
-  /** Step validation error from parent */
-  stepError?: string | null;
   /** Use larger, primary-colored labels */
   largeLabels?: boolean;
 }
@@ -25,9 +19,6 @@ const RangeInput = ({
   range,
   onRangeChange,
   error = null,
-  step = "",
-  onStepChange,
-  stepError = null,
   largeLabels = false,
 }: RangeInputProps) => {
   const min = range?.min || "";
@@ -80,33 +71,6 @@ const RangeInput = ({
         >
           {error}
         </Text>
-      )}
-      {onStepChange && (
-        <div style={{ marginTop: "1rem" }}>
-          <Text
-            variant={labelVariant}
-            color={labelColor}
-            style={{ marginBottom: LABEL_MARGIN_BOTTOM }}
-          >
-            Step (optional)
-          </Text>
-          <Input
-            type="number"
-            value={step}
-            onChange={(e) => onStepChange(e.target.value)}
-            placeholder="Step size"
-            error={!!stepError}
-          />
-          {stepError && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {stepError}
-            </Text>
-          )}
-        </div>
       )}
     </div>
   );
