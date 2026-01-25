@@ -6,6 +6,7 @@ Annotation label schemas operators
 |
 """
 
+import copy
 import logging
 
 import fiftyone.core.annotation.constants as foac
@@ -362,26 +363,67 @@ class ValidateLabelSchemas(foo.Operator):
 def _get_default_label_schema(field_type):
     """Get the default label schema for a newly created label field.
 
-    Since the field's subfields (id, tags, confidence, etc.) aren't added to
-    the dataset schema until data is stored, we start with an empty attributes
-    schema. Users can populate attributes by scanning the field after adding data.
+    Since generate_label_schemas relies on field.fields which isn't populated
+    by add_sample_field with dot notation, we construct the default schema
+    manually based on the known Detection/Classification field structure.
+
+    Note: 'classes' is only valid when component is a VALUES_COMPONENT
+    (dropdown, radio, checkboxes). For 'text' component, we omit classes.
     """
+    # Common attributes for label types with _HasID mixin
+    base_attributes = {
+        "id": {"type": "id", "component": "text", "read_only": True},
+        "tags": {"type": "list<str>", "component": "text"},
+    }
+
     if field_type == "detections":
         return {
-            "attributes": {},
-            "classes": [],
+            "attributes": {
+                **base_attributes,
+                "confidence": {"type": "float", "component": "text"},
+                "index": {"type": "int", "component": "text"},
+            },
             "component": "text",
             "type": "detections",
         }
     elif field_type == "classification":
         return {
-            "attributes": {},
-            "classes": [],
+            "attributes": {
+                **base_attributes,
+                "confidence": {"type": "float", "component": "text"},
+            },
             "component": "text",
             "type": "classification",
         }
     else:
         return {"type": field_type}
+
+
+def _add_default_label_subfields(dataset, field_name, field_type):
+    """Add default nested fields to the data schema.
+
+    This adds the standard Detection/Classification subfields to the dataset's
+    data schema so that the label schema validation passes.
+    """
+    if field_type == "detections":
+        # Detections has a nested 'detections' list of Detection objects
+        base_path = f"{field_name}.detections"
+        # Add common Detection fields (bounding_box handled by App)
+        dataset.add_sample_field(f"{base_path}.id", fof.ObjectIdField)
+        dataset.add_sample_field(f"{base_path}.label", fof.StringField)
+        dataset.add_sample_field(f"{base_path}.confidence", fof.FloatField)
+        dataset.add_sample_field(
+            f"{base_path}.tags", fof.ListField, subfield=fof.StringField()
+        )
+        dataset.add_sample_field(f"{base_path}.index", fof.IntField)
+    elif field_type == "classification":
+        # Classification fields directly on the field
+        dataset.add_sample_field(f"{field_name}.id", fof.ObjectIdField)
+        dataset.add_sample_field(f"{field_name}.label", fof.StringField)
+        dataset.add_sample_field(f"{field_name}.confidence", fof.FloatField)
+        dataset.add_sample_field(
+            f"{field_name}.tags", fof.ListField, subfield=fof.StringField()
+        )
 
 
 class CreateAndActivateField(foo.Operator):
@@ -431,7 +473,11 @@ class CreateAndActivateField(foo.Operator):
                 read_only=read_only,
             )
 
-            # Use default schema for new label fields
+            # Add default nested fields to data schema (for validation)
+            _add_default_label_subfields(ctx.dataset, field_name, field_type)
+
+            # Construct default label schema manually
+            # (generate_label_schemas doesn't work for newly created fields)
             label_schema = _get_default_label_schema(field_type)
         else:  # primitive
             _create_primitive_field(
@@ -444,7 +490,17 @@ class CreateAndActivateField(foo.Operator):
             )
 
         # 3. Set the label schema
-        ctx.dataset.update_label_schema(field_name, label_schema)
+        # For label fields, we bypass validation because field.fields is empty
+        # for newly created fields (it only gets populated when data is stored).
+        # Our manually constructed schema is known-good, so this is safe.
+        if field_category == "label":
+            label_schemas = ctx.dataset.label_schemas
+            label_schemas[field_name] = copy.deepcopy(label_schema)
+            ctx.dataset._doc.label_schemas = label_schemas
+            ctx.dataset.save()
+        else:
+            # Primitive fields work fine with normal validation
+            ctx.dataset.update_label_schema(field_name, label_schema)
 
         # 4. Activate the field (prepend to make it appear at top)
         active = ctx.dataset.active_label_schemas or []
