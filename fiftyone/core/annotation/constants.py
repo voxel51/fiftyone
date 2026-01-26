@@ -166,7 +166,7 @@ SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.IntField,
     fof.StringField,
 )
-SUPPORTED_MEDIA_TYPES = {fom.IMAGE, fom.THREE_D}
+SUPPORTED_MEDIA_TYPES = {fom.GROUP, fom.IMAGE, fom.THREE_D}
 SUPPORTED_PRIMITIVES = (
     fof.BooleanField,
     fof.DateField,
