@@ -82,21 +82,21 @@ export const useShowSchemaManagerModal = () => {
 };
 
 // =============================================================================
-// Schema Tab Hooks
+// Schema Editor GUI/JSON Toggle Hooks
 // =============================================================================
 
 /**
- * Hook to get and set the active schema tab (gui/json)
+ * Hook to get and set the schema editor mode (gui/json toggle)
  */
-export const useActiveSchemaTab = () => {
+export const useSchemaEditorGUIJSONToggle = () => {
   const [tab, setTab] = useAtom(activeSchemaTab);
   return { tab, setTab };
 };
 
 /**
- * Hook to set the active schema tab
+ * Hook to set the schema editor mode
  */
-export const useSetActiveSchemaTab = () => {
+export const useSetSchemaEditorGUIJSONToggle = () => {
   return useSetAtom(activeSchemaTab);
 };
 
@@ -136,9 +136,9 @@ export const useSelectedHiddenFields = () => {
 // =============================================================================
 
 /**
- * Hook to get all hidden fields with their metadata
+ * Hook to get all hidden fields with their metadata (types, attr counts, schema states)
  */
-export const useHiddenFields = () => {
+export const useHiddenFieldsWithMetadata = () => {
   const fields = useAtomValue(sortedInactivePaths);
   const types = useAtomValue(hiddenFieldTypes);
   const attrCounts = useAtomValue(hiddenFieldAttrCounts);
@@ -210,7 +210,7 @@ export const useFieldType = (field: string) => {
 /**
  * Hook to get a field's schema data
  */
-export const useFieldData = (field: string) => {
+export const useFieldSchemaData = (field: string) => {
   return useAtomValue(labelSchemaData(field));
 };
 
