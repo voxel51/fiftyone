@@ -3,13 +3,8 @@ import { useCommandBus } from "@fiftyone/command-bus";
 import * as fos from "@fiftyone/state";
 import { PrimitiveValue } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
-import {
-  Button,
-  Orientation,
-  Stack,
-  Variant,
-} from "@voxel51/voodo";
-import React, { useCallback, useState } from "react";
+import { Button, Orientation, Stack, Variant } from "@voxel51/voodo";
+import { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { useSampleValue } from "../useSampleValue";
 import PrimitiveRenderer from "./PrimitiveRenderer";

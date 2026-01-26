@@ -1,7 +1,6 @@
 import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { Primitive } from "@fiftyone/utilities";
 import { DatePicker } from "@voxel51/voodo";
-import React from "react";
 import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
@@ -25,7 +24,6 @@ export default function PrimitiveRenderer({
   handleChange,
   primitiveSchema,
 }: PrimitiveRendererProps) {
-  console.log(type);
   const isJson = type === "dict";
   const isDate = type === "date" || type === "datetime";
   if (isJson) {
