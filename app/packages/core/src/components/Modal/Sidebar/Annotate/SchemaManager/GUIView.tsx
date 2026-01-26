@@ -5,8 +5,7 @@
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { Typography } from "@mui/material";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
+import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import ActiveFieldsSection from "./ActiveFieldsSection";
@@ -53,7 +52,7 @@ const JSONContent = () => {
   if (!schemasData) {
     return (
       <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-        <Typography color="secondary">No schema data available</Typography>
+        <Text color={TextColor.Secondary}>No schema data available</Text>
       </Item>
     );
   }
