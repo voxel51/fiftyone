@@ -6,7 +6,6 @@ Annotation label schemas operators
 |
 """
 
-import copy
 import logging
 
 import fiftyone.core.annotation.constants as foac
@@ -491,14 +490,26 @@ class CreateAndActivateField(foo.Operator):
                     )
 
                 # Merge all config into label_schema
+                # Process component first so classes logic can check it
+                if "component" in label_schema_config:
+                    label_schema["component"] = label_schema_config[
+                        "component"
+                    ]
+
                 for key, value in label_schema_config.items():
-                    if key == "new_attributes":
-                        continue  # Already handled above
+                    if key in ("new_attributes", "component"):
+                        continue  # Already handled
                     if key == "attributes":
                         label_schema["attributes"].update(value)
                     elif key == "classes" and value:
                         label_schema["classes"] = value
-                        label_schema["component"] = "dropdown"
+                        # Only default to dropdown if component isn't already a values type
+                        if label_schema.get("component") not in (
+                            "dropdown",
+                            "radio",
+                            "checkboxes",
+                        ):
+                            label_schema["component"] = "dropdown"
                     else:
                         label_schema[key] = value
         else:  # primitive
@@ -515,24 +526,16 @@ class CreateAndActivateField(foo.Operator):
             if schema_config:
                 label_schema.update(schema_config)
 
-        # 3. Set the label schema
-        # For label fields, we bypass validation because field.fields is empty
-        # for newly created fields (it only gets populated when data is stored).
-        # Our manually constructed schema is known-good, so this is safe.
-        if field_category == "label":
-            label_schemas = ctx.dataset.label_schemas
-            label_schemas[field_name] = copy.deepcopy(label_schema)
-            ctx.dataset._doc.label_schemas = label_schemas
-            ctx.dataset.save()
-        else:
-            # Primitive fields work fine with normal validation
-            ctx.dataset.update_label_schema(field_name, label_schema)
+        # 3. Set the label schema (validation now works for newly created fields)
+        ctx.dataset.update_label_schema(field_name, label_schema)
 
         # 4. Activate the field (prepend to make it appear at top)
         active = ctx.dataset.active_label_schemas or []
         ctx.dataset.active_label_schemas = [field_name] + [
             f for f in active if f != field_name
         ]
+
+        # Single save for all changes
         ctx.dataset.save()
 
         # 5. Trigger dataset reload to refresh App's cached schema
