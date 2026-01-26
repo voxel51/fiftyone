@@ -460,7 +460,7 @@ def _validate_attribute(
     path,
     subfields,
 ):
-    label_schema = dict(**label_schema)
+    label_schema = label_schema.copy()
     attribute = label_schema.pop(foac.NAME, None)
     if attribute is None:
         raise ValueError(
@@ -504,8 +504,7 @@ def _validate_attribute(
 def _validate_attributes(collection, field_name, class_name, attributes):
     if not isinstance(attributes, list):
         raise ValueError(
-            f"'attributes' setting for field '{field_name}' must be a 'list'"
-        )
+            f"'attributes' setting for field '{field_name}' must be a list"
 
     field: fof.EmbeddedDocumentField = collection.get_field(field_name)
     path = field_name
