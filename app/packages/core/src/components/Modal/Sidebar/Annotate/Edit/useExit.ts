@@ -1,3 +1,4 @@
+import { CommandContextManager } from "@fiftyone/commands";
 import {
   BoundingBoxOverlay,
   TransformOverlayCommand,
@@ -14,17 +15,12 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { CommandContextManager } from "@fiftyone/commands";
-import {
-  current,
-  currentData,
-  currentOverlay,
-  hasChanges,
-  savedLabel,
-} from "./state";
+import { current, currentOverlay, hasChanges, savedLabel } from "./state";
+import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
+  const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
@@ -74,11 +70,16 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-    
+
     CommandContextManager.instance().clearUndoRedoStack();
-    if (!label || !revertLabel) {
+    const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
+      setActivePrimitive(null);
+    };
+
+    if (!label || !revertLabel) {
+      resetEditingState();
       return;
     }
 
@@ -86,8 +87,7 @@ export default function useExit(revertLabel = true) {
     if (unsaved?.isNew) {
       removeOverlay(unsaved?.overlay.id);
       scene?.exitInteractiveMode();
-      setEditing(null);
-      setSaved(null);
+      resetEditingState();
       return;
     }
 
@@ -120,8 +120,7 @@ export default function useExit(revertLabel = true) {
       }
     }
 
-    setSaved(null);
-    setEditing(null);
+    resetEditingState();
   }, [
     scene,
     setEditing,

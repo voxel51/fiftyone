@@ -59,47 +59,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_validate_bool_list_field_schema(self):
-        dataset = fo.Dataset()
-        dataset.add_sample_field(
-            "bool_list_field", fo.ListField, subfield=fo.BooleanField
-        )
-
-        validate_label_schemas(
-            dataset,
-            {"type": "list<bool>", "component": "dropdown", "values": [False]},
-            fields="bool_list_field",
-        )
-
-        # wrong 'type'
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "bool", "component": "dropdown", "values": [False]},
-                fields="bool_list_field",
-            )
-
-        # invalid 'component'
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "list<bool>", "component": "radio"},
-                fields="bool_list_field",
-            )
-
-        # 'values' is not applicable
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {
-                    "type": "list<bool>",
-                    "component": "text",
-                    "values": None,
-                },
-                fields="bool_list_field",
-            )
-
-    @drop_datasets
     def test_validate_date_field_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("date_field", fo.DateField)

@@ -109,9 +109,7 @@ def _validate_field_label_schema(
         )
 
     elif isinstance(field, fof.BooleanField):
-        if is_list:
-            fn = _validate_bool_list_field_label_schema
-        else:
+        if not is_list:
             fn = _validate_bool_field_label_schema
     elif isinstance(field, (fof.DateField, fof.DateTimeField)):
         if is_list:
@@ -163,31 +161,6 @@ def _validate_bool_field_label_schema(
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE and value != foac.BOOL:
-            _raise_type_error(field, field_name, value)
-
-
-def _validate_bool_list_field_label_schema(
-    collection, field_name, label_schema, allow_default
-):
-    field = collection.get_field(field_name)
-    settings = foac.BOOL_LIST_SETTINGS
-    component = label_schema.get(foac.COMPONENT, None)
-    values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, bool, key=foac.CLASSES)
-        settings = settings.union({foac.VALUES})
-
-    for key, value in label_schema.items():
-        if key not in settings:
-            _raise_unknown_setting_error(key, field_name)
-
-        if key == foac.COMPONENT and value not in foac.BOOL_LIST_COMPONENTS:
-            _raise_component_error(field_name, value)
-        elif key == foac.DEFAULT:
-            _validate_default_list(field_name, value, bool, allow_default)
-        elif key == foac.READ_ONLY:
-            _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != foac.BOOL_LIST:
             _raise_type_error(field, field_name, value)
 
 

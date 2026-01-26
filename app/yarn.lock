@@ -2395,7 +2395,7 @@ __metadata:
     "@types/react": "npm:^18.0.12"
     fs-extra: "npm:^10.1.0"
     jest: "npm:^29.7.0"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     prettier: "npm:2.2.1"
     typescript: "npm:4.2.4"
     vite: "npm:^5.4.21"
@@ -2454,7 +2454,7 @@ __metadata:
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
     classnames: "npm:^2.2.6"
     history: "npm:^5.3.0"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     notistack: "npm:^3.0.1"
     numeral: "npm:^2.0.6"
     path-to-regexp: "npm:^8.0.0"
@@ -2592,7 +2592,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:^0.0.6"
+    "@voxel51/voodo": "npm:0.0.8"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -2601,7 +2601,7 @@ __metadata:
     framer-motion: "npm:^6.2.8"
     history: "npm:^5.3.0"
     json-edit-react: "npm:^1.28.2"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     lru-cache: "npm:^11.0.1"
     luxon: "npm:^3.6.1"
     numeral: "npm:^2.0.6"
@@ -2797,7 +2797,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^1.3.0"
     chroma-js: "npm:^3.1.2"
     leva: "npm:^0.9.36"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     nodemon: "npm:^3.0.3"
     r3f-perf: "npm:^7.2.3"
     react-color: "npm:^2.19.3"
@@ -2830,7 +2830,7 @@ __metadata:
     copy-to-clipboard: "npm:^3.3.1"
     fast-png: "npm:^6.2.0"
     immutable: "npm:^4.0.0-rc.12"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     lru-cache: "npm:^11.0.1"
     mime: "npm:^2.5.2"
     monotone-convex-hull-2d: "npm:^1.0.1"
@@ -2984,7 +2984,7 @@ __metadata:
     "@testing-library/react-hooks": "npm:latest"
     babel-plugin-relay: "npm:^14.1.0"
     html2canvas: "npm:1.0.0-rc.7"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     prettier: "npm:^2.7.1"
     typescript: "npm:^4.7.4"
     vite: "npm:^5.4.21"
@@ -3004,7 +3004,7 @@ __metadata:
     "@chainner/node-path": "npm:^0.1.1"
     "@microsoft/fetch-event-source": "npm:^2.0.1"
     fetch-retry: "npm:^5.0.3"
-    lodash: "npm:^4.17.21"
+    lodash: "npm:^4.17.23"
     mime: "npm:^2.5.2"
     path-browserify: "npm:^1.0.1"
     prettier: "npm:^2.7.1"
@@ -3093,7 +3093,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/react-dom@npm:^2.1.2":
+"@floating-ui/react-dom@npm:^2.1.2, @floating-ui/react-dom@npm:^2.1.6":
   version: 2.1.6
   resolution: "@floating-ui/react-dom@npm:2.1.6"
   dependencies:
@@ -3116,6 +3116,20 @@ __metadata:
     react: ">=16.8.0"
     react-dom: ">=16.8.0"
   checksum: 10/7f8e6b27db48b68ca94756687af21857be04e7360ac922d7c8e22411f2895df6384af7bd40f4b48663d3cc5809bb5c6574cd9c9ea15543ec747b9a8e1c8c3008
+  languageName: node
+  linkType: hard
+
+"@floating-ui/react@npm:^0.27.15":
+  version: 0.27.16
+  resolution: "@floating-ui/react@npm:0.27.16"
+  dependencies:
+    "@floating-ui/react-dom": "npm:^2.1.6"
+    "@floating-ui/utils": "npm:^0.2.10"
+    tabbable: "npm:^6.0.0"
+  peerDependencies:
+    react: ">=17.0.0"
+    react-dom: ">=17.0.0"
+  checksum: 10/b9baedee124035323a8f74794ec782678faf52af1c88731ce7d2641b7e7c97748fda1e711a3c4db007a0153d93158d867f4726ee632d713d3de76ec4bdfd84e1
   languageName: node
   linkType: hard
 
@@ -7308,15 +7322,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:^0.0.6":
-  version: 0.0.6
-  resolution: "@voxel51/voodo@npm:0.0.6"
+"@voxel51/voodo@npm:0.0.8":
+  version: 0.0.8
+  resolution: "@voxel51/voodo@npm:0.0.8"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
     "@headlessui/react": "npm:^2.2.9"
     clsx: "npm:^2.1.1"
+    date-fns-tz: "npm:^3.2.0"
+    react-datepicker: "npm:^9.1.0"
     tailwind-merge: "npm:^3.4.0"
   peerDependencies:
     "@emotion/react": ^11.0.0
@@ -7324,7 +7340,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/28095fcd55a7ec336c09aac3853324dafc125c05baecacf3aa3c0379efe11464be93cb4fb0ca33f91f6b0443cd648e2d67c4ee72150b115df3e99843197732ec
+  checksum: 10/2ef5630169f90377e8cf9c8f410f754b1745e414010b3addb037676b5987543c2af36fafdeab55fd90cfee3acc0d0e5b388bd423413ff80dd8dd7e5d352a5958
   languageName: node
   linkType: hard
 
@@ -9507,12 +9523,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"date-fns-tz@npm:^3.2.0":
+  version: 3.2.0
+  resolution: "date-fns-tz@npm:3.2.0"
+  peerDependencies:
+    date-fns: ^3.0.0 || ^4.0.0
+  checksum: 10/8ab4745f00b40381220f0a7a2ec16e217cb629d4018a19047264d289dd260322baa23e19b3ed63c7e553f9ad34bea9dea105391132930a3e141e9a0a53e54af2
+  languageName: node
+  linkType: hard
+
 "date-fns@npm:^2.29.1":
   version: 2.30.0
   resolution: "date-fns@npm:2.30.0"
   dependencies:
     "@babel/runtime": "npm:^7.21.0"
   checksum: 10/70b3e8ea7aaaaeaa2cd80bd889622a4bcb5d8028b4de9162cbcda359db06e16ff6e9309e54eead5341e71031818497f19aaf9839c87d1aba1e27bb4796e758a9
+  languageName: node
+  linkType: hard
+
+"date-fns@npm:^4.1.0":
+  version: 4.1.0
+  resolution: "date-fns@npm:4.1.0"
+  checksum: 10/d5f6e9de5bbc52310f786099e18609289ed5e30af60a71e0646784c8185ddd1d0eebcf7c96b7faaaefc4a8366f3a3a4244d099b6d0866ee2bec80d1361e64342
   languageName: node
   linkType: hard
 
@@ -9739,9 +9771,9 @@ __metadata:
   linkType: hard
 
 "diff@npm:^5.0.0":
-  version: 5.2.0
-  resolution: "diff@npm:5.2.0"
-  checksum: 10/01b7b440f83a997350a988e9d2f558366c0f90f15be19f4aa7f1bb3109a4e153dfc3b9fbf78e14ea725717017407eeaa2271e3896374a0181e8f52445740846d
+  version: 5.2.2
+  resolution: "diff@npm:5.2.2"
+  checksum: 10/8a885b38113d96138d87f6cb474ee959b7e9ab33c0c4cb1b07dcf019ec544945a2309d53d721532af020de4b3a58fb89f1026f64f42f9421aa9c3ae48a36998b
   languageName: node
   linkType: hard
 
@@ -14301,9 +14333,9 @@ __metadata:
   linkType: hard
 
 "lodash-es@npm:^4.17.15, lodash-es@npm:^4.17.21":
-  version: 4.17.21
-  resolution: "lodash-es@npm:4.17.21"
-  checksum: 10/03f39878ea1e42b3199bd3f478150ab723f93cc8730ad86fec1f2804f4a07c6e30deaac73cad53a88e9c3db33348bb8ceeb274552390e7a75d7849021c02df43
+  version: 4.17.23
+  resolution: "lodash-es@npm:4.17.23"
+  checksum: 10/1feae200df22eb0bd93ca86d485e77784b8a9fb1d13e91b66e9baa7a7e5e04be088c12a7e20c2250fc0bd3db1bc0ef0affc7d9e3810b6af2455a3c6bf6dde59e
   languageName: node
   linkType: hard
 
@@ -14353,6 +14385,13 @@ __metadata:
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 10/c08619c038846ea6ac754abd6dd29d2568aa705feb69339e836dfa8d8b09abbb2f859371e86863eda41848221f9af43714491467b5b0299122431e202bb0c532
+  languageName: node
+  linkType: hard
+
+"lodash@npm:^4.17.23":
+  version: 4.17.23
+  resolution: "lodash@npm:4.17.23"
+  checksum: 10/82504c88250f58da7a5a4289f57a4f759c44946c005dd232821c7688b5fcfbf4a6268f6a6cdde4b792c91edd2f3b5398c1d2a0998274432cff76def48735e233
   languageName: node
   linkType: hard
 
@@ -16991,6 +17030,24 @@ __metadata:
   peerDependencies:
     react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0
   checksum: 10/8138199963bb653ea185f4bb646fa74f8b06bb2e5cf8d2660bd3deec38c0a2fe20d3f52753103098cf2ea7d3bb224e771bdd2db427fb7475cb93350b19b3ccb3
+  languageName: node
+  linkType: hard
+
+"react-datepicker@npm:^9.1.0":
+  version: 9.1.0
+  resolution: "react-datepicker@npm:9.1.0"
+  dependencies:
+    "@floating-ui/react": "npm:^0.27.15"
+    clsx: "npm:^2.1.1"
+    date-fns: "npm:^4.1.0"
+  peerDependencies:
+    date-fns-tz: ^3.0.0
+    react: ^16.9.0 || ^17 || ^18 || ^19 || ^19.0.0-rc
+    react-dom: ^16.9.0 || ^17 || ^18 || ^19 || ^19.0.0-rc
+  peerDependenciesMeta:
+    date-fns-tz:
+      optional: true
+  checksum: 10/d1b2e7c2f90abef05e1669b096005a9130482600781fe15d8fdaf1441bd070376ac7ab5c0da07f9af2959b33e8fe8f5807365285823f6dc3f7ade4641d88ebe5
   languageName: node
   linkType: hard
 

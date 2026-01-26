@@ -1,114 +1,23 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import type {
-  NumberSchemaType,
-  SchemaType,
-} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { expandPath, field } from "@fiftyone/state";
-import {
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
-} from "@fiftyone/utilities";
+import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
+  createInput,
+  createRadio,
+  createSelect,
+  createTags,
+} from "./schemaHelpers";
+import {
   currentData,
   currentField,
   currentOverlay,
   currentSchema,
 } from "./state";
-
-const getLabel = (value) => {
-  if (typeof value === "boolean") {
-    return value ? "True" : "False";
-  }
-
-  if (value === null || value === undefined) {
-    return "None";
-  }
-
-  return value;
-};
-
-const createInput = (
-  name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
-): SchemaType => {
-  const type =
-    ftype === STRING_FIELD
-      ? "string"
-      : ftype === BOOLEAN_FIELD
-      ? "boolean"
-      : "number";
-
-  const schema: SchemaType = {
-    type,
-    view: {
-      name: "PrimitiveView",
-      label: name,
-      component: "PrimitiveView",
-    },
-  };
-
-  if (typeof multipleOf === "number" && type === "number") {
-    (schema as NumberSchemaType).multipleOf = multipleOf;
-  }
-
-  return schema;
-};
-
-const createRadio = (name: string, choices) => {
-  return {
-    type: "string",
-    view: {
-      name: "RadioGroup",
-      label: name,
-      component: "RadioView",
-      choices: choices.map((choice) => ({
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-  };
-};
-
-const createTags = (name: string, choices: string[]) => {
-  return {
-    type: "array",
-    view: {
-      name: "AutocompleteView",
-      label: name,
-      component: "AutocompleteView",
-      allow_user_input: false,
-      choices: choices.map((choice) => ({
-        name: "Choice",
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-    required: true,
-  };
-};
-
-const createSelect = (name: string, choices: string[]) => {
-  return {
-    type: "string",
-    view: {
-      name: "DropdownView",
-      label: name,
-      component: "DropdownView",
-      choices: choices.map((choice) => ({
-        name: "Choice",
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-  };
-};
 
 const useSchema = () => {
   const config = useAtomValue(currentSchema);
@@ -195,6 +104,9 @@ const AnnotationSchema = () => {
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
+        smartFormProps={{
+          liveValidate: "onChange",
+        }}
         schema={schema}
         data={data}
         onChange={async (changes) => {
