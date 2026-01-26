@@ -115,7 +115,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
           });
           await schemaManager.updateSchema({
             field,
-            label_schema: createSchemaResponse.label_schema[field],
+            label_schema: createSchemaResponse.label_schema,
           });
         }
 

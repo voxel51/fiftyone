@@ -64,7 +64,7 @@ export type CreateSchemaRequest = {
 };
 
 export type CreateSchemaResponse = {
-  label_schema: AnnotationSchema;
+  label_schema: FieldSchema;
 };
 
 export type DeactivateSchemaRequest = {
