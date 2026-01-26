@@ -1,5 +1,4 @@
 import { test as base } from "src/oss/fixtures";
-import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -9,13 +8,9 @@ const datasetName = getUniqueDatasetNameWithPrefix("image-classification");
 const id = "000000000000000000000000";
 
 const test = base.extend<{
-  grid: GridPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
-  grid: async ({ page, eventUtils }, use) => {
-    await use(new GridPom(page, eventUtils));
-  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },

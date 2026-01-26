@@ -217,7 +217,7 @@ export default function useLabelSchema(field: string) {
   );
 
   return {
-    hasChanges: hasChanges || validate.errors.length,
+    hasChanges: hasChanges || !!validate.errors.length,
 
     ...readOnly,
     ...configUpdate,
