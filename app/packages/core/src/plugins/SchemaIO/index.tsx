@@ -1,7 +1,7 @@
+import { FormProps } from "@rjsf/core";
+import SmartForm from "../../../../components/src/components/SmartForm";
+import { SmartFormProps } from "../../../../components/src/components/SmartForm/types";
 import { SchemaIOComponent as SchemaIO } from "./SchemaIOComponent";
-import SmartForm, {
-  type SmartFormProps,
-} from "../../../../components/src/components/SmartForm";
 import type { SchemaType } from "./utils/types";
 
 export interface SchemaIOComponentProps {
@@ -25,12 +25,37 @@ export interface SchemaIOComponentProps {
   onSubmit?: (data: unknown) => void;
   jsonSchema?: SmartFormProps["jsonSchema"];
   uiSchema?: SmartFormProps["uiSchema"];
+  smartFormProps?: FormProps;
 }
 
 export function SchemaIOComponent(props: SchemaIOComponentProps) {
+  const {
+    onSubmit,
+    jsonSchema,
+    uiSchema,
+    smartFormProps,
+    shouldClearUseKeyStores,
+    onPathChange,
+    ...commonProps
+  } = props;
+
   if (props.smartForm || props.jsonSchema) {
-    return <SmartForm {...props} />;
+    return (
+      <SmartForm
+        formProps={smartFormProps}
+        onSubmit={onSubmit}
+        jsonSchema={jsonSchema}
+        uiSchema={uiSchema}
+        {...commonProps}
+      />
+    );
   } else {
-    return <SchemaIO {...props} />;
+    return (
+      <SchemaIO
+        shouldClearUseKeyStores={shouldClearUseKeyStores}
+        onPathChange={onPathChange}
+        {...commonProps}
+      />
+    );
   }
 }
