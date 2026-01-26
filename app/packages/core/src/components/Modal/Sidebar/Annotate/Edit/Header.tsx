@@ -13,7 +13,6 @@ import { Row } from "./Components";
 import { showModal } from "../state";
 import {
   currentFieldIsReadOnlyAtom,
-  currentFieldIsReadOnlyBaseAtom,
   currentOverlay,
   currentType,
 } from "./state";
@@ -32,9 +31,6 @@ const Header = () => {
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const currentFieldIsReadOnlyBase = useAtomValue(
-    currentFieldIsReadOnlyBaseAtom
-  );
   const setShowSchemaManager = useSetAtom(showModal);
 
   // Kebab menu state
@@ -55,7 +51,7 @@ const Header = () => {
   };
 
   // Show menu if user can edit labels and field is read-only
-  const showMenu = canEditLabels.enabled && currentFieldIsReadOnlyBase;
+  const showMenu = canEditLabels.enabled && currentFieldIsReadOnly;
 
   return (
     <Row>

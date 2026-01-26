@@ -20,7 +20,6 @@ import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
   currentType,
-  readOnlyOverrideAtom,
 } from "./state";
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
@@ -61,7 +60,6 @@ export default function Edit() {
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
   const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
-  const setReadOnlyOverride = useSetAtom(readOnlyOverrideAtom);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
@@ -94,11 +92,6 @@ export default function Edit() {
     clear();
     exit();
   }, useSave());
-
-  // Reset read-only override when switching to a different label
-  useEffect(() => {
-    setReadOnlyOverride(false);
-  }, [overlay?.id, field, setReadOnlyOverride]);
 
   // Update overlay draggable/resizeable based on read-only state
   useEffect(() => {

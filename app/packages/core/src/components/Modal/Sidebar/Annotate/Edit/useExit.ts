@@ -19,7 +19,6 @@ import {
   current,
   currentOverlay,
   hasChanges,
-  readOnlyOverrideAtom,
   savedLabel,
 } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
@@ -28,7 +27,6 @@ export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
-  const setReadOnlyOverride = useSetAtom(readOnlyOverrideAtom);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
   const hasChanged = useAtomValue(hasChanges);
@@ -77,9 +75,6 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-
-    // Reset read-only override when exiting edit mode
-    setReadOnlyOverride(false);
 
     CommandContextManager.instance().clearUndoRedoStack();
     const resetEditingState = () => {
@@ -135,13 +130,13 @@ export default function useExit(revertLabel = true) {
     scene,
     setEditing,
     setSaved,
-    setReadOnlyOverride,
     overlay,
     revertLabel,
     removeOverlay,
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
+    hasChanged,
+    setActivePrimitive,
   ]);
 }
