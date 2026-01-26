@@ -431,7 +431,6 @@ def _validate_attribute(
     field_name,
     label_schema,
     path,
-    subfields,
 ):
     label_schema = label_schema.copy()
     attribute = label_schema.pop(foac.NAME, None)
@@ -440,16 +439,13 @@ def _validate_attribute(
             f"missing 'name' in 'attributes' for field '{field_name}'"
         )
 
-    # Check both field.fields (in-memory) and direct schema lookup.
-    # For newly created fields, field.fields may be empty but the schema
-    # exists in MongoDB after add_sample_field() with dot notation.
-    if attribute not in subfields:
-        attr_field = collection.get_field(f"{path}.{attribute}")
-        if attr_field is None:
-            raise ValueError(
-                f"'{attribute}' attribute does not exist on {class_name} field"
-                f" '{field_name}'"
-            )
+    # Use direct schema lookup which works for both existing and newly created fields
+    attr_field = collection.get_field(f"{path}.{attribute}")
+    if attr_field is None:
+        raise ValueError(
+            f"'{attribute}' attribute does not exist on {class_name} field"
+            f" '{field_name}'"
+        )
 
     if attribute == foac.LABEL:
         raise ValueError(
@@ -489,9 +485,7 @@ def _validate_attributes(collection, field_name, class_name, attributes):
     path = field_name
     if issubclass(field.document_type, fol._HasLabelList):
         path = f"{path}.{field.document_type._LABEL_LIST_FIELD}"
-        field = collection.get_field(path).field
 
-    subfields = {f.name: f for f in field.fields}
     exceptions = []
     for label_schema in attributes:
         try:
@@ -501,7 +495,6 @@ def _validate_attributes(collection, field_name, class_name, attributes):
                 field_name,
                 label_schema,
                 path,
-                subfields,
             )
         except Exception as exc:
             exceptions.append(exc)
