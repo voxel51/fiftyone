@@ -460,7 +460,7 @@ def _validate_attribute(
     path,
     subfields,
 ):
-    label_schema = dict(**label_schema)
+    label_schema = label_schema.copy()
     attribute = label_schema.pop(foac.NAME, None)
     if attribute is None:
         raise ValueError(
