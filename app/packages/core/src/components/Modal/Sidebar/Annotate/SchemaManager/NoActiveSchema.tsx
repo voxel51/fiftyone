@@ -1,13 +1,11 @@
 import { MuiIconFont } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { Button, Icon, IconName, Size, Variant } from "@voxel51/voodo";
-import { useSetAtom } from "jotai";
-import React from "react";
-import { activeSchemaTab } from "../state";
+import { useSetSchemaEditorGUIJSONToggle } from "./hooks";
 import { CenteredEmptyState } from "./styled";
 
 const NoActiveSchema = () => {
-  const setTab = useSetAtom(activeSchemaTab);
+  const setTab = useSetSchemaEditorGUIJSONToggle();
   return (
     <CenteredEmptyState>
       <MuiIconFont

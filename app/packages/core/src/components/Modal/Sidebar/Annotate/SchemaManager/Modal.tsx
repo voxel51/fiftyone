@@ -9,18 +9,17 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
-import { currentField, showModal } from "../state";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, {
-  selectedActiveFields,
-  selectedHiddenFields,
-  useActivateFields,
-  useDeactivateFields,
-} from "./GUIView";
+import GUIView, { useActivateFields, useDeactivateFields } from "./GUIView";
+import {
+  useCurrentField,
+  useCurrentFieldValue,
+  useSelectedFieldCounts,
+  useShowSchemaManagerModal,
+} from "./hooks";
 import {
   BackButton,
   CloseButton,
@@ -34,7 +33,7 @@ import {
 export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
-  const [field, setField] = useAtom(currentField);
+  const { field, setField } = useCurrentField();
 
   if (!field) {
     return <Typography variant="h5">Schema manager</Typography>;
@@ -49,7 +48,7 @@ const Heading = () => {
 };
 
 const Subheading = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
 
   if (field) {
     return null;
@@ -63,7 +62,7 @@ const Subheading = () => {
 };
 
 const Page = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
 
   if (field) {
     return <EditFieldLabelSchema field={field} />;
@@ -73,9 +72,9 @@ const Page = () => {
 };
 
 const SchemaManagerFooter = () => {
-  const field = useAtomValue(currentField);
-  const activeSelectedCount = useAtomValue(selectedActiveFields).size;
-  const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
+  const field = useCurrentFieldValue();
+  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
+    useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -134,7 +133,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const show = useSetAtom(showModal);
+  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -145,11 +144,11 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => show(false)}>
+    <ModalBackground onClick={() => setShowModal(false)}>
       <ModalContainer onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => show(false)} />
+          <CloseButton color="secondary" onClick={() => setShowModal(false)} />
         </ModalHeader>
 
         <Subheading />

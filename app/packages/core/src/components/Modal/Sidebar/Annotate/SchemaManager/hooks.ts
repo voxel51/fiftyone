@@ -163,18 +163,16 @@ export const useActiveFieldsList = () => {
   const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
   const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
 
-  // Use legacy system fields, fall back to new system
-  const fields = fieldsFromLegacy ?? fieldsFromNew;
+  // Use new system fields if available, fall back to legacy
+  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
 
+  // Set both atom systems to keep them in sync
   const setFields = useCallback(
     (newFields: string[]) => {
-      if (fieldsFromLegacy !== null) {
-        setFieldsLegacy(newFields);
-      } else {
-        setFieldsNew(newFields);
-      }
+      setFieldsNew(newFields);
+      setFieldsLegacy(newFields);
     },
-    [fieldsFromLegacy, setFieldsLegacy, setFieldsNew]
+    [setFieldsNew, setFieldsLegacy]
   );
 
   return { fields, setFields };

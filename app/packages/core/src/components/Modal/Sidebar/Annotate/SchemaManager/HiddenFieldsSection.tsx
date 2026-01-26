@@ -19,19 +19,15 @@ import {
   Variant,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import { labelSchemaData } from "../state";
 import { isSystemReadOnlyField } from "./constants";
 import {
-  currentField,
-  fieldIsReadOnly,
-  hiddenFieldAttrCounts,
-  hiddenFieldHasSchemaStates,
-  hiddenFieldTypes,
-  selectedHiddenFields,
-  sortedInactivePaths,
-} from "./state";
+  useFieldIsReadOnly,
+  useFieldSchemaData,
+  useHiddenFieldsWithMetadata,
+  useSelectedHiddenFields,
+  useSetCurrentField,
+} from "./hooks";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
 import { buildFieldSecondaryContent } from "./utils";
 
@@ -48,11 +44,11 @@ const HiddenFieldActions = ({
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
-  const setField = useSetAtom(currentField);
-  const fieldData = useAtomValue(labelSchemaData(path));
+  const setField = useSetCurrentField();
+  const fieldData = useFieldSchemaData(path);
   const isSystemReadOnly = isSystemReadOnlyField(path);
   const isUnsupported = fieldData?.unsupported ?? false;
-  const isReadOnly = useAtomValue(fieldIsReadOnly(path));
+  const isReadOnly = useFieldIsReadOnly(path);
 
   return (
     <span className="flex items-center gap-2">
@@ -88,14 +84,14 @@ const HiddenFieldActions = ({
 };
 
 const HiddenFieldsSection = () => {
-  const fields = useAtomValue(sortedInactivePaths);
+  const {
+    fields,
+    types: fieldTypes,
+    attrCounts: fieldAttrCounts,
+    hasSchemaStates: fieldHasSchemaStates,
+  } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
-  const [, setSelected] = useAtom(selectedHiddenFields);
-
-  // Use batched selectors from state
-  const fieldTypes = useAtomValue(hiddenFieldTypes);
-  const fieldAttrCounts = useAtomValue(hiddenFieldAttrCounts);
-  const fieldHasSchemaStates = useAtomValue(hiddenFieldHasSchemaStates);
+  const { setSelected } = useSelectedHiddenFields();
 
   const listItems = useMemo(
     () =>
@@ -131,9 +127,12 @@ const HiddenFieldsSection = () => {
     [fields, fieldTypes, fieldAttrCounts, fieldHasSchemaStates]
   );
 
-  const handleSelected = useCallback((selectedIds: string[]) => {
-    setSelected(new Set(selectedIds));
-  }, []);
+  const handleSelected = useCallback(
+    (selectedIds: string[]) => {
+      setSelected(new Set(selectedIds));
+    },
+    [setSelected]
+  );
 
   if (!fields.length) {
     return null;
