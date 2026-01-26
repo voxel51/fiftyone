@@ -4,10 +4,9 @@
 
 import { LoadingSpinner } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import { fieldType } from "../../../state";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
+import { useFieldType } from "../../hooks";
 import {
   EditSectionHeader,
   EmptyStateBox,
@@ -39,7 +38,7 @@ const GUIContent = ({
   scanning,
   onConfigChange,
 }: GUIContentProps) => {
-  const fType = useAtomValue(fieldType(field));
+  const fType = useFieldType(field);
   const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
 
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
