@@ -392,6 +392,49 @@ export const getAttributeFormErrors = (
     }
   }
 
+  // List default validation (for list types)
+  const isListType = LIST_TYPES.includes(data.type);
+  const isIntegerListType = data.type === "list<int>";
+
+  if (isListType && data.listDefault && data.listDefault.length > 0) {
+    // For numeric list types, validate each value is a valid number
+    if (isNumeric) {
+      const invalidValue = data.listDefault.find((v) => {
+        const num = typeof v === "number" ? v : parseFloat(String(v));
+        return isNaN(num);
+      });
+      if (invalidValue !== undefined) {
+        errors.default = "All default values must be valid numbers";
+      }
+    }
+
+    // For integer list types, validate values are integers (no decimals)
+    if (!errors.default && isIntegerListType) {
+      const nonIntegerValue = data.listDefault.find((v) => {
+        const num = typeof v === "number" ? v : parseFloat(String(v));
+        return !Number.isInteger(num);
+      });
+      if (nonIntegerValue !== undefined) {
+        errors.default = "All default values must be integers";
+      }
+    }
+
+    // Check against values (for checkboxes/dropdown)
+    if (
+      !errors.default &&
+      needsValues &&
+      data.values.length > 0 &&
+      !errors.values
+    ) {
+      const invalidDefault = data.listDefault.find(
+        (d) => !data.values.includes(String(d))
+      );
+      if (invalidDefault !== undefined) {
+        errors.default = "All defaults must be from the provided values";
+      }
+    }
+  }
+
   return errors;
 };
 
