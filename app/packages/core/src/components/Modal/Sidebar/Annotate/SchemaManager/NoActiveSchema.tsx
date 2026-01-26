@@ -1,6 +1,13 @@
-import { MuiIconFont } from "@fiftyone/components";
-import { Typography } from "@mui/material";
-import { Button, Icon, IconName, Size, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useSetSchemaEditorGUIJSONToggle } from "./hooks";
 import { CenteredEmptyState } from "./styled";
 
@@ -8,20 +15,20 @@ const NoActiveSchema = () => {
   const setTab = useSetSchemaEditorGUIJSONToggle();
   return (
     <CenteredEmptyState>
-      <MuiIconFont
-        sx={{
-          fontSize: 64,
-          color: "#FF9950",
-          marginBottom: 2,
-        }}
-        name={"draw"}
+      <Icon
+        name={IconName.Edit}
+        size={Size.Xl}
+        style={{ color: "#FF9950", marginBottom: 16 }}
       />
-      <Typography variant="h6" textAlign="center">
+      <Text variant={TextVariant.Lg} style={{ textAlign: "center" }}>
         No active schemas yet
-      </Typography>
-      <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Select fields that you’d like to add schemas to for annotation
-      </Typography>
+      </Text>
+      <Text
+        color={TextColor.Secondary}
+        style={{ textAlign: "center", marginBottom: 16 }}
+      >
+        Select fields that you'd like to add schemas to for annotation
+      </Text>
       <Button
         size={Size.Md}
         variant={Variant.Primary}

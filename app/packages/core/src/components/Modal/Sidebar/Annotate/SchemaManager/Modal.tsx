@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import {
   Button,
   Icon,
@@ -7,6 +6,9 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useMemo } from "react";
@@ -36,13 +38,13 @@ const Heading = () => {
   const { field, setField } = useCurrentField();
 
   if (!field) {
-    return <Typography variant="h5">Schema manager</Typography>;
+    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
   }
 
   return (
     <ItemLeft>
       <BackButton color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">Edit field schema</Typography>
+      <Text variant={TextVariant.Xl}>Edit field schema</Text>
     </ItemLeft>
   );
 };
@@ -55,9 +57,9 @@ const Subheading = () => {
   }
 
   return (
-    <Typography color="secondary" padding="1rem 0">
+    <Text color={TextColor.Secondary} style={{ padding: "1rem 0" }}>
       Manage your label schemas
-    </Typography>
+    </Text>
   );
 };
 

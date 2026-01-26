@@ -5,7 +5,6 @@
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { Collapse, Typography } from "@mui/material";
 import {
   Anchor,
   Button,
@@ -15,6 +14,8 @@ import {
   Pill,
   RichList,
   Size,
+  Text,
+  TextVariant,
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
@@ -145,9 +146,9 @@ const HiddenFieldsSection = () => {
           onClick={() => setExpanded((v) => !v)}
           style={{ padding: 0, flex: "none" }}
         >
-          <Typography variant="body1" fontWeight={500}>
+          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Hidden fields
-          </Typography>
+          </Text>
           {expanded ? (
             <Icon name={IconName.ChevronTop} size={Size.Md} />
           ) : (
@@ -163,13 +164,13 @@ const HiddenFieldsSection = () => {
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
-      <Collapse in={expanded}>
+      {expanded && (
         <RichList
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}
         />
-      </Collapse>
+      )}
     </>
   );
 };
