@@ -44,7 +44,11 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
 
   dataset = fo.Dataset("${datasetName}")
 
-  sample = fo.Sample(_id=ObjectId("${id}"), filepath="/tmp/blank.png")
+  sample = fo.Sample(
+      _id=ObjectId("${id}"),
+      classification=fo.Classification(label="value"),
+      filepath="/tmp/blank.png"
+  )
   dataset._sample_collection.insert_many(
       [dataset._make_dict(sample, include_id=True)]
   )
@@ -112,8 +116,9 @@ test.describe.serial("schema manager", () => {
     // Scan
     await jsonEditor.scan();
     await jsonEditor.assert.hasJSON({
-      component: "text",
-      type: "classification",
+      ...DEFAULT_LABEL_SCHEMA,
+      component: "radio",
+      classes: ["value"],
     });
 
     // Save
@@ -125,14 +130,14 @@ test.describe.serial("schema manager", () => {
     await row.check();
     await schemaManager.moveFields();
     await schemaManager.assert.hasActiveFieldRows([
-      { name: "classification", type: "classification" },
+      { name: "classification", type: "Classification" },
     ]);
 
     // Hide
     await row.check();
     await schemaManager.moveFields();
     await schemaManager.assert.hasHiddenFieldRows([
-      { name: "classification", type: "classification" },
+      { name: "classification", type: "Classification" },
     ]);
 
     // Close
