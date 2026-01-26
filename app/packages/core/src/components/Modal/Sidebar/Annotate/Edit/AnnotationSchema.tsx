@@ -9,7 +9,7 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
   createReadOnly,
   createSelect,
-  componentCreationMap,
+  generatePrimitiveSchema,
 } from "./schemaHelpers";
 import {
   currentData,
@@ -22,25 +22,19 @@ const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
 
   return useMemo(() => {
-    const properties: Record<string, any> = {};
-
-    properties.label = readOnly
-      ? createReadOnly("label")
-      : createSelect("label", config?.classes ?? []);
-
-    Object.entries(config?.attributes)
+    const properties = Object.entries(config?.attributes)
       .filter(([key]) => !["id", "attributes"].includes(key))
-      .reduce((memo, [key, value]) => {
-        if (readOnly) {
-          memo[key] = createReadOnly(key);
-        } else {
-          const createComponent =
-            componentCreationMap[value.component] || componentCreationMap.text;
-          memo[key] = createComponent(key, value);
+      .reduce(
+        (memo, [key, value]) => ({
+          ...memo,
+          [key]: generatePrimitiveSchema(key, { ...value, readOnly }),
+        }),
+        {
+          label: readOnly
+            ? createReadOnly("label")
+            : createSelect("label", config?.classes ?? []),
         }
-
-        return memo;
-      }, properties);
+      );
 
     return {
       type: "object",

@@ -10,6 +10,7 @@ export interface PrimitiveSchema {
   choices?: unknown[];
   values?: string[];
   range?: [number, number];
+  readonly?: boolean;
 }
 
 const getLabel = (value?: unknown): string => {
@@ -209,6 +210,10 @@ export function generatePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
+  if (schema.readOnly) {
+    return createReadOnly(name);
+  }
+
   if (schema.type === "list<float>" || schema.type === "list<int>") {
     return createNumericList(name, schema.values || []);
   }
@@ -241,9 +246,3 @@ export function generatePrimitiveSchema(
   }
   return undefined;
 }
-
-export const componentCreationMap = {
-  dropdown: createTags,
-  radio: createRadio,
-  text: createText,
-};
