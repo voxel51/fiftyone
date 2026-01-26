@@ -5,17 +5,14 @@ import { PrimitiveValue } from "@fiftyone/state";
 import { Primitive } from "@fiftyone/utilities";
 import {
   Button,
-  DatePicker,
   Orientation,
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useRecoilValue } from "recoil";
-import styled from "styled-components";
-import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { useSampleValue } from "../useSampleValue";
+import PrimitiveRenderer from "./PrimitiveRenderer";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import useExit from "./useExit";
@@ -24,12 +21,6 @@ interface PrimitiveEditProps {
   path: string;
   currentLabelSchema: PrimitiveSchema;
 }
-
-const EditorContainer = styled.div`
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-`;
 
 export default function PrimitiveEdit({
   path,
@@ -94,38 +85,14 @@ export default function PrimitiveEdit({
     }
   }, [path, persistData, setNotification, onExit]);
 
-  const isJson = type === "dict";
-  const isDate = type === "date" || type === "datetime";
-
   return (
     <Stack orientation={Orientation.Column}>
-      {/* todo - schemaio component is not working correctly for dict fields */}
-      {/* this works fine but ideally we should use the schemaio component for all fields */}
-      {isJson ? (
-        <EditorContainer>
-          <JSONEditor
-            data={fieldValue as string}
-            onChange={handleChange}
-            errors={false}
-            scanning={false}
-          />
-        </EditorContainer>
-      ) : isDate ? (
-        <DatePicker
-          selected={fieldValue as Date}
-          showTimeSelect={type === "datetime"}
-          onChange={(date: Date | null) => {
-            handleChange(date);
-          }}
-        />
-      ) : (
-        <SchemaIOComponent
-          smartForm={true}
-          schema={primitiveSchema}
-          onChange={handleChange}
-          data={fieldValue}
-        />
-      )}
+      <PrimitiveRenderer
+        type={type}
+        fieldValue={fieldValue}
+        handleChange={handleChange}
+        primitiveSchema={primitiveSchema}
+      />
       <Stack
         orientation={Orientation.Row}
         style={{
