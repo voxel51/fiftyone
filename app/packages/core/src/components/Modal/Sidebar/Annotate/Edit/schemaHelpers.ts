@@ -28,7 +28,7 @@ const getLabel = (value?: unknown): string => {
  * Creates a disabled text input for read-only fields.
  * For array values, the data should be formatted as comma-separated before passing to the component.
  */
-const createReadOnlyInput = (name: string): SchemaType => {
+export const createReadOnly = (name: string): SchemaType => {
   return {
     type: "string",
     view: {
@@ -42,13 +42,8 @@ const createReadOnlyInput = (name: string): SchemaType => {
 
 export const createInput = (
   name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number },
-  readOnly: boolean = false
+  { ftype, multipleOf }: { ftype: string; multipleOf: number }
 ): SchemaType => {
-  if (readOnly) {
-    return createReadOnlyInput(name);
-  }
-
   const type =
     ftype === STRING_FIELD
       ? "string"
@@ -82,12 +77,8 @@ export const createSlider = (
     maxLabel?: string;
   }
 ): SchemaType => {
-  const {
-    bare = false,
-    labeled = true,
-    minLabel = "",
-    maxLabel = "",
-  } = options || {};
+  const { bare = false, labeled = true, minLabel = "", maxLabel = "" } =
+    options || {};
   return {
     type: "number",
     min: range[0],
@@ -104,11 +95,7 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: string[], readOnly: boolean = false) => {
-  if (readOnly) {
-    return createReadOnlyInput(name);
-  }
-
+export const createRadio = (name: string, choices: string[]) => {
   return {
     type: "string",
     view: {
@@ -123,11 +110,7 @@ export const createRadio = (name: string, choices: string[], readOnly: boolean =
   };
 };
 
-export const createTags = (name: string, choices: string[], readOnly: boolean = false) => {
-  if (readOnly) {
-    return createReadOnlyInput(name);
-  }
-
+export const createTags = (name: string, choices: string[]) => {
   return {
     type: "array",
     items: {
@@ -147,11 +130,7 @@ export const createTags = (name: string, choices: string[], readOnly: boolean = 
   };
 };
 
-export const createSelect = (name: string, choices: string[], readOnly: boolean = false) => {
-  if (readOnly) {
-    return createReadOnlyInput(name);
-  }
-
+export const createSelect = (name: string, choices: string[]) => {
   return {
     type: "string",
     view: {
@@ -262,3 +241,9 @@ export function generatePrimitiveSchema(
   }
   return undefined;
 }
+
+export const componentCreationMap = {
+  dropdown: createTags,
+  radio: createRadio,
+  text: createText,
+};

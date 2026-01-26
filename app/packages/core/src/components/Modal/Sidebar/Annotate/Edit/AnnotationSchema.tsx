@@ -7,10 +7,9 @@ import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import {
-  createInput,
-  createRadio,
+  createReadOnly,
   createSelect,
-  createTags,
+  componentCreationMap,
 } from "./schemaHelpers";
 import {
   currentData,
@@ -25,26 +24,23 @@ const useSchema = (readOnly: boolean) => {
   return useMemo(() => {
     const properties: Record<string, any> = {};
 
-    const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? [], readOnly);
+    properties.label = readOnly
+      ? createReadOnly("label")
+      : createSelect("label", config?.classes ?? []);
 
-    for (const attr in attributes) {
-      if (attr === "id") {
-        continue;
-      }
+    Object.entries(config?.attributes)
+      .filter(([key]) => !["id", "attributes"].includes(key))
+      .reduce((memo, [key, value]) => {
+        if (readOnly) {
+          memo[key] = createReadOnly(key);
+        } else {
+          const createComponent =
+            componentCreationMap[value.component] || componentCreationMap.text;
+          memo[key] = createComponent(key, value);
+        }
 
-      if (attributes[attr].component === "text") {
-        properties[attr] = createInput(attr, attributes[attr], readOnly);
-      }
-
-      if (attributes[attr].component === "radio") {
-        properties[attr] = createRadio(attr, attributes[attr].values, readOnly);
-      }
-
-      if (attributes[attr].component === "dropdown") {
-        properties[attr] = createTags(attr, attributes[attr].values, readOnly);
-      }
-    }
+        return memo;
+      }, properties);
 
     return {
       type: "object",
