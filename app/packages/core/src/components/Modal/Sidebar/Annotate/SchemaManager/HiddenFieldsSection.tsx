@@ -117,7 +117,7 @@ const HiddenFieldsSection = () => {
   }
 
   return (
-    <div data-cy="hidden-fields">
+    <>
       <GUISectionHeader>
         <CollapsibleHeader
           onClick={() => setExpanded((v) => !v)}
@@ -149,7 +149,7 @@ const HiddenFieldsSection = () => {
           onSelected={handleSelected}
         />
       </Collapse>
-    </div>
+    </>
   );
 };
 

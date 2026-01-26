@@ -146,7 +146,7 @@ const ActiveFieldsSection = () => {
 
   if (!fields?.length) {
     return (
-      <div>
+      <>
         <GUISectionHeader>
           <Typography variant="body1" fontWeight={500}>
             Active fields
@@ -163,7 +163,7 @@ const ActiveFieldsSection = () => {
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
         </Item>
-      </div>
+      </>
     );
   }
 
