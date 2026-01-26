@@ -4,11 +4,12 @@
 
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import {
+  type LighterEventGroup,
+  type Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
-  type LighterEventGroup,
-  type Scene2D,
 } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
@@ -26,8 +27,12 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
-  const eventBus = useLighterEventBus(scene?.getEventChannel());
-  const useEventHandler = useLighterEventHandler(scene?.getEventChannel());
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
 

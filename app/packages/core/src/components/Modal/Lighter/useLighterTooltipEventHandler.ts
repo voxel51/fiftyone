@@ -3,9 +3,10 @@
  */
 
 import {
-  useLighterEventHandler,
   type LighterEventGroup,
   type Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import * as fos from "@fiftyone/state";
@@ -16,10 +17,10 @@ import { useRecoilCallback } from "recoil";
  * Hook that handles tooltip events for lighter overlays.
  * Converts lighter hover events to tooltip state updates.
  */
-export const useLighterTooltipEventHandler = (
-  scene: Scene2D,
-) => {
-  const useEventHandler = useLighterEventHandler(scene?.getEventChannel());
+export const useLighterTooltipEventHandler = (scene: Scene2D | null) => {
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   const tooltip = fos.useTooltip();
 
