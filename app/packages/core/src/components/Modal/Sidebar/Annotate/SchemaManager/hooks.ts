@@ -8,17 +8,298 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 import {
+  activeLabelSchemas,
+  activePaths,
+  activeSchemaTab,
   addToActiveSchemas,
+  fieldAttributeCount,
+  fieldType,
+  fieldTypes,
+  labelSchemaData,
   labelSchemasData,
   removeFromActiveSchemas,
   showModal,
+  currentField,
 } from "../state";
 import {
   draftJsonContent,
+  fieldHasSchema,
+  fieldIsReadOnly,
+  hiddenFieldAttrCounts,
+  hiddenFieldHasSchemaStates,
+  hiddenFieldTypes,
   jsonValidationErrors,
   selectedActiveFields,
   selectedHiddenFields,
+  sortedInactivePaths,
 } from "./state";
+
+// =============================================================================
+// Current Field Hooks
+// =============================================================================
+
+/**
+ * Hook to get and set the currently selected field for editing
+ */
+export const useCurrentField = () => {
+  const [field, setField] = useAtom(currentField);
+  return { field, setField };
+};
+
+/**
+ * Hook to get the current field (read-only)
+ */
+export const useCurrentFieldValue = () => {
+  return useAtomValue(currentField);
+};
+
+/**
+ * Hook to set the current field
+ */
+export const useSetCurrentField = () => {
+  return useSetAtom(currentField);
+};
+
+// =============================================================================
+// Schema Manager Modal Hooks
+// =============================================================================
+
+/**
+ * Hook to control the schema manager modal visibility
+ */
+export const useSchemaManagerModal = () => {
+  const [isOpen, setIsOpen] = useAtom(showModal);
+  const open = useCallback(() => setIsOpen(true), [setIsOpen]);
+  const close = useCallback(() => setIsOpen(false), [setIsOpen]);
+  return { isOpen, setIsOpen, open, close };
+};
+
+/**
+ * Hook to show the schema manager modal
+ */
+export const useShowSchemaManagerModal = () => {
+  return useSetAtom(showModal);
+};
+
+// =============================================================================
+// Schema Tab Hooks
+// =============================================================================
+
+/**
+ * Hook to get and set the active schema tab (gui/json)
+ */
+export const useActiveSchemaTab = () => {
+  const [tab, setTab] = useAtom(activeSchemaTab);
+  return { tab, setTab };
+};
+
+/**
+ * Hook to set the active schema tab
+ */
+export const useSetActiveSchemaTab = () => {
+  return useSetAtom(activeSchemaTab);
+};
+
+// =============================================================================
+// Field Selection Hooks
+// =============================================================================
+
+/**
+ * Hook to get selected field counts for both active and hidden sections
+ */
+export const useSelectedFieldCounts = () => {
+  const activeCount = useAtomValue(selectedActiveFields).size;
+  const hiddenCount = useAtomValue(selectedHiddenFields).size;
+  return { activeCount, hiddenCount };
+};
+
+/**
+ * Hook to manage selected active fields
+ */
+export const useSelectedActiveFields = () => {
+  const [selected, setSelected] = useAtom(selectedActiveFields);
+  const clear = useCallback(() => setSelected(new Set()), [setSelected]);
+  return { selected, setSelected, clear };
+};
+
+/**
+ * Hook to manage selected hidden fields
+ */
+export const useSelectedHiddenFields = () => {
+  const [selected, setSelected] = useAtom(selectedHiddenFields);
+  const clear = useCallback(() => setSelected(new Set()), [setSelected]);
+  return { selected, setSelected, clear };
+};
+
+// =============================================================================
+// Hidden Fields Hooks
+// =============================================================================
+
+/**
+ * Hook to get all hidden fields with their metadata
+ */
+export const useHiddenFields = () => {
+  const fields = useAtomValue(sortedInactivePaths);
+  const types = useAtomValue(hiddenFieldTypes);
+  const attrCounts = useAtomValue(hiddenFieldAttrCounts);
+  const hasSchemaStates = useAtomValue(hiddenFieldHasSchemaStates);
+
+  return {
+    fields,
+    types,
+    attrCounts,
+    hasSchemaStates,
+  };
+};
+
+// =============================================================================
+// Active Fields Hooks
+// =============================================================================
+
+/**
+ * Hook to get and manage active fields list
+ */
+export const useActiveFieldsList = () => {
+  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
+  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
+
+  // Use legacy system fields, fall back to new system
+  const fields = fieldsFromLegacy ?? fieldsFromNew;
+
+  const setFields = useCallback(
+    (newFields: string[]) => {
+      if (fieldsFromLegacy !== null) {
+        setFieldsLegacy(newFields);
+      } else {
+        setFieldsNew(newFields);
+      }
+    },
+    [fieldsFromLegacy, setFieldsLegacy, setFieldsNew]
+  );
+
+  return { fields, setFields };
+};
+
+/**
+ * Hook to get active fields metadata (types, read-only states, attr counts)
+ */
+export const useActiveFieldsMetadata = () => {
+  const types = useAtomValue(fieldTypes);
+  return { types };
+};
+
+/**
+ * Hook to check if a field is in active schemas
+ */
+export const useIsFieldActive = (field: string) => {
+  const activeFields = useAtomValue(activeLabelSchemas);
+  return activeFields?.includes(field) ?? false;
+};
+
+// =============================================================================
+// Field Data Hooks
+// =============================================================================
+
+/**
+ * Hook to get a field's type
+ */
+export const useFieldType = (field: string) => {
+  return useAtomValue(fieldType(field));
+};
+
+/**
+ * Hook to get a field's schema data
+ */
+export const useFieldData = (field: string) => {
+  return useAtomValue(labelSchemaData(field));
+};
+
+/**
+ * Hook to check if a field is read-only
+ */
+export const useFieldIsReadOnly = (field: string) => {
+  return useAtomValue(fieldIsReadOnly(field));
+};
+
+/**
+ * Hook to check if a field has schema configured
+ */
+export const useFieldHasSchema = (field: string) => {
+  return useAtomValue(fieldHasSchema(field));
+};
+
+/**
+ * Hook to get a field's attribute count
+ */
+export const useFieldAttributeCount = (field: string) => {
+  return useAtomValue(fieldAttributeCount(field));
+};
+
+// =============================================================================
+// All Schemas Data Hooks
+// =============================================================================
+
+/**
+ * Hook to get all label schemas data
+ */
+export const useLabelSchemasData = () => {
+  return useAtomValue(labelSchemasData);
+};
+
+// =============================================================================
+// Field Visibility Toggle Hook
+// =============================================================================
+
+/**
+ * Hook to toggle a single field's visibility (active/hidden)
+ */
+export const useToggleFieldVisibility = (field: string) => {
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const activeFields = useAtomValue(activeLabelSchemas);
+  const activateOperator = useOperatorExecutor("activate_label_schemas");
+  const deactivateOperator = useOperatorExecutor("deactivate_label_schemas");
+
+  const isActive = activeFields?.includes(field) ?? false;
+
+  const toggle = useCallback(() => {
+    const fieldSet = new Set([field]);
+    if (isActive) {
+      removeFromActive(fieldSet);
+      deactivateOperator.execute(
+        { fields: [field] },
+        {
+          callback: (result) => {
+            if (result.error) {
+              addToActive(fieldSet); // rollback on failure
+            }
+          },
+        }
+      );
+    } else {
+      addToActive(fieldSet);
+      activateOperator.execute(
+        { fields: [field] },
+        {
+          callback: (result) => {
+            if (result.error) {
+              removeFromActive(fieldSet); // rollback on failure
+            }
+          },
+        }
+      );
+    }
+  }, [
+    field,
+    isActive,
+    addToActive,
+    removeFromActive,
+    activateOperator,
+    deactivateOperator,
+  ]);
+
+  return { isActive, toggle };
+};
 
 // =============================================================================
 // Field Activation/Deactivation Hooks
