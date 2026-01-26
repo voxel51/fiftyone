@@ -440,11 +440,16 @@ def _validate_attribute(
             f"missing 'name' in 'attributes' for field '{field_name}'"
         )
 
+    # Check both field.fields (in-memory) and direct schema lookup.
+    # For newly created fields, field.fields may be empty but the schema
+    # exists in MongoDB after add_sample_field() with dot notation.
     if attribute not in subfields:
-        raise ValueError(
-            f"'{attribute}' attribute does not exist on {class_name} field"
-            f" '{field_name}'"
-        )
+        attr_field = collection.get_field(f"{path}.{attribute}")
+        if attr_field is None:
+            raise ValueError(
+                f"'{attribute}' attribute does not exist on {class_name} field"
+                f" '{field_name}'"
+            )
 
     if attribute == foac.LABEL:
         raise ValueError(
