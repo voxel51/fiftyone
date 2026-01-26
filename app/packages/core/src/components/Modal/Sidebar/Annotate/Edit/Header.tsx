@@ -1,6 +1,6 @@
 import { West as Back, MoreVert } from "@mui/icons-material";
 import { IconButton, Menu, MenuItem } from "@mui/material";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useContext, useState } from "react";
 import { useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
@@ -10,12 +10,12 @@ import { ItemLeft, ItemRight } from "../Components";
 import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
+import { showModal } from "../state";
 import {
   currentFieldIsReadOnlyAtom,
   currentFieldIsReadOnlyBaseAtom,
   currentOverlay,
   currentType,
-  readOnlyOverrideAtom,
 } from "./state";
 import useColor from "./useColor";
 
@@ -35,7 +35,7 @@ const Header = () => {
   const currentFieldIsReadOnlyBase = useAtomValue(
     currentFieldIsReadOnlyBaseAtom
   );
-  const [readOnlyOverride, setReadOnlyOverride] = useAtom(readOnlyOverrideAtom);
+  const setShowSchemaManager = useSetAtom(showModal);
 
   // Kebab menu state
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -49,8 +49,8 @@ const Header = () => {
     setAnchorEl(null);
   };
 
-  const handleToggleReadOnly = () => {
-    setReadOnlyOverride(!readOnlyOverride);
+  const handleOpenSchemaManager = () => {
+    setShowSchemaManager(true);
     handleMenuClose();
   };
 
@@ -101,10 +101,8 @@ const Header = () => {
                   zIndex: 10000,
                 }}
               >
-                <MenuItem onClick={handleToggleReadOnly}>
-                  {readOnlyOverride
-                    ? "Re-enable read-only"
-                    : "Disable read-only"}
+                <MenuItem onClick={handleOpenSchemaManager}>
+                  Edit field schema
                 </MenuItem>
               </Menu>
             </>
