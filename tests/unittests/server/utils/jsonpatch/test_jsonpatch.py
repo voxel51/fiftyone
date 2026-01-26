@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 
+from fiftyone.server.utils.json.jsonpatch.exceptions import RootDeleteError
 from fiftyone.server.utils.json import jsonpatch
 
 
@@ -173,3 +174,49 @@ class TestParse:
                     if "value" in patch
                 ]
             )
+
+
+class TestApplyRootDeleteError:
+    """Tests for RootDeleteError raised by jsonpatch.apply."""
+
+    def test_apply_raises_root_delete_error(self):
+        """apply() raises RootDeleteError for root delete operations."""
+        target = {"label": "cat"}
+        operations = [
+            {"op": "remove", "path": "/"},
+        ]
+
+        with pytest.raises(RootDeleteError):
+            jsonpatch.apply(target, operations)
+
+    def test_apply_does_not_raise_for_non_root_delete(self):
+        """apply() does not raise RootDeleteError for non-root operations."""
+        target = {"label": "cat", "confidence": 0.9}
+        operations = [
+            {"op": "remove", "path": "/confidence"},
+            {"op": "replace", "path": "/label", "value": "dog"},
+        ]
+
+        result, errors = jsonpatch.apply(target, operations)
+        assert errors == []
+        assert "confidence" not in result
+        assert "label" in result
+        assert result["label"] == "dog"
+
+    def test_apply_does_not_raise_for_replace_root(self):
+        """apply() does not raise RootDeleteError for multiple operations."""
+        target = {"label": "cat", "tags": ["auto"]}
+        operations = [
+            {
+                "op": "replace",
+                "path": "/",
+                "value": {"label": "car", "tags": ["modified"]},
+            },
+        ]
+
+        result, errors = jsonpatch.apply(target, operations)
+        assert errors == []
+        assert "label" in result
+        assert result["label"] == "car"
+        assert "tags" in result
+        assert result["tags"] == ["modified"]

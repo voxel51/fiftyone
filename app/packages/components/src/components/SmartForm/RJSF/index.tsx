@@ -1,6 +1,6 @@
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import { translateSchema } from "./translators";
 import { filterEmptyArrays } from "./utils";
@@ -10,20 +10,23 @@ import widgets from "./widgets";
 
 export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import type { IChangeEvent } from "@rjsf/core";
-import { isObject, type RJSFSchema, type UiSchema } from "@rjsf/utils";
+import { isObject, type RJSFSchema } from "@rjsf/utils";
+import { SmartFormProps } from "../types";
 
-export interface RJSFProps {
-  schema?: SchemaType;
-  jsonSchema?: RJSFSchema;
-  uiSchema?: UiSchema;
-  data?: unknown;
-  onChange?: (data: unknown) => void;
-  onSubmit?: (data: unknown) => void;
-}
+export default function RJSF(props: SmartFormProps) {
+  const { formProps } = props;
+  const formRef = useRef<{ validateForm: () => boolean } | null>(null);
 
-export default function RJSF(props: RJSFProps) {
+  const { liveValidate } = formProps || {};
+
+  useEffect(() => {
+    if (formRef.current && liveValidate) {
+      // validate on mount if liveValidate is enabled
+      formRef.current.validateForm?.();
+    }
+  }, [liveValidate]);
+
   if (!props.schema && !props.jsonSchema) {
     console.log(
       "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
@@ -65,7 +68,8 @@ export default function RJSF(props: RJSFProps) {
 
   return (
     <Form
-      schema={schema}
+      ref={formRef}
+      schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={validator}
       widgets={widgets}
@@ -73,6 +77,8 @@ export default function RJSF(props: RJSFProps) {
       formData={props.data}
       onChange={handleChange}
       onSubmit={handleSubmit}
+      showErrorList={false}
+      {...props.formProps}
     />
   );
 }

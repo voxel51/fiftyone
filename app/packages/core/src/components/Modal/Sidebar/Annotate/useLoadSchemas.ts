@@ -13,6 +13,9 @@ export default function useLoadSchemas() {
       return;
     }
 
+    console.log(get);
+    get.result.label_schemas.ground_truth.read_only = true;
+
     // Convert property names to camelCase while preserving field names
     setData(get.result.label_schemas);
     setActive(get.result.active_label_schemas);

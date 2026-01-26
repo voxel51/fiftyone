@@ -130,6 +130,7 @@ export default function Position({ readOnly = false }: PositionProps) {
       <SchemaIOComponent
         key={overlay?.id}
         smartForm={true}
+        smartFormProps={{ liveValidate: "onChange" }}
         schema={schema}
         data={state}
         onChange={(data: Coordinates) => {
