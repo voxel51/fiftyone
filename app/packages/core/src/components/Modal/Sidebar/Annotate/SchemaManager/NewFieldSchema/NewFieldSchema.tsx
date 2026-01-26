@@ -44,19 +44,22 @@ type FieldCategory = "label" | "primitive";
 const CATEGORY_LABEL = 0;
 const CATEGORY_PRIMITIVE = 1;
 
-// Default attributes for label types
-const DEFAULT_DETECTION_ATTRIBUTES: Record<string, AttributeConfig> = {
+// Base attributes shared by all label types (_HasID mixin + confidence)
+const BASE_LABEL_ATTRIBUTES: Record<string, AttributeConfig> = {
   id: { type: "id", component: "text", read_only: true },
   tags: { type: "list<str>", component: "text" },
   confidence: { type: "float", component: "text" },
+};
+
+// Detection also has 'index' field
+const DEFAULT_DETECTION_ATTRIBUTES: Record<string, AttributeConfig> = {
+  ...BASE_LABEL_ATTRIBUTES,
   index: { type: "int", component: "text" },
 };
 
-const DEFAULT_CLASSIFICATION_ATTRIBUTES: Record<string, AttributeConfig> = {
-  id: { type: "id", component: "text", read_only: true },
-  tags: { type: "list<str>", component: "text" },
-  confidence: { type: "float", component: "text" },
-};
+// Classification uses base attributes only
+const DEFAULT_CLASSIFICATION_ATTRIBUTES: Record<string, AttributeConfig> =
+  BASE_LABEL_ATTRIBUTES;
 
 // Convert schema type to field type format (e.g., "str" -> "Str")
 const toFieldType = (schemaType: string): string => {

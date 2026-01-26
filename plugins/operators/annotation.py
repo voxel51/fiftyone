@@ -204,17 +204,18 @@ def _get_default_label_schema(field_type):
     Note: 'classes' is only valid when component is a VALUES_COMPONENT
     (dropdown, radio, checkboxes). For 'text' component, we omit classes.
     """
-    # Common attributes for label types with _HasID mixin
+    # Common attributes: _HasID mixin (id, tags) + confidence (both have it)
     base_attributes = {
         "id": {"type": "id", "component": "text", "read_only": True},
         "tags": {"type": "list<str>", "component": "text"},
+        "confidence": {"type": "float", "component": "text"},
     }
 
     if field_type == "detections":
+        # Detection also has 'index' field
         return {
             "attributes": {
                 **base_attributes,
-                "confidence": {"type": "float", "component": "text"},
                 "index": {"type": "int", "component": "text"},
             },
             "component": "text",
@@ -222,15 +223,22 @@ def _get_default_label_schema(field_type):
         }
     elif field_type == "classification":
         return {
-            "attributes": {
-                **base_attributes,
-                "confidence": {"type": "float", "component": "text"},
-            },
+            "attributes": base_attributes,
             "component": "text",
             "type": "classification",
         }
     else:
         return {"type": field_type}
+
+
+def _add_base_label_subfields(dataset, base_path):
+    """Add base subfields shared by all label types (id, label, tags, confidence)."""
+    dataset.add_sample_field(f"{base_path}.id", fof.ObjectIdField)
+    dataset.add_sample_field(f"{base_path}.label", fof.StringField)
+    dataset.add_sample_field(f"{base_path}.confidence", fof.FloatField)
+    dataset.add_sample_field(
+        f"{base_path}.tags", fof.ListField, subfield=fof.StringField()
+    )
 
 
 def _add_default_label_subfields(dataset, field_name, field_type):
@@ -242,22 +250,12 @@ def _add_default_label_subfields(dataset, field_name, field_type):
     if field_type == "detections":
         # Detections has a nested 'detections' list of Detection objects
         base_path = f"{field_name}.detections"
-        # Add common Detection fields (bounding_box handled by App)
-        dataset.add_sample_field(f"{base_path}.id", fof.ObjectIdField)
-        dataset.add_sample_field(f"{base_path}.label", fof.StringField)
-        dataset.add_sample_field(f"{base_path}.confidence", fof.FloatField)
-        dataset.add_sample_field(
-            f"{base_path}.tags", fof.ListField, subfield=fof.StringField()
-        )
+        _add_base_label_subfields(dataset, base_path)
+        # Detection also has 'index'
         dataset.add_sample_field(f"{base_path}.index", fof.IntField)
     elif field_type == "classification":
         # Classification fields directly on the field
-        dataset.add_sample_field(f"{field_name}.id", fof.ObjectIdField)
-        dataset.add_sample_field(f"{field_name}.label", fof.StringField)
-        dataset.add_sample_field(f"{field_name}.confidence", fof.FloatField)
-        dataset.add_sample_field(
-            f"{field_name}.tags", fof.ListField, subfield=fof.StringField()
-        )
+        _add_base_label_subfields(dataset, field_name)
 
 
 class CreateAndActivateField(foo.Operator):
