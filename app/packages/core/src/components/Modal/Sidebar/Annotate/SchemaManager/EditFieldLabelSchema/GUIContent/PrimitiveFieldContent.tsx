@@ -12,12 +12,14 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
+import PrimitiveRenderer from "../../../Edit/PrimitiveRenderer";
+import { generatePrimitiveSchema } from "../../../Edit/schemaHelpers";
 import {
   COMPONENT_OPTIONS,
-  NUMERIC_TYPES,
   componentNeedsRange,
   componentNeedsValues,
   getSchemaTypeFromFieldType,
+  NUMERIC_TYPES,
 } from "../../constants";
 import type { SchemaConfigType } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
@@ -25,6 +27,8 @@ import RangeInput from "./RangeInput";
 import ValuesList from "./ValuesList";
 
 interface PrimitiveFieldContentProps {
+  /** Field name */
+  field: string;
   /** Field type from fieldType atom (e.g., "Float", "String") */
   fieldType: string;
   /** Current schema config */
@@ -41,6 +45,7 @@ interface TouchedFields {
 }
 
 const PrimitiveFieldContent = ({
+  field,
   fieldType,
   config,
   onConfigChange,
@@ -106,6 +111,11 @@ const PrimitiveFieldContent = ({
 
     return result;
   }, [showValues, showRange, values, range]);
+
+  const hasErrors = useMemo(() => {
+    if (!errors) return false;
+    return Object.values(errors).some((error) => error !== null);
+  }, [errors]);
 
   // Handlers
   const handleComponentChange = useCallback(
@@ -176,6 +186,19 @@ const PrimitiveFieldContent = ({
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
 
+  const previewSchema = useMemo(() => {
+    return generatePrimitiveSchema(field, {
+      type: schemaType,
+      component,
+      values,
+      range: range
+        ? ([parseFloat(range.min), parseFloat(range.max)] as [number, number])
+        : undefined,
+      choices: componentOptions.map((opt) => opt.label),
+    });
+  }, [schemaType, component, values, range, componentOptions]);
+  console.log(previewSchema);
+  console.log(errors);
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
       {/* Component type buttons */}
@@ -227,6 +250,22 @@ const PrimitiveFieldContent = ({
             largeLabels={largeLabels}
           />
         </div>
+      )}
+      {!hasErrors && (
+        <>
+          <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Lg}>Field Preview:</Text>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              How this field will appear to users during annotation
+            </Text>
+          </Stack>
+          <PrimitiveRenderer
+            type={schemaType}
+            fieldValue={null}
+            handleChange={() => {}}
+            primitiveSchema={previewSchema}
+          />
+        </>
       )}
     </Stack>
   );

@@ -124,6 +124,7 @@ const GUIContent = ({
       <ListContainer>
         <Section>
           <PrimitiveFieldContent
+            field={field}
             fieldType={fType}
             config={config}
             onConfigChange={onConfigChange}
