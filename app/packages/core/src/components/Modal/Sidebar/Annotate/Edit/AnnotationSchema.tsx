@@ -19,7 +19,7 @@ import {
   currentSchema,
 } from "./state";
 
-const useSchema = () => {
+const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
 
   return useMemo(() => {
@@ -102,13 +102,27 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
     throw new Error("no overlay");
   }
 
+  // Transform data for read-only display: convert arrays to comma-separated strings
+  const displayData = useMemo(() => {
+    if (!readOnly) {
+      return data;
+    }
+
+    return Object.fromEntries(
+      Object.entries(data || {}).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.join(", ") : value,
+      ])
+    );
+  }, [data, readOnly]);
+
   return (
     <div>
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
         schema={schema}
-        data={data}
+        data={displayData}
         onChange={async (changes) => {
           if (readOnly) return;
 

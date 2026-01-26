@@ -24,10 +24,31 @@ const getLabel = (value?: unknown): string => {
   return value as string;
 };
 
+/**
+ * Creates a disabled text input for read-only fields.
+ * For array values, the data should be formatted as comma-separated before passing to the component.
+ */
+const createReadOnlyInput = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "PrimitiveView",
+      label: name,
+      component: "PrimitiveView",
+      readOnly: true,
+    },
+  };
+};
+
 export const createInput = (
   name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
+  { ftype, multipleOf }: { ftype: string; multipleOf: number },
+  readOnly: boolean = false
 ): SchemaType => {
+  if (readOnly) {
+    return createReadOnlyInput(name);
+  }
+
   const type =
     ftype === STRING_FIELD
       ? "string"
@@ -83,7 +104,11 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: string[]) => {
+export const createRadio = (name: string, choices: string[], readOnly: boolean = false) => {
+  if (readOnly) {
+    return createReadOnlyInput(name);
+  }
+
   return {
     type: "string",
     view: {
@@ -98,7 +123,11 @@ export const createRadio = (name: string, choices: string[]) => {
   };
 };
 
-export const createTags = (name: string, choices: string[]) => {
+export const createTags = (name: string, choices: string[], readOnly: boolean = false) => {
+  if (readOnly) {
+    return createReadOnlyInput(name);
+  }
+
   return {
     type: "array",
     items: {
@@ -118,7 +147,11 @@ export const createTags = (name: string, choices: string[]) => {
   };
 };
 
-export const createSelect = (name: string, choices: string[]) => {
+export const createSelect = (name: string, choices: string[], readOnly: boolean = false) => {
+  if (readOnly) {
+    return createReadOnlyInput(name);
+  }
+
   return {
     type: "string",
     view: {
