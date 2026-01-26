@@ -168,7 +168,7 @@ def _validate_date_datetime_field_label_schema(
     collection, field_name, label_schema, allow_default
 ):
     field = collection.get_field(field_name)
-    _type = date if isinstance(field, fof.DateField) else datetime
+    field_type = date if isinstance(field, fof.DateField) else datetime
     for key, value in label_schema.items():
         if key not in foac.DATE_DATETIME_SETTINGS:
             _raise_unknown_setting_error(key, field_name)
@@ -179,7 +179,7 @@ def _validate_date_datetime_field_label_schema(
         ):
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
-            _validate_default(field_name, value, _type, allow_default)
+            _validate_default(field_name, value, field_type, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE:
@@ -216,27 +216,24 @@ def _validate_float_int_field_label_schema(
 ):
     field = collection.get_field(field_name)
     is_float = isinstance(field, fof.FloatField)
-    _str_type = foac.FLOAT if is_float else foac.INT
+    str_type = foac.FLOAT if is_float else foac.INT
     # a float field accepts float and int values
-    _type = (float, int) if is_float else int
+    field_type = (float, int) if is_float else int
 
     settings = foac.FLOAT_INT_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
-    _range = label_schema.get(foac.RANGE, None)
-    _step = label_schema.get(foac.STEP, None)
+    field_range = label_schema.get(foac.RANGE, None)
     values = label_schema.get(foac.VALUES, None)
     if component == foac.SLIDER:
-        _validate_range_setting(field_name, _range, _type)
-        if _step is not None:
-            _validate_step_setting(field_name, _step, _range, _type)
+        _validate_range_setting(field_name, field_range, field_type)
         settings = settings.union(foac.SLIDER_SETTINGS)
     elif component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, _type)
+        _validate_values_setting(field_name, values, field_type)
         settings = settings.union({foac.VALUES})
 
     for key, value in label_schema.items():
         if key not in settings:
-            if _type is int or key not in foac.FLOAT_SETTINGS:
+            if field_type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if key == foac.COMPONENT and value not in foac.FLOAT_INT_COMPONENTS:
@@ -245,9 +242,9 @@ def _validate_float_int_field_label_schema(
             _validate_default(
                 field_name,
                 value,
-                _type,
+                field_type,
                 allow_default,
-                _range=_range,
+                field_range=field_range,
                 values=values,
             )
         elif key == foac.PRECISION:
@@ -259,7 +256,7 @@ def _validate_float_int_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != _str_type:
+        elif key == foac.TYPE and value != str_type:
             _raise_type_error(field, field_name, value)
 
 
@@ -268,19 +265,19 @@ def _validate_float_int_list_field_label_schema(
 ):
     field = collection.get_field(field_name)
     is_float = isinstance(field.field, fof.FloatField)
-    _str_type = foac.FLOAT_LIST if is_float else foac.INT_LIST
-    _type = float if is_float else int
+    str_type = foac.FLOAT_LIST if is_float else foac.INT_LIST
+    field_type = float if is_float else int
 
     settings = foac.FLOAT_INT_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
     if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, _type)
+        _validate_values_setting(field_name, values, field_type)
         settings = settings.union({foac.VALUES})
 
     for key, value in label_schema.items():
         if key not in settings:
-            if _type is int or key not in foac.FLOAT_SETTINGS:
+            if field_type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if (
@@ -290,7 +287,7 @@ def _validate_float_int_list_field_label_schema(
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
             _validate_default_list(
-                field_name, value, _type, allow_default, values=values
+                field_name, value, field_type, allow_default, values=values
             )
         elif key == foac.PRECISION:
             if foac.VALUES in label_schema:
@@ -301,7 +298,7 @@ def _validate_float_int_list_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != _str_type:
+        elif key == foac.TYPE and value != str_type:
             _raise_type_error(field, field_name, value)
 
 
@@ -506,7 +503,7 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
 
 def _validate_default(
-    field_name, value, _type, allow_default, _range=None, values=None
+    field_name, value, field_type, allow_default, field_range=None, values=None
 ):
     if not allow_default:
         raise ValueError(
@@ -517,14 +514,16 @@ def _validate_default(
         f"invalid 'default' setting '{value}' for field '{field_name}'"
     )
 
-    if isinstance(value, _type):
-        if _range is not None and (value < _range[0] or value > _range[1]):
+    if isinstance(value, field_type):
+        if field_range is not None and (
+            value < field_range[0] or value > field_range[1]
+        ):
             raise exception
 
         if values is not None and (value not in values):
             raise exception
 
-        if _type == dict:
+        if field_type == dict:
             try:
                 json_str = json.dumps(value)
                 if json_str != json.dumps(json.loads(json_str)):
@@ -540,7 +539,7 @@ def _validate_default(
 
 
 def _validate_default_list(
-    field_name, value, _type, allow_default, values=None
+    field_name, value, field_type, allow_default, values=None
 ):
     if not allow_default:
         raise ValueError(
@@ -564,7 +563,7 @@ def _validate_default_list(
         )
 
     for v in value:
-        if not isinstance(v, _type) or (
+        if not isinstance(v, field_type) or (
             values is not None and v not in values
         ):
             raise ValueError(
@@ -582,38 +581,17 @@ def _validate_precision(field_name, value):
     )
 
 
-def _validate_range_setting(field_name, value, _type):
+def _validate_range_setting(field_name, value, field_type):
     if isinstance(value, list) and len(value) == 2:
-        if isinstance(value[0], _type) and isinstance(value[1], _type):
+        if isinstance(value[0], field_type) and isinstance(
+            value[1], field_type
+        ):
             if value[0] < value[1]:
                 return
 
     raise ValueError(
         f"invalid 'range' setting '{value}' for field '{field_name}'"
     )
-
-
-def _validate_step_setting(field_name, value, _range=None, _type=None):
-    if not isinstance(value, (int, float)) or value <= 0:
-        raise ValueError(
-            f"invalid 'step' setting '{value}' for field '{field_name}'"
-        )
-
-    # Validate step is smaller than range
-    if _range is not None:
-        range_size = _range[1] - _range[0]
-        if value >= range_size:
-            raise ValueError(
-                f"'step' setting {value} must be less than range size "
-                f"{range_size} for field '{field_name}'"
-            )
-
-    # For integer types, step should be an integer
-    if _type is int and not isinstance(value, int):
-        raise ValueError(
-            f"'step' setting {value} must be an integer for integer field "
-            f"'{field_name}'"
-        )
 
 
 def _validate_read_only(field_name, value, require=False):
@@ -623,7 +601,7 @@ def _validate_read_only(field_name, value, require=False):
         )
 
 
-def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
+def _validate_values_setting(field_name, value, field_type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
             f"'{key}' setting for field '{field_name}' must be a list"
@@ -647,7 +625,7 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
         )
 
     for v in value:
-        if not isinstance(v, _type):
+        if not isinstance(v, field_type):
             raise ValueError(
                 f"invalid value '{v}' in '{key}' setting for field "
                 f"'{field_name}'"

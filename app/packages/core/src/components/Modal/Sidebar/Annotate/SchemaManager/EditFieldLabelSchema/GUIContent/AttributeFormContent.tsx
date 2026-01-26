@@ -19,6 +19,7 @@ import {
 import { ATTRIBUTE_TYPE_OPTIONS } from "../../constants";
 import { type AttributeFormData } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
+import ListDefaultInput from "./ListDefaultInput";
 import RangeInput from "./RangeInput";
 import useAttributeForm from "./useAttributeForm";
 import ValuesList from "./ValuesList";
@@ -42,6 +43,7 @@ const AttributeFormContent = ({
     // Derived state
     isNumericType,
     isIntegerType,
+    isListType,
     supportsDefault,
     componentOptions,
 
@@ -52,7 +54,6 @@ const AttributeFormContent = ({
     // Validation errors
     valuesError,
     rangeError,
-    stepError,
     defaultError,
 
     // Handlers
@@ -61,8 +62,8 @@ const AttributeFormContent = ({
     handleComponentChange,
     handleValuesChange,
     handleRangeChange,
-    handleStepChange,
     handleDefaultChange,
+    handleListDefaultChange,
     handleReadOnlyChange,
   } = useAttributeForm({ formState, onFormStateChange });
 
@@ -156,9 +157,6 @@ const AttributeFormContent = ({
           range={formState.range}
           onRangeChange={handleRangeChange}
           error={rangeError}
-          step={formState.step}
-          onStepChange={handleStepChange}
-          stepError={stepError}
         />
       )}
 
@@ -172,21 +170,33 @@ const AttributeFormContent = ({
           >
             Default (optional)
           </Text>
-          <Input
-            type={isNumericType ? "number" : "text"}
-            value={formState.default}
-            onChange={(e) => handleDefaultChange(e.target.value)}
-            placeholder={isNumericType ? "Default number" : "Default value"}
-            error={!!defaultError}
-          />
-          {defaultError && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {defaultError}
-            </Text>
+          {isListType ? (
+            <ListDefaultInput
+              values={formState.listDefault || []}
+              onChange={handleListDefaultChange}
+              choices={showValues ? formState.values : []}
+              isNumeric={isNumericType}
+              error={defaultError}
+            />
+          ) : (
+            <>
+              <Input
+                type={isNumericType ? "number" : "text"}
+                value={formState.default}
+                onChange={(e) => handleDefaultChange(e.target.value)}
+                placeholder={isNumericType ? "Default number" : "Default value"}
+                error={!!defaultError}
+              />
+              {defaultError && (
+                <Text
+                  variant={TextVariant.Sm}
+                  color={TextColor.Destructive}
+                  style={{ marginTop: 4 }}
+                >
+                  {defaultError}
+                </Text>
+              )}
+            </>
           )}
         </div>
       )}

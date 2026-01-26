@@ -4,7 +4,6 @@
  */
 
 import {
-  Input,
   Orientation,
   Spacing,
   Stack,
@@ -15,7 +14,6 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import {
   COMPONENT_OPTIONS,
-  NO_DEFAULT_TYPES,
   NUMERIC_TYPES,
   componentNeedsRange,
   componentNeedsValues,
@@ -40,8 +38,6 @@ interface PrimitiveFieldContentProps {
 interface TouchedFields {
   values: boolean;
   range: boolean;
-  step: boolean;
-  default: boolean;
 }
 
 const PrimitiveFieldContent = ({
@@ -54,8 +50,6 @@ const PrimitiveFieldContent = ({
   const [touched, setTouched] = useState<TouchedFields>({
     values: false,
     range: false,
-    step: false,
-    default: false,
   });
 
   // Convert field type to schema type (e.g., "Float" -> "float")
@@ -67,23 +61,17 @@ const PrimitiveFieldContent = ({
   // Current values from config
   const component = config?.component || componentOptions[0]?.id || "text";
   const values = config?.values?.map(String) || [];
-  const defaultValue =
-    config?.default !== undefined ? String(config.default) : "";
 
-  // Local state for range and step inputs (to allow typing partial values)
+  // Local state for range input (to allow typing partial values)
   const [range, setRange] = useState<{ min: string; max: string } | null>(
     config?.range
       ? { min: String(config.range[0]), max: String(config.range[1]) }
       : null
   );
-  const [step, setStep] = useState(
-    config?.step !== undefined ? String(config.step) : ""
-  );
 
   // Derived state
   const isNumericType = NUMERIC_TYPES.includes(schemaType);
-  const isIntegerType = schemaType === "int";
-  const supportsDefault = !NO_DEFAULT_TYPES.includes(schemaType);
+  const isIntegerType = schemaType === "int" || schemaType === "list<int>";
 
   // Visibility flags
   const showValues = componentNeedsValues(component);
@@ -94,8 +82,6 @@ const PrimitiveFieldContent = ({
     const result = {
       values: null as string | null,
       range: null as string | null,
-      step: null as string | null,
-      default: null as string | null,
     };
 
     // Values validation - required for radio/dropdown/checkboxes
@@ -118,43 +104,8 @@ const PrimitiveFieldContent = ({
       }
     }
 
-    // Step validation (optional but must be valid if provided)
-    if (showRange && step && !result.range) {
-      const stepNum = parseFloat(step);
-      if (isNaN(stepNum) || stepNum <= 0) {
-        result.step = "Step must be a positive number";
-      } else if (range) {
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        const rangeSize = max - min;
-        if (stepNum >= rangeSize) {
-          result.step = "Step must be smaller than the range";
-        }
-      }
-    }
-
-    // Default validation
-    if (defaultValue) {
-      // Check against range
-      if (showRange && range && !result.range) {
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        const defaultNum = parseFloat(defaultValue);
-        if (!isNaN(defaultNum) && (defaultNum < min || defaultNum > max)) {
-          result.default = `Default must be between ${range.min} and ${range.max}`;
-        }
-      }
-
-      // Check against values
-      if (showValues && values.length > 0 && !result.values) {
-        if (!values.includes(defaultValue)) {
-          result.default = "Default must be one of the provided values";
-        }
-      }
-    }
-
     return result;
-  }, [showValues, showRange, values, range, step, defaultValue]);
+  }, [showValues, showRange, values, range]);
 
   // Handlers
   const handleComponentChange = useCallback(
@@ -167,12 +118,10 @@ const PrimitiveFieldContent = ({
       };
       delete newConfig.values;
       delete newConfig.range;
-      delete newConfig.step;
 
       // Reset local state
       setRange(null);
-      setStep("");
-      setTouched({ values: false, range: false, step: false, default: false });
+      setTouched({ values: false, range: false });
       onConfigChange(newConfig);
     },
     [config, onConfigChange]
@@ -221,50 +170,6 @@ const PrimitiveFieldContent = ({
       }
     },
     [config, onConfigChange]
-  );
-
-  const handleStepChange = useCallback(
-    (value: string) => {
-      // Update local state immediately for typing
-      setStep(value);
-
-      if (!onConfigChange) return;
-
-      // Clear step from config when input is empty
-      if (value === "") {
-        const { step: _, ...configWithoutStep } = config || {};
-        onConfigChange(configWithoutStep);
-        return;
-      }
-
-      // Sync to config when valid
-      const stepNum = parseFloat(value);
-      if (!isNaN(stepNum) && stepNum > 0) {
-        onConfigChange({
-          ...config,
-          step: stepNum,
-        });
-      }
-    },
-    [config, onConfigChange]
-  );
-
-  const handleDefaultChange = useCallback(
-    (value: string) => {
-      if (!onConfigChange) return;
-      let convertedValue: string | number | undefined = value;
-      if (isNumericType && value) {
-        const num = parseFloat(value);
-        if (!isNaN(num)) {
-          convertedValue = num;
-        }
-      }
-      onConfigChange({
-        ...config,
-        default: convertedValue || undefined,
-      });
-    },
-    [config, onConfigChange, isNumericType]
   );
 
   const handleBlur = useCallback((field: keyof TouchedFields) => {
@@ -321,67 +226,6 @@ const PrimitiveFieldContent = ({
             error={touched.range ? errors.range : null}
             largeLabels={largeLabels}
           />
-        </div>
-      )}
-
-      {/* Step input (for slider) */}
-      {showRange && (
-        <div>
-          <Text
-            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Step (optional)
-          </Text>
-          <Input
-            type="number"
-            value={step}
-            onChange={(e) => handleStepChange(e.target.value)}
-            onBlur={() => handleBlur("step")}
-            placeholder="0.001"
-            step="any"
-            error={touched.step && !!errors.step}
-          />
-          {touched.step && errors.step && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {errors.step}
-            </Text>
-          )}
-        </div>
-      )}
-
-      {/* Default value */}
-      {supportsDefault && (
-        <div>
-          <Text
-            variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
-          >
-            Default (optional)
-          </Text>
-          <Input
-            type={isNumericType ? "number" : "text"}
-            value={defaultValue}
-            onChange={(e) => handleDefaultChange(e.target.value)}
-            onBlur={() => handleBlur("default")}
-            placeholder={isNumericType ? "Default number" : "Default value"}
-            error={touched.default && !!errors.default}
-          />
-          {touched.default && errors.default && (
-            <Text
-              variant={TextVariant.Sm}
-              color={TextColor.Destructive}
-              style={{ marginTop: 4 }}
-            >
-              {errors.default}
-            </Text>
-          )}
         </div>
       )}
     </Stack>

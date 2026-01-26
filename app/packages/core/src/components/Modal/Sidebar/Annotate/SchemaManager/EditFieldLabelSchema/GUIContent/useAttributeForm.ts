@@ -40,7 +40,6 @@ interface UseAttributeFormResult {
   // Validation errors (field-specific)
   valuesError: string | null;
   rangeError: string | null;
-  stepError: string | null;
   defaultError: string | null;
   hasFormError: boolean;
 
@@ -50,8 +49,8 @@ interface UseAttributeFormResult {
   handleComponentChange: (component: string) => void;
   handleValuesChange: (values: string[]) => void;
   handleRangeChange: (range: { min: string; max: string } | null) => void;
-  handleStepChange: (step: string) => void;
   handleDefaultChange: (defaultValue: string) => void;
+  handleListDefaultChange: (values: (string | number)[]) => void;
   handleReadOnlyChange: (readOnly: boolean) => void;
 }
 
@@ -94,8 +93,8 @@ export default function useAttributeForm({
         component: getDefaultComponent(newType),
         values: [],
         range: null,
-        step: "",
         default: newSupportsDefault ? formState.default : "",
+        listDefault: [],
       });
     },
     [formState, onFormStateChange]
@@ -103,13 +102,20 @@ export default function useAttributeForm({
 
   const handleComponentChange = useCallback(
     (newComponent: string) => {
-      // Reset to initial state when switching component
+      const oldComponent = formState.component;
+      const oldNeedsValues = componentNeedsValues(oldComponent);
+      const newNeedsValues = componentNeedsValues(newComponent);
+
+      // Preserve values when switching between components that both use values
+      // (e.g., radio <-> dropdown <-> checkboxes)
+      const preserveValues = oldNeedsValues && newNeedsValues;
+
       onFormStateChange({
         ...formState,
         component: newComponent,
-        values: [],
+        values: preserveValues ? formState.values : [],
         range: null,
-        step: "",
+        listDefault: [],
       });
     },
     [formState, onFormStateChange]
@@ -129,16 +135,16 @@ export default function useAttributeForm({
     [formState, onFormStateChange]
   );
 
-  const handleStepChange = useCallback(
-    (step: string) => {
-      onFormStateChange({ ...formState, step });
+  const handleDefaultChange = useCallback(
+    (defaultValue: string) => {
+      onFormStateChange({ ...formState, default: defaultValue });
     },
     [formState, onFormStateChange]
   );
 
-  const handleDefaultChange = useCallback(
-    (defaultValue: string) => {
-      onFormStateChange({ ...formState, default: defaultValue });
+  const handleListDefaultChange = useCallback(
+    (values: (string | number)[]) => {
+      onFormStateChange({ ...formState, listDefault: values });
     },
     [formState, onFormStateChange]
   );
@@ -165,7 +171,6 @@ export default function useAttributeForm({
     // Validation errors
     valuesError: formErrors.values,
     rangeError: formErrors.range,
-    stepError: formErrors.step,
     defaultError: formErrors.default,
     hasFormError: hasAttributeFormError(formErrors),
 
@@ -175,8 +180,8 @@ export default function useAttributeForm({
     handleComponentChange,
     handleValuesChange,
     handleRangeChange,
-    handleStepChange,
     handleDefaultChange,
+    handleListDefaultChange,
     handleReadOnlyChange,
   };
 }
