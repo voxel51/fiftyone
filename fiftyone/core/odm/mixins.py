@@ -2061,16 +2061,13 @@ def _change_nested_label_schema(
 
     attributes = new_label_schemas[parent].get(foac.ATTRIBUTES, [])
     name = keys[-1]
-    delete_index = None
+
     for idx, attribute in enumerate(attributes):
         if name == attribute[foac.NAME]:
             if new_path is None:
-                delete_index = idx
+                attributes.pop(idx)
             else:
                 new_name = new_path.split(".")[-1]
                 attribute[foac.NAME] = new_name
 
-            break
-
-    if delete_index is not None:
-        attributes.pop(delete_index)
+            return
