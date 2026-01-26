@@ -54,11 +54,6 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       fo.EmbeddedDocumentField,
       embedded_doc_type=fo.Classification,
   )
-  dataset.add_sample_field(
-      "classifications",
-      fo.EmbeddedDocumentField,
-      embedded_doc_type=fo.Classifications,
-  )
   dataset.save()`);
 });
 

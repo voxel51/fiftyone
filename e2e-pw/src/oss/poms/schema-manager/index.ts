@@ -125,7 +125,7 @@ class SchemaManagerAsserter {
   }
 
   /**
-   * Are the provided field rows in the hidden fields section
+   * Are the provided field rows in the active fields section
    *
    * @param fields a list of name and type rows, .e.g 'id' and 'system'
    */
@@ -141,7 +141,7 @@ class SchemaManagerAsserter {
   }
 
   /**
-   * Are the provided field rows in the active fields section
+   * Are the provided field rows in the hidden fields section
    *
    * @param fields a list of name and type rows, .e.g 'id' and 'system'
    */
