@@ -6,11 +6,7 @@ import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import {
-  createReadOnly,
-  createSelect,
-  generatePrimitiveSchema,
-} from "./schemaHelpers";
+import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
   currentField,
@@ -30,9 +26,12 @@ const useSchema = (readOnly: boolean) => {
           [key]: generatePrimitiveSchema(key, { ...value, readOnly }),
         }),
         {
-          label: readOnly
-            ? createReadOnly("label")
-            : createSelect("label", config?.classes ?? []),
+          label: generatePrimitiveSchema("label", {
+            type: "str",
+            component: "dropdown",
+            values: config?.classes || [],
+            readOnly,
+          }),
         }
       );
 

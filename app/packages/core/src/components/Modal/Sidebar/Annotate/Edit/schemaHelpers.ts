@@ -10,7 +10,7 @@ export interface PrimitiveSchema {
   choices?: unknown[];
   values?: string[];
   range?: [number, number];
-  readonly?: boolean;
+  readOnly?: boolean;
 }
 
 const getLabel = (value?: unknown): string => {
