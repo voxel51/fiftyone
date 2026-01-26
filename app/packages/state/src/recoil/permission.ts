@@ -32,7 +32,7 @@ export const canTagSamplesOrLabels = sessionAtom({
 
 export const canEditLabels = sessionAtom({
   key: "canEditLabels",
-  default: { enabled: false, message: null },
+  default: { enabled: true, message: null },
 });
 
 export const readOnly = sessionAtom({
