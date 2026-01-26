@@ -6,7 +6,6 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { Typography } from "@mui/material";
 import {
   Anchor,
   Clickable,
@@ -15,6 +14,9 @@ import {
   Pill,
   RichList,
   Size,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
@@ -142,9 +144,9 @@ const ActiveFieldsSection = () => {
     return (
       <>
         <GUISectionHeader>
-          <Typography variant="body1" fontWeight={500}>
+          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Active fields
-          </Typography>
+          </Text>
           <Tooltip
             content="Fields currently active and available for dataset annotation"
             anchor={Anchor.Bottom}
@@ -155,7 +157,7 @@ const ActiveFieldsSection = () => {
           <Pill size={Size.Md}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-          <Typography color="secondary">No active fields</Typography>
+          <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
       </>
     );
@@ -164,9 +166,9 @@ const ActiveFieldsSection = () => {
   return (
     <>
       <GUISectionHeader>
-        <Typography variant="body1" fontWeight={500}>
+        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
           Active fields
-        </Typography>
+        </Text>
         <Tooltip
           content="Fields currently active and available for dataset annotation"
           anchor={Anchor.Top}
