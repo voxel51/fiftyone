@@ -205,3 +205,10 @@ UNSUPPORTED_LABEL_TYPES = {
     fol.TemporalDetection,
     fol.TemporalDetections,
 }
+
+# Label types that can be created via Schema Manager
+# Maps lowercase class name -> class (reverse of cls.__name__.lower())
+CREATABLE_LABEL_TYPES = (fol.Classification, fol.Detections)
+LABEL_TYPE_TO_CLASS = {
+    cls.__name__.lower(): cls for cls in CREATABLE_LABEL_TYPES
+}
