@@ -19,24 +19,23 @@ import {
   TextVariant,
   ToggleSwitch,
 } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
-import {
-  activeLabelSchemas,
-  currentField,
-  labelSchemasData,
-} from "../../state";
 import {
   ATTRIBUTE_TYPE_OPTIONS,
   LABEL_TYPE_OPTIONS,
   getDefaultComponent,
 } from "../constants";
+import {
+  useExitNewFieldMode,
+  useLabelSchemasData,
+  useSetActiveLabelSchemas,
+  useSetLabelSchemasData,
+} from "../hooks";
 import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
 import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
 import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
 import Footer from "../Footer";
 import { ListContainer } from "../styled";
-import { isNewFieldMode } from "../state";
 import type { AttributeConfig, SchemaConfigType } from "../utils";
 
 type FieldCategory = "label" | "primitive";
@@ -89,11 +88,10 @@ const NewFieldSchema = () => {
 
   const createField = useOperatorExecutor("create_and_activate_field");
   const getSchemas = useOperatorExecutor("get_label_schemas");
-  const setLabelSchemasData = useSetAtom(labelSchemasData);
-  const setActiveLabelSchemas = useSetAtom(activeLabelSchemas);
-  const setCurrentField = useSetAtom(currentField);
-  const setNewFieldMode = useSetAtom(isNewFieldMode);
-  const schemasData = useAtomValue(labelSchemasData);
+  const setLabelSchemasData = useSetLabelSchemasData();
+  const setActiveLabelSchemas = useSetActiveLabelSchemas();
+  const exitNewFieldMode = useExitNewFieldMode();
+  const schemasData = useLabelSchemasData();
 
   // Validate field name
   const fieldNameError = useMemo(() => {
@@ -267,7 +265,7 @@ const NewFieldSchema = () => {
               }
 
               // Go back to schema manager (both label and primitive are fully configured)
-              setNewFieldMode(false);
+              exitNewFieldMode();
             },
           }
         );
@@ -287,12 +285,12 @@ const NewFieldSchema = () => {
     getSchemas,
     setLabelSchemasData,
     setActiveLabelSchemas,
-    setNewFieldMode,
+    exitNewFieldMode,
   ]);
 
   const handleDiscard = useCallback(() => {
-    setNewFieldMode(false);
-  }, [setNewFieldMode]);
+    exitNewFieldMode();
+  }, [exitNewFieldMode]);
 
   return (
     <ListContainer style={{ display: "flex", flexDirection: "column" }}>
