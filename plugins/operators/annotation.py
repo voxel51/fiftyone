@@ -316,33 +316,20 @@ class CreateAndActivateField(foo.Operator):
 
 
 def _create_primitive_field(dataset, field_name, field_type, read_only):
-    """Helper to create primitive fields."""
-    type_map = {
-        "str": fof.StringField,
-        "int": fof.IntField,
-        "float": fof.FloatField,
-        "bool": fof.BooleanField,
-        "date": fof.DateField,
-        "datetime": fof.DateTimeField,
-        "dict": fof.DictField,
-    }
-    list_subtype_map = {
-        "list<str>": fof.StringField,
-        "list<int>": fof.IntField,
-        "list<float>": fof.FloatField,
-    }
+    """Helper to create primitive fields using TYPES_TO_FIELD_TYPE mapping."""
+    ftype = foac.TYPES_TO_FIELD_TYPE.get(field_type)
+    if ftype is None:
+        raise ValueError(f"Unknown primitive type: {field_type}")
 
-    if field_type in list_subtype_map:
+    # List types need ListField wrapper with subfield
+    if field_type.startswith("list<"):
         dataset.add_sample_field(
             field_name,
             fof.ListField,
-            subfield=list_subtype_map[field_type](),
+            subfield=ftype(),
             read_only=read_only,
         )
     else:
-        ftype = type_map.get(field_type)
-        if ftype is None:
-            raise ValueError(f"Unknown primitive type: {field_type}")
         dataset.add_sample_field(
             field_name,
             ftype,
