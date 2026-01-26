@@ -100,35 +100,37 @@ export default function Position({ readOnly = false }: PositionProps) {
   useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
   useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
+  const schema = {
+    type: "object",
+    view: {
+      component: "ObjectView",
+    },
+    properties: {
+      position: {
+        type: "object",
+        view: createStack(),
+        properties: {
+          ...createInput("x", readOnly),
+          ...createInput("y", readOnly),
+        },
+      },
+      dimensions: {
+        type: "object",
+        view: createStack(),
+        properties: {
+          ...createInput("width", readOnly),
+          ...createInput("height", readOnly),
+        },
+      },
+    },
+  };
+
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
         key={overlay?.id}
         smartForm={true}
-        schema={{
-          type: "object",
-          view: {
-            component: "ObjectView",
-          },
-          properties: {
-            position: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("x", readOnly),
-                ...createInput("y", readOnly),
-              },
-            },
-            dimensions: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("width", readOnly),
-                ...createInput("height", readOnly),
-              },
-            },
-          },
-        }}
+        schema={schema}
         data={state}
         onChange={(data: Coordinates) => {
           if (
