@@ -5,15 +5,9 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   Button,
-  Clickable,
-  Icon,
-  IconName,
-  Orientation,
   Pill,
   RichList,
   Size,
-  Spacing,
-  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -170,17 +164,7 @@ const AttributesSection = ({
               )}
             </>
           ),
-          actions: (
-            <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-              <Clickable
-                onClick={() => onDeleteAttribute(name)}
-                style={{ padding: 4 }}
-              >
-                <Icon name={IconName.Delete} size={Size.Md} />
-              </Clickable>
-              <EditAction onEdit={() => handleStartEdit(name)} />
-            </Stack>
-          ),
+          actions: <EditAction onEdit={() => handleStartEdit(name)} />,
         } as ListItemProps,
       };
     });
@@ -195,7 +179,6 @@ const AttributesSection = ({
     handleDeleteAttribute,
     handleEditSave,
     handleStartEdit,
-    onDeleteAttribute,
   ]);
 
   return (
