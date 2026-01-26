@@ -9,6 +9,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import { Typography } from "@mui/material";
 import {
   Anchor,
+  Button,
   Clickable,
   Icon,
   IconName,
@@ -16,6 +17,7 @@ import {
   RichList,
   Size,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -26,7 +28,12 @@ import {
   fieldAttributeCount,
   fieldType,
 } from "../state";
-import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
+import {
+  currentField,
+  fieldIsReadOnly,
+  isNewFieldMode,
+  selectedActiveFields,
+} from "./state";
 import { GUISectionHeader } from "./styled";
 import { Item } from "./Components";
 import { buildFieldSecondaryContent } from "./utils";
@@ -54,6 +61,12 @@ const ActiveFieldsSection = () => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
+
+  const setNewFieldMode = useSetAtom(isNewFieldMode);
+
+  const handleNewField = useCallback(() => {
+    setNewFieldMode(true);
+  }, [setNewFieldMode]);
 
   // Support both atom systems
   const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
@@ -158,6 +171,14 @@ const ActiveFieldsSection = () => {
             <Icon name={IconName.Info} size={Size.Md} />
           </Tooltip>
           <Pill size={Size.Md}>0</Pill>
+          <div style={{ flex: 1 }} />
+          <Button
+            size={Size.Md}
+            variant={Variant.Primary}
+            onClick={handleNewField}
+          >
+            New field
+          </Button>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Typography color="secondary">No active fields</Typography>
@@ -180,6 +201,14 @@ const ActiveFieldsSection = () => {
           <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
+        <div style={{ flex: 1 }} />
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={handleNewField}
+        >
+          New field
+        </Button>
       </GUISectionHeader>
       <RichList
         listItems={listItems}

@@ -479,6 +479,28 @@ class CreateAndActivateField(foo.Operator):
             # Construct default label schema manually
             # (generate_label_schemas doesn't work for newly created fields)
             label_schema = _get_default_label_schema(field_type)
+
+            # Merge user-provided label schema config (classes, attributes, etc.)
+            label_schema_config = ctx.params.get("label_schema_config")
+            if label_schema_config:
+                # Add new custom attribute fields to data schema first
+                new_attributes = label_schema_config.get("new_attributes")
+                if new_attributes:
+                    _add_new_attributes(
+                        ctx.dataset, field_name, new_attributes
+                    )
+
+                # Merge all config into label_schema
+                for key, value in label_schema_config.items():
+                    if key == "new_attributes":
+                        continue  # Already handled above
+                    if key == "attributes":
+                        label_schema["attributes"].update(value)
+                    elif key == "classes" and value:
+                        label_schema["classes"] = value
+                        label_schema["component"] = "dropdown"
+                    else:
+                        label_schema[key] = value
         else:  # primitive
             _create_primitive_field(
                 ctx.dataset, field_name, field_type, read_only

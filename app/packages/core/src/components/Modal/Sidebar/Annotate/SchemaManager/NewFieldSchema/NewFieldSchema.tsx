@@ -1,8 +1,9 @@
 /**
  * NewFieldSchema Component
  *
- * Step 1 of creating a new field - collects field info and creates the field.
- * After creation, transitions to EditFieldLabelSchema.
+ * Single-step flow for creating new fields with full schema configuration.
+ * - Label fields: configure classes and attributes
+ * - Primitive fields: configure component type, values, range
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -30,21 +31,36 @@ import {
   LABEL_TYPE_OPTIONS,
   getDefaultComponent,
 } from "../constants";
+import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
+import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
 import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
 import Footer from "../Footer";
-import { EditContainer } from "../styled";
+import { ListContainer } from "../styled";
 import { isNewFieldMode } from "../state";
-import type { SchemaConfigType } from "../utils";
+import type { AttributeConfig, SchemaConfigType } from "../utils";
 
 type FieldCategory = "label" | "primitive";
 
 const CATEGORY_LABEL = 0;
 const CATEGORY_PRIMITIVE = 1;
 
+// Default attributes for label types
+const DEFAULT_DETECTION_ATTRIBUTES: Record<string, AttributeConfig> = {
+  id: { type: "id", component: "text", read_only: true },
+  tags: { type: "list<str>", component: "text" },
+  confidence: { type: "float", component: "text" },
+  index: { type: "int", component: "text" },
+};
+
+const DEFAULT_CLASSIFICATION_ATTRIBUTES: Record<string, AttributeConfig> = {
+  id: { type: "id", component: "text", read_only: true },
+  tags: { type: "list<str>", component: "text" },
+  confidence: { type: "float", component: "text" },
+};
+
 // Convert schema type to field type format (e.g., "str" -> "Str")
 const toFieldType = (schemaType: string): string => {
   if (schemaType.startsWith("list<")) {
-    // "list<str>" -> "List<str>"
     return "List<" + schemaType.slice(5);
   }
   return schemaType.charAt(0).toUpperCase() + schemaType.slice(1);
@@ -61,6 +77,13 @@ const NewFieldSchema = () => {
   });
   const [isCreating, setIsCreating] = useState(false);
 
+  // Label schema state
+  const [classes, setClasses] = useState<string[]>([]);
+  const [attributes, setAttributes] = useState<Record<string, AttributeConfig>>(
+    DEFAULT_DETECTION_ATTRIBUTES
+  );
+  const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
+
   const createField = useOperatorExecutor("create_and_activate_field");
   const getSchemas = useOperatorExecutor("get_label_schemas");
   const setLabelSchemasData = useSetAtom(labelSchemasData);
@@ -72,7 +95,7 @@ const NewFieldSchema = () => {
   // Validate field name
   const fieldNameError = useMemo(() => {
     const trimmed = fieldName.trim();
-    if (!trimmed) return null; // Don't show error for empty (user hasn't typed yet)
+    if (!trimmed) return null;
     if (schemasData && trimmed in schemasData) {
       return "Field name already exists";
     }
@@ -88,9 +111,20 @@ const NewFieldSchema = () => {
     setCategory(index === CATEGORY_LABEL ? "label" : "primitive");
   }, []);
 
+  const handleLabelTypeChange = useCallback((newType: string) => {
+    setLabelType(newType);
+    // Reset attributes to defaults for the new type
+    setAttributes(
+      newType === "detections"
+        ? DEFAULT_DETECTION_ATTRIBUTES
+        : DEFAULT_CLASSIFICATION_ATTRIBUTES
+    );
+    setNewAttributes(new Set());
+    setClasses([]);
+  }, []);
+
   const handlePrimitiveTypeChange = useCallback((newType: string) => {
     setPrimitiveType(newType);
-    // Reset config when type changes
     setPrimitiveConfig({
       type: newType,
       component: getDefaultComponent(newType),
@@ -102,6 +136,76 @@ const NewFieldSchema = () => {
       setPrimitiveConfig(config);
     },
     []
+  );
+
+  // Class handlers
+  const handleAddClass = useCallback((name: string) => {
+    setClasses((prev) => [name, ...prev]);
+  }, []);
+
+  const handleEditClass = useCallback((oldName: string, newName: string) => {
+    setClasses((prev) => prev.map((c) => (c === oldName ? newName : c)));
+  }, []);
+
+  const handleDeleteClass = useCallback((name: string) => {
+    setClasses((prev) => prev.filter((c) => c !== name));
+  }, []);
+
+  const handleClassOrderChange = useCallback((newOrder: string[]) => {
+    setClasses(newOrder);
+  }, []);
+
+  // Attribute handlers
+  const handleAddAttribute = useCallback(
+    (name: string, config: AttributeConfig) => {
+      setAttributes((prev) => ({ [name]: config, ...prev }));
+      setNewAttributes((prev) => new Set(prev).add(name));
+    },
+    []
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, newName: string, config: AttributeConfig) => {
+      setAttributes((prev) => {
+        const updated: Record<string, AttributeConfig> = {};
+        for (const [key, value] of Object.entries(prev)) {
+          if (key === oldName) {
+            updated[newName] = config;
+          } else {
+            updated[key] = value;
+          }
+        }
+        return updated;
+      });
+      // Track renamed new attributes
+      if (newAttributes.has(oldName)) {
+        setNewAttributes((prev) => {
+          const updated = new Set(prev);
+          updated.delete(oldName);
+          updated.add(newName);
+          return updated;
+        });
+      }
+    },
+    [newAttributes]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      setAttributes((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+      if (newAttributes.has(name)) {
+        setNewAttributes((prev) => {
+          const updated = new Set(prev);
+          updated.delete(name);
+          return updated;
+        });
+      }
+    },
+    [newAttributes]
   );
 
   const handleCreate = useCallback(() => {
@@ -118,9 +222,23 @@ const NewFieldSchema = () => {
       read_only: false,
     };
 
-    // For primitives, include the schema config (component, values, range)
     if (category === "primitive" && primitiveConfig) {
       params.schema_config = primitiveConfig;
+    } else if (category === "label") {
+      // Build new_attributes object for data schema creation
+      const newAttrsObj: Record<string, AttributeConfig> = {};
+      for (const name of newAttributes) {
+        if (attributes[name]) {
+          newAttrsObj[name] = attributes[name];
+        }
+      }
+
+      params.label_schema_config = {
+        classes,
+        attributes,
+        new_attributes:
+          Object.keys(newAttrsObj).length > 0 ? newAttrsObj : undefined,
+      };
     }
 
     createField.execute(params, {
@@ -131,7 +249,7 @@ const NewFieldSchema = () => {
           return;
         }
 
-        // Refresh schemas data and wait for completion before navigating
+        // Refresh schemas data
         getSchemas.execute(
           {},
           {
@@ -145,13 +263,8 @@ const NewFieldSchema = () => {
                 );
               }
 
-              // Navigate based on field category
+              // Go back to schema manager (both label and primitive are fully configured)
               setNewFieldMode(false);
-              if (category === "label") {
-                // Label fields go to edit view to configure classes/attributes
-                setCurrentField(trimmedName);
-              }
-              // Primitive fields stay on schema manager (already configured)
             },
           }
         );
@@ -164,12 +277,14 @@ const NewFieldSchema = () => {
     labelType,
     primitiveType,
     primitiveConfig,
+    classes,
+    attributes,
+    newAttributes,
     createField,
     getSchemas,
     setLabelSchemasData,
     setActiveLabelSchemas,
     setNewFieldMode,
-    setCurrentField,
   ]);
 
   const handleDiscard = useCallback(() => {
@@ -177,7 +292,7 @@ const NewFieldSchema = () => {
   }, [setNewFieldMode]);
 
   return (
-    <EditContainer>
+    <ListContainer style={{ display: "flex", flexDirection: "column" }}>
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
         <Stack
           orientation={Orientation.Column}
@@ -248,7 +363,7 @@ const NewFieldSchema = () => {
               onChange={(value) => {
                 if (typeof value === "string") {
                   if (category === "label") {
-                    setLabelType(value);
+                    handleLabelTypeChange(value);
                   } else {
                     handlePrimitiveTypeChange(value);
                   }
@@ -262,13 +377,33 @@ const NewFieldSchema = () => {
             />
           </div>
 
-          {/* Primitive field config (component type, values, range) */}
+          {/* Primitive field config */}
           {category === "primitive" && (
             <PrimitiveFieldContent
               fieldType={toFieldType(primitiveType)}
               config={primitiveConfig}
               onConfigChange={handlePrimitiveConfigChange}
             />
+          )}
+
+          {/* Label field config: Classes and Attributes */}
+          {category === "label" && (
+            <>
+              <ClassesSection
+                classes={classes}
+                attributeCount={Object.keys(attributes).length}
+                onAddClass={handleAddClass}
+                onEditClass={handleEditClass}
+                onDeleteClass={handleDeleteClass}
+                onOrderChange={handleClassOrderChange}
+              />
+              <AttributesSection
+                attributes={attributes}
+                onAddAttribute={handleAddAttribute}
+                onEditAttribute={handleEditAttribute}
+                onDeleteAttribute={handleDeleteAttribute}
+              />
+            </>
           )}
         </Stack>
       </div>
@@ -284,7 +419,7 @@ const NewFieldSchema = () => {
           text: isCreating ? "Creating..." : "Create",
         }}
       />
-    </EditContainer>
+    </ListContainer>
   );
 };
 
