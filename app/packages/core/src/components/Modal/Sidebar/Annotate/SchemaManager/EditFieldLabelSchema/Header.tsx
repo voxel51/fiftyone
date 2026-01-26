@@ -1,10 +1,9 @@
 import { Input, Text, TextColor, TextVariant } from "@voxel51/voodo";
-import { useAtomValue } from "jotai";
-import { fieldType } from "../../state";
+import { useFieldType } from "../hooks";
 import { FieldColumn, FieldRow } from "../styled";
 
 export default function Header({ field }: { field: string }) {
-  const fType = useAtomValue(fieldType(field));
+  const fType = useFieldType(field);
 
   return (
     <FieldRow style={{ marginTop: "1rem" }}>

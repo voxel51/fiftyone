@@ -1,5 +1,4 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { useOperatorExecutor } from "@fiftyone/operators";
 import {
   Button,
   Icon,
@@ -12,13 +11,9 @@ import {
   ToggleSwitch,
   Variant,
 } from "@voxel51/voodo";
-import { useAtom, useSetAtom } from "jotai";
 import { useCallback, useState } from "react";
-import {
-  activeLabelSchemas,
-  addToActiveSchemas,
-  removeFromActiveSchemas,
-} from "../../state";
+import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
+import { useToggleFieldVisibility } from "../hooks";
 import Footer from "../Footer";
 import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
@@ -26,7 +21,6 @@ import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
-import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isEnabled: isM4Enabled } = useFeature({
@@ -38,51 +32,8 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const [activeTab, setActiveTab] = useState<TabId>(
     showScanButton ? TAB_JSON : TAB_GUI
   );
-  const [activeFields] = useAtom(activeLabelSchemas);
-  const addToActive = useSetAtom(addToActiveSchemas);
-  const removeFromActive = useSetAtom(removeFromActiveSchemas);
-  const activateFields = useOperatorExecutor("activate_label_schemas");
-  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
-
-  const isFieldVisible = activeFields?.includes(field) ?? false;
-
-  const handleToggleVisibility = useCallback(() => {
-    const fieldSet = new Set([field]);
-    if (isFieldVisible) {
-      // Move to hidden (optimistic update with rollback on error)
-      removeFromActive(fieldSet);
-      deactivateFields.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              addToActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
-    } else {
-      // Move to active (optimistic update with rollback on error)
-      addToActive(fieldSet);
-      activateFields.execute(
-        { fields: [field] },
-        {
-          callback: (result) => {
-            if (result.error) {
-              removeFromActive(fieldSet); // rollback on failure
-            }
-          },
-        }
-      );
-    }
-  }, [
-    field,
-    isFieldVisible,
-    addToActive,
-    removeFromActive,
-    activateFields,
-    deactivateFields,
-  ]);
+  const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
+    useToggleFieldVisibility(field);
 
   const handleTabChange = useCallback((index: number) => {
     setActiveTab(TAB_IDS[index]);
