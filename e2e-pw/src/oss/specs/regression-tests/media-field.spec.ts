@@ -153,6 +153,7 @@ test.describe.serial("media field keyboard navigation", () => {
     // Go to next media field
     await page.keyboard.press("PageDown");
     await modal.waitForSampleLoadDomAttribute();
+    await modal.hideControls();
 
     const afterPageDownScreenshot = await modal.looker.screenshot();
 

@@ -4,41 +4,42 @@ import {
   useKeyBindings,
 } from "@fiftyone/commands";
 import * as fos from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useMemo } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 const MediaFieldNavigationDirection = {
   Previous: -1,
   Next: 1,
 } as const;
 
-type MediaFieldNavigationDirectionValue =
-  (typeof MediaFieldNavigationDirection)[keyof typeof MediaFieldNavigationDirection];
+type MediaFieldNavigationDirectionValue = typeof MediaFieldNavigationDirection[keyof typeof MediaFieldNavigationDirection];
 
 /**
  * Hook enabling navigation between media fields.
  */
 export const useMediaFieldNavigation = () => {
   const mediaFields = useRecoilValue(fos.mediaFields);
-  const [selectedMediaField, setSelectedMediaField] = useRecoilState(
-    fos.selectedMediaField(true)
-  );
 
   const hasMultipleMediaFields = Boolean(mediaFields && mediaFields.length > 1);
 
-  const navigate = useCallback(
-    (direction: MediaFieldNavigationDirectionValue) => {
+  const navigate = useRecoilCallback(
+    ({ snapshot, set }) => async (
+      direction: MediaFieldNavigationDirectionValue
+    ) => {
       if (!mediaFields || mediaFields.length <= 1) return;
-      const currentIndex = mediaFields.indexOf(selectedMediaField);
+      const currentSelected = await snapshot.getPromise(
+        fos.selectedMediaField(true)
+      );
+      const currentIndex = mediaFields.indexOf(currentSelected);
       if (currentIndex === -1) {
-        setSelectedMediaField(mediaFields[0]);
+        set(fos.selectedMediaField(true), mediaFields[0]);
         return;
       }
       const nextIndex =
         (currentIndex + direction + mediaFields.length) % mediaFields.length;
-      setSelectedMediaField(mediaFields[nextIndex]);
+      set(fos.selectedMediaField(true), mediaFields[nextIndex]);
     },
-    [mediaFields, selectedMediaField]
+    [mediaFields]
   );
 
   const bindings = useMemo(
@@ -48,7 +49,9 @@ export const useMediaFieldNavigation = () => {
             {
               commandId: KnownCommands.ModalPreviousMediaField,
               sequence: "PageUp",
-              handler: () => navigate(MediaFieldNavigationDirection.Previous),
+              handler: () => {
+                navigate(MediaFieldNavigationDirection.Previous);
+              },
               label: "Previous Media Field",
               description: "Switch to the previous media field",
               enablement: () => hasMultipleMediaFields,
@@ -56,7 +59,9 @@ export const useMediaFieldNavigation = () => {
             {
               commandId: KnownCommands.ModalNextMediaField,
               sequence: "PageDown",
-              handler: () => navigate(MediaFieldNavigationDirection.Next),
+              handler: () => {
+                navigate(MediaFieldNavigationDirection.Next);
+              },
               label: "Next Media Field",
               description: "Switch to the next media field",
               enablement: () => hasMultipleMediaFields,
