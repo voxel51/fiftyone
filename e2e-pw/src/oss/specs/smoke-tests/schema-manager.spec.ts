@@ -57,11 +57,11 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
 });
 
 const DEFAULT_LABEL_SCHEMA = {
-  attributes: {
-    confidence: { type: "float", component: "text" },
-    id: { type: "id", component: "text", read_only: true },
-    tags: { type: "list<str>", component: "text" },
-  },
+  attributes: [
+    { name: "confidence", type: "float", component: "text" },
+    { name: "id", type: "id", component: "text", read_only: true },
+    { name: "tags", type: "list<str>", component: "text" },
+  ],
   component: "text",
   type: "classification",
 };
