@@ -3,7 +3,7 @@
  * Used by both AddAttributeCard and AttributesSection edit mode.
  */
 
-import { RichList } from "@voxel51/voodo";
+import { Orientation, RichList, Spacing, Stack } from "@voxel51/voodo";
 import type { AttributeFormData, ListItemProps } from "../../utils";
 import AttributeFormContent from "./AttributeFormContent";
 import CardActions from "./CardActions";
@@ -72,9 +72,9 @@ const AttributeCard = (props: AttributeCardProps) => {
   const listItem = createAttributeCardItem(props);
 
   return (
-    <div style={{ marginBottom: "1rem" }}>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
       <RichList listItems={[listItem]} draggable={false} />
-    </div>
+    </Stack>
   );
 };
 

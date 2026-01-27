@@ -2,7 +2,15 @@
  * Range input component for slider min/max values.
  */
 
-import { Input, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Input,
+  Orientation,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+} from "@voxel51/voodo";
 
 const LABEL_MARGIN_BOTTOM = "0.5rem";
 
@@ -28,8 +36,8 @@ const RangeInput = ({
   const labelColor = largeLabels ? TextColor.Primary : TextColor.Secondary;
 
   return (
-    <div>
-      <div style={{ width: "100%", display: "flex", gap: "1rem" }}>
+    <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+      <Stack orientation={Orientation.Row} spacing={Spacing.Md}>
         <div style={{ flex: 1 }}>
           <Text
             variant={labelVariant}
@@ -62,17 +70,13 @@ const RangeInput = ({
             error={!!error}
           />
         </div>
-      </div>
+      </Stack>
       {error && (
-        <Text
-          variant={TextVariant.Sm}
-          color={TextColor.Destructive}
-          style={{ marginTop: 4 }}
-        >
+        <Text variant={TextVariant.Sm} color={TextColor.Destructive}>
           {error}
         </Text>
       )}
-    </div>
+    </Stack>
   );
 };
 

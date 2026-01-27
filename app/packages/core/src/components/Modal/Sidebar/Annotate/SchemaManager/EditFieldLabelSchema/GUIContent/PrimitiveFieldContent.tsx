@@ -20,6 +20,7 @@ import {
   getSchemaTypeFromFieldType,
 } from "../../constants";
 import type { SchemaConfigType } from "../../utils";
+import { validateRange, validateValues } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
 import RangeInput from "./RangeInput";
 import ValuesList from "./ValuesList";
@@ -79,33 +80,11 @@ const PrimitiveFieldContent = ({
 
   // Validation errors
   const errors = useMemo(() => {
-    const result = {
-      values: null as string | null,
-      range: null as string | null,
+    return {
+      values: showValues ? validateValues(values, isNumericType) : null,
+      range: showRange ? validateRange(range) : null,
     };
-
-    // Values validation - required for radio/dropdown/checkboxes
-    if (showValues && values.length === 0) {
-      result.values = "At least one value is required";
-    }
-
-    // Range validation - required for slider
-    if (showRange) {
-      if (!range || range.min === "" || range.max === "") {
-        result.range = "Min and max are required";
-      } else {
-        const min = parseFloat(range.min);
-        const max = parseFloat(range.max);
-        if (isNaN(min) || isNaN(max)) {
-          result.range = "Min and max must be valid numbers";
-        } else if (min >= max) {
-          result.range = "Min must be less than max";
-        }
-      }
-    }
-
-    return result;
-  }, [showValues, showRange, values, range]);
+  }, [showValues, showRange, values, range, isNumericType]);
 
   // Handlers
   const handleComponentChange = useCallback(
