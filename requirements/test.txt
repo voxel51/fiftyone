@@ -1,13 +1,13 @@
 awscli==1.37.2
 freezegun==1.5.1
-open3d>=0.16.0
+open3d>=0.16.0; python_version < "3.13"
 werkzeug>=2.0.3
 pydicom<3
 pytest==8.1.1
 pytest-cov==4.0.0
 pytest-mock==3.10.0
 pytest-asyncio
-shapely
+shapely; python_version < "3.13"
 tensorflow
 torch>=2.2.2
 torchvision>=0.17.2

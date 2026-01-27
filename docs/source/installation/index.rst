@@ -15,7 +15,14 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.9 - 3.12**.
+**Python 3.9 - 3.13**.
+
+.. note::
+
+	On Python 3.13, some optional dependencies may not be available: 3D
+	visualization features (`open3d`) and geometry utilities (`shapely`).
+	All core FiftyOne functionality and PyTorch/TensorFlow
+	will work as expected.
 
 On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
