@@ -1,3 +1,5 @@
+import { Action } from "./actions";
+
 export function isUndoable(object: object) {
   return "undo" in object && typeof object.undo === "function";
 }
@@ -7,6 +9,12 @@ export function isUndoable(object: object) {
  *
  * @param data Object to check
  */
-export const isAction = (data: object): boolean => {
-  return "execute" in data && typeof data.execute === "function";
+export const isAction = (data: unknown): data is Action => {
+  return (
+    data !== null &&
+    data !== undefined &&
+    typeof data === "object" &&
+    "execute" in data &&
+    typeof data.execute === "function"
+  );
 };
