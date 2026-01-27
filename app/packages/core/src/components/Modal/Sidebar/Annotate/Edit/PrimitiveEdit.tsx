@@ -1,4 +1,8 @@
-import { getFieldSchema, UpsertAnnotationCommand } from "@fiftyone/annotation";
+import {
+  getFieldSchema,
+  UpsertAnnotationCommand,
+  useSampleMutationManager,
+} from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import * as fos from "@fiftyone/state";
 import { PrimitiveValue } from "@fiftyone/state";
@@ -10,15 +14,19 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
-import { useSampleValue } from "../useSampleValue";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import useExit from "./useExit";
+import {
+  DelegatingUndoable,
+  KnownContexts,
+  useCreateCommand,
+} from "@fiftyone/commands";
 
 interface PrimitiveEditProps {
   path: string;
@@ -42,7 +50,9 @@ export default function PrimitiveEdit({
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
-  const value = useSampleValue(path);
+
+  const sampleMutationManager = useSampleMutationManager();
+  const value = sampleMutationManager.getPathValue(path);
 
   const fieldSchema = getFieldSchema(schema, path);
   const primitiveSchema = generatePrimitiveSchema(path, currentLabelSchema);
@@ -51,9 +61,50 @@ export default function PrimitiveEdit({
     parseDatabaseValue(type, value)
   );
 
-  const handleChange = (data: unknown) => {
-    setFieldValue(data as Primitive);
-  };
+  // synchronize external value changes with field
+  useEffect(
+    () => setFieldValue(parseDatabaseValue(type, value)),
+    [type, value]
+  );
+
+  // need to use a ref to access field value in command callback;
+  // command will run before the next render loop when `fieldValue` is updated.
+  const transientFieldValue = useRef<Primitive>(fieldValue as Primitive);
+
+  // undoable command which handles primitive edits
+  const editCommand = useCreateCommand(
+    KnownContexts.Modal,
+    `primitive-edit-${path}`,
+    useCallback(() => {
+      return new DelegatingUndoable(
+        `primitive-edit-${path}-action`,
+        // stage mutation on execute
+        () => {
+          sampleMutationManager.stageMutation(
+            path,
+            serializeFieldValue(transientFieldValue.current, type)
+          );
+        },
+        // restore current value on undo
+        () => {
+          sampleMutationManager.stageMutation(path, value);
+        }
+      );
+    }, [path, sampleMutationManager, type, value]),
+    () => true
+  );
+
+  const handleChange = useCallback(
+    (data: unknown) => {
+      transientFieldValue.current = data as Primitive;
+      setFieldValue(data as Primitive);
+
+      if (editCommand.enabled) {
+        editCommand.callback();
+      }
+    },
+    [editCommand]
+  );
 
   const persistData = useCallback(async () => {
     if (!fieldSchema) return;

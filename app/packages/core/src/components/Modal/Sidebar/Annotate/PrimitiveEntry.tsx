@@ -10,7 +10,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import useActivePrimitive from "./Edit/useActivePrimitive";
 import { useReadOnly } from "./SchemaManager/EditFieldLabelSchema/useLabelSchema";
-import { useSampleValue } from "./useSampleValue";
+import { useSampleMutationManager } from "@fiftyone/annotation";
 
 const Container = animated(styled.div<{ $isReadOnly?: boolean }>`
   display: flex;
@@ -67,7 +67,8 @@ const UrlLink = ({ url }: UrlLinkProps) => {
 
 const PrimitiveEntry = ({ path }: PrimitiveEntryProps) => {
   const field = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const value = useSampleValue(path);
+  const sampleMutationManager = useSampleMutationManager();
+  const value = sampleMutationManager.getPathValue(path);
   const timeZone = useRecoilValue(fos.timeZone);
   const [, setActivePrimitive] = useActivePrimitive();
   const { isReadOnly } = useReadOnly(path);
