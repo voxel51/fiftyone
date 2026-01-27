@@ -7,8 +7,11 @@ import {
   Icon,
   IconName,
   Input,
+  Orientation,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -114,10 +117,14 @@ const ValuesList = ({
           Values
         </Text>
         <Clickable onClick={handleAddValue}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Xs}
+            style={{ alignItems: "center" }}
+          >
             <Icon name={IconName.Add} size={Size.Sm} />
             <Text variant={TextVariant.Sm}>Add</Text>
-          </div>
+          </Stack>
         </Clickable>
       </div>
       <Input

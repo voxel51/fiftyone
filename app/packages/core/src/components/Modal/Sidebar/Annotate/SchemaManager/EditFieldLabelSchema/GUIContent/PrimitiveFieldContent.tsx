@@ -167,7 +167,7 @@ const PrimitiveFieldContent = ({
           >
             Input type
           </Text>
-          <div style={{ width: "100%", display: "flex", gap: 8 }}>
+          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
             {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
@@ -178,7 +178,7 @@ const PrimitiveFieldContent = ({
                 largeText={largeLabels}
               />
             ))}
-          </div>
+          </Stack>
         </div>
       )}
 
