@@ -1,7 +1,12 @@
 name: Test e2e
 
-on: workflow_call
-
+on:
+  workflow_call:
+    secrets:
+      docker-username:
+        required: true
+      docker-password:
+        required: true
 jobs:
   test-e2e:
     timeout-minutes: 90
