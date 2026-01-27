@@ -29,7 +29,6 @@ import {
 import { useConfirmDelete } from "../Confirmation/useConfirmDelete";
 import useDelete from "./useDelete";
 import { current } from "../Edit/state";
-import Actions from "../Actions";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;

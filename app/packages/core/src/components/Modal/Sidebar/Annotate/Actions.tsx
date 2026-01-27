@@ -25,14 +25,12 @@ import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
-import { Typography } from "@mui/material";
 
 const ActionsDiv = styled.div`
   align-items: center;
   color: ${({ theme }) => theme.text.secondary};
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   padding: 0.25rem 1rem;
   width: 100%;
   max-width: 100%;
@@ -42,8 +40,6 @@ const Row = styled.div`
   display: flex;
   justify-content: space-between;
   width: 100%;
-  align-items: center;
-  padding: 0 0;
 `;
 
 const Container = styled.div<{ $active?: boolean }>`
