@@ -31,13 +31,9 @@ import { createAttributeCardItem } from "./AttributeCard";
 import EditAction from "./EditAction";
 
 interface AttributesSectionProps {
-  attributes: Record<string, AttributeConfig>;
-  onAddAttribute: (name: string, config: AttributeConfig) => void;
-  onEditAttribute: (
-    oldName: string,
-    newName: string,
-    config: AttributeConfig
-  ) => void;
+  attributes: AttributeConfig[];
+  onAddAttribute: (config: AttributeConfig) => void;
+  onEditAttribute: (oldName: string, config: AttributeConfig) => void;
   onDeleteAttribute: (name: string) => void;
 }
 
@@ -57,7 +53,7 @@ const AttributesSection = ({
     useState<AttributeFormData | null>(null);
 
   const existingAttributeNames = useMemo(
-    () => Object.keys(attributes),
+    () => attributes.map((attr) => attr.name),
     [attributes]
   );
 
@@ -79,8 +75,8 @@ const AttributesSection = ({
     (editFormErrors ? hasAttributeFormError(editFormErrors) : false);
 
   const handleAddSave = useCallback(
-    (name: string, config: AttributeConfig) => {
-      onAddAttribute(name, config);
+    (config: AttributeConfig) => {
+      onAddAttribute(config);
       setIsAdding(false);
     },
     [onAddAttribute]
@@ -88,10 +84,10 @@ const AttributesSection = ({
 
   const handleStartEdit = useCallback(
     (name: string) => {
-      const config = attributes[name];
+      const config = attributes.find((attr) => attr.name === name);
       if (config) {
         setEditingAttribute(name);
-        setEditingFormState(toFormData(name, config));
+        setEditingFormState(toFormData(config));
       }
     },
     [attributes]
@@ -99,11 +95,7 @@ const AttributesSection = ({
 
   const handleEditSave = useCallback(() => {
     if (!editingAttribute || !editingFormState || hasEditError) return;
-    onEditAttribute(
-      editingAttribute,
-      editingFormState.name.trim(),
-      toAttributeConfig(editingFormState)
-    );
+    onEditAttribute(editingAttribute, toAttributeConfig(editingFormState));
     setEditingAttribute(null);
     setEditingFormState(null);
   }, [editingAttribute, editingFormState, hasEditError, onEditAttribute]);
@@ -122,7 +114,8 @@ const AttributesSection = ({
   }, [editingAttribute, onDeleteAttribute]);
 
   const listItems = useMemo(() => {
-    return Object.entries(attributes).map(([name, config]) => {
+    return attributes.map((config) => {
+      const name = config.name;
       // Editing mode: use shared card item creator
       if (name === editingAttribute && editingFormState) {
         return createAttributeCardItem({
