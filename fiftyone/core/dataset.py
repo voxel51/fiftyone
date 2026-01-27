@@ -1697,7 +1697,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
         self.save()
 
-    def update_label_schema(self, field, label_schema):
+    def update_label_schema(self, field, label_schema, new_attributes=None):
         """Update an individual field's
         :ref:`label schema <annotation-label-schema>`.
 
@@ -1710,10 +1710,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field: the field name
             label_schema: the field's label schema
+            new_attributes (None): optional dict mapping new attribute names
+                to their schema info (e.g., {"sensor": {"type": "str"}}).
+                If provided, these attribute fields will be added to the
+                dataset schema before updating the label schema.
 
         Raises:
             ExceptionGroup: if the label schema is invalid
+            TypeError: if new_attributes is not a dict
+            ValueError: if new_attributes contains invalid entries
         """
+        # Create new attribute fields first if specified
+        if new_attributes:
+            foa.add_new_attributes(self, field, new_attributes)
+
         foa.validate_label_schemas(self, label_schema, fields=field)
         label_schemas = self.label_schemas
         label_schemas[field] = copy.deepcopy(label_schema)
