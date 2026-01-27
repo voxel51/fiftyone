@@ -68,7 +68,7 @@ describe("CommandContextManager", () => {
     );
   });
 
-  it("can invoke a key binding", () => {
+  it("can invoke a key binding", async () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -80,13 +80,13 @@ describe("CommandContextManager", () => {
     CommandContextManager.instance()
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
   });
 
-  it("can invoke an inherited binding", () => {
+  it("can invoke an inherited binding", async () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -103,13 +103,13 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
   });
 
-  it("does not invoke a non-inherited default binding", () => {
+  it("does not invoke a non-inherited default binding", async () => {
     const execFn = vi.fn(() => {
       return;
     });
@@ -126,13 +126,13 @@ describe("CommandContextManager", () => {
       false
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(0);
   });
 
-  it("can perform undo/redo on an inherited context", () => {
+  it("can perform undo/redo on an inherited context", async () => {
     const undoFn = vi.fn(() => {
       return;
     });
@@ -156,7 +156,7 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(cmdFn).toBeCalledTimes(1);
@@ -168,7 +168,7 @@ describe("CommandContextManager", () => {
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
       false
     );
-    CommandContextManager.instance().getActiveContext().undo();
+    await CommandContextManager.instance().getActiveContext().undo();
     expect(undoFn).toBeCalledTimes(1);
     expect(execFn).toBeCalledTimes(1);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
@@ -177,7 +177,7 @@ describe("CommandContextManager", () => {
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
       true
     );
-    CommandContextManager.instance().getActiveContext().redo();
+    await CommandContextManager.instance().getActiveContext().redo();
     expect(execFn).toBeCalledTimes(2);
     expect(undoFn).toBeCalledTimes(1);
   });
