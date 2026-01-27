@@ -2,7 +2,7 @@
  * Main GUI View component for editing field schema.
  */
 
-import { LoadingSpinner } from "@fiftyone/components";
+import { LoadingSpinner, scrollable } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
@@ -123,7 +123,7 @@ const GUIContent = ({
   // Primitive field types show a different UI
   if (isPrimitive && fType) {
     return (
-      <ListContainer>
+      <ListContainer className={scrollable}>
         <Section>
           <PrimitiveFieldContent
             fieldType={fType}
@@ -138,7 +138,7 @@ const GUIContent = ({
 
   if (scanning) {
     return (
-      <ListContainer>
+      <ListContainer className={scrollable}>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
@@ -162,7 +162,7 @@ const GUIContent = ({
   }
 
   return (
-    <ListContainer>
+    <ListContainer className={scrollable}>
       <ClassesSection
         classes={classes}
         attributeCount={attributes.length}
