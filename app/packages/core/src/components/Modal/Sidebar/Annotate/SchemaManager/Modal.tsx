@@ -21,8 +21,8 @@ import GUIView, {
   useActivateFields,
   useDeactivateFields,
 } from "./GUIView";
+import { useNewFieldMode } from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
-import { isNewFieldMode } from "./state";
 import {
   BackButton,
   CloseButton,
@@ -37,7 +37,8 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const [field, setField] = useAtom(currentField);
-  const [newFieldMode, setNewFieldMode] = useAtom(isNewFieldMode);
+  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
+    useNewFieldMode();
 
   if (newFieldMode) {
     return (
@@ -62,7 +63,7 @@ const Heading = () => {
 
 const Subheading = () => {
   const field = useAtomValue(currentField);
-  const newFieldMode = useAtomValue(isNewFieldMode);
+  const { isNewField: newFieldMode } = useNewFieldMode();
 
   if (field || newFieldMode) {
     return null;
@@ -77,7 +78,7 @@ const Subheading = () => {
 
 const Page = () => {
   const field = useAtomValue(currentField);
-  const newFieldMode = useAtomValue(isNewFieldMode);
+  const { isNewField: newFieldMode } = useNewFieldMode();
 
   if (newFieldMode) {
     return <NewFieldSchema />;

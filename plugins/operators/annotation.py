@@ -8,12 +8,14 @@ Annotation label schemas operators
 
 import logging
 
+import fiftyone.core.annotation as foa
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
     ValidationErrors,
     validate_label_schemas,
 )
+import fiftyone.core.fields as fof
 import fiftyone.operators as foo
 
 logger = logging.getLogger(__name__)
@@ -263,7 +265,7 @@ class CreateAndActivateField(foo.Operator):
             # Add any custom attribute fields to data schema
             new_attributes = label_schema_config.get("new_attributes")
             if new_attributes:
-                _add_new_attributes(ctx.dataset, field_name, new_attributes)
+                foa.add_new_attributes(ctx.dataset, field_name, new_attributes)
 
             # Build label schema from frontend config
             # Frontend sends: attributes, classes, component
