@@ -71,7 +71,7 @@ export class ModalSidebarPom {
     return absPath;
   }
 
-  async setMode(mode: "annotate" | "explore") {
+  async switchMode(mode: "annotate" | "explore") {
     await this.locator.getByTestId(mode).click();
   }
 

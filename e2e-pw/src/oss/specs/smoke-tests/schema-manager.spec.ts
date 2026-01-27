@@ -76,7 +76,7 @@ test.describe.serial("schema manager", () => {
   test("JSON view configuration", async ({ modal, schemaManager }) => {
     // Init
     await modal.assert.isOpen();
-    await modal.sidebar.setMode("annotate");
+    await modal.sidebar.switchMode("annotate");
     await schemaManager.open();
     await schemaManager.assert.isOpen();
 
