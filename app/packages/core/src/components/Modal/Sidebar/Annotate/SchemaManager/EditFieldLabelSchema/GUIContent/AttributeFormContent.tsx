@@ -127,7 +127,7 @@ const AttributeFormContent = ({
         >
           Input type
         </Text>
-        <div style={{ display: "flex", gap: 8 }}>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           {componentOptions.map((opt) => (
             <ComponentTypeButton
               key={opt.id}
@@ -137,7 +137,7 @@ const AttributeFormContent = ({
               onClick={() => handleComponentChange(opt.id)}
             />
           ))}
-        </div>
+        </Stack>
       </div>
 
       {/* Values list */}
@@ -204,13 +204,10 @@ const AttributeFormContent = ({
       {/* Read-only toggle */}
       {isM4Enabled && (
         <div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginBottom: 4,
-            }}
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Sm}
+            style={{ alignItems: "center", marginBottom: 4 }}
           >
             <Text variant={TextVariant.Md}>Read-only</Text>
             <Toggle
@@ -218,7 +215,7 @@ const AttributeFormContent = ({
               onChange={handleReadOnlyChange}
               size={Size.Sm}
             />
-          </div>
+          </Stack>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             When enabled, annotators can view but cannot edit values.
           </Text>

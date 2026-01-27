@@ -70,12 +70,16 @@ const InlineEditExpandedContent = ({
           </Text>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
         <Checkbox size={Size.Md} checked={true} disabled />
         <Text variant={TextVariant.Md} color={TextColor.Secondary}>
           Include all {attributeCount} attributes
         </Text>
-      </div>
+      </Stack>
     </Stack>
   );
 };
