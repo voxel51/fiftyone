@@ -42,6 +42,12 @@ jobs:
       - name: Prepare yarn 4
         run: corepack prepare yarn@4.9.1 --activate
 
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.ORG_DOCKERHUB_USERNAME }}
+          password: ${{ secrets.RO_DOCKERHUB_PAT }}
+
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.1
         with:
