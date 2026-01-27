@@ -64,6 +64,7 @@ export class JSONEditorPom {
    * Select all the text within the code editor
    */
   async selectAllJSON() {
+    // Quadruple click is more reliable than ControlOrMeta+KeyA
     await this.locator.click({ clickCount: 4 });
   }
 
@@ -122,7 +123,7 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  async waitForInvalidJSON() {
+  waitForInvalidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-invalid-json"
     );
@@ -133,7 +134,7 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  async waitForValidJSON() {
+  waitForValidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-valid-json"
     );
