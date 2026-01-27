@@ -7,7 +7,6 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
@@ -126,17 +125,19 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
       previousNavigator.cleanup();
     };
   }, [nextNavigator, previousNavigator]);
+  const onExit = useExit();
+  const onSave = useSave();
+  const next = useCallback(async () => {
+    await onSave();
+    onExit();
+    nextNavigator.navigate();
+  }, [nextNavigator, onExit, onSave]);
 
-  const { confirmExit } = useConfirmExit(useExit(), useSave());
-  const next = useCallback(
-    () => confirmExit(nextNavigator.navigate),
-    [confirmExit, nextNavigator]
-  );
-
-  const previous = useCallback(
-    () => confirmExit(previousNavigator.navigate),
-    [confirmExit, previousNavigator]
-  );
+  const previous = useCallback(async () => {
+    await onSave();
+    onExit();
+    previousNavigator.navigate();
+  }, [previousNavigator, onSave, onExit]);
 
   const keyBindings = useMemo(() => {
     return [

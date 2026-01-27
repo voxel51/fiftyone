@@ -70,8 +70,6 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-
-    CommandContextManager.instance().clearUndoRedoStack();
     const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
