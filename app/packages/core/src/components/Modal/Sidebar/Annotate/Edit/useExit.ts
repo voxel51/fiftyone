@@ -1,30 +1,22 @@
-import { CommandContextManager } from "@fiftyone/commands";
-import {
-  BoundingBoxOverlay,
-  TransformOverlayCommand,
-  UpdateLabelCommand,
-  useLighter,
-} from "@fiftyone/lighter";
+import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
   selectedLabelForAnnotationAtom,
   stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { current, currentOverlay, hasChanges, savedLabel } from "./state";
+import { currentOverlay, savedLabel } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
-export default function useExit(revertLabel = true) {
+export default function useExit() {
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
-  const { scene, removeOverlay } = useLighter();
-  const overlay = useAtomValue(currentOverlay);
-  const hasChanged = useAtomValue(hasChanges);
+  const { scene } = useLighter();
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -56,9 +48,6 @@ export default function useExit(revertLabel = true) {
       }
     }
 
-    const label = store.get(savedLabel);
-    const unsaved = store.get(current);
-
     /**
      * 3D SPECIFIC LOGIC
      * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
@@ -70,65 +59,18 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-    const resetEditingState = () => {
-      setSaved(null);
-      setEditing(null);
-      setActivePrimitive(null);
-    };
 
-    if (!label || !revertLabel) {
-      resetEditingState();
-      return;
-    }
-
-    // label has not been persisted, so remove it
-    if (unsaved?.isNew) {
-      removeOverlay(unsaved?.overlay.id);
-      scene?.exitInteractiveMode();
-      resetEditingState();
-      return;
-    }
-
-    // return the label to the last "saved" state
-    if (label && unsaved) {
-      store.set(current, {
-        ...unsaved,
-        data: label,
-      });
-    }
-
-    if (overlay) {
-      scene?.executeCommand(
-        new UpdateLabelCommand(overlay, overlay.label, label)
-      );
-
-      if (
-        hasChanged &&
-        overlay instanceof BoundingBoxOverlay &&
-        overlay.label.bounding_box
-      ) {
-        scene?.executeCommand(
-          new TransformOverlayCommand(
-            overlay,
-            overlay.id,
-            overlay.getAbsoluteBounds(),
-            scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
-          )
-        );
-      }
-    }
-
-    resetEditingState();
+    // reset editing state
+    setSaved(null);
+    setEditing(null);
+    setActivePrimitive(null);
   }, [
-    scene,
-    setEditing,
-    setSaved,
-    overlay,
-    revertLabel,
-    removeOverlay,
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
+    setSaved,
+    setEditing,
+    setActivePrimitive,
+    scene,
   ]);
 }
