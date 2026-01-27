@@ -73,7 +73,7 @@ export default function PrimitiveEdit({
 
   // undoable command which handles primitive edits
   const editCommand = useCreateCommand(
-    KnownContexts.Modal,
+    KnownContexts.ModalAnnotate,
     `primitive-edit-${path}`,
     useCallback(() => {
       const oldValue = value;
