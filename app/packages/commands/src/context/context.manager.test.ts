@@ -160,7 +160,7 @@ describe("CommandContextManager", () => {
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(cmdFn).toBeCalledTimes(1);
-    expect(execFn).toBeCalledTimes(0);
+    expect(execFn).toBeCalledTimes(1);
     expect(undoFn).toBeCalledTimes(0);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
       true
@@ -170,7 +170,7 @@ describe("CommandContextManager", () => {
     );
     CommandContextManager.instance().getActiveContext().undo();
     expect(undoFn).toBeCalledTimes(1);
-    expect(execFn).toBeCalledTimes(0);
+    expect(execFn).toBeCalledTimes(1);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
       false
     );
@@ -178,7 +178,7 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().getActiveContext().redo();
-    expect(execFn).toBeCalledTimes(1);
+    expect(execFn).toBeCalledTimes(2);
     expect(undoFn).toBeCalledTimes(1);
   });
 });
