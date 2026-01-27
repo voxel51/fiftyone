@@ -265,7 +265,9 @@ class CreateAndActivateField(foo.Operator):
             # Add any custom attribute fields to data schema
             new_attributes = label_schema_config.get("new_attributes")
             if new_attributes:
-                foa.add_new_attributes(ctx.dataset, field_name, new_attributes)
+                foau.add_new_attributes(
+                    ctx.dataset, field_name, new_attributes
+                )
 
             # Build label schema from frontend config
             # Frontend sends: attributes, classes, component
@@ -281,7 +283,7 @@ class CreateAndActivateField(foo.Operator):
             label_schema = {
                 "type": field_type,
                 "component": component,
-                "attributes": label_schema_config.get("attributes", {}),
+                "attributes": label_schema_config.get("attributes", []),
                 # omit empty classes to pass validation
                 **({"classes": classes} if classes else {}),
             }

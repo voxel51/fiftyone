@@ -481,6 +481,21 @@ def _validate_attributes(collection, field_name, class_name, attributes):
             f"'attributes' setting for field '{field_name}' must be a list"
         )
 
+    # Check for duplicate attribute names
+    names = [a.get(foac.NAME) for a in attributes if isinstance(a, dict)]
+    seen = set()
+    for name in names:
+        if name in seen:
+            raise ValidationErrors(
+                f"invalid attribute(s) for field '{field_name}'",
+                [
+                    ValueError(
+                        f"duplicate attribute name '{name}' for field '{field_name}'"
+                    )
+                ],
+            )
+        seen.add(name)
+
     field: fof.EmbeddedDocumentField = collection.get_field(field_name)
     path = field_name
     if issubclass(field.document_type, fol._HasLabelList):
