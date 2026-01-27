@@ -11,7 +11,7 @@ import {
 import { KeyManager, KeyMatchState } from "../keys";
 import { CommandRegistry } from "../registry/CommandRegistry";
 import { Command, CommandFunction } from "../types";
-import { isUndoable } from "../utils";
+import { isAction } from "../utils";
 
 /**
  * Represents a scoped execution environment consisting of
@@ -324,9 +324,15 @@ export class CommandContext {
     }
     if (resolved) {
       const result = resolved.execute();
-      if (result && isUndoable(result)) {
-        this.actions.push(result as Undoable);
+
+      if (result && isAction(result)) {
+        try {
+          this.actions.execute(result);
+        } catch (err) {
+          console.error("Error executing action", err);
+        }
       }
+
       return true;
     }
     console.error(
