@@ -1,4 +1,8 @@
-import { CenteredStack, LoadingSpinner } from "@fiftyone/components";
+import {
+  CenteredStack,
+  LoadingSpinner,
+  scrollable,
+} from "@fiftyone/components";
 import { Text, TextColor } from "@voxel51/voodo";
 import { CodeView } from "../../../../../../plugins/SchemaIO/components";
 import { ContentArea } from "../styled";
@@ -26,6 +30,7 @@ const JSONEditor = ({
 
   return (
     <ContentArea
+      className={scrollable}
       style={errors ? { border: "1px solid rgba(212, 64, 64, 0.4)" } : {}}
     >
       <CodeView
