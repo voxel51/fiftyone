@@ -1,9 +1,7 @@
 import { spawn } from "child_process";
 import dotenv from "dotenv";
-import fs from "fs";
-import os from "os";
-import path from "path";
 import { dedentPythonCode } from "src/oss/utils/dedent";
+import { writeToTmpFile } from "src/oss/utils/fs";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 
@@ -25,9 +23,7 @@ export class PythonRunner {
 
   public async exec(sourceCode: string) {
     const dedentedSourceCode = dedentPythonCode(sourceCode);
-    const randomFileName = Math.random().toString(36).substring(8);
-    const sourceFilePath = path.join(os.tmpdir(), `${randomFileName}.py`);
-    fs.writeFileSync(sourceFilePath, dedentedSourceCode, "utf-8");
+    const sourceFilePath = writeToTmpFile(dedentedSourceCode, "py");
 
     const proc = spawn(this.pythonCommandGenerator([sourceFilePath]), {
       shell: true,
