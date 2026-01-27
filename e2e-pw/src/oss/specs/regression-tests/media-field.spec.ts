@@ -85,10 +85,6 @@ test.describe.serial("media field", () => {
   });
 
   test("modal media field", async ({ grid, fiftyoneLoader, modal, page }) => {
-    test.skip(
-      true,
-      "TODO: FIX ME. MODAL SCREENSHOT COMPARISON IS OFF BY ONE-PIXEL"
-    );
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
@@ -211,6 +207,7 @@ test.describe.serial("media field keyboard navigation", () => {
     await modal.waitForSampleLoadDomAttribute();
     await page.keyboard.press("PageDown");
     await modal.waitForSampleLoadDomAttribute();
+    await modal.hideControls();
 
     const afterCycleScreenshot = await modal.looker.screenshot();
 
