@@ -112,6 +112,14 @@ const GUIContent = ({
     [config, attributes, onConfigChange]
   );
 
+  const handleAttributeOrderChange = useCallback(
+    (newOrder: AttributeConfig[]) => {
+      if (!config) return;
+      onConfigChange?.({ ...config, attributes: newOrder });
+    },
+    [config, onConfigChange]
+  );
+
   // Primitive field types show a different UI
   if (isPrimitive && fType) {
     return (
@@ -168,6 +176,7 @@ const GUIContent = ({
         onAddAttribute={handleAddAttribute}
         onEditAttribute={handleEditAttribute}
         onDeleteAttribute={handleDeleteAttribute}
+        onOrderChange={handleAttributeOrderChange}
       />
     </ListContainer>
   );
