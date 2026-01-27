@@ -5,7 +5,7 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 import { useAtom, useAtomValue } from "jotai";
@@ -100,30 +100,33 @@ export default function Position({ readOnly = false }: PositionProps) {
   useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
   useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
-  const schema = {
-    type: "object",
-    view: {
-      component: "ObjectView",
-    },
-    properties: {
-      position: {
-        type: "object",
-        view: createStack(),
-        properties: {
-          ...createInput("x", readOnly),
-          ...createInput("y", readOnly),
+  const schema = useMemo(
+    () => ({
+      type: "object",
+      view: {
+        component: "ObjectView",
+      },
+      properties: {
+        position: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("x", readOnly),
+            ...createInput("y", readOnly),
+          },
+        },
+        dimensions: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("width", readOnly),
+            ...createInput("height", readOnly),
+          },
         },
       },
-      dimensions: {
-        type: "object",
-        view: createStack(),
-        properties: {
-          ...createInput("width", readOnly),
-          ...createInput("height", readOnly),
-        },
-      },
-    },
-  };
+    }),
+    [readOnly]
+  );
 
   return (
     <div style={{ width: "100%" }}>
