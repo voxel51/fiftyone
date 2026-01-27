@@ -6,7 +6,7 @@ import {
   ANNOTATION_POLYLINE,
 } from "@fiftyone/looker-3d/src/constants";
 import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
-import { is3DDataset } from "@fiftyone/state";
+import { is3DDataset, isPatchesView } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -132,9 +132,21 @@ const Classification = () => {
 
 const Detection = () => {
   const create = useCreate(DETECTION);
+  const isPatchView = useRecoilValue(isPatchesView);
+
   return (
-    <Tooltip placement="top-center" text="Create new detection">
-      <Square onClick={create}>
+    <Tooltip
+      placement="top-center"
+      text={
+        isPatchView
+          ? "Creating detections in a patches view is not supported"
+          : "Create new detection"
+      }
+    >
+      <Square
+        onClick={isPatchView ? undefined : create}
+        className={isPatchView ? "disabled" : ""}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"

@@ -1,6 +1,7 @@
 import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { useModalSample } from "@fiftyone/state";
+import { isGeneratedView, useModalSample } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
 import { usePatchSample } from "./usePatchSample";
 import { handleLabelPersistence, type LabelPersistenceArgs } from "../util";
 import { LabelProxy } from "../deltas";
@@ -11,12 +12,17 @@ import { LabelProxy } from "../deltas";
  * @param sample Sample against which to apply label update
  * @param applyPatch Function which handles the patch operation
  * @param opType Operation type
+ * @param isGenerated Whether this is from a generated view
  */
 const useLabelPersistenceWith = ({
   sample,
   applyPatch,
   opType,
-}: Pick<LabelPersistenceArgs, "sample" | "applyPatch" | "opType">) => {
+  isGenerated,
+}: Pick<
+  LabelPersistenceArgs,
+  "sample" | "applyPatch" | "opType" | "isGenerated"
+>) => {
   return useCallback(
     (annotationLabel: LabelProxy, schema: Field): Promise<boolean> => {
       return handleLabelPersistence({
@@ -25,9 +31,10 @@ const useLabelPersistenceWith = ({
         annotationLabel,
         schema,
         opType,
+        isGenerated,
       });
     },
-    [applyPatch, opType, sample]
+    [applyPatch, isGenerated, opType, sample]
   );
 };
 
@@ -38,10 +45,13 @@ export const useUpsertLabel = (): ((
   annotationLabel: LabelProxy,
   schema: Field
 ) => Promise<boolean>) => {
+  const isGenerated = useRecoilValue(isGeneratedView);
+
   return useLabelPersistenceWith({
     sample: useModalSample()?.sample,
     applyPatch: usePatchSample(),
     opType: "mutate",
+    isGenerated,
   });
 };
 
@@ -53,9 +63,12 @@ export const useDeleteLabel = (): ((
   annotationLabel: LabelProxy,
   schema: Field
 ) => Promise<boolean>) => {
+  const isGenerated = useRecoilValue(isGeneratedView);
+
   return useLabelPersistenceWith({
     sample: useModalSample()?.sample,
     applyPatch: usePatchSample(),
     opType: "delete",
+    isGenerated,
   });
 };
