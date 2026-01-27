@@ -7,8 +7,10 @@ import type {
 import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
+import { getDefaultStore } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./Edit/state";
+import { labelSchemaData } from "./state";
 import { useAddAnnotationLabel3dPolyline } from "./useAddAnnotationLabel3dPolyline";
 
 export const useAddAnnotationLabel = () => {
@@ -37,13 +39,20 @@ export const useAddAnnotationLabel = () => {
       if (type === DETECTION) {
         const label = data as BoundingBoxOptions["label"];
         const boundingBox = label?.bounding_box;
+
+        // Check if field is read-only
+        const store = getDefaultStore();
+        const fieldSchema = store.get(labelSchemaData(field));
+        const isReadOnly = !!fieldSchema?.read_only;
+
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
         >("bounding-box", {
           field,
           id: data._id,
-          draggable: true,
+          draggable: !isReadOnly,
+          resizeable: !isReadOnly,
           selectable: true,
           label,
           relativeBounds: {

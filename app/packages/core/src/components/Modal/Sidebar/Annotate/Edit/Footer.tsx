@@ -11,17 +11,25 @@ import useSave, { isSavingAtom } from "./useSave";
 import { Stack } from "@mui/material";
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 
-const SaveFooter = () => {
+export interface FooterProps {
+  readOnly?: boolean;
+}
+
+const SaveFooter = ({ readOnly = false }: FooterProps) => {
   const { onExit: onExitConfirm } = useContext(ConfirmationContext);
   const onSave = useSave();
   const onDiscard = useExit();
   const showCancel = useAtomValue(isNew);
   const changes = useAtomValue(hasChanges);
   const saving = useAtomValue(isSavingAtom);
+
   const deleteCmd = useCommand(
     KnownCommands.ModalDeleteAnnotation,
     KnownContexts.Modal
   );
+
+  if (readOnly) return null;
+
   return (
     <>
       <Stack direction="row" spacing={1}>
@@ -70,12 +78,12 @@ const CancelFooter = () => {
   return <Button onClick={onExit}>Cancel</Button>;
 };
 
-export default function Footer() {
+export default function Footer({ readOnly = false }: FooterProps) {
   const field = useAtomValue(currentField);
 
   return (
     <Row style={{ flexDirection: "row-reverse" }}>
-      {!field ? <CancelFooter /> : <SaveFooter />}
+      {!field ? <CancelFooter /> : <SaveFooter readOnly={readOnly} />}
     </Row>
   );
 }

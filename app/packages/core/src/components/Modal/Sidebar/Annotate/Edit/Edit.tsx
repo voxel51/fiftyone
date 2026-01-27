@@ -1,7 +1,7 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -15,8 +15,13 @@ import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
+import {
+  currentField,
+  currentFieldIsReadOnlyAtom,
+  currentOverlay,
+  currentType,
+} from "./state";
 import PrimitiveWrapper from "./PrimitiveWrapper";
-import { currentField, currentOverlay, currentType } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
 import useSave from "./useSave";
@@ -54,6 +59,7 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
@@ -86,6 +92,15 @@ export default function Edit() {
     clear();
     exit();
   }, useSave());
+
+  // Update overlay draggable/resizeable based on read-only state
+  useEffect(() => {
+    if (!overlay) return;
+
+    overlay.setDraggable?.(!isReadOnly);
+    overlay.setResizeable?.(!isReadOnly);
+    overlay.markDirty?.();
+  }, [overlay, isReadOnly]);
 
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
@@ -125,12 +140,12 @@ export default function Edit() {
           <Id />
           {!primitiveEditingActive && <Field />}
           {primitiveEditingActive && <PrimitiveWrapper />}
-          {type === DETECTION && overlay && !is3dDetection && <Position />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d />}
+          {type === DETECTION && overlay && !is3dDetection && <Position readOnly={isReadOnly} />}
+          {type === DETECTION && overlay && is3dDetection && <Position3d readOnly={isReadOnly} />}
           {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema />}
+          {field && <AnnotationSchema readOnly={isReadOnly} />}
         </Content>
-        <Footer />
+        <Footer readOnly={isReadOnly} />
       </ContentContainer>
     </Confirmation>
   );

@@ -15,7 +15,12 @@ import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { current, currentOverlay, hasChanges, savedLabel } from "./state";
+import {
+  current,
+  currentOverlay,
+  hasChanges,
+  savedLabel,
+} from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit(revertLabel = true) {
@@ -131,6 +136,7 @@ export default function useExit(revertLabel = true) {
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
+    hasChanged,
+    setActivePrimitive,
   ]);
 }

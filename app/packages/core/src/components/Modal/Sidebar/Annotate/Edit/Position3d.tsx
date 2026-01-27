@@ -49,7 +49,11 @@ const hasValidBounds = (coordinates: Coordinates3d): boolean => {
   );
 };
 
-export default function Position3d() {
+export interface Position3dProps {
+  readOnly?: boolean;
+}
+
+export default function Position3d({ readOnly = false }: Position3dProps) {
   const [state, setState] = useState<Coordinates3d>({
     position: {},
     dimensions: {},
@@ -140,7 +144,7 @@ export default function Position3d() {
 
   const handleUserInputChange = useCallback(
     (coordinateDelta: Partial<Coordinates3d>) => {
-      if (!data?._id) {
+      if (readOnly || !data?._id) {
         return;
       }
 
@@ -202,7 +206,7 @@ export default function Position3d() {
         });
       }
     },
-    [data, state, overlay, eventBus]
+    [data, state, overlay, eventBus, readOnly]
   );
 
   return (
@@ -226,6 +230,7 @@ export default function Position3d() {
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -242,6 +247,7 @@ export default function Position3d() {
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -258,6 +264,7 @@ export default function Position3d() {
                 });
               }}
               size="small"
+              disabled={readOnly}
             />
           }
         />
@@ -283,6 +290,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -300,6 +308,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -317,6 +326,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.1 }}
+              disabled={readOnly}
             />
           }
         />
@@ -342,6 +352,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />
@@ -359,6 +370,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />
@@ -376,6 +388,7 @@ export default function Position3d() {
               }}
               size="small"
               inputProps={{ step: 0.01 }}
+              disabled={readOnly}
             />
           }
         />

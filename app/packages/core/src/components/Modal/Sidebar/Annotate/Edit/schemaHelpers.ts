@@ -10,6 +10,7 @@ export interface PrimitiveSchema {
   choices?: unknown[];
   values?: string[];
   range?: [number, number];
+  readOnly?: boolean;
 }
 
 const getLabel = (value?: unknown): string => {
@@ -22,6 +23,22 @@ const getLabel = (value?: unknown): string => {
   }
 
   return value as string;
+};
+
+/**
+ * Creates a disabled text input for read-only fields.
+ * For array values, the data should be formatted as comma-separated before passing to the component.
+ */
+export const createReadOnly = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "PrimitiveView",
+      label: name,
+      component: "PrimitiveView",
+      readOnly: true,
+    },
+  };
 };
 
 export const createInput = (
@@ -61,12 +78,8 @@ export const createSlider = (
     maxLabel?: string;
   }
 ): SchemaType => {
-  const {
-    bare = false,
-    labeled = true,
-    minLabel = "",
-    maxLabel = "",
-  } = options || {};
+  const { bare = false, labeled = true, minLabel = "", maxLabel = "" } =
+    options || {};
   return {
     type: "number",
     min: range[0],
@@ -197,6 +210,10 @@ export function generatePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
+  if (schema.readOnly) {
+    return createReadOnly(name);
+  }
+
   if (schema.type === "list<float>" || schema.type === "list<int>") {
     return createNumericList(name, schema?.values || []);
   }

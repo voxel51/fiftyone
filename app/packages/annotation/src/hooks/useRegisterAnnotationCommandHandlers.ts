@@ -99,7 +99,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
         // Get labelId for event tracking (only AnnotationLabels have _id)
         const labelId =
           labelProxy.type !== PRIMITIVE
-            ? (labelProxy.data as unknown)._id
+            ? (labelProxy.data as any)._id
             : undefined;
 
         try {

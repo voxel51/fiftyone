@@ -208,7 +208,11 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.isSelected() && style.strokeStyle) {
+    if (
+      this.isSelected() &&
+      style.strokeStyle &&
+      (this.isDraggable || this.isResizeable)
+    ) {
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
 
@@ -361,10 +365,22 @@ export class BoundingBoxOverlay
     if (!this.hasValidBounds()) return "crosshair";
     if (!this.isSelected()) return "pointer";
 
+    if (!this.isDraggable && !this.isResizeable) {
+      return "default";
+    }
+
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
 
     if (!resizeRegion) {
-      return this.moveStartPoint ? "grabbing" : "grab";
+      return this.isDraggable
+        ? this.moveStartPoint
+          ? "grabbing"
+          : "grab"
+        : "default";
+    }
+
+    if (!this.isResizeable) {
+      return "default";
     }
 
     switch (resizeRegion) {

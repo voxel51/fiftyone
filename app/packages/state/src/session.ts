@@ -39,6 +39,7 @@ export interface Session {
   canCreateNewField: { enabled: boolean; message?: string };
   canModifySidebarGroup: { enabled: boolean; message?: string };
   canTagSamplesOrLabels: { enabled: boolean; message?: string };
+  canEditLabels: { enabled: boolean; message?: string };
   colorScheme: ColorSchemeInput;
   fieldVisibilityStage?: State.FieldVisibilityStage;
   filters: State.Filters;
@@ -58,6 +59,7 @@ export const SESSION_DEFAULT: Session = {
   canEditWorkspaces: { enabled: true, message: undefined },
   canModifySidebarGroup: { enabled: true, message: undefined },
   canTagSamplesOrLabels: { enabled: true, message: undefined },
+  canEditLabels: { enabled: true, message: undefined },
   colorScheme: {
     colorPool: [],
     colorBy: "field",
@@ -88,6 +90,7 @@ type SetterKeys = keyof Omit<
   | "canEditWorkspaces"
   | "canModifySidebarGroup"
   | "canTagSamplesOrLabels"
+  | "canEditLabels"
   | "readOnly"
 >;
 type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
@@ -204,6 +207,7 @@ export function sessionAtom<K extends keyof Session>(
         options.key === "canEditWorkspaces" ||
         options.key === "canModifySidebarGroup" ||
         options.key === "canTagSamplesOrLabels" ||
+        options.key === "canEditLabels" ||
         options.key === "readOnly" ||
         typeof newValue === "boolean"
       ) {
