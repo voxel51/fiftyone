@@ -20,7 +20,7 @@ import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ItemLeft } from "./Components";
+import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
@@ -30,10 +30,16 @@ const ActionsDiv = styled.div`
   align-items: center;
   color: ${({ theme }) => theme.text.secondary};
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 0.25rem 1rem;
   width: 100%;
   max-width: 100%;
+`;
+
+const Row = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 `;
 
 const Container = styled.div<{ $active?: boolean }>`
@@ -83,7 +89,8 @@ const Container = styled.div<{ $active?: boolean }>`
 
 export const Round = styled(Container)`
   border-radius: 1.25rem;
-
+  width: 2rem;
+  height: 2rem;
   &:hover {
     color: ${({ theme }) => theme.text.primary};
   }
@@ -104,7 +111,7 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.25rem;
+  border-radius: 0.1rem;
 `;
 
 const Classification = () => {
@@ -314,19 +321,31 @@ const Actions = () => {
 
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-      <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Classification />
-        {is3D ? (
-          <>
-            <ThreeDCuboids />
-            <ThreeDPolylines />
-          </>
-        ) : (
-          <Detection />
-        )}
-      </ItemLeft>
-
-      {canManage && <Schema />}
+      <Row>
+        <ItemLeft style={{ columnGap: "0.1rem" }}>
+          <Classification />
+          {is3D ? (
+            <>
+              <ThreeDCuboids />
+              <ThreeDPolylines />
+            </>
+          ) : (
+            <Detection />
+          )}
+        </ItemLeft>
+        <ItemRight style={{ columnGap: "0.1rem" }}>
+          <Undo />
+          <Redo />
+        </ItemRight>
+      </Row>
+      {canManage && (
+        <Row style={{ fontSize: "0.80rem" }}>
+          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+          <ItemRight style={{ width: "50%" }}>
+            <Schema />
+          </ItemRight>
+        </Row>
+      )}
     </ActionsDiv>
   );
 };
