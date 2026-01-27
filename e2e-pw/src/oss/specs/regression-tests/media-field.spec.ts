@@ -88,8 +88,7 @@ test.describe.serial("media field", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    // move off of looker to hide controls
-    await page.mouse.move(0, 0);
+    await modal.hideControls();
     await expect(modal.looker).toHaveScreenshot("modal-media-field.png");
   });
 });
@@ -202,17 +201,16 @@ test.describe.serial("media field keyboard navigation", () => {
     const initialScreenshot = await modal.looker.screenshot();
 
     // Cycle through all fields
-    await page.keyboard.press("PageDown");
-    await modal.waitForSampleLoadDomAttribute();
-    await page.keyboard.press("PageDown");
-    await modal.waitForSampleLoadDomAttribute();
-    await page.keyboard.press("PageDown");
-    await modal.waitForSampleLoadDomAttribute();
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("PageDown");
+      await modal.waitForSampleLoadDomAttribute();
+    }
     await modal.hideControls();
 
-    const afterCycleScreenshot = await modal.looker.screenshot();
-
-    // Should be the same
-    expect(initialScreenshot).toEqual(afterCycleScreenshot);
+    // Use retry assertion to wait for render to stabilize
+    await expect(async () => {
+      const afterCycleScreenshot = await modal.looker.screenshot();
+      expect(initialScreenshot).toEqual(afterCycleScreenshot);
+    }).toPass({ timeout: 5000 });
   });
 });
