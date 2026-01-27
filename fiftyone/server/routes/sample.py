@@ -18,6 +18,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 
 import fiftyone as fo
+import fiftyone.core.utils as fou
 from fiftyone.server import decorators, utils
 from fiftyone.server.utils.datasets import (
     get_dataset,
@@ -111,7 +112,7 @@ def get_if_last_modified_at(
     return if_last_modified_at
 
 
-def get_sample(
+async def get_sample(
     dataset_id: str,
     sample_id: str,
     if_last_modified_at: Union[datetime.datetime, None],
@@ -130,9 +131,8 @@ def get_sample(
     Returns:
         The sample
     """
-
-    dataset = get_dataset(dataset_id)
-    sample = get_sample_from_dataset(dataset, sample_id)
+    dataset = await get_dataset(dataset_id)
+    sample = await get_sample_from_dataset(dataset, sample_id)
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
@@ -308,7 +308,7 @@ def ensure_sample_field(sample: fo.Sample, field: str):
         current = current[part]
 
 
-def save_sample(
+async def save_sample(
     sample: fo.Sample, if_last_modified_at: Union[datetime.datetime, None]
 ) -> str:
     """Saves a sample to the database.
@@ -321,43 +321,50 @@ def save_sample(
         The ETag of the saved sample
     """
 
-    if if_last_modified_at is not None:
-        d = sample.to_mongo_dict(include_id=True)
-        d["last_modified_at"] = datetime.datetime.now(datetime.timezone.utc)
+    def run():
+        if if_last_modified_at is not None:
+            d = sample.to_mongo_dict(include_id=True)
+            d["last_modified_at"] = datetime.datetime.now(
+                datetime.timezone.utc
+            )
 
-        # pylint:disable-next=protected-access
-        update_result = sample.dataset._sample_collection.replace_one(
-            {
-                # pylint:disable-next=protected-access
-                "_id": sample._id,
-                "last_modified_at": {"$eq": if_last_modified_at},
-            },
-            d,
-        )
+            # pylint:disable-next=protected-access
+            update_result = sample.dataset._sample_collection.replace_one(
+                {
+                    # pylint:disable-next=protected-access
+                    "_id": sample._id,
+                    "last_modified_at": {"$eq": if_last_modified_at},
+                },
+                d,
+            )
 
-        if update_result.matched_count == 0:
+            if update_result.matched_count == 0:
+                logger.debug(
+                    "If-Match condition failed for sample %s: expected %s",
+                    sample.id,
+                    if_last_modified_at,
+                )
+                raise HTTPException(
+                    status_code=412, detail="If-Match condition failed"
+                )
+        else:
+            sample.save()
+
+        # Ensure last_modified_at reflects persisted state before computing
+        # ETag
+        try:
+            sample.reload(hard=True)
+        except Exception as e:
+            # best-effort; still return response
             logger.debug(
-                "If-Match condition failed for sample %s: expected %s",
+                "Could not reload sample %s after save due to: %s",
                 sample.id,
-                if_last_modified_at,
+                e,
             )
-            raise HTTPException(
-                status_code=412, detail="If-Match condition failed"
-            )
-    else:
-        sample.save()
 
-    # Ensure last_modified_at reflects persisted state before computing
-    # ETag
-    try:
-        sample.reload(hard=True)
-    except Exception as e:
-        # best-effort; still return response
-        logger.debug(
-            "Could not reload sample %s after save due to: %s", sample.id, e
-        )
+        return generate_sample_etag(sample)
 
-    return generate_sample_etag(sample)
+    return await fou.run_sync_task(run)
 
 
 def _handle_top_level_patch(
@@ -448,7 +455,7 @@ class Sample(HTTPEndpoint):
                 status_code=400, detail="Invalid If-Match header"
             )
 
-        sample = get_sample(dataset_id, sample_id, if_last_modified_at)
+        sample = await get_sample(dataset_id, sample_id, if_last_modified_at)
 
         content_type = request.headers.get("Content-Type", "")
         ctype = content_type.split(";", 1)[0].strip().lower()
@@ -461,7 +468,7 @@ class Sample(HTTPEndpoint):
                 status_code=415, detail=f"Unsupported Content-Type '{ctype}'"
             )
 
-        etag = save_sample(sample, if_last_modified_at)
+        etag = await save_sample(sample, if_last_modified_at)
 
         return utils.json.JSONResponse(
             utils.json.serialize(sample), headers={"ETag": etag}
@@ -555,7 +562,7 @@ class SampleField(HTTPEndpoint):
         logger.debug(
             "Loading source sample %s from dataset %s", sample_id, dataset_id
         )
-        sample = get_sample(dataset_id, sample_id, source_if_match)
+        sample = await get_sample(dataset_id, sample_id, source_if_match)
 
         # Get the field list from the source sample
         try:
@@ -607,12 +614,12 @@ class SampleField(HTTPEndpoint):
             is_delete = True
 
         # Save the source sample
-        etag = save_sample(sample, source_if_match)
+        etag = await save_sample(sample, source_if_match)
 
         if generated_dataset_name and generated_sample_id:
             # Sync changes to generated dataset
             try:
-                generated_sample = sync_to_generated_dataset(
+                generated_sample = await sync_to_generated_dataset(
                     generated_dataset_name,
                     generated_sample_id,
                     path,

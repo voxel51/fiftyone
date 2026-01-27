@@ -15,7 +15,8 @@ from starlette.requests import Request
 
 import fiftyone as fo
 import fiftyone.core.media as fom
-import fiftyone.core.odm.utils as fou
+import fiftyone.core.odm.utils as fodmu
+import fiftyone.core.utils as fou
 from fiftyone.server import utils
 
 logger = logging.getLogger(__name__)
@@ -170,7 +171,7 @@ def _extract_urls(data: Dict[str, Any], prefix: str = "") -> Dict[str, str]:
     return {field_path: filepath}
 
 
-def get_group(
+async def get_group(
     dataset_id: str,
     group_id: str,
     slice_name: Optional[str] = None,
@@ -188,41 +189,45 @@ def get_group(
     Returns:
         A dictionary mapping slice names to Sample objects
     """
-    try:
-        dataset = fou.load_dataset(id=dataset_id)
-    except ValueError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Dataset '{dataset_id}' not found",
-        ) from err
 
-    if dataset.media_type != fom.GROUP:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Dataset '{dataset_id}' is not a grouped dataset",
-        )
+    def run():
+        try:
+            dataset = fodmu.load_dataset(id=dataset_id)
+        except ValueError as err:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Dataset '{dataset_id}' not found",
+            ) from err
 
-    try:
-        # First get the group without filtering to check if it exists
-        group = dataset.get_group(group_id, group_slices=None)
-    except KeyError as err:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Group '{group_id}' not found in dataset '{dataset_id}'",
-        ) from err
+        if dataset.media_type != fom.GROUP:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Dataset '{dataset_id}' is not a grouped dataset",
+            )
 
-    # Check if the requested slice exists
-    if slice_name and slice_name not in group:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Slice '{slice_name}' not found in group '{group_id}'",
-        )
+        try:
+            # First get the group without filtering to check if it exists
+            group = dataset.get_group(group_id, group_slices=None)
+        except KeyError as err:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Group '{group_id}' not found in dataset '{dataset_id}'",
+            ) from err
 
-    # Filter to specific slice if requested
-    if slice_name:
-        group = {slice_name: group[slice_name]}
+        # Check if the requested slice exists
+        if slice_name and slice_name not in group:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Slice '{slice_name}' not found in group '{group_id}'",
+            )
 
-    return group
+        # Filter to specific slice if requested
+        if slice_name:
+            return {slice_name: group[slice_name]}
+
+        return group
+
+    return await fou.run_sync_task(run)
 
 
 class Groups(HTTPEndpoint):
@@ -267,7 +272,7 @@ class Groups(HTTPEndpoint):
             request.query_params.get("resolve_urls", "false").lower() == "true"
         )
 
-        group = get_group(dataset_id, group_id, slice_name)
+        group = await get_group(dataset_id, group_id, slice_name)
 
         # Filter by media type if requested
         if media_types:

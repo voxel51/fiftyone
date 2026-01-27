@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
+import fiftyone.core.utils as fou
 from fiftyone.server import utils
 from fiftyone.server.utils.datasets import get_dataset, get_sample_from_dataset
 
@@ -43,10 +44,13 @@ class CameraIntrinsics(HTTPEndpoint):
             dataset_id,
         )
 
-        dataset = get_dataset(dataset_id)
-        sample = get_sample_from_dataset(dataset, sample_id)
+        dataset = await get_dataset(dataset_id)
+        sample = await get_sample_from_dataset(dataset, sample_id)
 
-        intrinsics = dataset.resolve_intrinsics(sample)
+        def run():
+            return dataset.resolve_intrinsics(sample)
+
+        intrinsics = await fou.run_sync_task(run)
 
         if intrinsics is None:
             return utils.json.JSONResponse({"intrinsics": None})
@@ -93,16 +97,19 @@ class StaticTransforms(HTTPEndpoint):
             chain_via,
         )
 
-        dataset = get_dataset(dataset_id)
-        sample = get_sample_from_dataset(dataset, sample_id)
+        dataset = await get_dataset(dataset_id)
+        sample = await get_sample_from_dataset(dataset, sample_id)
 
-        try:
-            transform = dataset.resolve_transformation(
+        def run():
+            return dataset.resolve_transformation(
                 sample,
                 source_frame=source_frame,
                 target_frame=target_frame,
                 chain_via=chain_via,
             )
+
+        try:
+            transform = await fou.run_sync_task(run)
         except ValueError as err:
             # ValueError can occur when chain_via frames don't chain
             raise HTTPException(status_code=400, detail=str(err)) from err
@@ -168,25 +175,30 @@ class BatchCameraIntrinsics(HTTPEndpoint):
             dataset_id,
         )
 
-        dataset = get_dataset(dataset_id)
+        dataset = await get_dataset(dataset_id)
 
-        results = {}
-        for sample_id in sample_ids:
-            try:
-                sample = dataset[sample_id]
-            except KeyError:
-                results[sample_id] = {
-                    "error": f"Sample '{sample_id}' not found"
-                }
-                continue
+        def run():
+            results = {}
+            for sample_id in sample_ids:
+                try:
+                    sample = dataset[sample_id]
+                except KeyError:
+                    results[sample_id] = {
+                        "error": f"Sample '{sample_id}' not found"
+                    }
+                    continue
 
-            intrinsics = dataset.resolve_intrinsics(sample)
-            if intrinsics is None:
-                results[sample_id] = {"intrinsics": None}
-            else:
-                results[sample_id] = {
-                    "intrinsics": utils.json.serialize(intrinsics)
-                }
+                intrinsics = dataset.resolve_intrinsics(sample)
+                if intrinsics is None:
+                    results[sample_id] = {"intrinsics": None}
+                else:
+                    results[sample_id] = {
+                        "intrinsics": utils.json.serialize(intrinsics)
+                    }
+
+            return results
+
+        results = await fou.run_sync_task(run)
 
         return utils.json.JSONResponse({"results": results})
 
@@ -229,36 +241,41 @@ class BatchStaticTransforms(HTTPEndpoint):
             chain_via,
         )
 
-        dataset = get_dataset(dataset_id)
+        dataset = await get_dataset(dataset_id)
 
-        results = {}
-        for sample_id in sample_ids:
-            try:
-                sample = dataset[sample_id]
-            except KeyError:
-                results[sample_id] = {
-                    "error": f"Sample '{sample_id}' not found"
-                }
-                continue
+        def run():
+            results = {}
+            for sample_id in sample_ids:
+                try:
+                    sample = dataset[sample_id]
+                except KeyError:
+                    results[sample_id] = {
+                        "error": f"Sample '{sample_id}' not found"
+                    }
+                    continue
 
-            try:
-                transform = dataset.resolve_transformation(
-                    sample,
-                    source_frame=source_frame,
-                    target_frame=target_frame,
-                    chain_via=chain_via,
-                )
-            except ValueError as err:
-                # ValueError can occur when chain_via frames don't chain
-                results[sample_id] = {"error": str(err)}
-                continue
+                try:
+                    transform = dataset.resolve_transformation(
+                        sample,
+                        source_frame=source_frame,
+                        target_frame=target_frame,
+                        chain_via=chain_via,
+                    )
+                except ValueError as err:
+                    # ValueError can occur when chain_via frames don't chain
+                    results[sample_id] = {"error": str(err)}
+                    continue
 
-            if transform is None:
-                results[sample_id] = {"transform": None}
-            else:
-                results[sample_id] = {
-                    "transform": utils.json.serialize(transform)
-                }
+                if transform is None:
+                    results[sample_id] = {"transform": None}
+                else:
+                    results[sample_id] = {
+                        "transform": utils.json.serialize(transform)
+                    }
+
+            return results
+
+        results = await fou.run_sync_task(run)
 
         return utils.json.JSONResponse({"results": results})
 
