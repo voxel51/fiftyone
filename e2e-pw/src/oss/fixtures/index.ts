@@ -2,7 +2,8 @@ import { test as base } from "@playwright/test";
 import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
-import { FoWebServer } from "./foServer";
+import { AnnotateSDK } from "./annotate-sdk";
+import { FoWebServer } from "./fo-server";
 import { OssLoader } from "./loader";
 
 // note: this difference between "with" and "without" is only for type safety
@@ -13,6 +14,7 @@ export type CustomFixturesWithoutPage = {
   fiftyoneServerPort: number;
   mediaFactory: typeof MediaFactory;
   foWebServer: FoWebServer;
+  annotateSDK: AnnotateSDK;
 };
 
 // these fixtures have access to the {page} fixture
@@ -52,6 +54,12 @@ const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   foWebServer: [
     async ({ fiftyoneServerPort }, use) => {
       await use(new FoWebServer(fiftyoneServerPort));
+    },
+    { scope: "worker" },
+  ],
+  annotateSDK: [
+    async ({}, use) => {
+      await use(new AnnotateSDK());
     },
     { scope: "worker" },
   ],
