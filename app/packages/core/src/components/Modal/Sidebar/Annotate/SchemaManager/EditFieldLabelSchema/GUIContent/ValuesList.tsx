@@ -14,7 +14,11 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import React, { useState } from "react";
-import { createRichListItem, type RichListItem } from "../../utils";
+import {
+  createRichListItem,
+  validateSingleValue,
+  type RichListItem,
+} from "../../utils";
 
 interface ValuesListProps {
   values: string[];
@@ -38,20 +42,14 @@ const ValuesList = ({
   const [newValue, setNewValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
 
-  const validateValue = (val: string): string | null => {
-    if (!val.trim()) return null;
-    if (isNumeric) {
-      const num = parseFloat(val);
-      if (isNaN(num)) return "Must be a number";
-      if (isInteger && !Number.isInteger(num)) return "Must be an integer";
-    }
-    if (values.includes(val.trim())) return "Value already exists";
-    return null;
-  };
-
   const handleAddValue = () => {
     const trimmed = newValue.trim();
-    const validationError = validateValue(trimmed);
+    const validationError = validateSingleValue(
+      trimmed,
+      values,
+      isNumeric,
+      isInteger
+    );
     if (validationError) {
       setInputError(validationError);
       return;

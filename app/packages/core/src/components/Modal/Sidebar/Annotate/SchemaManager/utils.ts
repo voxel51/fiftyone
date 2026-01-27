@@ -83,6 +83,43 @@ export interface AttributeFormData {
 }
 
 // =============================================================================
+// Schema Type Guards
+// =============================================================================
+
+/** Shape of an attribute item in the array format */
+export interface AttributeItem {
+  name: string;
+  [key: string]: unknown;
+}
+
+/** Shape of a label schema with optional attributes (array format) */
+export interface LabelSchema {
+  attributes?: AttributeItem[];
+  [key: string]: unknown;
+}
+
+/** Type guard for an attribute item with a 'name' field */
+export const isNamedAttribute = (attr: unknown): attr is AttributeItem =>
+  !!attr && typeof attr === "object" && "name" in attr;
+
+/** Type guard for a schema object with an 'attributes' array */
+export const hasAttributes = (value: unknown): value is LabelSchema =>
+  !!value && typeof value === "object" && "attributes" in value;
+
+/**
+ * Safely extract attribute names from a schema value.
+ * Attributes are stored as an array of objects with 'name' field.
+ */
+export const getAttributeNames = (value: unknown): Set<string> => {
+  if (hasAttributes(value) && Array.isArray(value.attributes)) {
+    return new Set(
+      value.attributes.filter(isNamedAttribute).map((attr) => attr.name)
+    );
+  }
+  return new Set();
+};
+
+// =============================================================================
 // Utility Functions
 // =============================================================================
 
@@ -319,6 +356,167 @@ export interface AttributeFormErrors {
   default: string | null;
 }
 
+// =============================================================================
+// Shared Validation Functions
+// =============================================================================
+
+/**
+ * Validate that a values list is non-empty and contains valid entries.
+ * Used by both attribute forms and primitive field config.
+ */
+export const validateValues = (
+  values: string[],
+  isNumeric: boolean
+): string | null => {
+  if (values.length === 0) {
+    return "At least one value is required";
+  }
+  if (isNumeric) {
+    const invalid = values.find((v) => isNaN(parseFloat(v)));
+    if (invalid !== undefined) {
+      return "Values must be valid numbers";
+    }
+  }
+  return null;
+};
+
+/**
+ * Validate a single input value for a values list.
+ * Returns an error message or null if valid.
+ */
+export const validateSingleValue = (
+  value: string,
+  existingValues: string[],
+  isNumeric: boolean,
+  isInteger: boolean
+): string | null => {
+  if (!value.trim()) return null;
+  if (isNumeric) {
+    const num = parseFloat(value);
+    if (isNaN(num)) return "Must be a number";
+    if (isInteger && !Number.isInteger(num)) return "Must be an integer";
+  }
+  if (existingValues.includes(value.trim())) return "Value already exists";
+  return null;
+};
+
+/**
+ * Validate a range (min/max) for slider components.
+ */
+export const validateRange = (
+  range: { min: string; max: string } | null
+): string | null => {
+  if (!range || range.min === "" || range.max === "") {
+    return "Min and max are required";
+  }
+  const min = parseFloat(range.min);
+  const max = parseFloat(range.max);
+  if (isNaN(min) || isNaN(max)) {
+    return "Min and max must be valid numbers";
+  }
+  if (min >= max) {
+    return "Min must be less than max";
+  }
+  return null;
+};
+
+/**
+ * Parse an array of unknown values to numbers where possible.
+ */
+export const parseNumericValues = (vals: unknown[]): (string | number)[] =>
+  vals.map((v) => {
+    const num = parseFloat(String(v));
+    return isNaN(num) ? v : num;
+  }) as (string | number)[];
+
+/**
+ * Remove duplicate values by string key, preserving the last occurrence's type.
+ */
+export const deduplicateValues = (
+  vals: (string | number)[]
+): (string | number)[] => [
+  ...new Map(vals.map((v) => [String(v), v])).values(),
+];
+
+/**
+ * Validate a scalar default value.
+ */
+const validateScalarDefault = (
+  defaultValue: string,
+  isNumeric: boolean,
+  range: { min: string; max: string } | null,
+  rangeError: string | null,
+  values: string[],
+  valuesError: string | null,
+  needsRange: boolean,
+  needsValues: boolean
+): string | null => {
+  const defaultNum = parseFloat(defaultValue);
+
+  if (isNumeric && isNaN(defaultNum)) {
+    return "Default must be a valid number";
+  }
+
+  if (needsRange && range && !rangeError) {
+    const min = parseFloat(range.min);
+    const max = parseFloat(range.max);
+    if (defaultNum < min || defaultNum > max) {
+      return `Default must be between ${range.min} and ${range.max}`;
+    }
+  }
+
+  if (needsValues && values.length > 0 && !valuesError) {
+    if (!values.includes(defaultValue)) {
+      return "Default must be one of the provided values";
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Validate a list default value.
+ */
+const validateListDefault = (
+  listDefault: (string | number)[],
+  isNumeric: boolean,
+  isIntegerList: boolean,
+  values: string[],
+  valuesError: string | null,
+  needsValues: boolean
+): string | null => {
+  if (!listDefault || listDefault.length === 0) return null;
+
+  if (isNumeric) {
+    const invalidValue = listDefault.find((v) => {
+      const num = typeof v === "number" ? v : parseFloat(String(v));
+      return isNaN(num);
+    });
+    if (invalidValue !== undefined) {
+      return "All default values must be valid numbers";
+    }
+  }
+
+  if (isIntegerList) {
+    const nonIntegerValue = listDefault.find((v) => {
+      const num = typeof v === "number" ? v : parseFloat(String(v));
+      return !Number.isInteger(num);
+    });
+    if (nonIntegerValue !== undefined) {
+      return "All default values must be integers";
+    }
+  }
+
+  if (needsValues && values.length > 0 && !valuesError) {
+    const invalidDefault = listDefault.find((d) => !values.includes(String(d)));
+    if (invalidDefault !== undefined) {
+      return "All defaults must be from the provided values";
+    }
+  }
+
+  return null;
+};
+
 /**
  * Validate attribute form data and return field-specific errors.
  * Used for both UI display and canSave logic.
@@ -326,116 +524,46 @@ export interface AttributeFormErrors {
 export const getAttributeFormErrors = (
   data: AttributeFormData
 ): AttributeFormErrors => {
-  const errors: AttributeFormErrors = {
-    values: null,
-    range: null,
-    default: null,
-  };
-
   const isNumeric = NUMERIC_TYPES.includes(data.type);
   const needsValues = componentNeedsValues(data.component);
   const needsRange = isNumeric && componentNeedsRange(data.component);
-
-  // Values validation
-  if (needsValues && data.values.length === 0) {
-    errors.values = "At least one value is required";
-  } else if (needsValues && isNumeric) {
-    const invalid = data.values.find((v) => isNaN(parseFloat(v)));
-    if (invalid !== undefined) {
-      errors.values = "Values must be valid numbers";
-    }
-  }
-
-  // Range validation (for slider)
-  if (needsRange) {
-    if (!data.range || data.range.min === "" || data.range.max === "") {
-      errors.range = "Min and max are required";
-    } else {
-      const min = parseFloat(data.range.min);
-      const max = parseFloat(data.range.max);
-      if (isNaN(min) || isNaN(max)) {
-        errors.range = "Min and max must be valid numbers";
-      } else if (min >= max) {
-        errors.range = "Min must be less than max";
-      }
-    }
-  }
-
-  // Default validation (only if there's a default value)
-  if (data.default) {
-    const defaultNum = parseFloat(data.default);
-
-    // For numeric types, validate that default is a valid number
-    if (isNumeric && isNaN(defaultNum)) {
-      errors.default = "Default must be a valid number";
-    }
-
-    // Check against range (only if default is a valid number)
-    if (!errors.default && needsRange && data.range && !errors.range) {
-      const min = parseFloat(data.range.min);
-      const max = parseFloat(data.range.max);
-      if (defaultNum < min || defaultNum > max) {
-        errors.default = `Default must be between ${data.range.min} and ${data.range.max}`;
-      }
-    }
-
-    // Check against values
-    if (
-      !errors.default &&
-      needsValues &&
-      data.values.length > 0 &&
-      !errors.values
-    ) {
-      if (!data.values.includes(data.default)) {
-        errors.default = "Default must be one of the provided values";
-      }
-    }
-  }
-
-  // List default validation (for list types)
   const isListType = LIST_TYPES.includes(data.type);
-  const isIntegerListType = data.type === "list<int>";
 
-  if (isListType && data.listDefault && data.listDefault.length > 0) {
-    // For numeric list types, validate each value is a valid number
-    if (isNumeric) {
-      const invalidValue = data.listDefault.find((v) => {
-        const num = typeof v === "number" ? v : parseFloat(String(v));
-        return isNaN(num);
-      });
-      if (invalidValue !== undefined) {
-        errors.default = "All default values must be valid numbers";
-      }
-    }
+  const valuesError = needsValues
+    ? validateValues(data.values, isNumeric)
+    : null;
 
-    // For integer list types, validate values are integers (no decimals)
-    if (!errors.default && isIntegerListType) {
-      const nonIntegerValue = data.listDefault.find((v) => {
-        const num = typeof v === "number" ? v : parseFloat(String(v));
-        return !Number.isInteger(num);
-      });
-      if (nonIntegerValue !== undefined) {
-        errors.default = "All default values must be integers";
-      }
-    }
+  const rangeError = needsRange ? validateRange(data.range) : null;
 
-    // Check against values (for checkboxes/dropdown)
-    if (
-      !errors.default &&
-      needsValues &&
-      data.values.length > 0 &&
-      !errors.values
-    ) {
-      const invalidDefault = data.listDefault.find(
-        (d) => !data.values.includes(String(d))
-      );
-      if (invalidDefault !== undefined) {
-        errors.default = "All defaults must be from the provided values";
-      }
-    }
+  let defaultError: string | null = null;
+  if (data.default) {
+    defaultError = validateScalarDefault(
+      data.default,
+      isNumeric,
+      data.range,
+      rangeError,
+      data.values,
+      valuesError,
+      needsRange,
+      needsValues
+    );
+  }
+  if (!defaultError && isListType) {
+    defaultError = validateListDefault(
+      data.listDefault,
+      isNumeric,
+      data.type === "list<int>",
+      data.values,
+      valuesError,
+      needsValues
+    );
   }
 
-  return errors;
+  return {
+    values: valuesError,
+    range: rangeError,
+    default: defaultError,
+  };
 };
 
 /**

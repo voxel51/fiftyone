@@ -7,41 +7,12 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { currentField, labelSchemaData } from "../../state";
+import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 import { currentLabelSchema } from "../state";
 
 // =============================================================================
-// Types & Helpers
+// Helpers
 // =============================================================================
-
-/** Shape of an attribute in the array format */
-interface AttributeItem {
-  name: string;
-  [key: string]: unknown;
-}
-
-/** Shape of a label schema with optional attributes (array format) */
-interface LabelSchema {
-  attributes?: AttributeItem[];
-  [key: string]: unknown;
-}
-
-/**
- * Safely extract attribute names from a schema value.
- * Attributes are stored as an array of objects with 'name' field.
- */
-const getAttributeNames = (value: unknown): Set<string> => {
-  if (value && typeof value === "object" && "attributes" in value) {
-    const attrs = (value as LabelSchema).attributes;
-    if (Array.isArray(attrs)) {
-      return new Set(
-        attrs
-          .filter((attr) => attr && typeof attr === "object" && "name" in attr)
-          .map((attr) => attr.name)
-      );
-    }
-  }
-  return new Set();
-};
 
 /**
  * Extract new attributes from current schema that don't exist in saved or default.
@@ -57,16 +28,12 @@ const getNewAttributes = (
 
   const newAttributes: Record<string, unknown> = {};
 
-  if (current && typeof current === "object" && "attributes" in current) {
-    const attrs = (current as LabelSchema).attributes;
-    if (Array.isArray(attrs)) {
-      for (const attr of attrs) {
-        if (attr && typeof attr === "object" && "name" in attr) {
-          const { name, ...config } = attr;
-          // Attribute is new if it doesn't exist in saved or default schema
-          if (!savedNames.has(name) && !defaultNames.has(name)) {
-            newAttributes[name] = config;
-          }
+  if (hasAttributes(current) && Array.isArray(current.attributes)) {
+    for (const attr of current.attributes) {
+      if (isNamedAttribute(attr)) {
+        const { name, ...config } = attr;
+        if (!savedNames.has(name) && !defaultNames.has(name)) {
+          newAttributes[name] = config;
         }
       }
     }
