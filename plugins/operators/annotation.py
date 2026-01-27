@@ -309,7 +309,6 @@ class CreateAndActivateField(foo.Operator):
         ]
 
         ctx.dataset.save()
-        ctx.trigger("reload_dataset")
 
         return {
             "field_name": field_name,
