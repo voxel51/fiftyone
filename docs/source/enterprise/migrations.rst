@@ -102,7 +102,7 @@ Install the `fiftyone-migrator` package:
 
 
 Configuring the Enterprise Migration Tool
-___________________________________________
+_________________________________________
 
 The Enterprise Migration Tool requires the following environment variables to be
 defined where it is run:
@@ -123,11 +123,11 @@ data migration always carries a risk of introducing unintended modifications.
 
 The enterprise migration tool allows migrating each of the enterprise services:
 
-- `datasets` - Migrate core datasets; this is equivalent to the existing
-  `fiftyone migrate` command
-- `enterprise` - Migrate enterprise-specific dataset features
-- `cas` - Migrate the Centralized Authentication Service (CAS)
-- `hub` - Migrate the enterprise API
+-   `datasets` - Migrate core datasets; this is equivalent to the existing
+    `fiftyone migrate` command
+-   `enterprise` - Migrate enterprise-specific dataset features
+-   `cas` - Migrate the Centralized Authentication Service (CAS)
+-   `hub` - Migrate the enterprise API
 
 Each of these services can be selectively included or excluded from migration.
 
@@ -159,10 +159,11 @@ Reverting a Migration with the Enterprise Migration Tool
 ________________________________________________________
 
 Migrations done with the Enterprise Migration Tool are designed to be
-bidirectional. In the event that you need to revert a migration, simply 
+bidirectional. In the event that you need to revert a migration, simply
 provide the version which you want to restore.
 
 .. code-block:: shell
+
     # Migrate from v2.12.0 to v2.13.0
     fiftyone-migrator migrate 2.13.0
     
@@ -170,10 +171,8 @@ provide the version which you want to restore.
     # Migrate from v2.13.0 to v2.12.0
     fiftyone-migrator migrate 2.12.0
 
-
-
 Downgrading your deployment without the Enterprise Migration Tool
-__________________________________________________________________
+_________________________________________________________________
 
 **For migrations done prior to FiftyOne Enterprise v2.15.0 and the Enterprise Migration Tool**
 
