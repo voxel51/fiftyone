@@ -27,9 +27,9 @@ import {
   fieldType,
 } from "../state";
 import { Item } from "./Components";
+import SecondaryText from "./SecondaryText";
 import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
 import { GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Edit action button for field rows
@@ -107,10 +107,12 @@ const ActiveFieldsSection = () => {
           canDrag: true,
           "data-cy": `field-row-${path}`,
           primaryContent: path,
-          secondaryContent: buildFieldSecondaryContent(
-            fieldTypes[path],
-            fieldAttrCounts[path],
-            false
+          secondaryContent: (
+            <SecondaryText
+              fieldType={fieldTypes[path] ?? ""}
+              attrCount={fieldAttrCounts[path]}
+              isSystemReadOnly={false}
+            />
           ),
           actions: (
             <span className="flex items-center gap-2">

@@ -20,6 +20,7 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { labelSchemaData } from "../state";
+import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
 import {
   currentField,
@@ -31,7 +32,6 @@ import {
   sortedInactivePaths,
 } from "./state";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Actions component for hidden field rows
@@ -96,10 +96,12 @@ const HiddenFieldsSection = () => {
             canDrag: false,
             "data-cy": `field-row-${path}`,
             primaryContent: path,
-            secondaryContent: buildFieldSecondaryContent(
-              fieldTypes[path],
-              fieldAttrCounts[path],
-              isSystemReadOnly
+            secondaryContent: (
+              <SecondaryText
+                fieldType={fieldTypes[path] ?? ""}
+                attrCount={fieldAttrCounts[path]}
+                isSystemReadOnly={isSystemReadOnly}
+              />
             ),
             actions: <HiddenFieldActions path={path} />,
           } as ListItemProps,

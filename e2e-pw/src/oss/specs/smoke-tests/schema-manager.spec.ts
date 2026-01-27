@@ -86,7 +86,7 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
-    const invalid = jsonEditor.expectInvalidJSON();
+    const invalid = jsonEditor.waitForInvalidJSON();
     await jsonEditor.setJSON({
       component: "wrong",
       type: "classification",
@@ -101,7 +101,7 @@ test.describe.serial("schema manager", () => {
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Successful validation
-    const valid = jsonEditor.expectValidJSON();
+    const valid = jsonEditor.waitForValidJSON();
     await jsonEditor.setJSON({
       component: "text",
       type: "classification",
@@ -122,14 +122,16 @@ test.describe.serial("schema manager", () => {
 
     // Activate
     await row.assert.hasCheckbox();
-    await row.check();
+    await row.clickCheckbox();
+    await row.assert.isChecked(true);
     await schemaManager.moveFields();
     await schemaManager.assert.hasActiveFieldRows([
       { name: "classification", type: "Classification" },
     ]);
 
     // Hide
-    await row.check();
+    await row.clickCheckbox();
+    await row.assert.isChecked(false);
     await schemaManager.moveFields();
     await schemaManager.assert.hasHiddenFieldRows([
       { name: "classification", type: "Classification" },

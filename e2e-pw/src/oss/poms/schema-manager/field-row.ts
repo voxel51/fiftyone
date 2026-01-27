@@ -45,7 +45,7 @@ export class FieldRowPom {
    */
   async getType() {
     const text = await this.locator
-      .locator("span.text-content-text-secondary")
+      .getByTestId("secondary-content")
       .textContent();
     return (text ?? "").split(" ")[0];
   }
@@ -53,9 +53,10 @@ export class FieldRowPom {
   /**
    * Check the checkbox, if it exists
    */
-  async check() {
+  async clickCheckbox() {
+    // click must be forced because the field row has an aria-disabled
+    // attribute
     await this.checkbox.click({ force: true });
-    await this.assert.isChecked(true);
   }
 
   /**
@@ -71,14 +72,6 @@ export class FieldRowPom {
       this.field,
       this.schemaManager
     );
-  }
-
-  /**
-   * Uncheck the checkbox, if it exists
-   */
-  async uncheck() {
-    await this.checkbox.click({ force: true });
-    await this.assert.isChecked(false);
   }
 }
 

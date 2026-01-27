@@ -122,7 +122,7 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  async expectInvalidJSON() {
+  async waitForInvalidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-invalid-json"
     );
@@ -133,7 +133,7 @@ export class JSONEditorPom {
    *
    * @returns A promise
    */
-  async expectValidJSON() {
+  async waitForValidJSON() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "schema-manager-valid-json"
     );
