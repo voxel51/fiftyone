@@ -20,11 +20,15 @@ import {
   getSchemaTypeFromFieldType,
 } from "../../constants";
 import type { SchemaConfigType } from "../../utils";
+import PrimitiveRenderer from "../../../Edit/PrimitiveRenderer";
+import { generatePrimitiveSchema } from "../../../Edit/schemaHelpers";
 import ComponentTypeButton from "./ComponentTypeButton";
 import RangeInput from "./RangeInput";
 import ValuesList from "./ValuesList";
 
 interface PrimitiveFieldContentProps {
+  /** Field path name (e.g., "my_field") */
+  field?: string;
   /** Field type from fieldType atom (e.g., "Float", "String") */
   fieldType: string;
   /** Current schema config */
@@ -41,6 +45,7 @@ interface TouchedFields {
 }
 
 const PrimitiveFieldContent = ({
+  field,
   fieldType,
   config,
   onConfigChange,
@@ -176,6 +181,21 @@ const PrimitiveFieldContent = ({
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
 
+  const hasErrors = !!(errors.values || errors.range);
+
+  const previewSchema = useMemo(() => {
+    if (!field) return undefined;
+    return generatePrimitiveSchema(field, {
+      type: schemaType,
+      component,
+      values,
+      range: range
+        ? ([parseFloat(range.min), parseFloat(range.max)] as [number, number])
+        : undefined,
+      choices: componentOptions.map((opt) => opt.label),
+    });
+  }, [field, schemaType, component, values, range, componentOptions]);
+
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
       {/* Component type buttons */}
@@ -227,6 +247,24 @@ const PrimitiveFieldContent = ({
             largeLabels={largeLabels}
           />
         </div>
+      )}
+
+      {/* Field Preview */}
+      {!hasErrors && previewSchema && (
+        <>
+          <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Lg}>Field Preview:</Text>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              How this field will appear to users during annotation
+            </Text>
+          </Stack>
+          <PrimitiveRenderer
+            type={schemaType}
+            fieldValue={null}
+            handleChange={() => {}}
+            primitiveSchema={previewSchema}
+          />
+        </>
       )}
     </Stack>
   );
