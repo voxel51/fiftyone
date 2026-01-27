@@ -36,15 +36,17 @@ def fixture_dataset():
 class TestGetDataset:
     """Tests for get_dataset utility function."""
 
-    def test_get_dataset_by_name(self, dataset):
+    @pytest.mark.asyncio
+    async def test_get_dataset_by_name(self, dataset):
         """Tests loading a dataset by name."""
-        result = get_dataset(dataset.name)
+        result = await get_dataset(dataset.name)
         assert result.name == dataset.name
 
-    def test_get_dataset_not_found(self):
+    @pytest.mark.asyncio
+    async def test_get_dataset_not_found(self):
         """Tests that HTTPException is raised for non-existent dataset."""
         with pytest.raises(HTTPException) as exc_info:
-            get_dataset("non_existent_dataset_12345")
+            await get_dataset("non_existent_dataset_12345")
 
         assert exc_info.value.status_code == 404
         assert "not found" in exc_info.value.detail
@@ -53,20 +55,22 @@ class TestGetDataset:
 class TestGetSampleFromDataset:
     """Tests for get_sample_from_dataset utility function."""
 
-    def test_get_sample_success(self, dataset):
+    @pytest.mark.asyncio
+    async def test_get_sample_success(self, dataset):
         """Tests successfully retrieving a sample."""
         sample = fo.Sample(filepath="/tmp/test.jpg")
         dataset.add_sample(sample)
 
-        result = get_sample_from_dataset(dataset, str(sample.id))
+        result = await get_sample_from_dataset(dataset, str(sample.id))
         assert result.id == sample.id
 
-    def test_get_sample_not_found(self, dataset):
+    @pytest.mark.asyncio
+    async def test_get_sample_not_found(self, dataset):
         """Tests that HTTPException is raised for non-existent sample."""
         bad_id = str(ObjectId())
 
         with pytest.raises(HTTPException) as exc_info:
-            get_sample_from_dataset(dataset, bad_id)
+            await get_sample_from_dataset(dataset, bad_id)
 
         assert exc_info.value.status_code == 404
         assert bad_id in exc_info.value.detail
@@ -100,7 +104,8 @@ class TestSyncToGeneratedDataset:
         """Creates a patches view from the dataset."""
         return dataset.to_patches("ground_truth")
 
-    def test_update_label_in_patches_view(
+    @pytest.mark.asyncio
+    async def test_update_label_in_patches_view(
         self, dataset, sample_with_detection, patches_view
     ):
         """Tests that updating a label syncs correctly to patches view."""
@@ -111,7 +116,7 @@ class TestSyncToGeneratedDataset:
             {"op": "replace", "path": "/label", "value": "dog"}
         ]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             str(patches_sample.id),
             "ground_truth.detections",
@@ -124,7 +129,8 @@ class TestSyncToGeneratedDataset:
         assert result is not None
         assert result.ground_truth.label == "dog"
 
-    def test_delete_label_deletes_patches_sample(
+    @pytest.mark.asyncio
+    async def test_delete_label_deletes_patches_sample(
         self, dataset, sample_with_detection, patches_view
     ):
         """Tests that deleting a label removes the patches sample."""
@@ -134,7 +140,7 @@ class TestSyncToGeneratedDataset:
 
         patch_operations = [{"op": "remove", "path": "/"}]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             patches_sample_id,
             "ground_truth.detections",
@@ -150,7 +156,8 @@ class TestSyncToGeneratedDataset:
         with pytest.raises(KeyError):
             patches_dataset[patches_sample_id]
 
-    def test_delete_flag_takes_precedence(
+    @pytest.mark.asyncio
+    async def test_delete_flag_takes_precedence(
         self, dataset, sample_with_detection, patches_view
     ):
         """Tests that delete=True flag works even with non-delete operations."""
@@ -163,7 +170,7 @@ class TestSyncToGeneratedDataset:
             {"op": "replace", "path": "/label", "value": "dog"}
         ]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             patches_sample_id,
             "ground_truth.detections",
@@ -233,7 +240,8 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
         """Creates an evaluation patches view from the dataset."""
         return evaluation_dataset.to_evaluation_patches("eval")
 
-    def test_update_gt_label_in_eval_patches_view(
+    @pytest.mark.asyncio
+    async def test_update_gt_label_in_eval_patches_view(
         self, evaluation_dataset, eval_patches_view
     ):
         """Tests updating a ground truth label in evaluation patches view."""
@@ -244,7 +252,7 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
             {"op": "replace", "path": "/label", "value": "dog"}
         ]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             str(patches_sample.id),
             "ground_truth.detections",
@@ -261,7 +269,8 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
         # Verify prediction field is unchanged
         assert result.predictions.detections[0].label == "cat"
 
-    def test_update_pred_label_in_eval_patches_view(
+    @pytest.mark.asyncio
+    async def test_update_pred_label_in_eval_patches_view(
         self, evaluation_dataset, eval_patches_view
     ):
         """Tests updating a prediction label in evaluation patches view."""
@@ -272,7 +281,7 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
             {"op": "replace", "path": "/confidence", "value": 0.5}
         ]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             str(patches_sample.id),
             "predictions.detections",
@@ -289,7 +298,8 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
         # Verify ground truth field is unchanged
         assert result.ground_truth.detections[0].label == "cat"
 
-    def test_delete_gt_label_deletes_eval_patches_sample(
+    @pytest.mark.asyncio
+    async def test_delete_gt_label_deletes_eval_patches_sample(
         self, evaluation_dataset, eval_patches_view
     ):
         """Tests that deleting a ground truth label removes the patches sample."""
@@ -299,7 +309,7 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
 
         patch_operations = [{"op": "remove", "path": "/"}]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             patches_sample_id,
             "ground_truth.detections",
@@ -315,7 +325,8 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
         with pytest.raises(KeyError):
             patches_dataset[patches_sample_id]
 
-    def test_delete_pred_label_deletes_eval_patches_sample(
+    @pytest.mark.asyncio
+    async def test_delete_pred_label_deletes_eval_patches_sample(
         self, evaluation_dataset, eval_patches_view
     ):
         """Tests that deleting a prediction label removes the patches sample."""
@@ -325,7 +336,7 @@ class TestSyncToGeneratedDatasetEvaluationPatches:
 
         patch_operations = [{"op": "remove", "path": "/"}]
 
-        result = sync_to_generated_dataset(
+        result = await sync_to_generated_dataset(
             patches_dataset.name,
             patches_sample_id,
             "predictions.detections",

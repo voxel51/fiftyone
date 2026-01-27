@@ -706,33 +706,3 @@ class TestHelperFunctions:
 
         assert exc_info.value.status_code == 400
         assert "No valid sample IDs provided" in exc_info.value.detail
-
-    def test_get_dataset_success(self, dataset, dataset_id):
-        """Tests successful dataset retrieval."""
-        result = get_dataset(dataset_id)
-        assert result.name == dataset.name
-
-    def test_get_dataset_not_found(self):
-        """Tests that HTTPException is raised for non-existent dataset."""
-        with pytest.raises(HTTPException) as exc_info:
-            get_dataset("non-existent-id")
-
-        assert exc_info.value.status_code == 404
-        assert "not found" in exc_info.value.detail
-
-    def test_get_sample_success(self, dataset, sample_id):
-        """Tests successful sample retrieval."""
-        sample = get_sample_from_dataset(dataset, sample_id)
-        assert str(sample.id) == sample_id
-
-    def test_get_sample_not_found(self, dataset):
-        """Tests that HTTPException is raised for non-existent sample."""
-        from bson import ObjectId
-
-        bad_id = str(ObjectId())
-
-        with pytest.raises(HTTPException) as exc_info:
-            get_sample_from_dataset(dataset, bad_id)
-
-        assert exc_info.value.status_code == 404
-        assert f"Sample '{bad_id}' not found" in exc_info.value.detail
