@@ -58,10 +58,10 @@ export class CommandRegistry {
    * @param id The command id
    * @returns true if the command was registered and enabled and executed.
    */
-  public executeCommand(id: string): boolean {
+  public async executeCommand(id: string): Promise<boolean> {
     const command = this.getCommand(id);
     if (command && command.isEnabled()) {
-      const result = command.execute();
+      const result = await command.execute();
       if (result && isUndoable(result)) {
         //enable undo/redo
         this.actionManager.push(result as Undoable);
