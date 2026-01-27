@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import {
   Button,
   Icon,
@@ -7,21 +6,25 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
-import { currentField, showModal } from "../state";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, {
-  selectedActiveFields,
-  selectedHiddenFields,
+import GUIView from "./GUIView";
+import {
   useActivateFields,
+  useCurrentField,
+  useCurrentFieldValue,
   useDeactivateFields,
-} from "./GUIView";
-import { useNewFieldMode } from "./hooks";
+  useNewFieldMode,
+  useSelectedFieldCounts,
+  useShowSchemaManagerModal,
+} from "./hooks";
 import NewFieldSchema from "./NewFieldSchema";
 import {
   BackButton,
@@ -36,7 +39,7 @@ import {
 export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
-  const [field, setField] = useAtom(currentField);
+  const { field, setField } = useCurrentField();
   const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
     useNewFieldMode();
 
@@ -44,25 +47,25 @@ const Heading = () => {
     return (
       <ItemLeft>
         <BackButton color="secondary" onClick={() => setNewFieldMode(false)} />
-        <Typography variant="h5">New field schema</Typography>
+        <Text variant={TextVariant.XlBold}>New field schema</Text>
       </ItemLeft>
     );
   }
 
   if (!field) {
-    return <Typography variant="h5">Schema manager</Typography>;
+    return <Text variant={TextVariant.XlBold}>Schema manager</Text>;
   }
 
   return (
     <ItemLeft>
       <BackButton color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">Edit field schema</Typography>
+      <Text variant={TextVariant.XlBold}>Edit field schema</Text>
     </ItemLeft>
   );
 };
 
 const Subheading = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
   const { isNewField: newFieldMode } = useNewFieldMode();
 
   if (field || newFieldMode) {
@@ -70,14 +73,14 @@ const Subheading = () => {
   }
 
   return (
-    <Typography color="secondary" padding="1rem 0">
+    <Text color={TextColor.Secondary} style={{ padding: "1rem 0" }}>
       Manage your label schemas
-    </Typography>
+    </Text>
   );
 };
 
 const Page = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
   const { isNewField: newFieldMode } = useNewFieldMode();
 
   if (newFieldMode) {
@@ -92,9 +95,9 @@ const Page = () => {
 };
 
 const SchemaManagerFooter = () => {
-  const field = useAtomValue(currentField);
-  const activeSelectedCount = useAtomValue(selectedActiveFields).size;
-  const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
+  const field = useCurrentFieldValue();
+  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
+    useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -153,7 +156,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const show = useSetAtom(showModal);
+  const show = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";

@@ -5,17 +5,18 @@
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { Typography } from "@mui/material";
-import { Size, ToggleSwitch } from "@voxel51/voodo";
-import { useAtomValue, useSetAtom } from "jotai";
+import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
 import { CodeView } from "../../../../../plugins/SchemaIO/components";
-import { activeSchemaTab, labelSchemasData } from "../state";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
 import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
 import HiddenFieldsSection from "./HiddenFieldsSection";
-import { useFullSchemaEditor } from "./hooks";
+import {
+  useFullSchemaEditor,
+  useLabelSchemasData,
+  useSchemaEditorGUIJSONToggle,
+} from "./hooks";
 import { ContentArea } from "./styled";
 
 // =============================================================================
@@ -45,13 +46,13 @@ const GUIContent = () => {
  * JSON content - raw schema view (read-only)
  */
 const JSONContent = () => {
-  const schemasData = useAtomValue(labelSchemasData);
+  const schemasData = useLabelSchemasData();
   const { currentJson } = useFullSchemaEditor();
 
   if (!schemasData) {
     return (
       <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-        <Typography color="secondary">No schema data available</Typography>
+        <Text color={TextColor.Secondary}>No schema data available</Text>
       </Item>
     );
   }
@@ -95,8 +96,8 @@ const GUIView = () => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
-  const activeTab = useAtomValue(activeSchemaTab);
-  const setActiveTab = useSetAtom(activeSchemaTab);
+  const { tab: activeTab, setTab: setActiveTab } =
+    useSchemaEditorGUIJSONToggle();
 
   // Guard against invalid activeTab values (indexOf returns -1 for unknown values)
   const tabIndex = TAB_IDS.indexOf(activeTab);
