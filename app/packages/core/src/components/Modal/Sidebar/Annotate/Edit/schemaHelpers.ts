@@ -198,7 +198,7 @@ export function generatePrimitiveSchema(
   schema: PrimitiveSchema
 ): SchemaType | undefined {
   if (schema.type === "list<float>" || schema.type === "list<int>") {
-    return createNumericList(name, schema.values || []);
+    return createNumericList(name, schema?.values || []);
   }
 
   if (schema.type === "list<str>") {
