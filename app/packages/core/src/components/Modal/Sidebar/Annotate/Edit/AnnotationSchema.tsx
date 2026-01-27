@@ -29,20 +29,23 @@ const useSchema = () => {
     properties.label = createSelect("label", config?.classes ?? []);
 
     for (const attr in attributes) {
-      if (attr === "id") {
+      const attribute = attributes[attr];
+      const name = attribute.name;
+
+      if (name === "id") {
         continue;
       }
 
-      if (attributes[attr].component === "text") {
-        properties[attr] = createInput(attr, attributes[attr]);
+      if (attribute.component === "text") {
+        properties[name] = createInput(name, attribute);
       }
 
-      if (attributes[attr].component === "radio") {
-        properties[attr] = createRadio(attr, attributes[attr].values);
+      if (attribute.component === "radio") {
+        properties[name] = createRadio(name, attribute.values);
       }
 
-      if (attributes[attr].component === "dropdown") {
-        properties[attr] = createTags(attr, attributes[attr].values);
+      if (attribute.component === "dropdown") {
+        properties[name] = createTags(name, attribute.values);
       }
     }
 
