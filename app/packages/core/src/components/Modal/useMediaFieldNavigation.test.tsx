@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import React from "react";
 import { useKeyBindings } from "@fiftyone/commands";
@@ -40,6 +40,12 @@ vi.mock("@fiftyone/state", async () => {
 
 const mockUseKeyBindings = vi.mocked(useKeyBindings);
 
+type Binding = {
+  commandId: string;
+  handler: () => Promise<void> | void;
+  enablement?: () => boolean;
+};
+
 ////////////////////////////
 //         Tests          //
 ////////////////////////////
@@ -49,17 +55,29 @@ describe("useMediaFieldNavigation", () => {
     vi.clearAllMocks();
   });
 
-  it("passes empty bindings when mediaFields is empty", () => {
+  it("bindings are disabled when mediaFields is empty", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RecoilRoot>{children}</RecoilRoot>
     );
 
     renderHook(() => useMediaFieldNavigation(), { wrapper });
 
-    expect(mockUseKeyBindings).toHaveBeenCalledWith("fo.modal", []);
+    expect(mockUseKeyBindings).toHaveBeenCalledWith(
+      "fo.modal",
+      expect.arrayContaining([
+        expect.objectContaining({ commandId: "fo.modal.previous.mediafield" }),
+        expect.objectContaining({ commandId: "fo.modal.next.mediafield" }),
+      ])
+    );
+
+    // Verify enablement returns false when no media fields
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
+    bindings.forEach((binding) => {
+      expect(binding.enablement?.()).toBe(false);
+    });
   });
 
-  it("passes empty bindings when only one media field exists", () => {
+  it("bindings are disabled when only one media field exists", () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
       <RecoilRoot
         initializeState={({ set }) => {
@@ -72,7 +90,19 @@ describe("useMediaFieldNavigation", () => {
 
     renderHook(() => useMediaFieldNavigation(), { wrapper });
 
-    expect(mockUseKeyBindings).toHaveBeenCalledWith("fo.modal", []);
+    expect(mockUseKeyBindings).toHaveBeenCalledWith(
+      "fo.modal",
+      expect.arrayContaining([
+        expect.objectContaining({ commandId: "fo.modal.previous.mediafield" }),
+        expect.objectContaining({ commandId: "fo.modal.next.mediafield" }),
+      ])
+    );
+
+    // Verify enablement returns false when only one media field
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
+    bindings.forEach((binding) => {
+      expect(binding.enablement?.()).toBe(false);
+    });
   });
 
   it("registers PageUp/PageDown bindings when multiple media fields exist", () => {
@@ -131,7 +161,7 @@ describe("useMediaFieldNavigation", () => {
     expect(typeof bindings[1].handler).toBe("function");
   });
 
-  it("navigates forward when next handler is invoked", () => {
+  it("navigates forward when next handler is invoked", async () => {
     const selectedMediaFieldAtom = fos.selectedMediaField(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -149,7 +179,7 @@ describe("useMediaFieldNavigation", () => {
       </RecoilRoot>
     );
 
-    // Tracks the selected field
+    // Create a component that tracks the selected field
     const useTestHook = () => {
       useMediaFieldNavigation();
       return useRecoilValue(selectedMediaFieldAtom);
@@ -157,22 +187,24 @@ describe("useMediaFieldNavigation", () => {
 
     const { result } = renderHook(() => useTestHook(), { wrapper });
 
-    // Get and invoke the next handler
-    const bindings = mockUseKeyBindings.mock.calls[0][1];
+    // Get the next handler and invoke it
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
     const nextHandler = bindings.find(
-      (b: { commandId: string }) => b.commandId === "fo.modal.next.mediafield"
+      (b) => b.commandId === "fo.modal.next.mediafield"
     )?.handler;
 
     expect(nextHandler).toBeDefined();
-    act(() => {
-      nextHandler!();
+    await act(async () => {
+      await nextHandler!();
     });
 
-    // Should have navigated to field2 from filepath
-    expect(result.current).toBe("field2");
+    // Should have navigated to field2
+    await waitFor(() => {
+      expect(result.current).toBe("field2");
+    });
   });
 
-  it("navigates backward when previous handler is invoked", () => {
+  it("navigates backward when previous handler is invoked", async () => {
     const selectedMediaFieldAtom = fos.selectedMediaField(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -198,22 +230,23 @@ describe("useMediaFieldNavigation", () => {
     const { result } = renderHook(() => useTestHook(), { wrapper });
 
     // Get the previous handler and invoke it
-    const bindings = mockUseKeyBindings.mock.calls[0][1];
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
     const prevHandler = bindings.find(
-      (b: { commandId: string }) =>
-        b.commandId === "fo.modal.previous.mediafield"
+      (b) => b.commandId === "fo.modal.previous.mediafield"
     )?.handler;
 
     expect(prevHandler).toBeDefined();
-    act(() => {
-      prevHandler!();
+    await act(async () => {
+      await prevHandler!();
     });
 
-    // Should have navigated back to filepath from field2
-    expect(result.current).toBe("filepath");
+    // Should have navigated back to filepath
+    await waitFor(() => {
+      expect(result.current).toBe("filepath");
+    });
   });
 
-  it("wraps around when navigating past the end", () => {
+  it("wraps around when navigating past the end", async () => {
     const selectedMediaFieldAtom = fos.selectedMediaField(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -238,22 +271,24 @@ describe("useMediaFieldNavigation", () => {
 
     const { result } = renderHook(() => useTestHook(), { wrapper });
 
-    // Get and invoke the next handler
-    const bindings = mockUseKeyBindings.mock.calls[0][1];
+    // Get the next handler and invoke it
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
     const nextHandler = bindings.find(
-      (b: { commandId: string }) => b.commandId === "fo.modal.next.mediafield"
+      (b) => b.commandId === "fo.modal.next.mediafield"
     )?.handler;
 
     expect(nextHandler).toBeDefined();
-    act(() => {
-      nextHandler!();
+    await act(async () => {
+      await nextHandler!();
     });
 
-    // Should wrap around to filepath from field3
-    expect(result.current).toBe("filepath");
+    // Should wrap around to filepath
+    await waitFor(() => {
+      expect(result.current).toBe("filepath");
+    });
   });
 
-  it("wraps around when navigating before the beginning", () => {
+  it("wraps around when navigating before the beginning", async () => {
     const selectedMediaFieldAtom = fos.selectedMediaField(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -278,23 +313,24 @@ describe("useMediaFieldNavigation", () => {
 
     const { result } = renderHook(() => useTestHook(), { wrapper });
 
-    // Get and invoke the previous handler
-    const bindings = mockUseKeyBindings.mock.calls[0][1];
+    // Get the previous handler and invoke it
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
     const prevHandler = bindings.find(
-      (b: { commandId: string }) =>
-        b.commandId === "fo.modal.previous.mediafield"
+      (b) => b.commandId === "fo.modal.previous.mediafield"
     )?.handler;
 
     expect(prevHandler).toBeDefined();
-    act(() => {
-      prevHandler!();
+    await act(async () => {
+      await prevHandler!();
     });
 
-    // Should wrap around to field3 from filepath
-    expect(result.current).toBe("field3");
+    // Should wrap around to field3
+    await waitFor(() => {
+      expect(result.current).toBe("field3");
+    });
   });
 
-  it("defaults to first field when selectedMediaField is not in the array", () => {
+  it("defaults to first field when selectedMediaField is not in mediaFields", async () => {
     const selectedMediaFieldAtom = fos.selectedMediaField(true);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -305,7 +341,7 @@ describe("useMediaFieldNavigation", () => {
             "field2",
             "field3",
           ]);
-          set(selectedMediaFieldAtom, "wrong_field"); // Field not there
+          set(selectedMediaFieldAtom, "nonexistent_field"); // Field not in array
         }}
       >
         {children}
@@ -319,18 +355,20 @@ describe("useMediaFieldNavigation", () => {
 
     const { result } = renderHook(() => useTestHook(), { wrapper });
 
-    // Get and invoke the next handler
-    const bindings = mockUseKeyBindings.mock.calls[0][1];
+    // Get any handler and invoke it
+    const bindings = mockUseKeyBindings.mock.calls[0][1] as Binding[];
     const nextHandler = bindings.find(
-      (b: { commandId: string }) => b.commandId === "fo.modal.next.mediafield"
+      (b) => b.commandId === "fo.modal.next.mediafield"
     )?.handler;
 
     expect(nextHandler).toBeDefined();
-    act(() => {
-      nextHandler!();
+    await act(async () => {
+      await nextHandler!();
     });
 
-    // Default to the first field as `wrong_field` doesn't exist in the array
-    expect(result.current).toBe("filepath");
+    // Should default to the first field
+    await waitFor(() => {
+      expect(result.current).toBe("filepath");
+    });
   });
 });
