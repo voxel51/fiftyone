@@ -35,6 +35,7 @@ interface AttributesSectionProps {
   onAddAttribute: (config: AttributeConfig) => void;
   onEditAttribute: (oldName: string, config: AttributeConfig) => void;
   onDeleteAttribute: (name: string) => void;
+  onOrderChange?: (newOrder: AttributeConfig[]) => void;
 }
 
 const AttributesSection = ({
@@ -42,6 +43,7 @@ const AttributesSection = ({
   onAddAttribute,
   onEditAttribute,
   onDeleteAttribute,
+  onOrderChange,
 }: AttributesSectionProps) => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
@@ -128,6 +130,7 @@ const AttributesSection = ({
           onSave: handleEditSave,
           onCancel: handleCancelEdit,
           onDelete: handleDeleteAttribute,
+          canDrag: true,
         });
       }
 
@@ -145,7 +148,7 @@ const AttributesSection = ({
         id: name,
         data: {
           canSelect: false,
-          canDrag: false,
+          canDrag: true,
           primaryContent: name,
           secondaryContent: (
             <>
@@ -173,6 +176,17 @@ const AttributesSection = ({
     handleEditSave,
     handleStartEdit,
   ]);
+
+  const handleOrderChange = useCallback(
+    (newItems: { id: string; data: ListItemProps }[]) => {
+      // Map the new order back to AttributeConfig objects
+      const newOrder = newItems
+        .map((item) => attributes.find((attr) => attr.name === item.id))
+        .filter((attr): attr is AttributeConfig => attr !== undefined);
+      onOrderChange?.(newOrder);
+    },
+    [attributes, onOrderChange]
+  );
 
   return (
     <Section>
@@ -203,7 +217,11 @@ const AttributesSection = ({
         </EmptyStateBox>
       ) : (
         listItems.length > 0 && (
-          <RichList listItems={listItems} draggable={false} />
+          <RichList
+            listItems={listItems}
+            draggable={true}
+            onOrderChange={handleOrderChange}
+          />
         )
       )}
     </Section>
