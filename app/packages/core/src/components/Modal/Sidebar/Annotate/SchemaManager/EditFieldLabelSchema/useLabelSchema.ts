@@ -13,19 +13,66 @@ import { currentLabelSchema } from "../state";
 // Types & Helpers
 // =============================================================================
 
-/** Shape of a label schema with optional attributes */
-interface LabelSchema {
-  attributes?: Record<string, unknown>;
+/** Shape of an attribute in the array format */
+interface AttributeItem {
+  name: string;
   [key: string]: unknown;
 }
 
-/** Safely extract attributes from a schema value */
-const getAttributes = (value: unknown): Record<string, unknown> => {
+/** Shape of a label schema with optional attributes (array format) */
+interface LabelSchema {
+  attributes?: AttributeItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Safely extract attribute names from a schema value.
+ * Attributes are stored as an array of objects with 'name' field.
+ */
+const getAttributeNames = (value: unknown): Set<string> => {
   if (value && typeof value === "object" && "attributes" in value) {
     const attrs = (value as LabelSchema).attributes;
-    return attrs && typeof attrs === "object" ? attrs : {};
+    if (Array.isArray(attrs)) {
+      return new Set(
+        attrs
+          .filter((attr) => attr && typeof attr === "object" && "name" in attr)
+          .map((attr) => attr.name)
+      );
+    }
   }
-  return {};
+  return new Set();
+};
+
+/**
+ * Extract new attributes from current schema that don't exist in saved or default.
+ * Returns a dict format for the backend API (name -> config without name field).
+ */
+const getNewAttributes = (
+  current: unknown,
+  saved: unknown,
+  defaultSchema: unknown
+): Record<string, unknown> => {
+  const savedNames = getAttributeNames(saved);
+  const defaultNames = getAttributeNames(defaultSchema);
+
+  const newAttributes: Record<string, unknown> = {};
+
+  if (current && typeof current === "object" && "attributes" in current) {
+    const attrs = (current as LabelSchema).attributes;
+    if (Array.isArray(attrs)) {
+      for (const attr of attrs) {
+        if (attr && typeof attr === "object" && "name" in attr) {
+          const { name, ...config } = attr;
+          // Attribute is new if it doesn't exist in saved or default schema
+          if (!savedNames.has(name) && !defaultNames.has(name)) {
+            newAttributes[name] = config;
+          }
+        }
+      }
+    }
+  }
+
+  return newAttributes;
 };
 
 // =============================================================================
@@ -123,17 +170,11 @@ const useSave = (field: string) => {
       setIsSaving(true);
 
       // Identify new attributes (ones that don't exist in saved or default schema)
-      const currentAttrs = getAttributes(current);
-      const savedAttrs = getAttributes(savedLabelSchema);
-      const defaultAttrs = getAttributes(defaultLabelSchema);
-
-      const newAttributes: Record<string, unknown> = {};
-      for (const [name, config] of Object.entries(currentAttrs)) {
-        // Attribute is new if it doesn't exist in saved or default schema
-        if (!(name in savedAttrs) && !(name in defaultAttrs)) {
-          newAttributes[name] = config;
-        }
-      }
+      const newAttributes = getNewAttributes(
+        current,
+        savedLabelSchema,
+        defaultLabelSchema
+      );
 
       const params: Record<string, unknown> = { field, label_schema: current };
       if (Object.keys(newAttributes).length > 0) {

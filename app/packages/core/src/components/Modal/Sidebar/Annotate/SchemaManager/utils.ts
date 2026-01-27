@@ -40,7 +40,9 @@ export interface RichListItemOptions {
 }
 
 // Attribute configuration (matches API)
+// Note: When stored in schema, attributes include 'name' field
 export interface AttributeConfig {
+  name: string;
   type: string;
   component?: string;
   values?: (string | number)[];
@@ -51,14 +53,14 @@ export interface AttributeConfig {
 
 // Class configuration
 export interface ClassConfig {
-  attributes?: Record<string, AttributeConfig>;
+  attributes?: AttributeConfig[];
 }
 
 // Schema configuration (for both label types and primitive fields)
 export interface SchemaConfigType {
   // For label types (Detection, Classification, etc.)
   classes?: string[];
-  attributes?: Record<string, AttributeConfig>;
+  attributes?: AttributeConfig[];
   // For primitive fields (and label class config)
   type?: string;
   component?: string;
@@ -224,10 +226,7 @@ export const createDefaultFormData = (): AttributeFormData => ({
 /**
  * Convert AttributeConfig to form data for editing
  */
-export const toFormData = (
-  name: string,
-  config: AttributeConfig
-): AttributeFormData => {
+export const toFormData = (config: AttributeConfig): AttributeFormData => {
   const isListType = LIST_TYPES.includes(config.type);
 
   // Handle default value - could be array for list types
@@ -245,7 +244,7 @@ export const toFormData = (
   }
 
   return {
-    name,
+    name: config.name,
     type: config.type,
     // component should come from backend, additional fallback to be safe
     component: config.component || getDefaultComponent(config.type),
@@ -301,6 +300,7 @@ export const toAttributeConfig = (data: AttributeFormData): AttributeConfig => {
   }
 
   return {
+    name: data.name.trim(),
     type: data.type,
     component: data.component || undefined,
     values: values?.length ? values : undefined,

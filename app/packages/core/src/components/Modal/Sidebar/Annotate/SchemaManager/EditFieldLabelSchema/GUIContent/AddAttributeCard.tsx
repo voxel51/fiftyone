@@ -17,7 +17,7 @@ import AttributeCard from "./AttributeCard";
 
 interface AddAttributeCardProps {
   existingAttributes: string[];
-  onSave: (name: string, config: AttributeConfig) => void;
+  onSave: (config: AttributeConfig) => void;
   onCancel: () => void;
 }
 
@@ -46,7 +46,7 @@ const AddAttributeCard = ({
 
   const handleSave = () => {
     if (canSave) {
-      onSave(formState.name.trim(), toAttributeConfig(formState));
+      onSave(toAttributeConfig(formState));
     }
   };
 

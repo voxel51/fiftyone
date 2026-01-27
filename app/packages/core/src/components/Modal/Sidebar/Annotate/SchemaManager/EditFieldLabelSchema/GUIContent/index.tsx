@@ -43,7 +43,7 @@ const GUIContent = ({
 
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
-    () => config?.attributes || {},
+    () => config?.attributes || [],
     [config?.attributes]
   );
 
@@ -83,25 +83,21 @@ const GUIContent = ({
   );
 
   const handleAddAttribute = useCallback(
-    (name: string, attrConfig: AttributeConfig) => {
+    (attrConfig: AttributeConfig) => {
       if (!config) return;
-      const newAttributes = { [name]: attrConfig, ...attributes };
+      // Add new attribute at the beginning of the list
+      const newAttributes = [attrConfig, ...attributes];
       onConfigChange?.({ ...config, attributes: newAttributes });
     },
     [config, attributes, onConfigChange]
   );
 
   const handleEditAttribute = useCallback(
-    (oldName: string, newName: string, attrConfig: AttributeConfig) => {
+    (oldName: string, attrConfig: AttributeConfig) => {
       if (!config) return;
-      const newAttributes: Record<string, AttributeConfig> = {};
-      for (const [key, value] of Object.entries(attributes)) {
-        if (key === oldName) {
-          newAttributes[newName] = attrConfig;
-        } else {
-          newAttributes[key] = value;
-        }
-      }
+      const newAttributes = attributes.map((attr) =>
+        attr.name === oldName ? attrConfig : attr
+      );
       onConfigChange?.({ ...config, attributes: newAttributes });
     },
     [config, attributes, onConfigChange]
@@ -110,8 +106,7 @@ const GUIContent = ({
   const handleDeleteAttribute = useCallback(
     (name: string) => {
       if (!config) return;
-      const newAttributes = { ...attributes };
-      delete newAttributes[name];
+      const newAttributes = attributes.filter((attr) => attr.name !== name);
       onConfigChange?.({ ...config, attributes: newAttributes });
     },
     [config, attributes, onConfigChange]
@@ -162,7 +157,7 @@ const GUIContent = ({
     <ListContainer>
       <ClassesSection
         classes={classes}
-        attributeCount={Object.keys(attributes).length}
+        attributeCount={attributes.length}
         onAddClass={handleAddClass}
         onEditClass={handleEditClass}
         onDeleteClass={handleDeleteClass}
