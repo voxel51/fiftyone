@@ -4,12 +4,12 @@
  * Main view for the Schema Manager with GUI and JSON tabs.
  */
 
+import { Code } from "@fiftyone/components";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Typography } from "@mui/material";
 import { Size, ToggleSwitch } from "@voxel51/voodo";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback } from "react";
-import { CodeView } from "../../../../../plugins/SchemaIO/components";
+import React, { useCallback } from "react";
 import { activeSchemaTab, labelSchemasData } from "../state";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
@@ -66,22 +66,12 @@ const JSONContent = () => {
         bottom: 0,
       }}
     >
-      <CodeView
-        data={currentJson}
-        path="schemas"
-        schema={{
-          view: {
-            language: "json",
-            readOnly: true,
-            width: "100%",
-            height: "100%",
-            componentsProps: {
-              container: {
-                style: { height: "100%" },
-              },
-            },
-          },
-        }}
+      <Code
+        value={currentJson}
+        language="json"
+        height="100%"
+        width="100%"
+        readOnly
       />
     </ContentArea>
   );

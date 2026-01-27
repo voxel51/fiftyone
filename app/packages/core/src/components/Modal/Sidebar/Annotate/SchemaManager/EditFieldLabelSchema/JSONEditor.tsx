@@ -1,6 +1,6 @@
-import { CenteredStack, LoadingSpinner } from "@fiftyone/components";
+import { CenteredStack, Code, LoadingSpinner } from "@fiftyone/components";
 import { Typography } from "@mui/material";
-import { CodeView } from "../../../../../../plugins/SchemaIO/components";
+import React from "react";
 import { ContentArea } from "../styled";
 
 // JSON View component
@@ -28,22 +28,14 @@ const JSONEditor = ({
     <ContentArea
       style={errors ? { border: "1px solid rgba(212, 64, 64, 0.4)" } : {}}
     >
-      <CodeView
-        data={data}
-        onChange={(_, value) => onChange(value)}
-        schema={{
-          view: {
-            language: "json",
-            readOnly: false,
-            width: "100%",
-            height: "100%",
-            componentsProps: {
-              container: {
-                style: { height: "100%" },
-              },
-            },
-          },
+      <Code
+        defaultValue={data}
+        onChange={(value) => {
+          onChange(value as string);
         }}
+        language="json"
+        height={"100%"}
+        width={"100%"}
       />
     </ContentArea>
   );
