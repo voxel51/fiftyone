@@ -16,6 +16,7 @@ from fiftyone.core.odm import patch_annotation_runs
 
 # core methods are accessible to fiftyone.core.annotation
 from .generate_label_schemas import generate_label_schemas
+from .utils import add_new_attributes
 from .validate_label_schemas import validate_label_schemas
 
 
