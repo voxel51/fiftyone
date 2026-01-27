@@ -19,6 +19,8 @@ interface AttributeCardProps {
   onCancel: () => void;
   /** Optional delete button click handler (trash icon) - only shown if provided */
   onDelete?: () => void;
+  /** Whether the card can be dragged (default: false) */
+  canDrag?: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export const createAttributeCardItem = ({
   onSave,
   onCancel,
   onDelete,
+  canDrag = false,
 }: AttributeCardProps): {
   id: string;
   data: ListItemProps;
@@ -41,7 +44,7 @@ export const createAttributeCardItem = ({
   id,
   data: {
     canSelect: false,
-    canDrag: false,
+    canDrag,
     primaryContent: title,
     actions: (
       <CardActions
