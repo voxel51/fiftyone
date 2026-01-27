@@ -43,31 +43,28 @@ export const useMediaFieldNavigation = () => {
   );
 
   const bindings = useMemo(
-    () =>
-      hasMultipleMediaFields
-        ? [
-            {
-              commandId: KnownCommands.ModalPreviousMediaField,
-              sequence: "PageUp",
-              handler: () => {
-                navigate(MediaFieldNavigationDirection.Previous);
-              },
-              label: "Previous Media Field",
-              description: "Switch to the previous media field",
-              enablement: () => hasMultipleMediaFields,
-            },
-            {
-              commandId: KnownCommands.ModalNextMediaField,
-              sequence: "PageDown",
-              handler: () => {
-                navigate(MediaFieldNavigationDirection.Next);
-              },
-              label: "Next Media Field",
-              description: "Switch to the next media field",
-              enablement: () => hasMultipleMediaFields,
-            },
-          ]
-        : [],
+    () => [
+      {
+        commandId: KnownCommands.ModalPreviousMediaField,
+        sequence: "PageUp",
+        handler: () => {
+          navigate(MediaFieldNavigationDirection.Previous);
+        },
+        label: "Previous Media Field",
+        description: "Switch to the previous media field",
+        enablement: () => hasMultipleMediaFields,
+      },
+      {
+        commandId: KnownCommands.ModalNextMediaField,
+        sequence: "PageDown",
+        handler: () => {
+          navigate(MediaFieldNavigationDirection.Next);
+        },
+        label: "Next Media Field",
+        description: "Switch to the next media field",
+        enablement: () => hasMultipleMediaFields,
+      },
+    ],
     [hasMultipleMediaFields, navigate]
   );
 
