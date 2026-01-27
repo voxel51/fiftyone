@@ -76,18 +76,23 @@ export default function PrimitiveEdit({
     KnownContexts.Modal,
     `primitive-edit-${path}`,
     useCallback(() => {
+      const oldValue = value;
+      const newValue = transientFieldValue.current;
+
       return new DelegatingUndoable(
         `primitive-edit-${path}-action`,
         // stage mutation on execute
         () => {
-          sampleMutationManager.stageMutation(
-            path,
-            serializeFieldValue(transientFieldValue.current, type)
-          );
+          try {
+            const serializedValue = serializeFieldValue(newValue, type);
+            sampleMutationManager.stageMutation(path, serializedValue);
+          } catch (err) {
+            console.warn("unparseable value", newValue);
+          }
         },
-        // restore current value on undo
+        // restore original value on undo
         () => {
-          sampleMutationManager.stageMutation(path, value);
+          sampleMutationManager.stageMutation(path, oldValue);
         }
       );
     }, [path, sampleMutationManager, type, value]),
