@@ -44,20 +44,20 @@ const CATEGORY_LABEL = 0;
 const CATEGORY_PRIMITIVE = 1;
 
 // Base attributes shared by all label types (_HasID mixin + confidence)
-const BASE_LABEL_ATTRIBUTES: Record<string, AttributeConfig> = {
-  id: { type: "id", component: "text", read_only: true },
-  tags: { type: "list<str>", component: "text" },
-  confidence: { type: "float", component: "text" },
-};
+const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
+  { name: "id", type: "id", component: "text", read_only: true },
+  { name: "tags", type: "list<str>", component: "text" },
+  { name: "confidence", type: "float", component: "text" },
+];
 
 // Detection also has 'index' field
-const DEFAULT_DETECTION_ATTRIBUTES: Record<string, AttributeConfig> = {
+const DEFAULT_DETECTION_ATTRIBUTES: AttributeConfig[] = [
   ...BASE_LABEL_ATTRIBUTES,
-  index: { type: "int", component: "text" },
-};
+  { name: "index", type: "int", component: "text" },
+];
 
 // Classification uses base attributes only
-const DEFAULT_CLASSIFICATION_ATTRIBUTES: Record<string, AttributeConfig> =
+const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
   BASE_LABEL_ATTRIBUTES;
 
 // Convert schema type to field type format (e.g., "str" -> "Str")
@@ -81,7 +81,7 @@ const NewFieldSchema = () => {
 
   // Label schema state
   const [classes, setClasses] = useState<string[]>([]);
-  const [attributes, setAttributes] = useState<Record<string, AttributeConfig>>(
+  const [attributes, setAttributes] = useState<AttributeConfig[]>(
     DEFAULT_DETECTION_ATTRIBUTES
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
@@ -157,33 +157,22 @@ const NewFieldSchema = () => {
   }, []);
 
   // Attribute handlers
-  const handleAddAttribute = useCallback(
-    (name: string, config: AttributeConfig) => {
-      setAttributes((prev) => ({ [name]: config, ...prev }));
-      setNewAttributes((prev) => new Set(prev).add(name));
-    },
-    []
-  );
+  const handleAddAttribute = useCallback((config: AttributeConfig) => {
+    setAttributes((prev) => [config, ...prev]);
+    setNewAttributes((prev) => new Set(prev).add(config.name));
+  }, []);
 
   const handleEditAttribute = useCallback(
-    (oldName: string, newName: string, config: AttributeConfig) => {
-      setAttributes((prev) => {
-        const updated: Record<string, AttributeConfig> = {};
-        for (const [key, value] of Object.entries(prev)) {
-          if (key === oldName) {
-            updated[newName] = config;
-          } else {
-            updated[key] = value;
-          }
-        }
-        return updated;
-      });
+    (oldName: string, config: AttributeConfig) => {
+      setAttributes((prev) =>
+        prev.map((attr) => (attr.name === oldName ? config : attr))
+      );
       // Track renamed new attributes
       if (newAttributes.has(oldName)) {
         setNewAttributes((prev) => {
           const updated = new Set(prev);
           updated.delete(oldName);
-          updated.add(newName);
+          updated.add(config.name);
           return updated;
         });
       }
@@ -193,11 +182,7 @@ const NewFieldSchema = () => {
 
   const handleDeleteAttribute = useCallback(
     (name: string) => {
-      setAttributes((prev) => {
-        const updated = { ...prev };
-        delete updated[name];
-        return updated;
-      });
+      setAttributes((prev) => prev.filter((attr) => attr.name !== name));
       if (newAttributes.has(name)) {
         setNewAttributes((prev) => {
           const updated = new Set(prev);
@@ -207,6 +192,13 @@ const NewFieldSchema = () => {
       }
     },
     [newAttributes]
+  );
+
+  const handleAttributeOrderChange = useCallback(
+    (newOrder: AttributeConfig[]) => {
+      setAttributes(newOrder);
+    },
+    []
   );
 
   const handleCreate = useCallback(() => {
@@ -226,19 +218,15 @@ const NewFieldSchema = () => {
     if (category === "primitive" && primitiveConfig) {
       params.schema_config = primitiveConfig;
     } else if (category === "label") {
-      // Build new_attributes object for data schema creation
-      const newAttrsObj: Record<string, AttributeConfig> = {};
-      for (const name of newAttributes) {
-        if (attributes[name]) {
-          newAttrsObj[name] = attributes[name];
-        }
-      }
+      // Build new_attributes array for data schema creation
+      const newAttrsArr = attributes.filter((attr) =>
+        newAttributes.has(attr.name)
+      );
 
       params.label_schema_config = {
         classes,
         attributes,
-        new_attributes:
-          Object.keys(newAttrsObj).length > 0 ? newAttrsObj : undefined,
+        new_attributes: newAttrsArr.length > 0 ? newAttrsArr : undefined,
       };
     }
 
@@ -392,7 +380,7 @@ const NewFieldSchema = () => {
             <>
               <ClassesSection
                 classes={classes}
-                attributeCount={Object.keys(attributes).length}
+                attributeCount={attributes.length}
                 onAddClass={handleAddClass}
                 onEditClass={handleEditClass}
                 onDeleteClass={handleDeleteClass}
@@ -403,6 +391,7 @@ const NewFieldSchema = () => {
                 onAddAttribute={handleAddAttribute}
                 onEditAttribute={handleEditAttribute}
                 onDeleteAttribute={handleDeleteAttribute}
+                onOrderChange={handleAttributeOrderChange}
               />
             </>
           )}
