@@ -85,7 +85,7 @@ must manually upgrade your database by installing the newest version of the
 FiftyOne Enterprise SDK locally, assuming admin privileges, and running the
 following command:
 
-Beginning with FiftyOne Enterprise `v2.15.0`, there is a new migration tool
+Beginning with FiftyOne Enterprise `v2.14.0`, there is a new migration tool
 which is designed specifically for Enterprise deployments. It is similar in use
 to the existing `fiftyone migrate` command, but does not come packaged with the
 FiftyOne distribution by default.
@@ -174,7 +174,7 @@ provide the version which you want to restore.
 Downgrading your deployment without the Enterprise Migration Tool
 _________________________________________________________________
 
-**For migrations done prior to FiftyOne Enterprise v2.15.0 and the Enterprise Migration Tool**
+**For migrations done prior to FiftyOne Enterprise v2.14.0 and the Enterprise Migration Tool**
 
 Admins can also downgrade their FiftyOne Enterprise deployment to an older
 version if necessary.
