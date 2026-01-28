@@ -18,7 +18,7 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
@@ -142,9 +142,11 @@ const Classification = () => {
 
 const Detection = () => {
   const { enableQuickDraw } = useQuickDraw();
-  enableQuickDraw();
-
   const create = useCreate(DETECTION);
+
+  useEffect(() => {
+    enableQuickDraw();
+  }, [enableQuickDraw]);
 
   return (
     <Tooltip placement="top-center" text="Create new detections">
