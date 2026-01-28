@@ -15,7 +15,7 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, { useActivateFields, useDeactivateFields }  from "./GUIView";
+import GUIView, { useActivateFields, useDeactivateFields } from "./GUIView";
 import {
   useActivateFields,
   useCurrentField,
@@ -47,19 +47,19 @@ const Heading = () => {
     return (
       <ItemLeft>
         <BackButton color="secondary" onClick={() => setNewFieldMode(false)} />
-        <Text variant={TextVariant.XlBold}>New field schema</Text>
+        <Text variant={TextVariant.Xl}>New field schema</Text>
       </ItemLeft>
     );
   }
 
   if (!field) {
-    return <Text variant={TextVariant.XlBold}>Schema manager</Text>;
+    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
   }
 
   return (
     <ItemLeft>
       <BackButton color="secondary" onClick={() => setField(null)} />
-      <Text variant={TextVariant.XlBold}>Edit field schema</Text>
+      <Text variant={TextVariant.Xl}>Edit field schema</Text>
     </ItemLeft>
   );
 };
