@@ -3,9 +3,9 @@ name: Test e2e
 on:
   workflow_call:
     secrets:
-      RO_DOCKERHUB_USERNAME:
+      docker-username:
         required: false
-      RO_DOCKERHUB_PAT:
+      docker-password:
         required: false
 jobs:
   test-e2e:
@@ -50,10 +50,13 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         # Skip docker login on forks (that won't have the docker-* secrets)
-        if: secrets.RO_DOCKERHUB_USERNAME != '' && secrets.RO_DOCKERHUB_PAT != ''
+        if: env.docker-username != '' && env.docker-password != ''
+        env:
+          docker-username: ${{ secrets.docker-username }}
+          docker-password: ${{ secrets.docker-password }}
         with:
-          username: ${{ secrets.docker-username }}
-          password: ${{ secrets.docker-password }}
+          username: ${{ env.docker-password }}
+          password: ${{ env.docker-password }}
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.12.1
