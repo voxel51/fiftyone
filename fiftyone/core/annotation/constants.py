@@ -138,6 +138,15 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
+TYPE_TO_FIELD_INSTANCE = {
+    value: key()
+    for key, value in FIELD_TYPE_TO_TYPES.items()
+    if isinstance(value, str)
+}
+for key, value in FIELD_TYPE_TO_TYPES[fof.ListField].items():
+    TYPE_TO_FIELD_INSTANCE[value] = fof.ListField(key())
+
+
 ### Heuristics
 
 
