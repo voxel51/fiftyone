@@ -196,8 +196,8 @@ class AppleSharpModel(fout.TorchImageModel):
             )
 
             intrinsics_resized = intrinsics.clone()
-            intrinsics_resized[0] *= internal_shape[0] / width
-            intrinsics_resized[1] *= internal_shape[1] / height
+            intrinsics_resized[0] *= internal_shape[1] / width
+            intrinsics_resized[1] *= internal_shape[0] / height
 
             gaussians = sharp_utils.unproject_gaussians(
                 gaussians_ndc,
