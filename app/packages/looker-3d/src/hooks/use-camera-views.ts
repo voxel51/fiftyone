@@ -222,7 +222,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyT") {
+      if (!event.metaKey && event.code === "KeyT") {
         setCameraViewStatus({
           viewName: "Top view",
           timestamp: Date.now(),
@@ -232,7 +232,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyE") {
+      if (!event.metaKey && event.code === "KeyE") {
         setCameraViewStatus({
           viewName: "Ego view",
           timestamp: Date.now(),
@@ -242,7 +242,7 @@ export const useCameraViews = ({
         return;
       }
 
-      if (event.code === "KeyZ") {
+      if (!event.metaKey && event.code === "KeyZ") {
         setCameraViewStatus({
           viewName: "Crop",
           timestamp: Date.now(),
