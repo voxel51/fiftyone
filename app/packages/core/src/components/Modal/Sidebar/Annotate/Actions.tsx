@@ -17,17 +17,14 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useAtom, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
-import {
-  quickDrawActiveAtom,
-  currentAnnotationModeAtom,
-} from "./Edit/state";
 import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -113,23 +110,11 @@ const Square = styled(Container)<{ $active?: boolean }>`
 `;
 
 const Classification = () => {
-  const [currentAnnotationMode, setCurrentAnnotationMode] = useAtom(currentAnnotationModeAtom);
-  const [, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const create = useCreate(CLASSIFICATION);
-
-  const isActive = currentAnnotationMode === "Classification";
 
   return (
     <Tooltip placement="top-center" text="Create new classification">
-      <Square
-        $active={isActive}
-        onClick={() => {
-          // Always enter mode (not a toggle)
-          setCurrentAnnotationMode("Classification");
-          setQuickDrawActive(true);
-          create(); // Create first label
-        }}
-      >
+      <Square onClick={create}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -149,20 +134,14 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const [currentAnnotationMode, setCurrentAnnotationMode] = useAtom(currentAnnotationModeAtom);
-  const [, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const { enableQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
-
-  const isActive = currentAnnotationMode === "Detection";
 
   return (
     <Tooltip placement="top-center" text="Create new detection">
       <Square
-        $active={isActive}
         onClick={() => {
-          // Always enter mode (not a toggle)
-          setCurrentAnnotationMode("Detection");
-          setQuickDrawActive(true);
+          enableQuickDraw(DETECTION);
           create(); // Create first label
         }}
       >

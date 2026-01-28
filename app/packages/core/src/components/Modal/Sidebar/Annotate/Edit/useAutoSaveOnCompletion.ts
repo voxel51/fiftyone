@@ -1,7 +1,8 @@
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
-import { quickDrawActiveAtom, current } from "./state";
+import { current } from "./state";
 import { isSavingAtom } from "./useSave";
+import { useQuickDraw } from "./useQuickDraw";
 
 /**
  * Hook that auto-triggers save when a detection overlay is complete
@@ -11,12 +12,12 @@ import { isSavingAtom } from "./useSave";
  * InteractiveDetectionHandler when a bounding box is finished.
  */
 export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
-  const isQuickDrawMode = useAtomValue(quickDrawActiveAtom);
+  const { quickDrawActive } = useQuickDraw();
   const currentLabel = useAtomValue(current);
   const isSaving = useAtomValue(isSavingAtom);
 
   useEffect(() => {
-    if (!isQuickDrawMode) {
+    if (!quickDrawActive) {
       return;
     }
 
@@ -25,11 +26,7 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
       const { overlayId } = customEvent.detail;
 
       // Check if the completed overlay matches our current label
-      if (
-        currentLabel &&
-        currentLabel.overlay?.id === overlayId &&
-        !isSaving
-      ) {
+      if (currentLabel && currentLabel.overlay?.id === overlayId && !isSaving) {
         // Auto-trigger save
         save();
       }
@@ -43,5 +40,5 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
         handleDetectionComplete
       );
     };
-  }, [isQuickDrawMode, currentLabel, isSaving, save]);
+  }, [quickDrawActive, currentLabel, isSaving, save]);
 };

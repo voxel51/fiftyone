@@ -11,29 +11,25 @@ import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
-import {
-  quickDrawActiveAtom,
-  defaultField,
-  editing,
-  savedLabel,
-} from "./state";
+import { defaultField, editing, savedLabel } from "./state";
 import { addLabel } from "../useLabels";
-import { useAutoAssignment } from "./useAutoAssignment";
+import { useQuickDraw } from "./useQuickDraw";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
-  const { getAutoAssignedField, getAutoAssignedLabel } = useAutoAssignment();
+  const {
+    quickDrawActive,
+    getAutoAssignedField,
+    getAutoAssignedLabel,
+  } = useQuickDraw();
 
   return useCallback(
     (type: LabelType) => {
       const id = objectId();
       const store = getDefaultStore();
 
-      // Check if we're in quick draw mode
-      const isQuickDrawMode = store.get(quickDrawActiveAtom);
-
       // Get field - use auto-assignment in quick draw mode
-      const field = isQuickDrawMode
+      const field = quickDrawActive
         ? getAutoAssignedField(type)
         : store.get(defaultField(type));
 
@@ -42,7 +38,7 @@ const useCreateAnnotationLabel = () => {
       }
 
       // Get auto-assigned label value if in quick draw mode
-      const labelValue = isQuickDrawMode
+      const labelValue = quickDrawActive
         ? getAutoAssignedLabel(type, field)
         : undefined;
 
@@ -65,7 +61,7 @@ const useCreateAnnotationLabel = () => {
         store.set(savedLabel, data);
 
         // In quick draw mode, add label to sidebar before interaction
-        if (isQuickDrawMode) {
+        if (quickDrawActive) {
           const labelData = { data, overlay, path: field, type };
           store.set(addLabel, labelData);
         }
@@ -85,7 +81,7 @@ const useCreateAnnotationLabel = () => {
         addOverlay(overlay);
 
         // In quick draw mode, add label to sidebar BEFORE entering interactive mode
-        if (isQuickDrawMode) {
+        if (quickDrawActive) {
           const labelData = { data, overlay, path: field, type };
           store.set(addLabel, labelData);
         }
@@ -100,7 +96,14 @@ const useCreateAnnotationLabel = () => {
         throw new Error("todo");
       }
     },
-    [addOverlay, overlayFactory, scene, getAutoAssignedField, getAutoAssignedLabel]
+    [
+      addOverlay,
+      overlayFactory,
+      scene,
+      quickDrawActive,
+      getAutoAssignedField,
+      getAutoAssignedLabel,
+    ]
   );
 };
 

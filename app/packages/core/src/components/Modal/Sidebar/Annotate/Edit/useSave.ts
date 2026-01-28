@@ -9,14 +9,12 @@ import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import {
   addValue,
-  quickDrawActiveAtom,
-  currentAnnotationModeAtom,
   current,
   editing,
   savedLabel,
   type LabelType,
 } from "./state";
-import { useAutoAssignment } from "./useAutoAssignment";
+import { useQuickDraw } from "./useQuickDraw";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
 
@@ -34,9 +32,7 @@ export default function useSave() {
   const [isSaving, setSaving] = useAtom(isSavingAtom);
   const exit = useExit(false);
   const setNotification = fos.useNotification();
-  const { updateLastUsed } = useAutoAssignment();
-  const quickDrawActive = useAtomValue(quickDrawActiveAtom);
-  const currentAnnotationMode = useAtomValue(currentAnnotationModeAtom);
+  const { quickDrawActive, currentMode, trackLastUsed } = useQuickDraw();
   const createClassification = useCreate(CLASSIFICATION);
   const createDetection = useCreate(DETECTION);
 
@@ -77,16 +73,14 @@ export default function useSave() {
       }
 
       // Check if we're in quick draw mode
-      if (quickDrawActive && currentAnnotationMode) {
+      if (quickDrawActive && currentMode) {
         // Update last-used values for auto-assignment
-        const labelType: LabelType = currentAnnotationMode as LabelType;
-        updateLastUsed(labelType, label.path, label.data.label);
+        const labelType: LabelType = currentMode as LabelType;
+        trackLastUsed(labelType, label.path, label.data.label);
 
         // Create next label immediately
         // This will enter interactive mode with a new handler
-        if (currentAnnotationMode === "Classification") {
-          createClassification();
-        } else if (currentAnnotationMode === "Detection") {
+        if (currentMode === DETECTION) {
           createDetection();
         }
 
@@ -123,8 +117,8 @@ export default function useSave() {
     exit,
     setNotification,
     quickDrawActive,
-    currentAnnotationMode,
-    updateLastUsed,
+    currentMode,
+    trackLastUsed,
     createClassification,
     createDetection,
   ]);

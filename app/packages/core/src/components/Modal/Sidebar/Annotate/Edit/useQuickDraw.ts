@@ -1,33 +1,68 @@
-import { getDefaultStore, useAtomValue } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { countBy, maxBy } from "lodash";
 import { labels, labelsByPath } from "../useLabels";
 import { labelSchemaData, fieldType } from "../state";
 import {
   quickDrawActiveAtom,
+  currentAnnotationModeAtom,
   defaultField,
   lastUsedFieldByTypeAtom,
   lastUsedLabelByFieldAtom,
-  type LabelType,
 } from "./state";
 
+import type { LabelType } from "./state";
+
 /**
- * Hook for auto-assigning field and label values when creating new labels
- * in quick draw mode.
+ * Centralized hook for managing quick draw mode state and operations.
  *
- * Auto-assignment logic:
- * - Field: Use last-used field for this type, fallback to defaultField
- * - Label: Use last-used label for this field, fallback to most common label
- *   in sidebar, fallback to first class in schema
+ * This hook encapsulates all quick draw functionality including:
+ * - Mode activation/deactivation
+ * - Auto-assignment logic for fields and labels
+ * - Last-used value tracking
+ *
+ * Following FiftyOne guidelines, this hook is the ONLY public interface
+ * for interacting with quick draw atoms. Atoms are implementation details
+ * and should not be accessed directly by consumers.
  */
-export const useAutoAssignment = () => {
+export const useQuickDraw = () => {
+  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const [currentMode, setCurrentMode] = useAtom(currentAnnotationModeAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const allLabels = useAtomValue(labels);
-  const isQuickDrawMode = useAtomValue(quickDrawActiveAtom);
+
+  /**
+   * Enable quick draw mode with the specified annotation type.
+   * Sets both the active flag and current mode.
+   */
+  const enableQuickDraw = useCallback(
+    (mode: "Classification" | "Detection") => {
+      setCurrentMode(mode);
+      setQuickDrawActive(true);
+    },
+    [setCurrentMode, setQuickDrawActive]
+  );
+
+  /**
+   * Disable quick draw mode.
+   * Resets both the active flag and current mode to their default values.
+   */
+  const disableQuickDraw = useCallback(() => {
+    setCurrentMode(null);
+    setQuickDrawActive(false);
+    // Note: lastUsedFieldByTypeAtom and lastUsedLabelByFieldAtom will be
+    // garbage collected when no longer referenced. We rely on quickDrawActive
+    // flag to determine whether to use last-used values.
+  }, [setCurrentMode, setQuickDrawActive]);
 
   /**
    * Get the auto-assigned field path for a label type.
-   * Prioritizes the field with the most labels of this type.
+   *
+   * Auto-assignment priority:
+   * 1. Last-used field for this type (if in quick draw mode)
+   * 2. Field with the most labels of this type
+   * 3. Default field for this type
+   *
    * Returns null if no field is available.
    */
   const getAutoAssignedField = useCallback(
@@ -35,7 +70,7 @@ export const useAutoAssignment = () => {
       const store = getDefaultStore();
 
       // In quick draw mode, check for last-used field
-      if (isQuickDrawMode) {
+      if (quickDrawActive) {
         const lastUsedField = store.get(lastUsedFieldByTypeAtom(type));
         if (lastUsedField) {
           return lastUsedField;
@@ -49,7 +84,10 @@ export const useAutoAssignment = () => {
       for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
         // Check if this field is of the correct type
         const typeStr = store.get(fieldType(fieldPath));
-        const IS_CLASSIFICATION = new Set(["Classification", "Classifications"]);
+        const IS_CLASSIFICATION = new Set([
+          "Classification",
+          "Classifications",
+        ]);
         const IS_DETECTION = new Set(["Detection", "Detections"]);
 
         const matchesType =
@@ -70,12 +108,17 @@ export const useAutoAssignment = () => {
       const field = store.get(defaultField(type));
       return field;
     },
-    [isQuickDrawMode, labelsMap]
+    [quickDrawActive, labelsMap]
   );
 
   /**
-   * Get the auto-assigned label value (class) for a label type.
-   * Looks at ALL visible labels of this type across all fields.
+   * Get the auto-assigned label value (class) for a label type and field.
+   *
+   * Auto-assignment priority:
+   * 1. Last-used label for this field (if in quick draw mode)
+   * 2. Most common label across all labels of this type
+   * 3. First class in the schema for the assigned field
+   *
    * Returns null if no label value can be determined.
    */
   const getAutoAssignedLabel = useCallback(
@@ -83,7 +126,7 @@ export const useAutoAssignment = () => {
       const store = getDefaultStore();
 
       // In quick draw mode, check for last-used label for this field
-      if (isQuickDrawMode) {
+      if (quickDrawActive) {
         const lastUsedLabel = store.get(lastUsedLabelByFieldAtom(fieldPath));
         if (lastUsedLabel) {
           return lastUsedLabel;
@@ -104,7 +147,10 @@ export const useAutoAssignment = () => {
       });
 
       if (relevantLabels.length > 0) {
-        const labelCounts = countBy(relevantLabels, (label) => label.data.label);
+        const labelCounts = countBy(
+          relevantLabels,
+          (label) => label.data.label
+        );
         const mostCommonEntry = maxBy(
           Object.entries(labelCounts),
           ([_, count]) => count
@@ -123,14 +169,17 @@ export const useAutoAssignment = () => {
 
       return null;
     },
-    [allLabels, isQuickDrawMode]
+    [allLabels, quickDrawActive]
   );
 
   /**
-   * Update the last-used field and label values after a successful save.
+   * Track the last-used field and label values after a successful save.
+   * This updates the auto-assignment state for future label creation.
+   *
+   * Should be called after each label is successfully saved in quick draw mode.
    */
-  const updateLastUsed = useCallback(
-    (type: LabelType, fieldPath: string, labelValue: string | undefined) => {
+  const trackLastUsed = useCallback(
+    (type: LabelType, fieldPath: string, labelValue?: string) => {
       const store = getDefaultStore();
 
       // Update last-used field for this type
@@ -144,26 +193,31 @@ export const useAutoAssignment = () => {
     []
   );
 
-  /**
-   * Clear all last-used tracking state.
-   * Called when exiting quick draw mode.
-   */
-  const clearLastUsed = useCallback(() => {
-    const store = getDefaultStore();
-
-    // Note: atomFamily atoms are not easily clearable
-    // They will be garbage collected when no longer referenced
-    // For now, we rely on the quickDrawActive flag
-    // to determine whether to use last-used values
-  }, []);
-
   return useMemo(
     () => ({
+      // State (read-only)
+      quickDrawActive,
+      currentMode,
+
+      // Mode control (for UI components)
+      enableQuickDraw,
+      disableQuickDraw,
+
+      // Auto-assignment (for useCreate)
       getAutoAssignedField,
       getAutoAssignedLabel,
-      updateLastUsed,
-      clearLastUsed,
+
+      // Tracking (for useSave)
+      trackLastUsed,
     }),
-    [getAutoAssignedField, getAutoAssignedLabel, updateLastUsed, clearLastUsed]
+    [
+      quickDrawActive,
+      currentMode,
+      enableQuickDraw,
+      disableQuickDraw,
+      getAutoAssignedField,
+      getAutoAssignedLabel,
+      trackLastUsed,
+    ]
   );
 };

@@ -1,5 +1,5 @@
 import { West as Back } from "@mui/icons-material";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useContext } from "react";
 import { Redo, Round, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
@@ -10,13 +10,9 @@ import { useRecoilValue } from "recoil";
 import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
-import {
-  quickDrawActiveAtom,
-  currentAnnotationModeAtom,
-  currentOverlay,
-  currentType,
-} from "./state";
+import { currentOverlay, currentType } from "./state";
 import useColor from "./useColor";
+import { useQuickDraw } from "./useQuickDraw";
 
 const Header = () => {
   const type = useAtomValue(currentType);
@@ -25,17 +21,14 @@ const Header = () => {
   const { onExit } = useContext(ConfirmationContext);
   const { scene } = useLighter();
 
-  const [, setCurrentAnnotationMode] = useAtom(currentAnnotationModeAtom);
-  const [, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const { disableQuickDraw } = useQuickDraw();
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
   const handleExit = () => {
-    // Exit quick draw mode
-    setCurrentAnnotationMode(null);
-    setQuickDrawActive(false);
+    disableQuickDraw();
     scene?.exitInteractiveMode();
 
     // Call original exit handler
