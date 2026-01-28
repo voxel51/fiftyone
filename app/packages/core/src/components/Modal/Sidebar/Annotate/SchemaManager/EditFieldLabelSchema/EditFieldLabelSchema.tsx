@@ -42,9 +42,6 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
     setActiveTab(TAB_IDS[index]);
   }, []);
 
-  const schemaData =
-    labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema;
-
   return (
     <EditContainer>
       <Header field={field} />
@@ -108,6 +105,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           )}
           {showScanButton && (
             <Button
+              data-cy={"scan"}
               size={Size.Md}
               variant={Variant.Secondary}
               onClick={labelSchema.scan}
@@ -125,17 +123,16 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         {isM4Enabled && activeTab === TAB_GUI ? (
           <GUIContent
             field={field}
-            config={schemaData}
+            config={labelSchema.currentLabelSchema}
             scanning={labelSchema.isScanning}
             onConfigChange={labelSchema.updateConfig}
           />
         ) : (
           <JSONEditor
+            key={labelSchema.editorKey}
             errors={!!labelSchema.errors.length}
-            data={JSON.stringify(schemaData, undefined, 2)}
-            onChange={(value) => {
-              labelSchema.validate(value);
-            }}
+            data={labelSchema.currentLabelSchema}
+            onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
           />
         )}
@@ -152,6 +149,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               style={{ alignItems: "center" }}
             >
               <Toggle
+                data-cy={"toggle-visibility"}
                 size={Size.Md}
                 checked={isFieldVisible}
                 onChange={handleToggleVisibility}

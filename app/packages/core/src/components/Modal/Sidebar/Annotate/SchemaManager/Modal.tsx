@@ -43,7 +43,11 @@ const Heading = () => {
 
   return (
     <ItemLeft>
-      <BackButton color="secondary" onClick={() => setField(null)} />
+      <BackButton
+        data-cy="schema-manager-back"
+        color="secondary"
+        onClick={() => setField(null)}
+      />
       <Text variant={TextVariant.Xl}>Edit field schema</Text>
     </ItemLeft>
   );
@@ -105,7 +109,12 @@ const SchemaManagerFooter = () => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+        <Button
+          data-cy="move-fields"
+          size={Size.Md}
+          variant={Variant.Secondary}
+          onClick={onMove}
+        >
           {isMovingToVisible ? (
             <Icon
               name={IconName.ChevronTop}
@@ -147,10 +156,17 @@ const Modal = () => {
 
   return createPortal(
     <ModalBackground onClick={() => setShowModal(false)}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
+      <ModalContainer
+        data-cy="schema-manager"
+        onClick={(e) => e.stopPropagation()}
+      >
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => setShowModal(false)} />
+          <CloseButton
+            color="secondary"
+            data-cy="close-schema-manager"
+            onClick={() => setShowModal(false)}
+          />
         </ModalHeader>
 
         <Subheading />
