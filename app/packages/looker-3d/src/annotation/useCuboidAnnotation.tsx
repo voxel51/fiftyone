@@ -1,9 +1,11 @@
-import { TransformControlsProps } from "@react-three/drei";
+import { usePushUndoable } from "@fiftyone/commands";
+import type { TransformControlsProps } from "@react-three/drei";
 import { useCallback, useMemo, useRef } from "react";
 import { useRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import { stagedCuboidTransformsAtom, tempLabelTransformsAtom } from "../state";
+import type { CuboidTransformData } from "./types";
 import { useReverseSyncCuboidTransforms } from "./useReverseSyncCuboidTransforms";
 
 interface UseCuboidAnnotationProps {
@@ -28,6 +30,9 @@ export const useCuboidAnnotation = ({
   const [stagedCuboidTransforms, setStagedCuboidTransforms] = useRecoilState(
     stagedCuboidTransformsAtom
   );
+
+  // Command context for undo/redo support
+  const { createPushAndExec } = usePushUndoable();
 
   // Reverse sync: when staged transforms change from canvas manipulation,
   // sync back to the sidebar
@@ -123,15 +128,13 @@ export const useCuboidAnnotation = ({
     const transformControls = transformControlsRef.current as any;
     const mode = transformControls.mode;
 
-    const newTransform: {
-      location: number[];
-      dimensions: number[];
-      rotation?: Vector3Tuple;
-      quaternion?: [number, number, number, number];
-    } = {
+    const oldTransform: CuboidTransformData | undefined =
+      stagedCuboidTransforms[label._id];
+
+    const newTransform: CuboidTransformData = {
       location: [...effectiveLocation],
       dimensions: [...effectiveDimensions],
-      quaternion: [...effectiveQuaternion],
+      quaternion: effectiveQuaternion ? [...effectiveQuaternion] : undefined,
       rotation: effectiveRotation,
     };
 
@@ -146,7 +149,7 @@ export const useCuboidAnnotation = ({
       // Commit scale/dimensions change from temp transforms
       newTransform.dimensions = tempTransforms.dimensions as Vector3Tuple;
     } else if (mode === "rotate") {
-      let quaternionToCommit = tempTransforms.quaternion;
+      const quaternionToCommit = tempTransforms?.quaternion;
 
       if (quaternionToCommit) {
         // Store quaternion directly - conversion to Euler is deferred until final save
@@ -156,19 +159,38 @@ export const useCuboidAnnotation = ({
       }
     }
 
-    setStagedCuboidTransforms((prev) => ({
-      ...prev,
-      [label._id]: newTransform,
-    }));
+    const labelId = label._id;
+
+    createPushAndExec(
+      `cuboid-transform-${labelId}-${Date.now()}`,
+      () => {
+        setStagedCuboidTransforms((prev) => ({
+          ...prev,
+          [labelId]: newTransform,
+        }));
+      },
+      () => {
+        setStagedCuboidTransforms((prev) => {
+          if (oldTransform) {
+            return { ...prev, [labelId]: oldTransform };
+          }
+          // If there was no old transform, remove the entry
+          const { [labelId]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    );
 
     setTempCuboidTransforms(null);
   }, [
     effectiveLocation,
     effectiveDimensions,
     effectiveRotation,
+    effectiveQuaternion,
     label._id,
     tempCuboidTransforms,
     stagedCuboidTransforms,
+    createPushAndExec,
   ]);
 
   return {

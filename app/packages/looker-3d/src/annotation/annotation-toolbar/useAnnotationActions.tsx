@@ -1,3 +1,4 @@
+import { usePushUndoable } from "@fiftyone/commands";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
@@ -31,6 +32,7 @@ import {
 import type {
   AnnotationAction,
   AnnotationActionGroup,
+  PolylinePointTransformData,
   TransformMode,
 } from "../types";
 import { AnnotationPlaneTooltip } from "./AnnotationPlaneTooltip";
@@ -68,15 +70,16 @@ export const useAnnotationActions = () => {
   const [editing, setEditing] = useAtom(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
+  const [stagedPolylineTransforms, setStagedPolylineTransforms] =
+    useRecoilState(stagedPolylineTransformsAtom);
   const setStagedCuboidTransforms = useSetRecoilState(
     stagedCuboidTransformsAtom
   );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
   const { sceneBoundingBox, upVector } = useFo3dContext();
+
+  const { createPushAndExec } = usePushUndoable();
 
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {
@@ -108,55 +111,73 @@ export const useAnnotationActions = () => {
 
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
-    setStagedPolylineTransforms((prev) => {
-      const currentData = prev[labelId];
-      if (!currentData) return prev;
+    const currentData = stagedPolylineTransforms[labelId];
+    if (!currentData) return;
 
-      const currentSegments = currentData.segments || [];
+    const currentSegments = currentData.segments || [];
 
-      // If the segment doesn't exist or the point doesn't exist, return unchanged
-      if (
-        segmentIndex >= currentSegments.length ||
-        pointIndex >= currentSegments[segmentIndex]?.points.length
-      ) {
-        return prev;
+    // If the segment doesn't exist or the point doesn't exist, return unchanged
+    if (
+      segmentIndex >= currentSegments.length ||
+      pointIndex >= currentSegments[segmentIndex]?.points.length
+    ) {
+      return;
+    }
+
+    // Capture old transform for undo
+    const oldTransformData: PolylinePointTransformData = { ...currentData };
+
+    // Create new segments array with the point removed
+    const newSegments = currentSegments.map((segment, segIdx) => {
+      if (segIdx === segmentIndex) {
+        // Remove the point from this segment
+        const newPoints = segment.points.filter(
+          (_, ptIdx) => ptIdx !== pointIndex
+        );
+        return { points: newPoints };
       }
-
-      // Create new segments array with the point removed
-      const newSegments = currentSegments.map((segment, segIdx) => {
-        if (segIdx === segmentIndex) {
-          // Remove the point from this segment
-          const newPoints = segment.points.filter(
-            (_, ptIdx) => ptIdx !== pointIndex
-          );
-          return { points: newPoints };
-        }
-        return segment;
-      });
-
-      // Remove empty segments
-      const filteredSegments = newSegments.filter(
-        (segment) => segment.points.length > 0
-      );
-
-      return {
-        ...prev,
-        [labelId]: {
-          ...currentData,
-          segments: filteredSegments,
-        },
-      };
+      return segment;
     });
 
-    setSelectedPoint(null);
-    setCurrentArchetypeSelectedForTransform(null);
+    // Remove empty segments
+    const filteredSegments = newSegments.filter(
+      (segment) => segment.points.length > 0
+    );
+
+    const newTransformData: PolylinePointTransformData = {
+      ...currentData,
+      segments: filteredSegments,
+    };
+
+    createPushAndExec(
+      `vertex-delete-${labelId}-${segmentIndex}-${pointIndex}-${Date.now()}`,
+      () => {
+        setStagedPolylineTransforms((prev) => ({
+          ...prev,
+          [labelId]: newTransformData,
+        }));
+        setSelectedPoint(null);
+        setCurrentArchetypeSelectedForTransform(null);
+      },
+      () => {
+        setStagedPolylineTransforms((prev) => ({
+          ...prev,
+          [labelId]: oldTransformData,
+        }));
+        // Re-select the point that was deleted
+        setSelectedPoint(selectedPoint);
+        setCurrentArchetypeSelectedForTransform("point");
+      }
+    );
   }, [
     currentSampleId,
     currentActiveField,
     selectedPoint,
+    stagedPolylineTransforms,
     setStagedPolylineTransforms,
     setSelectedPoint,
     setCurrentArchetypeSelectedForTransform,
+    createPushAndExec,
   ]);
 
   const handleContextualDelete = useCallback(() => {

@@ -15,6 +15,7 @@
     "main": "./src/index.ts",
     "dependencies": {
         "@emotion/react": "^11.14.0",
+        "@fiftyone/commands": "*",
         "@emotion/styled": "^11.14.0",
         "@react-three/drei": "^10.7.6",
         "@react-three/fiber": "^8.18.0",

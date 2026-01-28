@@ -1,6 +1,7 @@
+import { usePushUndoable } from "@fiftyone/commands";
 import * as fos from "@fiftyone/state";
 import { Line as LineDrei } from "@react-three/drei";
-import { ThreeEvent } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
@@ -16,6 +17,7 @@ import {
   tempVertexTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
+import type { PolylinePointTransformData } from "./types";
 import {
   applyDeltaToAllPoints,
   findClickedSegment,
@@ -43,6 +45,9 @@ export const usePolylineAnnotation = ({
   const [polylinePointTransforms, setStagedPolylineTransforms] = useRecoilState(
     stagedPolylineTransformsAtom
   );
+
+  // Command context for undo/redo support
+  const { createPushAndExec } = usePushUndoable();
 
   const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
 
@@ -116,29 +121,54 @@ export const usePolylineAnnotation = ({
             pointIndex={pointIndex}
             tooltipDescriptor="Vertex"
             onPointMove={(newPosition) => {
-              setStagedPolylineTransforms((prev) => {
-                const labelId = label._id;
-                const currentSegments = prev[labelId]?.segments || [];
+              const labelId = label._id;
 
-                const newSegments = updateVertexPosition(
-                  points3d,
-                  currentSegments,
-                  segmentIndex,
-                  pointIndex,
-                  [newPosition.x, newPosition.y, newPosition.z],
-                  // Update shared vertices
-                  true
-                );
+              // Capture old transform for undo
+              const oldTransformData: PolylinePointTransformData | undefined =
+                polylinePointTransforms[labelId]
+                  ? { ...polylinePointTransforms[labelId] }
+                  : undefined;
 
-                return {
-                  ...prev,
-                  [labelId]: {
-                    segments: newSegments,
-                    path: prev[labelId]?.path ?? currentActiveField,
-                    sampleId: prev[labelId]?.sampleId ?? currentSampleId,
-                  },
-                };
-              });
+              const currentSegments =
+                polylinePointTransforms[labelId]?.segments || [];
+
+              const newSegments = updateVertexPosition(
+                points3d,
+                currentSegments,
+                segmentIndex,
+                pointIndex,
+                [newPosition.x, newPosition.y, newPosition.z],
+                // Update shared vertices
+                true
+              );
+
+              const newTransformData: PolylinePointTransformData = {
+                segments: newSegments,
+                path:
+                  polylinePointTransforms[labelId]?.path ?? currentActiveField,
+                sampleId:
+                  polylinePointTransforms[labelId]?.sampleId ?? currentSampleId,
+              };
+
+              createPushAndExec(
+                `vertex-move-${labelId}-${segmentIndex}-${pointIndex}-${Date.now()}`,
+                () => {
+                  setStagedPolylineTransforms((prev) => ({
+                    ...prev,
+                    [labelId]: newTransformData,
+                  }));
+                },
+                () => {
+                  setStagedPolylineTransforms((prev) => {
+                    if (oldTransformData) {
+                      return { ...prev, [labelId]: oldTransformData };
+                    }
+                    // If there was no old transform, remove the entry
+                    const { [labelId]: _, ...rest } = prev;
+                    return rest;
+                  });
+                }
+              );
             }}
             pulsate={false}
           />
@@ -153,6 +183,8 @@ export const usePolylineAnnotation = ({
     strokeAndFillColor,
     currentActiveField,
     currentSampleId,
+    polylinePointTransforms,
+    createPushAndExec,
   ]);
 
   const centroidMarker = useMemo(() => {
@@ -234,25 +266,46 @@ export const usePolylineAnnotation = ({
 
     const worldDelta = deltaPosition;
 
-    setStagedPolylineTransforms((prev) => {
-      const labelId = label._id;
+    const labelId = label._id;
 
-      const newSegments = applyDeltaToAllPoints(points3d, [
-        worldDelta.x,
-        worldDelta.y,
-        worldDelta.z,
-      ]);
+    // Capture old transform for undo
+    const oldTransformData: PolylinePointTransformData | undefined =
+      polylinePointTransforms[labelId]
+        ? { ...polylinePointTransforms[labelId] }
+        : undefined;
 
-      return {
-        ...prev,
-        [labelId]: {
-          ...(prev[labelId] ?? {}),
-          segments: newSegments,
-          path: currentActiveField || "",
-          sampleId: currentSampleId,
-        },
-      };
-    });
+    const newSegments = applyDeltaToAllPoints(points3d, [
+      worldDelta.x,
+      worldDelta.y,
+      worldDelta.z,
+    ]);
+
+    const newTransformData: PolylinePointTransformData = {
+      ...(polylinePointTransforms[labelId] ?? {}),
+      segments: newSegments,
+      path: currentActiveField || "",
+      sampleId: currentSampleId,
+    };
+
+    createPushAndExec(
+      `polyline-transform-${labelId}-${Date.now()}`,
+      () => {
+        setStagedPolylineTransforms((prev) => ({
+          ...prev,
+          [labelId]: newTransformData,
+        }));
+      },
+      () => {
+        setStagedPolylineTransforms((prev) => {
+          if (oldTransformData) {
+            return { ...prev, [labelId]: oldTransformData };
+          }
+          // If there was no old transform, remove the entry
+          const { [labelId]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    );
 
     // Reset group position to prevent double-application
     // This is important because transform controls are applied to the group
@@ -267,9 +320,11 @@ export const usePolylineAnnotation = ({
     currentActiveField,
     label._id,
     points3d,
+    polylinePointTransforms,
     setStagedPolylineTransforms,
     startMatrix,
     setTempPolylineTransforms,
+    createPushAndExec,
   ]);
 
   const handlePointerOver = useCallback(() => {
@@ -327,34 +382,56 @@ export const usePolylineAnnotation = ({
       if (clickResult) {
         const { segmentIndex, newVertexPosition } = clickResult;
 
-        // Insert the new vertex into the segment
-        setStagedPolylineTransforms((prev) => {
-          const labelId = label._id;
-          const currentSegments = prev[labelId]?.segments || [];
+        const labelId = label._id;
+        const currentSegments =
+          polylinePointTransforms[labelId]?.segments || [];
 
-          const newSegments = insertVertexInSegment(
-            points3d,
-            currentSegments,
-            segmentIndex,
-            newVertexPosition,
-            clickPosition
-          );
+        const newSegments = insertVertexInSegment(
+          points3d,
+          currentSegments,
+          segmentIndex,
+          newVertexPosition,
+          clickPosition
+        );
 
-          // If newSegments is null, it means the new vertex was too close to an existing vertex
-          // In that case, we don't update the transforms
-          if (newSegments === null) {
-            return prev;
+        // If newSegments is null, it means the new vertex was too close to an existing vertex
+        // In that case, we don't update the transforms
+        if (newSegments === null) {
+          return;
+        }
+
+        // Capture old transform for undo
+        const oldTransformData: PolylinePointTransformData | undefined =
+          polylinePointTransforms[labelId]
+            ? { ...polylinePointTransforms[labelId] }
+            : undefined;
+
+        const newTransformData: PolylinePointTransformData = {
+          segments: newSegments,
+          path: polylinePointTransforms[labelId]?.path ?? currentActiveField,
+          sampleId:
+            polylinePointTransforms[labelId]?.sampleId ?? currentSampleId,
+        };
+
+        createPushAndExec(
+          `vertex-insert-${labelId}-${segmentIndex}-${Date.now()}`,
+          () => {
+            setStagedPolylineTransforms((prev) => ({
+              ...prev,
+              [labelId]: newTransformData,
+            }));
+          },
+          () => {
+            setStagedPolylineTransforms((prev) => {
+              if (oldTransformData) {
+                return { ...prev, [labelId]: oldTransformData };
+              }
+              // If there was no old transform, remove the entry
+              const { [labelId]: _, ...rest } = prev;
+              return rest;
+            });
           }
-
-          return {
-            ...prev,
-            [labelId]: {
-              segments: newSegments,
-              path: prev[labelId].path ?? currentActiveField,
-              sampleId: prev[labelId].sampleId ?? currentSampleId,
-            },
-          };
-        });
+        );
       }
     },
     [
@@ -365,6 +442,8 @@ export const usePolylineAnnotation = ({
       label._id,
       currentActiveField,
       currentSampleId,
+      polylinePointTransforms,
+      createPushAndExec,
     ]
   );
 
