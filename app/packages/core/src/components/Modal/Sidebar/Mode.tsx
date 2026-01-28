@@ -1,9 +1,10 @@
 import { useTheme } from "@fiftyone/components";
-import { ANNOTATE, EXPLORE, modalMode } from "@fiftyone/state";
-import { useAtom, useAtomValue } from "jotai";
+import { ModalMode, useModalMode } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
@@ -25,7 +26,8 @@ const Item = styled.div`
 `;
 
 const Mode = () => {
-  const [mode, setMode] = useAtom(modalMode);
+  const mode = useModalMode();
+  const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
   const theme = useTheme();
   const background = { background: theme.background.level1 };
   const text = { color: theme.text.secondary };
@@ -39,14 +41,22 @@ const Mode = () => {
     <Container>
       <Items>
         <Item
-          style={mode === EXPLORE ? background : text}
-          onClick={() => setMode(EXPLORE)}
+          style={mode === ModalMode.EXPLORE ? background : text}
+          onClick={() => {
+            if (mode === ModalMode.ANNOTATE) {
+              exitAnnotationMode();
+            }
+          }}
         >
           Explore
         </Item>
         <Item
-          style={mode === ANNOTATE ? background : text}
-          onClick={() => setMode(ANNOTATE)}
+          style={mode === ModalMode.ANNOTATE ? background : text}
+          onClick={() => {
+            if (mode !== ModalMode.ANNOTATE) {
+              enterAnnotationMode();
+            }
+          }}
         >
           Annotate
         </Item>

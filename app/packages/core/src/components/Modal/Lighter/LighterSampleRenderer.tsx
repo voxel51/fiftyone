@@ -120,7 +120,7 @@ const LighterSetupImpl = (props: {
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
 
   // This is the bridge between FiftyOne state management system and Lighter
-  useBridge(scene, sceneId);
+  useBridge(scene);
 
   return null;
 };

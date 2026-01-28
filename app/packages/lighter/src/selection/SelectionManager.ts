@@ -31,8 +31,8 @@ export class SelectionManager {
   private selectableOverlays = new Map<string, Selectable>();
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  constructor(sceneId: string) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+  constructor(eventChannel: string) {
+    this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
   }
 
   /**
