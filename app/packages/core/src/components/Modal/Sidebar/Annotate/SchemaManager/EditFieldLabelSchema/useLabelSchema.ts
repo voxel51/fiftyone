@@ -139,17 +139,7 @@ const useSave = (field: string) => {
     save: () => {
       setIsSaving(true);
 
-      // Identify new attributes (ones that don't exist in saved or default schema)
-      const newAttributes = getNewAttributes(
-        current,
-        savedLabelSchema,
-        defaultLabelSchema
-      );
-
       const params: Record<string, unknown> = { field, label_schema: current };
-      if (Object.keys(newAttributes).length > 0) {
-        params.new_attributes = newAttributes;
-      }
 
       update.execute(params, {
         callback: (result) => {
