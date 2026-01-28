@@ -6,6 +6,8 @@ Annotation label schemas operators
 |
 """
 
+import logging
+
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
@@ -13,6 +15,8 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.operators as foo
+
+logger = logging.getLogger(__name__)
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -150,7 +154,16 @@ class UpdateLabelSchema(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         label_schema = ctx.params.get("label_schema", None)
-        ctx.dataset.update_label_schema(field, label_schema)
+        new_attributes = ctx.params.get("new_attributes", None)
+
+        try:
+            ctx.dataset.update_label_schema(
+                field, label_schema, new_attributes=new_attributes
+            )
+        except Exception as e:
+            ctx.ops.notify(str(e), variant="error")
+            return {"error": str(e)}
+
         return {"label_schema": label_schema}
 
 
