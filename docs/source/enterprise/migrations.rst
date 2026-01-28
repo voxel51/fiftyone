@@ -164,12 +164,12 @@ provide the version which you want to restore.
 
 .. code-block:: shell
 
-    # Migrate from v2.12.0 to v2.13.0
-    fiftyone-migrator migrate 2.13.0
+    # Migrate from v2.14.0 to v2.15.0
+    fiftyone-migrator migrate 2.15.0
     
     # Oops, need to revert this migration!
-    # Migrate from v2.13.0 to v2.12.0
-    fiftyone-migrator migrate 2.12.0
+    # Migrate from v2.15.0 to v2.14.0
+    fiftyone-migrator migrate 2.14.0
 
 Downgrading your deployment without the Enterprise Migration Tool
 _________________________________________________________________
