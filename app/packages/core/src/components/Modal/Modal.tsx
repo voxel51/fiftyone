@@ -29,6 +29,7 @@ import {
   useKeyBindings,
 } from "@fiftyone/commands";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import { useMediaFieldNavigation } from "./useMediaFieldNavigation";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -265,6 +266,8 @@ const Modal = () => {
   );
 
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
+  useMediaFieldNavigation();
 
   return ReactDOM.createPortal(
     <modalContext.Provider
