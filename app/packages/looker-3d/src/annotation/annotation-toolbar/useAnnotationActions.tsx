@@ -1,4 +1,3 @@
-import useConfirmExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Confirmation/useConfirmExit";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
 import * as fos from "@fiftyone/state";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
@@ -253,8 +252,9 @@ export const useAnnotationActions = () => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
 
-  // Custom exit function that also clears polyline and cuboid transforms
-  const customExit = useCallback(() => {
+  // Exit function that clears polyline and cuboid transforms
+  // No confirmation needed since autosave handles persistence
+  const handleDeselectLabel = useCallback(() => {
     setStagedPolylineTransforms({});
     setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
@@ -267,15 +267,6 @@ export const useAnnotationActions = () => {
     setEditing,
     setEditSegmentsMode,
   ]);
-
-  // Use confirm exit hook with custom exit function
-  const { confirmExit } = useConfirmExit(customExit);
-
-  const handleDeselectLabel = useCallback(() => {
-    confirmExit(() => {
-      // Callback after exit is confirmed, no-op for now
-    });
-  }, [confirmExit]);
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
