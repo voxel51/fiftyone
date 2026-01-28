@@ -6,6 +6,7 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Collapse, Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -16,10 +17,10 @@ import {
   Size,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo, useState } from "react";
 import { labelSchemaData } from "../state";
+import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
 import {
   currentField,
@@ -31,7 +32,6 @@ import {
   sortedInactivePaths,
 } from "./state";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Actions component for hidden field rows
@@ -48,9 +48,15 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
 
   return (
     <span className="flex items-center gap-2">
-      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {isUnsupported && (
+        <Pill data-cy="pill" size={Size.Md}>
+          Unsupported
+        </Pill>
+      )}
       {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
-        <Pill size={Size.Md}>Read-only</Pill>
+        <Pill data-cy="pill" size={Size.Md}>
+          Read-only
+        </Pill>
       )}
       {!isSystemReadOnly && !isUnsupported && (
         <Tooltip
@@ -58,7 +64,7 @@ const HiddenFieldActions = ({ path }: { path: string }) => {
           anchor={Anchor.Bottom}
           portal
         >
-          <Clickable onClick={() => setField(path)}>
+          <Clickable data-cy={"edit"} onClick={() => setField(path)}>
             <Icon name={IconName.Edit} size={Size.Md} />
           </Clickable>
         </Tooltip>
@@ -88,11 +94,14 @@ const HiddenFieldsSection = () => {
           data: {
             canSelect: hasSchema && !isSystemReadOnly,
             canDrag: false,
+            "data-cy": `field-row-${path}`,
             primaryContent: path,
-            secondaryContent: buildFieldSecondaryContent(
-              fieldTypes[path],
-              fieldAttrCounts[path],
-              isSystemReadOnly
+            secondaryContent: (
+              <SecondaryText
+                fieldType={fieldTypes[path] ?? ""}
+                attrCount={fieldAttrCounts[path]}
+                isSystemReadOnly={isSystemReadOnly}
+              />
             ),
             actions: <HiddenFieldActions path={path} />,
           } as ListItemProps,
@@ -136,6 +145,7 @@ const HiddenFieldsSection = () => {
       </GUISectionHeader>
       <Collapse in={expanded}>
         <RichList
+          data-cy={"hidden-fields"}
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}

@@ -4,7 +4,6 @@
 
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
-import { SYSTEM_READ_ONLY_FIELD_NAME } from "./constants";
 
 // =============================================================================
 // Types
@@ -139,19 +138,4 @@ export const formatAttributeCount = (count: number): string => {
  */
 export const formatSchemaCount = (count: number): string => {
   return `${count} schema${count !== 1 ? "s" : ""}`;
-};
-
-/**
- * Build secondary content string for field display
- */
-export const buildFieldSecondaryContent = (
-  fieldType: string,
-  attrCount: number,
-  isSystemReadOnly: boolean
-): string => {
-  const typeText = isSystemReadOnly ? SYSTEM_READ_ONLY_FIELD_NAME : fieldType;
-  if (!isSystemReadOnly && attrCount > 0) {
-    return `${typeText} • ${formatAttributeCount(attrCount)}`;
-  }
-  return typeText;
 };

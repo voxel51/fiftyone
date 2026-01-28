@@ -5,7 +5,7 @@ import {
   stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
-import { getDefaultStore, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
@@ -17,6 +17,7 @@ export default function useExit() {
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene } = useLighter();
+  const overlay = useAtomValue(currentOverlay);
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -38,9 +39,6 @@ export default function useExit() {
    */
 
   return useCallback(() => {
-    const store = getDefaultStore();
-    const overlay = store.get(currentOverlay);
-
     if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       if (TypeGuards.isHoverable(overlay)) {
@@ -65,12 +63,13 @@ export default function useExit() {
     setEditing(null);
     setActivePrimitive(null);
   }, [
-    setStagedPolylineTransforms,
-    setStagedCuboidTransforms,
-    setSelectedLabelForAnnotation,
-    setSaved,
-    setEditing,
-    setActivePrimitive,
+    overlay,
     scene,
+    setActivePrimitive,
+    setEditing,
+    setSaved,
+    setSelectedLabelForAnnotation,
+    setStagedCuboidTransforms,
+    setStagedPolylineTransforms,
   ]);
 }

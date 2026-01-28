@@ -7,6 +7,7 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -17,7 +18,6 @@ import {
   Size,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import {
@@ -26,10 +26,10 @@ import {
   fieldAttributeCount,
   fieldType,
 } from "../state";
+import { Item } from "./Components";
+import SecondaryText from "./SecondaryText";
 import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
 import { GUISectionHeader } from "./styled";
-import { Item } from "./Components";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Edit action button for field rows
@@ -43,7 +43,7 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable onClick={() => setField(path)}>
+      <Clickable data-cy="edit" onClick={() => setField(path)}>
         <Icon name={IconName.Edit} size={Size.Md} />
       </Clickable>
     </Tooltip>
@@ -105,11 +105,14 @@ const ActiveFieldsSection = () => {
         data: {
           canSelect: true,
           canDrag: true,
+          "data-cy": `field-row-${path}`,
           primaryContent: path,
-          secondaryContent: buildFieldSecondaryContent(
-            fieldTypes[path],
-            fieldAttrCounts[path],
-            false
+          secondaryContent: (
+            <SecondaryText
+              fieldType={fieldTypes[path] ?? ""}
+              attrCount={fieldAttrCounts[path]}
+              isSystemReadOnly={false}
+            />
           ),
           actions: (
             <span className="flex items-center gap-2">
@@ -182,6 +185,7 @@ const ActiveFieldsSection = () => {
         <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
       <RichList
+        data-cy={"active-fields"}
         listItems={listItems}
         draggable={true}
         onOrderChange={handleOrderChange}

@@ -451,6 +451,7 @@ export const useAnnotationActions = () => {
     editing,
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
+    onExit,
   ]);
 
   return {
