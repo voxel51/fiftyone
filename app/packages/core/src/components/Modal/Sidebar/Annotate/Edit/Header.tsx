@@ -15,7 +15,7 @@ const Header = () => {
   const type = useAtomValue(currentType);
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
-  const onExit = useExit(false); // false = don't revert label since autosave handles it
+  const onExit = useExit();
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";

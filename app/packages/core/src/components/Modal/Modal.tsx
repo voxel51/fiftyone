@@ -28,7 +28,6 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -68,10 +67,7 @@ const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationEventHandlers();
   const modalMode = useModalMode();
 
-  const { isEnabled: enableAutoSave } = useFeature({
-    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
-  });
-  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+  useAutoSave(modalMode === ModalMode.ANNOTATE);
 
   return <Fragment />;
 };
