@@ -153,7 +153,7 @@ const ActiveFieldsSection = () => {
     return (
       <>
         <GUISectionHeader>
-          <Text variant={TextVariant.MdBold}>Active fields</Text>
+          <Text variant={TextVariant.Lg}>Active fields</Text>
           <Tooltip
             content="Fields currently active and available for dataset annotation"
             anchor={Anchor.Bottom}
