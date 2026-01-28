@@ -42,11 +42,9 @@ def validate_label_schemas(
         fields (None): a field name, ``embedded.field.name`` or iterable of
             such values
         allow_new_attrs (False): whether to allow label attributes that do not
-            yet exist on the field schema. See
-            :ref:`field schema <field-schemas>`
-        allow_new_fields (False): whether to label schemas for fields that do
-            not yet exist on the field schema. See
-            :ref:`field schema <field-schemas>`
+            yet exist on the :ref:`field schema <field-schemas>`
+        allow_new_fields (False): whether to allow label schemas for fields
+            that do not yet exist on the :ref:`field schema <field-schemas>`
 
     Raises:
         ValidationErrors: if the label schema(s) are invalid
