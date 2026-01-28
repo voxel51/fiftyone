@@ -5,11 +5,8 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import Confirmation from "../Confirmation";
-import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
-import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
@@ -84,10 +81,10 @@ export default function Edit() {
   );
 
   const save = useSave();
-  const { confirmExit } = useConfirmExit(() => {
-    clear();
-    exit();
-  }, save);
+  // const { confirmExit } = useConfirmExit(() => {
+  //   clear();
+  //   exit();
+  // }, save);
 
   // Auto-save when detection is complete in quick draw mode
   useAutoSaveOnCompletion(save);
@@ -100,7 +97,8 @@ export default function Edit() {
     const clickHandler = (event: Event) => {
       if (event.target === el && pointerDownTarget === el) {
         event.stopImmediatePropagation();
-        confirmExit(clear);
+        clear();
+        exit();
       }
 
       pointerDownTarget = null;
@@ -116,27 +114,24 @@ export default function Edit() {
       el?.removeEventListener("pointerdown", pointerDownHandler, true);
       el?.removeEventListener("click", clickHandler, true);
     };
-  }, [confirmExit, clear]);
+  }, [exit, clear]);
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
   const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
-    <Confirmation>
-      <ContentContainer>
-        <Header />
-        <Content>
-          <Id />
-          {!primitiveEditingActive && <Field />}
-          {primitiveEditingActive && <PrimitiveWrapper />}
-          {type === DETECTION && overlay && !is3dDetection && <Position />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d />}
-          {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema />}
-        </Content>
-        <Footer />
-      </ContentContainer>
-    </Confirmation>
+    <ContentContainer>
+      <Header />
+      <Content>
+        <Id />
+        {!primitiveEditingActive && <Field />}
+        {primitiveEditingActive && <PrimitiveWrapper />}
+        {type === DETECTION && overlay && !is3dDetection && <Position />}
+        {type === DETECTION && overlay && is3dDetection && <Position3d />}
+        {type === POLYLINE && <PolylineDetails />}
+        {field && <AnnotationSchema />}
+      </Content>
+    </ContentContainer>
   );
 }

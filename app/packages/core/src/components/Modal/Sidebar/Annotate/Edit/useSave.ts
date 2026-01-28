@@ -93,6 +93,7 @@ export default function useSave() {
       }
     } catch (error) {
       setSaving(false);
+      console.error(error);
       setNotification({
         msg: `Label "${
           label.data.label ?? "Label"
@@ -101,18 +102,16 @@ export default function useSave() {
       });
     }
   }, [
-    commandBus,
     label,
     isSaving,
     schema,
+    commandBus,
     scene,
-    addOverlay,
-    setter,
-    saved,
     exit,
     setNotification,
     quickDrawActive,
     trackLastUsedDetection,
     createDetection,
+    addOverlay,
   ]);
 }

@@ -63,8 +63,8 @@ export const useCreateCommand = (
   }, [enablement, id, boundContext]);
 
   return {
-    callback: useCallback(() => {
-      return boundContext.context.executeCommand(id);
+    callback: useCallback(async () => {
+      return await boundContext.context.executeCommand(id);
     }, [id, boundContext]),
     descriptor: {
       id: id,

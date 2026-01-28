@@ -47,7 +47,6 @@ export default function useExit(revertLabel = true) {
 
   return useCallback(() => {
     const store = getDefaultStore();
-    const overlay = store.get(currentOverlay);
 
     if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
@@ -70,8 +69,6 @@ export default function useExit(revertLabel = true) {
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
-
-    CommandContextManager.instance().clearUndoRedoStack();
     const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
@@ -131,6 +128,7 @@ export default function useExit(revertLabel = true) {
     setStagedPolylineTransforms,
     setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
+    setActivePrimitive,
+    hasChanged,
   ]);
 }

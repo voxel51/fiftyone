@@ -1,7 +1,16 @@
 import { CenteredStack, LoadingSpinner } from "@fiftyone/components";
 import { Typography } from "@mui/material";
+import { useEffect, useState } from "react";
 import { CodeView } from "../../../../../../plugins/SchemaIO/components";
 import { ContentArea } from "../styled";
+
+type JSONValue =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: JSONValue }
+  | Array<JSONValue>;
 
 // JSON View component
 const JSONEditor = ({
@@ -10,11 +19,17 @@ const JSONEditor = ({
   onChange,
   scanning,
 }: {
-  data: string;
+  data: JSONValue;
   errors: boolean;
   onChange: (value: string) => void;
   scanning: boolean;
 }) => {
+  const [value, setValue] = useState("");
+
+  useEffect(() => {
+    setValue(JSON.stringify(data, undefined, 2));
+  }, [data]);
+
   if (scanning) {
     return (
       <CenteredStack spacing={1} sx={{ p: 3 }}>
@@ -29,8 +44,11 @@ const JSONEditor = ({
       style={errors ? { border: "1px solid rgba(212, 64, 64, 0.4)" } : {}}
     >
       <CodeView
-        data={data}
-        onChange={(_, value) => onChange(value)}
+        data={value}
+        onChange={(_, value) => {
+          onChange(value);
+          setValue(value);
+        }}
         schema={{
           view: {
             language: "json",

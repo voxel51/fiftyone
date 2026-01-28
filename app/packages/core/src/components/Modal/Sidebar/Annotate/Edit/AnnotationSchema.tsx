@@ -6,12 +6,7 @@ import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import {
-  createInput,
-  createRadio,
-  createSelect,
-  createTags,
-} from "./schemaHelpers";
+import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
   currentField,
@@ -23,28 +18,21 @@ const useSchema = () => {
   const config = useAtomValue(currentSchema);
 
   return useMemo(() => {
-    const properties: Record<string, any> = {};
-
-    const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? []);
-
-    for (const attr in attributes) {
-      if (attr === "id") {
-        continue;
-      }
-
-      if (attributes[attr].component === "text") {
-        properties[attr] = createInput(attr, attributes[attr]);
-      }
-
-      if (attributes[attr].component === "radio") {
-        properties[attr] = createRadio(attr, attributes[attr].values);
-      }
-
-      if (attributes[attr].component === "dropdown") {
-        properties[attr] = createTags(attr, attributes[attr].values);
-      }
-    }
+    const properties = config?.attributes
+      .filter(({ name }) => !["id", "attributes"].includes(name))
+      .reduce(
+        (memo, value) => ({
+          ...memo,
+          [value.name]: generatePrimitiveSchema(value.name, value),
+        }),
+        {
+          label: generatePrimitiveSchema("label", {
+            type: "str",
+            component: "dropdown",
+            values: config?.classes || [],
+          }),
+        }
+      );
 
     return {
       type: "object",

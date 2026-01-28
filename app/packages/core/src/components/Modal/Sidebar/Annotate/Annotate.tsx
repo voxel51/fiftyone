@@ -2,7 +2,7 @@ import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
-import React from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -17,6 +17,7 @@ import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
+import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
@@ -118,6 +119,17 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
+  const { activate, deactivate } = useCommandContext(
+    KnownContexts.ModalAnnotate,
+    true
+  );
+
+  useEffect(() => {
+    activate();
+    return () => {
+      deactivate();
+    };
+  }, [activate, deactivate]);
 
   const isDisabled = disabledReason !== null;
   const disabledMsg =
