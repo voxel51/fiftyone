@@ -138,11 +138,11 @@ const Detection = () => {
   const create = useCreate(DETECTION);
 
   return (
-    <Tooltip placement="top-center" text="Create new detection">
+    <Tooltip placement="top-center" text="Create new detections">
       <Square
         onClick={() => {
-          enableQuickDraw(DETECTION);
-          create(); // Create first label
+          enableQuickDraw();
+          create(); // Create first detection in quick draw mode
         }}
       >
         <svg

@@ -1,13 +1,13 @@
 import { getDefaultStore, useAtom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { countBy, maxBy } from "lodash";
+import { DETECTION } from "@fiftyone/utilities";
 import { labels, labelsByPath } from "../useLabels";
 import { labelSchemaData, fieldType } from "../state";
 import {
   quickDrawActiveAtom,
-  currentAnnotationModeAtom,
+  lastUsedDetectionFieldAtom,
   defaultField,
-  lastUsedFieldByTypeAtom,
   lastUsedLabelByFieldAtom,
 } from "./state";
 
@@ -16,10 +16,13 @@ import type { LabelType } from "./state";
 /**
  * Centralized hook for managing quick draw mode state and operations.
  *
+ * IMPORTANT: Quick draw is ONLY for Detection (bounding box) annotations.
+ * It does NOT apply to Classification annotations.
+ *
  * This hook encapsulates all quick draw functionality including:
  * - Mode activation/deactivation
- * - Auto-assignment logic for fields and labels
- * - Last-used value tracking
+ * - Auto-assignment logic for detection fields and labels
+ * - Last-used detection field tracking
  *
  * Following FiftyOne guidelines, this hook is the ONLY public interface
  * for interacting with quick draw atoms. Atoms are implementation details
@@ -27,102 +30,86 @@ import type { LabelType } from "./state";
  */
 export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
-  const [currentMode, setCurrentMode] = useAtom(currentAnnotationModeAtom);
+  const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const allLabels = useAtomValue(labels);
 
   /**
-   * Enable quick draw mode with the specified annotation type.
-   * Sets both the active flag and current mode.
+   * Enable quick draw mode for Detection annotations.
+   * Quick draw is ONLY for bounding box annotations.
    */
-  const enableQuickDraw = useCallback(
-    (mode: "Classification" | "Detection") => {
-      setCurrentMode(mode);
-      setQuickDrawActive(true);
-    },
-    [setCurrentMode, setQuickDrawActive]
-  );
+  const enableQuickDraw = useCallback(() => {
+    setQuickDrawActive(true);
+  }, [setQuickDrawActive]);
 
   /**
    * Disable quick draw mode.
-   * Resets both the active flag and current mode to their default values.
+   * Resets the active flag to false. Last-used field and label atoms
+   * will be garbage collected when no longer referenced.
    */
   const disableQuickDraw = useCallback(() => {
-    setCurrentMode(null);
     setQuickDrawActive(false);
-    // Note: lastUsedFieldByTypeAtom and lastUsedLabelByFieldAtom will be
+    // Note: lastUsedDetectionFieldAtom and lastUsedLabelByFieldAtom will be
     // garbage collected when no longer referenced. We rely on quickDrawActive
     // flag to determine whether to use last-used values.
-  }, [setCurrentMode, setQuickDrawActive]);
+  }, [setQuickDrawActive]);
 
   /**
-   * Get the auto-assigned field path for a label type.
+   * Get the auto-assigned detection field path.
+   * Quick draw only works with Detection fields.
    *
    * Auto-assignment priority:
-   * 1. Last-used field for this type (if in quick draw mode)
-   * 2. Field with the most labels of this type
-   * 3. Default field for this type
+   * 1. Last-used detection field (if in quick draw mode and previously set)
+   * 2. Field with the most detection labels
+   * 3. Default detection field
    *
-   * Returns null if no field is available.
+   * Returns null if no detection field is available.
    */
-  const getAutoAssignedField = useCallback(
-    (type: LabelType): string | null => {
-      const store = getDefaultStore();
+  const getQuickDrawDetectionField = useCallback((): string | null => {
+    const store = getDefaultStore();
 
-      // In quick draw mode, check for last-used field
-      if (quickDrawActive) {
-        const lastUsedField = store.get(lastUsedFieldByTypeAtom(type));
-        if (lastUsedField) {
-          return lastUsedField;
-        }
+    // In quick draw mode, check for last-used detection field
+    if (quickDrawActive && lastUsedField) {
+      return lastUsedField;
+    }
+
+    // Find the detection field with the most labels
+    let maxCount = 0;
+    let fieldWithMostLabels: string | null = null;
+
+    const IS_DETECTION = new Set(["Detection", "Detections"]);
+
+    for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
+      const typeStr = store.get(fieldType(fieldPath));
+
+      if (IS_DETECTION.has(typeStr || "") && fieldLabels.length > maxCount) {
+        maxCount = fieldLabels.length;
+        fieldWithMostLabels = fieldPath;
       }
+    }
 
-      // Find the field with the most labels of this type
-      let maxCount = 0;
-      let fieldWithMostLabels: string | null = null;
+    if (fieldWithMostLabels) {
+      return fieldWithMostLabels;
+    }
 
-      for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
-        // Check if this field is of the correct type
-        const typeStr = store.get(fieldType(fieldPath));
-        const IS_CLASSIFICATION = new Set([
-          "Classification",
-          "Classifications",
-        ]);
-        const IS_DETECTION = new Set(["Detection", "Detections"]);
-
-        const matchesType =
-          (type === "Classification" && IS_CLASSIFICATION.has(typeStr || "")) ||
-          (type === "Detection" && IS_DETECTION.has(typeStr || ""));
-
-        if (matchesType && fieldLabels.length > maxCount) {
-          maxCount = fieldLabels.length;
-          fieldWithMostLabels = fieldPath;
-        }
-      }
-
-      if (fieldWithMostLabels) {
-        return fieldWithMostLabels;
-      }
-
-      // Fallback to default field
-      const field = store.get(defaultField(type));
-      return field;
-    },
-    [quickDrawActive, labelsMap]
-  );
+    // Fallback to default detection field
+    const field = store.get(defaultField(DETECTION));
+    return field;
+  }, [quickDrawActive, lastUsedField, labelsMap]);
 
   /**
-   * Get the auto-assigned label value (class) for a label type and field.
+   * Get the auto-assigned label value (class) for a detection field.
+   * Quick draw only works with Detection labels.
    *
    * Auto-assignment priority:
    * 1. Last-used label for this field (if in quick draw mode)
-   * 2. Most common label across all labels of this type
-   * 3. First class in the schema for the assigned field
+   * 2. Most common label across all detection labels
+   * 3. First class in the schema for the field
    *
    * Returns null if no label value can be determined.
    */
-  const getAutoAssignedLabel = useCallback(
-    (type: LabelType, fieldPath: string): string | null => {
+  const getQuickDrawDetectionLabel = useCallback(
+    (fieldPath: string): string | null => {
       const store = getDefaultStore();
 
       // In quick draw mode, check for last-used label for this field
@@ -133,17 +120,12 @@ export const useQuickDraw = () => {
         }
       }
 
-      // Find most common label across ALL labels of this type (all fields)
-      const IS_CLASSIFICATION = new Set(["Classification", "Classifications"]);
+      // Find most common label across ALL detection labels (all fields)
       const IS_DETECTION = new Set(["Detection", "Detections"]);
 
       const relevantLabels = allLabels.filter((label) => {
         const labelFieldType = store.get(fieldType(label.path));
-        return (
-          (type === "Classification" &&
-            IS_CLASSIFICATION.has(labelFieldType || "")) ||
-          (type === "Detection" && IS_DETECTION.has(labelFieldType || ""))
-        );
+        return IS_DETECTION.has(labelFieldType || "");
       });
 
       if (relevantLabels.length > 0) {
@@ -160,7 +142,7 @@ export const useQuickDraw = () => {
         }
       }
 
-      // Fallback to first class in schema for the assigned field
+      // Fallback to first class in schema for the field
       const schemaData = store.get(labelSchemaData(fieldPath));
       const classes = schemaData?.label_schema?.classes;
       if (classes && classes.length > 0) {
@@ -173,51 +155,50 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Track the last-used field and label values after a successful save.
-   * This updates the auto-assignment state for future label creation.
+   * Track the last-used detection field and label value after a successful save.
+   * This updates the auto-assignment state for future label creation in quick draw mode.
    *
-   * Should be called after each label is successfully saved in quick draw mode.
+   * Should be called after each detection is successfully saved in quick draw mode.
    */
-  const trackLastUsed = useCallback(
-    (type: LabelType, fieldPath: string, labelValue?: string) => {
-      const store = getDefaultStore();
-
-      // Update last-used field for this type
-      store.set(lastUsedFieldByTypeAtom(type), fieldPath);
+  const trackLastUsedDetection = useCallback(
+    (fieldPath: string, labelValue?: string) => {
+      // Update last-used detection field
+      setLastUsedField(fieldPath);
 
       // Update last-used label for this field (if label exists)
       if (labelValue) {
+        const store = getDefaultStore();
         store.set(lastUsedLabelByFieldAtom(fieldPath), labelValue);
       }
     },
-    []
+    [setLastUsedField]
   );
 
   return useMemo(
     () => ({
       // State (read-only)
       quickDrawActive,
-      currentMode,
+      lastUsedDetectionField: lastUsedField,
 
       // Mode control (for UI components)
       enableQuickDraw,
       disableQuickDraw,
 
       // Auto-assignment (for useCreate)
-      getAutoAssignedField,
-      getAutoAssignedLabel,
+      getQuickDrawDetectionField,
+      getQuickDrawDetectionLabel,
 
       // Tracking (for useSave)
-      trackLastUsed,
+      trackLastUsedDetection,
     }),
     [
       quickDrawActive,
-      currentMode,
+      lastUsedField,
       enableQuickDraw,
       disableQuickDraw,
-      getAutoAssignedField,
-      getAutoAssignedLabel,
-      trackLastUsed,
+      getQuickDrawDetectionField,
+      getQuickDrawDetectionLabel,
+      trackLastUsedDetection,
     ]
   );
 };

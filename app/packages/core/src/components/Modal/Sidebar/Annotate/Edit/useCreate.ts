@@ -19,8 +19,8 @@ const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
   const {
     quickDrawActive,
-    getAutoAssignedField,
-    getAutoAssignedLabel,
+    getQuickDrawDetectionField,
+    getQuickDrawDetectionLabel,
   } = useQuickDraw();
 
   return useCallback(
@@ -28,18 +28,18 @@ const useCreateAnnotationLabel = () => {
       const id = objectId();
       const store = getDefaultStore();
 
-      // Get field - use auto-assignment in quick draw mode
+      // Get field - use auto-assignment for quick draw detections
       const field = quickDrawActive
-        ? getAutoAssignedField(type)
+        ? getQuickDrawDetectionField()
         : store.get(defaultField(type));
 
       if (!field) {
         return;
       }
 
-      // Get auto-assigned label value if in quick draw mode
+      // Get auto-assigned label value if in quick draw detection mode
       const labelValue = quickDrawActive
-        ? getAutoAssignedLabel(type, field)
+        ? getQuickDrawDetectionLabel(field)
         : undefined;
 
       const data = {
@@ -59,12 +59,6 @@ const useCreateAnnotationLabel = () => {
         addOverlay(overlay);
         scene?.selectOverlay(id, { ignoreSideEffects: true });
         store.set(savedLabel, data);
-
-        // In quick draw mode, add label to sidebar before interaction
-        if (quickDrawActive) {
-          const labelData = { data, overlay, path: field, type };
-          store.set(addLabel, labelData);
-        }
 
         return { data, overlay, path: field, type };
       }
@@ -101,8 +95,8 @@ const useCreateAnnotationLabel = () => {
       overlayFactory,
       scene,
       quickDrawActive,
-      getAutoAssignedField,
-      getAutoAssignedLabel,
+      getQuickDrawDetectionField,
+      getQuickDrawDetectionLabel,
     ]
   );
 };

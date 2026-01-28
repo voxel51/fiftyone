@@ -32,8 +32,7 @@ export default function useSave() {
   const [isSaving, setSaving] = useAtom(isSavingAtom);
   const exit = useExit(false);
   const setNotification = fos.useNotification();
-  const { quickDrawActive, currentMode, trackLastUsed } = useQuickDraw();
-  const createClassification = useCreate(CLASSIFICATION);
+  const { quickDrawActive, trackLastUsedDetection } = useQuickDraw();
   const createDetection = useCreate(DETECTION);
 
   return useCallback(async () => {
@@ -72,17 +71,13 @@ export default function useSave() {
         addOverlay(label.overlay as BaseOverlay);
       }
 
-      // Check if we're in quick draw mode
-      if (quickDrawActive && currentMode) {
-        // Update last-used values for auto-assignment
-        const labelType: LabelType = currentMode as LabelType;
-        trackLastUsed(labelType, label.path, label.data.label);
+      if (quickDrawActive) {
+        // Track last-used detection field and label for auto-assignment
+        trackLastUsedDetection(label.path, label.data.label);
 
-        // Create next label immediately
+        // Create next detection immediately
         // This will enter interactive mode with a new handler
-        if (currentMode === DETECTION) {
-          createDetection();
-        }
+        createDetection();
 
         setNotification({
           msg: `Label "${label.data.label}" saved. Ready for next...`,
@@ -117,9 +112,7 @@ export default function useSave() {
     exit,
     setNotification,
     quickDrawActive,
-    currentMode,
-    trackLastUsed,
-    createClassification,
+    trackLastUsedDetection,
     createDetection,
   ]);
 }
