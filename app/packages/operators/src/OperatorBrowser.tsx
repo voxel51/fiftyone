@@ -23,6 +23,7 @@ const QueryInput = styled.input`
 `;
 const ChoiceContainer = styled.div<{ $disabled: boolean; $selected?: boolean }>`
   display: flex;
+  align-items: center;
   height: 2.5rem;
   line-height: 2.5rem;
   padding: 0 1rem;
@@ -52,7 +53,8 @@ const ChoiceLabel = styled.div`
 
 const ChoiceIcon = styled.div`
   margin-right: 0.5rem;
-  line-height: 45px;
+  display: flex;
+  align-items: center;
 `;
 
 const Choice = (props: ChoicePropsType) => {

@@ -85,15 +85,67 @@ must manually upgrade your database by installing the newest version of the
 FiftyOne Enterprise SDK locally, assuming admin privileges, and running the
 following command:
 
+Beginning with FiftyOne Enterprise `v2.14.0`, there is a new migration tool
+which is designed specifically for Enterprise deployments. It is similar in use
+to the existing `fiftyone migrate` command, but does not come packaged with the
+FiftyOne distribution by default.
+
+Installing the Enterprise Migration Tool
+________________________________________
+
+Install the `fiftyone-migrator` package:
+
+.. code-block:: shell
+
+    pip install fiftyone-migrator \
+      --extra-index-url=https://${TOKEN}@pypi.fiftyone.ai
+
+
+Configuring the Enterprise Migration Tool
+_________________________________________
+
+The Enterprise Migration Tool requires the following environment variables to be
+defined where it is run:
+
+-   `CAS_DATABASE_URI` - The database URI used by CAS
+-   `CAS_DATABASE_NAME` - The database name used by CAS
+-   `FIFTYONE_DATABASE_URI` - The database URI used by FiftyOne
+-   `FIFTYONE_DATABASE_NAME` - The database name used by FiftyOne
+
+
+Using the Enterprise Migration Tool
+___________________________________
+
+**IMPORTANT**: As with any database migration, Voxel51 **strongly** recommends
+backing up your database prior to migrating.
+While many precautions are taken to mitigate the risk of data corruption,
+data migration always carries a risk of introducing unintended modifications.
+
+The enterprise migration tool allows migrating each of the enterprise services:
+
+-   `datasets` - Migrate core datasets; this is equivalent to the existing
+    `fiftyone migrate` command
+-   `enterprise` - Migrate enterprise-specific dataset features
+-   `cas` - Migrate the Centralized Authentication Service (CAS)
+-   `hub` - Migrate the enterprise API
+
+Each of these services can be selectively included or excluded from migration.
+
 .. code-block:: shell
 
     export FIFTYONE_DATABASE_ADMIN=true
 
-    # Option 1: update the database version only (datasets lazily migrated on load)
-    fiftyone migrate
+    # Migrate all enterprise services to the most current state
+    fiftyone-migrator migrate
+    
+    # Migrate all enterprise services to a specific version
+    fiftyone-migrator migrate 2.15.0
 
-    # Option 2: migrate the database and all datasets
-    fiftyone migrate --all
+    # Migrate specific services
+    fiftyone-migrator migrate --include enterprise
+    
+    # Migrate all-but specific services
+    fiftyone-migrator migrate --exclude cas hub    
 
 .. note::
 
@@ -103,8 +155,26 @@ following command:
 
 .. _enterprise-downgrading:
 
-Downgrading your deployment
-___________________________
+Reverting a Migration with the Enterprise Migration Tool
+________________________________________________________
+
+Migrations done with the Enterprise Migration Tool are designed to be
+bidirectional. In the event that you need to revert a migration, simply
+provide the version which you want to restore.
+
+.. code-block:: shell
+
+    # Migrate from v2.14.0 to v2.15.0
+    fiftyone-migrator migrate 2.15.0
+    
+    # Oops, need to revert this migration!
+    # Migrate from v2.15.0 to v2.14.0
+    fiftyone-migrator migrate 2.14.0
+
+Downgrading your deployment without the Enterprise Migration Tool
+_________________________________________________________________
+
+**For migrations done prior to FiftyOne Enterprise v2.14.0 and the Enterprise Migration Tool**
 
 Admins can also downgrade their FiftyOne Enterprise deployment to an older
 version if necessary.
