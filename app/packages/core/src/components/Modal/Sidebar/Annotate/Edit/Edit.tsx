@@ -19,10 +19,8 @@ import useExit from "./useExit";
 import {
   KnownCommands,
   KnownContexts,
-  useCreateCommand,
-  useKeyBinding,
+  useKeyBindings,
 } from "@fiftyone/commands";
-import { useConfirmDelete } from "../Confirmation/useConfirmDelete";
 import useDelete from "./useDelete";
 import { current } from "../Edit/state";
 
@@ -56,26 +54,26 @@ export default function Edit() {
   const exit = useExit();
 
   const onDelete = useDelete();
-  const { confirmDelete } = useConfirmDelete(onDelete);
   const label = useAtomValue(current);
 
-  useCreateCommand(
-    KnownContexts.Modal,
-    KnownCommands.ModalDeleteAnnotation,
-    () => {
-      confirmDelete();
-    },
-    () => {
-      return !!label;
-    },
-    "Delete",
-    "Delete label"
-  );
-
-  useKeyBinding(
-    KnownCommands.ModalDeleteAnnotation,
-    "delete",
-    KnownContexts.Modal
+  useKeyBindings(
+    KnownContexts.ModalAnnotate,
+    [
+      {
+        commandId: KnownCommands.ModalDeleteAnnotation,
+        handler: () => {
+          console.log("Delete");
+          onDelete();
+        },
+        enablement: () => {
+          return !!label;
+        },
+        sequence: "Delete",
+        label: "Delete",
+        description: "Delete label",
+      },
+    ],
+    [onDelete]
   );
 
   useEffect(() => {
@@ -113,13 +111,13 @@ export default function Edit() {
     <ContentContainer>
       <Header />
       <Content>
-          <Id />
-          {!primitiveEditingActive && <Field />}
-          {primitiveEditingActive && <PrimitiveWrapper />}
-          {type === DETECTION && overlay && !is3dDetection && <Position />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d />}
-          {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema />}
+        <Id />
+        {!primitiveEditingActive && <Field />}
+        {primitiveEditingActive && <PrimitiveWrapper />}
+        {type === DETECTION && overlay && !is3dDetection && <Position />}
+        {type === DETECTION && overlay && is3dDetection && <Position3d />}
+        {type === POLYLINE && <PolylineDetails />}
+        {field && <AnnotationSchema />}
       </Content>
     </ContentContainer>
   );
