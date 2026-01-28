@@ -19,7 +19,7 @@ export default function useDelete() {
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
 
-  const exit = useExit(false);
+  const exit = useExit();
   const [isSaving, setSaving] = useAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
@@ -31,7 +31,7 @@ export default function useDelete() {
     if (label.isNew) {
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
         scene?.exitInteractiveMode();
-        removeOverlay(label?.data._id);
+        removeOverlay(label?.data._id, true);
       }
 
       exit();
@@ -45,8 +45,9 @@ export default function useDelete() {
       if (!fieldSchema) {
         setSaving(false);
         setNotification({
-          msg: `Unable to delete label: field schema not found for path "${label?.path ?? "unknown"
-            }".`,
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
           variant: "error",
         });
         return;
@@ -55,7 +56,7 @@ export default function useDelete() {
       await commandBus.execute(new DeleteAnnotationCommand(label, fieldSchema));
 
       setter();
-      removeOverlay(label.overlay.id);
+      removeOverlay(label.overlay.id, true);
       setSaving(false);
       setNotification({
         msg: `Label "${label.data.label}" successfully deleted.`,
@@ -66,8 +67,9 @@ export default function useDelete() {
       console.error(error);
       setSaving(false);
       setNotification({
-        msg: `Label "${label.data.label ?? "Label"
-          }" not successfully deleted. Try again.`,
+        msg: `Label "${
+          label.data.label ?? "Label"
+        }" not successfully deleted. Try again.`,
         variant: "error",
       });
     }
@@ -85,4 +87,3 @@ export default function useDelete() {
   ]);
   return onDelete;
 }
-

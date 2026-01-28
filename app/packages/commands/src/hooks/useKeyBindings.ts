@@ -15,10 +15,12 @@ export type KeyBinding = {
  * Registers a set of key bindings in a given context.
  * @param contextId The id of the context
  * @param keyBindings The key bindings to register
+ * @param deps The optional dependency array for the hook
  */
 export const useKeyBindings = (
   contextId: string,
-  keyBindings: KeyBinding[]
+  keyBindings: KeyBinding[],
+  deps?: unknown[]
 ) => {
   const { context, activate, deactivate } = useCommandContext(contextId);
   useEffect(() => {
@@ -53,5 +55,5 @@ export const useKeyBindings = (
         context.unregisterCommand(id);
       }
     };
-  }, [context, keyBindings]);
+  }, [context, keyBindings, ...(deps || [])]);
 };
