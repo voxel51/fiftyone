@@ -115,18 +115,13 @@ export const useQuickDraw = () => {
       // In quick draw mode, check for last-used label for this field
       if (quickDrawActive) {
         const lastUsedLabel = store.get(lastUsedLabelByFieldAtom(fieldPath));
+
         if (lastUsedLabel) {
           return lastUsedLabel;
         }
       }
 
-      // Find most common label across ALL detection labels (all fields)
-      const IS_DETECTION = new Set(["Detection", "Detections"]);
-
-      const relevantLabels = allLabels.filter((label) => {
-        const labelFieldType = store.get(fieldType(label.path));
-        return IS_DETECTION.has(labelFieldType || "");
-      });
+      const relevantLabels = allLabels.filter((label) => label.data.label);
 
       if (relevantLabels.length > 0) {
         const labelCounts = countBy(
@@ -137,6 +132,7 @@ export const useQuickDraw = () => {
           Object.entries(labelCounts),
           ([_, count]) => count
         );
+
         if (mostCommonEntry && mostCommonEntry[0]) {
           return mostCommonEntry[0];
         }

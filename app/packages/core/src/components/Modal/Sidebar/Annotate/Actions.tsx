@@ -142,13 +142,14 @@ const Classification = () => {
 
 const Detection = () => {
   const { enableQuickDraw } = useQuickDraw();
+  enableQuickDraw();
+
   const create = useCreate(DETECTION);
 
   return (
     <Tooltip placement="top-center" text="Create new detections">
       <Square
         onClick={() => {
-          enableQuickDraw();
           create(); // Create first detection in quick draw mode
         }}
       >
