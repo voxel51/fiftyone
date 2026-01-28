@@ -206,7 +206,7 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string,
+    sceneId: string
   ) {
     this.eventBus = getEventBus<LighterEventGroup>(sceneId);
     this.setupEventListeners();
@@ -405,6 +405,13 @@ export class InteractionManager {
             ...detail,
             overlay: interactiveHandler,
           });
+
+          // Dispatch custom event for detection completion
+          // This allows continuous annotation mode to auto-save and create next label
+          const completionEvent = new CustomEvent("detection-complete", {
+            detail: { overlayId: handler.id },
+          });
+          document.dispatchEvent(completionEvent);
         } else {
           const type =
             moveState === "DRAGGING"
@@ -506,7 +513,7 @@ export class InteractionManager {
 
     const distance = Math.sqrt(
       Math.pow(point.x - this.clickStartPoint.x, 2) +
-      Math.pow(point.y - this.clickStartPoint.y, 2)
+        Math.pow(point.y - this.clickStartPoint.y, 2)
     );
     const duration = now - this.clickStartTime;
 
@@ -635,7 +642,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-      Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2)
     );
 
     return (

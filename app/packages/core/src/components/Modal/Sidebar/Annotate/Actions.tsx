@@ -1,5 +1,6 @@
 import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
+import { useLighter } from "@fiftyone/lighter";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
@@ -16,11 +17,15 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { useSetAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
+import {
+  quickDrawActiveAtom,
+  currentAnnotationModeAtom,
+} from "./Edit/state";
 import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
@@ -108,10 +113,23 @@ const Square = styled(Container)<{ $active?: boolean }>`
 `;
 
 const Classification = () => {
+  const [currentAnnotationMode, setCurrentAnnotationMode] = useAtom(currentAnnotationModeAtom);
+  const [, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const create = useCreate(CLASSIFICATION);
+
+  const isActive = currentAnnotationMode === "Classification";
+
   return (
     <Tooltip placement="top-center" text="Create new classification">
-      <Square onClick={create}>
+      <Square
+        $active={isActive}
+        onClick={() => {
+          // Always enter mode (not a toggle)
+          setCurrentAnnotationMode("Classification");
+          setQuickDrawActive(true);
+          create(); // Create first label
+        }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -131,10 +149,23 @@ const Classification = () => {
 };
 
 const Detection = () => {
+  const [currentAnnotationMode, setCurrentAnnotationMode] = useAtom(currentAnnotationModeAtom);
+  const [, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const create = useCreate(DETECTION);
+
+  const isActive = currentAnnotationMode === "Detection";
+
   return (
     <Tooltip placement="top-center" text="Create new detection">
-      <Square onClick={create}>
+      <Square
+        $active={isActive}
+        onClick={() => {
+          // Always enter mode (not a toggle)
+          setCurrentAnnotationMode("Detection");
+          setQuickDrawActive(true);
+          create(); // Create first label
+        }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"

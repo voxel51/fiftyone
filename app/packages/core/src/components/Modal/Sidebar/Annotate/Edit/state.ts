@@ -234,3 +234,36 @@ export const deleteValue = atom(null, (get, set) => {
   );
   set(editing, null);
 });
+
+// Quick draw annotation mode state
+export type AnnotationMode = "Classification" | "Detection" | null;
+
+/**
+ * Tracks the current annotation mode for quick draw.
+ * - null: No mode active (Inspect mode)
+ * - "Classification": Classification quick draw mode
+ * - "Detection": Detection/bounding box quick draw mode
+ */
+export const currentAnnotationModeAtom = atom<AnnotationMode>(null);
+
+/**
+ * Flag to track if quick draw mode is active.
+ * When true, labels are created in quick succession without exiting after each save.
+ */
+export const quickDrawActiveAtom = atom<boolean>(false);
+
+/**
+ * Tracks the last-used field path for each label type.
+ * Used for auto-assignment when creating new labels in quick draw mode.
+ */
+export const lastUsedFieldByTypeAtom = atomFamily((type: LabelType) =>
+  atom<string | null>(null)
+);
+
+/**
+ * Tracks the last-used label value (class) for each field path.
+ * Used for auto-assignment when creating new labels in quick draw mode.
+ */
+export const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
+  atom<string | null>(null)
+);
