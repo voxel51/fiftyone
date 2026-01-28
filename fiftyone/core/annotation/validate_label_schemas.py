@@ -39,12 +39,12 @@ def validate_label_schemas(
             :class:`fiftyone.core.collections.SampleCollection`
         label_schema: a label schemas ``dict`` or an individual field's label
             schema ``dict`` if only one field is provided
-        fields (None): a field name, ``embedded.field.name`` or iterable of
-            such values
         allow_new_attrs (False): whether to allow label attributes that do not
             yet exist on the :ref:`field schema <field-schemas>`
         allow_new_fields (False): whether to allow label schemas for fields
             that do not yet exist on the :ref:`field schema <field-schemas>`
+        fields (None): a field name, ``embedded.field.name`` or iterable of
+            such values
 
     Raises:
         ValidationErrors: if the label schema(s) are invalid
