@@ -13,23 +13,9 @@ import {
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import {
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  Field,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  LIST_FIELD,
-  OBJECT_ID_FIELD,
-  Primitive,
-  Schema,
-  STRING_FIELD,
-  UUID_FIELD,
-} from "@fiftyone/utilities";
+import { Field, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
+import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -70,58 +56,6 @@ type FieldType =
 
 const isFieldType = (field: Field, fieldType: FieldType): boolean => {
   return field?.embeddedDocType === `fiftyone.core.labels.${fieldType}`;
-};
-
-/**
- * Supported primitive field types for annotation editing.
- * Matches SUPPORTED_PRIMITIVES in fiftyone/core/annotation/constants.py
- */
-const SUPPORTED_PRIMITIVE_FTYPES = new Set([
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  UUID_FIELD,
-]);
-
-/**
- * Supported subfield types for list primitives.
- * Matches SUPPORTED_LISTS_OF_PRIMITIVES in fiftyone/core/annotation/constants.py
- */
-const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
-]);
-
-/**
- * Check if the field schema represents a supported primitive type.
- */
-const isPrimitiveFieldType = (field: Field): boolean => {
-  if (!field?.ftype) {
-    return false;
-  }
-
-  if (SUPPORTED_PRIMITIVE_FTYPES.has(field.ftype)) {
-    return true;
-  }
-
-  // Check list of primitives (e.g., list<string>, list<int>, list<float>)
-  if (
-    field.ftype === LIST_FIELD &&
-    field.subfield &&
-    SUPPORTED_LIST_PRIMITIVE_SUBFIELDS.has(field.subfield)
-  ) {
-    return true;
-  }
-
-  return false;
 };
 
 /**
@@ -347,7 +281,7 @@ const buildPrimitiveMutationDelta = (
   const existingValue = get(sample, path) as Primitive;
 
   // If the value hasn't changed, return empty deltas
-  if (existingValue === data) {
+  if (arePrimitivesEqual(existingValue, data)) {
     return [];
   }
 
@@ -548,41 +482,6 @@ export const buildJsonPath = (
   );
 
   return `/${parts.join("/")}`;
-};
-
-/**
- * Get the field schema for the given path.
- *
- * @param schema Sample schema
- * @param path Field path
- */
-export const getFieldSchema = (schema: Schema, path: string): Field | null => {
-  if (!schema || !path) {
-    return null;
-  }
-
-  const pathParts = path.split(".");
-  const root = schema[pathParts[0]];
-  return getFieldSchemaHelper(root, pathParts.slice(1));
-};
-
-/**
- * Recursive helper for {@link getFieldSchema}.
- */
-const getFieldSchemaHelper = (
-  field: Field,
-  pathParts: string[]
-): Field | null => {
-  if (!field) {
-    return null;
-  }
-
-  if (!pathParts || pathParts.length === 0) {
-    return field;
-  }
-
-  const nextField = field.fields?.[pathParts[0]];
-  return getFieldSchemaHelper(nextField, pathParts.slice(1));
 };
 
 /**

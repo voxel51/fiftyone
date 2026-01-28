@@ -33,6 +33,30 @@ export const parseTimestamp = (timestamp?: DateTime): Date | null => {
 };
 
 /**
+ * Convert a {@link DateTime} to milliseconds.
+ *
+ * If the data cannot be parsed, returns 0.
+ *
+ * @param dateTime Timestamp to parse
+ */
+const dateTimeToMs = (dateTime?: DateTime): number => {
+  return parseTimestamp(dateTime)?.getTime() ?? 0;
+};
+
+/**
+ * Return whether the two provided timestamps are equal.
+ *
+ * This method attempts to parse each timestamp into a {@link Date},
+ * and then compares the dates via {@link getTime}.
+ *
+ * @param a Timestamp to compare
+ * @param b Other timestamp
+ */
+export const areTimestampsEqual = (a?: DateTime, b?: DateTime): boolean => {
+  return dateTimeToMs(a) === dateTimeToMs(b);
+};
+
+/**
  * Parse an ETag from a raw header value.
  *
  * ETags are often surrounded by quotes, and may be prefixed with W/.
