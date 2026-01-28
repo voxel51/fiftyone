@@ -7,41 +7,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { currentField, labelSchemaData } from "../../state";
-import { currentLabelSchema } from "../state";
-
-// =============================================================================
-// Types & Helpers
-// =============================================================================
-
-/** Shape of an attribute in the array format */
-interface AttributeItem {
-  name: string;
-  [key: string]: unknown;
-}
-
-/** Shape of a label schema with optional attributes (array format) */
-interface LabelSchema {
-  attributes?: AttributeItem[];
-  [key: string]: unknown;
-}
-
-/**
- * Safely extract attribute names from a schema value.
- * Attributes are stored as an array of objects with 'name' field.
- */
-const getAttributeNames = (value: unknown): Set<string> => {
-  if (value && typeof value === "object" && "attributes" in value) {
-    const attrs = (value as LabelSchema).attributes;
-    if (Array.isArray(attrs)) {
-      return new Set(
-        attrs
-          .filter((attr) => attr && typeof attr === "object" && "name" in attr)
-          .map((attr) => attr.name)
-      );
-    }
-  }
-  return new Set();
-};
 
 import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 import { currentLabelSchema } from "../state";

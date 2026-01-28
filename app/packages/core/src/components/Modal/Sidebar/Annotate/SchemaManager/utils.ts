@@ -368,123 +368,6 @@ export interface AttributeFormErrors {
   default: string | null;
 }
 
-/**
- * Validate attribute form data and return field-specific errors.
- * Used for both UI display and canSave logic.
- */
-export const getAttributeFormErrors = (
-  data: AttributeFormData
-): AttributeFormErrors => {
-  const errors: AttributeFormErrors = {
-    values: null,
-    range: null,
-    default: null,
-  };
-
-  const isNumeric = NUMERIC_TYPES.includes(data.type);
-  const needsValues = componentNeedsValues(data.component);
-  const needsRange = isNumeric && componentNeedsRange(data.component);
-
-  // Values validation
-  if (needsValues && data.values.length === 0) {
-    errors.values = "At least one value is required";
-  } else if (needsValues && isNumeric) {
-    const invalid = data.values.find((v) => isNaN(parseFloat(v)));
-    if (invalid !== undefined) {
-      errors.values = "Values must be valid numbers";
-    }
-  }
-
-  // Range validation (for slider)
-  if (needsRange) {
-    if (!data.range || data.range.min === "" || data.range.max === "") {
-      errors.range = "Min and max are required";
-    } else {
-      const min = parseFloat(data.range.min);
-      const max = parseFloat(data.range.max);
-      if (isNaN(min) || isNaN(max)) {
-        errors.range = "Min and max must be valid numbers";
-      } else if (min >= max) {
-        errors.range = "Min must be less than max";
-      }
-    }
-  }
-
-  // Default validation (only if there's a default value)
-  if (data.default) {
-    const defaultNum = parseFloat(data.default);
-
-    // For numeric types, validate that default is a valid number
-    if (isNumeric && isNaN(defaultNum)) {
-      errors.default = "Default must be a valid number";
-    }
-
-    // Check against range (only if default is a valid number)
-    if (!errors.default && needsRange && data.range && !errors.range) {
-      const min = parseFloat(data.range.min);
-      const max = parseFloat(data.range.max);
-      if (defaultNum < min || defaultNum > max) {
-        errors.default = `Default must be between ${data.range.min} and ${data.range.max}`;
-      }
-    }
-
-    // Check against values
-    if (
-      !errors.default &&
-      needsValues &&
-      data.values.length > 0 &&
-      !errors.values
-    ) {
-      if (!data.values.includes(data.default)) {
-        errors.default = "Default must be one of the provided values";
-      }
-    }
-  }
-
-  // List default validation (for list types)
-  const isListType = LIST_TYPES.includes(data.type);
-  const isIntegerListType = data.type === "list<int>";
-
-  if (isListType && data.listDefault && data.listDefault.length > 0) {
-    // For numeric list types, validate each value is a valid number
-    if (isNumeric) {
-      const invalidValue = data.listDefault.find((v) => {
-        const num = typeof v === "number" ? v : parseFloat(String(v));
-        return isNaN(num);
-      });
-      if (invalidValue !== undefined) {
-        errors.default = "All default values must be valid numbers";
-      }
-    }
-
-    // For integer list types, validate values are integers (no decimals)
-    if (!errors.default && isIntegerListType) {
-      const nonIntegerValue = data.listDefault.find((v) => {
-        const num = typeof v === "number" ? v : parseFloat(String(v));
-        return !Number.isInteger(num);
-      });
-      if (nonIntegerValue !== undefined) {
-        errors.default = "All default values must be integers";
-      }
-    }
-
-    // Check against values (for checkboxes/dropdown)
-    if (
-      !errors.default &&
-      needsValues &&
-      data.values.length > 0 &&
-      !errors.values
-    ) {
-      const invalidDefault = data.listDefault.find(
-        (d) => !data.values.includes(String(d))
-      );
-      if (invalidDefault !== undefined) {
-        errors.default = "All defaults must be from the provided values";
-      }
-    }
-  }
-
-  return errors;
 // =============================================================================
 // Shared Validation Functions
 // =============================================================================
@@ -493,6 +376,7 @@ export const getAttributeFormErrors = (
  * Validate that a values list is non-empty and contains valid entries.
  * Used by both attribute forms and primitive field config.
  */
+
 export const validateValues = (
   values: string[],
   isNumeric: boolean
