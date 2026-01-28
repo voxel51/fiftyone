@@ -26,7 +26,8 @@ const useDefaultLabelSchema = (field: string) => {
   return data?.default_label_schema;
 };
 
-const useDiscard = (field: string) => {
+const useDiscard = (field: string, reset: () => void) => {
+  const [inc, setInc] = useState(0);
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
@@ -35,8 +36,11 @@ const useDiscard = (field: string) => {
     currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
+      setInc(inc + 1);
       setCurrent(saved ?? defaultLabelSchema);
+      reset();
     },
+    editorKey: inc.toString(),
   };
 };
 
@@ -104,6 +108,9 @@ const useSave = (field: string) => {
           callback: () => {
             setSaved(current);
             setIsSaving(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-save-complete")
+            );
           },
         }
       );
@@ -129,6 +136,9 @@ const useScan = (field: string) => {
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-scan-complete")
+            );
           },
         }
       );
@@ -140,10 +150,13 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
+
   const [, setCurrent] = useCurrentLabelSchema(field);
+  const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
   return {
+    ...discard,
     errors,
     isValid,
     isValidating,
@@ -163,8 +176,14 @@ const useValidate = (field: string) => {
               if (!result.result.errors.length) {
                 setCurrent(parsed);
                 setIsValid(true);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-valid-json")
+                );
               } else {
                 setIsValid(false);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-invalid-json")
+                );
               }
               setIsValidating(false);
             },
@@ -177,7 +196,6 @@ const useValidate = (field: string) => {
 
         setIsValidating(false);
         setIsValid(false);
-        return;
       }
     },
   };
@@ -188,21 +206,19 @@ const useValidate = (field: string) => {
 // =============================================================================
 
 export default function useLabelSchema(field: string) {
-  const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
   const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
   const hasChanges = useHasChanges(
-    discard.currentLabelSchema,
+    validate.currentLabelSchema,
     save.savedLabelSchema
   );
 
   return {
-    hasChanges,
+    hasChanges: hasChanges || !!validate.errors.length,
 
-    ...discard,
     ...readOnly,
     ...configUpdate,
     ...save,

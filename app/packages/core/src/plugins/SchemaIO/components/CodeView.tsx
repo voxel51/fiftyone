@@ -1,6 +1,5 @@
 import Editor from "@monaco-editor/react";
 import { Box, useColorScheme } from "@mui/material";
-import React from "react";
 import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
 import autoFocus from "../utils/auto-focus";
@@ -23,6 +22,7 @@ export default function CodeView(props) {
 
   return (
     <Box
+      data-cy="json-editor"
       sx={{
         ...(readOnly
           ? {

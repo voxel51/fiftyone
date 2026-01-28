@@ -20,14 +20,14 @@ import {
   removeFromActiveSchemas,
 } from "../../state";
 import Footer from "../Footer";
+import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
+import { currentField } from "../state";
 import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
-import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { currentField } from "../state";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isEnabled: isM4Enabled } = useFeature({
@@ -86,9 +86,6 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
     setActiveTab(TAB_IDS[index]);
   }, []);
 
-  const schemaData =
-    labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema;
-
   return (
     <EditContainer>
       <Header field={field} setField={setCurrentField} />
@@ -126,6 +123,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             />
           )}
           <Button
+            data-cy={"scan"}
             size={Size.Md}
             variant={Variant.Secondary}
             onClick={labelSchema.scan}
@@ -141,17 +139,16 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
 
         {isM4Enabled && activeTab === TAB_GUI ? (
           <GUIContent
-            config={schemaData}
+            config={labelSchema.currentLabelSchema}
             scanning={labelSchema.isScanning}
             onConfigChange={labelSchema.updateConfig}
           />
         ) : (
           <JSONEditor
+            key={labelSchema.editorKey}
             errors={!!labelSchema.errors.length}
-            data={JSON.stringify(schemaData, undefined, 2)}
-            onChange={(value) => {
-              labelSchema.validate(value);
-            }}
+            data={labelSchema.currentLabelSchema}
+            onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
           />
         )}
@@ -163,6 +160,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         leftContent={
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Toggle
+              data-cy={"toggle-visibility"}
               size={Size.Md}
               checked={isFieldVisible}
               onChange={handleToggleVisibility}
