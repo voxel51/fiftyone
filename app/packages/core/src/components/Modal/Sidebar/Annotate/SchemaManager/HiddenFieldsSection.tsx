@@ -77,6 +77,7 @@ const HiddenFieldActions = ({
             </Tooltip>
           ) : (
             <Button
+              data-cy="scan"
               size={Size.Sm}
               variant={Variant.Secondary}
               onClick={() => setField(path)}
