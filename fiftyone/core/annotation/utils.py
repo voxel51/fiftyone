@@ -9,6 +9,7 @@ Annotation utils
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
+import fiftyone.core.media as fom
 
 
 def ensure_collection_is_supported(sample_collection):
@@ -87,7 +88,6 @@ def list_valid_annotation_fields(
         a sorted list of valid annotation field names
     """
     fields = sample_collection.get_field_schema()
-    media_type = sample_collection.media_type
 
     result = set()
     for field_name, field in fields.items():
@@ -103,7 +103,7 @@ def list_valid_annotation_fields(
             result.add(field_name)
             continue
 
-        if _is_supported_label(field, media_type, require_app_support):
+        if _is_supported_label(sample_collection, field, require_app_support):
             result.add(field_name)
 
     if flatten:
@@ -141,7 +141,7 @@ def flatten_fields(collection, fields, require_app_support=False):
 
         for subfield in field.fields:
             if _is_supported_primitive(subfield) or _is_supported_label(
-                subfield, collection.media_type, require_app_support
+                collection, subfield, require_app_support
             ):
                 flattened_fields.append(f"{field_name}.{subfield.name}")
 
@@ -180,18 +180,30 @@ def get_type(field):
     return _types[field_type]
 
 
-def _is_supported_label(field, media_type, require_app_support):
+def _is_supported_label(collection, field, require_app_support):
+    media_type = collection.media_type
+
     if not require_app_support:
         return field.document_type not in foac.UNSUPPORTED_LABEL_TYPES
 
     if field.document_type in foac.SUPPORTED_LABEL_TYPES:
         return True
 
-    if (
-        media_type in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE
-        and field.document_type
-        in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[media_type]
-    ):
+    def _is_label_supported_for_media_type(mt):
+        return (
+            mt in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE
+            and field.document_type
+            in foac.SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE[mt]
+        )
+
+    if media_type == fom.GROUP:
+        group_media_types = collection.group_media_types
+        if group_media_types:
+            return any(
+                _is_label_supported_for_media_type(mt)
+                for mt in group_media_types.values()
+            )
+    elif _is_label_supported_for_media_type(media_type):
         return True
 
     return False
