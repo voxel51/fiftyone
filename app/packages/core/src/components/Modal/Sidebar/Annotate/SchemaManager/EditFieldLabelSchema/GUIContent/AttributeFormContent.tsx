@@ -16,7 +16,7 @@ import {
   TextVariant,
   Toggle,
 } from "@voxel51/voodo";
-import { ATTRIBUTE_TYPE_OPTIONS } from "../../constants";
+import { ATTRIBUTE_TYPE_LABELS, ATTRIBUTE_TYPE_OPTIONS } from "../../constants";
 import { type AttributeFormData } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
 import ListDefaultInput from "./ListDefaultInput";
@@ -28,12 +28,15 @@ interface AttributeFormContentProps {
   formState: AttributeFormData;
   onFormStateChange: (state: AttributeFormData) => void;
   nameError: string | null;
+  /** When true, name and type are rendered as read-only text */
+  isEditing?: boolean;
 }
 
 const AttributeFormContent = ({
   formState,
   onFormStateChange,
   nameError,
+  isEditing = false,
 }: AttributeFormContentProps) => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
@@ -70,53 +73,73 @@ const AttributeFormContent = ({
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
       {/* Name field */}
-      <div>
-        <Text
-          variant={TextVariant.Md}
-          color={TextColor.Secondary}
-          style={{ marginBottom: "0.5rem" }}
-        >
-          Name
-        </Text>
-        <Input
-          value={formState.name}
-          onChange={(e) => handleNameChange(e.target.value)}
-          placeholder="Attribute name"
-          error={!!nameError}
-          autoFocus
-        />
-        {nameError && (
-          <Text
-            variant={TextVariant.Sm}
-            color={TextColor.Destructive}
-            style={{ marginTop: 4 }}
-          >
-            {nameError}
+      {isEditing ? (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Name:
           </Text>
-        )}
-      </div>
+          <Text variant={TextVariant.Lg}>{formState.name}</Text>
+        </Stack>
+      ) : (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: "0.5rem" }}
+          >
+            Name
+          </Text>
+          <Input
+            value={formState.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            placeholder="Attribute name"
+            error={!!nameError}
+            autoFocus
+          />
+          {nameError && (
+            <Text
+              variant={TextVariant.Sm}
+              color={TextColor.Destructive}
+              style={{ marginTop: 4 }}
+            >
+              {nameError}
+            </Text>
+          )}
+        </div>
+      )}
 
       {/* Attribute type dropdown */}
-      <div>
-        <Text
-          variant={TextVariant.Md}
-          color={TextColor.Secondary}
-          style={{ marginBottom: "0.5rem" }}
-        >
-          Attribute type
-        </Text>
-        <Select
-          exclusive
-          portal
-          value={formState.type}
-          onChange={(value) => {
-            if (typeof value === "string") {
-              handleTypeChange(value);
-            }
-          }}
-          options={ATTRIBUTE_TYPE_OPTIONS}
-        />
-      </div>
+      {isEditing ? (
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+            Type:
+          </Text>
+          <Text variant={TextVariant.Lg}>
+            {ATTRIBUTE_TYPE_LABELS[formState.type] || formState.type}
+          </Text>
+        </Stack>
+      ) : (
+        <div>
+          <Text
+            variant={TextVariant.Md}
+            color={TextColor.Secondary}
+            style={{ marginBottom: "0.5rem" }}
+          >
+            Attribute type
+          </Text>
+          <Select
+            exclusive
+            portal
+            value={formState.type}
+            onChange={(value) => {
+              if (typeof value === "string") {
+                handleTypeChange(value);
+              }
+            }}
+            options={ATTRIBUTE_TYPE_OPTIONS}
+          />
+        </div>
+      )}
 
       {/* Component type buttons */}
       <div>
