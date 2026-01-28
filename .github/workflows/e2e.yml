@@ -55,7 +55,7 @@ jobs:
           docker-username: ${{ secrets.docker-username }}
           docker-password: ${{ secrets.docker-password }}
         with:
-          username: ${{ env.docker-password }}
+          username: ${{ env.docker-username }}
           password: ${{ env.docker-password }}
 
       - name: Start MongoDB
