@@ -50,21 +50,27 @@ export const LABEL_TYPE_OPTIONS = [
   { id: "classification", data: { label: "Classification" } },
 ];
 
-// Attribute type options for dropdown (also used for primitive field creation)
+// Attribute type labels keyed by schema type
+export const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
+  str: "String",
+  int: "Integer",
+  float: "Float",
+  bool: "Boolean",
+  date: "Date",
+  datetime: "Datetime",
+  dict: "Dictionary",
+  "list<str>": "String list",
+  "list<int>": "Integer list",
+  "list<float>": "Float list",
+};
 
-export const ATTRIBUTE_TYPE_OPTIONS = [
-  { id: "str", data: { label: "String" } },
-  { id: "int", data: { label: "Integer" } },
-  { id: "float", data: { label: "Float" } },
-  { id: "bool", data: { label: "Boolean" } },
-  { id: "date", data: { label: "Date" } },
-  { id: "datetime", data: { label: "Datetime" } },
-  { id: "dict", data: { label: "Dictionary" } },
-  { id: "list<str>", data: { label: "String list" } },
-  { id: "list<int>", data: { label: "Integer list" } },
-  { id: "list<float>", data: { label: "Float list" } },
-];
-// Component options by type (matches annotation/constants.py)
+// Derived Select options for the dropdown (voodo Select expects this shape)
+export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
+  ([id, label]) => ({ id, data: { label } })
+);
+// Component options by type
+// Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py
+
 export const COMPONENT_OPTIONS: Record<
   string,
   Array<{ id: string; label: string; icon: IconName }>

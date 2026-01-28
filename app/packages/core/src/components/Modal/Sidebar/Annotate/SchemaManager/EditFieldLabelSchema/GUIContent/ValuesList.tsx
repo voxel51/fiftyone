@@ -7,14 +7,21 @@ import {
   Icon,
   IconName,
   Input,
+  Orientation,
   RichList,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
 } from "@voxel51/voodo";
 import React, { useState } from "react";
-import { createRichListItem, type RichListItem } from "../../utils";
+import {
+  createRichListItem,
+  validateSingleValue,
+  type RichListItem,
+} from "../../utils";
 
 interface ValuesListProps {
   values: string[];
@@ -51,7 +58,13 @@ const ValuesList = ({
 
   const handleAddValue = () => {
     const trimmed = newValue.trim();
-    const validationError = validateValue(trimmed);
+    const validationError = validateSingleValue(
+      trimmed,
+      values,
+      isNumeric,
+      isInteger
+    );
+
     if (validationError) {
       setInputError(validationError);
       return;
@@ -116,10 +129,14 @@ const ValuesList = ({
           Values
         </Text>
         <Clickable onClick={handleAddValue}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <Stack
+            orientation={Orientation.Row}
+            spacing={Spacing.Xs}
+            style={{ alignItems: "center" }}
+          >
             <Icon name={IconName.Add} size={Size.Sm} />
             <Text variant={TextVariant.Sm}>Add</Text>
-          </div>
+          </Stack>
         </Clickable>
       </div>
       <Input

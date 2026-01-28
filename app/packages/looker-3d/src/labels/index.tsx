@@ -3,7 +3,6 @@ import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
-  Sample,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import {
@@ -50,7 +49,7 @@ import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
-  sampleMap: { [sliceOrFilename: string]: Sample } | fos.Sample[];
+  sampleMap: { [sliceOrFilename: string]: fos.ModalSample } | fos.Sample[];
   globalOpacity?: number;
 }
 

@@ -15,7 +15,7 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView from "./GUIView";
+import GUIView, { useActivateFields, useDeactivateFields }  from "./GUIView";
 import {
   useActivateFields,
   useCurrentField,
@@ -156,7 +156,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const show = useShowSchemaManagerModal();
+  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -167,11 +167,11 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => show(false)}>
+    <ModalBackground onClick={() => setShowModal(false)}>
       <ModalContainer onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => show(false)} />
+          <CloseButton color="secondary" onClick={() => setShowModal(false)} />
         </ModalHeader>
 
         <Subheading />

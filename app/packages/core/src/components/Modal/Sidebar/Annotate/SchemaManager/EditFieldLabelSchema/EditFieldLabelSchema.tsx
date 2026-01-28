@@ -3,7 +3,10 @@ import {
   Button,
   Icon,
   IconName,
+  Orientation,
   Size,
+  Spacing,
+  Stack,
   Text,
   TextColor,
   TextVariant,
@@ -143,8 +146,10 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
       <Footer
         leftContent={
           !showScanButton ? (
-            <div
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              style={{ alignItems: "center" }}
             >
               <Toggle
                 size={Size.Md}
@@ -152,7 +157,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
                 onChange={handleToggleVisibility}
               />
               <Text variant={TextVariant.Lg}>Visible field</Text>
-            </div>
+            </Stack>
           ) : undefined
         }
         secondaryButton={{

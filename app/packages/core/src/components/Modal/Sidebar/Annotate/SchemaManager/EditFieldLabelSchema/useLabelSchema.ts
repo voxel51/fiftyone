@@ -43,6 +43,13 @@ const getAttributeNames = (value: unknown): Set<string> => {
   return new Set();
 };
 
+import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
+import { currentLabelSchema } from "../state";
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
 /**
  * Extract new attributes from current schema that don't exist in saved or default.
  * Returns a dict format for the backend API (name -> config without name field).
@@ -57,16 +64,12 @@ const getNewAttributes = (
 
   const newAttributes: Record<string, unknown> = {};
 
-  if (current && typeof current === "object" && "attributes" in current) {
-    const attrs = (current as LabelSchema).attributes;
-    if (Array.isArray(attrs)) {
-      for (const attr of attrs) {
-        if (attr && typeof attr === "object" && "name" in attr) {
-          const { name, ...config } = attr;
-          // Attribute is new if it doesn't exist in saved or default schema
-          if (!savedNames.has(name) && !defaultNames.has(name)) {
-            newAttributes[name] = config;
-          }
+  if (hasAttributes(current) && Array.isArray(current.attributes)) {
+    for (const attr of current.attributes) {
+      if (isNamedAttribute(attr)) {
+        const { name, ...config } = attr;
+        if (!savedNames.has(name) && !defaultNames.has(name)) {
+          newAttributes[name] = config;
         }
       }
     }

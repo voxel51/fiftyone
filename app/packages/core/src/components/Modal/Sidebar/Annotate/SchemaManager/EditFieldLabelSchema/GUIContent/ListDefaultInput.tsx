@@ -6,6 +6,7 @@
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useMemo } from "react";
 import AutocompleteView from "../../../../../../../plugins/SchemaIO/components/AutocompleteView";
+import { deduplicateValues, parseNumericValues } from "../../utils";
 
 interface ListDefaultInputProps {
   /** Current default values as array */
@@ -46,14 +47,8 @@ const ListDefaultInput = ({
 
   const handleChange = (_path: string, newValues: unknown) => {
     if (Array.isArray(newValues)) {
-      // Convert to numbers if numeric type
-      const processed = isNumeric
-        ? newValues.map((v) => {
-            const num = parseFloat(String(v));
-            return isNaN(num) ? v : num;
-          })
-        : newValues;
-      onChange(processed);
+      const processed = isNumeric ? parseNumericValues(newValues) : newValues;
+      onChange(deduplicateValues(processed));
     }
   };
 

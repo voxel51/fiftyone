@@ -4,6 +4,7 @@
  * Main view for the Schema Manager with GUI and JSON tabs.
  */
 
+import { scrollable } from "@fiftyone/components";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
@@ -59,6 +60,7 @@ const JSONContent = () => {
 
   return (
     <ContentArea
+      className={scrollable}
       style={{
         position: "absolute",
         top: "50px",
@@ -103,24 +105,27 @@ const GUIView = () => {
   const tabIndex = TAB_IDS.indexOf(activeTab);
   const defaultIndex = tabIndex === -1 ? 0 : tabIndex;
 
-  const handleTabChange = useCallback((index: number) => {
-    const tabId = TAB_IDS[index];
-    if (tabId) {
-      setActiveTab(tabId);
-    }
-  }, []);
+  const handleTabChange = useCallback(
+    (index: number) => {
+      const tabId = TAB_IDS[index];
+      if (tabId) {
+        setActiveTab(tabId);
+      }
+    },
+    [setActiveTab]
+  );
 
   // When M4 flag is off, show GUI content directly without toggle
   if (!isM4Enabled) {
     return (
-      <Container style={{ marginBottom: "0.5rem" }}>
+      <Container className={scrollable} style={{ marginBottom: "0.5rem" }}>
         <GUIContent />
       </Container>
     );
   }
 
   return (
-    <Container style={{ marginBottom: "0.5rem" }}>
+    <Container className={scrollable} style={{ marginBottom: "0.5rem" }}>
       <ToggleSwitch
         size={Size.Md}
         defaultIndex={defaultIndex}

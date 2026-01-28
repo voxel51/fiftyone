@@ -20,6 +20,7 @@ import {
   labelSchemasData,
   removeFromActiveSchemas,
   showModal,
+  currentField,
 } from "../state";
 import {
   draftJsonContent,

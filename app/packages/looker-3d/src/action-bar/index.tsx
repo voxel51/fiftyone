@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { isFo3d as utilIsFo3d } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Logs } from "../Logs";
@@ -13,11 +14,11 @@ import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleFo3dBackground } from "./ToggleBackground";
+import { ToggleFrustums } from "./ToggleFrustums";
 import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewFo3d } from "./ViewFo3d";
 import { ViewHelp } from "./ViewHelp";
 import { ViewJSON } from "./ViewJson";
-import { isFo3d as utilIsFo3d } from "@fiftyone/utilities";
 
 export const ActionBar = ({
   onMouseEnter,
@@ -33,6 +34,7 @@ export const ActionBar = ({
     [isFo3dSlice, mediaType]
   );
   const hasMultiplePcdSlices = useRecoilValue(fos.hasMultiple3dSlices);
+  const isGroup = useRecoilValue(fos.isGroup);
 
   const sampleMap = useRecoilValue(fos.active3dSlicesToSampleMap);
   const sample = useRecoilValue(fos.fo3dSample);
@@ -72,6 +74,10 @@ export const ActionBar = ({
 
     if (fo3dContainsBackground) {
       components.push(<ToggleFo3dBackground key="toggle-background" />);
+    }
+
+    if (isFo3d && isGroup) {
+      components.push(<ToggleFrustums key="toggle-frustums" />);
     }
 
     if (!isFo3d) {
@@ -116,7 +122,14 @@ export const ActionBar = ({
     components.push(<ViewHelp key="view-help" helpPanel={helpPanel} />);
 
     return components;
-  }, [fo3dContainsBackground, isFo3d, jsonPanel, helpPanel, sampleForJsonView]);
+  }, [
+    fo3dContainsBackground,
+    isFo3d,
+    isGroup,
+    jsonPanel,
+    helpPanel,
+    sampleForJsonView,
+  ]);
 
   return (
     <>
