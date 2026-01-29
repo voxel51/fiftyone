@@ -83,7 +83,6 @@ FLOAT_SETTINGS = {PRECISION}
 FLOAT_INT_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 ID_SETTINGS = ALL_TYPES_SETTINGS
 LABEL_SETTINGS = ALL_TYPES_SETTINGS.union({ATTRIBUTES, DEFAULT})
-SLIDER_SETTINGS = {RANGE}
 STR_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 STR_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
@@ -139,22 +138,6 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
-### Label schema type to field type
-TYPES_TO_FIELD_TYPE = {
-    BOOL: fof.BooleanField,
-    DATE: fof.DateField,
-    DATETIME: fof.DateTimeField,
-    DICT: fof.DictField,
-    FLOAT: fof.FloatField,
-    ID: fof.ObjectIdField,
-    INT: fof.IntField,
-    STR: fof.StringField,
-    FLOAT_LIST: fof.FloatField,
-    INT_LIST: fof.IntField,
-    STR_LIST: fof.StringField,
-}
-
-
 ### Heuristics
 
 
@@ -204,11 +187,4 @@ UNSUPPORTED_LABEL_TYPES = {
     fol.GeoLocations,
     fol.TemporalDetection,
     fol.TemporalDetections,
-}
-
-# Label types that can be created via Schema Manager
-# Maps lowercase class name -> class (reverse of cls.__name__.lower())
-CREATABLE_LABEL_TYPES = (fol.Classification, fol.Detections)
-LABEL_TYPE_TO_CLASS = {
-    cls.__name__.lower(): cls for cls in CREATABLE_LABEL_TYPES
 }

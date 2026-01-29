@@ -23,7 +23,12 @@ class ValidationErrors(ExceptionGroup):
 
 
 def validate_label_schemas(
-    sample_collection, label_schema, fields=None, _allow_default=False
+    sample_collection,
+    label_schema,
+    allow_new_attrs=False,
+    allow_new_fields=False,
+    fields=None,
+    _allow_default=False,
 ):
     """Validates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.  See
@@ -34,6 +39,10 @@ def validate_label_schemas(
             :class:`fiftyone.core.collections.SampleCollection`
         label_schema: a label schemas ``dict`` or an individual field's label
             schema ``dict`` if only one field is provided
+        allow_new_attrs (False): whether to allow label attributes that do not
+            yet exist on the :ref:`field schema <field-schemas>`
+        allow_new_fields (False): whether to allow label schemas for fields
+            that do not yet exist on the :ref:`field schema <field-schemas>`
         fields (None): a field name, ``embedded.field.name`` or iterable of
             such values
 
@@ -53,19 +62,24 @@ def validate_label_schemas(
         sample_collection, flatten=True
     )
     exceptions = []
-    for field in fields:
+    for field_name in fields:
         try:
-            if field not in all_fields:
-                raise ValueError(f"field '{field}' does not exist")
+            if allow_new_fields is False and field_name not in all_fields:
+                raise ValueError(f"field '{field_name}' does not exist")
 
-            if field not in supported_fields:
-                raise ValueError(f"field '{field}' is not supported")
+            if (
+                allow_new_fields is False
+                and field_name not in supported_fields
+            ):
+                raise ValueError(f"field '{field_name}' is not supported")
 
             _validate_field_label_schema(
-                sample_collection,
-                field,
-                label_schema[field],
+                sample_collection.get_field(field_name),
+                field_name,
+                label_schema[field_name],
                 allow_default=_allow_default,
+                allow_new_attrs=allow_new_attrs,
+                allow_new_fields=allow_new_fields,
             )
         except Exception as exc:
             exceptions.append(exc)
@@ -75,81 +89,95 @@ def validate_label_schemas(
 
 
 def _validate_field_label_schema(
-    sample_collection, field_name, label_schema, allow_default=False
+    field,
+    field_name,
+    label_schema,
+    allow_default=False,
+    allow_labels=True,
+    allow_new_attrs=False,
+    allow_new_fields=False,
 ):
-    field = sample_collection.get_field(field_name)
-    if field is None:
-        raise ValueError(f"field '{field_name}' does not exist")
+    type_ = None
+    if allow_new_fields is False:
+        if field is None:
+            raise ValueError(f"field '{field_name}' does not exist")
 
-    field_is_read_only = field.read_only
+        if type(field) in foac.FIELD_TYPE_TO_TYPES:
+            type_ = foac.FIELD_TYPE_TO_TYPES[type(field)]
+            if isinstance(field, fof.ListField):
+                type_ = type_[type(field.field)]
+    else:
+        type_ = label_schema.get(foac.TYPE, None)
+
+    is_label = False
+    if allow_labels:
+        if (
+            isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol.Label)
+            and field.document_type not in foac.UNSUPPORTED_LABEL_TYPES
+        ):
+            is_label = True
+
+        elif not field and type_ in _ALL_LABEL_TYPES:
+            is_label = True
+
+    if not is_label and foac.COMPONENT not in label_schema:
+        raise ValueError(
+            f"no '{foac.COMPONENT}' provided for field '{field_name}'"
+        )
+
+    if foac.TYPE not in label_schema:
+        raise ValueError(f"no '{foac.TYPE}' provided for field '{field_name}'")
+
+    field_is_read_only = field and field.read_only
+
+    if label_schema.get(foac.READ_ONLY, None) is False and field_is_read_only:
+        raise ValueError(
+            f"'{foac.READ_ONLY}' cannot be False for field '{field_name}'"
+        )
+
+    if is_label:
+        _validate_label_field_label_schema(
+            field,
+            field_name,
+            label_schema,
+            allow_default=True,
+            allow_new_attrs=allow_new_attrs,
+        )
+        return
 
     is_list = isinstance(field, fof.ListField)
     if is_list:
         field = field.field
 
     fn = None
-    is_label = False
 
-    if isinstance(field, fof.EmbeddedDocumentField):
-        if (
-            issubclass(field.document_type, fol.Label)
-            and field.document_type not in foac.UNSUPPORTED_LABEL_TYPES
-        ):
-            is_label = True
-
-    if foac.TYPE not in label_schema:
-        raise ValueError(f"no type provided for field '{field_name}'")
-
-    if not is_label and foac.COMPONENT not in label_schema:
-        raise ValueError(f"no component provided for field '{field_name}'")
-
-    if label_schema.get(foac.READ_ONLY, None) is False and field_is_read_only:
-        raise ValueError(
-            f"'{foac.READ_ONLY}' cannot be False for read only '{field_name}'"
-        )
-
-    elif isinstance(field, fof.BooleanField):
-        if not is_list:
-            fn = _validate_bool_field_label_schema
-    elif isinstance(field, (fof.DateField, fof.DateTimeField)):
-        if is_list:
-            _raise_field_error(sample_collection, field_name)
+    if type_ == foac.BOOL:
+        fn = _validate_bool_field_label_schema
+    elif type_ in {foac.DATE, foac.DATETIME}:
         fn = _validate_date_datetime_field_label_schema
-    elif isinstance(field, fof.DictField):
-        if is_list:
-            _raise_field_error(sample_collection, field_name)
+    elif type_ == foac.DICT:
         fn = _validate_dict_field_label_schema
-    elif isinstance(field, (fof.FloatField, fof.IntField)):
-        if is_list:
-            fn = _validate_float_int_list_field_label_schema
-        else:
-            fn = _validate_float_int_field_label_schema
-    elif isinstance(field, (fof.ObjectIdField, fof.UUIDField)):
+    elif type_ in {foac.FLOAT, foac.INT}:
+        fn = _validate_float_int_field_label_schema
+    elif type_ in {foac.FLOAT_LIST, foac.INT_LIST}:
+        fn = _validate_float_int_list_field_label_schema
+    elif type_ == foac.ID:
         fn = _validate_id_field_label_schema
-    elif isinstance(field, fof.StringField):
-        if is_list:
-            fn = _validate_str_list_field_label_schema
-        else:
-            fn = _validate_str_field_label_schema
-    elif is_label:
-        fn = _validate_label_field_label_schema
+    elif type_ == foac.STR:
+        fn = _validate_str_field_label_schema
+    elif type_ == foac.STR_LIST:
+        fn = _validate_str_list_field_label_schema
 
-    if fn:
-        fn(
-            sample_collection,
-            field_name,
-            label_schema,
-            allow_default or is_label,
-        )
-        return
+    if fn is None:
+        raise ValueError(f"unsupported field '{field_name}': {str(field)}")
 
-    raise ValueError(f"unsupported field '{field_name}': {str(field)}")
+    fn(field, field_name, label_schema, allow_default)
 
 
 def _validate_bool_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
     for key, value in label_schema.items():
         if key not in foac.BOOL_SETTINGS:
             _raise_unknown_setting_error(key, field_name)
@@ -165,10 +193,9 @@ def _validate_bool_field_label_schema(
 
 
 def _validate_date_datetime_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
-    field_type = date if isinstance(field, fof.DateField) else datetime
+    _type = date if isinstance(field, fof.DateField) else datetime
     for key, value in label_schema.items():
         if key not in foac.DATE_DATETIME_SETTINGS:
             _raise_unknown_setting_error(key, field_name)
@@ -179,7 +206,7 @@ def _validate_date_datetime_field_label_schema(
         ):
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
-            _validate_default(field_name, value, field_type, allow_default)
+            _validate_default(field_name, value, _type, allow_default)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE:
@@ -194,9 +221,8 @@ def _validate_date_datetime_field_label_schema(
 
 
 def _validate_dict_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
     for key, value in label_schema.items():
         if key not in foac.DICT_SETTINGS:
             _raise_unknown_setting_error(key, field_name)
@@ -212,28 +238,27 @@ def _validate_dict_field_label_schema(
 
 
 def _validate_float_int_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
     is_float = isinstance(field, fof.FloatField)
-    str_type = foac.FLOAT if is_float else foac.INT
+    _str_type = foac.FLOAT if is_float else foac.INT
     # a float field accepts float and int values
-    field_type = (float, int) if is_float else int
+    _type = (float, int) if is_float else int
 
     settings = foac.FLOAT_INT_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
-    field_range = label_schema.get(foac.RANGE, None)
+    _range = label_schema.get(foac.RANGE, None)
     values = label_schema.get(foac.VALUES, None)
     if component == foac.SLIDER:
-        _validate_range_setting(field_name, field_range, field_type)
-        settings = settings.union(foac.SLIDER_SETTINGS)
+        _validate_range_setting(field_name, _range, _type)
+        settings = settings.union({foac.RANGE})
     elif component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, field_type)
+        _validate_values_setting(field_name, values, _type)
         settings = settings.union({foac.VALUES})
 
     for key, value in label_schema.items():
         if key not in settings:
-            if field_type is int or key not in foac.FLOAT_SETTINGS:
+            if _type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if key == foac.COMPONENT and value not in foac.FLOAT_INT_COMPONENTS:
@@ -242,9 +267,9 @@ def _validate_float_int_field_label_schema(
             _validate_default(
                 field_name,
                 value,
-                field_type,
+                _type,
                 allow_default,
-                field_range=field_range,
+                _range=_range,
                 values=values,
             )
         elif key == foac.PRECISION:
@@ -256,28 +281,27 @@ def _validate_float_int_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != str_type:
+        elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
 
 def _validate_float_int_list_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
-    is_float = isinstance(field.field, fof.FloatField)
-    str_type = foac.FLOAT_LIST if is_float else foac.INT_LIST
-    field_type = float if is_float else int
+    is_float = isinstance(field, fof.FloatField)
+    _str_type = foac.FLOAT_LIST if is_float else foac.INT_LIST
+    _type = float if is_float else int
 
     settings = foac.FLOAT_INT_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
     if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, field_type)
+        _validate_values_setting(field_name, values, _type)
         settings = settings.union({foac.VALUES})
 
     for key, value in label_schema.items():
         if key not in settings:
-            if field_type is int or key not in foac.FLOAT_SETTINGS:
+            if _type is int or key not in foac.FLOAT_SETTINGS:
                 _raise_unknown_setting_error(key, field_name)
 
         if (
@@ -287,7 +311,7 @@ def _validate_float_int_list_field_label_schema(
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
             _validate_default_list(
-                field_name, value, field_type, allow_default, values=values
+                field_name, value, _type, allow_default, values=values
             )
         elif key == foac.PRECISION:
             if foac.VALUES in label_schema:
@@ -298,15 +322,13 @@ def _validate_float_int_list_field_label_schema(
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != str_type:
+        elif key == foac.TYPE and value != _str_type:
             _raise_type_error(field, field_name, value)
 
 
 def _validate_id_field_label_schema(
-    collection, field_name, label_schema, _unused_allow_default
+    field, field_name, label_schema, _unused_allow_default
 ):
-    field = collection.get_field(field_name)
-
     _validate_read_only(
         field_name, label_schema.get(foac.READ_ONLY, None), require=True
     )
@@ -321,9 +343,8 @@ def _validate_id_field_label_schema(
 
 
 def _validate_str_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
     settings = foac.STR_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
@@ -348,9 +369,8 @@ def _validate_str_field_label_schema(
 
 
 def _validate_str_list_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field, field_name, label_schema, allow_default
 ):
-    field = collection.get_field(field_name)
     settings = foac.STR_LIST_SETTINGS
     component = label_schema.get(foac.COMPONENT, None)
     values = label_schema.get(foac.VALUES, None)
@@ -375,10 +395,18 @@ def _validate_str_list_field_label_schema(
 
 
 def _validate_label_field_label_schema(
-    collection, field_name, label_schema, allow_default
+    field,
+    field_name,
+    label_schema,
+    allow_default,
+    allow_new_attrs=False,
 ):
-    field: fof.EmbeddedDocumentField = collection.get_field(field_name)
-    class_name = field.document_type.__name__.lower()
+
+    class_name = (
+        field.document_type.__name__.lower()
+        if field
+        else label_schema[foac.TYPE]
+    )
     component = label_schema.get(foac.COMPONENT, None)
     settings = foac.LABEL_SETTINGS
     values = label_schema.get(foac.CLASSES, None)
@@ -391,7 +419,13 @@ def _validate_label_field_label_schema(
             _raise_unknown_setting_error(key, field_name)
 
         if key == foac.ATTRIBUTES:
-            _validate_attributes(collection, field_name, class_name, value)
+            _validate_attributes(
+                field,
+                field_name,
+                class_name,
+                value,
+                allow_new_attrs=allow_new_attrs,
+            )
         elif key == foac.COMPONENT and value not in foac.STR_COMPONENTS:
             _raise_component_error(field_name, value)
         elif key == foac.DEFAULT:
@@ -402,13 +436,6 @@ def _validate_label_field_label_schema(
             _validate_read_only(field_name, value)
         elif key == foac.TYPE and value != class_name:
             _raise_type_error(field, field_name, value)
-
-
-def _raise_field_error(collection, field_name):
-    field = collection.get_field(field_name)
-    raise ValueError(
-        f"field '{field_name}' of field type {str(field)} is not supported"
-    )
 
 
 def _raise_component_error(field_name, value):
@@ -427,30 +454,30 @@ def _raise_unknown_setting_error(name, field_name):
 
 def _validate_attribute(
     class_name,
-    collection,
-    field_name,
     label_schema,
+    parent_field,
+    parent_field_name,
     path,
+    subfields,
+    allow_new_attrs=True,
 ):
     label_schema = label_schema.copy()
     attribute = label_schema.pop(foac.NAME, None)
     if attribute is None:
         raise ValueError(
-            f"missing 'name' in 'attributes' for field '{field_name}'"
+            f"missing 'name' in 'attributes' for field '{parent_field_name}'"
         )
 
-    # Use direct schema lookup which works for both existing and newly created fields
-    attr_field = collection.get_field(f"{path}.{attribute}")
-    if attr_field is None:
+    if allow_new_attrs is False and attribute not in subfields:
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
-            f" '{field_name}'"
+            f" '{parent_field_name}'"
         )
 
     if attribute == foac.LABEL:
         raise ValueError(
-            f"'label' attribute for field '{field_name}' is configured via "
-            "'classes' for label fields"
+            f"'label' attribute for field '{parent_field_name}' is configured "
+            "view 'classes' for label fields"
         )
 
     if attribute == foac.BOUNDING_BOX and class_name in {
@@ -459,7 +486,7 @@ def _validate_attribute(
     }:
         raise ValueError(
             f"'bounding_box' attribute is not configurable for field "
-            f"'{field_name}'"
+            f"'{parent_field_name}'"
         )
 
     if attribute == foac.POINTS and class_name in {
@@ -467,50 +494,58 @@ def _validate_attribute(
         _POLYLINES,
     }:
         raise ValueError(
-            f"'points' attribute is not configurable for field '{field_name}'"
+            f"'points' attribute is not configurable for field "
+            f"'{parent_field_name}'"
         )
 
     _validate_field_label_schema(
-        collection, f"{path}.{attribute}", label_schema, allow_default=True
+        parent_field.get_field(attribute) if parent_field else None,
+        f"{path}.{attribute}",
+        label_schema,
+        allow_default=True,
+        allow_labels=False,
+        allow_new_fields=allow_new_attrs,
     )
 
+    return attribute
 
-def _validate_attributes(collection, field_name, class_name, attributes):
+
+def _validate_attributes(
+    field, field_name, class_name, attributes, allow_new_attrs=True
+):
     if not isinstance(attributes, list):
         raise ValueError(
             f"'attributes' setting for field '{field_name}' must be a list"
         )
 
-    # Check for duplicate attribute names
-    names = [a.get(foac.NAME) for a in attributes if isinstance(a, dict)]
-    seen = set()
-    for name in names:
-        if name in seen:
-            raise ValidationErrors(
-                f"invalid attribute(s) for field '{field_name}'",
-                [
-                    ValueError(
-                        f"duplicate attribute name '{name}' for field '{field_name}'"
-                    )
-                ],
-            )
-        seen.add(name)
-
-    field: fof.EmbeddedDocumentField = collection.get_field(field_name)
     path = field_name
-    if issubclass(field.document_type, fol._HasLabelList):
-        path = f"{path}.{field.document_type._LABEL_LIST_FIELD}"
+    if field and issubclass(field.document_type, fol._HasLabelList):
+        field = field.get_field(field.document_type._LABEL_LIST_FIELD).field
 
+    subfields = {f.name: f for f in field.fields} if field else {}
     exceptions = []
+    validated = set()
     for label_schema in attributes:
         try:
-            _validate_attribute(
+
+            attr = _validate_attribute(
                 class_name,
-                collection,
-                field_name,
                 label_schema,
+                field,
+                field_name,
                 path,
+                subfields,
+                allow_new_attrs=allow_new_attrs,
             )
+
+            if attr in validated:
+                raise ValueError(
+                    f"'attributes' setting for field '{field_name}' has "
+                    f"duplicate '{attr}' settings"
+                )
+
+            validated.add(attr)
+
         except Exception as exc:
             exceptions.append(exc)
 
@@ -521,7 +556,7 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
 
 def _validate_default(
-    field_name, value, field_type, allow_default, field_range=None, values=None
+    field_name, value, _type, allow_default, _range=None, values=None
 ):
     if not allow_default:
         raise ValueError(
@@ -532,16 +567,14 @@ def _validate_default(
         f"invalid 'default' setting '{value}' for field '{field_name}'"
     )
 
-    if isinstance(value, field_type):
-        if field_range is not None and (
-            value < field_range[0] or value > field_range[1]
-        ):
+    if isinstance(value, _type):
+        if _range is not None and (value < _range[0] or value > _range[1]):
             raise exception
 
         if values is not None and (value not in values):
             raise exception
 
-        if field_type == dict:
+        if _type == dict:
             try:
                 json_str = json.dumps(value)
                 if json_str != json.dumps(json.loads(json_str)):
@@ -557,7 +590,7 @@ def _validate_default(
 
 
 def _validate_default_list(
-    field_name, value, field_type, allow_default, values=None
+    field_name, value, _type, allow_default, values=None
 ):
     if not allow_default:
         raise ValueError(
@@ -581,7 +614,7 @@ def _validate_default_list(
         )
 
     for v in value:
-        if not isinstance(v, field_type) or (
+        if not isinstance(v, _type) or (
             values is not None and v not in values
         ):
             raise ValueError(
@@ -599,11 +632,9 @@ def _validate_precision(field_name, value):
     )
 
 
-def _validate_range_setting(field_name, value, field_type):
+def _validate_range_setting(field_name, value, _type):
     if isinstance(value, list) and len(value) == 2:
-        if isinstance(value[0], field_type) and isinstance(
-            value[1], field_type
-        ):
+        if isinstance(value[0], _type) and isinstance(value[1], _type):
             if value[0] < value[1]:
                 return
 
@@ -619,7 +650,7 @@ def _validate_read_only(field_name, value, require=False):
         )
 
 
-def _validate_values_setting(field_name, value, field_type, key=foac.VALUES):
+def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
             f"'{key}' setting for field '{field_name}' must be a list"
@@ -643,14 +674,25 @@ def _validate_values_setting(field_name, value, field_type, key=foac.VALUES):
         )
 
     for v in value:
-        if not isinstance(v, field_type):
+        if not isinstance(v, _type):
             raise ValueError(
                 f"invalid value '{v}' in '{key}' setting for field "
                 f"'{field_name}'"
             )
 
 
+_CLASSIFICATION = "classification"
+_CLASSIFICATIONS = "classifications"
 _DETECTION = "detection"
 _DETECTIONS = "detections"
 _POLYLINE = "polyline"
 _POLYLINES = "polylines"
+
+_ALL_LABEL_TYPES = {
+    _CLASSIFICATION,
+    _CLASSIFICATIONS,
+    _DETECTION,
+    _DETECTIONS,
+    _POLYLINE,
+    _POLYLINES,
+}

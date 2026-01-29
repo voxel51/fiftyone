@@ -313,12 +313,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     if isinstance(field, fof.BooleanField):
         fn = _handle_bool
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        is_int = isinstance(field, fof.IntField)
-
-        def _handle_numeric(c, f, il, s, ss, _is_int=is_int):
-            return _handle_float_or_int(c, f, il, s, ss, _is_int)
-
-        fn = _handle_numeric
+        fn = _handle_float_or_int
     elif isinstance(field, fof.StringField):
         fn = _handle_str
 
@@ -393,7 +388,7 @@ def _handle_bool(collection, field_name, is_list, settings, scan_samples):
 
 
 def _handle_float_or_int(
-    collection, field_name, is_list, settings, scan_samples, is_int=False
+    collection, field_name, is_list, settings, scan_samples
 ):
     settings[foac.COMPONENT] = foac.TEXT
     if is_list or not scan_samples:
