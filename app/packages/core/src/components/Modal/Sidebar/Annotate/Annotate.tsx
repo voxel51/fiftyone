@@ -130,7 +130,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   return (
     <>
       {editing && <Edit key="edit" />}
-      {showImport ? (
+      {showImport || isDisabled ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}
