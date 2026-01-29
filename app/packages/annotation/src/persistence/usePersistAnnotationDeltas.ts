@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
-import { usePatchSample } from "../hooks";
+import { useAnnotationEventBus, usePatchSample } from "../hooks";
 
 /**
  * @returns `true` if persistence was successful
@@ -21,14 +21,16 @@ export const usePersistAnnotationDeltas =
   (): (() => Promise<PersistenceResult>) => {
     const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
     const patchSample = usePatchSample();
+    const eventBus = useAnnotationEventBus();
 
     return useCallback(async () => {
       const sampleDeltas = supplyAnnotationDeltas();
 
       if (sampleDeltas.length > 0) {
+        eventBus.dispatch("annotation:persistenceInFlight");
         return await patchSample(sampleDeltas);
       }
 
       return null;
-    }, [patchSample, supplyAnnotationDeltas]);
+    }, [eventBus, patchSample, supplyAnnotationDeltas]);
   };
