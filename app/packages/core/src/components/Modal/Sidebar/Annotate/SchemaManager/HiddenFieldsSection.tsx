@@ -67,7 +67,7 @@ const HiddenFieldActions = ({
         <>
           {hasSchema ? (
             <Tooltip
-              content="Configure annotation schema"
+              content={<Text>Configure annotation schema</Text>}
               anchor={Anchor.Bottom}
               portal
             >
@@ -162,7 +162,11 @@ const HiddenFieldsSection = () => {
           )}
         </CollapsibleHeader>
         <Tooltip
-          content="Fields currently hidden and not available for dataset annotation"
+          content={
+            <Text>
+              Fields currently hidden and not available for dataset annotation
+            </Text>
+          }
           anchor={Anchor.Top}
           portal
         >
