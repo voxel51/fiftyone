@@ -47,6 +47,9 @@ jobs:
     needs: modified-files
     if: ${{ needs.modified-files.outputs.app-changes == 'true' || needs.modified-files.outputs.e2e-changes == 'true' || needs.modified-files.outputs.fiftyone-changes == 'true' }}
     uses: ./.github/workflows/e2e.yml
+    secrets:
+      docker-username: ${{ secrets.RO_DOCKERHUB_USERNAME }}
+      docker-password: ${{ secrets.RO_DOCKERHUB_PAT }}
 
   lint:
     needs: modified-files

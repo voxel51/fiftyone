@@ -8,10 +8,44 @@ import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { useRecoilValue } from "recoil";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
-import { currentOverlay, currentType } from "./state";
+import { currentOverlay, currentType, useAnnotationContext } from "./state";
 import useColor from "./useColor";
 import { useQuickDraw } from "./useQuickDraw";
 import useExit from "./useExit";
+import useDelete from "./useDelete";
+import { useRef, useState } from "react";
+import { Box, Menu, MenuItem, Stack } from "@mui/material";
+import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+
+const LabelHamburgerMenu = () => {
+  const [open, setOpen] = useState<boolean>(false);
+  const anchor = useRef<HTMLElement | null>(null);
+  const onDelete = useDelete();
+
+  return (
+    <>
+      <Clickable onClick={() => setOpen(true)}>
+        <Box ref={anchor} sx={{ p: 0.5 }}>
+          <Icon name={IconName.MoreVertical} size={Size.Md} />
+        </Box>
+      </Clickable>
+
+      <Menu
+        anchorEl={anchor.current}
+        open={open}
+        onClose={() => setOpen(false)}
+        sx={{ zIndex: 9999 }}
+      >
+        <MenuItem onClick={onDelete}>
+          <Stack direction="row" gap={1} alignItems="center">
+            <Icon name={IconName.Delete} size={Size.Md} />
+            <Text>Delete label</Text>
+          </Stack>
+        </MenuItem>
+      </Menu>
+    </>
+  );
+};
 
 const Header = () => {
   const type = useAtomValue(currentType);
@@ -21,6 +55,7 @@ const Header = () => {
   const onExit = useExit();
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
+  const annotationContext = useAnnotationContext();
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
@@ -43,12 +78,17 @@ const Header = () => {
         {Icon && <Icon fill={color} />}
         <div>Edit {type}</div>
       </ItemLeft>
-      {!isAnnotatingPolyline && !isAnnotatingCuboid && (
-        <ItemRight>
-          <Undo />
-          <Redo />
-        </ItemRight>
-      )}
+      <ItemRight>
+        <Stack direction="row" alignItems="center">
+          {!isAnnotatingPolyline && !isAnnotatingCuboid && (
+            <>
+              <Undo />
+              <Redo />
+            </>
+          )}
+          {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
+        </Stack>
+      </ItemRight>
     </Row>
   );
 };
