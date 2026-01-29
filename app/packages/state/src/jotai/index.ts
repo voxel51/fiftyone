@@ -94,6 +94,6 @@ export const removeAllHoveredInstances = atom(null, (_get, set) => {
  */
 export const currentModalUniqueIdJotaiAtom = atom<string>("");
 
-export * from "./annotation";
+export * from "./group-annotation";
 export * from "./jotai-store";
 export * from "./modal";

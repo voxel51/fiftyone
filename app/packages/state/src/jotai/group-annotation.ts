@@ -16,7 +16,7 @@ export interface GroupVisibilityConfigSnapshot {
 /**
  * Stores the visibility settings snapshot from before entering Annotate mode.
  */
-export const explorerVisibilitySnapshot: PrimitiveAtom<GroupVisibilityConfigSnapshot | null> =
+export const explorerVisibilitySnapshotAtom: PrimitiveAtom<GroupVisibilityConfigSnapshot | null> =
   atomWithDefault<GroupVisibilityConfigSnapshot | null>(() => null);
 
 /**
@@ -24,8 +24,8 @@ export const explorerVisibilitySnapshot: PrimitiveAtom<GroupVisibilityConfigSnap
  * Stored per-dataset in localStorage. The component should validate
  * this value against available slices.
  */
-export const groupAnnotationSlice = atomWithStorage<string | null>(
-  "annotationSlice",
+export const preferredGroupAnnotationSliceAtom = atomWithStorage<string | null>(
+  "preferredGroupAnnotationSlice",
   null,
   createDatasetKeyedStorage<string | null>(parseDatasetNameFromUrl)
 );
