@@ -128,13 +128,13 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const onExit = useExit();
   const onSave = useSave();
   const next = useCallback(async () => {
-    await onSave();
+    onSave();
     onExit();
     nextNavigator.navigate();
   }, [nextNavigator, onExit, onSave]);
 
   const previous = useCallback(async () => {
-    await onSave();
+    onSave();
     onExit();
     previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);

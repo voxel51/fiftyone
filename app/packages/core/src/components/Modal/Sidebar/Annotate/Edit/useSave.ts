@@ -10,7 +10,7 @@ export default function useSave() {
   const [isSaving, setSaving] = useAtom(isSavingAtom);
   const eventBus = useAnnotationEventBus();
 
-  return useCallback(async () => {
+  return useCallback(() => {
     if (!label || isSaving) {
       return;
     }

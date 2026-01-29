@@ -143,7 +143,7 @@ export default function useDelete() {
           return !!label;
         },
         sequence: "Delete",
-        label: "Delete",
+        label: "Delete label",
         description: "Delete label",
       },
     ],

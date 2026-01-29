@@ -14,11 +14,13 @@ import useDelete from "./useDelete";
 import { useRef, useState } from "react";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { KnownCommands, useCommand } from "@fiftyone/commands";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
   const anchor = useRef<HTMLElement | null>(null);
-  const onDelete = useDelete();
+  useDelete();
+  const deleteCommand = useCommand(KnownCommands.ModalDeleteAnnotation);
 
   return (
     <>
@@ -34,10 +36,10 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        <MenuItem onClick={onDelete}>
+        <MenuItem onClick={deleteCommand.callback}>
           <Stack direction="row" gap={1} alignItems="center">
             <Icon name={IconName.Delete} size={Size.Md} />
-            <Text>Delete label</Text>
+            <Text>{deleteCommand.descriptor.label}</Text>
           </Stack>
         </MenuItem>
       </Menu>
