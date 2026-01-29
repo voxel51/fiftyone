@@ -67,10 +67,7 @@ def validate_label_schemas(
             if allow_new_fields is False and field_name not in all_fields:
                 raise ValueError(f"field '{field_name}' does not exist")
 
-            if (
-                allow_new_fields is False
-                and field_name not in supported_fields
-            ):
+            if field_name in all_fields and field_name not in supported_fields:
                 raise ValueError(f"field '{field_name}' is not supported")
 
             _validate_field_label_schema(
@@ -275,8 +272,8 @@ def _validate_float_int_field_label_schema(
         elif key == foac.PRECISION:
             if foac.VALUES in label_schema:
                 raise ValueError(
-                    "'precision' and 'values' are incompatible settings for "
-                    f"field '{field_name}'"
+                    f"'{foac.PRECISION}' and '{foac.VALUES}' are incompatible "
+                    f"settings for field '{field_name}'"
                 )
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
@@ -316,8 +313,8 @@ def _validate_float_int_list_field_label_schema(
         elif key == foac.PRECISION:
             if foac.VALUES in label_schema:
                 raise ValueError(
-                    "'precision' and 'values' are incompatible settings for "
-                    f"field '{field_name}'"
+                    f"'{foac.PRECISION}' and '{foac.VALUES}' are incompatible "
+                    f"settings for field '{field_name}'"
                 )
             _validate_precision(field_name, value)
         elif key == foac.READ_ONLY:
@@ -471,7 +468,8 @@ def _validate_attribute(
     attribute = label_schema.pop(foac.NAME, None)
     if attribute is None:
         raise ValueError(
-            f"missing 'name' in 'attributes' for field '{parent_field_name}'"
+            f"missing '{foac.NAME}' in 'attributes' for field "
+            f"'{parent_field_name}'"
         )
 
     if allow_new_attrs is False and attribute not in subfields:
@@ -482,8 +480,8 @@ def _validate_attribute(
 
     if attribute == foac.LABEL:
         raise ValueError(
-            f"'label' attribute for field '{parent_field_name}' is configured "
-            "view 'classes' for label fields"
+            f"'{foac.LABEL}' attribute for field '{parent_field_name}' is "
+            f" configured via '{foac.CLASSES}' for label fields"
         )
 
     if attribute == foac.BOUNDING_BOX and class_name in {
@@ -491,7 +489,7 @@ def _validate_attribute(
         _DETECTIONS,
     }:
         raise ValueError(
-            f"'bounding_box' attribute is not configurable for field "
+            f"'{foac.BOUNDING_BOX}' attribute is not configurable for field "
             f"'{parent_field_name}'"
         )
 
@@ -500,7 +498,7 @@ def _validate_attribute(
         _POLYLINES,
     }:
         raise ValueError(
-            f"'points' attribute is not configurable for field "
+            f"'{foac.POINTS}' attribute is not configurable for field "
             f"'{parent_field_name}'"
         )
 
@@ -521,7 +519,8 @@ def _validate_attributes(
 ):
     if not isinstance(attributes, list):
         raise ValueError(
-            f"'attributes' setting for field '{field_name}' must be a list"
+            f"'{foac.ATTRIBUTES}' setting for field '{field_name}' must be a "
+            f"list"
         )
 
     path = field_name
@@ -546,8 +545,8 @@ def _validate_attributes(
 
             if attr in validated:
                 raise ValueError(
-                    f"'attributes' setting for field '{field_name}' has "
-                    f"duplicate '{attr}' settings"
+                    f"'{foac.ATTRIBUTES}' setting for field '{field_name}' "
+                    f"ha duplicate '{attr}' settings"
                 )
 
             validated.add(attr)
@@ -566,11 +565,11 @@ def _validate_default(
 ):
     if not allow_default:
         raise ValueError(
-            f"'default' setting is not allowed for field '{field_name}'"
+            f"'{foac.DEFAULT}' setting is not allowed for field '{field_name}'"
         )
 
     exception = ValueError(
-        f"invalid 'default' setting '{value}' for field '{field_name}'"
+        f"invalid '{foac.DEFAULT}' setting '{value}' for field '{field_name}'"
     )
 
     if isinstance(value, _type):
@@ -587,7 +586,7 @@ def _validate_default(
                     raise Exception("inconsistent json")
             except Exception as exc:
                 raise ValueError(
-                    f"invalid json 'default' for field '{field_name}'"
+                    f"invalid json '{foac.DEFAULT}' for field '{field_name}'"
                 ) from exc
 
         return
@@ -600,23 +599,23 @@ def _validate_default_list(
 ):
     if not allow_default:
         raise ValueError(
-            f"'default' setting is not allowed for field '{field_name}'"
+            f"'{foac.DEFAULT}' setting is not allowed for field '{field_name}'"
         )
 
     if not isinstance(value, list):
         raise ValueError(
-            f"'default' setting for field '{field_name}' must be a list"
+            f"'{foac.DEFAULT}' setting for field '{field_name}' must be a list"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:
         raise ValueError(
-            f"'default' setting for field '{field_name}' has more than "
+            f"'{foac.DEFAULT}' setting for field '{field_name}' has more than "
             f"{foac.VALUES_THRESHOLD} values"
         )
 
     if len(value) > len(set(value)):
         raise ValueError(
-            f"'default' setting for field '{field_name}' has duplicates"
+            f"'{foac.DEFAULT}' setting for field '{field_name}' has duplicates"
         )
 
     for v in value:
@@ -624,7 +623,7 @@ def _validate_default_list(
             values is not None and v not in values
         ):
             raise ValueError(
-                f"invalid value '{v}' in 'default' setting for field "
+                f"invalid value '{v}' in '{foac.DEFAULT}' setting for field "
                 f"'{field_name}'"
             )
 
@@ -634,7 +633,8 @@ def _validate_precision(field_name, value):
         return
 
     raise ValueError(
-        f"invalid 'precision' setting '{value}' for field '{field_name}'"
+        f"invalid '{foac.PRECISION}' setting '{value}' for field "
+        f"'{field_name}'"
     )
 
 
@@ -645,14 +645,15 @@ def _validate_range_setting(field_name, value, _type):
                 return
 
     raise ValueError(
-        f"invalid 'range' setting '{value}' for field '{field_name}'"
+        f"invalid '{foac.RANGE}' setting '{value}' for field '{field_name}'"
     )
 
 
 def _validate_read_only(field_name, value, require=False):
     if not isinstance(value, bool) or (require and not value):
         raise ValueError(
-            f"invalid 'read_only' value '{value}' for field '{field_name}'"
+            f"invalid '{foac.READ_ONLY}' value '{value}' for field "
+            f"'{field_name}'"
         )
 
 
