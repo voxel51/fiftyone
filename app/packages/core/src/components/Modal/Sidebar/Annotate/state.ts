@@ -9,7 +9,9 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 
 export const currentField = atom<null | string>();
 
-export const labelSchemasData = atom(null);
+export const labelSchemasData = atom<Record<string, LabelSchemaMeta> | null>(
+  null
+);
 
 export const labelSchemaData = atomFamily((field: string) => {
   return atom(
