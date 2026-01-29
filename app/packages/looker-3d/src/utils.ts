@@ -152,6 +152,17 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
 export const deg2rad = (degrees: number) => degrees * (Math.PI / 180);
 
 /**
+ * Formats a number to a fixed precision string.
+ *
+ * @param n - The number to format
+ * @param decimals - Number of decimal places (default: 3)
+ * @returns The formatted string
+ */
+export function formatNumber(n: number, decimals = 3): string {
+  return n.toFixed(decimals);
+}
+
+/**
  * Converts an array of degrees to an array of radians.
  *
  * @param degreesArr - Array of angles in degrees

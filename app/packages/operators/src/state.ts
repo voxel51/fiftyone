@@ -985,7 +985,7 @@ export function useOperatorBrowser() {
 
   const toggle = useCallback(() => {
     setIsVisible((isVisible) => !isVisible);
-  }, [setIsVisible]);
+  }, []);
 
   useEffect(() => {
     document.addEventListener("keydown", onKeyDown);

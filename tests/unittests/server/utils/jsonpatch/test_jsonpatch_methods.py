@@ -8,10 +8,9 @@ import dataclasses
 from typing import Any, Literal, Union
 from unittest import mock
 
-import jsonpointer
 import pytest
 
-from fiftyone.server.utils.json.jsonpatch import methods
+from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
     get,
     add,
@@ -260,7 +259,7 @@ class TestRemove:
     def test_path_is_root(person: Person):
         """Test that attempting to remove the root raises ValueError."""
 
-        with pytest.raises(ValueError):
+        with pytest.raises(RootDeleteError):
             ####
             remove(person, "")
             ####
@@ -368,62 +367,39 @@ class TestTest:
 def test_copy():
     """Tests for copy."""
 
-    src = mock.Mock()
+    src = {"a": {"b": {}}, "d": {"e": {"f": "value"}}}
 
-    with (
-        mock.patch.object(methods, "get") as mock_get,
-        mock.patch.object(methods, "add") as mock_add,
-    ):
-        pointer = jsonpointer.JsonPointer("/a/b/c")
-        from_pointer = jsonpointer.JsonPointer("/d/e/f")
+    #####
+    res = copy(src, "/a/b/c", "/d/e/f")
+    #####
 
-        #####
-        res = copy(src, pointer, from_pointer)
-        #####
-
-        mock_get.assert_called_once_with(src, from_pointer)
-        mock_add.assert_called_once_with(src, pointer, mock_get.return_value)
-        assert res == src
+    assert res is src
+    assert src["a"]["b"]["c"] == "value"
+    assert src["d"]["e"]["f"] == "value"
 
 
 def test_move():
     """Tests for move."""
 
-    src = mock.Mock()
+    src = {"a": {"b": {}}, "d": {"e": {"f": "value"}}}
 
-    with (
-        mock.patch.object(methods, "get") as mock_get,
-        mock.patch.object(methods, "remove") as mock_remove,
-        mock.patch.object(methods, "add") as mock_add,
-    ):
-        pointer = jsonpointer.JsonPointer("/a/b/c")
-        from_pointer = jsonpointer.JsonPointer("/d/e/f")
+    #####
+    res = move(src, "/a/b/c", "/d/e/f")
+    #####
 
-        #####
-        res = move(src, pointer, from_pointer)
-        #####
-
-        mock_get.assert_called_once_with(src, from_pointer)
-        mock_remove.assert_called_once_with(src, from_pointer)
-        mock_add.assert_called_once_with(src, pointer, mock_get.return_value)
-        assert res == src
+    assert res is src
+    assert src["a"]["b"]["c"] == "value"
+    assert "f" not in src["d"]["e"]
 
 
 def test_replace():
     """Tests for replace."""
 
-    src = mock.Mock()
+    src = {"a": {"b": {"c": "old"}}}
 
-    with (
-        mock.patch.object(methods, "remove") as mock_remove,
-        mock.patch.object(methods, "add") as mock_add,
-    ):
-        pointer = jsonpointer.JsonPointer("/a/b/c")
+    #####
+    res = replace(src, "/a/b/c", "new")
+    #####
 
-        #####
-        res = replace(src, pointer, value := mock.Mock())
-        #####
-
-        mock_remove.assert_called_once_with(src, pointer)
-        mock_add.assert_called_once_with(src, pointer, value)
-        assert res == src
+    assert res is src
+    assert src["a"]["b"]["c"] == "new"

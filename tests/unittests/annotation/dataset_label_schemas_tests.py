@@ -99,9 +99,9 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset.set_label_schemas(
             {
                 "detections": {
-                    "attributes": {
-                        "int": {"component": "text", "type": "int"}
-                    },
+                    "attributes": [
+                        {"name": "int", "component": "text", "type": "int"}
+                    ],
                     "type": "detections",
                 },
             }
@@ -111,7 +111,7 @@ class DatasetAnnotationTests(unittest.TestCase):
         self.assertEqual(
             {
                 "detections": {
-                    "attributes": {},
+                    "attributes": [],
                     "type": "detections",
                 },
             },
@@ -186,9 +186,9 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset.set_label_schemas(
             {
                 "test_label": {
-                    "attributes": {
-                        "test": {"type": "int", "component": "text"}
-                    },
+                    "attributes": [
+                        {"name": "test", "type": "int", "component": "text"}
+                    ],
                     "type": "classification",
                 }
             }
@@ -199,9 +199,9 @@ class DatasetAnnotationTests(unittest.TestCase):
             dataset.label_schemas,
             {
                 "renamed_label": {
-                    "attributes": {
-                        "test": {"type": "int", "component": "text"}
-                    },
+                    "attributes": [
+                        {"name": "test", "type": "int", "component": "text"}
+                    ],
                     "type": "classification",
                 }
             },
@@ -218,9 +218,9 @@ class DatasetAnnotationTests(unittest.TestCase):
         dataset.set_label_schemas(
             {
                 "test_labels": {
-                    "attributes": {
-                        "test": {"type": "int", "component": "text"}
-                    },
+                    "attributes": [
+                        {"name": "test", "type": "int", "component": "text"}
+                    ],
                     "type": "classifications",
                 }
             }
@@ -231,9 +231,9 @@ class DatasetAnnotationTests(unittest.TestCase):
             dataset.label_schemas,
             {
                 "renamed_labels": {
-                    "attributes": {
-                        "test": {"type": "int", "component": "text"}
-                    },
+                    "attributes": [
+                        {"name": "test", "type": "int", "component": "text"}
+                    ],
                     "type": "classifications",
                 }
             },
@@ -246,9 +246,9 @@ class DatasetAnnotationTests(unittest.TestCase):
         self.assertEqual(
             dataset.label_schemas["renamed_labels"],
             {
-                "attributes": {
-                    "renamed": {"type": "int", "component": "text"}
-                },
+                "attributes": [
+                    {"name": "renamed", "type": "int", "component": "text"}
+                ],
                 "type": "classifications",
             },
         )

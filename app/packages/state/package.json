@@ -18,6 +18,7 @@
         "README.md"
     ],
     "peerDependencies": {
+        "@voxel51/voodo": "*",
         "react": "*",
         "react-error-boundary": "*",
         "react-relay": "*",

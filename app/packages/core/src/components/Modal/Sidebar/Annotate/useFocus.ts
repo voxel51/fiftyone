@@ -5,7 +5,6 @@ import {
 } from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
-import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
 import { current, hasChanges, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
@@ -15,13 +14,13 @@ import { labelMap } from "./useLabels";
 const STORE = getDefaultStore();
 
 export default function useFocus() {
-  const { scene, removeOverlay } = useLighter();
+  const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
-  const onExit = useExit(false);
+  const onExit = useExit();
+  const onSave = useSave();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -41,7 +40,7 @@ export default function useFocus() {
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
-      (payload) => {
+      async (payload) => {
         if (payload.ignoreSideEffects) {
           return;
         }
@@ -56,15 +55,16 @@ export default function useFocus() {
 
         // there are unsaved changes, ask for confirmation
         scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
-        confirmExit(() => {
-          scene?.deselectOverlay(id, {
-            ignoreSideEffects: true,
-          });
+        await onSave();
+        onExit();
 
-          select();
+        scene?.deselectOverlay(id, {
+          ignoreSideEffects: true,
         });
+
+        select();
       },
-      [confirmExit, scene, onExit, select]
+      [scene, onSave, onExit, select]
     )
   );
 
@@ -90,7 +90,7 @@ export default function useFocus() {
 
         select();
       },
-      [scene, select, onExit, removeOverlay]
+      [scene, select]
     )
   );
 }

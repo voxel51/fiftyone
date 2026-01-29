@@ -1,28 +1,32 @@
-import React from "react";
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
+import React, { useEffect, useRef } from "react";
 
 import { translateSchema } from "./translators";
+import { filterEmptyArrays } from "./utils";
 
-import widgets from "./widgets";
 import templates from "./templates";
+import widgets from "./widgets";
 
-export { isSchemaIOSchema, isJSONSchema } from "./translators";
+export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
 import type { IChangeEvent } from "@rjsf/core";
-import type { RJSFSchema, UiSchema } from "@rjsf/utils";
-import type { SchemaType } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
+import { isObject, type RJSFSchema } from "@rjsf/utils";
+import { SmartFormProps } from "../types";
 
-export interface RJSFProps {
-  schema?: SchemaType;
-  jsonSchema?: RJSFSchema;
-  uiSchema?: UiSchema;
-  data?: unknown;
-  onChange?: (data: unknown) => void;
-  onSubmit?: (data: unknown) => void;
-}
+export default function RJSF(props: SmartFormProps) {
+  const { formProps } = props;
+  const formRef = useRef<{ validateForm: () => boolean } | null>(null);
 
-export default function RJSF(props: RJSFProps) {
+  const { liveValidate } = formProps || {};
+
+  useEffect(() => {
+    if (formRef.current && liveValidate) {
+      // validate on mount if liveValidate is enabled
+      formRef.current.validateForm?.();
+    }
+  }, [liveValidate]);
+
   if (!props.schema && !props.jsonSchema) {
     console.log(
       "[SmartForm][RJSF] Either `schema` or `jsonSchema` must be provided"
@@ -43,26 +47,16 @@ export default function RJSF(props: RJSFProps) {
   }
 
   const handleChange = (event: IChangeEvent, _id?: string) => {
-    if (props.onChange) {
-      // Filter out empty arrays that weren't in the original data
-      // i.e. don't add `tags: []` if `tags` does not already exist on props.data
-      const filteredData = { ...event.formData };
-      if (
-        props.data &&
-        typeof props.data === "object" &&
-        typeof filteredData === "object"
-      ) {
-        for (const key in filteredData) {
-          if (
-            !(key in props.data) &&
-            Array.isArray(filteredData[key]) &&
-            filteredData[key].length === 0
-          ) {
-            delete filteredData[key];
-          }
-        }
-      }
+    if (!props.onChange) return;
+
+    if (isObject(props.data) && isObject(event.formData)) {
+      const filteredData = filterEmptyArrays(
+        event.formData as Record<string, unknown>,
+        props.data as Record<string, unknown>
+      );
       props.onChange(filteredData);
+    } else {
+      props.onChange(event.formData);
     }
   };
 
@@ -74,7 +68,8 @@ export default function RJSF(props: RJSFProps) {
 
   return (
     <Form
-      schema={schema}
+      ref={formRef}
+      schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={validator}
       widgets={widgets}
@@ -82,6 +77,8 @@ export default function RJSF(props: RJSFProps) {
       formData={props.data}
       onChange={handleChange}
       onSubmit={handleSubmit}
+      showErrorList={false}
+      {...props.formProps}
     />
   );
 }

@@ -11,20 +11,21 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
-  readonly groupCarousel: Locator;
-  readonly looker: Locator;
-  readonly modalContainer: Locator;
   readonly assert: ModalAsserter;
 
-  readonly panel: ModalPanelPom;
-  readonly group: ModalGroupActionsPom;
+  readonly groupCarousel: Locator;
   readonly locator: Locator;
+  readonly looker: Locator;
+  readonly modalContainer: Locator;
+
+  readonly group: ModalGroupActionsPom;
+  readonly imavid: ModalImaAsVideoControlsPom;
+  readonly looker3dControls: Looker3DControlsPom;
+  readonly panel: ModalPanelPom;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
-  readonly imavid: ModalImaAsVideoControlsPom;
   readonly video: ModalVideoControlsPom;
-  readonly looker3dControls: Looker3DControlsPom;
 
   constructor(
     private readonly page: Page,
@@ -38,13 +39,13 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.group = new ModalGroupActionsPom(page, this);
-    this.panel = new ModalPanelPom(page, this);
-    this.tagger = new ModalTaggerPom(page, this);
-    this.sidebar = new ModalSidebarPom(page);
-    this.url = new UrlPom(page, eventUtils);
     this.imavid = new ModalImaAsVideoControlsPom(page, this);
-    this.video = new ModalVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
+    this.panel = new ModalPanelPom(page, this);
+    this.sidebar = new ModalSidebarPom(page);
+    this.tagger = new ModalTaggerPom(page, this);
+    this.url = new UrlPom(page, eventUtils);
+    this.video = new ModalVideoControlsPom(page, this);
   }
 
   get modalSamplePluginTitle() {

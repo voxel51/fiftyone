@@ -14,6 +14,7 @@ import {
   createPlane,
   deg2rad,
   eulerToQuaternion,
+  formatNumber,
   getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
@@ -43,6 +44,42 @@ describe("toEulerFromDegreesArray", () => {
       Math.PI / 2,
       Math.PI,
     ]);
+  });
+});
+
+describe("formatNumber", () => {
+  it("formats number with default 3 decimal places", () => {
+    expect(formatNumber(1.23456)).toBe("1.235");
+    expect(formatNumber(0)).toBe("0.000");
+    expect(formatNumber(123)).toBe("123.000");
+  });
+
+  it("formats number with custom decimal places", () => {
+    expect(formatNumber(1.23456, 1)).toBe("1.2");
+    expect(formatNumber(1.23456, 2)).toBe("1.23");
+    expect(formatNumber(1.23456, 4)).toBe("1.2346");
+    expect(formatNumber(1.23456, 0)).toBe("1");
+  });
+
+  it("handles negative numbers", () => {
+    expect(formatNumber(-1.23456)).toBe("-1.235");
+    expect(formatNumber(-1.23456, 1)).toBe("-1.2");
+  });
+
+  it("handles very small numbers", () => {
+    expect(formatNumber(0.001234)).toBe("0.001");
+    expect(formatNumber(0.001234, 4)).toBe("0.0012");
+  });
+
+  it("handles very large numbers", () => {
+    expect(formatNumber(123456.789)).toBe("123456.789");
+    expect(formatNumber(123456.789, 1)).toBe("123456.8");
+  });
+
+  it("rounds correctly", () => {
+    expect(formatNumber(1.2346, 3)).toBe("1.235");
+    expect(formatNumber(1.2344, 3)).toBe("1.234");
+    expect(formatNumber(1.9999, 3)).toBe("2.000");
   });
 });
 

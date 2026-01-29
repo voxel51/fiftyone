@@ -11,7 +11,7 @@ import {
 import { KeyManager, KeyMatchState } from "../keys";
 import { CommandRegistry } from "../registry/CommandRegistry";
 import { Command, CommandFunction } from "../types";
-import { isUndoable } from "../utils";
+import { isAction } from "../utils";
 
 /**
  * Represents a scoped execution environment consisting of
@@ -122,15 +122,15 @@ export class CommandContext {
    * and we have a parent, propogate it up.
    * @returns true if a redo occurred.
    */
-  public undo(): boolean {
+  public async undo(): Promise<boolean> {
     if (this.actions.canUndo()) {
-      this.actions.undo();
+      await this.actions.undo();
       return true;
     }
     //if we have a parent, and we had no
     //undo, propogate it up
     if (this.parent) {
-      return this.parent.undo();
+      return await this.parent.undo();
     }
     return false;
   }
@@ -140,15 +140,15 @@ export class CommandContext {
    * and we have a parent, propogate it up.
    * @returns true if a redo occurred.
    */
-  public redo(): boolean {
+  public async redo(): Promise<boolean> {
     if (this.actions.canRedo()) {
-      this.actions.redo();
+      await this.actions.redo();
       return true;
     }
     //if we have a parent, and we had no
     //redo, propogate it up
     if (this.parent) {
-      return this.parent.redo();
+      return await this.parent.redo();
     }
     return false;
   }
@@ -315,7 +315,7 @@ export class CommandContext {
    * @param cmd The command id or a command instance to run.
    * @returns true if the command was executed
    */
-  public executeCommand(cmd: string | Command): boolean {
+  public async executeCommand(cmd: string | Command): Promise<boolean> {
     let resolved: Command | undefined;
     if (typeof cmd === "string") {
       resolved = this.getCommand(cmd);
@@ -323,15 +323,18 @@ export class CommandContext {
       resolved = cmd;
     }
     if (resolved) {
-      const result = resolved.execute();
-      if (result && isUndoable(result)) {
-        this.actions.push(result as Undoable);
+      const result = await resolved.execute();
+
+      if (result && isAction(result)) {
+        try {
+          this.actions.execute(result);
+        } catch (err) {
+          console.error("Error executing action", err);
+        }
       }
+
       return true;
     }
-    console.error(
-      `There is no command ${cmd} registered in the current context.`
-    );
     return false;
   }
 

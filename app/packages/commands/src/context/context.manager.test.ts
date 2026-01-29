@@ -80,7 +80,7 @@ describe("CommandContextManager", () => {
     CommandContextManager.instance()
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
@@ -103,7 +103,7 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(1);
@@ -126,7 +126,7 @@ describe("CommandContextManager", () => {
       false
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(execFn).toBeCalledTimes(0);
@@ -156,11 +156,11 @@ describe("CommandContextManager", () => {
       true
     );
     CommandContextManager.instance().pushContext(context);
-    CommandContextManager.instance().handleKeyDown(
+    await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
     expect(cmdFn).toBeCalledTimes(1);
-    expect(execFn).toBeCalledTimes(0);
+    expect(execFn).toBeCalledTimes(1);
     expect(undoFn).toBeCalledTimes(0);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
       true
@@ -168,17 +168,17 @@ describe("CommandContextManager", () => {
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
       false
     );
-    CommandContextManager.instance().getActiveContext().undo();
+    await CommandContextManager.instance().getActiveContext().undo();
     expect(undoFn).toBeCalledTimes(1);
-    expect(execFn).toBeCalledTimes(0);
+    expect(execFn).toBeCalledTimes(1);
     expect(CommandContextManager.instance().getActiveContext().canUndo()).toBe(
       false
     );
     expect(CommandContextManager.instance().getActiveContext().canRedo()).toBe(
       true
     );
-    CommandContextManager.instance().getActiveContext().redo();
-    expect(execFn).toBeCalledTimes(1);
+    await CommandContextManager.instance().getActiveContext().redo();
+    expect(execFn).toBeCalledTimes(2);
     expect(undoFn).toBeCalledTimes(1);
   });
 });

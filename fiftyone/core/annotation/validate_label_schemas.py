@@ -426,7 +426,6 @@ def _raise_unknown_setting_error(name, field_name):
 
 
 def _validate_attribute(
-    attribute,
     class_name,
     collection,
     field_name,
@@ -434,6 +433,13 @@ def _validate_attribute(
     path,
     subfields,
 ):
+    label_schema = label_schema.copy()
+    attribute = label_schema.pop(foac.NAME, None)
+    if attribute is None:
+        raise ValueError(
+            f"missing 'name' in 'attributes' for field '{field_name}'"
+        )
+
     if attribute not in subfields:
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
@@ -442,7 +448,7 @@ def _validate_attribute(
 
     if attribute == foac.LABEL:
         raise ValueError(
-            f"'label' attribute for field {field_name} is configured via "
+            f"'label' attribute for field '{field_name}' is configured via "
             "'classes' for label fields"
         )
 
@@ -469,9 +475,9 @@ def _validate_attribute(
 
 
 def _validate_attributes(collection, field_name, class_name, attributes):
-    if not isinstance(attributes, dict):
+    if not isinstance(attributes, list):
         raise ValueError(
-            f"'attributes' setting for field '{field_name}' must be a 'dict'"
+            f"'attributes' setting for field '{field_name}' must be a list"
         )
 
     field: fof.EmbeddedDocumentField = collection.get_field(field_name)
@@ -482,10 +488,9 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
     subfields = {f.name: f for f in field.fields}
     exceptions = []
-    for attribute, label_schema in attributes.items():
+    for label_schema in attributes:
         try:
             _validate_attribute(
-                attribute,
                 class_name,
                 collection,
                 field_name,
@@ -546,7 +551,7 @@ def _validate_default_list(
 
     if not isinstance(value, list):
         raise ValueError(
-            f"'default' setting for field {field_name} must be a list"
+            f"'default' setting for field '{field_name}' must be a list"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:

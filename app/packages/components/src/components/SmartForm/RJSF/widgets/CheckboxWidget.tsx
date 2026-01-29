@@ -1,9 +1,9 @@
 import { WidgetProps } from "@rjsf/utils";
-import { Checkbox, Orientation, Stack, Text, TextColor } from "@voxel51/voodo";
+import { Checkbox, Orientation, Stack } from "@voxel51/voodo";
 import React from "react";
 
 export default function CheckboxWidget(props: WidgetProps) {
-  const { label, value, disabled, readonly, onChange, rawErrors = [] } = props;
+  const { label, value, disabled, readonly, onChange } = props;
 
   const checked = Boolean(value);
 
@@ -15,9 +15,6 @@ export default function CheckboxWidget(props: WidgetProps) {
         onChange={onChange}
         disabled={disabled || readonly}
       />
-      {rawErrors.length > 0 && (
-        <Text color={TextColor.Destructive}>{rawErrors[0]}</Text>
-      )}
     </Stack>
   );
 }

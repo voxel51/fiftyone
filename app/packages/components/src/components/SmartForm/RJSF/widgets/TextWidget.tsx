@@ -39,16 +39,9 @@ export default function TextWidget(props: WidgetProps) {
       value={value ?? ""}
       placeholder={placeholder}
       onChange={handleChange}
-      error={rawErrors.length > 0}
       {...inputProps}
     />
   );
 
-  return (
-    <FormField
-      control={inputComponent}
-      error={rawErrors.length > 0 ? rawErrors[0] : undefined}
-      label={label}
-    />
-  );
+  return <FormField control={inputComponent} label={label} />;
 }

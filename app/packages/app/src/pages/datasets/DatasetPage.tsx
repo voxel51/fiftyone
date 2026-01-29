@@ -1,4 +1,5 @@
 import {
+  ActivityToast,
   Dataset,
   QueryPerformanceToast,
   Snackbar,
@@ -121,6 +122,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
       </div>
       <Snackbar />
       <QueryPerformanceToast />
+      <ActivityToast />
     </Nav>
   );
 };

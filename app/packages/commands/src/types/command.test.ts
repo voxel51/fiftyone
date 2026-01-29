@@ -10,11 +10,11 @@ beforeEach(() => {
 });
 
 describe("Command", () => {
-  it("can execute", () => {
+  it("can execute", async () => {
     const cmd = new Command("fo.test.cmd", execFn, () => {
       return true;
     });
-    cmd.execute();
+    await cmd.execute();
     expect(execFn).toBeCalledTimes(1);
   });
   it("can enable/disable", () => {
@@ -26,13 +26,13 @@ describe("Command", () => {
     enabled = false;
     expect(cmd.isEnabled()).toEqual(false);
   });
-  it("does not execute when disabled", () => {
+  it("does not execute when disabled", async () => {
     const enabled = false;
     const cmd = new Command("fo.test.cmd", execFn, () => {
       return enabled;
     });
     expect(cmd.isEnabled()).toEqual(false);
-    cmd.execute();
+    await cmd.execute();
     expect(execFn).not.toBeCalled();
   });
   it("fires notification on enable/disable", () => {

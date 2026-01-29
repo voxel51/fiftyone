@@ -10,6 +10,7 @@ from typing import TypeVar, Union
 
 import jsonpointer
 
+from fiftyone.server.utils.json.jsonpatch import RootDeleteError
 
 T = TypeVar("T")
 V = TypeVar("V")
@@ -27,6 +28,11 @@ def to_json_pointer(
         return jsonpointer.JsonPointer(path)
     except jsonpointer.JsonPointerException as err:
         raise ValueError(f"Invalid JSON pointer path: {path}") from err
+
+
+def is_root_path(pointer: jsonpointer.JsonPointer) -> bool:
+    """Returns True if the pointer references the root document."""
+    return pointer.path in ("", "/")
 
 
 def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
@@ -74,12 +80,12 @@ def get(src: T, path: Union[str, jsonpointer.JsonPointer]) -> V:
 
         return value
     except Exception as err:
-        raise AttributeError(f"Cannot resolve path: {path}: {err}") from err
+        raise AttributeError(f"Cannot resolve path `{path}`: {err}") from err
 
 
 def add(
-    src: T, path: Union[str, jsonpointer.JsonPointer], value: V
-) -> Union[T, V]:
+    src: T, path: Union[str, jsonpointer.JsonPointer], value: Union[T, V]
+) -> T:
     """The "add" operation performs one of the following functions,
     depending upon what the target location references:
 
@@ -113,7 +119,7 @@ def add(
     """
 
     pointer = to_json_pointer(path)
-    if not pointer.parts:
+    if is_root_path(pointer):
         return value
 
     target = get(src, jsonpointer.JsonPointer.from_parts(pointer.parts[:-1]))
@@ -176,8 +182,8 @@ def copy(
     from_pointer = to_json_pointer(from_)
 
     value = get(src, from_pointer)
-    add(src, pointer, value)
-    return src
+
+    return add(src, pointer, value)
 
 
 def move(
@@ -203,10 +209,9 @@ def move(
     from_pointer = to_json_pointer(from_)
 
     value = get(src, from_pointer)
-    remove(src, from_pointer)
-    add(src, pointer, value)
+    src = remove(src, from_pointer)
 
-    return src
+    return add(src, pointer, value)
 
 
 def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
@@ -219,8 +224,9 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     """
 
     pointer = to_json_pointer(path)
-    if not pointer.parts:
-        raise ValueError("Cannot remove the root document")
+
+    if is_root_path(pointer):
+        raise RootDeleteError("Cannot remove the root document")
 
     target = get(src, jsonpointer.JsonPointer.from_parts(pointer.parts[:-1]))
     name = pointer.parts[-1]
@@ -248,7 +254,9 @@ def remove(src: T, path: Union[str, jsonpointer.JsonPointer]) -> T:
     return src
 
 
-def replace(src: T, path: Union[str, jsonpointer.JsonPointer], value: V) -> T:
+def replace(
+    src: T, path: Union[str, jsonpointer.JsonPointer], value: Union[T, V]
+) -> T:
     """The "replace" operation replaces the value at the target location
     with a new value.  The operation object MUST contain a "value" member
     whose content specifies the replacement value.
@@ -261,10 +269,10 @@ def replace(src: T, path: Union[str, jsonpointer.JsonPointer], value: V) -> T:
     """
     pointer = to_json_pointer(path)
 
-    remove(src, pointer)
-    add(src, pointer, value)
+    if not is_root_path(pointer):
+        src = remove(src, pointer)
 
-    return src
+    return add(src, pointer, value)
 
 
 def test(src: T, path: Union[str, jsonpointer.JsonPointer], value: V) -> T:

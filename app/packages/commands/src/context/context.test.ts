@@ -29,7 +29,7 @@ describe("CommandContext", () => {
     expect(
       context.registerCommand(
         "fo.test",
-        async () => {
+        () => {
           return;
         },
         () => {
@@ -44,7 +44,7 @@ describe("CommandContext", () => {
     expect(
       context.registerCommand(
         "fo.test",
-        async () => {
+        () => {
           return;
         },
         () => {
@@ -55,7 +55,7 @@ describe("CommandContext", () => {
     expect(() => {
       context.registerCommand(
         "fo.test",
-        async () => {
+        () => {
           return;
         },
         () => {

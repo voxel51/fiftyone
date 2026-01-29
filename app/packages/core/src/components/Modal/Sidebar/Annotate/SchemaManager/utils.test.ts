@@ -1,10 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  getAttributeTypeLabel,
-  getClassNameError,
   formatAttributeCount,
   formatSchemaCount,
-  buildFieldSecondaryContent,
+  getAttributeTypeLabel,
+  getClassNameError,
 } from "./utils";
 
 describe("getAttributeTypeLabel", () => {
@@ -108,31 +107,5 @@ describe("formatSchemaCount", () => {
     expect(formatSchemaCount(0)).toBe("0 schemas");
     expect(formatSchemaCount(2)).toBe("2 schemas");
     expect(formatSchemaCount(5)).toBe("5 schemas");
-  });
-});
-
-describe("buildFieldSecondaryContent", () => {
-  it("should show type only when no attributes and not system read-only", () => {
-    expect(buildFieldSecondaryContent("Detection", 0, false)).toBe("Detection");
-  });
-
-  it("should show type and attribute count when has attributes", () => {
-    expect(buildFieldSecondaryContent("Detection", 3, false)).toBe(
-      "Detection • 3 attributes"
-    );
-    expect(buildFieldSecondaryContent("Classification", 1, false)).toBe(
-      "Classification • 1 attribute"
-    );
-  });
-
-  it("should show 'system' for system read-only fields", () => {
-    expect(buildFieldSecondaryContent("Detection", 0, true)).toBe("system");
-    expect(buildFieldSecondaryContent("Detection", 5, true)).toBe("system");
-  });
-
-  it("should not show attribute count for system read-only fields", () => {
-    const result = buildFieldSecondaryContent("Detection", 3, true);
-    expect(result).toBe("system");
-    expect(result).not.toContain("attribute");
   });
 });

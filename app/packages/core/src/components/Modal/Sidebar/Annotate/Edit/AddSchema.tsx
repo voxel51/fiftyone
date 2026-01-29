@@ -51,8 +51,8 @@ const AddSchema = ({ type }: { type: string }) => {
         No {type.toLowerCase()} fields available
       </Typography>
       <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Add and activate {type.toLocaleLowerCase()} annotation schemas to access
-        and edit labels
+        Add and activate {type?.toLocaleLowerCase()} annotation schemas to
+        access and edit labels
       </Typography>
       <MuiButton
         variant="contained"

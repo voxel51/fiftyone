@@ -29,6 +29,7 @@ export const FRAME_SUPPORT_FIELD = "fiftyone.core.fields.FrameSupportField";
 export const INT_FIELD = "fiftyone.core.fields.IntField";
 export const OBJECT_ID_FIELD = "fiftyone.core.fields.ObjectIdField";
 export const STRING_FIELD = "fiftyone.core.fields.StringField";
+export const UUID_FIELD = "fiftyone.core.fields.UUIDField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";

@@ -1,27 +1,45 @@
+import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
-import { useLighter } from "@fiftyone/lighter";
-import { current3dAnnotationModeAtom, 
-         isPolylineAnnotateActiveAtom} from "@fiftyone/looker-3d/src/state";
+import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+} from "@fiftyone/looker-3d/src/constants";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { useSetAtom } from "jotai";
+import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ItemLeft } from "./Components";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import { ItemLeft, ItemRight } from "./Components";
+import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
-import { useUndoRedo } from "@fiftyone/commands";
 
 const ActionsDiv = styled.div`
   align-items: center;
   color: ${({ theme }) => theme.text.secondary};
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   padding: 0.25rem 1rem;
   width: 100%;
   max-width: 100%;
+`;
+
+const Row = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
 `;
 
 const Container = styled.div<{ $active?: boolean }>`
@@ -71,7 +89,8 @@ const Container = styled.div<{ $active?: boolean }>`
 
 export const Round = styled(Container)`
   border-radius: 1.25rem;
-
+  width: 2rem;
+  height: 2rem;
   &:hover {
     color: ${({ theme }) => theme.text.primary};
   }
@@ -92,7 +111,7 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.25rem;
+  border-radius: 0.1rem;
 `;
 
 const Classification = () => {
@@ -188,10 +207,23 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
+  const setEditing = useSetAtom(editing);
   const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
     current3dAnnotationModeAtom
   );
-  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+
+  const polylineFields = use3dAnnotationFields(
+    useCallback(
+      (fieldType) =>
+        fieldType === POLYLINE.toLocaleLowerCase() ||
+        fieldType === POLYLINES.toLocaleLowerCase(),
+      []
+    )
+  );
+
+  const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
+  const isPolylineAnnotateActive =
+    current3dAnnotationMode === ANNOTATION_POLYLINE;
 
   return (
     <Tooltip
@@ -205,9 +237,19 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
-          setCurrent3dAnnotationMode(
-            isPolylineAnnotateActive ? null : "polyline"
-          );
+          if (isPolylineAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
+            return;
+          }
+
+          if (!hasPolylineFieldsInSchema) {
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
+            setEditing(POLYLINE);
+            return;
+          }
+
+          setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
         }}
       >
         <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
@@ -217,10 +259,22 @@ export const ThreeDPolylines = () => {
 };
 
 export const ThreeDCuboids = () => {
+  const setEditing = useSetAtom(editing);
   const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
     current3dAnnotationModeAtom
   );
-  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
+
+  const cuboidFields = use3dAnnotationFields(
+    useCallback(
+      (fieldType) =>
+        fieldType === DETECTION.toLocaleLowerCase() ||
+        fieldType === DETECTIONS.toLocaleLowerCase(),
+      []
+    )
+  );
+
+  const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
+  const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
     <Tooltip
@@ -234,7 +288,19 @@ export const ThreeDCuboids = () => {
       <Square
         $active={isCuboidAnnotateActive}
         onClick={() => {
-          setCurrent3dAnnotationMode(isCuboidAnnotateActive ? null : "cuboid");
+          if (isCuboidAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
+            return;
+          }
+
+          if (!hasCuboidFieldsInSchema) {
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
+            setEditing(DETECTION);
+            return;
+          }
+
+          setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
         }}
       >
         <CuboidIcon />
@@ -255,19 +321,31 @@ const Actions = () => {
 
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
-      <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Classification />
-        {is3D ? (
-          <>
-            <ThreeDCuboids />
-            <ThreeDPolylines />
-          </>
-        ) : (
-          <Detection />
-        )}
-      </ItemLeft>
-
-      {canManage && <Schema />}
+      <Row>
+        <ItemLeft style={{ columnGap: "0.1rem" }}>
+          <Classification />
+          {is3D ? (
+            <>
+              <ThreeDCuboids />
+              <ThreeDPolylines />
+            </>
+          ) : (
+            <Detection />
+          )}
+        </ItemLeft>
+        <ItemRight style={{ columnGap: "0.1rem" }}>
+          <Undo />
+          <Redo />
+        </ItemRight>
+      </Row>
+      {canManage && (
+        <Row style={{ fontSize: "0.80rem" }}>
+          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+          <ItemRight style={{ width: "50%" }}>
+            <Schema />
+          </ItemRight>
+        </Row>
+      )}
     </ActionsDiv>
   );
 };

@@ -17,7 +17,7 @@ describe("CommandRegistry", () => {
   it("can register commands", () => {
     let command = registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         return;
       },
       () => {
@@ -27,7 +27,7 @@ describe("CommandRegistry", () => {
     expect(command).toBeDefined();
     command = registry.registerCommand(
       cmdTwo,
-      async () => {
+      () => {
         return;
       },
       () => {
@@ -44,7 +44,7 @@ describe("CommandRegistry", () => {
   it("can unregister commands", () => {
     let command = registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         return;
       },
       () => {
@@ -54,7 +54,7 @@ describe("CommandRegistry", () => {
     expect(command).toBeDefined();
     command = registry.registerCommand(
       cmdTwo,
-      async () => {
+      () => {
         return;
       },
       () => {
@@ -82,7 +82,7 @@ describe("CommandRegistry", () => {
 
     registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         testFunc();
       },
       () => {
@@ -102,7 +102,7 @@ describe("CommandRegistry", () => {
 
     registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         testFunc();
       },
       () => {
@@ -123,7 +123,7 @@ describe("CommandRegistry", () => {
     registry.addListener(listener);
     registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         return;
       },
       () => {
@@ -139,7 +139,7 @@ describe("CommandRegistry", () => {
     registry.removeListener(listener);
     registry.registerCommand(
       cmdOne,
-      async () => {
+      () => {
         return;
       },
       () => {

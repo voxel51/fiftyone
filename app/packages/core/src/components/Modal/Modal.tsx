@@ -4,7 +4,13 @@ import {
   useRegisterAnnotationEventHandlers,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
@@ -24,12 +30,6 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;

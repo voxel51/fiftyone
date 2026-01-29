@@ -1,10 +1,9 @@
+import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
-import { useAnnotationController } from "@fiftyone/annotation";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;

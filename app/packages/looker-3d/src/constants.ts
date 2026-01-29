@@ -22,6 +22,9 @@ export const SHADE_BY_RGB = "rgb";
 export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
 
+export const ANNOTATION_CUBOID = "cuboid";
+export const ANNOTATION_POLYLINE = "polyline";
+
 export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
 
 // Default bounding box when scene bounds cannot be determined
