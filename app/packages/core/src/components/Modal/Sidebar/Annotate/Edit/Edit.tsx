@@ -53,29 +53,6 @@ export default function Edit() {
   const clear = useClearModal();
   const exit = useExit();
 
-  const onDelete = useDelete();
-  const label = useAtomValue(current);
-
-  useKeyBindings(
-    KnownContexts.ModalAnnotate,
-    [
-      {
-        commandId: KnownCommands.ModalDeleteAnnotation,
-        handler: () => {
-          console.log("Delete");
-          onDelete();
-        },
-        enablement: () => {
-          return !!label;
-        },
-        sequence: "Delete",
-        label: "Delete",
-        description: "Delete label",
-      },
-    ],
-    [onDelete]
-  );
-
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
       pointerDownTarget = event.target;
