@@ -66,14 +66,15 @@ const Sidebar = () => {
     isGroupedDataset &&
     !disabledReason;
 
+  const showTransitionManager =
+    showAnnotationTab && isGroupedDataset && !disabledReason;
+
   return (
     <SidebarContainer modal={true}>
       {showAnnotationTab && <Mode />}
+      {showTransitionManager && <GroupModeTransitionManager />}
       {showSliceSelector && (
-        <>
-          <GroupModeTransitionManager />
-          <AnnotationSliceSelector onSliceSelected={reloadSchemas} />
-        </>
+        <AnnotationSliceSelector onSliceSelected={reloadSchemas} />
       )}
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />

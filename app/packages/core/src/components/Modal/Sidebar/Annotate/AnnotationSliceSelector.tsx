@@ -2,7 +2,7 @@ import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { isEditing } from "./Edit";
@@ -81,8 +81,6 @@ export const AnnotationSliceSelector: React.FC<
   const setPinned3DSampleSliceName = useSetRecoilState(fos.pinned3DSampleSlice);
   const setAllActive3dSlices = useSetRecoilState(fos.active3dSlices);
 
-  const hasInitialized = useRef(false);
-
   // Determine the effective slice to use:
   // 1. If preferred slice is valid and supported, use it
   // 2. Otherwise fall back to modalGroupSlice if it's supported
@@ -101,7 +99,9 @@ export const AnnotationSliceSelector: React.FC<
   const applyVisibilityForSlice = useCallback(
     (sliceName: string) => {
       const mediaType = groupMediaTypesMap[sliceName];
-      if (is3d(mediaType)) {
+      const isThreeD = mediaType ? is3d(mediaType) : false;
+
+      if (isThreeD) {
         set3dVisible(true);
         setMainVisible(false);
         setCarouselVisible(false);
@@ -122,11 +122,9 @@ export const AnnotationSliceSelector: React.FC<
     [groupMediaTypesMap]
   );
 
-  // This effect initializes/syncs slice on mount or when effective slice changes
+  // This effect syncs slice state whenever effectiveSlice changes
   useEffect(() => {
-    if (effectiveSlice && !hasInitialized.current) {
-      hasInitialized.current = true;
-      // Sync both preferred and modal slice
+    if (effectiveSlice) {
       setPreferredSlice(effectiveSlice);
       setModalGroupSlice(effectiveSlice);
       applyVisibilityForSlice(effectiveSlice);
@@ -163,7 +161,25 @@ export const AnnotationSliceSelector: React.FC<
     [allSlices, effectiveSlice, applyVisibilityForSlice, onSliceSelected]
   );
 
-  const sliceInfoMap = Object.fromEntries(allSlices.map((s) => [s.name, s]));
+  const sliceInfoMap = useMemo(
+    () => Object.fromEntries(allSlices.map((s) => [s.name, s])),
+    [allSlices]
+  );
+
+  const SliceOptionComponent = useMemo(
+    () =>
+      ({ value }: { value: string }) => {
+        const info = sliceInfoMap[value];
+        return (
+          <SliceOption
+            value={value}
+            isDisabled={info && !info.isSupported}
+            mediaType={info?.mediaType}
+          />
+        );
+      },
+    [sliceInfoMap]
+  );
 
   if (isEditing_ || allSlices.length === 0) {
     return null;
@@ -175,16 +191,7 @@ export const AnnotationSliceSelector: React.FC<
       <Selector
         inputStyle={{ height: 28, width: "100%" }}
         containerStyle={{ flex: 1 }}
-        component={({ value }) => {
-          const info = sliceInfoMap[value];
-          return (
-            <SliceOption
-              value={value}
-              isDisabled={info && !info.isSupported}
-              mediaType={info?.mediaType}
-            />
-          );
-        }}
+        component={SliceOptionComponent}
         onSelect={onSelect}
         overflow={true}
         placeholder="Select slice..."

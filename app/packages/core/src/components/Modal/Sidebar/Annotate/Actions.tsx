@@ -316,8 +316,11 @@ const Schema = () => {
 };
 
 const Actions = () => {
+  // This checks if media type of the dataset resolved to 3d
   const is3dDataset = useRecoilValue(is3DDataset);
+  // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
   const is3dSamplePinned = useRecoilValue(pinned3d);
+
   const canManage = useCanManageSchema();
 
   const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
