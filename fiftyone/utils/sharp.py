@@ -88,8 +88,8 @@ class AppleSharpModel(fout.TorchImageModel):
     """
 
     def __init__(self, config):
+        config.raw_inputs = True
         super().__init__(config)
-        self.config.raw_inputs = True
         self._output_dir = config.output_dir
         self._focal_length_mm = config.focal_length_mm
         self._output_dir_initialized = False
