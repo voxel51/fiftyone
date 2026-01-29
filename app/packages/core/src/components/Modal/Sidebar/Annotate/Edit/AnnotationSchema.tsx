@@ -28,7 +28,7 @@ function updateSchemaReadOnly(schema: SchemaType, readOnly: boolean) {
     return { ...schema, readOnly };
   }
   // if parent/field readOnly is false don't override the
-  // field's readOnly flag
+  // primitive's readOnly flag
   return { ...schema, readOnly: schema.read_only };
 }
 
@@ -109,8 +109,6 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
-
-  console.log("schema", schema);
 
   if (!field) {
     throw new Error("no field");
