@@ -137,7 +137,9 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
           ly: dimensions[1],
           lz: dimensions[2],
         },
-        rotation: { rx: rotation[0], ry: rotation[1], rz: rotation[2] },
+        rotation: rotation
+          ? { rx: rotation[0], ry: rotation[1], rz: rotation[2] }
+          : { rx: 0, ry: 0, rz: 0 },
       });
     }
   }, [data, isCurrentlyTransforming, tempTransforms, stagedCuboidTransforms]);

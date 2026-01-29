@@ -57,19 +57,6 @@ export const useCuboidAnnotation = ({
     [stagedCuboidTransforms, location, dimensions, rotation]
   );
 
-  const originalQuaternion = useMemo(() => {
-    // Use staged quaternion if available, otherwise convert from euler rotation
-    // This ensures we preserve the existing rotation when starting to rotate
-    const stagedQuaternion = stagedCuboidTransforms[label._id]?.quaternion;
-    if (stagedQuaternion) {
-      return new THREE.Quaternion(...stagedQuaternion);
-    }
-
-    // Convert euler rotation to quaternion
-    const euler = new THREE.Euler(...effectiveRotation, "XYZ");
-    return new THREE.Quaternion().setFromEuler(euler);
-  }, [stagedCuboidTransforms, effectiveRotation]);
-
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
 
@@ -112,8 +99,6 @@ export const useCuboidAnnotation = ({
         position: contentRef.current.position.toArray(),
         quaternion: quaternionArray,
       });
-
-      // contentRef.current.quaternion.set(0, 0, 0, 1);
     }
   }, [effectiveDimensions]);
 
