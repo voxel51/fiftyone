@@ -1,8 +1,13 @@
 import { atom, useAtom } from "jotai";
 import { Primitive } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useModalSample } from "@fiftyone/state";
+import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
 import { get, isEqual } from "lodash";
+import {
+  arePrimitivesEqual,
+  getFieldSchema,
+  isPrimitiveFieldType,
+} from "../util";
 
 /**
  * Mapping of sample path to transient values.
@@ -53,6 +58,7 @@ export interface SampleMutationManager {
 export const useSampleMutationManager = (): SampleMutationManager => {
   const [stagedMutations, setStagedMutations] = useAtom(stagedMutationsAtom);
   const modalSample = useModalSample();
+  const modalSampleSchema = useModalSampleSchema();
   const firstRenderRef = useRef(true);
 
   const getPathValue = useCallback(
@@ -89,7 +95,14 @@ export const useSampleMutationManager = (): SampleMutationManager => {
 
     // find keys whose values are equal to the sample
     Object.entries(stagedMutations).forEach(([path, data]) => {
-      if (isEqual(get(modalSample?.sample, path), data)) {
+      // primitives require custom comparator to handle types like dates
+      if (isPrimitiveFieldType(getFieldSchema(modalSampleSchema, path))) {
+        if (
+          arePrimitivesEqual(get(modalSample?.sample, path) as Primitive, data)
+        ) {
+          keysToRemove.push(path);
+        }
+      } else if (isEqual(get(modalSample?.sample, path), data)) {
         keysToRemove.push(path);
       }
     });
@@ -102,7 +115,12 @@ export const useSampleMutationManager = (): SampleMutationManager => {
         return newData;
       });
     }
-  }, [modalSample?.sample, setStagedMutations, stagedMutations]);
+  }, [
+    modalSample?.sample,
+    modalSampleSchema,
+    setStagedMutations,
+    stagedMutations,
+  ]);
 
   // clear state on sample change
   useEffect(() => {

@@ -1,12 +1,8 @@
 import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
 import { useCallback } from "react";
-import {
-  buildJsonPath,
-  buildLabelDeltas,
-  getFieldSchema,
-  LabelProxy,
-} from "../deltas";
+import { buildJsonPath, buildLabelDeltas, LabelProxy } from "../deltas";
 import type { JSONDeltas } from "@fiftyone/core";
+import { getFieldSchema } from "../util";
 
 export type LabelConstructor<T> = (data: T) => LabelProxy | undefined;
 

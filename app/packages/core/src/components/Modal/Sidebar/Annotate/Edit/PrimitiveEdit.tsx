@@ -7,7 +7,6 @@ import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
-import useExit from "./useExit";
 import {
   DelegatingUndoable,
   KnownContexts,
