@@ -6,9 +6,6 @@ Annotation label schemas operators
 |
 """
 
-import copy
-
-import fiftyone.core.annotation as foa
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
@@ -16,34 +13,7 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.core.fields as fof
-import fiftyone.core.labels as fol
 import fiftyone.operators as foo
-
-
-# Label type string to label class mapping
-LABEL_TYPE_TO_CLASS = {
-    "classification": fol.Classification,
-    "classifications": fol.Classifications,
-    "detection": fol.Detection,
-    "detections": fol.Detections,
-    "polyline": fol.Polyline,
-    "polylines": fol.Polylines,
-    "keypoint": fol.Keypoint,
-    "keypoints": fol.Keypoints,
-}
-
-# Primitive type string to field class mapping
-PRIMITIVE_TYPE_TO_FIELD = {
-    "int": fof.IntField,
-    "float": fof.FloatField,
-    "str": fof.StringField,
-    "bool": fof.BooleanField,
-    "date": fof.DateField,
-    "datetime": fof.DateTimeField,
-    "list<int>": fof.IntField,
-    "list<float>": fof.FloatField,
-    "list<str>": fof.StringField,
-}
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -248,23 +218,19 @@ class CreateAndActivateField(foo.Operator):
                     ctx, field_name, field_type, read_only
                 )
 
-            # Validate and set the label schema (with flags for new fields/attrs)
-            validate_label_schemas(
-                ctx.dataset,
-                {field_name: label_schema},
+            # Set the label schema
+            ctx.dataset.update_label_schema(
+                field_name,
+                label_schema,
                 allow_new_attrs=True,
                 allow_new_fields=True,
             )
-            label_schemas = ctx.dataset.label_schemas
-            label_schemas[field_name] = copy.deepcopy(label_schema)
-            ctx.dataset._doc.label_schemas = label_schemas
 
             # Activate the field (prepend to make it appear at top)
             active = ctx.dataset.active_label_schemas or []
             ctx.dataset.active_label_schemas = [field_name] + [
                 f for f in active if f != field_name
             ]
-
             ctx.dataset.save()
 
             return {
@@ -277,7 +243,7 @@ class CreateAndActivateField(foo.Operator):
 
     def _create_label_field(self, ctx, field_name, field_type, read_only):
         """Create a label field and return its schema."""
-        label_cls = LABEL_TYPE_TO_CLASS.get(field_type)
+        label_cls = foac.LABEL_TYPE_TO_CLASS.get(field_type)
         if label_cls is None:
             raise ValueError(f"Unknown label type: {field_type}")
 
@@ -308,7 +274,7 @@ class CreateAndActivateField(foo.Operator):
 
     def _create_primitive_field(self, ctx, field_name, field_type, read_only):
         """Create a primitive field and return its schema."""
-        ftype = PRIMITIVE_TYPE_TO_FIELD.get(field_type)
+        ftype = foac.TYPE_TO_FIELD.get(field_type)
         if ftype is None:
             raise ValueError(f"Unknown primitive type: {field_type}")
 

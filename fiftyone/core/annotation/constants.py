@@ -138,6 +138,18 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
+### Label schema type to field/label class (reverse mappings)
+
+
+# Reverse of FIELD_TYPE_TO_TYPES (type string -> field class)
+TYPE_TO_FIELD = {
+    v: k for k, v in FIELD_TYPE_TO_TYPES.items() if not isinstance(v, dict)
+}
+TYPE_TO_FIELD.pop(LABEL, None)  # Remove Label, handled separately
+for subfield_cls, type_str in FIELD_TYPE_TO_TYPES[fof.ListField].items():
+    TYPE_TO_FIELD[type_str] = subfield_cls
+
+
 ### Heuristics
 
 
@@ -168,6 +180,16 @@ SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.StringField,
 )
 SUPPORTED_MEDIA_TYPES = {fom.IMAGE, fom.THREE_D}
+
+# Build LABEL_TYPE_TO_CLASS from supported label types
+_all_supported_labels = SUPPORTED_LABEL_TYPES.copy()
+for _types in SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE.values():
+    _all_supported_labels.update(_types)
+
+LABEL_TYPE_TO_CLASS = {
+    cls.__name__.lower(): cls for cls in _all_supported_labels
+}
+
 SUPPORTED_PRIMITIVES = (
     fof.BooleanField,
     fof.DateField,
