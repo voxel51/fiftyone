@@ -1,5 +1,9 @@
-import { CenteredStack, LoadingSpinner } from "@fiftyone/components";
-import { Typography } from "@mui/material";
+import {
+  CenteredStack,
+  LoadingSpinner,
+  scrollable,
+} from "@fiftyone/components";
+import { Text, TextColor } from "@voxel51/voodo";
 import { useEffect, useState } from "react";
 import { CodeView } from "../../../../../../plugins/SchemaIO/components";
 import { ContentArea } from "../styled";
@@ -34,13 +38,14 @@ const JSONEditor = ({
     return (
       <CenteredStack spacing={1} sx={{ p: 3 }}>
         <LoadingSpinner />
-        <Typography color="secondary">Scanning</Typography>
+        <Text color={TextColor.Secondary}>Scanning</Text>
       </CenteredStack>
     );
   }
 
   return (
     <ContentArea
+      className={scrollable}
       style={errors ? { border: "1px solid rgba(212, 64, 64, 0.4)" } : {}}
     >
       <CodeView

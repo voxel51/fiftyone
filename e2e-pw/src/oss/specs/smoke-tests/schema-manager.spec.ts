@@ -82,7 +82,8 @@ test.describe.serial("schema manager", () => {
 
     // Configure
     const row = schemaManager.getFieldRow("classification");
-    const jsonEditor = await row.edit();
+    // on initial scan is scan, later it's edit()
+    const jsonEditor = await row.scan();
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation
@@ -116,9 +117,8 @@ test.describe.serial("schema manager", () => {
       classes: ["value"],
     });
 
-    // Save
+    // Save (automatically navigates back to field list)
     await jsonEditor.save();
-    await schemaManager.back();
 
     // Activate
     await row.assert.hasCheckbox();
