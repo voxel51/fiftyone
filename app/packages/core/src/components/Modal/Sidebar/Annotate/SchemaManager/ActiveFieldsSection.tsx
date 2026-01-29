@@ -6,7 +6,6 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { Typography } from "@mui/material";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
@@ -16,26 +15,30 @@ import {
   Pill,
   RichList,
   Size,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
-import {
-  activeLabelSchemas,
-  activePaths,
-  fieldAttributeCount,
-  fieldType,
-} from "../state";
+import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
+import {
+  useActiveFieldsList,
+  useSelectedActiveFields,
+  useSetCurrentField,
+} from "./hooks";
 import SecondaryText from "./SecondaryText";
-import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
+import { fieldIsReadOnly } from "./state";
 import { GUISectionHeader } from "./styled";
+import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Edit action button for field rows
  */
 const FieldActions = ({ path }: { path: string }) => {
-  const setField = useSetAtom(currentField);
+  const setField = useSetCurrentField();
 
   return (
     <Tooltip
@@ -55,12 +58,8 @@ const ActiveFieldsSection = () => {
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
 
-  // Support both atom systems
-  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
-  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
-  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
-
-  const [, setSelected] = useAtom(selectedActiveFields);
+  const { fields, setFields } = useActiveFieldsList();
+  const { setSelected } = useSelectedActiveFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -131,12 +130,11 @@ const ActiveFieldsSection = () => {
     (newItems: { id: string; data: ListItemProps }[]) => {
       const newOrder = newItems.map((item) => item.id);
       // Update UI immediately
-      setFieldsNew(newOrder);
-      setFieldsLegacy(newOrder);
+      setFields(newOrder);
       // Persist to DB
       setActiveSchemas.execute({ fields: newOrder });
     },
-    [setFieldsNew, setFieldsLegacy, setActiveSchemas]
+    [setFields, setActiveSchemas]
   );
 
   const handleSelected = useCallback(
@@ -150,9 +148,9 @@ const ActiveFieldsSection = () => {
     return (
       <>
         <GUISectionHeader>
-          <Typography variant="body1" fontWeight={500}>
+          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Active fields
-          </Typography>
+          </Text>
           <Tooltip
             content="Fields currently active and available for dataset annotation"
             anchor={Anchor.Bottom}
@@ -163,7 +161,7 @@ const ActiveFieldsSection = () => {
           <Pill size={Size.Md}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-          <Typography color="secondary">No active fields</Typography>
+          <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
       </>
     );
@@ -172,9 +170,9 @@ const ActiveFieldsSection = () => {
   return (
     <>
       <GUISectionHeader>
-        <Typography variant="body1" fontWeight={500}>
+        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
           Active fields
-        </Typography>
+        </Text>
         <Tooltip
           content="Fields currently active and available for dataset annotation"
           anchor={Anchor.Top}

@@ -7,7 +7,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -24,7 +24,6 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../../state";
@@ -39,12 +38,14 @@ import {
   VertexCoordinateInputs,
 } from "./CoordinateInputs";
 import { FieldSelection } from "./FieldSelection";
+import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 
 export const useAnnotationActions = () => {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
-    useRecoilState(selectedLabelForAnnotationAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
   const [
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
@@ -65,14 +66,11 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
-  const [editing, setEditing] = useAtom(editingAtom);
+  const editing = useAtomValue(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
-  );
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
   );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
@@ -252,21 +250,7 @@ export const useAnnotationActions = () => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
 
-  // Exit function that clears polyline and cuboid transforms
-  // No confirmation needed since autosave handles persistence
-  const handleDeselectLabel = useCallback(() => {
-    setStagedPolylineTransforms({});
-    setStagedCuboidTransforms({});
-    setSelectedLabelForAnnotation(null);
-    setEditing(null);
-    setEditSegmentsMode(false);
-  }, [
-    setStagedPolylineTransforms,
-    setStagedCuboidTransforms,
-    setSelectedLabelForAnnotation,
-    setEditing,
-    setEditSegmentsMode,
-  ]);
+  const onExit = useExit();
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
@@ -293,7 +277,7 @@ export const useAnnotationActions = () => {
             tooltip: "Exit edit mode and deselect label",
             isActive: false,
             isVisible: selectedLabelForAnnotation !== null || editing !== null,
-            onClick: handleDeselectLabel,
+            onClick: onExit,
           },
         ],
       },
@@ -465,9 +449,9 @@ export const useAnnotationActions = () => {
     editSegmentsMode,
     handleToggleEditSegmentsMode,
     editing,
-    handleDeselectLabel,
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
+    onExit,
   ]);
 
   return {

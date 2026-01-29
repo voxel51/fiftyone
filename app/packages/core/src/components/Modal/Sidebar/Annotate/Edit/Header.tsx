@@ -18,7 +18,7 @@ const Header = () => {
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
 
-  const onExit = useExit(false); // false = don't revert label since autosave handles it
+  const onExit = useExit();
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
 

@@ -27,6 +27,13 @@ export class FieldRowPom {
   }
 
   /**
+   * The scan button locator, if it exists (shown for unconfigured fields)
+   */
+  get scanButton() {
+    return this.locator.getByTestId("scan");
+  }
+
+  /**
    * The checkbox locator, if it exists
    */
   get checkbox() {
@@ -66,6 +73,21 @@ export class FieldRowPom {
     // click must be forced because the field row has an aria-disabled
     // attribute
     await this.pencil.click({ force: true });
+    return new JSONEditorPom(
+      this.page,
+      this.eventUtils,
+      this.field,
+      this.schemaManager
+    );
+  }
+
+  /**
+   * Click the scan button (for unconfigured fields)
+   */
+  async scan() {
+    // click must be forced because the field row has an aria-disabled
+    // attribute
+    await this.scanButton.click({ force: true });
     return new JSONEditorPom(
       this.page,
       this.eventUtils,
