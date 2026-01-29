@@ -7,8 +7,15 @@ import {
 import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
-import { AnnotationLabel, Sample } from "@fiftyone/state";
-import { Field, Schema } from "@fiftyone/utilities";
+import {
+  AnnotationLabel,
+  DetectionAnnotationLabel,
+  PrimitiveValue,
+  Sample,
+} from "@fiftyone/state";
+import { Field, Primitive } from "@fiftyone/utilities";
+import { get } from "lodash";
+import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -75,7 +82,8 @@ type Detection2DMetadata = LabelMetadata<DetectionLabel> & {
  */
 export type LabelProxy =
   | LabelMetadata<ClassificationLabel | DetectionLabel | PolylineLabel>
-  | Detection2DMetadata;
+  | Detection2DMetadata
+  | PrimitiveValue;
 
 /**
  * Build JSON-patch-compatible deltas for the specified changes to the sample.
@@ -104,7 +112,7 @@ export const buildLabelDeltas = (
  * Build a list of JSON deltas for mutating the given sample and label.
  *
  * @param sample Sample containing unmodified label data
- * @param label Current label state
+ * @param label Current label state (annotation label or primitive label)
  * @param schema Field schema
  */
 export const buildMutationDeltas = (
@@ -118,9 +126,15 @@ export const buildMutationDeltas = (
   // element with an implied structure.
   if (label.type === "Detection") {
     if (isFieldType(schema, "Detections")) {
-      return buildDetectionsMutationDelta(sample, label);
+      return buildDetectionsMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     } else if (isFieldType(schema, "Detection")) {
-      return buildDetectionMutationDelta(sample, label);
+      return buildDetectionMutationDelta(
+        sample,
+        label as DetectionAnnotationLabel
+      );
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
@@ -140,10 +154,16 @@ export const buildMutationDeltas = (
         label as LabelMetadata<PolylineLabel>
       );
     }
+  } else if (isPrimitiveFieldType(schema)) {
+    return buildPrimitiveMutationDelta(
+      sample,
+      label.path,
+      (label as PrimitiveValue).data
+    );
   }
 
   throw new Error(
-    `Unsupported label type '${label.type}' for path '${label.path}'`
+    `Unsupported field type '${schema?.ftype}' at path '${label.path}'`
   );
 };
 
@@ -242,13 +262,31 @@ export const buildDeletionDeltas = (
  * @param path Label path
  * @param data Label data
  */
-const buildSingleMutationDelta = <T extends AnnotationLabel["data"]>(
+const buildSingleMutationDelta = <
+  T extends AnnotationLabel["data"] | Primitive
+>(
   sample: Sample,
   path: string,
   data: T
 ): JSONDeltas => {
   const existingLabel = <T>extractNestedField(sample, path) ?? {};
   return generateJsonPatch(existingLabel, data);
+};
+
+const buildPrimitiveMutationDelta = (
+  sample: Sample,
+  path: string,
+  data: Primitive
+): JSONDeltas => {
+  const existingValue = get(sample, path) as Primitive;
+
+  // If the value hasn't changed, return empty deltas
+  if (arePrimitivesEqual(existingValue, data)) {
+    return [];
+  }
+
+  // Return a replace operation with empty path - buildJsonPath will prepend the label path
+  return [{ op: "replace", path: "", value: data }];
 };
 
 /**
@@ -444,41 +482,6 @@ export const buildJsonPath = (
   );
 
   return `/${parts.join("/")}`;
-};
-
-/**
- * Get the field schema for the given path.
- *
- * @param schema Sample schema
- * @param path Field path
- */
-export const getFieldSchema = (schema: Schema, path: string): Field | null => {
-  if (!schema || !path) {
-    return null;
-  }
-
-  const pathParts = path.split(".");
-  const root = schema[pathParts[0]];
-  return getFieldSchemaHelper(root, pathParts.slice(1));
-};
-
-/**
- * Recursive helper for {@link getFieldSchema}.
- */
-const getFieldSchemaHelper = (
-  field: Field,
-  pathParts: string[]
-): Field | null => {
-  if (!field) {
-    return null;
-  }
-
-  if (!pathParts || pathParts.length === 0) {
-    return field;
-  }
-
-  const nextField = field.fields?.[pathParts[0]];
-  return getFieldSchemaHelper(nextField, pathParts.slice(1));
 };
 
 /**

@@ -5,19 +5,17 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import Confirmation from "../Confirmation";
-import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
-import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
+import PrimitiveWrapper from "./PrimitiveWrapper";
 import { currentField, currentOverlay, currentType } from "./state";
+import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import useSave from "./useSave";
 import {
   KnownCommands,
   KnownContexts,
@@ -52,6 +50,7 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
   const exit = useExit();
@@ -79,11 +78,6 @@ export default function Edit() {
     KnownContexts.Modal
   );
 
-  const { confirmExit } = useConfirmExit(() => {
-    clear();
-    exit();
-  }, useSave());
-
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
       pointerDownTarget = event.target;
@@ -92,7 +86,8 @@ export default function Edit() {
     const clickHandler = (event: Event) => {
       if (event.target === el && pointerDownTarget === el) {
         event.stopImmediatePropagation();
-        confirmExit(clear);
+        clear();
+        exit();
       }
 
       pointerDownTarget = null;
@@ -108,25 +103,24 @@ export default function Edit() {
       el?.removeEventListener("pointerdown", pointerDownHandler, true);
       el?.removeEventListener("click", clickHandler, true);
     };
-  }, [confirmExit, clear]);
+  }, [exit, clear]);
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
-    <Confirmation>
-      <ContentContainer>
-        <Header />
-        <Content>
+    <ContentContainer>
+      <Header />
+      <Content>
           <Id />
-          <Field />
+          {!primitiveEditingActive && <Field />}
+          {primitiveEditingActive && <PrimitiveWrapper />}
           {type === DETECTION && overlay && !is3dDetection && <Position />}
           {type === DETECTION && overlay && is3dDetection && <Position3d />}
           {type === POLYLINE && <PolylineDetails />}
           {field && <AnnotationSchema />}
-        </Content>
-        <Footer />
-      </ContentContainer>
-    </Confirmation>
+      </Content>
+    </ContentContainer>
   );
 }

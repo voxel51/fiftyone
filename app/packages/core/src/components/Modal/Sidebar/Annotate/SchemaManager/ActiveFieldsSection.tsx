@@ -6,7 +6,7 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Clickable,
@@ -15,35 +15,37 @@ import {
   Pill,
   RichList,
   Size,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import {
-  activeLabelSchemas,
-  activePaths,
-  fieldAttributeCount,
-  fieldType,
-} from "../state";
-import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
-import { GUISectionHeader } from "./styled";
+import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
-import { buildFieldSecondaryContent } from "./utils";
+import {
+  useActiveFieldsList,
+  useSelectedActiveFields,
+  useSetCurrentField,
+} from "./hooks";
+import SecondaryText from "./SecondaryText";
+import { fieldIsReadOnly } from "./state";
+import { GUISectionHeader } from "./styled";
 
 /**
  * Edit action button for field rows
  */
 const FieldActions = ({ path }: { path: string }) => {
-  const setField = useSetAtom(currentField);
+  const setField = useSetCurrentField();
 
   return (
     <Tooltip
-      content="Configure annotation schema"
+      content={<Text>Configure label schema</Text>}
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable onClick={() => setField(path)}>
+      <Clickable data-cy="edit" onClick={() => setField(path)}>
         <Icon name={IconName.Edit} size={Size.Md} />
       </Clickable>
     </Tooltip>
@@ -55,12 +57,8 @@ const ActiveFieldsSection = () => {
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
 
-  // Support both atom systems
-  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
-  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
-  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
-
-  const [, setSelected] = useAtom(selectedActiveFields);
+  const { fields, setFields } = useActiveFieldsList();
+  const { setSelected } = useSelectedActiveFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -105,11 +103,14 @@ const ActiveFieldsSection = () => {
         data: {
           canSelect: true,
           canDrag: true,
+          "data-cy": `field-row-${path}`,
           primaryContent: path,
-          secondaryContent: buildFieldSecondaryContent(
-            fieldTypes[path],
-            fieldAttrCounts[path],
-            false
+          secondaryContent: (
+            <SecondaryText
+              fieldType={fieldTypes[path] ?? ""}
+              attrCount={fieldAttrCounts[path]}
+              isSystemReadOnly={false}
+            />
           ),
           actions: (
             <span className="flex items-center gap-2">
@@ -128,12 +129,11 @@ const ActiveFieldsSection = () => {
     (newItems: { id: string; data: ListItemProps }[]) => {
       const newOrder = newItems.map((item) => item.id);
       // Update UI immediately
-      setFieldsNew(newOrder);
-      setFieldsLegacy(newOrder);
+      setFields(newOrder);
       // Persist to DB
       setActiveSchemas.execute({ fields: newOrder });
     },
-    [setFieldsNew, setFieldsLegacy, setActiveSchemas]
+    [setFields, setActiveSchemas]
   );
 
   const handleSelected = useCallback(
@@ -147,11 +147,15 @@ const ActiveFieldsSection = () => {
     return (
       <>
         <GUISectionHeader>
-          <Typography variant="body1" fontWeight={500}>
+          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Active fields
-          </Typography>
+          </Text>
           <Tooltip
-            content="Fields currently active and available for dataset annotation"
+            content={
+              <Text>
+                Fields currently active and available for dataset annotation
+              </Text>
+            }
             anchor={Anchor.Bottom}
             portal
           >
@@ -160,7 +164,7 @@ const ActiveFieldsSection = () => {
           <Pill size={Size.Md}>0</Pill>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-          <Typography color="secondary">No active fields</Typography>
+          <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
       </>
     );
@@ -169,11 +173,15 @@ const ActiveFieldsSection = () => {
   return (
     <>
       <GUISectionHeader>
-        <Typography variant="body1" fontWeight={500}>
+        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
           Active fields
-        </Typography>
+        </Text>
         <Tooltip
-          content="Fields currently active and available for dataset annotation"
+          content={
+            <Text>
+              Fields currently active and available for dataset annotation
+            </Text>
+          }
           anchor={Anchor.Top}
           portal
         >
@@ -182,6 +190,7 @@ const ActiveFieldsSection = () => {
         <Pill size={Size.Md}>{fields.length}</Pill>
       </GUISectionHeader>
       <RichList
+        data-cy={"active-fields"}
         listItems={listItems}
         draggable={true}
         onOrderChange={handleOrderChange}

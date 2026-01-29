@@ -4,7 +4,11 @@
 
 import { Action } from "../actions";
 
-export type CommandFunction = () => Action | void | undefined;
+export type CommandFunction = () =>
+  | Action
+  | void
+  | undefined
+  | Promise<Action | void | undefined>;
 
 /**
  * Class to handle command style invocation.  It delegates
@@ -34,11 +38,11 @@ export class Command {
   /**
    * Executes the executeFunc for this command.
    */
-  public execute(): Action | undefined | void {
+  public async execute(): Promise<Action | undefined | void> {
     if (!this.enablementFunc()) {
       return;
     }
-    return this.executeFunc();
+    return await this.executeFunc();
   }
 
   /**

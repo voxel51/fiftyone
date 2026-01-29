@@ -41,6 +41,7 @@ const Mode = () => {
     <Container>
       <Items>
         <Item
+          data-cy={ModalMode.EXPLORE}
           style={mode === ModalMode.EXPLORE ? background : text}
           onClick={() => {
             if (mode === ModalMode.ANNOTATE) {
@@ -51,6 +52,7 @@ const Mode = () => {
           Explore
         </Item>
         <Item
+          data-cy={ModalMode.ANNOTATE}
           style={mode === ModalMode.ANNOTATE ? background : text}
           onClick={() => {
             if (mode !== ModalMode.ANNOTATE) {

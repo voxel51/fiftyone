@@ -1,8 +1,9 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { PersistAnnotationChanges } from "../commands";
-import { useNotification } from "@fiftyone/state";
+import { useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
+import { IconName, Variant } from "@voxel51/voodo";
 
 /**
  * Hook which registers global annotation event handlers.
@@ -10,7 +11,7 @@ import { useCallback } from "react";
  */
 export const useRegisterAnnotationEventHandlers = () => {
   const commandBus = useCommandBus();
-  const setNotification = useNotification();
+  const { setConfig } = useActivityToast();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
@@ -20,13 +21,25 @@ export const useRegisterAnnotationEventHandlers = () => {
   );
 
   useAnnotationEventHandler(
+    "annotation:persistenceInFlight",
+    useCallback(() => {
+      setConfig({
+        iconName: IconName.Spinner,
+        message: "Saving changes...",
+        variant: Variant.Secondary,
+      });
+    }, [setConfig])
+  );
+
+  useAnnotationEventHandler(
     "annotation:persistenceSuccess",
     useCallback(() => {
-      setNotification({
-        msg: "Changes saved successfully",
-        variant: "success",
+      setConfig({
+        iconName: IconName.Check,
+        message: "Changes saved successfully",
+        variant: Variant.Success,
       });
-    }, [setNotification])
+    }, [setConfig])
   );
 
   useAnnotationEventHandler(
@@ -35,12 +48,13 @@ export const useRegisterAnnotationEventHandlers = () => {
       ({ error }) => {
         console.error(error);
 
-        setNotification({
-          msg: `Error saving changes: ${error}`,
-          variant: "error",
+        setConfig({
+          iconName: IconName.Error,
+          message: `Error saving changes: ${error}`,
+          variant: Variant.Danger,
         });
       },
-      [setNotification]
+      [setConfig]
     )
   );
 };

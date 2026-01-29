@@ -24,7 +24,6 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   KnownCommands,
   KnownContexts,
@@ -70,10 +69,8 @@ const ModalCommandHandlersRegistration = () => {
   useRegisterRendererEventHandlers();
 
   const modalMode = useModalMode();
-  const { isEnabled: enableAutoSave } = useFeature({
-    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
-  });
-  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+
+  useAutoSave(modalMode === ModalMode.ANNOTATE);
 
   return <Fragment />;
 };

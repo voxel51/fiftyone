@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import {
   Button,
   Icon,
@@ -7,20 +6,22 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
-import { currentField, showModal } from "../state";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, {
-  selectedActiveFields,
-  selectedHiddenFields,
-  useActivateFields,
-  useDeactivateFields,
-} from "./GUIView";
+import GUIView, { useActivateFields, useDeactivateFields } from "./GUIView";
+import {
+  useCurrentField,
+  useCurrentFieldValue,
+  useSelectedFieldCounts,
+  useShowSchemaManagerModal,
+} from "./hooks";
 import {
   BackButton,
   CloseButton,
@@ -34,36 +35,40 @@ import {
 export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
-  const [field, setField] = useAtom(currentField);
+  const { field, setField } = useCurrentField();
 
   if (!field) {
-    return <Typography variant="h5">Schema manager</Typography>;
+    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
   }
 
   return (
     <ItemLeft>
-      <BackButton color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">Edit field schema</Typography>
+      <BackButton
+        data-cy="schema-manager-back"
+        color="secondary"
+        onClick={() => setField(null)}
+      />
+      <Text variant={TextVariant.Xl}>Edit field schema</Text>
     </ItemLeft>
   );
 };
 
 const Subheading = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
 
   if (field) {
     return null;
   }
 
   return (
-    <Typography color="secondary" padding="1rem 0">
+    <Text color={TextColor.Secondary} style={{ padding: "1rem 0" }}>
       Manage your label schemas
-    </Typography>
+    </Text>
   );
 };
 
 const Page = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
 
   if (field) {
     return <EditFieldLabelSchema field={field} />;
@@ -73,9 +78,9 @@ const Page = () => {
 };
 
 const SchemaManagerFooter = () => {
-  const field = useAtomValue(currentField);
-  const activeSelectedCount = useAtomValue(selectedActiveFields).size;
-  const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
+  const field = useCurrentFieldValue();
+  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
+    useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
@@ -104,7 +109,12 @@ const SchemaManagerFooter = () => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+        <Button
+          data-cy="move-fields"
+          size={Size.Md}
+          variant={Variant.Secondary}
+          onClick={onMove}
+        >
           {isMovingToVisible ? (
             <Icon
               name={IconName.ChevronTop}
@@ -134,7 +144,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const show = useSetAtom(showModal);
+  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -145,11 +155,18 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => show(false)}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
+    <ModalBackground onClick={() => setShowModal(false)}>
+      <ModalContainer
+        data-cy="schema-manager"
+        onClick={(e) => e.stopPropagation()}
+      >
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => show(false)} />
+          <CloseButton
+            color="secondary"
+            data-cy="close-schema-manager"
+            onClick={() => setShowModal(false)}
+          />
         </ModalHeader>
 
         <Subheading />

@@ -65,8 +65,8 @@ export const useCommand = (
     };
   }, [commandId, boundContext.context]);
 
-  const execute = useCallback(() => {
-    boundContext.context.executeCommand(commandId);
+  const execute = useCallback(async () => {
+    await boundContext.context.executeCommand(commandId);
   }, [commandId, boundContext.context]);
 
   return {
