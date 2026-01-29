@@ -3497,6 +3497,90 @@
             "date_added": "2026-01-05 12:00:00"
         },
         {
+            "base_name": "depth-anything-v3-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight Depth Anything V3 model for fast monocular depth estimation",
+            "source": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+            "author": "Lihe Yang, et al.",
+            "license": "CC BY-NC 4.0",
+            "size_bytes": 99000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.depth_anything.DepthAnythingV3Model",
+                "config": {
+                    "name_or_path": "depth-anything/da3-small"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-07 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v3-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced Depth Anything V3 model for general-purpose monocular depth estimation",
+            "source": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+            "author": "Lihe Yang, et al.",
+            "license": "CC BY-NC 4.0",
+            "size_bytes": 541518028,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.depth_anything.DepthAnythingV3Model",
+                "config": {
+                    "name_or_path": "depth-anything/da3-base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-07 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v3-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-accuracy Depth Anything V3 model for detailed monocular depth estimation",
+            "source": "https://github.com/ByteDance-Seed/Depth-Anything-3",
+            "author": "Lihe Yang, et al.",
+            "license": "CC BY-NC 4.0",
+            "size_bytes": 1643843860,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.depth_anything.DepthAnythingV3Model",
+                "config": {
+                    "name_or_path": "depth-anything/da3-large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-07 12:00:00"
+        },
+        {
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,
