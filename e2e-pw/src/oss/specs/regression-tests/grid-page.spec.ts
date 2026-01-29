@@ -15,10 +15,6 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 const datasetName = getUniqueDatasetNameWithPrefix("grid-page");
 const groupDatasetName = getUniqueDatasetNameWithPrefix("grid-page-group");
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 
