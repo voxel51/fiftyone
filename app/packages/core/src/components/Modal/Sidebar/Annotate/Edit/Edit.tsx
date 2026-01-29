@@ -81,12 +81,6 @@ export default function Edit() {
   );
 
   const save = useSave();
-  // const { confirmExit } = useConfirmExit(() => {
-  //   clear();
-  //   exit();
-  // }, save);
-
-  // Auto-save when detection is complete in quick draw mode
   useAutoSaveOnCompletion(save);
 
   useEffect(() => {

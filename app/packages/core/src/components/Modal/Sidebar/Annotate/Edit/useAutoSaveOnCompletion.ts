@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { current } from "./state";
 import { isSavingAtom } from "./useSave";
 import { useQuickDraw } from "./useQuickDraw";
+import { useLighter } from "@fiftyone/lighter";
 
 /**
  * Hook that auto-triggers save when a detection overlay is complete
@@ -15,6 +16,7 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
   const { quickDrawActive } = useQuickDraw();
   const currentLabel = useAtomValue(current);
   const isSaving = useAtomValue(isSavingAtom);
+  const { scene } = useLighter();
 
   useEffect(() => {
     if (!quickDrawActive) {
@@ -29,6 +31,7 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
       if (currentLabel && currentLabel.overlay?.id === overlayId && !isSaving) {
         // Auto-trigger save
         save();
+        scene?.deselectOverlay(overlayId);
       }
     };
 
@@ -40,5 +43,5 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
         handleDetectionComplete
       );
     };
-  }, [quickDrawActive, currentLabel, isSaving, save]);
+  }, [quickDrawActive, currentLabel, isSaving, save, scene]);
 };
