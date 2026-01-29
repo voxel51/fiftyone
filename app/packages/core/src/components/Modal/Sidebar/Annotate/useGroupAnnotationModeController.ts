@@ -10,11 +10,6 @@ import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState } from "recoil";
 
-interface UseAnnotationModeVisibilityOptions {
-  isGroupedDataset: boolean;
-  disabledReason: string | null;
-}
-
 /**
  * Hook that manages visibility settings when transitioning between
  * Explore and Annotate modes for grouped datasets.
@@ -22,10 +17,7 @@ interface UseAnnotationModeVisibilityOptions {
  * - Captures visibility settings when entering Annotate mode
  * - Restores visibility settings when returning to Explore mode
  */
-export function useAnnotationModeVisibility({
-  isGroupedDataset,
-  disabledReason,
-}: UseAnnotationModeVisibilityOptions) {
+export function useGroupAnnotationModeController() {
   const mode = useAtomValue(modalMode);
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
@@ -74,24 +66,15 @@ export function useAnnotationModeVisibility({
   useEffect(() => {
     const prevMode = prevModeRef.current;
 
-    if (isGroupedDataset && !disabledReason) {
-      if (prevMode === EXPLORE && mode === ANNOTATE) {
-        // Entering Annotate mode: capture current visibility
-        setVisibilitySnapshot(captureVisibility());
-      } else if (prevMode === ANNOTATE && mode === EXPLORE) {
-        // Returning to Explore mode: restore visibility
-        restoreVisibility(visibilitySnapshot);
-        setVisibilitySnapshot(null);
-      }
+    if (prevMode === EXPLORE && mode === ANNOTATE) {
+      // Entering Annotate mode: capture current visibility
+      setVisibilitySnapshot(captureVisibility());
+    } else if (prevMode === ANNOTATE && mode === EXPLORE) {
+      // Returning to Explore mode: restore visibility
+      restoreVisibility(visibilitySnapshot);
+      setVisibilitySnapshot(null);
     }
 
     prevModeRef.current = mode;
-  }, [
-    mode,
-    isGroupedDataset,
-    disabledReason,
-    captureVisibility,
-    restoreVisibility,
-    visibilitySnapshot,
-  ]);
+  }, [mode, captureVisibility, restoreVisibility, visibilitySnapshot]);
 }

@@ -10,7 +10,7 @@ import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
 import { AnnotationSliceSelector } from "./Annotate/AnnotationSliceSelector";
-import { useAnnotationModeVisibility } from "./Annotate/useAnnotationModeVisibility";
+import { GroupModeTransitionManager } from "./Annotate/GroupModeTransitionManager";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -33,9 +33,6 @@ const Sidebar = () => {
   const mode = useAtomValue(modalMode);
   const { showAnnotationTab, disabledReason, isGroupedDataset } =
     useCanAnnotate();
-
-  // Handle panels (main, carousel, 3d) visibility save/restore on explore/annotate mode transitions
-  useAnnotationModeVisibility({ isGroupedDataset, disabledReason });
 
   // Track whether we've loaded schemas for this session
   const [schemasLoaded, setSchemasLoaded] = useState(false);
@@ -66,7 +63,10 @@ const Sidebar = () => {
     <SidebarContainer modal={true}>
       {showAnnotationTab && <Mode />}
       {showSliceSelector && (
-        <AnnotationSliceSelector onSliceSelected={handleSliceSelected} />
+        <>
+          <GroupModeTransitionManager />
+          <AnnotationSliceSelector onSliceSelected={handleSliceSelected} />
+        </>
       )}
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
