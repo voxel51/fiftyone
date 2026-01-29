@@ -29,8 +29,6 @@ export const useAutoSaveOnCompletion = (save: () => Promise<void>) => {
 
       // Check if the completed overlay matches our current label
       if (currentLabel && currentLabel.overlay?.id === overlayId && !isSaving) {
-        // Auto-trigger save
-        save();
         scene?.deselectOverlay(overlayId);
       }
     };
