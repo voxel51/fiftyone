@@ -45,8 +45,9 @@ export default function useDelete() {
       if (!fieldSchema) {
         setSaving(false);
         setNotification({
-          msg: `Unable to delete label: field schema not found for path "${label?.path ?? "unknown"
-            }".`,
+          msg: `Unable to delete label: field schema not found for path "${
+            label?.path ?? "unknown"
+          }".`,
           variant: "error",
         });
         return;
@@ -66,8 +67,9 @@ export default function useDelete() {
       console.error(error);
       setSaving(false);
       setNotification({
-        msg: `Label "${label.data.label ?? "Label"
-          }" not successfully deleted. Try again.`,
+        msg: `Label "${
+          label.data.label ?? "Label"
+        }" not successfully deleted. "${error}"`,
         variant: "error",
       });
     }
@@ -85,4 +87,3 @@ export default function useDelete() {
   ]);
   return onDelete;
 }
-
