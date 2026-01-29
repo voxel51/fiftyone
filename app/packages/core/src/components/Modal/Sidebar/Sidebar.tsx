@@ -1,9 +1,16 @@
-import { EXPLORE, modalMode, useModalExplorEntries } from "@fiftyone/state";
+import {
+  ANNOTATE,
+  EXPLORE,
+  modalMode,
+  useModalExplorEntries,
+} from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
+import { AnnotationSliceSelector } from "./Annotate/AnnotationSliceSelector";
+import { useAnnotationModeVisibility } from "./Annotate/useAnnotationModeVisibility";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -24,17 +31,43 @@ const Explore = () => {
 
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
-  const { showAnnotationTab, disabledReason } = useCanAnnotate();
+  const { showAnnotationTab, disabledReason, isGroupedDataset } =
+    useCanAnnotate();
+
+  // Handle panels (main, carousel, 3d) visibility save/restore on explore/annotate mode transitions
+  useAnnotationModeVisibility({ isGroupedDataset, disabledReason });
+
+  // Track whether we've loaded schemas for this session
+  const [schemasLoaded, setSchemasLoaded] = useState(false);
 
   const loadSchemas = useLoadSchemas();
+
+  const handleSliceSelected = useCallback(() => {
+    if (!schemasLoaded && showAnnotationTab && !disabledReason) {
+      loadSchemas();
+      setSchemasLoaded(true);
+    }
+  }, [schemasLoaded, showAnnotationTab, disabledReason, loadSchemas]);
+
+  // This effect resets schemas loaded state when entering explore mode
   useEffect(() => {
-    // Only load schemas if annotation is fully enabled (no disabled reason)
-    showAnnotationTab && !disabledReason && loadSchemas();
-  }, [showAnnotationTab, disabledReason, loadSchemas]);
+    if (mode === EXPLORE) {
+      setSchemasLoaded(false);
+    }
+  }, [mode]);
+
+  const showSliceSelector =
+    showAnnotationTab &&
+    mode === ANNOTATE &&
+    isGroupedDataset &&
+    !disabledReason;
 
   return (
     <SidebarContainer modal={true}>
       {showAnnotationTab && <Mode />}
+      {showSliceSelector && (
+        <AnnotationSliceSelector onSliceSelected={handleSliceSelected} />
+      )}
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
       ) : (
