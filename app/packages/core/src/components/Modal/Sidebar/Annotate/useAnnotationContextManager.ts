@@ -6,7 +6,7 @@ import {
   useActiveModalFields,
 } from "@fiftyone/state";
 import useCanManageSchema from "./useCanManageSchema";
-import { useActiveLabelSchema, useLabelSchema } from "./state";
+import { useAnnotationSchemaContext } from "./state";
 import { atom, useAtom, useAtomValue } from "jotai";
 
 /**
@@ -83,8 +83,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
 
   const [activeFields, setActiveFields] = useActiveModalFields();
-  const [, setLabelSchema] = useLabelSchema();
-  const [, setActiveLabelSchema] = useActiveLabelSchema();
+  const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
   const { enabled: canManageSchema } = useCanManageSchema();
 
@@ -95,7 +94,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // clear annotation state
       setLabelSchema(null);
-      setActiveLabelSchema(null);
+      setActiveSchemaPaths(null);
 
       // create and activate the field schema
       try {
@@ -110,13 +109,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
             };
           }
 
-          const createSchemaResponse = await schemaManager.createSchema({
-            field,
-          });
-          await schemaManager.updateSchema({
-            field,
-            label_schema: createSchemaResponse.label_schema,
-          });
+          await schemaManager.initializeSchema({ field });
         }
 
         await schemaManager.activateSchema({ fields: [field] });
@@ -124,7 +117,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         // refresh annotation state
         listSchemaResponse = await schemaManager.listSchema({});
         setLabelSchema(listSchemaResponse.label_schemas);
-        setActiveLabelSchema(listSchemaResponse.active_label_schemas);
+        setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
 
         return {
           status: InitializationStatus.Success,
@@ -141,7 +134,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       canManageSchema,
       schemaManager,
       setActiveFields,
-      setActiveLabelSchema,
+      setActiveSchemaPaths,
       setLabelSchema,
     ]
   );
@@ -156,7 +149,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         callback: () => setActiveFields(activeFields),
       });
 
-      let result: EnterResult;
+      let result: EnterResult = {
+        status: InitializationStatus.Success,
+      };
 
       // initialize and activate field schema if specified
       if (field) {
@@ -167,11 +162,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         setActiveLabelId(labelId);
       }
 
-      return (
-        result ?? {
-          status: InitializationStatus.Success,
-        }
-      );
+      return result;
     },
     [
       activeFields,

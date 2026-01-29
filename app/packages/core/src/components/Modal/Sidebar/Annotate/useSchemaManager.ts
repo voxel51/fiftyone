@@ -48,7 +48,18 @@ type FieldSchema = {
 /**
  * Schema definition for a collection of fields.
  */
-type AnnotationSchema = Record<string, FieldSchema>;
+export type AnnotationSchema = Record<string, FieldSchema>;
+
+/**
+ * Descriptor of a label schema containing additional metadata.
+ */
+export type LabelSchemaMeta = {
+  default_label_schema: FieldSchema;
+  read_only: boolean;
+  type: string;
+  unsupported: boolean;
+  label_schema?: FieldSchema;
+};
 
 type EmptyBody = Record<string, never>;
 
@@ -79,20 +90,19 @@ export type DeleteSchemaRequest = {
 
 export type DeleteSchemaResponse = EmptyBody;
 
+export type InitializeSchemaRequest = {
+  field: string;
+};
+
+export type InitializeSchemaResponse = {
+  label_schema: FieldSchema;
+};
+
 export type ListSchemaRequest = EmptyBody;
 
 export type ListSchemaResponse = {
   active_label_schemas: string[];
-  label_schemas: Record<
-    string,
-    {
-      default_label_schema: FieldSchema;
-      read_only: boolean;
-      type: string;
-      unsupported: boolean;
-      label_schema?: FieldSchema;
-    }
-  >;
+  label_schemas: Record<string, LabelSchemaMeta>;
 };
 
 export type SetActiveSchemaRequest = {
@@ -153,6 +163,17 @@ export interface SchemaManager {
    * @param request Deletion request
    */
   deleteSchema: (request: DeleteSchemaRequest) => Promise<DeleteSchemaResponse>;
+
+  /**
+   * Initialize the schema for a field.
+   *
+   * This method will create and persist a new schema for the specified field.
+   *
+   * @param request Initialization request
+   */
+  initializeSchema: (
+    request: InitializeSchemaRequest
+  ) => Promise<InitializeSchemaResponse>;
 
   /**
    * List the available schema.
@@ -325,12 +346,30 @@ export const useSchemaManager = (): SchemaManager => {
     [validateSchemaOperator]
   );
 
+  const initializeSchema = useCallback(
+    async (
+      request: InitializeSchemaRequest
+    ): Promise<InitializeSchemaResponse> => {
+      const createResponse = await createSchema({ field: request.field });
+      const updateResponse = await updateSchema({
+        field: request.field,
+        label_schema: createResponse.label_schema,
+      });
+
+      return {
+        label_schema: updateResponse.label_schema,
+      };
+    },
+    [createSchema, updateSchema]
+  );
+
   return useMemo(
     () => ({
       activateSchema,
       createSchema,
       deactivateSchema,
       deleteSchema,
+      initializeSchema,
       listSchema,
       setActiveSchema,
       updateSchema,
@@ -341,6 +380,7 @@ export const useSchemaManager = (): SchemaManager => {
       createSchema,
       deactivateSchema,
       deleteSchema,
+      initializeSchema,
       listSchema,
       setActiveSchema,
       updateSchema,

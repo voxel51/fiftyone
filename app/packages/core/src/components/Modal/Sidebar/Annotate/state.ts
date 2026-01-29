@@ -1,6 +1,8 @@
 import { atom, useAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
+import { LabelSchemaMeta } from "./useSchemaManager";
+import { useMemo } from "react";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
@@ -8,12 +10,6 @@ export const activeSchemaTab = atom<"gui" | "json">("gui");
 export const currentField = atom<null | string>();
 
 export const labelSchemasData = atom(null);
-
-/**
- * Hook which returns the current set of label schema,
- * and a setter to update the value.
- */
-export const useLabelSchema = () => useAtom(labelSchemasData);
 
 export const labelSchemaData = atomFamily((field: string) => {
   return atom(
@@ -25,12 +21,6 @@ export const labelSchemaData = atomFamily((field: string) => {
 });
 
 export const activeLabelSchemas = atom<string[] | null>(null);
-
-/**
- * Hook which returns the current set of active label schema,
- * and a setter to update the value.
- */
-export const useActiveLabelSchema = () => useAtom(activeLabelSchemas);
 
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
@@ -110,3 +100,55 @@ export const removeFromActiveSchemas = atom(
 );
 
 export const showModal = atom(false);
+
+/**
+ * Public API for the current annotation schema context.
+ */
+export interface AnnotationSchemaContext {
+  /**
+   * Current loaded annotation schema.
+   */
+  labelSchema: Record<string, LabelSchemaMeta> | null;
+
+  /**
+   * Set the loaded annotation schema.
+   *
+   * @param schema Schema or null
+   */
+  setLabelSchema: (schema: Record<string, LabelSchemaMeta> | null) => void;
+
+  /**
+   * List of active schema paths.
+   *
+   * Each path in this list is available for annotation.
+   */
+  activeSchemaPaths: string[] | null;
+
+  /**
+   * Set the list of active schema paths.
+   *
+   * @param paths Active paths or null
+   */
+  setActiveSchemaPaths: (paths: string[] | null) => void;
+}
+
+/**
+ * Hook which provides the current {@link AnnotationSchemaContext}.
+ */
+export const useAnnotationSchemaContext = (): AnnotationSchemaContext => {
+  const [labelSchema, setLabelSchema] = useAtom<Record<
+    string,
+    LabelSchemaMeta
+  > | null>(labelSchemasData);
+  const [activeSchemaPaths, setActiveSchemaPaths] = useAtom(activeLabelSchemas);
+
+  return useMemo(
+    () => ({
+      activeSchemaPaths,
+      labelSchema,
+      setActiveSchemaPaths,
+      setLabelSchema,
+    }),
+    [activeSchemaPaths, labelSchema, setActiveSchemaPaths, setLabelSchema]
+  );
+};
