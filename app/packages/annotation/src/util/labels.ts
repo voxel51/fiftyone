@@ -52,6 +52,8 @@ const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
  */
 const isDateTimeObj = (data?: Primitive): data is { datetime: number } => {
   return (
+    data !== null &&
+    data !== undefined &&
     typeof data === "object" &&
     "datetime" in data &&
     Number.isFinite(data.datetime)
