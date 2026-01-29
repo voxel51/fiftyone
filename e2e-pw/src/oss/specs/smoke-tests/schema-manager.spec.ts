@@ -117,9 +117,8 @@ test.describe.serial("schema manager", () => {
       classes: ["value"],
     });
 
-    // Save
+    // Save (automatically navigates back to field list)
     await jsonEditor.save();
-    await schemaManager.back();
 
     // Activate
     await row.assert.hasCheckbox();
