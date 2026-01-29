@@ -6,6 +6,7 @@ import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
@@ -14,23 +15,48 @@ import {
   currentSchema,
 } from "./state";
 
+/*
+ * Updates the readOnly flag for a primitive schema.
+ * @param schema - The schema to update.
+ * @param readOnly - The readOnly flag to update - either field OR parent schema's
+ * readOnly value
+ * @returns The updated schema.
+ */
+function updateSchemaReadOnly(schema: SchemaType, readOnly: boolean) {
+  console.log("schema", schema);
+  if (readOnly) {
+    return { ...schema, readOnly };
+  }
+  // if parent/field readOnly is false don't override the
+  // primitive's readOnly flag
+  return { ...schema, readOnly: schema.read_only };
+}
+
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
+  const isLabelReadOnly = config.read_only;
+  // respect either the field OR the parent schema's readOnly flag
+  const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
     const properties = Object.entries(config?.attributes)
       .filter(([key]) => !["id", "attributes"].includes(key))
       .reduce(
-        (memo, [key, value]) => ({
-          ...memo,
-          [key]: generatePrimitiveSchema(key, { ...value, readOnly }),
-        }),
+        (schema, [key, value]) => {
+          return {
+            ...schema,
+            [key]: generatePrimitiveSchema(
+              key,
+              updateSchemaReadOnly(value, effectiveReadOnly)
+            ),
+          };
+        },
         {
           label: generatePrimitiveSchema("label", {
             type: "str",
             component: "dropdown",
             values: config?.classes || [],
-            readOnly,
+            readOnly: effectiveReadOnly,
           }),
         }
       );
@@ -42,31 +68,32 @@ const useSchema = (readOnly: boolean) => {
       },
       properties,
     };
-  }, [config, readOnly]);
+  }, [config, readOnly, isLabelReadOnly]);
 };
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseFloat(data);
-          return Number.isFinite(parsed) ? parsed : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseFloat(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseInt(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseInt(data);
-          return Number.isFinite(parsed) ? parsed : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };

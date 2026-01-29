@@ -33,10 +33,9 @@ export const createReadOnly = (name: string): SchemaType => {
   return {
     type: "string",
     view: {
-      name: "PrimitiveView",
+      name: "LabelValueView",
       label: name,
-      component: "PrimitiveView",
-      readOnly: true,
+      component: "LabelValueView",
     },
   };
 };
@@ -78,8 +77,12 @@ export const createSlider = (
     maxLabel?: string;
   }
 ): SchemaType => {
-  const { bare = false, labeled = true, minLabel = "", maxLabel = "" } =
-    options || {};
+  const {
+    bare = false,
+    labeled = true,
+    minLabel = "",
+    maxLabel = "",
+  } = options || {};
   return {
     type: "number",
     min: range[0],
@@ -244,5 +247,7 @@ export function generatePrimitiveSchema(
     }
     return createText(name, "number");
   }
-  return undefined;
+
+  console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);
+  return createReadOnly(name);
 }
