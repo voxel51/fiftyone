@@ -2,18 +2,21 @@
  * Main GUI View component for editing field schema.
  */
 
-import { LoadingSpinner } from "@fiftyone/components";
+import { LoadingSpinner, scrollable } from "@fiftyone/components";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
+import { PRIMITIVE_FIELD_TYPES } from "../../constants";
+import { useFieldType } from "../../hooks";
 import {
   EditSectionHeader,
   EmptyStateBox,
   ListContainer,
   Section,
 } from "../../styled";
-import type { SchemaConfigType } from "../../utils";
+import type { AttributeConfig, SchemaConfigType } from "../../utils";
 import AttributesSection from "./AttributesSection";
 import ClassesSection from "./ClassesSection";
+import PrimitiveFieldContent from "./PrimitiveFieldContent";
 
 // Re-export types for external use
 export type {
@@ -23,15 +26,24 @@ export type {
 } from "../../utils";
 
 interface GUIContentProps {
+  field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
-const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
+const GUIContent = ({
+  field,
+  config,
+  scanning,
+  onConfigChange,
+}: GUIContentProps) => {
+  const fType = useFieldType(field);
+  const isPrimitive = fType ? PRIMITIVE_FIELD_TYPES.has(fType) : false;
+
   const classes = useMemo(() => config?.classes || [], [config?.classes]);
   const attributes = useMemo(
-    () => config?.attributes || {},
+    () => config?.attributes || [],
     [config?.attributes]
   );
 
@@ -70,9 +82,63 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
     [config, onConfigChange]
   );
 
+  const handleAddAttribute = useCallback(
+    (attrConfig: AttributeConfig) => {
+      if (!config) return;
+      // Add new attribute at the beginning of the list
+      const newAttributes = [attrConfig, ...attributes];
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleEditAttribute = useCallback(
+    (oldName: string, attrConfig: AttributeConfig) => {
+      if (!config) return;
+      const newAttributes = attributes.map((attr) =>
+        attr.name === oldName ? attrConfig : attr
+      );
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleDeleteAttribute = useCallback(
+    (name: string) => {
+      if (!config) return;
+      const newAttributes = attributes.filter((attr) => attr.name !== name);
+      onConfigChange?.({ ...config, attributes: newAttributes });
+    },
+    [config, attributes, onConfigChange]
+  );
+
+  const handleAttributeOrderChange = useCallback(
+    (newOrder: AttributeConfig[]) => {
+      if (!config) return;
+      onConfigChange?.({ ...config, attributes: newOrder });
+    },
+    [config, onConfigChange]
+  );
+
+  // Primitive field types show a different UI
+  if (isPrimitive && fType) {
+    return (
+      <ListContainer className={scrollable}>
+        <Section>
+          <PrimitiveFieldContent
+            fieldType={fType}
+            config={config}
+            onConfigChange={onConfigChange}
+            largeLabels
+          />
+        </Section>
+      </ListContainer>
+    );
+  }
+
   if (scanning) {
     return (
-      <ListContainer>
+      <ListContainer className={scrollable}>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
@@ -96,10 +162,10 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
   }
 
   return (
-    <ListContainer>
+    <ListContainer className={scrollable}>
       <ClassesSection
         classes={classes}
-        attributeCount={Object.keys(attributes).length}
+        attributeCount={attributes.length}
         onAddClass={handleAddClass}
         onEditClass={handleEditClass}
         onDeleteClass={handleDeleteClass}
@@ -107,12 +173,10 @@ const GUIContent = ({ config, scanning, onConfigChange }: GUIContentProps) => {
       />
       <AttributesSection
         attributes={attributes}
-        onAddAttribute={() => {
-          // TODO: Implement add attribute
-        }}
-        onEditAttribute={(_name) => {
-          // TODO: Implement edit attribute
-        }}
+        onAddAttribute={handleAddAttribute}
+        onEditAttribute={handleEditAttribute}
+        onDeleteAttribute={handleDeleteAttribute}
+        onOrderChange={handleAttributeOrderChange}
       />
     </ListContainer>
   );
