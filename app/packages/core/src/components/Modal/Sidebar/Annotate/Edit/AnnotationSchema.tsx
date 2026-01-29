@@ -23,12 +23,13 @@ import {
  * @returns The updated schema.
  */
 function updateSchemaReadOnly(schema: SchemaType, readOnly: boolean) {
+  console.log("schema", schema);
   if (readOnly) {
     return { ...schema, readOnly };
   }
-  // if parents/global readOnly is false don't override the
+  // if parent/field readOnly is false don't override the
   // field's readOnly flag
-  return schema;
+  return { ...schema, readOnly: schema.read_only };
 }
 
 const useSchema = (readOnly: boolean) => {

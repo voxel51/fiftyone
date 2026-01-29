@@ -4,6 +4,7 @@ export type BaseSchemaType = {
   type: string;
   view: SchemaViewType;
   default?: unknown;
+  read_only?: boolean;
 };
 
 export type ArraySchemaType = BaseSchemaType & {
