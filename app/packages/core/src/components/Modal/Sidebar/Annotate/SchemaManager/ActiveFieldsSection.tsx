@@ -20,7 +20,7 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
@@ -32,7 +32,6 @@ import {
 import SecondaryText from "./SecondaryText";
 import { fieldIsReadOnly } from "./state";
 import { GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Edit action button for field rows
@@ -42,7 +41,7 @@ const FieldActions = ({ path }: { path: string }) => {
 
   return (
     <Tooltip
-      content="Configure annotation schema"
+      content={<Text>Configure label schema</Text>}
       anchor={Anchor.Bottom}
       portal
     >
@@ -152,7 +151,11 @@ const ActiveFieldsSection = () => {
             Active fields
           </Text>
           <Tooltip
-            content="Fields currently active and available for dataset annotation"
+            content={
+              <Text>
+                Fields currently active and available for dataset annotation
+              </Text>
+            }
             anchor={Anchor.Bottom}
             portal
           >
@@ -174,7 +177,11 @@ const ActiveFieldsSection = () => {
           Active fields
         </Text>
         <Tooltip
-          content="Fields currently active and available for dataset annotation"
+          content={
+            <Text>
+              Fields currently active and available for dataset annotation
+            </Text>
+          }
           anchor={Anchor.Top}
           portal
         >
