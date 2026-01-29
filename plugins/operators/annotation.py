@@ -6,6 +6,8 @@ Annotation label schemas operators
 |
 """
 
+import copy
+
 import fiftyone.core.annotation as foa
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
@@ -246,8 +248,16 @@ class CreateAndActivateField(foo.Operator):
                     ctx, field_name, field_type, read_only
                 )
 
-            # Set the label schema
-            ctx.dataset.update_label_schema(field_name, label_schema)
+            # Validate and set the label schema (with flags for new fields/attrs)
+            validate_label_schemas(
+                ctx.dataset,
+                {field_name: label_schema},
+                allow_new_attrs=True,
+                allow_new_fields=True,
+            )
+            label_schemas = ctx.dataset.label_schemas
+            label_schemas[field_name] = copy.deepcopy(label_schema)
+            ctx.dataset._doc.label_schemas = label_schemas
 
             # Activate the field (prepend to make it appear at top)
             active = ctx.dataset.active_label_schemas or []
