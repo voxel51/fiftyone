@@ -118,7 +118,7 @@ export const AnnotationSliceSelector: React.FC<
     [groupMediaTypesMap]
   );
 
-  // Initialize/sync slice on mount or when effective slice changes
+  // This effect initializes/syncs slice on mount or when effective slice changes
   useEffect(() => {
     if (effectiveSlice && !hasInitialized.current) {
       hasInitialized.current = true;
@@ -150,21 +150,13 @@ export const AnnotationSliceSelector: React.FC<
         return effectiveSlice;
       }
 
-      // Update both persisted and modal slice
       setPreferredSlice(sliceName);
       setModalGroupSlice(sliceName);
       applyVisibilityForSlice(sliceName);
       onSliceSelected?.();
       return sliceName;
     },
-    [
-      allSlices,
-      effectiveSlice,
-      setPreferredSlice,
-      setModalGroupSlice,
-      applyVisibilityForSlice,
-      onSliceSelected,
-    ]
+    [allSlices, effectiveSlice, applyVisibilityForSlice, onSliceSelected]
   );
 
   const sliceInfoMap = Object.fromEntries(allSlices.map((s) => [s.name, s]));

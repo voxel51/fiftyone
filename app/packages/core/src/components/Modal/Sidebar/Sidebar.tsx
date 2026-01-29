@@ -39,12 +39,12 @@ const Sidebar = () => {
 
   const loadSchemas = useLoadSchemas();
 
-  const handleSliceSelected = useCallback(() => {
-    if (!schemasLoaded && showAnnotationTab && !disabledReason) {
+  const reloadSchemas = useCallback(() => {
+    if (showAnnotationTab && !disabledReason) {
       loadSchemas();
       setSchemasLoaded(true);
     }
-  }, [schemasLoaded, showAnnotationTab, disabledReason, loadSchemas]);
+  }, [showAnnotationTab, disabledReason, loadSchemas]);
 
   // This effect resets schemas loaded state when entering explore mode
   useEffect(() => {
@@ -52,6 +52,13 @@ const Sidebar = () => {
       setSchemasLoaded(false);
     }
   }, [mode]);
+
+  // This effect loads schemas on init for valid annotation sessions
+  useEffect(() => {
+    if (!schemasLoaded) {
+      reloadSchemas();
+    }
+  }, [schemasLoaded, reloadSchemas]);
 
   const showSliceSelector =
     showAnnotationTab &&
@@ -65,7 +72,7 @@ const Sidebar = () => {
       {showSliceSelector && (
         <>
           <GroupModeTransitionManager />
-          <AnnotationSliceSelector onSliceSelected={handleSliceSelected} />
+          <AnnotationSliceSelector onSliceSelected={reloadSchemas} />
         </>
       )}
       {mode === EXPLORE || !showAnnotationTab ? (
