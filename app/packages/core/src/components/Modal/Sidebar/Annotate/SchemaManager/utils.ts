@@ -2,6 +2,7 @@
  * Utility functions for SchemaManager
  */
 
+import { is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
@@ -582,7 +583,7 @@ export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
  * Get label type options based on media type
  */
 export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
-  if (mediaType === "three-d") {
+  if (mediaType && is3d(mediaType)) {
     return LABEL_TYPE_OPTIONS_3D;
   }
   return LABEL_TYPE_OPTIONS;
