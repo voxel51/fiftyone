@@ -44,7 +44,7 @@ const FieldActions = ({ path }: { path: string }) => {
 
   return (
     <Tooltip
-      content="Configure annotation schema"
+      content={<Text>Configure label schema</Text>}
       anchor={Anchor.Bottom}
       portal
     >
@@ -160,7 +160,11 @@ const ActiveFieldsSection = () => {
             Active fields
           </Text>
           <Tooltip
-            content="Fields currently active and available for dataset annotation"
+            content={
+              <Text>
+                Fields currently active and available for dataset annotation
+              </Text>
+            }
             anchor={Anchor.Bottom}
             portal
           >
@@ -190,7 +194,11 @@ const ActiveFieldsSection = () => {
           Active fields
         </Text>
         <Tooltip
-          content="Fields currently active and available for dataset annotation"
+          content={
+            <Text>
+              Fields currently active and available for dataset annotation
+            </Text>
+          }
           anchor={Anchor.Top}
           portal
         >

@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
-import useExit from "./useExit";
 import {
   DelegatingUndoable,
   KnownContexts,

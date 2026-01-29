@@ -21,6 +21,17 @@ export const useRegisterAnnotationEventHandlers = () => {
   );
 
   useAnnotationEventHandler(
+    "annotation:persistenceInFlight",
+    useCallback(() => {
+      setConfig({
+        iconName: IconName.Spinner,
+        message: "Saving changes...",
+        variant: Variant.Secondary,
+      });
+    }, [setConfig])
+  );
+
+  useAnnotationEventHandler(
     "annotation:persistenceSuccess",
     useCallback(() => {
       setConfig({
