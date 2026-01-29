@@ -98,6 +98,7 @@ export class DefaultContextManager implements ContextManager {
   }
 
   reset(): void {
+    this.isContextActive = false;
     this.enterCallbacks = [];
     this.exitCallbacks = [];
   }
