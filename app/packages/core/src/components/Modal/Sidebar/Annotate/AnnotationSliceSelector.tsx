@@ -1,9 +1,11 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
+import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
+import { isEditing } from "./Edit";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
 const Container = styled.div`
@@ -60,6 +62,8 @@ const SliceOption = ({ value, isDisabled, mediaType }: SliceOptionProps) => {
 export const AnnotationSliceSelector: React.FC<
   AnnotationSliceSelectorProps
 > = ({ onSliceSelected }) => {
+  const isEditing_ = useAtomValue(isEditing);
+
   const { allSlices, supportedSlices, preferredSlice, setPreferredSlice } =
     useGroupAnnotationSlices();
 
@@ -161,7 +165,7 @@ export const AnnotationSliceSelector: React.FC<
 
   const sliceInfoMap = Object.fromEntries(allSlices.map((s) => [s.name, s]));
 
-  if (allSlices.length === 0) {
+  if (isEditing_ || allSlices.length === 0) {
     return null;
   }
 
