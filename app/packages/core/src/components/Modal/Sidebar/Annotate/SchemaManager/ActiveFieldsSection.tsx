@@ -41,7 +41,7 @@ const FieldActions = ({ path }: { path: string }) => {
 
   return (
     <Tooltip
-      content={<Text>Configure annotation schema</Text>}
+      content={<Text>Configure label schema</Text>}
       anchor={Anchor.Bottom}
       portal
     >
