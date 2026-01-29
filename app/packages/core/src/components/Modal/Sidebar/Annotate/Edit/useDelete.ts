@@ -92,7 +92,6 @@ export default function useDelete() {
           try {
             const fieldSchema = getFieldSchema(schema, label?.path);
             if (!fieldSchema) {
-              setSaving(false);
               setNotification({
                 msg: `Error restoring deleted label. "${
                   label?.path ?? "unknown"
@@ -101,10 +100,12 @@ export default function useDelete() {
               });
               return;
             }
+            setSaving(true);
             scene?.addOverlay(label.overlay);
             await commandBus.execute(
               new UpsertAnnotationCommand(label, fieldSchema)
             );
+            setSaving(false);
           } catch (error) {
             console.error(error);
             setSaving(false);

@@ -16,13 +16,6 @@ import PrimitiveWrapper from "./PrimitiveWrapper";
 import { currentField, currentOverlay, currentType } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
-import useDelete from "./useDelete";
-import { current } from "../Edit/state";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
