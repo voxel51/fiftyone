@@ -546,7 +546,7 @@ def _validate_attributes(
             if attr in validated:
                 raise ValueError(
                     f"'{foac.ATTRIBUTES}' setting for field '{field_name}' "
-                    f"ha duplicate '{attr}' settings"
+                    f"has duplicate '{attr}' settings"
                 )
 
             validated.add(attr)
