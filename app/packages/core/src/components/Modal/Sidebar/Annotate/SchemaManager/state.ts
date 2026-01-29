@@ -21,6 +21,15 @@ import { isSystemReadOnlyField } from "./constants";
 export { currentField } from "../state";
 
 // =============================================================================
+// New Field Mode State
+// =============================================================================
+
+/**
+ * Whether we're in "add new field" mode
+ */
+export const isNewFieldMode = atom(false);
+
+// =============================================================================
 // Field Selection State
 // =============================================================================
 

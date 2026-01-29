@@ -44,6 +44,12 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 // Attribute Type & Component Constants
 // =============================================================================
 
+// Label type options for new field creation
+export const LABEL_TYPE_OPTIONS = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "classification", data: { label: "Classification" } },
+];
+
 // Attribute type labels keyed by schema type
 export const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
   str: "String",
@@ -64,6 +70,7 @@ export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
 );
 // Component options by type
 // Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py
+
 export const COMPONENT_OPTIONS: Record<
   string,
   Array<{ id: string; label: string; icon: IconName }>

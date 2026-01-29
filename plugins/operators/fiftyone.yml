@@ -52,6 +52,7 @@ operators:
 
   # annotation
   - activate_label_schemas
+  - create_and_activate_field
   - deactivate_label_schemas
   - delete_label_schemas
   - get_label_schemas
