@@ -10,6 +10,7 @@ import { current, hasChanges, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 
 const STORE = getDefaultStore();
 
@@ -21,6 +22,7 @@ export default function useFocus() {
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
   const onSave = useSave();
+  const { quickDrawActive } = useQuickDraw();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -53,10 +55,11 @@ export default function useFocus() {
           return;
         }
 
-        // there are unsaved changes, ask for confirmation
-        scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
         await onSave();
-        onExit();
+
+        if (!quickDrawActive) {
+          onExit();
+        }
 
         scene?.deselectOverlay(id, {
           ignoreSideEffects: true,
