@@ -167,7 +167,10 @@ class ValidateLabelSchemas(foo.Operator):
         errors = []
         try:
             validate_label_schemas(
-                ctx.dataset, ctx.params.get("label_schemas", {})
+                ctx.dataset,
+                ctx.params.get("label_schemas", {}),
+                allow_new_attrs=True,
+                allow_new_fields=True,
             )
         except ValidationErrors as exceptions:
             for exception in list(exceptions.exceptions):
