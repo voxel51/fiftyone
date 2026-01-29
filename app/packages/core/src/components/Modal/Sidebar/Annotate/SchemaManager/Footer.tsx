@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import {
   Button,
   Orientation,
@@ -7,6 +6,7 @@ import {
   Stack,
   Variant,
 } from "@voxel51/voodo";
+import { ReactNode } from "react";
 import { EditFieldFooter } from "./styled";
 
 interface ButtonConfig {
@@ -25,7 +25,7 @@ const Footer = ({
   leftContent?: ReactNode;
 }) => {
   return (
-    <EditFieldFooter>
+    <EditFieldFooter data-cy="edit-field-footer">
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
@@ -40,6 +40,7 @@ const Footer = ({
       >
         {secondaryButton && (
           <Button
+            data-cy={"secondary-button"}
             size={Size.Md}
             variant={Variant.Secondary}
             onClick={secondaryButton.onClick}
@@ -49,6 +50,7 @@ const Footer = ({
           </Button>
         )}
         <Button
+          data-cy={"primary-button"}
           size={Size.Md}
           variant={Variant.Primary}
           onClick={primaryButton.onClick}

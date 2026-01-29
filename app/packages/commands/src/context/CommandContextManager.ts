@@ -49,8 +49,8 @@ export class CommandContextManager {
     }
     this.defaultContext.registerCommand(
       KnownCommands.Undo,
-      () => {
-        this.getActiveContext().undo();
+      async () => {
+        await this.getActiveContext().undo();
       },
       () => {
         return this.getActiveContext().canUndo();
@@ -62,8 +62,8 @@ export class CommandContextManager {
     this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
     this.defaultContext.registerCommand(
       KnownCommands.Redo,
-      () => {
-        this.getActiveContext().redo();
+      async () => {
+        await this.getActiveContext().redo();
       },
       () => {
         return this.getActiveContext().canRedo();
@@ -194,8 +194,8 @@ export class CommandContextManager {
    * the command must be previously registered.
    * @param command The command or id
    */
-  public executeCommand(command: string | Command) {
-    this.getActiveContext().executeCommand(command);
+  public async executeCommand(command: string | Command) {
+    await this.getActiveContext().executeCommand(command);
   }
 
   /**
@@ -224,7 +224,7 @@ export class CommandContextManager {
    * @param event the key event
    * @returns Nothing
    */
-  public handleKeyDown(event: KeyboardEvent): void {
+  public async handleKeyDown(event: KeyboardEvent): Promise<void> {
     const active = document.activeElement;
 
     // Prevent shortcuts when interacting with any form field
@@ -238,7 +238,7 @@ export class CommandContextManager {
     }
     const match = this.getActiveContext().handleKeyDown(event);
     if (match.full) {
-      this.getActiveContext().executeCommand(match.full);
+      await this.getActiveContext().executeCommand(match.full);
       event.stopPropagation();
       event.preventDefault();
     }

@@ -42,11 +42,11 @@ export const useUndoRedo = (
   }, [activate, deactivate]);
 
   const undo = useCallback(async () => {
-    boundContext.undo();
+    await boundContext.undo();
   }, [boundContext]);
 
   const redo = useCallback(async () => {
-    boundContext.redo();
+    await boundContext.redo();
   }, [boundContext]);
 
   const clear = useCallback(() => {

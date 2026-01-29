@@ -45,17 +45,6 @@ const ValuesList = ({
   const [newValue, setNewValue] = useState("");
   const [inputError, setInputError] = useState<string | null>(null);
 
-  const validateValue = (val: string): string | null => {
-    if (!val.trim()) return null;
-    if (isNumeric) {
-      const num = parseFloat(val);
-      if (isNaN(num)) return "Must be a number";
-      if (isInteger && !Number.isInteger(num)) return "Must be an integer";
-    }
-    if (values.includes(val.trim())) return "Value already exists";
-    return null;
-  };
-
   const handleAddValue = () => {
     const trimmed = newValue.trim();
     const validationError = validateSingleValue(
@@ -64,7 +53,6 @@ const ValuesList = ({
       isNumeric,
       isInteger
     );
-
     if (validationError) {
       setInputError(validationError);
       return;

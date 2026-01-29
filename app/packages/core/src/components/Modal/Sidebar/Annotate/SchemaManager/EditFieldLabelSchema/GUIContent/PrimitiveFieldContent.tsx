@@ -12,24 +12,23 @@ import {
   TextVariant,
 } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
+import PrimitiveRenderer from "../../../Edit/PrimitiveRenderer";
+import { generatePrimitiveSchema } from "../../../Edit/schemaHelpers";
 import {
   COMPONENT_OPTIONS,
-  NUMERIC_TYPES,
   componentNeedsRange,
   componentNeedsValues,
   getSchemaTypeFromFieldType,
+  NUMERIC_TYPES,
 } from "../../constants";
 import type { SchemaConfigType } from "../../utils";
-import PrimitiveRenderer from "../../../Edit/PrimitiveRenderer";
-import { generatePrimitiveSchema } from "../../../Edit/schemaHelpers";
-import { validateRange, validateValues } from "../../utils";
 import ComponentTypeButton from "./ComponentTypeButton";
 import RangeInput from "./RangeInput";
 import ValuesList from "./ValuesList";
 
 interface PrimitiveFieldContentProps {
-  /** Field path name (e.g., "my_field") */
-  field?: string;
+  /** Field name */
+  field: string;
   /** Field type from fieldType atom (e.g., "Float", "String") */
   fieldType: string;
   /** Current schema config */
@@ -85,11 +84,38 @@ const PrimitiveFieldContent = ({
 
   // Validation errors
   const errors = useMemo(() => {
-    return {
-      values: showValues ? validateValues(values, isNumericType) : null,
-      range: showRange ? validateRange(range) : null,
+    const result = {
+      values: null as string | null,
+      range: null as string | null,
     };
-  }, [showValues, showRange, values, range, isNumericType]);
+
+    // Values validation - required for radio/dropdown/checkboxes
+    if (showValues && values.length === 0) {
+      result.values = "At least one value is required";
+    }
+
+    // Range validation - required for slider
+    if (showRange) {
+      if (!range || range.min === "" || range.max === "") {
+        result.range = "Min and max are required";
+      } else {
+        const min = parseFloat(range.min);
+        const max = parseFloat(range.max);
+        if (isNaN(min) || isNaN(max)) {
+          result.range = "Min and max must be valid numbers";
+        } else if (min >= max) {
+          result.range = "Min must be less than max";
+        }
+      }
+    }
+
+    return result;
+  }, [showValues, showRange, values, range]);
+
+  const hasErrors = useMemo(() => {
+    if (!errors) return false;
+    return Object.values(errors).some((error) => error !== null);
+  }, [errors]);
 
   // Handlers
   const handleComponentChange = useCallback(
@@ -160,10 +186,7 @@ const PrimitiveFieldContent = ({
     setTouched((prev) => ({ ...prev, [field]: true }));
   }, []);
 
-  const hasErrors = !!(errors.values || errors.range);
-
   const previewSchema = useMemo(() => {
-    if (!field) return undefined;
     return generatePrimitiveSchema(field, {
       type: schemaType,
       component,
@@ -173,7 +196,7 @@ const PrimitiveFieldContent = ({
         : undefined,
       choices: componentOptions.map((opt) => opt.label),
     });
-  }, [field, schemaType, component, values, range, componentOptions]);
+  }, [schemaType, component, values, range, componentOptions]);
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
@@ -187,7 +210,7 @@ const PrimitiveFieldContent = ({
           >
             Input type
           </Text>
-          <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <div style={{ width: "100%", display: "flex", gap: 8 }}>
             {componentOptions.map((opt) => (
               <ComponentTypeButton
                 key={opt.id}
@@ -198,7 +221,7 @@ const PrimitiveFieldContent = ({
                 largeText={largeLabels}
               />
             ))}
-          </Stack>
+          </div>
         </div>
       )}
 
@@ -226,6 +249,22 @@ const PrimitiveFieldContent = ({
             largeLabels={largeLabels}
           />
         </div>
+      )}
+      {!hasErrors && (
+        <>
+          <Stack orientation={Orientation.Column} spacing={Spacing.Sm}>
+            <Text variant={TextVariant.Lg}>Field Preview:</Text>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              How this field will appear to users during annotation
+            </Text>
+          </Stack>
+          <PrimitiveRenderer
+            type={schemaType}
+            fieldValue={null}
+            handleChange={() => {}}
+            primitiveSchema={previewSchema}
+          />
+        </>
       )}
     </Stack>
   );

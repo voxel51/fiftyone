@@ -131,6 +131,7 @@ const AttributesSection = ({
           onCancel: handleCancelEdit,
           onDelete: handleDeleteAttribute,
           canDrag: true,
+          isEditing: true,
         });
       }
 

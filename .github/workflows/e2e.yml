@@ -15,6 +15,7 @@ jobs:
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
       FIFTYONE_PLUGINS_DIR: ${{ github.workspace }}/e2e-pw/src/shared/assets/plugins
+      VFF_EXP_ANNOTATION: true
     defaults:
       run:
         shell: bash

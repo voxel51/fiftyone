@@ -21,6 +21,7 @@ import {
 } from "@voxel51/voodo";
 import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
+import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
 import {
   useFieldIsReadOnly,
@@ -30,7 +31,6 @@ import {
   useSetCurrentField,
 } from "./hooks";
 import { CollapsibleHeader, GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Actions component for hidden field rows
@@ -53,9 +53,15 @@ const HiddenFieldActions = ({
 
   return (
     <span className="flex items-center gap-2">
-      {isUnsupported && <Pill size={Size.Md}>Unsupported</Pill>}
+      {isUnsupported && (
+        <Pill data-cy="pill" size={Size.Md}>
+          Unsupported
+        </Pill>
+      )}
       {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
-        <Pill size={Size.Md}>Read-only</Pill>
+        <Pill data-cy="pill" size={Size.Md}>
+          Read-only
+        </Pill>
       )}
       {!isSystemReadOnly && !isUnsupported && (
         <>
@@ -65,12 +71,13 @@ const HiddenFieldActions = ({
               anchor={Anchor.Bottom}
               portal
             >
-              <Clickable onClick={() => setField(path)}>
+              <Clickable data-cy={"edit"} onClick={() => setField(path)}>
                 <Icon name={IconName.Edit} size={Size.Md} />
               </Clickable>
             </Tooltip>
           ) : (
             <Button
+              data-cy="scan"
               size={Size.Sm}
               variant={Variant.Secondary}
               onClick={() => setField(path)}
@@ -111,15 +118,14 @@ const HiddenFieldsSection = () => {
           data: {
             canSelect,
             canDrag: false,
-            primaryContent: <span style={paddingStyle}>{path}</span>,
+            "data-cy": `field-row-${path}`,
+            primaryContent: path,
             secondaryContent: (
-              <span style={paddingStyle}>
-                {buildFieldSecondaryContent(
-                  fieldTypes[path],
-                  fieldAttrCounts[path],
-                  isSystemReadOnly
-                )}
-              </span>
+              <SecondaryText
+                fieldType={fieldTypes[path] ?? ""}
+                attrCount={fieldAttrCounts[path]}
+                isSystemReadOnly={isSystemReadOnly}
+              />
             ),
             actions: <HiddenFieldActions path={path} hasSchema={hasSchema} />,
           } as ListItemProps,
@@ -166,6 +172,7 @@ const HiddenFieldsSection = () => {
       </GUISectionHeader>
       {expanded && (
         <RichList
+          data-cy={"hidden-fields"}
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}

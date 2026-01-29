@@ -82,18 +82,6 @@ export interface AttributeFormData {
   read_only: boolean;
 }
 
-// Form state for attribute editing (uses strings for form inputs)
-export interface AttributeFormData {
-  name: string;
-  type: string;
-  component: string;
-  values: string[];
-  range: { min: string; max: string } | null;
-  default: string;
-  listDefault: (string | number)[]; // For list types
-  read_only: boolean;
-}
-
 // =============================================================================
 // Schema Type Guards
 // =============================================================================
@@ -376,7 +364,6 @@ export interface AttributeFormErrors {
  * Validate that a values list is non-empty and contains valid entries.
  * Used by both attribute forms and primitive field config.
  */
-
 export const validateValues = (
   values: string[],
   isNumeric: boolean

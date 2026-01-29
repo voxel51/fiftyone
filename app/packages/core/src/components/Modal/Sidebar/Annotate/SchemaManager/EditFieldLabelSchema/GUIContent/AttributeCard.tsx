@@ -21,6 +21,8 @@ interface AttributeCardProps {
   onDelete?: () => void;
   /** Whether the card can be dragged (default: false) */
   canDrag?: boolean;
+  /** When true, name and type are rendered as read-only text */
+  isEditing?: boolean;
 }
 
 /**
@@ -37,6 +39,7 @@ export const createAttributeCardItem = ({
   onCancel,
   onDelete,
   canDrag = false,
+  isEditing = false,
 }: AttributeCardProps): {
   id: string;
   data: ListItemProps;
@@ -59,6 +62,7 @@ export const createAttributeCardItem = ({
         formState={formState}
         onFormStateChange={onFormStateChange}
         nameError={nameError}
+        isEditing={isEditing}
       />
     ),
   },

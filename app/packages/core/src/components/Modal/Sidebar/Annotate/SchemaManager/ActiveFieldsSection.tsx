@@ -6,6 +6,7 @@
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
@@ -21,12 +22,9 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { fieldAttributeCount, fieldType } from "../state";
-import { fieldIsReadOnly } from "./state";
-import { GUISectionHeader } from "./styled";
 import { Item } from "./Components";
 import {
   useActiveFieldsList,
@@ -34,7 +32,9 @@ import {
   useSelectedActiveFields,
   useSetCurrentField,
 } from "./hooks";
-import { buildFieldSecondaryContent } from "./utils";
+import SecondaryText from "./SecondaryText";
+import { fieldIsReadOnly } from "./state";
+import { GUISectionHeader } from "./styled";
 
 /**
  * Edit action button for field rows
@@ -48,7 +48,7 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable onClick={() => setField(path)}>
+      <Clickable data-cy="edit" onClick={() => setField(path)}>
         <Icon name={IconName.Edit} size={Size.Md} />
       </Clickable>
     </Tooltip>
@@ -112,11 +112,14 @@ const ActiveFieldsSection = () => {
         data: {
           canSelect: true,
           canDrag: true,
+          "data-cy": `field-row-${path}`,
           primaryContent: path,
-          secondaryContent: buildFieldSecondaryContent(
-            fieldTypes[path],
-            fieldAttrCounts[path],
-            false
+          secondaryContent: (
+            <SecondaryText
+              fieldType={fieldTypes[path] ?? ""}
+              attrCount={fieldAttrCounts[path]}
+              isSystemReadOnly={false}
+            />
           ),
           actions: (
             <span className="flex items-center gap-2">
@@ -153,7 +156,9 @@ const ActiveFieldsSection = () => {
     return (
       <>
         <GUISectionHeader>
-          <Text variant={TextVariant.Lg}>Active fields</Text>
+          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+            Active fields
+          </Text>
           <Tooltip
             content="Fields currently active and available for dataset annotation"
             anchor={Anchor.Bottom}
@@ -181,7 +186,9 @@ const ActiveFieldsSection = () => {
   return (
     <>
       <GUISectionHeader>
-        <Text variant={TextVariant.MdBold}>Active fields</Text>
+        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          Active fields
+        </Text>
         <Tooltip
           content="Fields currently active and available for dataset annotation"
           anchor={Anchor.Top}
@@ -200,6 +207,7 @@ const ActiveFieldsSection = () => {
         </Button>
       </GUISectionHeader>
       <RichList
+        data-cy={"active-fields"}
         listItems={listItems}
         draggable={true}
         onOrderChange={handleOrderChange}
