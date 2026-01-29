@@ -3,17 +3,11 @@ import { useCommandBus } from "@fiftyone/command-bus";
 import type { BaseOverlay } from "@fiftyone/lighter";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
-import { atom, getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { DETECTION } from "@fiftyone/utilities";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
-import {
-  addValue,
-  current,
-  editing,
-  savedLabel,
-  type LabelType,
-} from "./state";
+import { addValue, current, savedLabel } from "./state";
 import { useQuickDraw } from "./useQuickDraw";
 import useCreate from "./useCreate";
 import useExit from "./useExit";
@@ -30,7 +24,7 @@ export default function useSave() {
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
   const [isSaving, setSaving] = useAtom(isSavingAtom);
-  const exit = useExit(false);
+  const exit = useExit();
   const setNotification = fos.useNotification();
   const { quickDrawActive, trackLastUsedDetection } = useQuickDraw();
   const createDetection = useCreate(DETECTION);
