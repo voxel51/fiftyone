@@ -7,8 +7,8 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
 import { currentField, labelSchemaData } from "../../state";
-import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 import { currentLabelSchema } from "../state";
+import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 
 // =============================================================================
 // Helpers

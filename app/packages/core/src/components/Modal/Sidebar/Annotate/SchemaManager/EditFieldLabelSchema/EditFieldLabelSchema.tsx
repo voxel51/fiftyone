@@ -16,8 +16,8 @@ import {
 } from "@voxel51/voodo";
 import { useCallback, useState } from "react";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { useToggleFieldVisibility } from "../hooks";
 import Footer from "../Footer";
+import { useToggleFieldVisibility } from "../hooks";
 import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";

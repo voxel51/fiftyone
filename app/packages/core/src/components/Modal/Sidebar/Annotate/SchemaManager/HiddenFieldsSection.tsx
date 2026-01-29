@@ -5,6 +5,7 @@
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
@@ -19,7 +20,6 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
 import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
@@ -146,7 +146,7 @@ const HiddenFieldsSection = () => {
   }
 
   return (
-    <>
+    <div data-cy="hidden-fields">
       <GUISectionHeader>
         <CollapsibleHeader
           onClick={() => setExpanded((v) => !v)}
@@ -178,7 +178,7 @@ const HiddenFieldsSection = () => {
           onSelected={handleSelected}
         />
       )}
-    </>
+    </div>
   );
 };
 

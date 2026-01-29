@@ -20,7 +20,7 @@ import {
   TextVariant,
   Tooltip,
 } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
 import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
@@ -32,7 +32,6 @@ import {
 import SecondaryText from "./SecondaryText";
 import { fieldIsReadOnly } from "./state";
 import { GUISectionHeader } from "./styled";
-import { buildFieldSecondaryContent } from "./utils";
 
 /**
  * Edit action button for field rows
@@ -146,7 +145,7 @@ const ActiveFieldsSection = () => {
 
   if (!fields?.length) {
     return (
-      <>
+      <div>
         <GUISectionHeader>
           <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Active fields
@@ -163,7 +162,7 @@ const ActiveFieldsSection = () => {
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
-      </>
+      </div>
     );
   }
 

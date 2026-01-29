@@ -39,11 +39,15 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
 
   dataset = fo.Dataset("${datasetName}")
 
+<<<<<<< HEAD
   sample = fo.Sample(
       _id=ObjectId("${id}"),
       classification=fo.Classification(label="value"),
       filepath="/tmp/blank.png"
   )
+=======
+  sample = fo.Sample(_id=ObjectId("${id}"), filepath="/tmp/blank.png")
+>>>>>>> e2e/label-editing-im-x1
   dataset._sample_collection.insert_many(
       [dataset._make_dict(sample, include_id=True)]
   )
