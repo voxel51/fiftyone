@@ -5,7 +5,7 @@ import {
   useModalExplorEntries,
 } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
 import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
@@ -34,31 +34,14 @@ const Sidebar = () => {
   const { showAnnotationTab, disabledReason, isGroupedDataset } =
     useCanAnnotate();
 
-  // Track whether we've loaded schemas for this session
-  const [schemasLoaded, setSchemasLoaded] = useState(false);
-
   const loadSchemas = useLoadSchemas();
-
-  const reloadSchemas = useCallback(() => {
-    if (showAnnotationTab && !disabledReason) {
-      loadSchemas();
-      setSchemasLoaded(true);
-    }
-  }, [showAnnotationTab, disabledReason, loadSchemas]);
-
-  // This effect resets schemas loaded state when entering explore mode
-  useEffect(() => {
-    if (mode === EXPLORE) {
-      setSchemasLoaded(false);
-    }
-  }, [mode]);
 
   // This effect loads schemas on init for valid annotation sessions
   useEffect(() => {
-    if (!schemasLoaded) {
-      reloadSchemas();
+    if (showAnnotationTab && !disabledReason) {
+      loadSchemas();
     }
-  }, [schemasLoaded, reloadSchemas]);
+  }, [loadSchemas]);
 
   const showSliceSelector =
     showAnnotationTab &&
@@ -74,7 +57,7 @@ const Sidebar = () => {
       {showAnnotationTab && <Mode />}
       {showTransitionManager && <GroupModeTransitionManager />}
       {showSliceSelector && (
-        <AnnotationSliceSelector onSliceSelected={reloadSchemas} />
+        <AnnotationSliceSelector onSliceSelected={loadSchemas} />
       )}
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
