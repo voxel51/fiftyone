@@ -3,8 +3,9 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useNotification } from "@fiftyone/state";
+import { mediaType, useNotification } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -20,7 +21,6 @@ import {
   labelSchemasData,
   removeFromActiveSchemas,
   showModal,
-  currentField,
 } from "../state";
 import {
   draftJsonContent,
@@ -545,4 +545,15 @@ export const useNewFieldMode = () => {
 export const useExitNewFieldMode = () => {
   const setNewFieldMode = useSetAtom(isNewFieldMode);
   return useCallback(() => setNewFieldMode(false), [setNewFieldMode]);
+};
+
+// =============================================================================
+// Media Type Hook
+// =============================================================================
+
+/**
+ * Hook to get the current dataset media type
+ */
+export const useMediaType = () => {
+  return useRecoilValue(mediaType);
 };

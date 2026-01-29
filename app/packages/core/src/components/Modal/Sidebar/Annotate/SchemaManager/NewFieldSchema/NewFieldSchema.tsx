@@ -20,14 +20,12 @@ import {
   ToggleSwitch,
 } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
-import {
-  ATTRIBUTE_TYPE_OPTIONS,
-  LABEL_TYPE_OPTIONS,
-  getDefaultComponent,
-} from "../constants";
+import { ATTRIBUTE_TYPE_OPTIONS, getDefaultComponent } from "../constants";
+import { getLabelTypeOptions } from "../utils";
 import {
   useExitNewFieldMode,
   useLabelSchemasData,
+  useMediaType,
   useSetActiveLabelSchemas,
   useSetLabelSchemasData,
 } from "../hooks";
@@ -50,15 +48,37 @@ const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
   { name: "confidence", type: "float", component: "text" },
 ];
 
-// Detection also has 'index' field
+// Detection has 'index' and 'mask_path' fields
 const DEFAULT_DETECTION_ATTRIBUTES: AttributeConfig[] = [
   ...BASE_LABEL_ATTRIBUTES,
   { name: "index", type: "int", component: "text" },
+  { name: "mask_path", type: "str", component: "text" },
 ];
 
 // Classification uses base attributes only
 const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
   BASE_LABEL_ATTRIBUTES;
+
+// Polyline has 'closed', 'filled', and 'index' fields
+const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "closed", type: "bool", component: "toggle" },
+  { name: "filled", type: "bool", component: "toggle" },
+  { name: "index", type: "int", component: "text" },
+];
+
+// Get default attributes for a label type
+const getDefaultAttributesForType = (labelType: string): AttributeConfig[] => {
+  switch (labelType) {
+    case "detections":
+      return DEFAULT_DETECTION_ATTRIBUTES;
+    case "polylines":
+      return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "classification":
+    default:
+      return DEFAULT_CLASSIFICATION_ATTRIBUTES;
+  }
+};
 
 // Convert schema type to field type format (e.g., "str" -> "Str")
 const toFieldType = (schemaType: string): string => {
@@ -92,6 +112,13 @@ const NewFieldSchema = () => {
   const setActiveLabelSchemas = useSetActiveLabelSchemas();
   const exitNewFieldMode = useExitNewFieldMode();
   const schemasData = useLabelSchemasData();
+  const currentMediaType = useMediaType();
+
+  // Get label type options based on media type
+  const labelTypeOptions = useMemo(
+    () => getLabelTypeOptions(currentMediaType),
+    [currentMediaType]
+  );
 
   // Validate field name
   const fieldNameError = useMemo(() => {
@@ -115,11 +142,7 @@ const NewFieldSchema = () => {
   const handleLabelTypeChange = useCallback((newType: string) => {
     setLabelType(newType);
     // Reset attributes to defaults for the new type
-    setAttributes(
-      newType === "detections"
-        ? DEFAULT_DETECTION_ATTRIBUTES
-        : DEFAULT_CLASSIFICATION_ATTRIBUTES
-    );
+    setAttributes(getDefaultAttributesForType(newType));
     setNewAttributes(new Set());
     setClasses([]);
   }, []);
@@ -359,9 +382,7 @@ const NewFieldSchema = () => {
                 }
               }}
               options={
-                category === "label"
-                  ? LABEL_TYPE_OPTIONS
-                  : ATTRIBUTE_TYPE_OPTIONS
+                category === "label" ? labelTypeOptions : ATTRIBUTE_TYPE_OPTIONS
               }
             />
           </div>

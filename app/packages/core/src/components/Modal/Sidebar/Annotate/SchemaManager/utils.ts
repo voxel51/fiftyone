@@ -8,6 +8,8 @@ import {
   componentNeedsRange,
   componentNeedsValues,
   getDefaultComponent,
+  LABEL_TYPE_OPTIONS,
+  LABEL_TYPE_OPTIONS_3D,
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -571,3 +573,17 @@ export const getAttributeFormErrors = (
  */
 export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
   !!(errors.values || errors.range || errors.default);
+
+// =============================================================================
+// Media Type Helpers
+// =============================================================================
+
+/**
+ * Get label type options based on media type
+ */
+export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
+  if (mediaType === "three-d") {
+    return LABEL_TYPE_OPTIONS_3D;
+  }
+  return LABEL_TYPE_OPTIONS;
+};

@@ -44,10 +44,17 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 // Attribute Type & Component Constants
 // =============================================================================
 
-// Label type options for new field creation
+// Label type options for new field creation (image datasets)
 export const LABEL_TYPE_OPTIONS = [
   { id: "detections", data: { label: "Detections" } },
   { id: "classification", data: { label: "Classification" } },
+];
+
+// Label type options for 3D datasets
+export const LABEL_TYPE_OPTIONS_3D = [
+  { id: "detections", data: { label: "3D Cuboids" } },
+  { id: "classification", data: { label: "3D Classification" } },
+  { id: "polylines", data: { label: "3D Polylines" } },
 ];
 
 // Attribute type labels keyed by schema type
