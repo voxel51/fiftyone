@@ -1,5 +1,4 @@
-import { type PrimitiveAtom } from "jotai";
-import { atomWithDefault, atomWithStorage } from "jotai/utils";
+import { atomWithStorage } from "jotai/utils";
 import { createDatasetKeyedStorage, parseDatasetNameFromUrl } from "./utils";
 
 /**
@@ -12,12 +11,6 @@ export interface GroupVisibilityConfigSnapshot {
   threeDViewer: boolean;
   slice: string | null;
 }
-
-/**
- * Stores the visibility settings snapshot from before entering Annotate mode.
- */
-export const explorerVisibilitySnapshotAtom: PrimitiveAtom<GroupVisibilityConfigSnapshot | null> =
-  atomWithDefault<GroupVisibilityConfigSnapshot | null>(() => null);
 
 /**
  * Persisted annotation slice selection for grouped datasets.

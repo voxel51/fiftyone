@@ -2,11 +2,10 @@ import * as fos from "@fiftyone/state";
 import {
   ANNOTATE,
   EXPLORE,
-  explorerVisibilitySnapshotAtom,
   GroupVisibilityConfigSnapshot,
   modalMode,
 } from "@fiftyone/state";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState } from "recoil";
 
@@ -33,12 +32,12 @@ export function useGroupAnnotationModeController() {
     fos.groupMedia3dVisibleSetting
   );
 
-  const [visibilitySnapshot, setVisibilitySnapshot] = useAtom(
-    explorerVisibilitySnapshotAtom
-  );
-
   // Track the previous mode for detecting transitions
   const prevModeRef = useRef(mode);
+
+  const visibilitySnapshotRef = useRef<GroupVisibilityConfigSnapshot | null>(
+    null
+  );
 
   const captureVisibility = useCallback((): GroupVisibilityConfigSnapshot => {
     return {
@@ -62,19 +61,19 @@ export function useGroupAnnotationModeController() {
     []
   );
 
-  // This effects handles mode transitions
+  // This effect handles mode transitions
   useEffect(() => {
     const prevMode = prevModeRef.current;
 
     if (prevMode === EXPLORE && mode === ANNOTATE) {
       // Entering Annotate mode: capture current visibility
-      setVisibilitySnapshot(captureVisibility());
+      visibilitySnapshotRef.current = captureVisibility();
     } else if (prevMode === ANNOTATE && mode === EXPLORE) {
       // Returning to Explore mode: restore visibility
-      restoreVisibility(visibilitySnapshot);
-      setVisibilitySnapshot(null);
+      restoreVisibility(visibilitySnapshotRef.current);
+      visibilitySnapshotRef.current = null;
     }
 
     prevModeRef.current = mode;
-  }, [mode, captureVisibility, restoreVisibility, visibilitySnapshot]);
+  }, [mode, captureVisibility, restoreVisibility]);
 }
