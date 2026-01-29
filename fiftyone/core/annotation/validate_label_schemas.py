@@ -411,11 +411,17 @@ def _validate_label_field_label_schema(
     settings = foac.LABEL_SETTINGS
     values = label_schema.get(foac.CLASSES, None)
     if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, str)
+        _validate_values_setting(field_name, values, str, key=foac.CLASSES)
         settings = settings.union({foac.CLASSES})
 
     for key, value in label_schema.items():
         if key not in settings:
+            if key == foac.CLASSES:
+                raise ValueError(
+                    f"'{foac.CLASSES}' requires a {foac.DROPDOWN} or "
+                    f"{foac.RADIO} '{foac.COMPONENT}' for field '{field_name}'"
+                )
+
             _raise_unknown_setting_error(key, field_name)
 
         if key == foac.ATTRIBUTES:
