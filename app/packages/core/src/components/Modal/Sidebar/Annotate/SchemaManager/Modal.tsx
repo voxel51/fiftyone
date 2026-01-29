@@ -15,7 +15,7 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, { useActivateFields, useDeactivateFields } from "./GUIView";
+import GUIView from "./GUIView";
 import {
   useActivateFields,
   useCurrentField,

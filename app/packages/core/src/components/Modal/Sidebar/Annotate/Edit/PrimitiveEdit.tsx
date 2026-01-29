@@ -1,9 +1,7 @@
 import { useSampleMutationManager } from "@fiftyone/annotation";
 import { Primitive } from "@fiftyone/utilities";
 import { Button, Orientation, Stack, Variant } from "@voxel51/voodo";
-import { useCallback, useState } from "react";
-import { useRecoilValue } from "recoil";
-import { useSampleValue } from "../useSampleValue";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
@@ -83,6 +81,12 @@ export default function PrimitiveEdit({
     },
     [editCommand]
   );
+
+  const onExit = useExit();
+
+  const handleSave = useCallback(() => {
+    onExit();
+  }, [onExit]);
 
   return (
     <Stack orientation={Orientation.Column}>

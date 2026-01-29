@@ -196,7 +196,7 @@ const PrimitiveFieldContent = ({
         : undefined,
       choices: componentOptions.map((opt) => opt.label),
     });
-  }, [schemaType, component, values, range, componentOptions]);
+  }, [field, schemaType, component, values, range, componentOptions]);
 
   return (
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
