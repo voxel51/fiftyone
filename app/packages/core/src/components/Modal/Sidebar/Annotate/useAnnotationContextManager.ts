@@ -141,6 +141,13 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const enter = useCallback(
     async (field?: string, labelId?: string): Promise<EnterResult> => {
+      // exit early if the context is already active
+      if (contextManager.isActive()) {
+        return {
+          status: InitializationStatus.Success,
+        };
+      }
+
       // enter annotation context
       contextManager.enter();
 
@@ -174,8 +181,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   );
 
   const exit = useCallback(() => {
-    contextManager.exit();
-  }, [contextManager]);
+    if (contextManager.isActive()) {
+      deactivateCommandContext();
+      contextManager.exit();
+    }
+  }, [contextManager, deactivateCommandContext]);
 
   return useMemo(
     () => ({

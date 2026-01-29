@@ -46,6 +46,13 @@ export interface ContextManager {
    * Reset the context, clearing all registered callbacks.
    */
   reset(): void;
+
+  /**
+   * Returns `true` if the context is current active, else `false`.
+   *
+   * The context is considered active if it has been entered but not exited.
+   */
+  isActive: () => boolean;
 }
 
 /**
@@ -54,13 +61,20 @@ export interface ContextManager {
 export class DefaultContextManager implements ContextManager {
   private enterCallbacks: CallbackConfig[] = [];
   private exitCallbacks: CallbackConfig[] = [];
+  private isContextActive: boolean = false;
 
   enter(): void {
-    this.executeCallbacks(this.enterCallbacks);
+    if (!this.isContextActive) {
+      this.isContextActive = true;
+      this.executeCallbacks(this.enterCallbacks);
+    }
   }
 
   exit(): void {
-    this.executeCallbacks(this.exitCallbacks);
+    if (this.isContextActive) {
+      this.isContextActive = false;
+      this.executeCallbacks(this.exitCallbacks);
+    }
   }
 
   registerEnterCallback(config: CallbackConfig): void {
@@ -86,6 +100,10 @@ export class DefaultContextManager implements ContextManager {
   reset(): void {
     this.enterCallbacks = [];
     this.exitCallbacks = [];
+  }
+
+  isActive(): boolean {
+    return this.isContextActive;
   }
 
   /**
