@@ -6,8 +6,6 @@ Annotation label schemas operators
 |
 """
 
-import logging
-
 import fiftyone.core.annotation as foa
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
@@ -16,9 +14,34 @@ from fiftyone.core.annotation.validate_label_schemas import (
     validate_label_schemas,
 )
 import fiftyone.core.fields as fof
+import fiftyone.core.labels as fol
 import fiftyone.operators as foo
 
-logger = logging.getLogger(__name__)
+
+# Label type string to label class mapping
+LABEL_TYPE_TO_CLASS = {
+    "classification": fol.Classification,
+    "classifications": fol.Classifications,
+    "detection": fol.Detection,
+    "detections": fol.Detections,
+    "polyline": fol.Polyline,
+    "polylines": fol.Polylines,
+    "keypoint": fol.Keypoint,
+    "keypoints": fol.Keypoints,
+}
+
+# Primitive type string to field class mapping
+PRIMITIVE_TYPE_TO_FIELD = {
+    "int": fof.IntField,
+    "float": fof.FloatField,
+    "str": fof.StringField,
+    "bool": fof.BooleanField,
+    "date": fof.DateField,
+    "datetime": fof.DateTimeField,
+    "list<int>": fof.IntField,
+    "list<float>": fof.FloatField,
+    "list<str>": fof.StringField,
+}
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -156,12 +179,9 @@ class UpdateLabelSchema(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         label_schema = ctx.params.get("label_schema", None)
-        new_attributes = ctx.params.get("new_attributes", None)
 
         try:
-            ctx.dataset.update_label_schema(
-                field, label_schema, new_attributes=new_attributes
-            )
+            ctx.dataset.update_label_schema(field, label_schema)
         except Exception as e:
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}
@@ -199,33 +219,6 @@ class ValidateLabelSchemas(foo.Operator):
         return {"errors": errors}
 
 
-def _add_base_label_subfields(dataset, base_path):
-    """Add base subfields shared by all label types (id, label, tags, confidence)."""
-    dataset.add_sample_field(f"{base_path}.id", fof.ObjectIdField)
-    dataset.add_sample_field(f"{base_path}.label", fof.StringField)
-    dataset.add_sample_field(f"{base_path}.confidence", fof.FloatField)
-    dataset.add_sample_field(
-        f"{base_path}.tags", fof.ListField, subfield=fof.StringField()
-    )
-
-
-def _add_default_label_subfields(dataset, field_name, field_type):
-    """Add default nested fields to the data schema.
-
-    This adds the standard Detection/Classification subfields to the dataset's
-    data schema so that the label schema validation passes.
-    """
-    if field_type == "detections":
-        # Detections has a nested 'detections' list of Detection objects
-        base_path = f"{field_name}.detections"
-        _add_base_label_subfields(dataset, base_path)
-        # Detection also has 'index'
-        dataset.add_sample_field(f"{base_path}.index", fof.IntField)
-    elif field_type == "classification":
-        # Classification fields directly on the field
-        _add_base_label_subfields(dataset, field_name)
-
-
 class CreateAndActivateField(foo.Operator):
     """Create a new label or primitive field, generate its schema, and activate it."""
 
@@ -243,101 +236,96 @@ class CreateAndActivateField(foo.Operator):
         field_type = ctx.params.get("field_type")
         read_only = ctx.params.get("read_only", False)
 
-        # Create the field in data schema
-        if field_category == "label":
-            label_cls = foac.LABEL_TYPE_TO_CLASS.get(field_type)
-            if label_cls is None:
-                ctx.ops.notify(
-                    f"Unknown label type: {field_type}", variant="error"
+        try:
+            if field_category == "label":
+                label_schema = self._create_label_field(
+                    ctx, field_name, field_type, read_only
                 )
-                return {"error": f"Unknown label type: {field_type}"}
+            else:
+                label_schema = self._create_primitive_field(
+                    ctx, field_name, field_type, read_only
+                )
 
+            # Set the label schema
+            ctx.dataset.update_label_schema(field_name, label_schema)
+
+            # Activate the field (prepend to make it appear at top)
+            active = ctx.dataset.active_label_schemas or []
+            ctx.dataset.active_label_schemas = [field_name] + [
+                f for f in active if f != field_name
+            ]
+
+            ctx.dataset.save()
+
+            return {
+                "field_name": field_name,
+                "label_schema": label_schema,
+            }
+        except Exception as e:
+            ctx.ops.notify(str(e), variant="error")
+            return {"error": str(e)}
+
+    def _create_label_field(self, ctx, field_name, field_type, read_only):
+        """Create a label field and return its schema."""
+        label_cls = LABEL_TYPE_TO_CLASS.get(field_type)
+        if label_cls is None:
+            raise ValueError(f"Unknown label type: {field_type}")
+
+        ctx.dataset.add_sample_field(
+            field_name,
+            fof.EmbeddedDocumentField,
+            embedded_doc_type=label_cls,
+            read_only=read_only,
+        )
+
+        # Get label schema config from frontend
+        label_schema_config = ctx.params.get("label_schema_config", {})
+        classes = label_schema_config.get("classes")
+
+        # Determine component based on number of classes
+        if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+            component = foac.DROPDOWN
+        else:
+            component = foac.RADIO
+
+        # Build label schema
+        return {
+            "type": field_type,
+            "component": component,
+            "attributes": label_schema_config.get("attributes", []),
+            **({"classes": classes} if classes else {}),
+        }
+
+    def _create_primitive_field(self, ctx, field_name, field_type, read_only):
+        """Create a primitive field and return its schema."""
+        ftype = PRIMITIVE_TYPE_TO_FIELD.get(field_type)
+        if ftype is None:
+            raise ValueError(f"Unknown primitive type: {field_type}")
+
+        # List types need ListField wrapper with subfield
+        if field_type.startswith("list<"):
             ctx.dataset.add_sample_field(
                 field_name,
-                fof.EmbeddedDocumentField,
-                embedded_doc_type=label_cls,
+                fof.ListField,
+                subfield=ftype(),
+                read_only=read_only,
+            )
+        else:
+            ctx.dataset.add_sample_field(
+                field_name,
+                ftype,
                 read_only=read_only,
             )
 
-            # Add default nested fields to data schema
-            _add_default_label_subfields(ctx.dataset, field_name, field_type)
-
-            # Get label schema config from frontend
-            label_schema_config = ctx.params.get("label_schema_config", {})
-
-            # Add any custom attribute fields to data schema
-            new_attributes = label_schema_config.get("new_attributes")
-            if new_attributes:
-                foau.add_new_attributes(
-                    ctx.dataset, field_name, new_attributes
-                )
-
-            # Build label schema from frontend config
-            # Frontend sends: attributes, classes, component
-            classes = label_schema_config.get("classes")
-
-            # Determine component based on number of classes
-            if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-                component = foac.DROPDOWN
-            else:
-                component = foac.RADIO
-
-            # Build label schema
-            label_schema = {
-                "type": field_type,
-                "component": component,
-                "attributes": label_schema_config.get("attributes", []),
-                # omit empty classes to pass validation
-                **({"classes": classes} if classes else {}),
-            }
-        else:  # primitive
-            _create_primitive_field(
-                ctx.dataset, field_name, field_type, read_only
-            )
-            # Generate base schema for primitive fields
-            label_schema = ctx.dataset.generate_label_schemas(
-                fields=field_name,
-                scan_samples=False,
-            )
-            # Merge user-provided config (component, values, range, etc.)
-            schema_config = ctx.params.get("schema_config")
-            if schema_config:
-                label_schema.update(schema_config)
-
-        # Set the label schema (validation now works for newly created fields)
-        ctx.dataset.update_label_schema(field_name, label_schema)
-
-        # Activate the field (prepend to make it appear at top)
-        active = ctx.dataset.active_label_schemas or []
-        ctx.dataset.active_label_schemas = [field_name] + [
-            f for f in active if f != field_name
-        ]
-
-        ctx.dataset.save()
-
-        return {
-            "field_name": field_name,
-            "label_schema": label_schema,
-        }
-
-
-def _create_primitive_field(dataset, field_name, field_type, read_only):
-    """Helper to create primitive fields using TYPES_TO_FIELD_TYPE mapping."""
-    ftype = foac.TYPES_TO_FIELD_TYPE.get(field_type)
-    if ftype is None:
-        raise ValueError(f"Unknown primitive type: {field_type}")
-
-    # List types need ListField wrapper with subfield
-    if field_type.startswith("list<"):
-        dataset.add_sample_field(
-            field_name,
-            fof.ListField,
-            subfield=ftype(),
-            read_only=read_only,
+        # Generate base schema for primitive fields
+        label_schema = ctx.dataset.generate_label_schemas(
+            fields=field_name,
+            scan_samples=False,
         )
-    else:
-        dataset.add_sample_field(
-            field_name,
-            ftype,
-            read_only=read_only,
-        )
+
+        # Merge user-provided config (component, values, range, etc.)
+        schema_config = ctx.params.get("schema_config")
+        if schema_config:
+            label_schema.update(schema_config)
+
+        return label_schema
