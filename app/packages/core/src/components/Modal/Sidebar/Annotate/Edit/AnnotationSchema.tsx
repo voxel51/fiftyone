@@ -23,10 +23,10 @@ import {
  * @returns The updated schema.
  */
 function updateSchemaReadOnly(schema: SchemaType, readOnly: boolean) {
-  console.log("schema", schema);
   if (readOnly) {
     return { ...schema, readOnly };
   }
+
   // if parent/field readOnly is false don't override the
   // primitive's readOnly flag
   return { ...schema, readOnly: schema.read_only };
@@ -39,18 +39,13 @@ const useSchema = (readOnly: boolean) => {
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-    const properties = Object.entries(config?.attributes)
-      .filter(([key]) => !["id", "attributes"].includes(key))
+    const properties = config?.attributes
+      .filter(({ name }) => name && !["id", "attributes"].includes(name))
       .reduce(
-        (schema, [key, value]) => {
-          return {
-            ...schema,
-            [key]: generatePrimitiveSchema(
-              key,
-              updateSchemaReadOnly(value, effectiveReadOnly)
-            ),
-          };
-        },
+        (schema: SchemaType, value: SchemaType) => ({
+          ...schema,
+          [value.name!]: updateSchemaReadOnly(value, effectiveReadOnly),
+        }),
         {
           label: generatePrimitiveSchema("label", {
             type: "str",
@@ -68,32 +63,31 @@ const useSchema = (readOnly: boolean) => {
       },
       properties,
     };
-  }, [config, readOnly, isLabelReadOnly]);
+  }, [config, effectiveReadOnly]);
 };
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) =>
-      async (currentField: string, path: string, data) => {
-        const expanded = await snapshot.getPromise(expandPath(currentField));
-        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) => async (currentField: string, path: string, data) => {
+      const expanded = await snapshot.getPromise(expandPath(currentField));
+      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-        if (typeof data === "string") {
-          if (schema?.ftype === FLOAT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseFloat(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
-
-          if (schema?.ftype === INT_FIELD) {
-            if (!data.length) return null;
-            const parsed = Number.parseInt(data);
-            return Number.isFinite(parsed) ? parsed : null;
-          }
+      if (typeof data === "string") {
+        if (schema?.ftype === FLOAT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseFloat(data);
+          return Number.isFinite(parsed) ? parsed : null;
         }
 
-        return data;
-      },
+        if (schema?.ftype === INT_FIELD) {
+          if (!data.length) return null;
+          const parsed = Number.parseInt(data);
+          return Number.isFinite(parsed) ? parsed : null;
+        }
+      }
+
+      return data;
+    },
     []
   );
 };

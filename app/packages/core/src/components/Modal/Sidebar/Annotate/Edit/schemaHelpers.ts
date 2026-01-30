@@ -218,7 +218,7 @@ export function generatePrimitiveSchema(
   }
 
   if (schema.type === "list<float>" || schema.type === "list<int>") {
-    return createNumericList(name, schema.values || []);
+    return createNumericList(name, schema?.values || []);
   }
 
   if (schema.type === "list<str>") {
@@ -242,8 +242,12 @@ export function generatePrimitiveSchema(
   }
 
   if (schema.type === "float" || schema.type === "int") {
-    if (schema.range) {
+    if (schema.component === "slider" && schema.range) {
       return createSlider(name, schema.range);
+    } else if (schema.component === "dropdown") {
+      return createSelect(name, schema.values || []);
+    } else if (schema.component === "radio") {
+      return createRadio(name, schema.values || []);
     }
     return createText(name, "number");
   }

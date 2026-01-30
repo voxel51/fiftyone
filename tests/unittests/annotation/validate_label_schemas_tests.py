@@ -630,7 +630,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_validate_detections_label_field_schema(self):
+    def test_validate_label_field_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
             fo.Sample(
@@ -653,13 +653,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "component": "text",
                         "read_only": True,
                         "type": "id",
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "type": "detection",
@@ -670,14 +671,15 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "tags": {
+                "attributes": [
+                    {
+                        "name": "tags",
                         "component": "dropdown",
                         "default": ["one"],
                         "type": "list<str>",
                         "values": ["one"],
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "default": "one",
@@ -689,13 +691,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "component": "text",
                         "read_only": True,
                         "type": "id",
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "type": "detections",
@@ -719,13 +722,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "id": {
+                    "attributes": [
+                        {
+                            "name": "id",
                             "component": "text",
                             "read_only": True,
                             "type": "id",
                         }
-                    },
+                    ],
                     "classes": ["one", "two"],
                     "component": "dropdown",
                     "default": "three",
@@ -739,12 +743,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "missing": {
+                    "attributes": [
+                        {
+                            "name": "missing",
                             "component": "text",
                             "type": "str",
                         }
-                    },
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
@@ -755,12 +760,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "bounding_box": {
+                    "attributes": [
+                        {
+                            "name": "bounding_box",
                             "component": "text",
                             "type": "list<float>",
                         }
-                    },
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
@@ -771,14 +777,233 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "bounding_box": {
+                    "attributes": [
+                        {
+                            "name": "bounding_box",
                             "component": "text",
                             "type": "list<float>",
                         },
-                        "label": {"type": "str", "component": "text"},
-                    },
+                        {"name": "label", "type": "str", "component": "text"},
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
+            )
+
+    @drop_datasets
+    def test_validate_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(label="one", index=1),
+            )
+        )
+        dataset.add_dynamic_sample_fields()
+
+        validate_label_schemas(
+            dataset,
+            {
+                "attributes": [
+                    {
+                        "name": "id",
+                        "component": "text",
+                        "read_only": True,
+                        "type": "id",
+                    },
+                    {"name": "index", "component": "text", "type": "int"},
+                ],
+                "type": "detection",
+            },
+            fields="detection",
+        )
+
+        # missing 'name' in attribute
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "component": "text",
+                            "type": "float",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+            )
+
+        # duplicate 'attributes'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "id",
+                            "component": "text",
+                            "read_only": True,
+                            "type": "id",
+                        },
+                        {
+                            "name": "id",
+                            "component": "text",
+                            "read_only": True,
+                            "type": "id",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+            )
+
+    @drop_datasets
+    def test_validate_allow_new_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(label="one", index=1),
+            )
+        )
+
+        validate_label_schemas(
+            dataset,
+            {
+                "attributes": [
+                    {
+                        "name": "new_attr",
+                        "component": "text",
+                        "type": "str",
+                    },
+                ],
+                "type": "detection",
+            },
+            fields="detection",
+            allow_new_attrs=True,
+        )
+
+        # duplicate 'new_attr'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "new_attr",
+                            "component": "text",
+                            "type": "str",
+                        },
+                        {
+                            "name": "new_attr",
+                            "component": "text",
+                            "type": "str",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+                allow_new_attrs=True,
+            )
+
+        # disabled 'allow_new_attrs'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "new_attr",
+                            "component": "text",
+                            "type": "str",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+                allow_new_attrs=False,
+            )
+
+        # incorrect 'detection' nesting
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "new_attr",
+                            "type": "detection",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+            )
+
+    @drop_datasets
+    def test_validate_allow_new_fields(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+            )
+        )
+
+        # primitive type
+        validate_label_schemas(
+            dataset,
+            {
+                "component": "text",
+                "type": "int",
+            },
+            fields="new_field",
+            allow_new_fields=True,
+        )
+
+        # label type
+        validate_label_schemas(
+            dataset,
+            {
+                "attributes": [
+                    {
+                        "name": "new_attr",
+                        "component": "text",
+                        "type": "str",
+                    },
+                ],
+                "type": "detection",
+            },
+            fields="new_field",
+            allow_new_attrs=True,
+            allow_new_fields=True,
+        )
+
+        # dot.notation
+        validate_label_schemas(
+            dataset,
+            {
+                "component": "text",
+                "type": "int",
+            },
+            fields="new.field",
+            allow_new_fields=True,
+        )
+
+        # disabled 'allow_new_attrs'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "new_attr",
+                            "component": "text",
+                            "type": "str",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="new_field",
+                allow_new_fields=True,
             )

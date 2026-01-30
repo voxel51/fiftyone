@@ -26,6 +26,7 @@ from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
 from .annotation import (
     ActivateLabelSchemas,
+    CreateAndActivateField,
     DeactivateLabelSchemas,
     DeleteLabelSchemas,
     GetLabelSchemas,
@@ -154,6 +155,9 @@ class EditFieldValues(foo.Operator):
         return foo.OperatorConfig(
             name="edit_field_values",
             label="Edit field values",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -398,6 +402,9 @@ class CloneSampleField(foo.Operator):
         return foo.OperatorConfig(
             name="clone_sample_field",
             label="Clone sample field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -507,6 +514,9 @@ class CloneFrameField(foo.Operator):
         return foo.OperatorConfig(
             name="clone_frame_field",
             label="Clone frame field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -625,6 +635,9 @@ class RenameSampleField(foo.Operator):
         return foo.OperatorConfig(
             name="rename_sample_field",
             label="Rename sample field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -708,6 +721,9 @@ class RenameFrameField(foo.Operator):
         return foo.OperatorConfig(
             name="rename_frame_field",
             label="Rename frame field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -800,6 +816,9 @@ class ClearSampleField(foo.Operator):
         return foo.OperatorConfig(
             name="clear_sample_field",
             label="Clear sample field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -899,6 +918,9 @@ class ClearFrameField(foo.Operator):
         return foo.OperatorConfig(
             name="clear_frame_field",
             label="Clear frame field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -1189,6 +1211,9 @@ class DeleteSampleField(foo.Operator):
         return foo.OperatorConfig(
             name="delete_sample_field",
             label="Delete sample field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -1255,6 +1280,9 @@ class DeleteFrameField(foo.Operator):
         return foo.OperatorConfig(
             name="delete_frame_field",
             label="Delete frame field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -1996,6 +2024,9 @@ class CreateSummaryField(foo.Operator):
         return foo.OperatorConfig(
             name="create_summary_field",
             label="Create summary field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -2193,6 +2224,9 @@ class UpdateSummaryField(foo.Operator):
         return foo.OperatorConfig(
             name="update_summary_field",
             label="Update summary field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -2257,6 +2291,9 @@ class DeleteSummaryField(foo.Operator):
         return foo.OperatorConfig(
             name="delete_summary_field",
             label="Delete summary field",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -2368,6 +2405,9 @@ class RenameGroupSlice(foo.Operator):
         return foo.OperatorConfig(
             name="rename_group_slice",
             label="Rename group slice",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -2433,6 +2473,9 @@ class DeleteGroupSlice(foo.Operator):
         return foo.OperatorConfig(
             name="delete_group_slice",
             label="Delete group slice",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -3190,6 +3233,9 @@ class SyncLastModifiedAt(foo.Operator):
         return foo.OperatorConfig(
             name="sync_last_modified_at",
             label="Sync last modified at",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
@@ -3427,6 +3473,7 @@ def register(p):
 
     # annotation
     p.register(ActivateLabelSchemas)
+    p.register(CreateAndActivateField)
     p.register(DeactivateLabelSchemas)
     p.register(DeleteLabelSchemas)
     p.register(GenerateLabelSchemas)

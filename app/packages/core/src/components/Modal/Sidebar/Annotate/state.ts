@@ -69,7 +69,8 @@ export const fieldType = atomFamily((path: string) =>
 export const fieldAttributeCount = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
-    return Object.keys(data?.label_schema?.attributes ?? {}).length;
+    const attrs = data?.label_schema?.attributes;
+    return Array.isArray(attrs) ? attrs.length : 0;
   })
 );
 

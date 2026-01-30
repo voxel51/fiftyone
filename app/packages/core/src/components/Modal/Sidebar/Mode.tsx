@@ -1,7 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import { ANNOTATE, EXPLORE, modalMode } from "@fiftyone/state";
 import { useAtom, useAtomValue } from "jotai";
-import React from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
 
@@ -39,14 +38,16 @@ const Mode = () => {
     <Container>
       <Items>
         <Item
-          style={mode === EXPLORE ? background : text}
+          data-cy={EXPLORE}
           onClick={() => setMode(EXPLORE)}
+          style={mode === EXPLORE ? background : text}
         >
           Explore
         </Item>
         <Item
-          style={mode === ANNOTATE ? background : text}
+          data-cy={ANNOTATE}
           onClick={() => setMode(ANNOTATE)}
+          style={mode === ANNOTATE ? background : text}
         >
           Annotate
         </Item>

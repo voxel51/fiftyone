@@ -5,11 +5,8 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import Confirmation from "../Confirmation";
-import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
-import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
@@ -24,7 +21,6 @@ import {
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import useSave from "./useSave";
 import {
   KnownCommands,
   KnownContexts,
@@ -88,20 +84,23 @@ export default function Edit() {
     KnownContexts.Modal
   );
 
-  const { confirmExit } = useConfirmExit(() => {
-    clear();
-    exit();
-  }, useSave());
-
-  // Update overlay draggable/resizeable based on read-only state
-  useEffect(() => {
-    if (!overlay) return;
-
-    overlay.setDraggable?.(!isReadOnly);
-    overlay.setResizeable?.(!isReadOnly);
-    overlay.markDirty?.();
-  }, [overlay, isReadOnly]);
-
+  // <<<<<<< HEAD
+  //   const { confirmExit } = useConfirmExit(() => {
+  //     clear();
+  //     exit();
+  //   }, useSave());
+  //
+  //   // Update overlay draggable/resizeable based on read-only state
+  //   useEffect(() => {
+  //     if (!overlay) return;
+  //
+  //     overlay.setDraggable?.(!isReadOnly);
+  //     overlay.setResizeable?.(!isReadOnly);
+  //     overlay.markDirty?.();
+  //   }, [overlay, isReadOnly]);
+  //
+  // =======
+  // >>>>>>> develop
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
       pointerDownTarget = event.target;
@@ -110,7 +109,8 @@ export default function Edit() {
     const clickHandler = (event: Event) => {
       if (event.target === el && pointerDownTarget === el) {
         event.stopImmediatePropagation();
-        confirmExit(clear);
+        clear();
+        exit();
       }
 
       pointerDownTarget = null;
@@ -126,27 +126,28 @@ export default function Edit() {
       el?.removeEventListener("pointerdown", pointerDownHandler, true);
       el?.removeEventListener("click", clickHandler, true);
     };
-  }, [confirmExit, clear]);
+  }, [exit, clear]);
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
   const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
-    <Confirmation>
-      <ContentContainer>
-        <Header />
-        <Content>
-          <Id />
-          {!primitiveEditingActive && <Field />}
-          {primitiveEditingActive && <PrimitiveWrapper />}
-          {type === DETECTION && overlay && !is3dDetection && <Position readOnly={isReadOnly} />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d readOnly={isReadOnly} />}
-          {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema readOnly={isReadOnly} />}
-        </Content>
-        <Footer readOnly={isReadOnly} />
-      </ContentContainer>
-    </Confirmation>
+    <ContentContainer>
+      <Header />
+      <Content>
+        <Id />
+        {!primitiveEditingActive && <Field />}
+        {primitiveEditingActive && <PrimitiveWrapper />}
+        {type === DETECTION && overlay && !is3dDetection && (
+          <Position readOnly={isReadOnly} />
+        )}
+        {type === DETECTION && overlay && is3dDetection && (
+          <Position3d readOnly={isReadOnly} />
+        )}
+        {type === POLYLINE && <PolylineDetails />}
+        {field && <AnnotationSchema readOnly={isReadOnly} />}
+      </Content>
+    </ContentContainer>
   );
 }

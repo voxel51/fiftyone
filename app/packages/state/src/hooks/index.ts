@@ -1,4 +1,5 @@
 export * from "./hooks-utils";
+export * from "./useActivityToast";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
 export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";

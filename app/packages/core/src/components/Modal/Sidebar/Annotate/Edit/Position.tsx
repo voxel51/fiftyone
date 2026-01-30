@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 import { useAtom, useAtomValue } from "jotai";
+import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -100,7 +101,7 @@ export default function Position({ readOnly = false }: PositionProps) {
   useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
   useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
-  const schema = useMemo(
+  const schema: SchemaType = useMemo(
     () => ({
       type: "object",
       view: {

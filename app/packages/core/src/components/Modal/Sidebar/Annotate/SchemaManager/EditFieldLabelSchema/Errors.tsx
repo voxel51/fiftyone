@@ -2,7 +2,7 @@ import { ErrorContainer } from "../styled";
 
 const ErrorsList = ({ errors }: { errors: string[] }) => {
   return (
-    <ul>
+    <ul data-cy="errors-list">
       {errors.map((error) => (
         <li key={error}>{error}</li>
       ))}

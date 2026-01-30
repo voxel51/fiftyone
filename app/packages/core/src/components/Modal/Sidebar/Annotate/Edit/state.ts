@@ -7,7 +7,7 @@ import {
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import type { PrimitiveAtom } from "jotai";
+import { PrimitiveAtom, useAtomValue } from "jotai";
 import { atom } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
@@ -254,3 +254,22 @@ export const deleteValue = atom(null, (get, set) => {
   );
   set(editing, null);
 });
+
+/**
+ * Public API for interacting with the active annotation context.
+ */
+export interface AnnotationContext {
+  /**
+   * Currently-selected annotation label.
+   */
+  selectedLabel: AnnotationLabel | null;
+}
+
+/**
+ * Hook which returns the current {@link AnnotationContext}.
+ */
+export const useAnnotationContext = (): AnnotationContext => {
+  return {
+    selectedLabel: useAtomValue(current),
+  };
+};
