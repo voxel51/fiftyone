@@ -7,6 +7,7 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { is3d } from "@fiftyone/utilities";
 import {
   Input,
   Orientation,
@@ -48,11 +49,17 @@ const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
   { name: "confidence", type: "float", component: "text" },
 ];
 
-// Detection has 'index' and 'mask_path' fields
-const DEFAULT_DETECTION_ATTRIBUTES: AttributeConfig[] = [
+// 2D Detection has 'index' and 'mask_path' fields
+const DEFAULT_DETECTION_ATTRIBUTES_2D: AttributeConfig[] = [
   ...BASE_LABEL_ATTRIBUTES,
   { name: "index", type: "int", component: "text" },
   { name: "mask_path", type: "str", component: "text" },
+];
+
+// 3D Detection has 'index' only (no mask_path)
+const DEFAULT_DETECTION_ATTRIBUTES_3D: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "index", type: "int", component: "text" },
 ];
 
 // Classification uses base attributes only
@@ -67,11 +74,16 @@ const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
   { name: "index", type: "int", component: "text" },
 ];
 
-// Get default attributes for a label type
-const getDefaultAttributesForType = (labelType: string): AttributeConfig[] => {
+// Get default attributes for a label type based on media type
+const getDefaultAttributesForType = (
+  labelType: string,
+  is3dMedia: boolean
+): AttributeConfig[] => {
   switch (labelType) {
     case "detections":
-      return DEFAULT_DETECTION_ATTRIBUTES;
+      return is3dMedia
+        ? DEFAULT_DETECTION_ATTRIBUTES_3D
+        : DEFAULT_DETECTION_ATTRIBUTES_2D;
     case "polylines":
       return DEFAULT_POLYLINE_ATTRIBUTES;
     case "classification":
@@ -102,7 +114,7 @@ const NewFieldSchema = () => {
   // Label schema state
   const [classes, setClasses] = useState<string[]>([]);
   const [attributes, setAttributes] = useState<AttributeConfig[]>(
-    DEFAULT_DETECTION_ATTRIBUTES
+    DEFAULT_DETECTION_ATTRIBUTES_2D
   );
   const [newAttributes, setNewAttributes] = useState<Set<string>>(new Set());
 
@@ -113,6 +125,7 @@ const NewFieldSchema = () => {
   const exitNewFieldMode = useExitNewFieldMode();
   const schemasData = useLabelSchemasData();
   const currentMediaType = useMediaType();
+  const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
   // Get label type options based on media type
   const labelTypeOptions = useMemo(
@@ -139,13 +152,15 @@ const NewFieldSchema = () => {
     setCategory(index === CATEGORY_LABEL ? "label" : "primitive");
   }, []);
 
-  const handleLabelTypeChange = useCallback((newType: string) => {
-    setLabelType(newType);
-    // Reset attributes to defaults for the new type
-    setAttributes(getDefaultAttributesForType(newType));
-    setNewAttributes(new Set());
-    setClasses([]);
-  }, []);
+  const handleLabelTypeChange = useCallback(
+    (newType: string) => {
+      setLabelType(newType);
+      setAttributes(getDefaultAttributesForType(newType, is3dMedia));
+      setNewAttributes(new Set());
+      setClasses([]);
+    },
+    [is3dMedia]
+  );
 
   const handlePrimitiveTypeChange = useCallback((newType: string) => {
     setPrimitiveType(newType);
@@ -190,7 +205,6 @@ const NewFieldSchema = () => {
       setAttributes((prev) =>
         prev.map((attr) => (attr.name === oldName ? config : attr))
       );
-      // Track renamed new attributes
       if (newAttributes.has(oldName)) {
         setNewAttributes((prev) => {
           const updated = new Set(prev);

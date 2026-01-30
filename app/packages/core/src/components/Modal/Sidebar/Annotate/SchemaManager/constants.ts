@@ -52,10 +52,88 @@ export const LABEL_TYPE_OPTIONS = [
 
 // Label type options for 3D datasets
 export const LABEL_TYPE_OPTIONS_3D = [
-  { id: "detections", data: { label: "3D Cuboids" } },
-  { id: "classification", data: { label: "3D Classification" } },
+  { id: "detections", data: { label: "3D Detections" } },
   { id: "polylines", data: { label: "3D Polylines" } },
+  { id: "classification", data: { label: "Classification" } },
 ];
+
+// =============================================================================
+// New Field Category Constants
+// =============================================================================
+
+export type FieldCategory = "label" | "primitive";
+
+export const CATEGORY_LABEL = 0;
+export const CATEGORY_PRIMITIVE = 1;
+
+// =============================================================================
+// Default Label Attributes
+// =============================================================================
+
+export interface AttributeConfig {
+  name: string;
+  type: string;
+  component?: string;
+  read_only?: boolean;
+}
+
+// Base attributes shared by all label types (_HasID mixin + confidence)
+export const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
+  { name: "id", type: "id", component: "text", read_only: true },
+  { name: "tags", type: "list<str>", component: "text" },
+  { name: "confidence", type: "float", component: "text" },
+];
+
+// 2D Detection has 'index' and 'mask_path' fields
+export const DEFAULT_DETECTION_ATTRIBUTES_2D: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "index", type: "int", component: "text" },
+  { name: "mask_path", type: "str", component: "text" },
+];
+
+// 3D Detection has 'index' only (no mask_path)
+export const DEFAULT_DETECTION_ATTRIBUTES_3D: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "index", type: "int", component: "text" },
+];
+
+// Classification uses base attributes only
+export const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
+  BASE_LABEL_ATTRIBUTES;
+
+// Polyline has 'closed', 'filled', and 'index' fields
+export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "closed", type: "bool", component: "toggle" },
+  { name: "filled", type: "bool", component: "toggle" },
+  { name: "index", type: "int", component: "text" },
+];
+
+// Get default attributes for a label type based on media type
+export const getDefaultAttributesForType = (
+  labelType: string,
+  is3dMedia: boolean
+): AttributeConfig[] => {
+  switch (labelType) {
+    case "detections":
+      return is3dMedia
+        ? DEFAULT_DETECTION_ATTRIBUTES_3D
+        : DEFAULT_DETECTION_ATTRIBUTES_2D;
+    case "polylines":
+      return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "classification":
+    default:
+      return DEFAULT_CLASSIFICATION_ATTRIBUTES;
+  }
+};
+
+// Convert schema type to field type format (e.g., "str" -> "Str")
+export const toFieldType = (schemaType: string): string => {
+  if (schemaType.startsWith("list<")) {
+    return "List<" + schemaType.slice(5);
+  }
+  return schemaType.charAt(0).toUpperCase() + schemaType.slice(1);
+};
 
 // Attribute type labels keyed by schema type
 export const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
