@@ -1031,6 +1031,19 @@ class DocConstructor extends DocFunction {
 }
 class DocMethod extends DocFragment {
   static kind = () => "Method";
+  signatures() {
+    return this.mapArray("signatures", DocSignature);
+  }
+  addToDescription(desc, parentName = null) {
+    const label = this.label();
+    const name = parentName ? `${parentName}.${label}` : label;
+    const signatures = this.signatures();
+    if (signatures.length > 0) {
+      const sig = signatures[0];
+      const sigText = sig.toTextSignatureWithReturnType();
+      desc.addTypeRow(name, sig.returnType(), sig.shortText() || sigText);
+    }
+  }
 }
 class DocEnumeration extends DocFragment {
   static kind = () => "Enumeration";
