@@ -44,6 +44,94 @@ export const isSystemReadOnlyField = (fieldName: string): boolean =>
 // Attribute Type & Component Constants
 // =============================================================================
 
+// Label type options for new field creation (image datasets)
+export const LABEL_TYPE_OPTIONS = [
+  { id: "detections", data: { label: "Detections" } },
+  { id: "classification", data: { label: "Classification" } },
+];
+
+// Label type options for 3D datasets
+export const LABEL_TYPE_OPTIONS_3D = [
+  { id: "detections", data: { label: "3D Detections" } },
+  { id: "polylines", data: { label: "3D Polylines" } },
+  { id: "classification", data: { label: "Classification" } },
+];
+
+// =============================================================================
+// New Field Category Constants
+// =============================================================================
+
+export type FieldCategory = "label" | "primitive";
+
+export const CATEGORY_LABEL = 0;
+export const CATEGORY_PRIMITIVE = 1;
+
+// =============================================================================
+// Default Label Attributes
+// =============================================================================
+
+// Import AttributeConfig from utils to avoid circular dependency issues
+// (utils imports constants for other values, so type must live in utils)
+import type { AttributeConfig } from "./utils";
+
+// Base attributes shared by all label types (_HasID mixin + confidence)
+export const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
+  { name: "id", type: "id", component: "text", read_only: true },
+  { name: "tags", type: "list<str>", component: "text" },
+  { name: "confidence", type: "float", component: "text" },
+];
+
+// 2D Detection has 'index' and 'mask_path' fields
+export const DEFAULT_DETECTION_ATTRIBUTES_2D: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "index", type: "int", component: "text" },
+  { name: "mask_path", type: "str", component: "text" },
+];
+
+// 3D Detection has 'index' only (no mask_path)
+export const DEFAULT_DETECTION_ATTRIBUTES_3D: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "index", type: "int", component: "text" },
+];
+
+// Classification uses base attributes only
+export const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
+  BASE_LABEL_ATTRIBUTES;
+
+// Polyline has 'closed', 'filled', and 'index' fields
+export const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
+  ...BASE_LABEL_ATTRIBUTES,
+  { name: "closed", type: "bool", component: "toggle" },
+  { name: "filled", type: "bool", component: "toggle" },
+  { name: "index", type: "int", component: "text" },
+];
+
+// Get default attributes for a label type based on media type
+export const getDefaultAttributesForType = (
+  labelType: string,
+  is3dMedia: boolean
+): AttributeConfig[] => {
+  switch (labelType) {
+    case "detections":
+      return is3dMedia
+        ? DEFAULT_DETECTION_ATTRIBUTES_3D
+        : DEFAULT_DETECTION_ATTRIBUTES_2D;
+    case "polylines":
+      return DEFAULT_POLYLINE_ATTRIBUTES;
+    case "classification":
+    default:
+      return DEFAULT_CLASSIFICATION_ATTRIBUTES;
+  }
+};
+
+// Convert schema type to field type format (e.g., "str" -> "Str")
+export const toFieldType = (schemaType: string): string => {
+  if (schemaType.startsWith("list<")) {
+    return "List<" + schemaType.slice(5);
+  }
+  return schemaType.charAt(0).toUpperCase() + schemaType.slice(1);
+};
+
 // Attribute type labels keyed by schema type
 export const ATTRIBUTE_TYPE_LABELS: Record<string, string> = {
   str: "String",
@@ -64,6 +152,7 @@ export const ATTRIBUTE_TYPE_OPTIONS = Object.entries(ATTRIBUTE_TYPE_LABELS).map(
 );
 // Component options by type
 // Source: https://github.com/voxel51/fiftyone/blob/1b31fce1b7f24af051ffa278a33c5b02dcc2c8e8/fiftyone/core/annotation/constants.py
+
 export const COMPONENT_OPTIONS: Record<
   string,
   Array<{ id: string; label: string; icon: IconName }>

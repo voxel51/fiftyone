@@ -9,6 +9,7 @@ import { useOperatorExecutor } from "@fiftyone/operators";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
+  Button,
   Clickable,
   Icon,
   IconName,
@@ -19,6 +20,7 @@ import {
   TextColor,
   TextVariant,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
@@ -26,6 +28,7 @@ import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
 import {
   useActiveFieldsList,
+  useNewFieldMode,
   useSelectedActiveFields,
   useSetCurrentField,
 } from "./hooks";
@@ -56,6 +59,12 @@ const ActiveFieldsSection = () => {
   const { isEnabled: isM4Enabled } = useFeature({
     feature: FeatureFlag.VFF_ANNOTATION_M4,
   });
+
+  const { setIsNewField: setNewFieldMode } = useNewFieldMode();
+
+  const handleNewField = useCallback(() => {
+    setNewFieldMode(true);
+  }, [setNewFieldMode]);
 
   const { fields, setFields } = useActiveFieldsList();
   const { setSelected } = useSelectedActiveFields();
@@ -162,6 +171,14 @@ const ActiveFieldsSection = () => {
             <Icon name={IconName.Info} size={Size.Md} />
           </Tooltip>
           <Pill size={Size.Md}>0</Pill>
+          <div style={{ flex: 1 }} />
+          <Button
+            size={Size.Md}
+            variant={Variant.Primary}
+            onClick={handleNewField}
+          >
+            New field
+          </Button>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Text color={TextColor.Secondary}>No active fields</Text>
@@ -188,6 +205,14 @@ const ActiveFieldsSection = () => {
           <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
+        <div style={{ flex: 1 }} />
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={handleNewField}
+        >
+          New field
+        </Button>
       </GUISectionHeader>
       <RichList
         data-cy={"active-fields"}

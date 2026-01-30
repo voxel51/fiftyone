@@ -3,8 +3,9 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useNotification } from "@fiftyone/state";
+import { mediaType, useNotification } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import {
   activePaths,
   activeSchemaTab,
   addToActiveSchemas,
+  currentField,
   fieldAttributeCount,
   fieldType,
   fieldTypes,
@@ -19,7 +21,6 @@ import {
   labelSchemasData,
   removeFromActiveSchemas,
   showModal,
-  currentField,
 } from "../state";
 import {
   draftJsonContent,
@@ -28,6 +29,7 @@ import {
   hiddenFieldAttrCounts,
   hiddenFieldHasSchemaStates,
   hiddenFieldTypes,
+  isNewFieldMode,
   jsonValidationErrors,
   selectedActiveFields,
   selectedHiddenFields,
@@ -244,6 +246,20 @@ export const useLabelSchemasData = () => {
   return useAtomValue(labelSchemasData);
 };
 
+/**
+ * Hook to set label schemas data
+ */
+export const useSetLabelSchemasData = () => {
+  return useSetAtom(labelSchemasData);
+};
+
+/**
+ * Hook to set active label schemas
+ */
+export const useSetActiveLabelSchemas = () => {
+  return useSetAtom(activeLabelSchemas);
+};
+
 // =============================================================================
 // Field Visibility Toggle Hook
 // =============================================================================
@@ -410,7 +426,9 @@ export const useFullSchemaEditor = () => {
         for (const [field, data] of Object.entries(parsed)) {
           if (data && typeof data === "object" && "label_schema" in data) {
             labelSchemas[field] = (
-              data as { label_schema: unknown }
+              data as {
+                label_schema: unknown;
+              }
             ).label_schema;
           }
         }
@@ -507,4 +525,35 @@ export const useFullSchemaEditor = () => {
     save,
     discard,
   };
+};
+
+// =============================================================================
+// New Field Mode Hooks
+// =============================================================================
+
+/**
+ * Hook to read and set new field mode state
+ */
+export const useNewFieldMode = () => {
+  const [isNewField, setIsNewField] = useAtom(isNewFieldMode);
+  return { isNewField, setIsNewField };
+};
+
+/**
+ * Hook to exit new field mode (convenience hook)
+ */
+export const useExitNewFieldMode = () => {
+  const setNewFieldMode = useSetAtom(isNewFieldMode);
+  return useCallback(() => setNewFieldMode(false), [setNewFieldMode]);
+};
+
+// =============================================================================
+// Media Type Hook
+// =============================================================================
+
+/**
+ * Hook to get the current dataset media type
+ */
+export const useMediaType = () => {
+  return useRecoilValue(mediaType);
 };
