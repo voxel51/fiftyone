@@ -12,7 +12,7 @@ export const UNDEFINED_LIGHTER_SCENE_ID = "UNDEFINED_LIGHTER_SCENE";
  *
  * @example
  * ```typescript
- * const useEventHandler = useLighterEventHandler(sceneId);
+ * const useEventHandler = useLighterEventHandler(eventChannel);
  * useEventHandler("lighter:overlay-select", useCallback((payload) => {
  *   console.log(payload.id);
  * }, []));

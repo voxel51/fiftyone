@@ -51,7 +51,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   private _label: Label;
 
   /**
-   * Gets the event bus, initializing it lazily with the sceneId if available.
+   * Gets the event bus, initializing it lazily with the eventChannel if available.
    */
   protected get eventBus(): EventDispatcher<LighterEventGroup> {
     if (!this._eventBus) {
@@ -105,7 +105,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    */
   setEventChannel(eventChannel: string | undefined): void {
     this._eventChannel = eventChannel;
-    // Reset eventBus so it gets reinitialized with the new sceneId
+    // Reset eventBus so it gets reinitialized with the new eventChannel
     this._eventBus = undefined;
   }
 
