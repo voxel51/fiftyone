@@ -61,8 +61,8 @@ export class ImageOverlay
   }
 
   /**
-   * Sets the scene ID for this overlay and subscribes to viewport events.
-   * @param eventChannel - The scene ID to use for the event bus channel.
+   * Sets the event channel for this overlay and subscribes to viewport events.
+   * @param eventChannel - The event channel to use.
    */
   setEventChannel(eventChannel: string | undefined): void {
     super.setEventChannel(eventChannel);
