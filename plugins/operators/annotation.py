@@ -227,11 +227,7 @@ class CreateAndActivateField(foo.Operator):
             )
 
             # Activate the field (prepend to make it appear at top)
-            active = ctx.dataset.active_label_schemas or []
-            ctx.dataset.active_label_schemas = [field_name] + [
-                f for f in active if f != field_name
-            ]
-            ctx.dataset.save()
+            ctx.dataset.activate_label_schemas(field_name, prepend=True)
 
             return {
                 "field_name": field_name,

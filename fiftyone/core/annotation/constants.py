@@ -138,16 +138,24 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
-### Label schema type to field/label class (reverse mappings)
+### Label schema type to field class
 
 
-# Reverse of FIELD_TYPE_TO_TYPES (type string -> field class)
+# Maps schema type string to field class (for primitive field creation)
+# Note: List types map to their subfield class (e.g., FLOAT_LIST -> FloatField)
 TYPE_TO_FIELD = {
-    v: k for k, v in FIELD_TYPE_TO_TYPES.items() if not isinstance(v, dict)
+    BOOL: fof.BooleanField,
+    DATE: fof.DateField,
+    DATETIME: fof.DateTimeField,
+    DICT: fof.DictField,
+    FLOAT: fof.FloatField,
+    FLOAT_LIST: fof.FloatField,
+    ID: fof.UUIDField,
+    INT: fof.IntField,
+    INT_LIST: fof.IntField,
+    STR: fof.StringField,
+    STR_LIST: fof.StringField,
 }
-TYPE_TO_FIELD.pop(LABEL, None)  # Remove Label, handled separately
-for subfield_cls, type_str in FIELD_TYPE_TO_TYPES[fof.ListField].items():
-    TYPE_TO_FIELD[type_str] = subfield_cls
 
 
 ### Heuristics
