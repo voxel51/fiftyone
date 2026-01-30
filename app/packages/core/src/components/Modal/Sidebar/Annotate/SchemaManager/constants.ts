@@ -70,12 +70,9 @@ export const CATEGORY_PRIMITIVE = 1;
 // Default Label Attributes
 // =============================================================================
 
-export interface AttributeConfig {
-  name: string;
-  type: string;
-  component?: string;
-  read_only?: boolean;
-}
+// Import AttributeConfig from utils to avoid circular dependency issues
+// (utils imports constants for other values, so type must live in utils)
+import type { AttributeConfig } from "./utils";
 
 // Base attributes shared by all label types (_HasID mixin + confidence)
 export const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [

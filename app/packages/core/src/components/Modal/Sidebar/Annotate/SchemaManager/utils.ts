@@ -588,3 +588,25 @@ export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
   }
   return LABEL_TYPE_OPTIONS;
 };
+
+// =============================================================================
+// Field Name Validation
+// =============================================================================
+
+/**
+ * Validate field name and return error message if invalid
+ */
+export const validateFieldName = (
+  fieldName: string,
+  existingFields: Record<string, unknown> | null
+): string | null => {
+  const trimmed = fieldName.trim();
+  if (!trimmed) return null;
+  if (existingFields && trimmed in existingFields) {
+    return "Field name already exists";
+  }
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
+    return "Invalid field name (use letters, numbers, underscores)";
+  }
+  return null;
+};

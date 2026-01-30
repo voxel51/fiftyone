@@ -20,9 +20,21 @@ import {
   TextVariant,
   ToggleSwitch,
 } from "@voxel51/voodo";
-import { useCallback, useMemo, useState } from "react";
-import { ATTRIBUTE_TYPE_OPTIONS, getDefaultComponent } from "../constants";
-import { getLabelTypeOptions } from "../utils";
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ATTRIBUTE_TYPE_OPTIONS,
+  CATEGORY_LABEL,
+  DEFAULT_DETECTION_ATTRIBUTES_2D,
+  getDefaultAttributesForType,
+  getDefaultComponent,
+  toFieldType,
+} from "../constants";
+import {
+  getLabelTypeOptions,
+  validateFieldName,
+  type AttributeConfig,
+  type SchemaConfigType,
+} from "../utils";
 import {
   useExitNewFieldMode,
   useLabelSchemasData,
@@ -35,70 +47,8 @@ import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
 import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
 import Footer from "../Footer";
 import { ListContainer } from "../styled";
-import type { AttributeConfig, SchemaConfigType } from "../utils";
 
 type FieldCategory = "label" | "primitive";
-
-const CATEGORY_LABEL = 0;
-const CATEGORY_PRIMITIVE = 1;
-
-// Base attributes shared by all label types (_HasID mixin + confidence)
-const BASE_LABEL_ATTRIBUTES: AttributeConfig[] = [
-  { name: "id", type: "id", component: "text", read_only: true },
-  { name: "tags", type: "list<str>", component: "text" },
-  { name: "confidence", type: "float", component: "text" },
-];
-
-// 2D Detection has 'index' and 'mask_path' fields
-const DEFAULT_DETECTION_ATTRIBUTES_2D: AttributeConfig[] = [
-  ...BASE_LABEL_ATTRIBUTES,
-  { name: "index", type: "int", component: "text" },
-  { name: "mask_path", type: "str", component: "text" },
-];
-
-// 3D Detection has 'index' only (no mask_path)
-const DEFAULT_DETECTION_ATTRIBUTES_3D: AttributeConfig[] = [
-  ...BASE_LABEL_ATTRIBUTES,
-  { name: "index", type: "int", component: "text" },
-];
-
-// Classification uses base attributes only
-const DEFAULT_CLASSIFICATION_ATTRIBUTES: AttributeConfig[] =
-  BASE_LABEL_ATTRIBUTES;
-
-// Polyline has 'closed', 'filled', and 'index' fields
-const DEFAULT_POLYLINE_ATTRIBUTES: AttributeConfig[] = [
-  ...BASE_LABEL_ATTRIBUTES,
-  { name: "closed", type: "bool", component: "toggle" },
-  { name: "filled", type: "bool", component: "toggle" },
-  { name: "index", type: "int", component: "text" },
-];
-
-// Get default attributes for a label type based on media type
-const getDefaultAttributesForType = (
-  labelType: string,
-  is3dMedia: boolean
-): AttributeConfig[] => {
-  switch (labelType) {
-    case "detections":
-      return is3dMedia
-        ? DEFAULT_DETECTION_ATTRIBUTES_3D
-        : DEFAULT_DETECTION_ATTRIBUTES_2D;
-    case "polylines":
-      return DEFAULT_POLYLINE_ATTRIBUTES;
-    case "classification":
-    default:
-      return DEFAULT_CLASSIFICATION_ATTRIBUTES;
-  }
-};
-
-// Convert schema type to field type format (e.g., "str" -> "Str")
-const toFieldType = (schemaType: string): string => {
-  if (schemaType.startsWith("list<")) {
-    return "List<" + schemaType.slice(5);
-  }
-  return schemaType.charAt(0).toUpperCase() + schemaType.slice(1);
-};
 
 const NewFieldSchema = () => {
   const [fieldName, setFieldName] = useState("");
@@ -127,6 +77,15 @@ const NewFieldSchema = () => {
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
+  // Make sure 3D Detection attributes initialize correctly
+  const initializedRef = useRef(false);
+  if (!initializedRef.current && currentMediaType !== null) {
+    initializedRef.current = true;
+    if (is3dMedia) {
+      setAttributes(getDefaultAttributesForType(labelType, true));
+    }
+  }
+
   // Get label type options based on media type
   const labelTypeOptions = useMemo(
     () => getLabelTypeOptions(currentMediaType),
@@ -134,17 +93,10 @@ const NewFieldSchema = () => {
   );
 
   // Validate field name
-  const fieldNameError = useMemo(() => {
-    const trimmed = fieldName.trim();
-    if (!trimmed) return null;
-    if (schemasData && trimmed in schemasData) {
-      return "Field name already exists";
-    }
-    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
-      return "Invalid field name (use letters, numbers, underscores)";
-    }
-    return null;
-  }, [fieldName, schemasData]);
+  const fieldNameError = useMemo(
+    () => validateFieldName(fieldName, schemasData),
+    [fieldName, schemasData]
+  );
 
   const canCreate = fieldName.trim() !== "" && !fieldNameError && !isCreating;
 
@@ -345,7 +297,7 @@ const NewFieldSchema = () => {
               <Text
                 variant={TextVariant.Sm}
                 color={TextColor.Destructive}
-                style={{ marginTop: 4 }}
+                style={{ marginTop: "0.2rem" }}
               >
                 {fieldNameError}
               </Text>
@@ -404,6 +356,7 @@ const NewFieldSchema = () => {
           {/* Primitive field config */}
           {category === "primitive" && (
             <PrimitiveFieldContent
+              field={fieldName || "new_field"}
               fieldType={toFieldType(primitiveType)}
               config={primitiveConfig}
               onConfigChange={handlePrimitiveConfigChange}
