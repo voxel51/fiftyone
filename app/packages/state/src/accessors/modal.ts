@@ -2,7 +2,8 @@ import { fieldSchema, modalSample, ModalSample, State } from "../recoil";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { Schema } from "@fiftyone/utilities";
 import { modalMode } from "../jotai";
-import { useAtomValue } from "jotai";
+import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
+import { useAtom, useAtomValue } from "jotai";
 
 /**
  * Get the current modal sample data.
@@ -30,3 +31,10 @@ export const useModalSampleSchema = (): Schema =>
  * Get the current modal mode.
  */
 export const useModalMode = () => useAtomValue(modalMode);
+
+/**
+ * Get and set the preferred annotation slice for grouped datasets.
+ * Returns [preferredSlice, setPreferredSlice].
+ */
+export const usePreferredGroupAnnotationSlice = () =>
+  useAtom(preferredGroupAnnotationSliceAtom);

@@ -7,7 +7,7 @@ import {
   ANNOTATION_POLYLINE,
 } from "@fiftyone/looker-3d/src/constants";
 import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
-import { is3DDataset } from "@fiftyone/state";
+import { is3DDataset, pinned3d } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -18,7 +18,7 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useSetAtom } from "jotai";
-import { useCallback } from "react";
+import React, { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
@@ -329,15 +329,21 @@ const Schema = () => {
 };
 
 const Actions = () => {
-  const is3D = useRecoilValue(is3DDataset);
+  // This checks if media type of the dataset resolved to 3d
+  const is3dDataset = useRecoilValue(is3DDataset);
+  // This checks if a 3d sample is pinned - is true when media type is `group` with a 3d slice pinned
+  const is3dSamplePinned = useRecoilValue(pinned3d);
+
   const canManage = useCanManageSchema();
+
+  const areThreedActionsVisible = is3dDataset || is3dSamplePinned;
 
   return (
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <Row>
         <ItemLeft style={{ columnGap: "0.1rem" }}>
           <Classification />
-          {is3D ? (
+          {areThreedActionsVisible ? (
             <>
               <ThreeDCuboids />
               <ThreeDPolylines />

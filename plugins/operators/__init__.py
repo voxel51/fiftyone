@@ -26,6 +26,7 @@ from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
 from .annotation import (
     ActivateLabelSchemas,
+    CreateAndActivateField,
     DeactivateLabelSchemas,
     DeleteLabelSchemas,
     GetLabelSchemas,
@@ -3472,6 +3473,7 @@ def register(p):
 
     # annotation
     p.register(ActivateLabelSchemas)
+    p.register(CreateAndActivateField)
     p.register(DeactivateLabelSchemas)
     p.register(DeleteLabelSchemas)
     p.register(GenerateLabelSchemas)

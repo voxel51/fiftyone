@@ -117,7 +117,8 @@ export class PixiRenderer2D implements Renderer2D {
   };
 
   addTickHandler(onFrame: () => void): void {
-    if (this.isRunning) {
+    if (!this.app || this.isRunning) {
+      return;
     }
 
     this.isRunning = true;
@@ -909,6 +910,10 @@ export class PixiRenderer2D implements Renderer2D {
   }
 
   cleanUp(): void {
+    if (!this.app) {
+      return;
+    }
+
     this.resetTickHandler();
     this.viewport?.destroy({ children: true });
     this.viewport?.removeChildren();

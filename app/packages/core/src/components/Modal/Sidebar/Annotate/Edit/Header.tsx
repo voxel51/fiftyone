@@ -1,26 +1,47 @@
-import { West as Back } from "@mui/icons-material";
-import { useAtomValue } from "jotai";
+import { useRef, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
 import { Redo, Round, Undo } from "../Actions";
-import { ItemLeft, ItemRight } from "../Components";
 
 import { useLighter } from "@fiftyone/lighter";
-import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
-import { useRecoilValue } from "recoil";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
-import { currentOverlay, currentType, useAnnotationContext } from "./state";
+import { ItemLeft, ItemRight } from "../Components";
+import { West as Back } from "@mui/icons-material";
+import { Box, Menu, MenuItem, Stack } from "@mui/material";
+import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+
+import { showModal } from "../state";
+import * as fos from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  currentFieldIsReadOnlyAtom,
+  currentOverlay,
+  currentType,
+  useAnnotationContext,
+} from "./state";
+
 import useColor from "./useColor";
 import { useQuickDraw } from "./useQuickDraw";
 import useExit from "./useExit";
 import useDelete from "./useDelete";
-import { useRef, useState } from "react";
-import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
   const anchor = useRef<HTMLElement | null>(null);
   const onDelete = useDelete();
+
+  // Permission and read-only state
+  const canEditLabels = useRecoilValue(fos.canEditLabels);
+  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const setShowSchemaManager = useSetAtom(showModal);
+
+  const handleOpenSchemaManager = () => {
+    setShowSchemaManager(true);
+    setOpen(false); //handleMenuClose();
+  };
+
+  const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
 
   return (
     <>
@@ -42,6 +63,11 @@ const LabelHamburgerMenu = () => {
             <Text>Delete label</Text>
           </Stack>
         </MenuItem>
+        {showEditSchema && (
+          <MenuItem onClick={handleOpenSchemaManager}>
+            Edit field schema
+          </MenuItem>
+        )}
       </Menu>
     </>
   );
@@ -56,6 +82,7 @@ const Header = () => {
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
   const annotationContext = useAnnotationContext();
+  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
@@ -78,14 +105,17 @@ const Header = () => {
         {Icon && <Icon fill={color} />}
         <div>Edit {type}</div>
       </ItemLeft>
+      {currentFieldIsReadOnly && <span>Read-only</span>}
       <ItemRight>
         <Stack direction="row" alignItems="center">
-          {!isAnnotatingPolyline && !isAnnotatingCuboid && (
-            <>
-              <Undo />
-              <Redo />
-            </>
-          )}
+          {!currentFieldIsReadOnly &&
+            !isAnnotatingPolyline &&
+            !isAnnotatingCuboid && (
+              <>
+                <Undo />
+                <Redo />
+              </>
+            )}
           {annotationContext.selectedLabel !== null && <LabelHamburgerMenu />}
         </Stack>
       </ItemRight>

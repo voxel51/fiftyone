@@ -126,6 +126,7 @@ const GUIContent = ({
       <ListContainer className={scrollable}>
         <Section>
           <PrimitiveFieldContent
+            field={field}
             fieldType={fType}
             config={config}
             onConfigChange={onConfigChange}

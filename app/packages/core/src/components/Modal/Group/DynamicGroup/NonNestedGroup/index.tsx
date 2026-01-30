@@ -24,7 +24,7 @@ const ElementsContainer = styled.div`
 
 export const NonNestedDynamicGroup = () => {
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
-    fos.groupMediaIsMainVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting
   );
   const viewMode = useRecoilValue(fos.dynamicGroupsViewMode(true));
   const isCarouselVisible = useRecoilValue(
