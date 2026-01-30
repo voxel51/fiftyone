@@ -12,18 +12,18 @@ import logging.handlers
 import multiprocessing
 import os
 import traceback
+
 import psutil
 
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
+from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.executor import (
-    prepare_operator_executor,
-    do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
+    do_execute_operator,
+    prepare_operator_executor,
     resolve_type_with_context,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +88,20 @@ def _execute_operator_in_child_process(
 
         result = asyncio.run(service._execute_operator(operation))
 
-        service.set_completed(doc_id=operation.id, result=result)
+        doc = service.set_completed(
+            doc_id=operation.id,
+            result=result,
+            required_state=ExecutionRunState.RUNNING,
+        )
         if log:
-            logger.info("Operation %s complete", operation.id)
+            if doc:
+                logger.info("Operation %s complete", operation.id)
+            else:
+                logger.info(
+                    "Operation %s completed but was not marked as "
+                    "COMPLETED because its state changed externally.",
+                    operation.id,
+                )
     except Exception:
         result = ExecutionResult(error=traceback.format_exc())
         service.set_failed(doc_id=operation_id, result=result)
@@ -634,9 +645,20 @@ class DelegatedOperationService(object):
         """Executes an operation synchronously in the current process."""
         try:
             result = asyncio.run(self._execute_operator(operation))
-            self.set_completed(doc_id=operation.id, result=result)
+            doc = self.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s completed but was not marked as "
+                        "COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception as e:
             logger.debug(
                 "Uncaught exception when executing operator. Error=%s",
