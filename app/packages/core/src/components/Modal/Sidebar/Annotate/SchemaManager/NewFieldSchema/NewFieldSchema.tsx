@@ -20,7 +20,7 @@ import {
   TextVariant,
   ToggleSwitch,
 } from "@voxel51/voodo";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ATTRIBUTE_TYPE_OPTIONS,
   CATEGORY_LABEL,
@@ -77,14 +77,13 @@ const NewFieldSchema = () => {
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
-  // Make sure 3D Detection attributes initialize correctly
-  const initializedRef = useRef(false);
-  if (!initializedRef.current && currentMediaType !== null) {
-    initializedRef.current = true;
+  // Initialize correct attributes for 3D media
+  useEffect(() => {
     if (is3dMedia) {
       setAttributes(getDefaultAttributesForType(labelType, true));
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [is3dMedia]);
 
   // Get label type options based on media type
   const labelTypeOptions = useMemo(
