@@ -3,6 +3,7 @@
  */
 
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
+import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -348,6 +349,13 @@ export class InteractionManager {
         this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
       }
     }
+
+    if (
+      quickDrawBridge.isQuickDrawActive() &&
+      this.canvas.style.cursor === "pointer"
+    ) {
+      this.canvas.style.cursor = "crosshair";
+    }
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
@@ -380,9 +388,6 @@ export class InteractionManager {
         this.removeHandler(interactiveHandler);
       }
 
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
-
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
@@ -406,12 +411,9 @@ export class InteractionManager {
             overlay: interactiveHandler,
           });
 
-          // Dispatch custom event for detection completion
-          // This allows continuous annotation mode to auto-save and create next label
-          const completionEvent = new CustomEvent("detection-complete", {
-            detail: { overlayId: handler.id },
-          });
-          document.dispatchEvent(completionEvent);
+          if (quickDrawBridge.isQuickDrawActive()) {
+            this.selectionManager.clearSelection();
+          }
         } else {
           const type =
             moveState === "DRAGGING"
@@ -628,6 +630,10 @@ export class InteractionManager {
 
     // Update the hovered handler
     this.hoveredHandler = handler;
+
+    if (quickDrawBridge.isQuickDrawActive()) {
+      this.canvas.style.cursor = "crosshair";
+    }
   }
 
   private handleZoomed = (
