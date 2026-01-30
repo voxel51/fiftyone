@@ -19,6 +19,7 @@ import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { usePrimitivesCount } from "./usePrimitivesCount";
+import useDelete from "./Edit/useDelete";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -122,7 +123,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
     KnownContexts.ModalAnnotate,
     true
   );
-
+  useDelete();
   useEffect(() => {
     activate();
     return () => {
