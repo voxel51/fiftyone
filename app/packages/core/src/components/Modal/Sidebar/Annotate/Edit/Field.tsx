@@ -1,16 +1,18 @@
 import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  currentData,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
 } from "./state";
+import { useQuickDraw } from "./useQuickDraw";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -40,6 +42,8 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const setCurrentData = useSetAtom(currentData);
+  const { quickDrawActive, getLabelForFieldSwitch } = useQuickDraw();
   const schema = useMemo(() => createSchema(fields, disabled), [
     disabled,
     fields,
@@ -64,6 +68,14 @@ const Field = () => {
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
               setCurrentField(field);
+
+              // In QuickDraw mode, update the label to the most-common for the new field
+              if (quickDrawActive) {
+                const newLabel = getLabelForFieldSwitch(field);
+                if (newLabel) {
+                  setCurrentData({ label: newLabel });
+                }
+              }
             }}
           />
         </div>

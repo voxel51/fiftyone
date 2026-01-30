@@ -82,7 +82,7 @@ export const useQuickDraw = () => {
    *
    * Auto-assignment priority:
    * 1. Last-used label for this field (if in quick draw mode)
-   * 2. Most common label across all detection labels
+   * 2. Most common label for this specific field
    * 3. First class in the schema for the field
    *
    * Returns null if no label value can be determined.
@@ -96,7 +96,9 @@ export const useQuickDraw = () => {
         return lastUsedLabel;
       }
 
-      const relevantLabels = allLabels.filter((label) => label.data.label);
+      // Get labels specific to this field path
+      const fieldLabels = labelsMap[fieldPath] || [];
+      const relevantLabels = fieldLabels.filter((label) => label.data.label);
 
       if (relevantLabels.length > 0) {
         const labelCounts = countBy(
@@ -122,7 +124,7 @@ export const useQuickDraw = () => {
 
       return null;
     },
-    [allLabels, quickDrawActive]
+    [labelsMap, quickDrawActive]
   );
 
   /**
@@ -145,6 +147,24 @@ export const useQuickDraw = () => {
     [setLastUsedField]
   );
 
+  /**
+   * Get the appropriate label value when switching fields in QuickDraw mode.
+   * This determines what label should be pre-selected for the new field.
+   *
+   * @param newFieldPath - The field path being switched to
+   * @returns The label value to use, or null if none available
+   */
+  const getLabelForFieldSwitch = useCallback(
+    (newFieldPath: string): string | null => {
+      if (!quickDrawActive) {
+        return null;
+      }
+
+      return getQuickDrawDetectionLabel(newFieldPath);
+    },
+    [quickDrawActive, getQuickDrawDetectionLabel]
+  );
+
   return useMemo(
     () => ({
       // State (read-only)
@@ -161,6 +181,9 @@ export const useQuickDraw = () => {
 
       // Tracking (for useSave)
       trackLastUsedDetection,
+
+      // Field switching (for Field component)
+      getLabelForFieldSwitch,
     }),
     [
       quickDrawActive,
@@ -170,6 +193,7 @@ export const useQuickDraw = () => {
       getQuickDrawDetectionField,
       getQuickDrawDetectionLabel,
       trackLastUsedDetection,
+      getLabelForFieldSwitch,
     ]
   );
 };
