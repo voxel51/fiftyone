@@ -60,12 +60,6 @@ export default function useFocus() {
         if (!quickDrawActive) {
           onExit();
         }
-
-        scene?.deselectOverlay(id, {
-          ignoreSideEffects: true,
-        });
-
-        select();
       },
       [scene, onSave, onExit, select]
     )

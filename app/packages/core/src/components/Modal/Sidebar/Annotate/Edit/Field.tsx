@@ -10,7 +10,6 @@ import {
   currentFields,
   currentType,
   editing,
-  isNew,
 } from "./state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
@@ -41,20 +40,15 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const schema = useMemo(
-    () => createSchema(fields, disabled),
-    [disabled, fields]
-  );
+  const schema = useMemo(() => createSchema(fields, disabled), [
+    disabled,
+    fields,
+  ]);
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const isCreating = useAtomValue(isNew);
 
   const polylinePointTransforms =
     useRecoilValue(stagedPolylineTransformsAtom) ?? {};
-
-  if (!isCreating) {
-    return null;
-  }
 
   // todo: temp: skip for 3d
   if (Object.keys(polylinePointTransforms).length > 0) {

@@ -33,9 +33,6 @@ export const useQuickDraw = () => {
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
-    // Note: lastUsedDetectionFieldAtom and lastUsedLabelByFieldAtom will be
-    // garbage collected when no longer referenced. We rely on quickDrawActive
-    // flag to determine whether to use last-used values.
   }, [setQuickDrawActive]);
 
   /**
@@ -52,12 +49,10 @@ export const useQuickDraw = () => {
     const store = getDefaultStore();
     const lastUsedField = store.get(lastUsedDetectionFieldAtom);
 
-    // In quick draw mode, check for last-used detection field
     if (quickDrawActive && lastUsedField) {
       return lastUsedField;
     }
 
-    // Find the detection field with the most labels
     let maxCount = 0;
     let fieldWithMostLabels: string | null = null;
 
@@ -79,7 +74,7 @@ export const useQuickDraw = () => {
     // Fallback to default detection field
     const field = store.get(defaultField(DETECTION));
     return field;
-  }, [quickDrawActive, lastUsedField, labelsMap]);
+  }, [quickDrawActive, labelsMap]);
 
   /**
    * Get the auto-assigned label value (class) for a detection field.
