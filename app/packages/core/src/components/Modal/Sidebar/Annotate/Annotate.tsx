@@ -17,8 +17,8 @@ import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { usePrimitivesCount } from "./usePrimitivesCount";
+import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
@@ -119,17 +119,16 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
-  const { activate, deactivate } = useCommandContext(
-    KnownContexts.ModalAnnotate,
-    true
-  );
+  const contextManager = useAnnotationContextManager();
   useDelete();
+
   useEffect(() => {
-    activate();
+    contextManager.enter();
+
     return () => {
-      deactivate();
+      contextManager.exit();
     };
-  }, [activate, deactivate]);
+  }, []);
 
   const isDisabled = disabledReason !== null;
   const disabledMsg =

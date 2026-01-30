@@ -57,7 +57,7 @@ export default function Position({ readOnly = false }: PositionProps) {
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
   useEffect(() => {

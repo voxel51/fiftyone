@@ -1784,15 +1784,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if field not in self._doc.label_schemas:
                 raise ValueError(f"field '{field}' is not in the label schema")
 
-            if field in result:
-                raise ValueError(
-                    f"field '{field}' is already active in the label schema"
-                )
-
-            if prepend:
-                result.insert(0, field)
-            else:
-                result.append(field)
+            if field not in result:
+                if prepend:
+                    result.insert(0, field)
+                else:
+                    result.append(field)
 
         self._doc.active_label_schemas = result
         self.save()

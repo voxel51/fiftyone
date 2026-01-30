@@ -37,7 +37,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
 
-  private _sceneId?: string;
+  private _eventChannel?: string;
   private _eventBus?: EventDispatcher<LighterEventGroup>;
 
   constructor(id: string, field: string, label: Label) {
@@ -51,11 +51,11 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   private _label: Label;
 
   /**
-   * Gets the event bus, initializing it lazily with the sceneId if available.
+   * Gets the event bus, initializing it lazily with the eventChannel if available.
    */
   protected get eventBus(): EventDispatcher<LighterEventGroup> {
     if (!this._eventBus) {
-      this._eventBus = getEventBus<LighterEventGroup>(this._sceneId);
+      this._eventBus = getEventBus<LighterEventGroup>(this._eventChannel);
     }
     return this._eventBus;
   }
@@ -100,12 +100,12 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
-   * Sets the scene ID for this overlay.
-   * @param sceneId - The scene ID to use for the event bus channel.
+   * Sets the event channel for this overlay.
+   * @param eventChannel - The value to use for the event bus channel.
    */
-  setSceneId(sceneId: string | undefined): void {
-    this._sceneId = sceneId;
-    // Reset eventBus so it gets reinitialized with the new sceneId
+  setEventChannel(eventChannel: string | undefined): void {
+    this._eventChannel = eventChannel;
+    // Reset eventBus so it gets reinitialized with the new eventChannel
     this._eventBus = undefined;
   }
 

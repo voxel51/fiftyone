@@ -1,7 +1,7 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React, { Suspense } from "react";
+import React, { Suspense, useState } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -11,6 +11,9 @@ import {
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
+import { Clickable, Icon as VoodoIcon, IconName, Size } from "@voxel51/voodo";
+import { Stack } from "@mui/material";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
@@ -73,23 +76,41 @@ const Hidden = ({ path }: { path: string }) => {
 const useTitleTemplate = ({
   modal,
   path,
+  canAnnotate,
 }: {
   modal: boolean;
   path: string;
+  canAnnotate?: boolean;
 }) => {
   return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
     const enabled = !useRecoilValue(fos.isDisabledCheckboxPath(path));
     const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
     const expandedPath = useRecoilValue(fos.expandPath(path));
+    const { enterAnnotationMode } = useAnnotationController();
+    const [hovering, setHovering] = useState(false);
 
     return (
       <NameAndCountContainer
         ref={container}
         data-cy={`sidebar-field-container-${path}`}
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
       >
         <span key="path" data-cy={`sidebar-field-${path}`}>
           <span ref={hoverTarget} {...hoverHandlers}>
-            {PATH_OVERRIDES[path] || path}
+            <Stack
+              sx={{ display: "inline-flex" }}
+              direction="row"
+              alignItems="center"
+              gap={2}
+            >
+              {PATH_OVERRIDES[path] || path}
+              {hovering && canAnnotate && modal && (
+                <Clickable onClick={() => enterAnnotationMode(path)}>
+                  <VoodoIcon name={IconName.Edit} size={Size.Sm} />
+                </Clickable>
+              )}
+            </Stack>
           </span>
         </span>
         {modal && (

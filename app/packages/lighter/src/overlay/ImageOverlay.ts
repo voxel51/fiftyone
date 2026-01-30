@@ -61,11 +61,11 @@ export class ImageOverlay
   }
 
   /**
-   * Sets the scene ID for this overlay and subscribes to viewport events.
-   * @param sceneId - The scene ID to use for the event bus channel.
+   * Sets the event channel for this overlay and subscribes to viewport events.
+   * @param eventChannel - The event channel to use.
    */
-  setSceneId(sceneId: string | undefined): void {
-    super.setSceneId(sceneId);
+  setEventChannel(eventChannel: string | undefined): void {
+    super.setEventChannel(eventChannel);
 
     // Clean up previous subscription
     if (this.viewportUnsubscribe) {
@@ -73,8 +73,8 @@ export class ImageOverlay
       this.viewportUnsubscribe = undefined;
     }
 
-    if (sceneId) {
-      this.sceneEventBus = getEventBus<LighterEventGroup>(sceneId);
+    if (eventChannel) {
+      this.sceneEventBus = getEventBus<LighterEventGroup>(eventChannel);
 
       // Subscribe to viewport-moved events to sync image transform
       this.viewportUnsubscribe = this.sceneEventBus.on(

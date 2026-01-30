@@ -207,9 +207,9 @@ export class InteractionManager {
     private canvas: HTMLCanvasElement,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string
+    eventChannel: string
   ) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
   }
 
