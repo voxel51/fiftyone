@@ -47,8 +47,12 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  constructor(private canvas: HTMLCanvasElement, sceneId: string) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+  constructor(private canvas: HTMLCanvasElement) {
+    this.eventBus = getEventBus();
+  }
+
+  setEventChannel(channelId: string) {
+    this.eventBus = getEventBus(channelId);
   }
 
   public async initializePixiJS(): Promise<void> {

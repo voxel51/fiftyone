@@ -2,6 +2,7 @@ import {
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
+  useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
@@ -65,6 +66,8 @@ const SpacesContainer = styled.div`
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterRendererEventHandlers();
+
   const modalMode = useModalMode();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
