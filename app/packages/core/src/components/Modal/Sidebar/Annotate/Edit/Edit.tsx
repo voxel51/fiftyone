@@ -16,8 +16,6 @@ import PrimitiveWrapper from "./PrimitiveWrapper";
 import { currentField, currentOverlay, currentType } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import useSave from "./useSave";
-import { useAutoSaveOnCompletion } from "./useAutoSaveOnCompletion";
 import {
   KnownCommands,
   KnownContexts,
@@ -79,9 +77,6 @@ export default function Edit() {
     "delete",
     KnownContexts.Modal
   );
-
-  const save = useSave();
-  useAutoSaveOnCompletion(save);
 
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
