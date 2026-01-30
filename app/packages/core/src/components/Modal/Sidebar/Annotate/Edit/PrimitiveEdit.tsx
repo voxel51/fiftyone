@@ -1,11 +1,9 @@
 import { useSampleMutationManager } from "@fiftyone/annotation";
 import { Primitive } from "@fiftyone/utilities";
-import { DatePicker, Orientation, Stack } from "@voxel51/voodo";
+import { Button, Orientation, Stack, Variant } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
-import styled from "styled-components";
-import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
+import PrimitiveRenderer from "./PrimitiveRenderer";
 import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import {
   DelegatingUndoable,
@@ -17,12 +15,6 @@ interface PrimitiveEditProps {
   path: string;
   currentLabelSchema: PrimitiveSchema;
 }
-
-const EditorContainer = styled.div`
-  height: 400px;
-  display: flex;
-  flex-direction: column;
-`;
 
 export default function PrimitiveEdit({
   path,
@@ -89,38 +81,33 @@ export default function PrimitiveEdit({
     [editCommand]
   );
 
-  const isJson = type === "dict";
-  const isDate = type === "date" || type === "datetime";
+  const onExit = useExit();
+
+  const handleSave = useCallback(() => {
+    onExit();
+  }, [onExit]);
 
   return (
     <Stack orientation={Orientation.Column}>
-      {/* todo - schemaio component is not working correctly for dict fields */}
-      {/* this works fine but ideally we should use the schemaio component for all fields */}
-      {isJson ? (
-        <EditorContainer>
-          <JSONEditor
-            data={fieldValue as string}
-            onChange={handleChange}
-            errors={false}
-            scanning={false}
-          />
-        </EditorContainer>
-      ) : isDate ? (
-        <DatePicker
-          selected={fieldValue as Date}
-          showTimeSelect={type === "datetime"}
-          onChange={(date: Date | null) => {
-            handleChange(date);
-          }}
-        />
-      ) : (
-        <SchemaIOComponent
-          smartForm={true}
-          schema={primitiveSchema}
-          onChange={handleChange}
-          data={fieldValue}
-        />
-      )}
+      <PrimitiveRenderer
+        type={type}
+        fieldValue={fieldValue}
+        handleChange={handleChange}
+        primitiveSchema={primitiveSchema}
+      />
+      <Stack
+        orientation={Orientation.Row}
+        style={{
+          justifyContent: "flex-end",
+          gap: "0.5rem",
+          marginTop: "0.5rem",
+        }}
+      >
+        <Button variant={Variant.Secondary} onClick={onExit}>
+          Discard
+        </Button>
+        <Button onClick={handleSave}>Save</Button>
+      </Stack>
     </Stack>
   );
 }

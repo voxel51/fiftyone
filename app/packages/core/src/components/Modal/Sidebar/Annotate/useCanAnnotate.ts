@@ -1,11 +1,12 @@
-import { isGeneratedView, mediaType, readOnly } from "@fiftyone/state";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import { isGeneratedView, isGroup, mediaType, readOnly } from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
 export type AnnotationDisabledReason =
   | "generatedView"
-  | "groupedDataset"
+  | "groupedDatasetNoSupportedSlices"
   | "videoDataset"
   | null;
 
@@ -14,20 +15,34 @@ export interface CanAnnotateResult {
   showAnnotationTab: boolean;
   /** If tab is shown but disabled, the reason why */
   disabledReason: AnnotationDisabledReason;
+  /** Whether this is a grouped dataset (to show slice selector) */
+  isGroupedDataset: boolean;
 }
 
 const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
-  Record<string, Exclude<AnnotationDisabledReason, "generatedView" | null>>
+  Record<
+    string,
+    Exclude<
+      AnnotationDisabledReason,
+      "generatedView" | "groupedDatasetNoSupportedSlices" | null
+    >
+  >
 > = {
-  group: "groupedDataset",
   video: "videoDataset",
 };
 
 function getDisabledReason(
   currentMediaType: string | null | undefined,
-  isGenerated: boolean
+  isGenerated: boolean,
+  isGrouped: boolean,
+  hasSupportedSlices: boolean
 ): AnnotationDisabledReason {
   if (isGenerated) return "generatedView";
+
+  if (isGrouped) {
+    return hasSupportedSlices ? null : "groupedDatasetNoSupportedSlices";
+  }
+
   if (currentMediaType && !isAnnotationSupported(currentMediaType)) {
     return MEDIA_TYPE_TO_DISABLED_REASON[currentMediaType] ?? null;
   }
@@ -41,14 +56,28 @@ export default function useCanAnnotate(): CanAnnotateResult {
   });
   const currentMediaType = useRecoilValue(mediaType);
   const isGenerated = useRecoilValue(isGeneratedView);
+  const isGroupedDataset = useRecoilValue(isGroup);
+  const { supportedSlices } = useGroupAnnotationSlices();
+
+  const hasSupportedSlices = supportedSlices.length > 0;
 
   // hide tab entirely for read-only or feature disabled
   if (isReadOnly || !isAnnotationEnabled) {
-    return { showAnnotationTab: false, disabledReason: null };
+    return {
+      showAnnotationTab: false,
+      disabledReason: null,
+      isGroupedDataset: isGroupedDataset,
+    };
   }
 
   return {
+    isGroupedDataset,
     showAnnotationTab: true,
-    disabledReason: getDisabledReason(currentMediaType, isGenerated),
+    disabledReason: getDisabledReason(
+      currentMediaType,
+      isGenerated,
+      isGroupedDataset,
+      hasSupportedSlices
+    ),
   };
 }

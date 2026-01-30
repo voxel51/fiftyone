@@ -20,7 +20,7 @@ const Group = () => {
     fos.dynamicGroupsViewMode(true)
   );
   const setIsMainLookerVisible = useSetRecoilState(
-    fos.groupMediaIsMainVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting
   );
 
   useEffect(() => {

@@ -26,6 +26,11 @@ export function translateToUISchema(
       // i.e. uiSchema["ui:placeholder"] = view.placeholder;
       break;
 
+    case SmartFormComponents.LabelValueView:
+      // Read-only text display, no input
+      uiSchema["ui:widget"] = "LabelValueWidget";
+      break;
+
     case SmartFormComponents.CheckboxView:
       uiSchema["ui:widget"] = "checkbox";
       break;

@@ -1,5 +1,8 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import {
+  activeLabelSchemas,
+  labelSchemaData,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -15,7 +18,7 @@ import { fieldSchema } from "@fiftyone/state";
 import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { ThreeEvent } from "@react-three/fiber";
-import { useAtomValue } from "jotai";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
@@ -169,6 +172,11 @@ export const ThreeDLabels = ({
     ) => {
       if (isSegmenting) return;
       if (mode === "annotate") {
+        // Check if field is read-only
+        const store = getDefaultStore();
+        const fieldSchema = store.get(labelSchemaData(label.path));
+        const isReadOnly = !!fieldSchema?.read_only;
+
         annotationEventBus.dispatch("annotation:3dLabelSelected", {
           id: label._id ?? label["id"],
           archetype,
@@ -176,15 +184,21 @@ export const ThreeDLabels = ({
         });
 
         if (archetype === "cuboid") {
-          selectLabelForAnnotation(label, archetype);
-          setCurrentArchetypeSelectedForTransform(archetype);
+          if (!isReadOnly) {
+            selectLabelForAnnotation(label, archetype);
+            setCurrentArchetypeSelectedForTransform(archetype);
+          }
+
           setEditingToExistingCuboid(label);
           return;
         }
 
         if (archetype === "polyline") {
-          selectLabelForAnnotation(label, archetype);
-          setCurrentArchetypeSelectedForTransform(archetype);
+          if (!isReadOnly) {
+            selectLabelForAnnotation(label, archetype);
+            setCurrentArchetypeSelectedForTransform(archetype);
+          }
+
           setEditingToExistingPolyline(label);
         }
 
