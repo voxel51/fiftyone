@@ -1697,7 +1697,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         ]
         self.save()
 
-    def update_label_schema(self, field, label_schema):
+    def update_label_schema(
+        self,
+        field,
+        label_schema,
+        allow_new_attrs=False,
+        allow_new_fields=False,
+    ):
         """Update an individual field's
         :ref:`label schema <annotation-label-schema>`.
 
@@ -1710,11 +1716,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             field: the field name
             label_schema: the field's label schema
+            allow_new_attrs (False): whether to allow label attributes that do
+                not yet exist on the field schema
+            allow_new_fields (False): whether to allow label schemas for fields
+                that do not yet exist on the dataset
 
         Raises:
             ExceptionGroup: if the label schema is invalid
         """
-        foa.validate_label_schemas(self, label_schema, fields=field)
+        foa.validate_label_schemas(
+            self,
+            label_schema,
+            allow_new_attrs=allow_new_attrs,
+            allow_new_fields=allow_new_fields,
+            fields=field,
+        )
         label_schemas = self.label_schemas
         label_schemas[field] = copy.deepcopy(label_schema)
         self._doc.label_schemas = label_schemas
@@ -1745,13 +1761,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.set_label_schemas(label_schemas)
 
-    def activate_label_schemas(self, fields=None):
+    def activate_label_schemas(self, fields=None, prepend=False):
         """Activate :meth:`label_schemas`. If no fields are provided, all
         label schemas are activated.
 
         Args:
             fields (None): a field name, ``embedded.field.name`` or iterable
                 of such values
+            prepend (False): whether to prepend the fields to the beginning of
+                the active list (True) or append to the end (False)
 
         Raises:
             ValueError: if any fields are not in the label schema
@@ -1767,7 +1785,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 raise ValueError(f"field '{field}' is not in the label schema")
 
             if field not in result:
-                result.append(field)
+                if prepend:
+                    result.insert(0, field)
+                else:
+                    result.append(field)
 
         self._doc.active_label_schemas = result
         self.save()

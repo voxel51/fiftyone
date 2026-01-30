@@ -19,7 +19,7 @@ export const GroupView = () => {
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
   const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisible);
+  const isMainVisible = useRecoilValue(fos.groupMediaIsMain2DViewerVisible);
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH

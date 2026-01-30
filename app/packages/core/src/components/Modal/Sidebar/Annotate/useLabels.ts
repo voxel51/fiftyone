@@ -3,13 +3,14 @@ import {
   activeFields,
   AnnotationLabel,
   field,
+  modalGroupSlice,
   ModalSample,
   modalSample,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   selector,
   useRecoilCallback,
@@ -119,6 +120,8 @@ export default function useLabels() {
   const addLabel = useAddAnnotationLabelToRenderer();
   const createLabel = useCreateAnnotationLabel();
   const { scene } = useLighter();
+  const currentSlice = useRecoilValue(modalGroupSlice);
+  const prevSliceRef = useRef(currentSlice);
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
@@ -137,6 +140,15 @@ export default function useLabels() {
       },
     []
   );
+
+  // This effect resets labels when the annotation slice changes for grouped datasets
+  useEffect(() => {
+    if (prevSliceRef.current !== currentSlice && currentSlice) {
+      prevSliceRef.current = currentSlice;
+      setLabels([]);
+      setLoading(LabelsState.UNSET);
+    }
+  }, [currentSlice]);
 
   useEffect(() => {
     if (

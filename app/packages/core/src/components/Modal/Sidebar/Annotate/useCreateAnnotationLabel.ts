@@ -10,6 +10,8 @@ import {
 } from "@fiftyone/lighter";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { AnnotationLabel } from "@fiftyone/state";
+import { getDefaultStore } from "jotai";
+import { labelSchemaData } from "./state";
 
 /**
  * Hook which provides a method for creating an {@link AnnotationLabel}.
@@ -39,13 +41,20 @@ export const useCreateAnnotationLabel = () => {
       if (type === DETECTION) {
         const label = data as BoundingBoxOptions["label"];
         const boundingBox = label?.bounding_box;
+
+        // Check if field is read-only
+        const store = getDefaultStore();
+        const fieldSchema = store.get(labelSchemaData(field));
+        const isReadOnly = !!fieldSchema?.read_only;
+
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
         >("bounding-box", {
           field,
           id: data._id,
-          draggable: true,
+          draggable: !isReadOnly,
+          resizeable: !isReadOnly,
           selectable: true,
           label,
           relativeBounds: {

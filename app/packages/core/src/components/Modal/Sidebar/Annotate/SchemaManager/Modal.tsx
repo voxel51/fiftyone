@@ -15,13 +15,17 @@ import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, { useActivateFields, useDeactivateFields } from "./GUIView";
+import GUIView from "./GUIView";
 import {
+  useActivateFields,
   useCurrentField,
   useCurrentFieldValue,
+  useDeactivateFields,
+  useNewFieldMode,
   useSelectedFieldCounts,
   useShowSchemaManagerModal,
 } from "./hooks";
+import NewFieldSchema from "./NewFieldSchema";
 import {
   BackButton,
   CloseButton,
@@ -36,6 +40,17 @@ export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const { field, setField } = useCurrentField();
+  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
+    useNewFieldMode();
+
+  if (newFieldMode) {
+    return (
+      <ItemLeft>
+        <BackButton color="secondary" onClick={() => setNewFieldMode(false)} />
+        <Text variant={TextVariant.Xl}>New field schema</Text>
+      </ItemLeft>
+    );
+  }
 
   if (!field) {
     return <Text variant={TextVariant.Xl}>Schema manager</Text>;
@@ -55,8 +70,9 @@ const Heading = () => {
 
 const Subheading = () => {
   const field = useCurrentFieldValue();
+  const { isNewField: newFieldMode } = useNewFieldMode();
 
-  if (field) {
+  if (field || newFieldMode) {
     return null;
   }
 
@@ -69,6 +85,11 @@ const Subheading = () => {
 
 const Page = () => {
   const field = useCurrentFieldValue();
+  const { isNewField: newFieldMode } = useNewFieldMode();
+
+  if (newFieldMode) {
+    return <NewFieldSchema />;
+  }
 
   if (field) {
     return <EditFieldLabelSchema field={field} />;
@@ -163,8 +184,8 @@ const Modal = () => {
         <ModalHeader>
           <Heading />
           <CloseButton
-            color="secondary"
             data-cy="close-schema-manager"
+            color="secondary"
             onClick={() => setShowModal(false)}
           />
         </ModalHeader>

@@ -32,11 +32,10 @@ const DISABLED_MESSAGES: Record<
       materialized views.
     </p>
   ),
-  groupedDataset: (
+  groupedDatasetNoSupportedSlices: (
     <p>
-      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-      you want to label.
+      This grouped dataset has no slices that support annotation. Only image and
+      3D slices can be annotated.
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,

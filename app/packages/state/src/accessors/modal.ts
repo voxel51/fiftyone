@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ModalMode, modalMode } from "../jotai";
 import {
@@ -10,6 +10,7 @@ import {
   State,
 } from "../recoil";
 import { Schema } from "@fiftyone/utilities";
+import { preferredGroupAnnotationSliceAtom } from "../jotai/group-annotation";
 
 /**
  * Hook which provides the modal's current active paths,
@@ -39,17 +40,19 @@ export interface ModalModeController {
 export const useModalModeController = (): ModalModeController => {
   const setMode = useSetAtom(modalMode);
 
-  const activateAnnotateMode = useCallback(() => setMode(ModalMode.ANNOTATE), [
-    setMode,
-  ]);
-  const activateExploreMode = useCallback(() => setMode(ModalMode.EXPLORE), [
-    setMode,
-  ]);
+  const activateAnnotateMode = useCallback(
+    () => setMode(ModalMode.ANNOTATE),
+    [setMode]
+  );
+  const activateExploreMode = useCallback(
+    () => setMode(ModalMode.EXPLORE),
+    [setMode]
+  );
 
-  return useMemo(() => ({ activateAnnotateMode, activateExploreMode }), [
-    activateExploreMode,
-    activateAnnotateMode,
-  ]);
+  return useMemo(
+    () => ({ activateAnnotateMode, activateExploreMode }),
+    [activateExploreMode, activateAnnotateMode]
+  );
 };
 
 /**
@@ -78,3 +81,10 @@ export const useModalSample = (): ModalSample | undefined => {
  */
 export const useModalSampleSchema = (): Schema =>
   useRecoilValue(fieldSchema({ space: State.SPACE.SAMPLE }));
+
+/**
+ * Get and set the preferred annotation slice for grouped datasets.
+ * Returns [preferredSlice, setPreferredSlice].
+ */
+export const usePreferredGroupAnnotationSlice = () =>
+  useAtom(preferredGroupAnnotationSliceAtom);
