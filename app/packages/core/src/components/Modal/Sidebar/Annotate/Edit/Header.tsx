@@ -91,8 +91,6 @@ const Header = () => {
   const handleExit = () => {
     disableQuickDraw();
     scene?.exitInteractiveMode();
-
-    // Call original exit handler
     onExit();
   };
 

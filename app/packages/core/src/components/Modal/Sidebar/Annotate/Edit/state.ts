@@ -107,9 +107,22 @@ export const currentField = atom(
     if (!label) {
       return;
     }
+
+    // Preserve existing data when changing fields
+    const newData = { ...label.data };
+
+    // In quick draw mode, update label value for the new field
+    const quickDrawActive = get(quickDrawActiveAtom);
+    if (quickDrawActive) {
+      const lastUsedLabel = get(lastUsedLabelByFieldAtom(path));
+      if (lastUsedLabel) {
+        newData.label = lastUsedLabel;
+      }
+    }
+
     label.overlay?.updateField(path);
-    label.overlay?.updateLabel({ _id: label.data._id });
-    set(current, { ...label, path, data: { _id: label.data._id } });
+    label.overlay?.updateLabel(newData);
+    set(current, { ...label, path, data: newData });
   }
 );
 
