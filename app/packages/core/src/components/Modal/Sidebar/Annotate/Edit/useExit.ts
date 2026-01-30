@@ -9,16 +9,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-// <<<<<<< HEAD
-// import {
-//   current,
-//   currentOverlay,
-//   hasChanges,
-//   savedLabel,
-// } from "./state";
-// =======
 import { currentOverlay, savedLabel } from "./state";
-//>>>>>>> develop
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
@@ -78,12 +69,7 @@ export default function useExit() {
     setEditing,
     setSaved,
     setSelectedLabelForAnnotation,
-    // <<<<<<< HEAD
-    //     hasChanged,
-    //     setActivePrimitive,
-    // =======
     setStagedCuboidTransforms,
     setStagedPolylineTransforms,
-    //>>>>>>> develop
   ]);
 }

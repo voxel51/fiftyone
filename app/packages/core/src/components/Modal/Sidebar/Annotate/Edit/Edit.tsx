@@ -1,7 +1,7 @@
 import { DetectionLabel } from "@fiftyone/looker";
 import { useClearModal } from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
@@ -84,23 +84,6 @@ export default function Edit() {
     KnownContexts.Modal
   );
 
-  // <<<<<<< HEAD
-  //   const { confirmExit } = useConfirmExit(() => {
-  //     clear();
-  //     exit();
-  //   }, useSave());
-  //
-  //   // Update overlay draggable/resizeable based on read-only state
-  //   useEffect(() => {
-  //     if (!overlay) return;
-  //
-  //     overlay.setDraggable?.(!isReadOnly);
-  //     overlay.setResizeable?.(!isReadOnly);
-  //     overlay.markDirty?.();
-  //   }, [overlay, isReadOnly]);
-  //
-  // =======
-  // >>>>>>> develop
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
       pointerDownTarget = event.target;
