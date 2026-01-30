@@ -148,19 +148,33 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Get the appropriate label value when switching fields in QuickDraw mode.
-   * This determines what label should be pre-selected for the new field.
+   * This function manages both the atom state and overlay updates, bypassing the
+   * normal currentField setter which would wipe out the label data.
    *
-   * @param newFieldPath - The field path being switched to
-   * @returns The label value to use, or null if none available
+   * @param newFieldPath - The new field path to switch to
+   * @param currentLabel - The current label atom/data
+   * @param setCurrent - Setter function for the current atom
+   * @returns The complete updated data object
    */
-  const getLabelForFieldSwitch = useCallback(
-    (newFieldPath: string): string | null => {
-      if (!quickDrawActive) {
+  const handleQuickDrawFieldChange = useCallback(
+    (newFieldPath: string, currentLabel: any, setCurrent: any): any => {
+      if (!quickDrawActive || !currentLabel) {
         return null;
       }
 
-      return getQuickDrawDetectionLabel(newFieldPath);
+      const newLabelValue = getQuickDrawDetectionLabel(newFieldPath);
+
+      const newData = {
+        _id: currentLabel.data._id,
+        ...(newLabelValue && { label: newLabelValue }),
+      };
+
+      currentLabel.overlay?.updateField(newFieldPath);
+      currentLabel.overlay?.updateLabel(newData);
+
+      setCurrent({ ...currentLabel, path: newFieldPath, data: newData });
+
+      return newData;
     },
     [quickDrawActive, getQuickDrawDetectionLabel]
   );
@@ -183,7 +197,7 @@ export const useQuickDraw = () => {
       trackLastUsedDetection,
 
       // Field switching (for Field component)
-      getLabelForFieldSwitch,
+      handleQuickDrawFieldChange,
     }),
     [
       quickDrawActive,
@@ -193,7 +207,7 @@ export const useQuickDraw = () => {
       getQuickDrawDetectionField,
       getQuickDrawDetectionLabel,
       trackLastUsedDetection,
-      getLabelForFieldSwitch,
+      handleQuickDrawFieldChange,
     ]
   );
 };

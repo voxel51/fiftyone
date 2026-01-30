@@ -1,11 +1,11 @@
 import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  currentData,
+  current,
   currentDisabledFields,
   currentField,
   currentFields,
@@ -42,8 +42,8 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const setCurrentData = useSetAtom(currentData);
-  const { quickDrawActive, getLabelForFieldSwitch } = useQuickDraw();
+  const [currentLabel, setCurrent] = useAtom(current);
+  const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
   const schema = useMemo(() => createSchema(fields, disabled), [
     disabled,
     fields,
@@ -67,14 +67,10 @@ const Field = () => {
             schema={schema}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              setCurrentField(field);
-
-              // In QuickDraw mode, update the label to the most-common for the new field
               if (quickDrawActive) {
-                const newLabel = getLabelForFieldSwitch(field);
-                if (newLabel) {
-                  setCurrentData({ label: newLabel });
-                }
+                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
+              } else {
+                setCurrentField(field);
               }
             }}
           />
