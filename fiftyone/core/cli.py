@@ -1087,6 +1087,7 @@ class AppCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", AppConfigCommand)
         _register_command(subparsers, "launch", AppLaunchCommand)
+        _register_command(subparsers, "debug", AppDebugCommand)
         _register_command(subparsers, "view", AppViewCommand)
         _register_command(subparsers, "connect", AppConnectCommand)
 
@@ -1249,6 +1250,66 @@ def _wait():
             time.sleep(10)
     except KeyboardInterrupt:
         pass
+
+
+class AppDebugCommand(Command):
+    """Launch the FiftyOne App in debug mode.
+
+    Examples::
+
+        # Launch the App in debug mode
+        fiftyone app debug
+
+        # Launch the App in debug mode with a given dataset loaded
+        fiftyone app debug <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="?",
+            help="the name of a dataset to open",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=None,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-A",
+            "--address",
+            metavar="ADDRESS",
+            default=None,
+            type=str,
+            help="the address (server name) to use",
+        )
+        parser.add_argument(
+            "--headless",
+            action="store_true",
+            help="don't open the browser",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        import fiftyone.server.main as fsm
+
+        # TODO: remove when https://voxel51.atlassian.net/browse/FOEPD-2418
+        # is resolved
+        os.environ[
+            "FIFTYONE_EXECUTION_STORE_NOTIFICATION_SERVICE_DISABLED"
+        ] = "true"
+
+        fsm.start_server(
+            port=args.port,
+            address=args.address,
+            dataset=args.name,
+            open_browser=not args.headless,
+        )
 
 
 class AppViewCommand(Command):
