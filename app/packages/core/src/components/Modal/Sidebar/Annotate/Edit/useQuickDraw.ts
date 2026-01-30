@@ -50,6 +50,7 @@ export const useQuickDraw = () => {
    */
   const getQuickDrawDetectionField = useCallback((): string | null => {
     const store = getDefaultStore();
+    const lastUsedField = store.get(lastUsedDetectionFieldAtom);
 
     // In quick draw mode, check for last-used detection field
     if (quickDrawActive && lastUsedField) {
