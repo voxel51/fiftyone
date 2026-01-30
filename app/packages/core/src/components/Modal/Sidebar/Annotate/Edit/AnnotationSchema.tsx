@@ -15,23 +15,6 @@ import {
   currentSchema,
 } from "./state";
 
-/*
- * Updates the readOnly flag for a primitive schema.
- * @param schema - The schema to update.
- * @param readOnly - The readOnly flag to update - either field OR parent schema's
- * readOnly value
- * @returns The updated schema.
- */
-function updateSchemaReadOnly(schema: SchemaType, readOnly: boolean) {
-  if (readOnly) {
-    return { ...schema, readOnly };
-  }
-
-  // if parent/field readOnly is false don't override the
-  // primitive's readOnly flag
-  return { ...schema, readOnly: schema.read_only };
-}
-
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
   const isLabelReadOnly = config.read_only;
@@ -44,7 +27,10 @@ const useSchema = (readOnly: boolean) => {
       .reduce(
         (schema: SchemaType, value: SchemaType) => ({
           ...schema,
-          [value.name!]: updateSchemaReadOnly(value, effectiveReadOnly),
+          [value.name!]: generatePrimitiveSchema(value.name!, {
+            ...value,
+            readOnly: effectiveReadOnly || value.read_only,
+          }),
         }),
         {
           label: generatePrimitiveSchema("label", {
