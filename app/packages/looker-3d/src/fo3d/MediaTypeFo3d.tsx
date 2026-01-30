@@ -81,7 +81,9 @@ const MainContainer = styled.main`
 export const MediaTypeFo3dComponent = () => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const is2DSampleViewerVisible = useRecoilValue(fos.groupMediaIsMainVisible);
+  const is2DSampleViewerVisible = useRecoilValue(
+    fos.groupMediaIsMain2DViewerVisible
+  );
   const isGroup = useRecoilValue(fos.isGroup);
   const setIsInMultiPanelView = useSetRecoilState(isInMultiPanelViewAtom);
 

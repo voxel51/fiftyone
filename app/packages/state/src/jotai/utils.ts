@@ -1,6 +1,3 @@
-export const SIDEBAR_MODE_ANNOTATE = "annotate";
-export const SIDEBAR_MODE_EXPLORE = "explore";
-
 /**
  * Creates a storage implementation that prepends the dataset name to the storage key.
  * This allows different datasets to have their own separate storage values.

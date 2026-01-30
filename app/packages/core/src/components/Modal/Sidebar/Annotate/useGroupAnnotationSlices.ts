@@ -1,10 +1,9 @@
 import {
   groupMediaTypes,
   isGroup,
-  preferredGroupAnnotationSliceAtom,
+  usePreferredGroupAnnotationSlice,
 } from "@fiftyone/state";
 import { is3d, isAnnotationSupported } from "@fiftyone/utilities";
-import { useAtom } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 
@@ -15,23 +14,27 @@ export interface AnnotationSliceInfo {
   is3D: boolean;
 }
 
+export interface UseGroupAnnotationSlicesResult {
+  /** All slices with metadata about their annotation support */
+  allSlices: AnnotationSliceInfo[];
+  /** Names of slices that support annotation (image, 3D) */
+  supportedSlices: string[];
+  /** The currently stored annotation slice (persisted per-dataset) */
+  preferredSlice: string | null;
+  /** Function to update the preferred annotation slice */
+  setPreferredSlice: (slice: string | null) => void;
+}
+
 /**
  * Hook that provides information about available slices for annotation
  * and manages the preferred annotation slice state.
- *
- * Returns:
- * - allSlices: All slices with metadata about their annotation support
- * - supportedSlices: Names of slices that support annotation (image, 3D)
- * - preferredSlice: The currently stored annotation slice (persisted per-dataset)
- * - setPreferredSlice: Function to update the preferred annotation slice
  */
-export function useGroupAnnotationSlices() {
+export function useGroupAnnotationSlices(): UseGroupAnnotationSlicesResult {
   const mediaTypes = useRecoilValue(groupMediaTypes);
   const isGroupDataset = useRecoilValue(isGroup);
 
-  const [preferredSlice, setPreferredSlice] = useAtom(
-    preferredGroupAnnotationSliceAtom
-  );
+  const [preferredSlice, setPreferredSlice] =
+    usePreferredGroupAnnotationSlice();
 
   const sliceData = useMemo(() => {
     if (!isGroupDataset || !mediaTypes.length) {

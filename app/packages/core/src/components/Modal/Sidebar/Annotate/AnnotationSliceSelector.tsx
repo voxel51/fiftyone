@@ -1,11 +1,11 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { is3d } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { isEditing } from "./Edit";
+import { useApplyAnnotationSliceVisibility } from "./useApplyAnnotationSliceVisibility";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
 const Container = styled.div`
@@ -70,16 +70,7 @@ export const AnnotationSliceSelector: React.FC<
   const modalGroupSlice = useRecoilValue(fos.modalGroupSlice);
   const setModalGroupSlice = useSetRecoilState(fos.modalGroupSlice);
 
-  const groupMediaTypesMap = useRecoilValue(fos.groupMediaTypesMap);
-  const set3dVisible = useSetRecoilState(fos.groupMedia3dVisibleSetting);
-  const setMainVisible = useSetRecoilState(fos.groupMediaIsMainVisibleSetting);
-  const setCarouselVisible = useSetRecoilState(
-    fos.groupMediaIsCarouselVisibleSetting
-  );
-
-  const setIs3dSlicePinned = useSetRecoilState(fos.pinned3d);
-  const setPinned3DSampleSliceName = useSetRecoilState(fos.pinned3DSampleSlice);
-  const setAllActive3dSlices = useSetRecoilState(fos.active3dSlices);
+  const applyVisibilityForSlice = useApplyAnnotationSliceVisibility();
 
   // Determine the effective slice to use:
   // 1. If preferred slice is valid and supported, use it
@@ -95,32 +86,6 @@ export const AnnotationSliceSelector: React.FC<
 
     return supportedSlices.length > 0 ? supportedSlices[0] : null;
   }, [preferredSlice, modalGroupSlice, supportedSlices]);
-
-  const applyVisibilityForSlice = useCallback(
-    (sliceName: string) => {
-      const mediaType = groupMediaTypesMap[sliceName];
-      const isThreeD = mediaType ? is3d(mediaType) : false;
-
-      if (isThreeD) {
-        set3dVisible(true);
-        setMainVisible(false);
-        setCarouselVisible(false);
-
-        setIs3dSlicePinned(true);
-        setPinned3DSampleSliceName(sliceName);
-        setAllActive3dSlices((prev) =>
-          Array.from(new Set([sliceName, ...prev]))
-        );
-      } else {
-        setMainVisible(true);
-        set3dVisible(false);
-        setCarouselVisible(false);
-        // Unpin 3D so activeModalSample returns modalSample data
-        setIs3dSlicePinned(false);
-      }
-    },
-    [groupMediaTypesMap]
-  );
 
   // This effect syncs slice state whenever effectiveSlice changes
   useEffect(() => {

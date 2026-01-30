@@ -41,7 +41,7 @@ const Sidebar = () => {
     if (showAnnotationTab && !disabledReason) {
       loadSchemas();
     }
-  }, [loadSchemas]);
+  }, [showAnnotationTab, disabledReason, loadSchemas]);
 
   const showSliceSelector =
     showAnnotationTab &&

@@ -1,11 +1,9 @@
 import * as fos from "@fiftyone/state";
 import {
-  ANNOTATE,
-  EXPLORE,
   GroupVisibilityConfigSnapshot,
-  modalMode,
+  ModalMode,
+  useModalMode,
 } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilState } from "recoil";
 
@@ -17,13 +15,13 @@ import { useRecoilState } from "recoil";
  * - Restores visibility settings when returning to Explore mode
  */
 export function useGroupAnnotationModeController() {
-  const mode = useAtomValue(modalMode);
+  const mode = useModalMode();
   const [modalGroupSliceValue, setModalGroupSliceValue] = useRecoilState(
     fos.modalGroupSlice
   );
 
   const [mainVisible, setMainVisible] = useRecoilState(
-    fos.groupMediaIsMainVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting
   );
   const [carouselVisible, setCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
@@ -65,10 +63,10 @@ export function useGroupAnnotationModeController() {
   useEffect(() => {
     const prevMode = prevModeRef.current;
 
-    if (prevMode === EXPLORE && mode === ANNOTATE) {
+    if (prevMode === ModalMode.EXPLORE && mode === ModalMode.ANNOTATE) {
       // Entering Annotate mode: capture current visibility
       visibilitySnapshotRef.current = captureVisibility();
-    } else if (prevMode === ANNOTATE && mode === EXPLORE) {
+    } else if (prevMode === ModalMode.ANNOTATE && mode === ModalMode.EXPLORE) {
       // Returning to Explore mode: restore visibility
       restoreVisibility(visibilitySnapshotRef.current);
       visibilitySnapshotRef.current = null;
