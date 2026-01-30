@@ -55,7 +55,7 @@ export default function useFocus() {
 
         // there are unsaved changes, ask for confirmation
         scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
-        await onSave();
+        onSave();
         onExit();
 
         scene?.deselectOverlay(id, {

@@ -19,6 +19,7 @@ import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import useDelete from "./Edit/useDelete";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -119,6 +120,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
+  useDelete();
 
   useEffect(() => {
     contextManager.enter();
