@@ -105,7 +105,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // create and activate the field schema
       try {
         // check for existing schema
-        let listSchemaResponse = await schemaManager.listSchema({});
+        let listSchemaResponse = await schemaManager.listSchemas({});
 
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
@@ -118,10 +118,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
           await schemaManager.initializeSchema({ field });
         }
 
-        await schemaManager.activateSchema({ fields: [field] });
+        await schemaManager.activateSchemas({ fields: [field] });
 
         // refresh annotation state
-        listSchemaResponse = await schemaManager.listSchema({});
+        listSchemaResponse = await schemaManager.listSchemas({});
         setLabelSchema(listSchemaResponse.label_schemas);
         setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
 
