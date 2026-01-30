@@ -17,6 +17,7 @@ import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
+import { FrustumCollection } from "../frustum";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -158,7 +159,10 @@ export const Fo3dSceneContent = ({
       </Bvh>
 
       {isSceneInitialized && (
-        <ThreeDLabels sampleMap={{ fo3d: sample as any }} />
+        <>
+          <ThreeDLabels sampleMap={{ fo3d: sample }} />
+          <FrustumCollection />
+        </>
       )}
 
       {mode === "annotate" && <AnnotationControls />}

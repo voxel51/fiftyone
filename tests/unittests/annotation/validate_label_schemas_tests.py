@@ -59,47 +59,6 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_validate_bool_list_field_schema(self):
-        dataset = fo.Dataset()
-        dataset.add_sample_field(
-            "bool_list_field", fo.ListField, subfield=fo.BooleanField
-        )
-
-        validate_label_schemas(
-            dataset,
-            {"type": "list<bool>", "component": "dropdown", "values": [False]},
-            fields="bool_list_field",
-        )
-
-        # wrong 'type'
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "bool", "component": "dropdown", "values": [False]},
-                fields="bool_list_field",
-            )
-
-        # invalid 'component'
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {"type": "list<bool>", "component": "radio"},
-                fields="bool_list_field",
-            )
-
-        # 'values' is not applicable
-        with self.assertRaises(ExceptionGroup):
-            validate_label_schemas(
-                dataset,
-                {
-                    "type": "list<bool>",
-                    "component": "text",
-                    "values": None,
-                },
-                fields="bool_list_field",
-            )
-
-    @drop_datasets
     def test_validate_date_field_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample_field("date_field", fo.DateField)
@@ -671,7 +630,7 @@ class LabelSchemaValidationTests(unittest.TestCase):
             )
 
     @drop_datasets
-    def test_validate_detections_label_field_schema(self):
+    def test_validate_label_field_schema(self):
         dataset = fo.Dataset()
         dataset.add_sample(
             fo.Sample(
@@ -694,13 +653,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "component": "text",
                         "read_only": True,
                         "type": "id",
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "type": "detection",
@@ -711,14 +671,15 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "tags": {
+                "attributes": [
+                    {
+                        "name": "tags",
                         "component": "dropdown",
                         "default": ["one"],
                         "type": "list<str>",
                         "values": ["one"],
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "default": "one",
@@ -730,13 +691,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
         validate_label_schemas(
             dataset,
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "component": "text",
                         "read_only": True,
                         "type": "id",
                     }
-                },
+                ],
                 "classes": ["one", "two"],
                 "component": "dropdown",
                 "type": "detections",
@@ -760,13 +722,14 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "id": {
+                    "attributes": [
+                        {
+                            "name": "id",
                             "component": "text",
                             "read_only": True,
                             "type": "id",
                         }
-                    },
+                    ],
                     "classes": ["one", "two"],
                     "component": "dropdown",
                     "default": "three",
@@ -780,12 +743,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "missing": {
+                    "attributes": [
+                        {
+                            "name": "missing",
                             "component": "text",
                             "type": "str",
                         }
-                    },
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
@@ -796,12 +760,13 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "bounding_box": {
+                    "attributes": [
+                        {
+                            "name": "bounding_box",
                             "component": "text",
                             "type": "list<float>",
                         }
-                    },
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
@@ -812,14 +777,81 @@ class LabelSchemaValidationTests(unittest.TestCase):
             validate_label_schemas(
                 dataset,
                 {
-                    "attributes": {
-                        "bounding_box": {
+                    "attributes": [
+                        {
+                            "name": "bounding_box",
                             "component": "text",
                             "type": "list<float>",
                         },
-                        "label": {"type": "str", "component": "text"},
-                    },
+                        {"name": "label", "type": "str", "component": "text"},
+                    ],
                     "type": "detections",
                 },
                 fields="detections",
+            )
+
+    @drop_datasets
+    def test_validate_attributes(self):
+        dataset = fo.Dataset()
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                detection=fo.Detection(label="one", index=1),
+            )
+        )
+        dataset.add_dynamic_sample_fields()
+
+        validate_label_schemas(
+            dataset,
+            {
+                "attributes": [
+                    {
+                        "name": "id",
+                        "component": "text",
+                        "read_only": True,
+                        "type": "id",
+                    },
+                    {"name": "index", "component": "text", "type": "int"},
+                ],
+                "type": "detection",
+            },
+            fields="detection",
+        )
+
+        # missing 'name' in attribute
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "component": "text",
+                            "type": "float",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
+            )
+
+        # duplicate 'attributes'
+        with self.assertRaises(ExceptionGroup):
+            validate_label_schemas(
+                dataset,
+                {
+                    "attributes": [
+                        {
+                            "name": "confidence",
+                            "component": "text",
+                            "type": "float",
+                        },
+                        {
+                            "name": "confidence",
+                            "component": "text",
+                            "type": "float",
+                        },
+                    ],
+                    "type": "detection",
+                },
+                fields="detection",
             )

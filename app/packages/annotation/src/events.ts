@@ -20,6 +20,10 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceRequested": void;
   /**
+   * Notification event emitted when a persistence request is in flight.
+   */
+  "annotation:persistenceInFlight": void;
+  /**
    * Notification event emitted when aggregate annotation persistence is successful.
    */
   "annotation:persistenceSuccess": void;

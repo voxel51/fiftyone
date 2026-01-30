@@ -109,9 +109,7 @@ def _validate_field_label_schema(
         )
 
     elif isinstance(field, fof.BooleanField):
-        if is_list:
-            fn = _validate_bool_list_field_label_schema
-        else:
+        if not is_list:
             fn = _validate_bool_field_label_schema
     elif isinstance(field, (fof.DateField, fof.DateTimeField)):
         if is_list:
@@ -163,31 +161,6 @@ def _validate_bool_field_label_schema(
         elif key == foac.READ_ONLY:
             _validate_read_only(field_name, value)
         elif key == foac.TYPE and value != foac.BOOL:
-            _raise_type_error(field, field_name, value)
-
-
-def _validate_bool_list_field_label_schema(
-    collection, field_name, label_schema, allow_default
-):
-    field = collection.get_field(field_name)
-    settings = foac.BOOL_LIST_SETTINGS
-    component = label_schema.get(foac.COMPONENT, None)
-    values = label_schema.get(foac.VALUES, None)
-    if component in foac.VALUES_COMPONENTS:
-        _validate_values_setting(field_name, values, bool, key=foac.CLASSES)
-        settings = settings.union({foac.VALUES})
-
-    for key, value in label_schema.items():
-        if key not in settings:
-            _raise_unknown_setting_error(key, field_name)
-
-        if key == foac.COMPONENT and value not in foac.BOOL_LIST_COMPONENTS:
-            _raise_component_error(field_name, value)
-        elif key == foac.DEFAULT:
-            _validate_default_list(field_name, value, bool, allow_default)
-        elif key == foac.READ_ONLY:
-            _validate_read_only(field_name, value)
-        elif key == foac.TYPE and value != foac.BOOL_LIST:
             _raise_type_error(field, field_name, value)
 
 
@@ -453,7 +426,6 @@ def _raise_unknown_setting_error(name, field_name):
 
 
 def _validate_attribute(
-    attribute,
     class_name,
     collection,
     field_name,
@@ -461,6 +433,13 @@ def _validate_attribute(
     path,
     subfields,
 ):
+    label_schema = label_schema.copy()
+    attribute = label_schema.pop(foac.NAME, None)
+    if attribute is None:
+        raise ValueError(
+            f"missing 'name' in 'attributes' for field '{field_name}'"
+        )
+
     if attribute not in subfields:
         raise ValueError(
             f"'{attribute}' attribute does not exist on {class_name} field"
@@ -469,7 +448,7 @@ def _validate_attribute(
 
     if attribute == foac.LABEL:
         raise ValueError(
-            f"'label' attribute for field {field_name} is configured via "
+            f"'label' attribute for field '{field_name}' is configured via "
             "'classes' for label fields"
         )
 
@@ -496,9 +475,9 @@ def _validate_attribute(
 
 
 def _validate_attributes(collection, field_name, class_name, attributes):
-    if not isinstance(attributes, dict):
+    if not isinstance(attributes, list):
         raise ValueError(
-            f"'attributes' setting for field '{field_name}' must be a 'dict'"
+            f"'attributes' setting for field '{field_name}' must be a list"
         )
 
     field: fof.EmbeddedDocumentField = collection.get_field(field_name)
@@ -509,10 +488,9 @@ def _validate_attributes(collection, field_name, class_name, attributes):
 
     subfields = {f.name: f for f in field.fields}
     exceptions = []
-    for attribute, label_schema in attributes.items():
+    for label_schema in attributes:
         try:
             _validate_attribute(
-                attribute,
                 class_name,
                 collection,
                 field_name,
@@ -573,7 +551,7 @@ def _validate_default_list(
 
     if not isinstance(value, list):
         raise ValueError(
-            f"'default' setting for field {field_name} must be a list"
+            f"'default' setting for field '{field_name}' must be a list"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:

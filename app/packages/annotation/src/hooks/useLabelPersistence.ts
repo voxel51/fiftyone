@@ -1,8 +1,9 @@
 import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
-import { type AnnotationLabel, useModalSample } from "@fiftyone/state";
+import { useModalSample } from "@fiftyone/state";
 import { usePatchSample } from "./usePatchSample";
 import { handleLabelPersistence, type LabelPersistenceArgs } from "../util";
+import { LabelProxy } from "../deltas";
 
 /**
  * Hook which returns a callback to persist label updates for a sample.
@@ -17,7 +18,7 @@ const useLabelPersistenceWith = ({
   opType,
 }: Pick<LabelPersistenceArgs, "sample" | "applyPatch" | "opType">) => {
   return useCallback(
-    (annotationLabel: AnnotationLabel, schema: Field): Promise<boolean> => {
+    (annotationLabel: LabelProxy, schema: Field): Promise<boolean> => {
       return handleLabelPersistence({
         sample,
         applyPatch,
@@ -34,7 +35,7 @@ const useLabelPersistenceWith = ({
  * Hook which returns a callback to upsert a label on the current modal sample.
  */
 export const useUpsertLabel = (): ((
-  annotationLabel: AnnotationLabel,
+  annotationLabel: LabelProxy,
   schema: Field
 ) => Promise<boolean>) => {
   return useLabelPersistenceWith({
@@ -49,7 +50,7 @@ export const useUpsertLabel = (): ((
  * sample.
  */
 export const useDeleteLabel = (): ((
-  annotationLabel: AnnotationLabel,
+  annotationLabel: LabelProxy,
   schema: Field
 ) => Promise<boolean>) => {
   return useLabelPersistenceWith({

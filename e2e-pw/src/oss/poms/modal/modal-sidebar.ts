@@ -71,6 +71,10 @@ export class ModalSidebarPom {
     return absPath;
   }
 
+  async switchMode(mode: "annotate" | "explore") {
+    await this.locator.getByTestId(mode).click();
+  }
+
   async toggleLabelCheckbox(field: string) {
     await this.locator.getByTestId(`checkbox-${field}`).click();
   }

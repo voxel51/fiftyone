@@ -3655,8 +3655,6 @@ class SampleCollection(object):
                 :class:`fiftyone.core.fields.UUIDField`
             -   ``int``: :class:`fiftyone.core.fields.IntField` or
                 :class:`fiftyone.core.fields.FrameNumberField`
-            -   ``list<bool>``: :class:`fiftyone.core.fields.ListField` of
-                :class:`fiftyone.core.fields.BooleanField`
             -   ``list<int>``: :class:`fiftyone.core.fields.ListField` of
                 :class:`fiftyone.core.fields.IntField`
             -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
@@ -3683,8 +3681,7 @@ class SampleCollection(object):
             -   ``text``: the default when ``scan_samples`` is ``False`` or
                 distinct finite bounds are not found
 
-        Supported ``list<bool>``, ``list<float>`` and ``list<int>`` components
-        are:
+        Supported ``list<float>`` and ``list<int>`` components are:
 
             -   ``checkboxes``
             -   ``dropdown``
@@ -3730,11 +3727,10 @@ class SampleCollection(object):
         type has a visual representation, that field is handled by the App's
         builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
         Primitive attributes of label types are configured via the
-        ``attributes`` setting.
+        ``attributes`` list.
 
         When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
-
 
         All :class:`fiftyone.core.labels.Label` types are resolved by this
         method except :class:`fiftyone.core.labels.GeoLocation`,
@@ -3767,84 +3763,96 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
             dataset.compute_metadata()
 
-            fo.pprint(dataset.generate_label_schemas(scan_samples=True))
+            fo.pprint(dataset.generate_label_schemas(scan_samples=False))
 
         Output::
 
             {
-                'created_at': {
-                    'type': 'datetime',
-                    'component': 'datepicker',
-                    'read_only': True,
+                "created_at": {
+                    "type": "datetime",
+                    "component": "datepicker",
+                    "read_only": True,
                 },
-                'filepath': {'type': 'str', 'component': 'text'},
-                'ground_truth': {
-                    'attributes': {
-                        'attributes': {'type': 'dict', 'component': 'json'},
-                        'confidence': {'type': 'float', 'component': 'text'},
-                        'id': {
-                            'type': 'id',
-                            'component': 'text',
-                            'read_only': True
+                "filepath": {"type": "str", "component": "text"},
+                "ground_truth": {
+                    "attributes": [
+                        {
+                            "name": "attributes",
+                            "type": "dict",
+                            "component": "json",
                         },
-                        'index': {'type': 'int', 'component': 'text'},
-                        'mask_path': {'type': 'str', 'component': 'text'},
-                        'tags': {'type': 'list<str>', 'component': 'text'},
-                    },
-                    'classes': [
-                        'airplane',
-                        '...',
-                        'zebra',
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
+                        },
+                        {
+                            "name": "id",
+                            "type": "id",
+                            "component": "text",
+                            "read_only": True,
+                        },
+                        {"name": "index", "type": "int", "component": "text"},
+                        {
+                            "name": "mask_path",
+                            "type": "str",
+                            "component": "text",
+                        },
+                        {
+                            "name": "tags",
+                            "type": "list<str>",
+                            "component": "text",
+                        },
                     ],
-                    'component': 'dropdown',
-                    'type': 'detections',
+                    "component": "text",
+                    "type": "detections",
                 },
-                'id': {'type': 'id', 'component': 'text', 'read_only': True},
-                'last_modified_at': {
-                    'type': 'datetime',
-                    'component': 'datepicker',
-                    'read_only': True,
+                "id": {"type": "id", "component": "text", "read_only": True},
+                "last_modified_at": {
+                    "type": "datetime",
+                    "component": "datepicker",
+                    "read_only": True,
                 },
-                'metadata.height': {'type': 'int', 'component': 'text'},
-                'metadata.mime_type': {'type': 'str', 'component': 'text'},
-                'metadata.num_channels': {'type': 'int', 'component': 'text'},
-                'metadata.size_bytes': {'type': 'int', 'component': 'text'},
-                'metadata.width': {'type': 'int', 'component': 'text'},
-                'predictions': {
-                    'attributes': {
-                        'attributes': {'type': 'dict', 'component': 'json'},
-                        'confidence': {
-                            'type': 'float',
-                            'component': 'slider',
-                            'range': [0.05003104358911514, 0.9999035596847534],
+                "metadata.height": {"type": "int", "component": "text"},
+                "metadata.mime_type": {"type": "str", "component": "text"},
+                "metadata.num_channels": {"type": "int", "component": "text"},
+                "metadata.size_bytes": {"type": "int", "component": "text"},
+                "metadata.width": {"type": "int", "component": "text"},
+                "predictions": {
+                    "attributes": [
+                        {
+                            "name": "attributes",
+                            "type": "dict",
+                            "component": "json",
                         },
-                        'id': {
-                            'type': 'id',
-                            'component': 'text',
-                            'read_only': True
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
                         },
-                        'index': {'type': 'int', 'component': 'text'},
-                        'mask_path': {'type': 'str', 'component': 'text'},
-                        'tags': {'type': 'list<str>', 'component': 'text'},
-                    },
-                    'classes': [
-                        'airplane',
-                        '...',
-                        'zebra',
+                        {
+                            "name": "id",
+                            "type": "id",
+                            "component": "text",
+                            "read_only": True,
+                        },
+                        {"name": "index", "type": "int", "component": "text"},
+                        {
+                            "name": "mask_path",
+                            "type": "str",
+                            "component": "text",
+                        },
+                        {
+                            "name": "tags",
+                            "type": "list<str>",
+                            "component": "text",
+                        },
                     ],
-                    'component': 'dropdown',
-                    'type': 'detections',
+                    "component": "text",
+                    "type": "detections",
                 },
-                'tags': {
-                    'type': 'list<str>',
-                    'component': 'checkboxes',
-                    'values': ['validation'],
-                },
-                'uniqueness': {
-                    'type': 'float',
-                    'component': 'slider',
-                    'range': [0.15001302256126986, 1.0],
-                },
+                "tags": {"type": "list<str>", "component": "text"},
+                "uniqueness": {"type": "float", "component": "text"},
             }
 
         Args:

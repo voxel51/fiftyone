@@ -3,11 +3,44 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo, useState } from "react";
-import { labelSchemaData } from "../../state";
+import { currentField, labelSchemaData } from "../../state";
+import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 import { currentLabelSchema } from "../state";
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * Extract new attributes from current schema that don't exist in saved or default.
+ * Returns a dict format for the backend API (name -> config without name field).
+ */
+const getNewAttributes = (
+  current: unknown,
+  saved: unknown,
+  defaultSchema: unknown
+): Record<string, unknown> => {
+  const savedNames = getAttributeNames(saved);
+  const defaultNames = getAttributeNames(defaultSchema);
+
+  const newAttributes: Record<string, unknown> = {};
+
+  if (hasAttributes(current) && Array.isArray(current.attributes)) {
+    for (const attr of current.attributes) {
+      if (isNamedAttribute(attr)) {
+        const { name, ...config } = attr;
+        if (!savedNames.has(name) && !defaultNames.has(name)) {
+          newAttributes[name] = config;
+        }
+      }
+    }
+  }
+
+  return newAttributes;
+};
 
 // =============================================================================
 // Internal Hooks
@@ -26,17 +59,22 @@ const useDefaultLabelSchema = (field: string) => {
   return data?.default_label_schema;
 };
 
-const useDiscard = (field: string) => {
+const useDiscard = (field: string, reset: () => void) => {
+  const [inc, setInc] = useState(0);
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
+      setInc(inc + 1);
       setCurrent(saved ?? defaultLabelSchema);
+      reset();
     },
+    editorKey: inc.toString(),
   };
 };
 
@@ -50,7 +88,7 @@ const useHasChanges = (one: unknown, two: unknown) => {
   }, [one, two]);
 };
 
-const useReadOnly = (field: string) => {
+export const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
@@ -91,22 +129,37 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
+  const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const [current] = useCurrentLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
     save: () => {
       setIsSaving(true);
-      update.execute(
-        { field, label_schema: current },
-        {
-          callback: () => {
-            setSaved(current);
-            setIsSaving(false);
-          },
-        }
-      );
+
+      const params: Record<string, unknown> = { field, label_schema: current };
+
+      update.execute(params, {
+        callback: (result) => {
+          // Always reset saving state
+          setIsSaving(false);
+          document.dispatchEvent(
+            new CustomEvent("schema-manager-save-complete")
+          );
+
+          // Check for errors in the result
+          if (result.error) {
+            console.error("Failed to save label schema:", result.error);
+            return;
+          }
+
+          // Only update state on success
+          setSaved(current);
+          setCurrentField(null);
+        },
+      });
     },
     savedLabelSchema,
   };
@@ -129,6 +182,9 @@ const useScan = (field: string) => {
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-scan-complete")
+            );
           },
         }
       );
@@ -140,10 +196,13 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
+
   const [, setCurrent] = useCurrentLabelSchema(field);
+  const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
   return {
+    ...discard,
     errors,
     isValid,
     isValidating,
@@ -163,8 +222,14 @@ const useValidate = (field: string) => {
               if (!result.result.errors.length) {
                 setCurrent(parsed);
                 setIsValid(true);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-valid-json")
+                );
               } else {
                 setIsValid(false);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-invalid-json")
+                );
               }
               setIsValidating(false);
             },
@@ -177,7 +242,6 @@ const useValidate = (field: string) => {
 
         setIsValidating(false);
         setIsValid(false);
-        return;
       }
     },
   };
@@ -188,21 +252,19 @@ const useValidate = (field: string) => {
 // =============================================================================
 
 export default function useLabelSchema(field: string) {
-  const discard = useDiscard(field);
   const readOnly = useReadOnly(field);
   const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
   const hasChanges = useHasChanges(
-    discard.currentLabelSchema,
+    validate.currentLabelSchema,
     save.savedLabelSchema
   );
 
   return {
-    hasChanges,
+    hasChanges: hasChanges || !!validate.errors.length,
 
-    ...discard,
     ...readOnly,
     ...configUpdate,
     ...save,

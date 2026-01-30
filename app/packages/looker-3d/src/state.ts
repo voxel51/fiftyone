@@ -3,7 +3,13 @@ import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
-import { atom, atomFamily, DefaultValue, selector } from "recoil";
+import {
+  atom,
+  atomFamily,
+  DefaultValue,
+  selector,
+  useRecoilValue,
+} from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
@@ -14,7 +20,11 @@ import type {
   SelectedPoint,
   TransformMode,
 } from "./annotation/types";
-import { SHADE_BY_HEIGHT } from "./constants";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+  SHADE_BY_HEIGHT,
+} from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type {
   Actions,
@@ -424,7 +434,9 @@ export const cuboidCreationStateAtom = atom<CuboidCreationState>({
  * Can be 'cuboid', 'polyline', or null (no annotation mode active).
  * Persisted in session storage to maintain state across page reloads.
  */
-export const current3dAnnotationModeAtom = atom<"cuboid" | "polyline" | null>({
+export const current3dAnnotationModeAtom = atom<
+  typeof ANNOTATION_CUBOID | typeof ANNOTATION_POLYLINE | null
+>({
   key: "fo3d-current3dAnnotationMode",
   default: null,
   effects: [
@@ -666,3 +678,11 @@ export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
     set(reconciledLabels3DAtomFamily(sampleId), newValue);
   },
 });
+
+/**
+ * Hook which provides the reconciled 3D labels for the current sample.
+ * This is the authoritative source for what labels will be rendered
+ * in the 3D viewer.
+ */
+export const useReconciledLabels3D = () =>
+  useRecoilValue(reconciledLabels3DSelector);

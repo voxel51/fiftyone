@@ -82,10 +82,10 @@ const Toggle = ({ name }: { name: string }) => {
 };
 
 export const LABELS_GROUP_NAME = "Labels";
-export const PRIMITIVES_GROUP_NAME = "Primitives";
+export const PRIMITIVES_GROUP_NAME = "PRIMITIVES";
 
 export const labelsExpanded = atom(true);
-export const primitivesExpanded = atom(false);
+export const primitivesExpanded = atom(true);
 
 const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
   [LABELS_GROUP_NAME]: labelsExpanded,
@@ -93,7 +93,7 @@ const EXPANDED_ATOMS: Record<string, typeof labelsExpanded> = {
 };
 
 const labelsCount = atom((get) => get(labels).length);
-const primitivesCount = atom(0);
+export const primitivesCount = atom(0);
 
 const COUNT_ATOMS: Record<string, typeof labelsCount> = {
   [LABELS_GROUP_NAME]: labelsCount,
