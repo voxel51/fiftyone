@@ -90,14 +90,10 @@ export const useQuickDraw = () => {
   const getQuickDrawDetectionLabel = useCallback(
     (fieldPath: string): string | null => {
       const store = getDefaultStore();
+      const lastUsedLabel = store.get(lastUsedLabelByFieldAtom(fieldPath));
 
-      // In quick draw mode, check for last-used label for this field
-      if (quickDrawActive) {
-        const lastUsedLabel = store.get(lastUsedLabelByFieldAtom(fieldPath));
-
-        if (lastUsedLabel) {
-          return lastUsedLabel;
-        }
+      if (lastUsedLabel) {
+        return lastUsedLabel;
       }
 
       const relevantLabels = allLabels.filter((label) => label.data.label);
