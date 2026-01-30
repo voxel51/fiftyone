@@ -2345,6 +2345,9 @@ class AddGroupSlice(foo.Operator):
         return foo.OperatorConfig(
             name="add_group_slice",
             label="Add group slice",
+            allow_delegated_execution=True,
+            allow_immediate_execution=True,
+            default_choice_to_delegated=False,
             dynamic=True,
         )
 
