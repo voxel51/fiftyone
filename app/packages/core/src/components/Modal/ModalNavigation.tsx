@@ -139,26 +139,22 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);
 
-  const keyBindings = useMemo(() => {
-    return [
-      {
-        commandId: KnownCommands.ModalPreviousSample,
-        sequence: "ArrowLeft",
-        handler: previous,
-        label: "Previous",
-        description: "Previous Sample",
-      },
-      {
-        commandId: KnownCommands.ModalNextSample,
-        sequence: "ArrowRight",
-        handler: next,
-        label: "Next",
-        description: "Next Sample",
-      },
-    ];
-  }, [previous, next]);
-
-  useKeyBindings(KnownContexts.Modal, keyBindings);
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalPreviousSample,
+      sequence: "ArrowLeft",
+      handler: previous,
+      label: "Previous",
+      description: "Previous Sample",
+    },
+    {
+      commandId: KnownCommands.ModalNextSample,
+      sequence: "ArrowRight",
+      handler: next,
+      label: "Next",
+      description: "Next Sample",
+    },
+  ]);
 
   if (!modal) {
     return null;

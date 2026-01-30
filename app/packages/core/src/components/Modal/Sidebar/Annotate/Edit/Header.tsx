@@ -10,17 +10,19 @@ import { Row } from "./Components";
 import { currentOverlay, currentType, useAnnotationContext } from "./state";
 import useColor from "./useColor";
 import useExit from "./useExit";
-import useDelete from "./useDelete";
 import { useRef, useState } from "react";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
-import { KnownCommands, useCommand } from "@fiftyone/commands";
+import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
   const anchor = useRef<HTMLElement | null>(null);
-  useDelete();
-  const deleteCommand = useCommand(KnownCommands.ModalDeleteAnnotation);
+
+  const deleteCommand = useCommand(
+    KnownCommands.ModalDeleteAnnotation,
+    KnownContexts.ModalAnnotate
+  );
 
   return (
     <>

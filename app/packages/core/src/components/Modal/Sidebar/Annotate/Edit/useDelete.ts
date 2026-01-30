@@ -7,12 +7,11 @@ import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { current } from "./state";
 import useExit from "./useExit";
-import { isSavingAtom } from "./useSave";
 import {
   DelegatingUndoable,
   KnownCommands,
@@ -29,14 +28,13 @@ export default function useDelete() {
   );
 
   const exit = useExit();
-  const [isSaving, setSaving] = useAtom(isSavingAtom);
   const setNotification = fos.useNotification();
 
   const undoable = useMemo(() => {
     return new DelegatingUndoable(
       "delete.undoable",
       async () => {
-        if (!label || isSaving) {
+        if (!label) {
           return;
         }
 
@@ -50,12 +48,9 @@ export default function useDelete() {
           return;
         }
 
-        setSaving(true);
-
         try {
           const fieldSchema = getFieldSchema(schema, label?.path);
           if (!fieldSchema) {
-            setSaving(false);
             setNotification({
               msg: `Unable to delete label: field schema not found for path "${
                 label?.path ?? "unknown"
@@ -70,7 +65,6 @@ export default function useDelete() {
           );
 
           removeOverlay(label.overlay.id, false);
-          setSaving(false);
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
@@ -78,7 +72,6 @@ export default function useDelete() {
           exit();
         } catch (error) {
           console.error(error);
-          setSaving(false);
           setNotification({
             msg: `Label "${
               label.data.label ?? "Label"
@@ -100,15 +93,12 @@ export default function useDelete() {
               });
               return;
             }
-            setSaving(true);
             scene?.addOverlay(label.overlay);
             await commandBus.execute(
               new UpsertAnnotationCommand(label, fieldSchema)
             );
-            setSaving(false);
           } catch (error) {
             console.error(error);
-            setSaving(false);
             setNotification({
               msg: `Label "${
                 label.data.label ?? "Label"
@@ -119,17 +109,7 @@ export default function useDelete() {
         }
       }
     );
-  }, [
-    label,
-    commandBus,
-    scene,
-    setSaving,
-    exit,
-    isSaving,
-    removeOverlay,
-    setNotification,
-    schema,
-  ]);
+  }, [label, commandBus, scene, exit, removeOverlay, setNotification, schema]);
 
   useKeyBindings(
     KnownContexts.ModalAnnotate,
@@ -147,6 +127,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [undoable, label]
+    [undoable]
   );
 }

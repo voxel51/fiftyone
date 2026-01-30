@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCommandContext } from "./useCommandContext";
 import { CommandFunction } from "../types";
 
@@ -20,31 +20,41 @@ export type KeyBinding = {
 export const useKeyBindings = (
   contextId: string,
   keyBindings: KeyBinding[],
-  deps?: unknown[]
+  deps: unknown[] = []
 ) => {
-  const { context, activate, deactivate } = useCommandContext(contextId);
+  const { context } = useCommandContext(contextId);
+  const keyBindingsRef = useRef(keyBindings);
+
   useEffect(() => {
-    activate();
-    return () => {
-      deactivate();
-    };
-  }, [activate, deactivate]);
+    keyBindingsRef.current = keyBindings;
+  });
 
   useEffect(() => {
     const registeredCommands: string[] = [];
     const registeredBindings: string[] = [];
 
-    for (const keyBinding of keyBindings) {
+    for (const binding of keyBindings) {
+      const { commandId, sequence, label, description } = binding;
       const cmd = context.registerCommand(
-        keyBinding.commandId,
-        keyBinding.handler,
-        keyBinding.enablement ?? (() => true),
-        keyBinding.label,
-        keyBinding.description
+        commandId,
+        async () => {
+          const latest = keyBindingsRef.current.find(
+            (b) => b.commandId === commandId
+          );
+          return await latest?.handler();
+        },
+        () => {
+          const latest = keyBindingsRef.current.find(
+            (b) => b.commandId === commandId
+          );
+          return latest?.enablement?.() ?? true;
+        },
+        label,
+        description
       );
       registeredCommands.push(cmd.id);
-      context.bindKey(keyBinding.sequence, cmd.id);
-      registeredBindings.push(keyBinding.sequence);
+      context.bindKey(sequence, cmd.id);
+      registeredBindings.push(sequence);
     }
 
     return () => {
@@ -55,5 +65,5 @@ export const useKeyBindings = (
         context.unregisterCommand(id);
       }
     };
-  }, [context, keyBindings, ...(deps || [])]);
+  }, [context, ...deps]);
 };
