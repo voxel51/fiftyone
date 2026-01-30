@@ -115,13 +115,20 @@ def _execute_operator_in_child_process(
                     )
         except Exception:
             result = ExecutionResult(error=traceback.format_exc())
-            service.set_failed(
+            updated_doc = service.set_failed(
                 doc_id=operation_id,
                 result=result,
                 update_pipeline=operation.parent_id if operation else None,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.exception("Operation %s failed", operation_id)
+                if updated_doc:
+                    logger.exception("Operation %s failed", operation_id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation_id,
+                    )
 
 
 class DelegatedOperationService(object):
@@ -742,15 +749,26 @@ class DelegatedOperationService(object):
                 exc_info=True,
             )
             result = ExecutionResult(error=traceback.format_exc())
-            self.set_failed(
+            updated_doc = self.set_failed(
                 doc_id=operation.id,
                 result=result,
                 update_pipeline=operation.parent_id,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.info(
-                    "Operation %s failed\n%s", operation.id, result.error
-                )
+                if updated_doc:
+                    logger.info(
+                        "Operation %s failed\n%s", operation.id, result.error
+                    )
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation.id,
+                    )
+        if not updated_doc:
+            return ExecutionResult(
+                error="Operation state changed externally during execution."
+            )
         return result
 
     def _execute_operation_multi_proc(
