@@ -100,9 +100,19 @@ def _execute_operator_in_child_process(
             result = asyncio.run(service._execute_operator(operation))
             result.raise_exceptions()
 
-            service.set_completed(doc_id=operation.id, result=result)
+            updated_doc = service.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             result = ExecutionResult(error=traceback.format_exc())
             service.set_failed(
@@ -713,9 +723,19 @@ class DelegatedOperationService(object):
         try:
             result = asyncio.run(self._execute_operator(operation))
             result.raise_exceptions()
-            self.set_completed(doc_id=operation.id, result=result)
+            updated_doc = self.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             logger.debug(
                 "Uncaught exception when executing operator",
