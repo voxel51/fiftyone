@@ -1,63 +1,31 @@
-import { getFieldSchema, UpsertAnnotationCommand } from "@fiftyone/annotation";
-import { useCommandBus } from "@fiftyone/command-bus";
-import type { BaseOverlay } from "@fiftyone/lighter";
-import { useLighter } from "@fiftyone/lighter";
-import * as fos from "@fiftyone/state";
-import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
-import { addValue, current, savedLabel } from "./state";
-import { useQuickDraw } from "./useQuickDraw";
-import useCreate from "./useCreate";
-import useExit from "./useExit";
+import { useAtomValue } from "jotai";
 
-export const isSavingAtom = atom(false);
+import { current } from "./state";
+import * as fos from "@fiftyone/state";
+
+import useCreate from "./useCreate";
+import { useQuickDraw } from "./useQuickDraw";
+import { useLighter } from "@fiftyone/lighter";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
+
+import { DETECTION } from "@fiftyone/utilities";
+import type { BaseOverlay } from "@fiftyone/lighter";
 
 export default function useSave() {
-  const commandBus = useCommandBus();
   const { scene, addOverlay } = useLighter();
   const label = useAtomValue(current);
-  const setter = useSetAtom(addValue);
-  const saved = useSetAtom(savedLabel);
-  const schema = useRecoilValue(
-    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-  );
-  const [isSaving, setSaving] = useAtom(isSavingAtom);
-  const exit = useExit();
   const setNotification = fos.useNotification();
   const { quickDrawActive, trackLastUsedDetection } = useQuickDraw();
   const createDetection = useCreate(DETECTION);
+  const eventBus = useAnnotationEventBus();
 
-  return useCallback(async () => {
-    if (!label || isSaving) {
+  return useCallback(() => {
+    if (!label) {
       return;
     }
 
-    setSaving(true);
-
-    try {
-      const fieldSchema = getFieldSchema(schema, label.path);
-      if (!fieldSchema) {
-        setSaving(false);
-        setNotification({
-          msg: `Unable to save label: field schema not found for path "${
-            label.path ?? "unknown"
-          }".`,
-          variant: "error",
-        });
-        return;
-      }
-
-      await commandBus.execute(
-        new UpsertAnnotationCommand({ ...label }, fieldSchema)
-      );
-
-      setter();
-
-      saved(label.data);
-      setSaving(false);
-
+    if (quickDrawActive) {
       // Always exit interactive mode after save
       // This ensures clean state transition
       if (scene && !scene.isDestroyed && scene.renderLoopActive) {
@@ -65,47 +33,29 @@ export default function useSave() {
         addOverlay(label.overlay as BaseOverlay);
       }
 
-      if (quickDrawActive) {
-        // Track last-used detection field and label for auto-assignment
-        trackLastUsedDetection(label.path, label.data.label);
+      // Track last-used detection field and label for auto-assignment
+      trackLastUsedDetection(label.path, label.data.label);
 
-        // Create next detection immediately
-        // This will enter interactive mode with a new handler
-        createDetection();
+      // Create next detection immediately
+      // This will enter interactive mode with a new handler
+      createDetection();
 
-        setNotification({
-          msg: `Label "${label.data.label}" saved. Ready for next...`,
-          variant: "success",
-        });
-      } else {
-        // Normal flow: exit
-        exit();
-        setNotification({
-          msg: `Label "${label.data.label}" saved successfully.`,
-          variant: "success",
-        });
-      }
-    } catch (error) {
-      setSaving(false);
-      console.error(error);
       setNotification({
-        msg: `Label "${
-          label.data.label ?? "Label"
-        }" not saved successfully. Try again.`,
-        variant: "error",
+        msg: `Label "${label.data.label}" saved. Ready for next...`,
+        variant: "success",
       });
+
+      return;
     }
+    eventBus.dispatch("annotation:persistenceRequested");
   }, [
-    label,
-    isSaving,
-    schema,
-    commandBus,
-    scene,
-    exit,
-    setNotification,
-    quickDrawActive,
-    trackLastUsedDetection,
-    createDetection,
     addOverlay,
+    createDetection,
+    eventBus,
+    label,
+    quickDrawActive,
+    scene,
+    setNotification,
+    trackLastUsedDetection,
   ]);
 }

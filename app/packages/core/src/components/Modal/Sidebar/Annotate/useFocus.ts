@@ -55,7 +55,7 @@ export default function useFocus() {
           return;
         }
 
-        await onSave();
+        onSave();
 
         if (!quickDrawActive) {
           onExit();

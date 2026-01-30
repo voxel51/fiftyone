@@ -21,15 +21,6 @@ import {
 import PrimitiveWrapper from "./PrimitiveWrapper";
 import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import {
-  KnownCommands,
-  KnownContexts,
-  useCreateCommand,
-  useKeyBinding,
-} from "@fiftyone/commands";
-import { useConfirmDelete } from "../Confirmation/useConfirmDelete";
-import useDelete from "./useDelete";
-import { current } from "../Edit/state";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -60,29 +51,6 @@ export default function Edit() {
 
   const clear = useClearModal();
   const exit = useExit();
-
-  const onDelete = useDelete();
-  const { confirmDelete } = useConfirmDelete(onDelete);
-  const label = useAtomValue(current);
-
-  useCreateCommand(
-    KnownContexts.Modal,
-    KnownCommands.ModalDeleteAnnotation,
-    () => {
-      confirmDelete();
-    },
-    () => {
-      return !!label;
-    },
-    "Delete",
-    "Delete label"
-  );
-
-  useKeyBinding(
-    KnownCommands.ModalDeleteAnnotation,
-    "delete",
-    KnownContexts.Modal
-  );
 
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {

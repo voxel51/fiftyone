@@ -24,12 +24,19 @@ import {
 import useColor from "./useColor";
 import { useQuickDraw } from "./useQuickDraw";
 import useExit from "./useExit";
-import useDelete from "./useDelete";
+import { useRef, useState } from "react";
+import { Box, Menu, MenuItem, Stack } from "@mui/material";
+import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
   const anchor = useRef<HTMLElement | null>(null);
-  const onDelete = useDelete();
+
+  const deleteCommand = useCommand(
+    KnownCommands.ModalDeleteAnnotation,
+    KnownContexts.ModalAnnotate
+  );
 
   // Permission and read-only state
   const canEditLabels = useRecoilValue(fos.canEditLabels);
@@ -57,10 +64,10 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        <MenuItem onClick={onDelete}>
+        <MenuItem onClick={deleteCommand.callback}>
           <Stack direction="row" gap={1} alignItems="center">
             <Icon name={IconName.Delete} size={Size.Md} />
-            <Text>Delete label</Text>
+            <Text>{deleteCommand.descriptor.label}</Text>
           </Stack>
         </MenuItem>
         {showEditSchema && (
