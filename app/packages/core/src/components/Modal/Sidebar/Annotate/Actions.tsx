@@ -18,7 +18,7 @@ import {
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { useSetAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
@@ -149,7 +149,10 @@ const Detection = () => {
       <Square
         onClick={() => {
           enableQuickDraw();
-          create(); // Create first detection in quick draw mode
+
+          // Create first detection in quick draw mode,
+          // `true` to work around stale quickDrawActive closure
+          create(true);
         }}
       >
         <svg

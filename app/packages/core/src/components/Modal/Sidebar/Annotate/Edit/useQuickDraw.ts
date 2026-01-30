@@ -11,22 +11,8 @@ import {
   lastUsedLabelByFieldAtom,
 } from "./state";
 
-import type { LabelType } from "./state";
-
 /**
  * Centralized hook for managing quick draw mode state and operations.
- *
- * IMPORTANT: Quick draw is ONLY for Detection (bounding box) annotations.
- * It does NOT apply to Classification annotations.
- *
- * This hook encapsulates all quick draw functionality including:
- * - Mode activation/deactivation
- * - Auto-assignment logic for detection fields and labels
- * - Last-used detection field tracking
- *
- * Following FiftyOne guidelines, this hook is the ONLY public interface
- * for interacting with quick draw atoms. Atoms are implementation details
- * and should not be accessed directly by consumers.
  */
 export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
@@ -36,7 +22,6 @@ export const useQuickDraw = () => {
 
   /**
    * Enable quick draw mode for Detection annotations.
-   * Quick draw is ONLY for bounding box annotations.
    */
   const enableQuickDraw = useCallback(() => {
     setQuickDrawActive(true);
@@ -45,7 +30,6 @@ export const useQuickDraw = () => {
   /**
    * Disable quick draw mode.
    * Resets the active flag to false. Last-used field and label atoms
-   * will be garbage collected when no longer referenced.
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
@@ -56,7 +40,6 @@ export const useQuickDraw = () => {
 
   /**
    * Get the auto-assigned detection field path.
-   * Quick draw only works with Detection fields.
    *
    * Auto-assignment priority:
    * 1. Last-used detection field (if in quick draw mode and previously set)
