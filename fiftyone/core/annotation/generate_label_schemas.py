@@ -418,7 +418,7 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
     except OperationFailure as e:
         # Likely too many distinct values
         logger.debug(
-            f"Could not compute distinct values for field `{field_name}`: {e}"
+            f"Could not compute distinct values for field `{field_name}`: {e.details.get('errmsg')}"
         )
 
     if values:
