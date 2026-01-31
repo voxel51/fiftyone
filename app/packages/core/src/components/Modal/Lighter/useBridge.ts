@@ -177,8 +177,6 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
         fieldSchema,
         type
       );
-
-      console.log("executing");
       execute(command);
     },
     [scene, commandBus, fieldSchemaData, store, execute]
