@@ -36,6 +36,13 @@ export class CreateLabelCommand implements Undoable {
     this.description = `Create label ${payload.id}`;
   }
 
+  private resolveOverlay() {
+    if (this.payload.overlay instanceof InteractiveDetectionHandler) {
+      return this.payload.overlay.getOverlay();
+    }
+    return this.payload.overlay as any;
+  }
+
   async execute(): Promise<void> {
     if (this.isRedo) {
       if (this.payload.overlay instanceof InteractiveDetectionHandler) {
@@ -52,10 +59,12 @@ export class CreateLabelCommand implements Undoable {
         interactionManager.removeHandler(this.payload.overlay);
         interactionManager.addHandler(handler);
       } else {
-        this.scene.addOverlay(this.payload.overlay, false);
+        const overlay = this.resolveOverlay();
+        if (overlay) this.scene.addOverlay(overlay, false);
       }
     }
     this.isRedo = true;
+    const overlay = this.resolveOverlay();
     const data = { ...this.labelData };
     if (this.type === DETECTION) {
       const { x, y, width, height } = this.scene.convertAbsoluteToRelative(
@@ -68,8 +77,8 @@ export class CreateLabelCommand implements Undoable {
       new UpsertAnnotationCommand(
         {
           data,
-          path: this.payload.overlay.overlay.field,
-          overlay: this.payload.overlay.overlay as any,
+          path: overlay.field,
+          overlay: overlay as any,
           type: this.type as any,
         },
         this.fieldSchema
@@ -87,7 +96,7 @@ export class CreateLabelCommand implements Undoable {
       interactionManager.addHandler(this.payload.overlay);
       this.scene.setCursor(this.payload.overlay.cursor);
     }
-
+    const overlay = this.resolveOverlay();
     const data = { ...this.labelData };
     if (this.type === DETECTION) {
       const { x, y, width, height } = this.scene.convertAbsoluteToRelative(
@@ -100,8 +109,8 @@ export class CreateLabelCommand implements Undoable {
       new DeleteAnnotationCommand(
         {
           data,
-          path: this.payload.overlay.overlay.field,
-          overlay: this.payload.overlay.overlay as any,
+          path: overlay.field,
+          overlay: overlay as any,
           type: this.type as any,
         },
         this.fieldSchema

@@ -154,7 +154,6 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
 
   const handleOverlayEstablish = useCallback(
     (payload: LighterEventGroup["lighter:overlay-establish"]) => {
-      console.log("overlay-establish", payload);
       if (!scene) {
         return;
       }
