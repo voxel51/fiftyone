@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { CommandContext, CommandContextManager } from "../context";
 import { resolveContext } from "./utils";
+import { Action } from "../actions";
 
 /**
  * Hook to create or bind to an existing context.  Used with useCommand, useKeyBinding to
@@ -20,6 +21,7 @@ export const useCommandContext = (
   context: CommandContext;
   activate: () => void;
   deactivate: () => void;
+  execute: (command: Action) => void;
 } => {
   const boundContext = useMemo(() => {
     return resolveContext(context, inheritCurrent);
@@ -41,5 +43,12 @@ export const useCommandContext = (
     CommandContextManager.instance().popContext(boundContext.context.id);
   }, [boundContext.context.id]);
 
-  return { context: boundContext.context, activate, deactivate };
+  const execute = useCallback(
+    (command: Action) => {
+      boundContext.context.executeAction(command);
+    },
+    [boundContext.context]
+  );
+
+  return { context: boundContext.context, activate, deactivate, execute };
 };

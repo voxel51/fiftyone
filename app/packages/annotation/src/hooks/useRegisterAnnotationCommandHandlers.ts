@@ -41,11 +41,18 @@ const convertToLabelProxy = (
 
     // For 2D detections with BoundingBoxOverlay, extract the bounding box
     if (overlay instanceof BoundingBoxOverlay) {
-      const bounds = overlay.getRelativeBounds();
+      const data = annotationLabel.data as any;
+      const boundingBox = data?.bounding_box
+        ? data.bounding_box
+        : (() => {
+            const bounds = overlay.getRelativeBounds();
+            return [bounds.x, bounds.y, bounds.width, bounds.height];
+          })();
+
       return {
         type: DETECTION,
         data: annotationLabel.data,
-        boundingBox: [bounds.x, bounds.y, bounds.width, bounds.height],
+        boundingBox,
         path: annotationLabel.path,
       };
     }

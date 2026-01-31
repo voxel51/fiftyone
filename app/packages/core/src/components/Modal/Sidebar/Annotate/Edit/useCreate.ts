@@ -67,10 +67,8 @@ const useCreateAnnotationLabel = () => {
 export default function useCreate(type: LabelType) {
   const setEditing = useSetAtom(editing);
   const createAnnotationLabel = useCreateAnnotationLabel();
-
   return useCallback(() => {
     const label = createAnnotationLabel(type);
-
     setEditing(
       label
         ? atom<AnnotationLabel>({

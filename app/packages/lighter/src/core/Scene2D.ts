@@ -222,21 +222,6 @@ export class Scene2D {
       }
     });
 
-    // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
-    this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds, relativeBounds } = event;
-
-      if (overlay) {
-        const addCommand = new AddOverlayCommand(
-          this,
-          overlay,
-          absoluteBounds,
-          relativeBounds
-        );
-        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
-      }
-    });
-
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
     this.registerEventHandler("lighter:overlay-drag-end", (event) => {
       const overlay = this.getOverlay(event.id);
@@ -253,7 +238,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -276,7 +263,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -1085,7 +1074,10 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+  async transformOverlay(
+    id: string,
+    options: TransformOptions
+  ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1182,7 +1174,9 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   async executeCommand(command: Action, isUndoable = true): Promise<void> {
-    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    await CommandContextManager.instance()
+      .getActiveContext()
+      .executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
@@ -1422,6 +1416,15 @@ export class Scene2D {
       width: relativeWidth,
       height: relativeHeight,
     });
+  }
+
+  /**
+   * Converts absolute coordinates to relative coordinates based on canonical media.
+   * @param absoluteCoords - The absolute coordinates in pixels.
+   * @returns Relative coordinates in [0,1] range.
+   */
+  convertAbsoluteToRelative(absoluteBounds: Rect): Rect {
+    return this.coordinateSystem.absoluteToRelative(absoluteBounds);
   }
 
   /**

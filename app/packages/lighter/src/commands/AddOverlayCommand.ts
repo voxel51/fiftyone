@@ -6,12 +6,12 @@ import { Scene2D } from "../core/Scene2D";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import { Rect } from "../types";
-import type { Undoable } from "@fiftyone/commands";
+import type { Action } from "@fiftyone/commands";
 
 /**
  * Command for adding an overlay to the scene with undo/redo support.
  */
-export class AddOverlayCommand implements Undoable {
+export class AddOverlayCommand implements Action {
   readonly id: string;
   readonly description: string;
 
@@ -28,6 +28,7 @@ export class AddOverlayCommand implements Undoable {
   execute(): void {
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
+
       const interactionManager = this.scene.getInteractionManager();
 
       if (this.absoluteBounds) {
@@ -40,20 +41,6 @@ export class AddOverlayCommand implements Undoable {
       interactionManager.addHandler(handler);
     } else {
       this.scene.addOverlay(this.overlay, false);
-    }
-  }
-
-  undo(): void {
-    if (this.overlay instanceof InteractiveDetectionHandler) {
-      const handler = this.overlay.getOverlay();
-      const interactionManager = this.scene.getInteractionManager();
-
-      handler.unsetBounds();
-      interactionManager.removeHandler(handler);
-      interactionManager.addHandler(this.overlay);
-      this.scene.setCursor(this.overlay.cursor);
-    } else {
-      this.scene.removeOverlay(this.overlay.id, false);
     }
   }
 }

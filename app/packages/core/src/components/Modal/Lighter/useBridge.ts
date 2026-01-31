@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  getFieldSchema,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import {
   UpdateLabelCommand,
   useLighterEventBus,
@@ -10,12 +13,30 @@ import {
   type LighterEventGroup,
   type Scene2D,
 } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom, getDefaultStore } from "jotai";
+import { useRecoilValue } from "recoil";
 import { useCallback, useEffect } from "react";
-import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
+import {
+  currentData,
+  currentOverlay,
+  savedLabel,
+} from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
+import { useCommandContext } from "@fiftyone/commands";
+import { useCommandBus } from "@fiftyone/command-bus";
+import * as fos from "@fiftyone/state";
+
+import { CreateLabelCommand } from "./actions";
+
+const getAnnotationType = (overlay: any): any => {
+  const type = overlay.getOverlayType();
+  if (type === "BoundingBoxOverlay") return "Detection";
+  if (type === "ClassificationOverlay") return "Classification";
+  if (type === "PolylineOverlay") return "Polyline";
+  return type.replace("Overlay", "");
+};
 
 /**
  * Hook that bridges FiftyOne state management system with Lighter.
@@ -30,7 +51,12 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
   const useEventHandler = useLighterEventHandler(sceneId);
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
-
+  const commandBus = useCommandBus();
+  const store = getDefaultStore();
+  const fieldSchemaData = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+  const execute = useCommandContext().execute;
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
     useCallback(
@@ -125,6 +151,41 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
   useEventHandler("lighter:command-executed", handleCommandEvent);
   useEventHandler("lighter:redo", handleCommandEvent);
   useEventHandler("lighter:undo", handleCommandEvent);
+
+  const handleOverlayEstablish = useCallback(
+    (payload: LighterEventGroup["lighter:overlay-establish"]) => {
+      console.log("overlay-establish", payload);
+      if (!scene) {
+        return;
+      }
+      const label = store.get(savedLabel);
+      if (!label) return;
+
+      const fieldSchema = getFieldSchema(
+        fieldSchemaData,
+        payload.overlay.overlay.field
+      );
+
+      if (!fieldSchema) return;
+
+      const type = getAnnotationType(payload.overlay.overlay);
+
+      const command = new CreateLabelCommand(
+        scene,
+        commandBus,
+        payload,
+        label,
+        fieldSchema,
+        type
+      );
+
+      console.log("executing");
+      execute(command);
+    },
+    [scene, commandBus, fieldSchemaData, store, execute]
+  );
+
+  useEventHandler("lighter:overlay-establish", handleOverlayEstablish);
 
   const context = useColorMappingContext();
 
