@@ -312,14 +312,16 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
 
             x1, y1, x2, y2 = box
             bounding_box = [
-                x1 / width,
-                y1 / height,
-                (x2 - x1) / width,
-                (y2 - y1) / height,
+                max(0.0, x1 / width),
+                max(0.0, y1 / height),
+                min(1.0, (x2 - x1) / width),
+                min(1.0, (y2 - y1) / height),
             ]
 
-            y1_int, y2_int = int(round(y1)), int(round(y2))
-            x1_int, x2_int = int(round(x1)), int(round(x2))
+            y1_int = max(0, int(round(y1)))
+            y2_int = min(height, int(round(y2)))
+            x1_int = max(0, int(round(x1)))
+            x2_int = min(width, int(round(x2)))
 
             if y2_int <= y1_int or x2_int <= x1_int:
                 continue
@@ -479,65 +481,76 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
             sample_detections = {}
             outputs = response.get("outputs", {})
+            frame_index = response.get("frame_index", 0)
 
-            for frame_idx_str, frame_output in outputs.items():
-                frame_number = int(frame_idx_str) + 1
+            masks = outputs.get("out_binary_masks")
+            boxes_xywh = outputs.get("out_boxes_xywh")
+            scores = outputs.get("out_probs")
+            obj_ids = outputs.get("out_obj_ids")
 
-                masks = frame_output.get("masks", [])
-                boxes = frame_output.get("boxes", [])
-                scores = frame_output.get("scores", [])
-                obj_ids = frame_output.get("obj_ids", list(range(len(masks))))
+            if masks is None or len(masks) == 0:
+                return sample_detections
 
-                detections = []
-                for i, (mask, box, score) in enumerate(zip(masks, boxes, scores)):
-                    obj_id = obj_ids[i] if i < len(obj_ids) else i
+            if hasattr(masks, "cpu"):
+                masks = masks.cpu().numpy()
+            if hasattr(boxes_xywh, "cpu"):
+                boxes_xywh = boxes_xywh.cpu().numpy()
+            if hasattr(scores, "cpu"):
+                scores = scores.cpu().numpy()
+            if hasattr(obj_ids, "cpu"):
+                obj_ids = obj_ids.cpu().numpy()
 
-                    if hasattr(score, "item"):
-                        score = score.item()
+            frame_number = frame_index + 1
+            detections = []
 
-                    if score < self._confidence_threshold:
-                        continue
+            for i, (mask, box_xywh, score) in enumerate(
+                zip(masks, boxes_xywh, scores)
+            ):
+                obj_id = obj_ids[i] if i < len(obj_ids) else i
 
-                    if hasattr(mask, "cpu"):
-                        mask = mask.cpu().numpy()
-                    if hasattr(box, "cpu"):
-                        box = box.cpu().numpy()
+                if hasattr(score, "item"):
+                    score = score.item()
 
-                    x1, y1, x2, y2 = box
-                    bounding_box = [
-                        x1 / frame_width,
-                        y1 / frame_height,
-                        (x2 - x1) / frame_width,
-                        (y2 - y1) / frame_height,
-                    ]
+                if score < self._confidence_threshold:
+                    continue
 
-                    y1_int, y2_int = int(round(y1)), int(round(y2))
-                    x1_int, x2_int = int(round(x1)), int(round(x2))
+                x_norm, y_norm, w_norm, h_norm = box_xywh
+                bounding_box = [
+                    max(0.0, float(x_norm)),
+                    max(0.0, float(y_norm)),
+                    min(1.0 - x_norm, float(w_norm)),
+                    min(1.0 - y_norm, float(h_norm)),
+                ]
 
-                    if y2_int <= y1_int or x2_int <= x1_int:
-                        continue
+                x1_int = max(0, int(round(x_norm * frame_width)))
+                y1_int = max(0, int(round(y_norm * frame_height)))
+                x2_int = min(frame_width, int(round((x_norm + w_norm) * frame_width)))
+                y2_int = min(frame_height, int(round((y_norm + h_norm) * frame_height)))
 
-                    mask_crop = mask[y1_int:y2_int, x1_int:x2_int]
+                if y2_int <= y1_int or x2_int <= x1_int:
+                    continue
 
-                    if mask_crop.size == 0:
-                        continue
+                mask_crop = mask[y1_int:y2_int, x1_int:x2_int]
 
-                    if mask_crop.dtype != bool:
-                        mask_crop = mask_crop > 0.5
+                if mask_crop.size == 0:
+                    continue
 
-                    detections.append(
-                        fol.Detection(
-                            label=text_prompt,
-                            bounding_box=bounding_box,
-                            mask=mask_crop,
-                            confidence=score,
-                            index=obj_id,
-                        )
+                if mask_crop.dtype != bool:
+                    mask_crop = mask_crop > 0.5
+
+                detections.append(
+                    fol.Detection(
+                        label=text_prompt,
+                        bounding_box=bounding_box,
+                        mask=mask_crop,
+                        confidence=float(score),
+                        index=int(obj_id),
                     )
-
-                sample_detections[frame_number] = fol.Detections(
-                    detections=detections
                 )
+
+            sample_detections[frame_number] = fol.Detections(
+                detections=detections
+            )
 
         finally:
             self._predictor.handle_request(
