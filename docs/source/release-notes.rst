@@ -3,6 +3,159 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.15.0
+--------------------------
+*Released February 3, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.12.0 <release-notes-v1.12.0>`, plus:
+
+Core
+
+- TODO (Introduce improved `compute_mistakenness` operator)
+- Migrated more methods to use a more robust approach for communication with
+  the API: `add_samples()`, `set_values()` now join `delete_sample_fields()`.
+  This will significantly increase the reliability and consistency of long
+  running requests. This change is now enabled by default, but can be reverted
+  using environment variables. More details in :ref:`the docs <TODO>`.
+- User can now configure their priority preference for loading credentials
+  (remote vs local) when accessing storage utilities. 
+  `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
+
+Plugins, Operators, and Orchestrators
+
+- From the Operator page, users can now rerun Pipeline Operators starting at a
+  failed stage -- rerunning the entire stage, or a single operator. Original
+  runs are archived and hidden by default in the UI, but can be made visible
+  using the "show archived" toggle.
+- Improved reliability of push-based Orchestrators. The system will now
+  automatically retry stuck queued operations for push based orcs. Users can
+  configure their API to automatically requeue operations targeting push based
+  orcs after a delay or a certain number of attempts.
+- New default expiration time for monitored Delegated Operators is now 30
+  minutes, allowing for more accurate termination of stuck pods while
+  respecting non-monitored operations.
+- Fixed distributed execution to prevent sample skipping, introducing new
+  default ID-range batching strategy, and now use a strategy pattern to select
+  between slice-based batching and ID-range batching.
+- For K8s Orchestrators, made both `image` and `kubeConfig` parameters
+  optional, allowing users to specify them via configuration if desired.
+
+Authorization
+
+- Credentials for access to cloud media can now be assigned at the global
+  scope, per each user group, and per each user, in addition to allowing
+  different credentials for different cloud buckets.
+- New environment variable `NO_CREDENTIALS` can be set to prevent local use of
+  server-provided cloud credentials (allowed by default).
+- The restriction on role re-upgrades is no longer based on "role" but now
+  "license tier". For example, Admin and Member are considered the same tier
+  since they both use up the same seat type, so users are free to switch
+  between those roles without restrictions.
+
+App
+
+- Added a multi-scope cloud credentials UI to the Admin's Settings page.
+  Available scopes are GLOBAL, GROUP, and USER) each with its own tab.
+- Updated UI to show downgrade warning based on tiers.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `diff`, `fonttools`, `glob`, `h2`, `js-yaml`,
+  `langchain-core`, `nodemailer`, `qs`, and `starlette`.
+
+.. _release-notes-v1.12.0:
+
+FiftyOne 1.12.0
+---------------
+*Released February 3, 2026*
+
+Core
+
+- Added a first-class camera module with 
+  :ref:`intrinsics/extrinsics data models <camera-intrinsics-extrinsics>`,
+  :ref:`dataset-level refs <storing-camera-calibration>`, and
+  :ref:`projection utilities for 3D <-> 2D workflows <camera-projection>`.
+  `#6700 <https://github.com/voxel51/fiftyone/pull/6700>`_,
+  `#6780 <https://github.com/voxel51/fiftyone/pull/6780>`_,
+  `#6703 <https://github.com/voxel51/fiftyone/pull/6703>`_,
+  `#6730 <https://github.com/voxel51/fiftyone/pull/6730>`_
+- Added a builtin `reload_saved_view` operator that allows for checking +
+  reloading saved generated views. Calling `reload()` on a saved generated view
+  will now automatically update the saved view's metadata. Backing datasets for
+  saved generated views are now marked as persistent so that they are not
+  affected by non-persistent dataset cleanup. Deleting a dataset or specific
+  generated saved views will automatically mark the now-deprecated backing
+  dataset as non-persistent. Switch to `_state["dataset_id"]` in generated
+  views to prevent unnecessary reloads when the parent dataset is renamed.
+  `#6067 <https://github.com/voxel51/fiftyone/pull/6067>`_
+- Added :meth:`get_cpu_count() <fiftyone.core.utils.get_cpu_count>` which
+  properly accounts for docker / kubernetes CPU limits. Updated
+  :meth:`recommend_thread_pool_workers() <fiftyone.core.utils.recommend_thread_pool_workers>`
+  and
+  :meth:`recommend_process_pool_workers() <fiftyone.core.utils.recommend_process_pool_workers>`
+  to use this new function.
+  `#6290 <https://github.com/voxel51/fiftyone/pull/6290>`_
+
+Plugins and Operators
+
+- Expanded support for rerunning Delegated Operators. Set `rerunnable` to True
+  or False on the operator config of your Operator or Pipeline Stage to control
+  whether users can rerun that operation. Note: the Pipeline Stage config takes
+  precedence over the Operator config, or set the stage config to `None` to
+  default to the Operator `rerunnable` value. 
+  `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
+- You can now use :ref:`fiftyone delegated rerun <operatorId>` to rerun
+  Delegated Operators. `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
+- Added support for archiving Delegated Operators, in addition to deleting
+  them. Archived Delegated Operators will automatically be filtered out when
+  calling `list_operations`. 
+  `#6716 <https://github.com/voxel51/fiftyone/pull/6716>`_
+- Added support for immediate
+  :ref:`OperatorPipeline <fiftyone.operators.OperatorPipeline>` execution, with
+  added live pipeline execution capability and enhanced error handling. 
+  `#6628 <https://github.com/voxel51/fiftyone/pull/6628>`_
+- Fixed a bug for multi-select autocomplete fields when setting a default
+  value. `#6748 <https://github.com/voxel51/fiftyone/pull/6748>`_
+
+Model Zoo
+
+- SAM2 models now support negative prompts for refined segmentation control.
+  Users can specify a `negative_prompt_field` parameter when applying SAM2
+  models to exclude unwanted regions from segmentation masks. This enables more
+  precise segmentation by providing both positive prompts (regions to segment)
+  and negative prompts (regions to exclude). Works with both image and video
+  SAM2 models using Detections or Keypoints. 
+  `#6520 <https://github.com/voxel51/fiftyone/pull/6520>`_
+- Added YOLO26 model family to the model zoo, including classification,
+  detection, and instance segmentation models, based on the January 2026
+  Ultralytics release. `#6760 <https://github.com/voxel51/fiftyone/pull/6760>`_
+- Added three LLMDet open-vocabulary zero-shot object detectors
+  (tiny/base/large) to the Torch model zoo. 
+  `#6248 <https://github.com/voxel51/fiftyone/pull/6248>`_
+- Updated
+  :meth:`foo.get_implied_field_kwargs() <fiftyone.core.odm.get_implied_field_kwargs>`
+  to correctly handle values that contain subclasses of `EmbeddedDocumentField`. 
+  `#6639 <https://github.com/voxel51/fiftyone/pull/6639>`_
+
+Brain
+
+- Fix: When subselecting samples from the lancedb table, ensure the samples
+  being selected exist in the table. 
+  `#272 <https://github.com/voxel51/fiftyone-brain/pull/272>`_
+
+Docs
+
+- Expanded user guide with comprehensive camera calibration coverage:
+  :ref:`Storing Camera Calibration <storing-camera-calibration>`,
+  :ref:`Camera Intrinsics/Extrinsics <camera-intrinsics-extrinsics>`, and
+  :ref:`3D <-> 2D Projection <camera-projection>`.
+  `#6711 <https://github.com/voxel51/fiftyone/pull/6711>`_
+- Fix broken active projects reference in CONTRIBUTING.md 
+  `#6770 <https://github.com/voxel51/fiftyone/pull/6770>`_
+
+
+
 FiftyOne Enterprise 2.14.1
 --------------------------
 *Released January 14, 2026*
