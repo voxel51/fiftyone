@@ -16,6 +16,7 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -312,7 +313,11 @@ export const ThreeDCuboids = () => {
 const Schema = () => {
   const showModal = useShowModal();
 
-  return <RoundButton onClick={showModal}>Schema</RoundButton>;
+  return (
+    <RoundButton onClick={showModal}>
+      <Text variant={TextVariant.Lg}>Schema</Text>
+    </RoundButton>
+  );
 };
 
 const Actions = () => {
@@ -345,8 +350,12 @@ const Actions = () => {
         </ItemRight>
       </Row>
       {canManage && (
-        <Row style={{ fontSize: "0.80rem" }}>
-          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+        <Row>
+          <ItemLeft style={{ width: "50%" }}>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              Click labels to edit
+            </Text>
+          </ItemLeft>
           <ItemRight style={{ width: "50%" }}>
             <Schema />
           </ItemRight>
