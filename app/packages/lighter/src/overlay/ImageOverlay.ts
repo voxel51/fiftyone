@@ -152,6 +152,26 @@ export class ImageOverlay
     this.imgElement.style.pointerEvents = "none";
     this.imgElement.style.userSelect = "none";
     this.imgElement.style.zIndex = "0";
+
+    /**
+     * FLASH PREVENTION STRATEGY:
+     *
+     * The image element starts hidden (display: none) to prevent a visual
+     * flash where the image briefly appears at (0,0) with no transform.
+     *
+     * Flow:
+     * 1. Image element created with display: none
+     * 2. Image loads in background
+     * 3. Viewport transform is applied via updateImageTransform()
+     * 4. Image becomes visible AFTER first transform (see updateImageTransform)
+     *
+     * This ensures the image is only visible when correctly positioned.
+     */
+    this.imgElement.style.display = "none";
+
+    // Match Looker's pixelated rendering (imageSmoothingEnabled = false)
+    this.imgElement.style.imageRendering = "pixelated";
+    this.imgElement.style.imageRendering = "crisp-edges"; // Fallback for some browsers
     this.imgElement.draggable = false;
 
     if (this.options.opacity !== undefined && this.options.opacity !== 1) {
@@ -227,6 +247,11 @@ export class ImageOverlay
 
     // Use CSS transform for both translation and scaling
     this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px) scale(${scale})`;
+
+    // Show the image after first transform to prevent flash
+    if (this.imgElement.style.display === "none") {
+      this.imgElement.style.display = "";
+    }
   }
 
   /**
@@ -312,20 +337,19 @@ export class ImageOverlay
 
     let finalWidth: number;
     let finalHeight: number;
-    let offsetX = 0;
-    let offsetY = 0;
 
     if (originalAspectRatio > targetAspectRatio) {
       // Original image is wider - fit to width
       finalWidth = targetWidth;
       finalHeight = targetWidth / originalAspectRatio;
-      offsetY = (targetHeight - finalHeight) / 2;
     } else {
       // Original image is taller - fit to height
       finalHeight = targetHeight;
       finalWidth = targetHeight * originalAspectRatio;
-      offsetX = (targetWidth - finalWidth) / 2;
     }
+
+    const offsetX = (targetWidth - finalWidth) / 2;
+    const offsetY = (targetHeight - finalHeight) / 2;
 
     return {
       x: bounds.x + offsetX,

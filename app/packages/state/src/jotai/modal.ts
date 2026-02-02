@@ -1,3 +1,4 @@
+import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { createDatasetKeyedStorage, parseDatasetNameFromUrl } from "./utils";
 
@@ -24,3 +25,8 @@ export const modalMode = atomWithStorage<ModalMode>(
   ModalMode.EXPLORE,
   createDatasetKeyedStorage<ModalMode>(parseDatasetNameFromUrl)
 );
+
+export const modalViewport = atom<{
+  scale: number;
+  pan: [number, number];
+} | null>(null);

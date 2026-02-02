@@ -4,6 +4,7 @@ import {
 } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
@@ -81,6 +82,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   // important: make sure all dependencies of the navigators are referentially stable,
   // or else the debouncing mechanism won't work
+  const setViewport = useSetAtom(fos.modalViewport as any);
   const nextNavigator = useMemo(
     () =>
       createDebouncedNavigator({
@@ -90,6 +92,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           if (navigation) {
             return await navigation.next(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
+              setViewport(null);
               setModal(s);
             });
           }
@@ -97,7 +100,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, setViewport]
   );
 
   const previousNavigator = useMemo(
@@ -109,6 +112,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
           if (navigation) {
             return await navigation.previous(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
+              setViewport(null);
               setModal(s);
             });
           }
@@ -116,7 +120,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, setViewport]
   );
 
   useEffect(() => {

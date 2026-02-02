@@ -5,6 +5,7 @@
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
+import { MIN_ZOOM_SCALE_LIGHTER } from "@fiftyone/core/src/constants/viewport";
 import {
   DEFAULT_TEXT_PADDING,
   FONT_FAMILY,
@@ -44,6 +45,13 @@ export class PixiRenderer2D implements Renderer2D {
   private foregroundContainer!: PIXI.Container;
   private backgroundContainer!: PIXI.Container;
 
+  /**
+   * Tracks whether the user is currently interacting with the viewport
+   * (dragging, pinching, or wheeling). Used to prevent snap-back during
+   * external viewport updates from Looker.
+   */
+  private interacting = false;
+
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
@@ -61,8 +69,13 @@ export class PixiRenderer2D implements Renderer2D {
     this.resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
+
         if (this.app && this.isReady()) {
           this.app.renderer.resize(width, height);
+
+          if (this.viewport) {
+            this.viewport.resize(width, height);
+          }
 
           // Force immediate render to prevent black flash
           if (this.viewport) {
@@ -79,17 +92,36 @@ export class PixiRenderer2D implements Renderer2D {
       this.resizeObserver.observe(this.canvas.parentElement);
     }
 
+    const rect = this.canvas.getBoundingClientRect();
+    const width = rect.width || 100;
+    const height = rect.height || 100;
+
     this.viewport = new Viewport({
+      screenWidth: width,
+      screenHeight: height,
+      worldWidth: width,
+      worldHeight: height,
       events: this.app.renderer.events,
     });
 
     this.app.stage.addChild(this.viewport);
 
     // Activate drag, pinch, and wheel plugins.
-    this.viewport.drag().pinch().wheel();
+    // Clamp zoom to match Looker's minimum zoom behavior
+    this.viewport
+      .drag()
+      .pinch()
+      .wheel()
+      .clampZoom({ minScale: MIN_ZOOM_SCALE_LIGHTER });
 
-    // to re-render the scene with updated scaling
-    // TODO: throttle?
+    this.viewport.on("drag-start", () => (this.interacting = true));
+    this.viewport.on("drag-end", () => (this.interacting = false));
+    this.viewport.on("pinch-start", () => (this.interacting = true));
+    this.viewport.on("pinch-end", () => (this.interacting = false));
+    this.viewport.on("wheel-start", () => (this.interacting = true));
+    this.viewport.on("wheel-end", () => (this.interacting = false));
+
+    // Emit viewport-moved events on zoom and pan for synchronization
     this.viewport.on("zoomed", (_data) => {
       if (this.viewport) {
         this.eventBus.dispatch("lighter:zoomed", {
@@ -114,6 +146,8 @@ export class PixiRenderer2D implements Renderer2D {
     this.viewport.addChild(this.foregroundContainer);
 
     this.app.start();
+
+    this.eventBus.dispatch("lighter:ready", undefined);
   }
 
   private tick = () => {
@@ -721,6 +755,18 @@ export class PixiRenderer2D implements Renderer2D {
   /**
    * Emits a viewport-moved event with current position and scale.
    */
+  setViewport(scale: number, pan: [number, number]): void {
+    if (!this.viewport || this.viewport.destroyed) return;
+
+    if (this.viewport.scale) {
+      this.viewport.scale.set(scale);
+    }
+    this.viewport.x = pan[0];
+    this.viewport.y = pan[1];
+
+    this.emitViewportMoved();
+  }
+
   private emitViewportMoved(): void {
     if (this.viewport) {
       this.eventBus.dispatch("lighter:viewport-moved", {
@@ -729,6 +775,13 @@ export class PixiRenderer2D implements Renderer2D {
         scale: this.viewport.scaled,
       });
     }
+  }
+
+  /**
+   * Check if the renderer is currently being interacted with (dragged, pinched, or zoomed)
+   */
+  isInteracting(): boolean {
+    return this.interacting;
   }
 
   /**

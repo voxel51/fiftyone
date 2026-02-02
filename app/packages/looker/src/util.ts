@@ -338,51 +338,12 @@ export const getRenderedScale = (
 };
 
 export const snapBox = (
-  scale: number,
+  _scale: number,
   pan: Coordinates,
-  [ww, wh]: Dimensions,
-  [iw, ih]: Dimensions,
-  pad = true
+  _ww: Dimensions,
+  _iw: Dimensions,
+  _pad = true
 ): Coordinates => {
-  const sww = ww * scale;
-  const swh = wh * scale;
-  const ar = iw / ih;
-  if (ww / wh < ar) {
-    iw = sww * (pad ? 1.1 : 1);
-    ih = iw / ar;
-  } else {
-    ih = swh * (pad ? 1.1 : 1);
-    iw = ih * ar;
-  }
-
-  const tly = (swh - ih) / 2 - Math.max((wh - ih) / 2, 0);
-  if (ih > wh) {
-    if (pan[1] > -tly) {
-      pan[1] = -tly;
-    }
-
-    const bry = -tly - ih;
-    if (pan[1] - wh < bry) {
-      pan[1] -= pan[1] - wh - bry;
-    }
-  } else {
-    pan[1] = -tly;
-  }
-
-  const tlx = (sww - iw) / 2 - Math.max((ww - iw) / 2, 0);
-  if (iw > ww) {
-    if (pan[0] > -tlx) {
-      pan[0] = -tlx;
-    }
-
-    const brx = -tlx - iw;
-    if (pan[0] - ww < brx) {
-      pan[0] -= pan[0] - ww - brx;
-    }
-  } else {
-    pan[0] = -tlx;
-  }
-
   return pan;
 };
 

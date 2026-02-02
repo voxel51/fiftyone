@@ -20,7 +20,9 @@ export const useShowOverlays = () => {
 
 export const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(fos.selectedLabels, []),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, []),
     []
   );
 };
@@ -48,8 +50,9 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       id={id}
       data-cy="modal-looker-container"
       style={{
-        width: props.ghost ? 0 : "100%",
-        height: props.ghost ? 0 : "100%",
+        width: "100%",
+        height: "100%",
+        display: props.ghost ? "none" : "block",
         background: theme.background.level2,
         position: "relative",
       }}
