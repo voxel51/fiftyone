@@ -46,7 +46,14 @@ const JSONEditor = ({
   return (
     <ContentArea
       className={scrollable}
-      style={errors ? { border: "1px solid rgba(212, 64, 64, 0.4)" } : {}}
+      style={
+        errors
+          ? {
+              border:
+                "1px solid color-mix(in srgb, var(--color-semantic-destructive) 40%, transparent)",
+            }
+          : {}
+      }
     >
       <CodeView
         data={value}

@@ -20,7 +20,7 @@ const PlusMinusButton = ({
 };
 
 const GroupHeader = styled.div`
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   padding: 0.5rem;
   display: flex;
   justify-content: space-between;
@@ -50,7 +50,7 @@ const GroupDiv = styled.div`
 
 const Round = styled.div`
   align-items: center;
-  border-radius: 1rem;
+  border-radius: var(--radius-full);
   display: flex;
   cursor: pointer;
   flex-direction: column;

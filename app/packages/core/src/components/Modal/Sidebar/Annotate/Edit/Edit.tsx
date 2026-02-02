@@ -32,7 +32,7 @@ const ContentContainer = styled.div`
 
 const Content = styled.div`
   background: ${({ theme }) => theme.neutral.softBg};
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   width: 100%;
   flex: 1;
   padding: 1rem;
