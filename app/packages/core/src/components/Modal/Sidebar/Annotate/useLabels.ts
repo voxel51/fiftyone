@@ -10,7 +10,7 @@ import {
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import { activeLabelSchemas } from "./state";
@@ -105,6 +105,27 @@ const pathMap = selector<{ [key: string]: string }>({
     return Object.fromEntries(paths.map((path, i) => [path, expandedPaths[i]]));
   },
 });
+
+/**
+ * Public API for interacting with current labels context.
+ */
+export interface LabelsContext {
+  /**
+   * Add an annotation label to the annotation sidebar.
+   *
+   * @param label Label to add
+   */
+  addLabelToSidebar: (label: AnnotationLabel) => void;
+}
+
+/**
+ * Hook which provides access to the current {@link LabelsContext}.
+ */
+export const useLabelsContext = (): LabelsContext => {
+  const addLabelToSidebar = useSetAtom(addLabel);
+
+  return useMemo(() => ({ addLabelToSidebar }), [addLabelToSidebar]);
+};
 
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);

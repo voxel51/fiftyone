@@ -6,23 +6,28 @@ import type {
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
-import { objectId } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  objectId,
+  POLYLINE,
+} from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
-import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { defaultField, editing, savedLabel } from "./state";
+import { useLabelsContext } from "../useLabels";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
   return useCallback(
-    (type: LabelType) => {
+    (type: LabelType): AnnotationLabel | undefined => {
       const id = objectId();
       const data = { _id: id };
       const store = getDefaultStore();
       const field = store.get(defaultField(type));
       if (!field) {
-        return;
+        return undefined;
       }
 
       if (type === CLASSIFICATION) {
@@ -47,7 +52,7 @@ const useCreateAnnotationLabel = () => {
         >("bounding-box", {
           field,
           id,
-          label: {},
+          label: data,
         });
         addOverlay(overlay);
         const handler = new InteractiveDetectionHandler(overlay);
@@ -59,6 +64,8 @@ const useCreateAnnotationLabel = () => {
       if (type === POLYLINE) {
         throw new Error("todo");
       }
+
+      return undefined;
     },
     [addOverlay, overlayFactory, scene]
   );
@@ -67,17 +74,21 @@ const useCreateAnnotationLabel = () => {
 export default function useCreate(type: LabelType) {
   const setEditing = useSetAtom(editing);
   const createAnnotationLabel = useCreateAnnotationLabel();
+  const { addLabelToSidebar } = useLabelsContext();
 
   return useCallback(() => {
     const label = createAnnotationLabel(type);
 
-    setEditing(
-      label
-        ? atom<AnnotationLabel>({
-            isNew: true,
-            ...label,
-          })
-        : type
-    );
-  }, [createAnnotationLabel, setEditing, type]);
+    if (label) {
+      addLabelToSidebar(label);
+      setEditing(
+        atom<AnnotationLabel>({
+          isNew: true,
+          ...label,
+        })
+      );
+    } else {
+      setEditing(type);
+    }
+  }, [addLabelToSidebar, createAnnotationLabel, setEditing, type]);
 }
