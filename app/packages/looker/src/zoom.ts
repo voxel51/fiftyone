@@ -4,6 +4,7 @@ import {
   getCls,
   getFieldInfo,
 } from "@fiftyone/utilities";
+import { MIN_ZOOM_SCALE } from "@fiftyone/core/src/constants/viewport";
 import { MIN_PIXELS } from "./constants";
 import { POINTS_FROM_FO } from "./overlays";
 import { Overlay } from "./overlays/base";
@@ -70,20 +71,20 @@ export const zoomToContent = <
   const squeeze = 1 - state.options.zoomPad;
 
   if (wAR < iAR) {
-    scale = Math.max(1, 1 / bw);
+    scale = Math.max(MIN_ZOOM_SCALE, 1 / bw);
     w = ww * scale;
     h = w / iAR;
     if (!state.config.thumbnail && bh * h > wh) {
-      scale = Math.max(1, (wh * scale) / (bh * h));
+      scale = Math.max(MIN_ZOOM_SCALE, (wh * scale) / (bh * h));
       w = ww * scale;
       h = w / iAR;
     }
   } else {
-    scale = Math.max(1, 1 / bh);
+    scale = Math.max(MIN_ZOOM_SCALE, 1 / bh);
     h = wh * scale;
     w = h * iAR;
     if (!state.config.thumbnail && bw * w > ww) {
-      scale = Math.max(1, (ww * scale) / (bw * w));
+      scale = Math.max(MIN_ZOOM_SCALE, (ww * scale) / (bw * w));
       h = wh * scale;
       w = h * iAR;
     }
