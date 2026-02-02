@@ -277,11 +277,16 @@ export const CenteredEmptyState = styled.div`
 export const ErrorContainer = styled.div`
   align-items: flex-start;
   align-self: stretch;
-  background: #441817;
+  background: color-mix(
+    in srgb,
+    var(--color-semantic-destructive) 15%,
+    transparent
+  );
   box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
-  border: 1px solid rgba(212, 64, 64, 0.4);
+  border: 1px solid
+    color-mix(in srgb, var(--color-semantic-destructive) 40%, transparent);
   border-radius: var(--radius-sm);
-  color: var(--voxel-danger, #d44040);
+  color: var(--color-semantic-destructive);
   display: flex;
   flex-direction: column;
   font-weight: bold;

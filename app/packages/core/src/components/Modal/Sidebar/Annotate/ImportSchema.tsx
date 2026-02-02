@@ -46,7 +46,7 @@ const AlertBox = styled.div`
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem;
-  background: #333;
+  background: var(--color-content-bg-muted);
   border-radius: var(--radius-sm);
   box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
 `;
@@ -81,7 +81,7 @@ const ImportSchema = (
           <MuiIconFont
             sx={{
               fontSize: 48,
-              color: "#FF9950",
+              color: "var(--color-brand-accent)",
             }}
             name={"draw"}
           />

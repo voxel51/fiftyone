@@ -59,7 +59,7 @@ const Container = styled.div<{ $active?: boolean }>`
   white-space: nowrap;
 
   path {
-    fill: #999999;
+    fill: var(--color-content-icon-subtle);
   }
 
   ${({ $active, theme }) =>
