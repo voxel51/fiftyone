@@ -2,6 +2,10 @@ import { TransformControlsProps } from "@react-three/drei";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import type {
+  ReconciledDetection3D,
+  ReconciledPolyline3D,
+} from "./annotation/types";
+import type {
   ACTION_SET_PCDS,
   ACTION_SET_POINT_SIZE,
   ACTION_SHADE_BY,
@@ -116,3 +120,53 @@ export interface EventHandlers {
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
+
+// =============================================================================
+// TYPE GUARDS
+// =============================================================================
+
+/**
+ * Type guard to check if an overlay is a Detection overlay (3D).
+ */
+export function isDetectionOverlay(
+  overlay: OverlayLabel
+): overlay is OverlayLabel & { dimensions: unknown; location: unknown } {
+  return (
+    overlay._cls === "Detection" &&
+    "dimensions" in overlay &&
+    "location" in overlay &&
+    overlay.dimensions != null &&
+    overlay.location != null
+  );
+}
+
+/**
+ * Type guard to check if an overlay is a Polyline overlay (3D).
+ */
+export function isPolylineOverlay(
+  overlay: OverlayLabel
+): overlay is OverlayLabel & { points3d: [number, number, number][][] } {
+  return (
+    overlay._cls === "Polyline" &&
+    "points3d" in overlay &&
+    overlay.points3d != null
+  );
+}
+
+/**
+ * Type guard to check if a reconciled label is a Detection.
+ */
+export function isDetection(
+  label: ReconciledDetection3D | ReconciledPolyline3D
+): label is ReconciledDetection3D {
+  return label._cls === "Detection";
+}
+
+/**
+ * Type guard to check if a reconciled label is a Polyline.
+ */
+export function isPolyline(
+  label: ReconciledDetection3D | ReconciledPolyline3D
+): label is ReconciledPolyline3D {
+  return label._cls === "Polyline";
+}
