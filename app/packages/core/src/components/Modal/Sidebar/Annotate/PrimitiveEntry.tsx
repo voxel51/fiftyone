@@ -16,7 +16,7 @@ const Container = animated(styled.div<{ $isReadOnly?: boolean }>`
   display: flex;
   justify-content: space-between;
   position: relative;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: ${({ theme }) => theme.neutral.softBg};
   padding: 0.5rem;
 

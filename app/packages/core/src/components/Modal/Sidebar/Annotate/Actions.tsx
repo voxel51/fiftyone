@@ -17,6 +17,7 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -61,7 +62,7 @@ const Container = styled.div<{ $active?: boolean }>`
   white-space: nowrap;
 
   path {
-    fill: #999999;
+    fill: var(--color-content-icon-subtle);
   }
 
   ${({ $active, theme }) =>
@@ -90,7 +91,7 @@ const Container = styled.div<{ $active?: boolean }>`
 `;
 
 export const Round = styled(Container)`
-  border-radius: 1.25rem;
+  border-radius: var(--radius-full);
   width: 2rem;
   height: 2rem;
   &:hover {
@@ -113,7 +114,7 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.1rem;
+  border-radius: var(--radius-xs);
 `;
 
 const Classification = () => {
@@ -325,7 +326,11 @@ export const ThreeDCuboids = () => {
 const Schema = () => {
   const showModal = useShowModal();
 
-  return <RoundButton onClick={showModal}>Schema</RoundButton>;
+  return (
+    <RoundButton onClick={showModal}>
+      <Text variant={TextVariant.Lg}>Schema</Text>
+    </RoundButton>
+  );
 };
 
 const Actions = () => {
@@ -358,8 +363,12 @@ const Actions = () => {
         </ItemRight>
       </Row>
       {canManage && (
-        <Row style={{ fontSize: "0.80rem" }}>
-          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+        <Row>
+          <ItemLeft style={{ width: "50%" }}>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              Click labels to edit
+            </Text>
+          </ItemLeft>
           <ItemRight style={{ width: "50%" }}>
             <Schema />
           </ItemRight>
