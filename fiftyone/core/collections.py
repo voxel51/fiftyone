@@ -10959,7 +10959,15 @@ class SampleCollection(object):
             ):
                 raise ValueError(f"Cannot modify default index '{index_name}'")
 
+        #
         # Convert existing index to unique, if necessary
+        # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
+        #
+        # Although MongoDB documents this strategy for more efficently
+        # upgrading an existing index to unique on MongoDB 6+, it does not seem
+        # to work in all cases, so we gracefully fallback to the "delete and
+        # replace" strategy if necessary
+        #
         if convert_to_unique:
             logger.info(
                 f"Converting existing index '{index_name}' to unique "
@@ -10969,7 +10977,6 @@ class SampleCollection(object):
             db = foo.get_db_conn()
 
             try:
-                # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
                 db.command(
                     "collMod",
                     coll_name,
@@ -10982,21 +10989,33 @@ class SampleCollection(object):
                 )
 
                 return _existing_name
-            except:
-                if foo.get_db_version() < Version("6"):
-                    # index conversion was introduced in MongoDB 6
-                    replace_existing = True
-                else:
-                    db.command(
-                        "collMod",
-                        coll_name,
-                        index={
-                            "name": _existing_db_name,
-                            "prepareUnique": False,
-                        },
+            except Exception as e:
+                replace_existing = True
+
+                db_version = foo.get_db_version()
+                if db_version >= Version("6"):
+                    logger.debug(
+                        "Failed to convert existing index '%s' to unique via collMod on MongoDB %s. Reason: %s",
+                        index_name,
+                        db_version,
+                        e,
+                    )
+                    logger.debug(
+                        "Falling back to delete + recreate strategy for index '%s'",
+                        index_name,
                     )
 
-                    raise
+                    try:
+                        db.command(
+                            "collMod",
+                            coll_name,
+                            index={
+                                "name": _existing_db_name,
+                                "prepareUnique": False,
+                            },
+                        )
+                    except:
+                        pass
 
         # Drop existing index, if necessary
         if replace_existing:
