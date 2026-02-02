@@ -18,7 +18,7 @@ const Container = animated(styled.div`
   display: flex;
   justify-content: space-between;
   position: relative;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: ${({ theme }) => theme.neutral.softBg};
   padding: 0.5rem;
 
@@ -41,7 +41,7 @@ const Line = styled.div<{ fill: string }>`
   position: absolute;
   top: 0px;
   z-index: 0;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   height: 100%;
   display: flex;
   justify-content: space-between;

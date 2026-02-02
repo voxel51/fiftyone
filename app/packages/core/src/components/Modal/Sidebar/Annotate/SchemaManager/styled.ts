@@ -18,7 +18,7 @@ export const ListContainer = styled.div`
 
 export const EmptyStateBox = styled(Box)`
   background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 2rem;
   display: flex;
   justify-content: center;
@@ -77,14 +77,14 @@ export const ContentArea = styled.div`
   flex: 1;
   overflow: auto;
   border: 1px solid ${({ theme }) => theme.divider};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 `;
 
 export const ItemRow = styled.div`
   display: flex;
   align-items: center;
   background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   margin-bottom: 0.5rem;
   gap: 0.75rem;
@@ -199,7 +199,7 @@ export const ModalContainer = styled.div`
   padding: 2rem 2rem 3rem 2rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: space-between;
   flex-direction: column;
@@ -280,7 +280,7 @@ export const ErrorContainer = styled.div`
   background: #441817;
   box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
   border: 1px solid rgba(212, 64, 64, 0.4);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--voxel-danger, #d44040);
   display: flex;
   flex-direction: column;
@@ -297,7 +297,7 @@ export const ErrorContainer = styled.div`
 
 export const EditCardContainer = styled.div`
   background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 1rem;
   margin-bottom: 0.5rem;
 `;
@@ -331,7 +331,7 @@ export const FieldItem = styled.div`
   justify-content: space-between;
   width: 100%;
   background: ${({ theme }) => theme.background.body};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   height: 48px;
   margin: 1rem 0;
   padding: 0 1rem;

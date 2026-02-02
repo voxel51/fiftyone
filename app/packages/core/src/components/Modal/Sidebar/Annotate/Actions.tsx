@@ -88,7 +88,7 @@ const Container = styled.div<{ $active?: boolean }>`
 `;
 
 export const Round = styled(Container)`
-  border-radius: 1.25rem;
+  border-radius: var(--radius-full);
   width: 2rem;
   height: 2rem;
   &:hover {
@@ -111,7 +111,7 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.1rem;
+  border-radius: var(--radius-xs);
 `;
 
 const Classification = () => {

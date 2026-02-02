@@ -47,7 +47,7 @@ const AlertBox = styled.div`
   gap: 0.5rem;
   padding: 0.75rem 1rem;
   background: #333;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
 `;
 
