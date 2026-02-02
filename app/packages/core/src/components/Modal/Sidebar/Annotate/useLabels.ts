@@ -5,18 +5,13 @@ import {
   field,
   modalGroupSlice,
   ModalSample,
-  modalSample,
+  useModalSample,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
 import { useEffect, useRef } from "react";
-import {
-  selector,
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import { activeLabelSchemas } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
@@ -113,7 +108,7 @@ const pathMap = selector<{ [key: string]: string }>({
 
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
-  const modalSampleData = useRecoilValueLoadable(modalSample);
+  const modalSample = useModalSample();
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
@@ -151,44 +146,43 @@ export default function useLabels() {
   }, [currentSlice]);
 
   useEffect(() => {
-    if (
-      modalSampleData.state !== "loading" &&
-      active &&
-      loadingState === LabelsState.UNSET
-    ) {
-      setLoading(LabelsState.LOADING);
-      handleSample({
-        createLabel,
-        paths,
-        sample: modalSampleData.contents,
-        getFieldType,
-        schemas: active,
-      }).then((result) => {
-        setLabels(result);
-        result.forEach((annotationLabel) => addLabel(annotationLabel));
-        setLoading(LabelsState.COMPLETE);
-      });
+    if (modalSample?.sample && active) {
+      const getLabelsFromSample = () =>
+        handleSample({
+          createLabel,
+          paths,
+          sample: modalSample,
+          getFieldType,
+          schemas: active,
+        });
+
+      if (loadingState === LabelsState.UNSET) {
+        setLoading(LabelsState.LOADING);
+        getLabelsFromSample().then((result) => {
+          setLabels(result);
+          result.forEach((annotationLabel) => addLabel(annotationLabel));
+          setLoading(LabelsState.COMPLETE);
+        });
+      } else if (loadingState === LabelsState.COMPLETE) {
+        // refresh label data
+        getLabelsFromSample().then((result) => {
+          result.forEach((annotationLabel) => {
+            if (scene?.hasOverlay(annotationLabel.data._id)) {
+              scene.getOverlay(annotationLabel.data._id)!.label =
+                annotationLabel.data;
+            }
+          });
+        });
+      }
     }
-  }, [
-    active,
-    getFieldType,
-    loadingState,
-    modalSampleData,
-
-    paths,
-
-    setLabels,
-    setLoading,
-  ]);
+  }, [active, getFieldType, loadingState, modalSample?.sample, paths]);
 
   useEffect(() => {
-    scene;
-
     return () => {
       setLabels([]);
       setLoading(LabelsState.UNSET);
     };
-  }, [scene, setLabels, setLoading]);
+  }, [scene]);
 
   useHover();
   useFocus();
