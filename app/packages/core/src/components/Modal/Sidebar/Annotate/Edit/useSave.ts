@@ -1,21 +1,22 @@
-import { useCallback } from "react";
 import { useAtomValue } from "jotai";
+import { useCallback } from "react";
 
+import { useActivityToast } from "@fiftyone/state";
 import { current } from "./state";
-import * as fos from "@fiftyone/state";
 
+import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useLighter } from "@fiftyone/lighter";
 import useCreate from "./useCreate";
 import { useQuickDraw } from "./useQuickDraw";
-import { useLighter } from "@fiftyone/lighter";
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 
-import { DETECTION } from "@fiftyone/utilities";
 import type { BaseOverlay } from "@fiftyone/lighter";
+import { DETECTION } from "@fiftyone/utilities";
+import { IconName, Variant } from "@voxel51/voodo";
 
 export default function useSave() {
   const { scene, addOverlay } = useLighter();
   const label = useAtomValue(current);
-  const setNotification = fos.useNotification();
+  const { setConfig } = useActivityToast();
   const { quickDrawActive, trackLastUsedDetection } = useQuickDraw();
   const createDetection = useCreate(DETECTION);
   const eventBus = useAnnotationEventBus();
@@ -40,9 +41,10 @@ export default function useSave() {
       // This will enter interactive mode with a new handler
       createDetection();
 
-      setNotification({
-        msg: `Label "${label.data.label}" saved. Ready for next...`,
-        variant: "success",
+      setConfig({
+        iconName: IconName.Check,
+        message: `Label "${label.data.label}" saved. Ready for next...`,
+        variant: Variant.Success,
       });
 
       return;
@@ -55,7 +57,6 @@ export default function useSave() {
     label,
     quickDrawActive,
     scene,
-    setNotification,
     trackLastUsedDetection,
   ]);
 }
