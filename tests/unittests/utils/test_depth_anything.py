@@ -42,7 +42,7 @@ class TestDepthAnythingV3ModelConfig:
 class TestDepthAnythingV3OutputProcessor:
     """Test DepthAnythingV3OutputProcessor."""
 
-    def _make_processor(self):
+    def _make_processor(self) -> "DepthAnythingV3OutputProcessor":
         from fiftyone.utils.depth_anything import DepthAnythingV3OutputProcessor
         return DepthAnythingV3OutputProcessor()
 
