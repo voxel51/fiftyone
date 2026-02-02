@@ -9708,6 +9708,34 @@
             "tags": ["embeddings", "vlm", "torch", "transformer"],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "apple-sharp-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Fast single-image to 3D Gaussian splat model generating photorealistic novel views in under one second",
+            "source": "https://github.com/apple/ml-sharp",
+            "author": "Lars Mescheder, et al.",
+            "license": "Apple Sample Code License",
+            "size_bytes": 2809738232,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sharp.AppleSharpModel",
+                "config": {
+                    "focal_length_mm": 26.0
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["3d", "gaussian-splatting", "novel-view", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-28 12:00:00"
         }
     ]
 }
