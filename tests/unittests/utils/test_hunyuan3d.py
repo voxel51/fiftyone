@@ -251,13 +251,19 @@ class TestHunyuan3DEnsureOutputDir:
 
     def test_creates_temp_dir_when_none(self):
         """Test creates temp directory when output_dir is None"""
+        import shutil
+
         model = self._create_model(output_dir=None)
         model._ensure_output_dir()
 
-        assert model._output_dir is not None
-        assert os.path.isdir(model._output_dir)
-        assert "hunyuan3d_" in model._output_dir
-        assert model._output_dir_initialized is True
+        try:
+            assert model._output_dir is not None
+            assert os.path.isdir(model._output_dir)
+            assert "hunyuan3d_" in model._output_dir
+            assert model._output_dir_initialized is True
+        finally:
+            if model._output_dir and os.path.isdir(model._output_dir):
+                shutil.rmtree(model._output_dir)
 
     def test_creates_specified_dir(self):
         """Test creates specified directory"""
