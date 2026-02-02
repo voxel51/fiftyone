@@ -450,7 +450,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def media_type(self):
-        """The media type of the dataset."""
+        """The media type of the dataset.
+
+        The media type of empty datasets is ``None``, and the appropriate type
+        will be automatically inferred based on the ``filepath`` of the first
+        :class:`fiftyone.core.sample.Sample` added to the dataset.
+
+        You can also manually declare the media type of empty datasets
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            print(dataset.media_type)  # None
+
+            sample = fo.Sample(filepath="image.jpg")
+            dataset.add_sample(sample)
+
+            print(dataset.media_type)  # "image"
+        """
         return self._doc.media_type
 
     @media_type.setter
@@ -678,7 +698,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def name(self):
-        """The name of the dataset."""
+        """The name of the dataset.
+
+        Dataset names must be globally unique. By default, datasets are given
+        names based on their creation time.
+
+        You can edit a dataset's name at any time by setting this property.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Change the dataset's name
+            dataset.name = "test"
+        """
         return self._doc.name
 
     @name.setter
@@ -745,8 +780,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     @property
     def persistent(self):
-        """Whether the dataset persists in the database after a session is
+        """Whether the dataset persists in the database after all sessions are
         terminated.
+
+        Datasets are non-persistent by default, but you can make them
+        persistent by setting this property to ``True``.
+
+        Examples::
+
+            import fiftyone as fo
+
+            # Datasets are non-persistent by default
+            dataset = fo.Dataset("test")
+
+            # Make the dataset persistent
+            dataset.persistent = True
         """
         return self._doc.persistent
 
@@ -804,17 +852,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def info(self):
         """A user-facing dictionary of information about the dataset.
 
+        This property may contain arbitrary JSON-serializable data.
+
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the dictionary in-place.
+
         Examples::
 
             import fiftyone as fo
 
             dataset = fo.Dataset()
 
-            # Store a class list in the dataset's info
-            dataset.info = {"classes": ["cat", "dog"]}
+            # Store some information
+            dataset.info = {"author": "Voxel51"}
 
             # Edit the info
-            dataset.info["other_classes"] = ["bird", "plane"]
+            dataset.info["foo"] = ["bar", "spam", "eggs"]
             dataset.save()  # must save after edits
         """
         return self._doc.info
@@ -871,6 +924,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """A dict mapping field names to list of class label strings for the
         corresponding fields of the dataset.
 
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the dictionary in-place.
+
         Examples::
 
             import fiftyone as fo
@@ -900,6 +956,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`fiftyone.core.labels.Label` fields of this dataset that do not
         have customized classes defined in :meth:`classes`.
 
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the list in-place.
+
         Examples::
 
             import fiftyone as fo
@@ -926,6 +985,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         defines a mapping between pixel values (2D masks) or RGB hex strings
         (3D masks) and label strings for the segmentation masks in the
         corresponding field of the dataset.
+
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the dictionary in-place.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invisible in the App.
 
         Examples::
 
@@ -985,6 +1052,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         dataset that do not have customized mask targets defined in
         :meth:`mask_targets`.
 
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the dictionary in-place.
+
+        .. note::
+
+            The pixel value `0` is a reserved "background" class that is
+            rendered as invisible in the App.
+
         Examples::
 
             import fiftyone as fo
@@ -1033,6 +1108,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         :class:`fiftyone.core.labels.Keypoint` instances in the corresponding
         field of the dataset.
 
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the dictionary in-place.
+
         Examples::
 
             import fiftyone as fo
@@ -1067,6 +1145,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         defining the semantic labels and point connectivity for all
         :class:`fiftyone.core.labels.Keypoint` fields of this dataset that do
         not have customized skeletons defined in :meth:`skeleton`.
+
+        This property is automatically saved when you set it, but you must
+        manually call :meth:`save` after editing the skeleton in-place.
 
         Examples::
 
@@ -2224,6 +2305,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Adds a new sample field or embedded field to the dataset, if
         necessary.
 
+        Calling this method directly is generally not required because the
+        default behavior is to dynamically expand the schema of the dataset as
+        samples with new fields are added. However, you may always use this
+        method to declare new sample fields if you wish.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Declare some fields
+            dataset.add_sample_field("str_field", fo.StringField)
+            dataset.add_sample_field(
+                "ground_truth",
+                fo.EmbeddedDocumentField,
+                embedded_doc_type=fo.Detections,
+            )
+
+            print(dataset)
+
         Args:
             field_name: the field name or ``embedded.field.name``
             ftype: the field type to create. Must be a subclass of
@@ -2383,6 +2485,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         necessary.
 
         Only applicable to datasets that contain videos.
+
+        Calling this method directly is generally not required because the
+        default behavior is to dynamically expand the schema of the dataset as
+        samples with new frame fields are added. However, you may always use
+        this method to declare new frame fields if you wish.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+            dataset.media_type = "video"
+
+            # Declare some frame fields
+            dataset.add_frame_field("str_field", fo.StringField)
+            dataset.add_frame_field(
+                "ground_truth",
+                fo.EmbeddedDocumentField,
+                embedded_doc_type=fo.Detections,
+            )
+
+            print(dataset)
 
         Args:
             field_name: the field name or ``embedded.field.name``
@@ -3120,6 +3244,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to rename embedded
         fields.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Rename a sample field
+            dataset.rename_sample_field("predictions", "preds")
+
+            # Rename a label attribute
+            dataset.rename_sample_field(
+                "preds.detections.confidence",
+                "preds.detections.conf",
+            )
+
+            print(dataset)
+            print(dataset.first().preds.detections[0])
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
@@ -3131,6 +3276,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         You can use dot notation (``embedded.field.name``) to rename embedded
         fields.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Rename some sample fields
+            dataset.rename_sample_fields(
+                {"ground_truth": "gt", "predictions": "preds"}
+            )
+            print(dataset)
+
+            dataset.delete()
 
         Args:
             field_mapping: a dict mapping field names to new field names
@@ -3145,6 +3305,27 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Only applicable to datasets that contain videos.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Rename a frame field
+            dataset.rename_frame_field("detections", "dets")
+
+            # Rename a frame label attribute
+            dataset.rename_frame_field(
+                "dets.detections.type",
+                "dets.detections.vehicle_type",
+            )
+
+            print(dataset)
+            print(dataset.first().frames.first().dets.detections[0])
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
@@ -3156,6 +3337,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         You can use dot notation (``embedded.field.name``) to rename embedded
         frame fields.
+
+        This method is only applicable to video datasets.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Rename some frame fields
+            dataset.rename_frame_fields({"detections": "dets"})
+            print(dataset)
+
+            dataset.delete()
 
         Args:
             field_mapping: a dict mapping field names to new field names
@@ -3201,6 +3397,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clone embedded
         fields.
 
+        .. note::
+
+            When you clone :class:`fiftyone.core.labels.Label` fields, the
+            cloned labels will have the same ``id`` as the existing labels,
+            which are otherwise globally unique.
+
+            As a result, it is generally recommended that you only clone label
+            fields temporarily, for example to test a CRUD operation, and then
+            use :meth:`delete_sample_field` to cleanup afterwards to prevent
+            any unexpected behavior due to duplicate IDs later.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Clone a sample field
+            dataset.clone_sample_field("ground_truth", "gt")
+            print(dataset)
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
@@ -3212,6 +3432,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         You can use dot notation (``embedded.field.name``) to clone embedded
         fields.
+
+        .. note::
+
+            When you clone :class:`fiftyone.core.labels.Label` fields, the
+            cloned labels will have the same ``id`` as the existing labels,
+            which are otherwise globally unique.
+
+            As a result, it is generally recommended that you only clone label
+            fields temporarily, for example to test a CRUD operation, and then
+            use :meth:`delete_sample_fields` to cleanup afterwards to prevent
+            any unexpected behavior due to duplicate IDs later.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Clone some sample fields
+            dataset.clone_sample_fields(
+                {"ground_truth": "gt", "predictions": "preds"}
+            )
+            print(dataset)
+
+            dataset.delete()
 
         Args:
             field_mapping: a dict mapping field names to new field names into
@@ -3227,6 +3473,37 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Only applicable to datasets that contain videos.
 
+        .. note::
+
+            When you clone :class:`fiftyone.core.labels.Label` fields, the
+            cloned labels will have the same ``id`` as the existing labels,
+            which are otherwise globally unique.
+
+            As a result, it is generally recommended that you only clone label
+            fields temporarily, for example to test a CRUD operation, and then
+            use :meth:`delete_frame_field` to cleanup afterwards to prevent
+            any unexpected behavior due to duplicate IDs later.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Clone a frame field
+            dataset.clone_frame_field("detections", "dets")
+            print(dataset)
+
+            # Clone a frame label attribute
+            dataset.clone_frame_field(
+                "detections.detections.type",
+                "detections.detections.vehicle_type",
+            )
+            print(dataset.first().frames.first().detections.detections[0])
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             new_field_name: the new field name or ``embedded.field.name``
@@ -3240,6 +3517,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame fields.
 
         Only applicable to datasets that contain videos.
+
+        .. note::
+
+            When you clone :class:`fiftyone.core.labels.Label` fields, the
+            cloned labels will have the same ``id`` as the existing labels,
+            which are otherwise globally unique.
+
+            As a result, it is generally recommended that you only clone label
+            fields temporarily, for example to test a CRUD operation, and then
+            use :meth:`delete_frame_fields` to cleanup afterwards to prevent
+            any unexpected behavior due to duplicate IDs later.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Clone some frame fields
+            dataset.clone_frame_fields({"detections": "dets"})
+            print(dataset)
+
+            dataset.delete()
 
         Args:
             field_mapping: a dict mapping field names to new field names into
@@ -3278,6 +3579,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to clear embedded
         fields.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Clear a sample field
+            dataset.clear_sample_field("uniqueness")
+            print(dataset.bounds("uniqueness"))
+
+            # Clear the `confidence` attribute from all predictions
+            dataset.clear_sample_field("predictions.detections.confidence")
+            print(dataset.bounds("predictions.detections.confidence"))
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
         """
@@ -3291,6 +3609,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         You can use dot notation (``embedded.field.name``) to clear embedded
         fields.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Clear some fields
+            dataset.clear_sample_fields(
+                ["uniqueness", "predictions.detections.confidence"]
+            )
+
+            print(dataset.bounds("uniqueness"))
+            print(dataset.bounds("predictions.detections.confidence"))
+
+            dataset.delete()
 
         Args:
             field_names: the field name or iterable of field names
@@ -3309,6 +3644,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Only applicable to datasets that contain videos.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Clear a frame field
+            dataset.clear_frame_field("detections")
+            print(dataset.count("frames.detections.detections"))
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
         """
@@ -3325,6 +3673,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame fields.
 
         Only applicable to datasets that contain videos.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Clear some frame fields
+            dataset.clear_frame_fields(["detections"])
+            print(dataset.count("frames.detections.detections"))
+
+            dataset.delete()
 
         Args:
             field_names: the field name or iterable of field names
@@ -3357,6 +3718,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         You can use dot notation (``embedded.field.name``) to delete embedded
         fields.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a label attribute
+            dataset.clone_sample_field(
+                "predictions.detections.confidence",
+                "predictions.detections.also_confidence",
+            )
+            print(dataset.first().predictions.detections[0])
+
+            # Delete a label attribute
+            dataset.delete_sample_field("predictions.detections.also_confidence")
+            print(dataset.first().predictions.detections[0])
+
+            # Delete a sample field
+            dataset.delete_sample_field("ground_truth")
+            print(dataset)
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
@@ -3372,6 +3757,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         You can use dot notation (``embedded.field.name``) to delete embedded
         fields.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Add a label attribute
+            dataset.clone_sample_field(
+                "predictions.detections.confidence",
+                "predictions.detections.also_confidence",
+            )
+            print(dataset.first().predictions.detections[0])
+
+            # Delete a label attribute and a sample field
+            dataset.delete_sample_fields(
+                ["ground_truth", "predictions.detections.also_confidence"]
+            )
+            print(dataset)
+            print(dataset.first().predictions.detections[0])
+
+            dataset.delete()
 
         Args:
             field_names: the field name or iterable of field names
@@ -3422,6 +3830,30 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Only applicable to datasets that contain videos.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Add a label attribute
+            dataset.clone_frame_field(
+                "detections.detections.type",
+                "detections.detections.vehicle_type",
+            )
+            print(dataset.first().frames.first().detections.detections[0])
+
+            # Delete a frame label attribute
+            dataset.delete_frame_field("detections.detections.vehicle_type")
+            print(dataset.first().frames.first().detections.detections[0])
+
+            # Delete a frame field
+            dataset.delete_frame_field("detections")
+            print(dataset)
+
+            dataset.delete()
+
         Args:
             field_name: the field name or ``embedded.field.name``
             error_level (0): the error level to use. Valid values are:
@@ -3439,6 +3871,32 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame fields.
 
         Only applicable to datasets that contain videos.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            # Add some frame fields
+            dataset.clone_frame_fields(
+                {
+                    "detections": "dets",
+                    "detections.detections.type": "detections.detections.vehicle_type",
+                }
+            )
+            print(dataset)
+            print(dataset.first().frames.first().detections.detections[0])
+
+            # Delete frame fields
+            dataset.delete_frame_fields(
+                ["dets", "detections.detections.vehicle_type"]
+            )
+            print(dataset)
+            print(dataset.first().frames.first().detections.detections[0])
+
+            dataset.delete()
 
         Args:
             field_names: a field name or iterable of field names
@@ -3544,6 +4002,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_group_slice(self, name, media_type):
         """Adds a group slice with the given media type to the dataset, if
         necessary.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Iterate with a progress bar
+            filepaths = []
+            for sample in dataset.iter_samples(progress=True):
+                filepaths.append(sample.filepath)
 
         Args:
             name: a group slice name
@@ -3988,6 +4458,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         in-place to reflect its membership in this dataset. If the sample
         instance belongs to another dataset, it is not modified.
 
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # By default, dataset schemas are automatically expanded
+            sample = fo.Sample(filepath="image.jpg")
+            dataset.add_sample(sample)
+
+            print(dataset)
+            print(sample.id)
+
+            # But you can prevent new fields if desired
+            sample = fo.Sample(filepath="image2.jpg", foo="bar")
+            dataset.add_sample(sample, expand_schema=False)  # ERROR
+
         Args:
             sample: a :class:`fiftyone.core.sample.Sample`
             expand_schema (True): whether to dynamically add new sample fields
@@ -4028,6 +4515,28 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Any sample instances that do not belong to a dataset are updated
         in-place to reflect membership in this dataset. Any sample instances
         that belong to other datasets are not modified.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # By default, dataset schemas are automatically expanded
+            dataset.add_samples(
+                [
+                    fo.Sample(filepath="image1.jpg"),
+                    fo.Sample(filepath="image2.jpg", foo="bar"),
+                ]
+            )
+
+            print(dataset)
+
+            # But you can prevent new fields if desired
+            dataset.add_samples(
+                [fo.Sample(filepath="image3.jpg", spam="eggs")],
+                expand_schema=False,
+            )  # ERROR
 
         Args:
             samples: an iterable of :class:`fiftyone.core.sample.Sample`
@@ -4110,8 +4619,41 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         adds samples with new IDs to this dataset and omits any samples with
         existing IDs (the latter would only happen in rare cases).
 
-        Use :meth:`Dataset.merge_samples` if you have multiple datasets whose
-        samples refer to the same source media.
+        Use :meth:`Dataset.merge_samples` to perform more complex merges of two
+        data sources.
+
+        .. note::
+
+            The types of any fields that exist on both the dataset and the
+            collection you're merging into it must match!
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Samples that contain at least one 'cat'
+            has_cats = (
+                dataset
+                .select_fields("ground_truth")
+                .match_labels(fields="ground_truth", filter=F("label") == "cat")
+            )
+
+            # Samples that contain at least one 'dog'
+            has_dogs = (
+                dataset
+                .select_fields("ground_truth")
+                .match_labels(fields="ground_truth", filter=F("label") == "dog")
+            )
+
+            # Create a dataset that only contains samples with cats or dogs
+            cats_and_dogs = has_cats.clone()
+            cats_and_dogs.add_collection(has_dogs)
+
+            print(cats_and_dogs)
 
         Args:
             sample_collection: a :class:`fiftyone.core.collections.SampleCollection`
@@ -4551,6 +5093,62 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         -   Whether to merge only specific fields, or all but certain fields
         -   Mapping input fields to different field names of this dataset
 
+        .. note::
+
+            The types of any fields that exist on both the dataset and the
+            samples you're merging into it must match!
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            #
+            # Example 1
+            #
+            # Full samples are merged by `filepath`, with new samples being
+            # added if necessary and objects in the ground truth field are
+            # merged into the same list
+            #
+
+            gt = dataset.select_fields("ground_truth")
+            cats = gt.filter_labels("ground_truth", F("label") == "cat")
+            dogs = gt.filter_labels("ground_truth", F("label") == "dog")
+
+            cats_and_dogs = cats.clone()
+            cats_and_dogs.merge_samples(dogs)
+
+            assert (
+                cats_and_dogs.count("ground_truth.detections") ==
+                (
+                    cats.count("ground_truth.detections")
+                    + dogs.count("ground_truth.detections")
+                )
+            )
+
+            #
+            # Example 2
+            #
+            # Only the "predictions" field is merged, with samples matched by
+            # `filepath`, and no new samples are inserted if a filepath does
+            # not appear in the sink dataset
+            #
+
+            small_dataset = dataset[:100].select_fields("ground_truth").clone()
+            model_predictions = dataset[50:150]
+
+            small_dataset.merge_samples(
+                model_predictions,
+                fields="predictions",
+                insert_new=False,
+                include_info=False,
+            )
+
+            print(small_dataset)
+
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection` or
                 iterable of :class:`fiftyone.core.sample.Sample` instances
@@ -4713,6 +5311,24 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
 
+        Examples::
+
+            import fiftyone as fo
+
+            sample1 = fo.Sample(filepath="image1.jpg")
+            sample2 = fo.Sample(filepath="image2.jpg")
+
+            dataset = fo.Dataset()
+            dataset.add_samples([sample1, sample2])
+
+            dataset.delete_samples([sample1])
+            assert sample1.id == None  # no longer in dataset
+            assert len(dataset) == 1
+
+            dataset.delete_samples([sample2.id])
+            assert sample2.id == None  # no longer in dataset
+            assert len(dataset) == 0
+
         Args:
             samples_or_ids: the sample(s) to delete. Can be any of the
                 following:
@@ -4733,6 +5349,29 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+
+            sample1 = fo.Sample(filepath="video1.mp4")
+            frame1 = fo.Frame()
+            sample1.frames[1] = frame1
+
+            sample2 = fo.Sample(filepath="video2.mp4")
+            frame2 = fo.Frame()
+            sample2.frames[1] = frame2
+
+            dataset = fo.Dataset()
+            dataset.add_samples([sample1, sample2])
+
+            dataset.delete_frames([sample1])
+            assert frame1.id == None  # no longer in dataset
+            assert dataset.count("frames") == 1
+
+            dataset.delete_frames([frame2.id])
+            assert frame2.id == None  # no longer in dataset
+            assert dataset.count("frames") == 0
 
         Args:
             frames_or_ids: the frame(s) to delete. Can be any of the following:
@@ -4815,6 +5454,34 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         deletion to specific field(s), either for efficiency or to ensure that
         labels from other fields are not deleted if their contents are included
         in the other arguments.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by view
+            cats = dataset.filter_labels("ground_truth", F("label") == "cat")
+            dataset.delete_labels(view=cats, fields="ground_truth")
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by ID
+            dogs = dataset.filter_labels("ground_truth", F("label") == "dog")
+            dog_ids = dogs.values("ground_truth.detections.id", unwind=True)
+            dataset.delete_labels(ids=dog_ids)
+            print(dataset.count("ground_truth.detections"))
+
+            # Delete labels by tag
+            people = dataset.filter_labels("ground_truth", F("label") == "person")
+            people.tag_labels("delete", label_fields="ground_truth")
+            dataset.delete_labels(tags="delete")
+            print(dataset.count("ground_truth.detections"))
+
+            dataset.delete()
 
         Args:
             labels (None): a list of dicts specifying the labels to delete in
@@ -5106,8 +5773,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def save(self):
         """Saves the dataset to the database.
 
-        This only needs to be called when dataset-level information such as its
-        :meth:`Dataset.info` is modified.
+        This method only needs to be called when dataset-level information such
+        as its :meth:`Dataset.info` is modified in-place.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Store some information
+            dataset.info = {"author": "Voxel51"}
+
+            # Edit the info
+            dataset.info["foo"] = ["bar", "spam", "eggs"]
+            dataset.save()  # must save after edits
         """
         self._save()
 
@@ -5834,6 +6514,18 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         information in the source dataset. The source *media files*, however,
         are not copied.
 
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset1 = foz.load_zoo_dataset("quickstart")
+
+            dataset2 = dataset1.clone()
+            dataset1.delete()
+
+            print(dataset2)
+
         Args:
             name (None): a name for the cloned dataset. By default,
                 :func:`get_default_dataset_name` is used
@@ -5879,6 +6571,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            sample = dataset.first()
+
+            dataset.clear()
+
+            assert len(dataset) == 0
+            assert sample.in_dataset == False
         """
         self._clear()
 
@@ -5977,6 +6682,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a frame exists in memory, the frame will be updated
         such that ``frame.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+            frame = dataset.first().frames.first()
+
+            dataset.clear_frames()
+
+            assert dataset.count("frames") == 0
+            assert frame.in_dataset == False
         """
         self._clear_frames()
 
@@ -6149,6 +6867,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         Empty frames will be inserted for missing frames, and already existing
         frames are left unchanged.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart-video")
+
+            dataset.clear_frames()
+            assert dataset.count("frames") == 0
+
+            dataset.ensure_frames()
+            assert dataset.count("frames") > 0
         """
         self._ensure_frames()
 
@@ -6206,6 +6937,19 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            sample = dataset.first()
+
+            dataset.delete()
+
+            assert dataset.deleted == True
+            assert sample.in_dataset == False
         """
         self._delete()
 
