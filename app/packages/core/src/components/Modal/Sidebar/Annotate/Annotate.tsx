@@ -20,6 +20,7 @@ import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -120,6 +121,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
+  const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
   useDelete();
 
   useEffect(() => {
@@ -127,6 +129,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
     return () => {
       contextManager.exit();
+      clearUndo();
     };
   }, []);
 
