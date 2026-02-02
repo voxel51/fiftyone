@@ -154,6 +154,22 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
     def prompts(self, prompts):
         self._text_prompt = prompts
 
+    @property
+    def can_embed_prompts(self):
+        """Whether this model supports embedding prompts."""
+        return False
+
+    def embed_prompt(self, arg):
+        """Embed a prompt for this model.
+
+        Raises:
+            NotImplementedError: SAM3 does not support prompt embedding.
+        """
+        raise NotImplementedError(
+            "SAM3 does not support prompt embedding. Use text_prompt or "
+            "prompt_field instead."
+        )
+
     def _download_model(self, config):
         pass
 
@@ -161,8 +177,6 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
         device = config.device
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
-        elif device.startswith("cuda:"):
-            device = "cuda"
 
         model = sam3_builder.build_sam3_image_model(
             device=device,
@@ -361,7 +375,7 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
             if img.ndim == 3 and img.shape[0] in (1, 3):
                 img = np.transpose(img, (1, 2, 0))
 
-        if img.dtype in (np.float32, np.float64):
+        if np.issubdtype(img.dtype, np.floating):
             img = (img * 255).astype(np.uint8)
 
         return Image.fromarray(img)
@@ -430,7 +444,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         pass
 
     def _load_model(self, config):
-        return sam3_builder.build_sam3_video_predictor()
+        return sam3_builder.build_sam3_video_predictor(device=self._device)
 
     def _get_text_prompt(self, sample=None):
         """Get text prompt from config or needs_fields."""
@@ -525,6 +539,10 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         if masks is None or len(masks) == 0:
             return []
 
+        if boxes_xywh is None or scores is None or obj_ids is None:
+            logger.warning("Missing output arrays, skipping frame")
+            return []
+
         if hasattr(masks, "cpu"):
             masks = masks.cpu().numpy()
         if hasattr(boxes_xywh, "cpu"):
@@ -533,6 +551,14 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             scores = scores.cpu().numpy()
         if hasattr(obj_ids, "cpu"):
             obj_ids = obj_ids.cpu().numpy()
+
+        if len(masks) != len(boxes_xywh) or len(masks) != len(scores):
+            logger.warning(
+                "Mismatched output lengths (masks=%d, boxes=%d, scores=%d), "
+                "skipping frame",
+                len(masks), len(boxes_xywh), len(scores)
+            )
+            return []
 
         detections = []
 
