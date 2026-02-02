@@ -7,8 +7,7 @@ import {
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import { PrimitiveAtom, useAtomValue } from "jotai";
-import { atom } from "jotai";
+import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
@@ -254,33 +253,6 @@ export const deleteValue = atom(null, (get, set) => {
   );
   set(editing, null);
 });
-
-// Quick draw annotation mode state
-// Use the useQuickDraw hook to interact with quick draw functionality.
-
-/**
- * Flag to track if quick draw mode is active.
- * When true, detection labels are created in quick succession without exiting after each save.
- * @internal - Use useQuickDraw hook instead
- */
-export const quickDrawActiveAtom = atom<boolean>(false);
-
-/**
- * Tracks the last-used detection field path in quick draw mode.
- * Examples: "ground_truth.detections", "predictions.detections"
- * Used to remember which detection field the user was annotating.
- * @internal - Use useQuickDraw hook instead
- */
-export const lastUsedDetectionFieldAtom = atom<string | null>(null);
-
-/**
- * Tracks the last-used label value (class) for each field path.
- * Used for auto-assignment when creating new labels in quick draw mode.
- * @internal - Use useQuickDraw hook instead
- */
-export const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
-  atom<string | null>(null)
-);
 
 /**
  * Public API for interacting with the active annotation context.

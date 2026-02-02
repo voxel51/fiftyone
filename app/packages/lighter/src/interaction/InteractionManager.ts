@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
+import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -288,6 +288,23 @@ export class InteractionManager {
     }
   };
 
+  private configureCursorStyle(
+    handler: InteractionHandler,
+    worldPoint: Point,
+    scale: number
+  ): void {
+    if (
+      quickDrawBridge.isQuickDrawActive() &&
+      handler &&
+      TypeGuards.isSelectable(handler) &&
+      !handler.isSelected()
+    ) {
+      this.canvas.style.cursor = "crosshair";
+    } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
+      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+    }
+  }
+
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -343,18 +360,7 @@ export class InteractionManager {
 
         event.preventDefault();
       }
-
-      // Update cursor
-      if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-        this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
-      }
-    }
-
-    if (
-      quickDrawBridge.isQuickDrawActive() &&
-      this.canvas.style.cursor === "pointer"
-    ) {
-      this.canvas.style.cursor = "crosshair";
+      this.configureCursorStyle(handler, worldPoint, scale);
     }
   };
 
@@ -630,10 +636,7 @@ export class InteractionManager {
 
     // Update the hovered handler
     this.hoveredHandler = handler;
-
-    if (quickDrawBridge.isQuickDrawActive()) {
-      this.canvas.style.cursor = "crosshair";
-    }
+    this.configureCursorStyle(handler, worldPoint, scale);
   }
 
   private handleZoomed = (

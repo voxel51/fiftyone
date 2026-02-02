@@ -3,7 +3,7 @@
  */
 
 import { getDefaultStore } from "jotai";
-import { quickDrawActiveAtom } from "./state";
+import { quickDrawActiveAtom } from "./useQuickDraw";
 
 /**
  * Quick draw bridge for non-React code.

@@ -1,15 +1,35 @@
-import { getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { useCallback, useMemo } from "react";
-import { countBy, maxBy } from "lodash";
 import { DETECTION } from "@fiftyone/utilities";
-import { labels, labelsByPath } from "../useLabels";
-import { labelSchemaData, fieldType } from "../state";
-import {
-  quickDrawActiveAtom,
-  lastUsedDetectionFieldAtom,
-  defaultField,
-  lastUsedLabelByFieldAtom,
-} from "./state";
+import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
+import { atomFamily } from "jotai/utils";
+import { countBy, maxBy } from "lodash";
+import { useCallback, useMemo } from "react";
+import { fieldType, labelSchemaData } from "../state";
+import { labelsByPath } from "../useLabels";
+import { defaultField } from "./state";
+
+// Quick draw annotation mode state
+// Use the useQuickDraw hook to interact with quick draw functionality.
+
+/**
+ * Flag to track if quick draw mode is active.
+ * When true, detection labels are created in quick succession without exiting after each save.
+ */
+export const quickDrawActiveAtom = atom<boolean>(false);
+
+/**
+ * Tracks the last-used detection field path in quick draw mode.
+ * Examples: "ground_truth.detections", "predictions.detections"
+ * Used to remember which detection field the user was annotating.
+ */
+const lastUsedDetectionFieldAtom = atom<string | null>(null);
+
+/**
+ * Tracks the last-used label value (class) for each field path.
+ * Used for auto-assignment when creating new labels in quick draw mode.
+ */
+const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
+  atom<string | null>(null)
+);
 
 /**
  * Centralized hook for managing quick draw mode state and operations.
@@ -18,7 +38,6 @@ export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
   const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
-  const allLabels = useAtomValue(labels);
 
   /**
    * Enable quick draw mode for Detection annotations.
