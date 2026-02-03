@@ -1,23 +1,27 @@
-import * as fos from "@fiftyone/state";
+import { POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
-  currentActiveAnnotationField3dAtom,
+  usePolylineOperations,
+  useStartDrag,
+  useTransientPolyline,
+  useUpdateTransient,
+  useWorkingLabel,
+} from "../annotation/store";
+import type { TransientPolylineState } from "../annotation/store/types";
+import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
-  stagedPolylineTransformsAtom,
-  tempLabelTransformsAtom,
   tempVertexTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
-  applyDeltaToAllPoints,
   findClickedSegment,
   insertVertexInSegment,
   updateVertexPosition,
@@ -38,30 +42,39 @@ export const usePolylineAnnotation = ({
   isAnnotateMode,
   isSelectedForAnnotation,
 }: UsePolylineAnnotationProps) => {
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const [polylinePointTransforms, setStagedPolylineTransforms] = useRecoilState(
-    stagedPolylineTransformsAtom
-  );
+  const labelId = label._id;
+
+  const workingLabel = useWorkingLabel(labelId);
+  const transientState = useTransientPolyline(labelId);
+  const { updatePolyline } = useUpdateTransient();
+  const startDrag = useStartDrag();
+
+  const { commitPolylineTransform, updatePolylinePoints } =
+    usePolylineOperations();
 
   const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
-
   const editSegmentsMode = useRecoilValue(editSegmentsModeAtom);
-
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
-
-  const setTempPolylineTransforms = useSetRecoilState(
-    tempLabelTransformsAtom(label._id)
-  );
 
   const transformControlsRef = useRef(null);
   const contentRef = useRef<THREE.Group>(null);
   const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
 
-  const centroid = useMemo(() => {
-    if (points3d.length === 0) return [0, 0, 0];
+  // Store the previous points3d for undo
+  const previousPoints3dRef = useRef<[number, number, number][][]>(points3d);
 
-    const allPoints = points3d.flat();
+  // Compute effective points3d from working store (or fallback to props)
+  const effectivePoints3d = useMemo(() => {
+    if (workingLabel && workingLabel._cls === POLYLINE) {
+      return workingLabel.points3d;
+    }
+    return points3d;
+  }, [workingLabel, points3d]);
+
+  const centroid = useMemo(() => {
+    if (effectivePoints3d.length === 0) return [0, 0, 0];
+
+    const allPoints = effectivePoints3d.flat();
     if (allPoints.length === 0) return [0, 0, 0];
 
     const sum = allPoints.reduce(
@@ -73,8 +86,8 @@ export const usePolylineAnnotation = ({
       sum[0] / allPoints.length,
       sum[1] / allPoints.length,
       sum[2] / allPoints.length,
-    ] as [number, number, number];
-  }, [points3d]);
+    ];
+  }, [effectivePoints3d]);
 
   const pointMarkers = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
@@ -91,7 +104,7 @@ export const usePolylineAnnotation = ({
     // This ensures that shared vertices between segments only get one draggable marker
     const visitedPoints = new Set<string>();
 
-    return points3d.flatMap((segment, segmentIndex) => {
+    return effectivePoints3d.flatMap((segment, segmentIndex) => {
       return segment.map((point, pointIndex) => {
         // Note: important to use a key based only on coordinates (not segment/point indices)
         // This allows proper deduplication of vertices that appear in multiple segments
@@ -111,34 +124,23 @@ export const usePolylineAnnotation = ({
             position={new THREE.Vector3(...point)}
             color={complementaryColor}
             isDraggable={true}
-            labelId={label._id}
+            labelId={labelId}
             segmentIndex={segmentIndex}
             pointIndex={pointIndex}
             tooltipDescriptor="Vertex"
             onPointMove={(newPosition) => {
-              setStagedPolylineTransforms((prev) => {
-                const labelId = label._id;
-                const currentSegments = prev[labelId]?.segments || [];
+              const newSegments = updateVertexPosition(
+                effectivePoints3d,
+                effectivePoints3d.map((seg) => ({ points: seg })),
+                segmentIndex,
+                pointIndex,
+                [newPosition.x, newPosition.y, newPosition.z],
+                // Update shared vertices
+                true
+              );
 
-                const newSegments = updateVertexPosition(
-                  points3d,
-                  currentSegments,
-                  segmentIndex,
-                  pointIndex,
-                  [newPosition.x, newPosition.y, newPosition.z],
-                  // Update shared vertices
-                  true
-                );
-
-                return {
-                  ...prev,
-                  [labelId]: {
-                    segments: newSegments,
-                    path: prev[labelId]?.path ?? currentActiveField,
-                    sampleId: prev[labelId]?.sampleId ?? currentSampleId,
-                  },
-                };
-              });
+              const newPoints3d = newSegments.map((seg) => seg.points);
+              updatePolylinePoints(labelId, newPoints3d);
             }}
             pulsate={false}
           />
@@ -148,11 +150,10 @@ export const usePolylineAnnotation = ({
   }, [
     isAnnotateMode,
     isSelectedForAnnotation,
-    points3d,
-    label._id,
+    effectivePoints3d,
+    labelId,
     strokeAndFillColor,
-    currentActiveField,
-    currentSampleId,
+    updatePolylinePoints,
   ]);
 
   const centroidMarker = useMemo(() => {
@@ -167,12 +168,12 @@ export const usePolylineAnnotation = ({
 
     return (
       <PolylinePointMarker
-        key={`centroid-${label._id}`}
+        key={`centroid-${labelId}`}
         position={new THREE.Vector3(...centroid)}
         color={centroidColor}
         size={0.05}
         pulsate={true}
-        labelId={label._id}
+        labelId={labelId}
         segmentIndex={-1}
         pointIndex={-1}
         tooltipDescriptor="Centroid"
@@ -183,46 +184,27 @@ export const usePolylineAnnotation = ({
     isSelectedForAnnotation,
     centroid,
     strokeAndFillColor,
-    label._id,
+    labelId,
   ]);
-
-  const syncPolylineTransformationToTempStore = useCallback(() => {
-    const grp = contentRef.current;
-    if (!grp) return;
-
-    const worldPosition = grp.position.clone();
-
-    setTempPolylineTransforms({
-      position: [worldPosition.x, worldPosition.y, worldPosition.z],
-      quaternion: grp.quaternion.toArray(),
-    });
-  }, []);
 
   const handleTransformStart = useCallback(() => {
     const grp = contentRef.current;
     if (!grp) return;
 
+    // Capture the points3d before transformation begins
+    previousPoints3dRef.current = effectivePoints3d;
+
     // Store the start matrix for computing delta later
     setStartMatrix(grp.matrixWorld.clone());
-  }, []);
+
+    startDrag();
+  }, [effectivePoints3d, startDrag]);
 
   const handleTransformChange = useCallback(() => {
-    syncPolylineTransformationToTempStore();
-  }, [syncPolylineTransformationToTempStore]);
-
-  useEffect(() => {
-    return () => {
-      setTempPolylineTransforms(null);
-    };
-  }, [label._id]);
-
-  const handleTransformEnd = useCallback(() => {
     const grp = contentRef.current;
     if (!grp || !startMatrix) return;
 
-    setTempPolylineTransforms(null);
-
-    // Compute world-space delta from start and end matrices
+    // Compute world-space delta from start matrix
     const endMatrix = grp.matrixWorld.clone();
     const deltaMatrix = endMatrix
       .clone()
@@ -232,51 +214,52 @@ export const usePolylineAnnotation = ({
     const deltaPosition = new THREE.Vector3();
     deltaPosition.setFromMatrixPosition(deltaMatrix);
 
-    const worldDelta = deltaPosition;
+    const transientUpdate: TransientPolylineState = {
+      positionDelta: [deltaPosition.x, deltaPosition.y, deltaPosition.z],
+    };
 
-    setStagedPolylineTransforms((prev) => {
-      const labelId = label._id;
+    // Update transient store
+    updatePolyline(labelId, transientUpdate);
+  }, [labelId, startMatrix, updatePolyline]);
 
-      const newSegments = applyDeltaToAllPoints(points3d, [
-        worldDelta.x,
-        worldDelta.y,
-        worldDelta.z,
-      ]);
+  useEffect(() => {
+    return () => {
+      // Clear transient state on unmount
+      updatePolyline(labelId, null);
+    };
+  }, [labelId, updatePolyline]);
 
-      return {
-        ...prev,
-        [labelId]: {
-          ...(prev[labelId] ?? {}),
-          segments: newSegments,
-          path: currentActiveField || "",
-          sampleId: currentSampleId,
-        },
-      };
-    });
+  const handleTransformEnd = useCallback(() => {
+    const grp = contentRef.current;
+    if (!grp || !startMatrix) return;
+
+    const currentTransient = transientState;
+
+    if (!currentTransient) {
+      setStartMatrix(null);
+      return;
+    }
+
+    // Commit the transient state to working store
+    commitPolylineTransform(
+      labelId,
+      currentTransient,
+      previousPoints3dRef.current
+    );
 
     // Reset group position to prevent double-application
-    // This is important because transform controls are applied to the group
-    // Whereas we create polylines from the effective points
     if (contentRef.current) {
       contentRef.current.position.set(0, 0, 0);
     }
 
     setStartMatrix(null);
-  }, [
-    currentSampleId,
-    currentActiveField,
-    label._id,
-    points3d,
-    setStagedPolylineTransforms,
-    startMatrix,
-    setTempPolylineTransforms,
-  ]);
+  }, [labelId, startMatrix, transientState, commitPolylineTransform]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
-      setHoveredLabel({ id: label._id });
+      setHoveredLabel({ id: labelId });
     }
-  }, [isAnnotateMode, setHoveredLabel, label]);
+  }, [isAnnotateMode, setHoveredLabel, labelId]);
 
   const handlePointerOut = useCallback(() => {
     if (isAnnotateMode) {
@@ -285,21 +268,21 @@ export const usePolylineAnnotation = ({
   }, [isAnnotateMode, setHoveredLabel]);
 
   const handleSegmentPointerOver = useCallback(
-    (segmentIndex: number) => {
+    (_segmentIndex: number) => {
       if (isAnnotateMode) {
         if (editSegmentsMode) {
           document.body.style.cursor = "crosshair";
         }
       }
     },
-    [isAnnotateMode, label._id, editSegmentsMode]
+    [isAnnotateMode, editSegmentsMode]
   );
 
   const handleSegmentPointerOut = useCallback(() => {
     if (!editSegmentsMode) {
       document.body.style.cursor = "default";
     }
-  }, [isAnnotateMode, editSegmentsMode]);
+  }, [editSegmentsMode]);
 
   const handleSegmentClick = useCallback(
     (event: ThreeEvent<MouseEvent>) => {
@@ -318,7 +301,7 @@ export const usePolylineAnnotation = ({
 
       // Find which segment was clicked
       const clickResult = findClickedSegment(
-        points3d,
+        effectivePoints3d,
         clickPosition,
         // Distance threshold
         0.2
@@ -327,86 +310,71 @@ export const usePolylineAnnotation = ({
       if (clickResult) {
         const { segmentIndex, newVertexPosition } = clickResult;
 
-        // Insert the new vertex into the segment
-        setStagedPolylineTransforms((prev) => {
-          const labelId = label._id;
-          const currentSegments = prev[labelId]?.segments || [];
+        // Insert the new vertex into the segment via working store
+        const currentSegments = effectivePoints3d.map((seg) => ({
+          points: seg,
+        }));
 
-          const newSegments = insertVertexInSegment(
-            points3d,
-            currentSegments,
-            segmentIndex,
-            newVertexPosition,
-            clickPosition
-          );
+        const newSegments = insertVertexInSegment(
+          effectivePoints3d,
+          currentSegments,
+          segmentIndex,
+          newVertexPosition,
+          clickPosition
+        );
 
-          // If newSegments is null, it means the new vertex was too close to an existing vertex
-          // In that case, we don't update the transforms
-          if (newSegments === null) {
-            return prev;
-          }
-
-          return {
-            ...prev,
-            [labelId]: {
-              segments: newSegments,
-              path: prev[labelId].path ?? currentActiveField,
-              sampleId: prev[labelId].sampleId ?? currentSampleId,
-            },
-          };
-        });
+        // If newSegments is null, it means the new vertex was too close to an existing vertex
+        if (newSegments !== null) {
+          const newPoints3d = newSegments.map((seg) => seg.points);
+          updatePolylinePoints(labelId, newPoints3d);
+        }
       }
     },
     [
       editSegmentsMode,
       isSelectedForAnnotation,
       isAnnotateMode,
-      points3d,
-      label._id,
-      currentActiveField,
-      currentSampleId,
+      effectivePoints3d,
+      labelId,
+      updatePolylinePoints,
     ]
   );
 
   // Get temp transforms for the selected vertex if it belongs to this label
   // Always call the hook, but use a dummy key if no vertex is selected
   const vertexKey =
-    selectedPoint && selectedPoint.labelId === label._id
-      ? `${label._id}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
+    selectedPoint && selectedPoint.labelId === labelId
+      ? `${labelId}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
       : // Dummy key that won't match any real vertex
-        `${label._id}--1--1`;
+        `${labelId}--1--1`;
 
   const tempTransforms = useRecoilValue(tempVertexTransformsAtom(vertexKey));
 
   // Only use temp transforms if they actually belong to the selected vertex
   const relevantTempTransforms =
-    selectedPoint && selectedPoint.labelId === label._id && tempTransforms
+    selectedPoint && selectedPoint.labelId === labelId && tempTransforms
       ? tempTransforms
       : null;
 
   // Render preview lines when a vertex is being transformed
   const previewLines = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
-    if (!selectedPoint || selectedPoint.labelId !== label._id) return null;
+    if (!selectedPoint || selectedPoint.labelId !== labelId) return null;
     if (!relevantTempTransforms?.position) return null;
 
     const { segmentIndex, pointIndex } = selectedPoint;
 
-    const currentSegments = polylinePointTransforms?.[label._id]?.segments;
-    const segmentData =
-      currentSegments?.[segmentIndex] || points3d[segmentIndex];
+    const segmentData = effectivePoints3d[segmentIndex];
 
     if (!segmentData) return null;
 
-    const segmentPoints = Array.isArray(segmentData)
-      ? segmentData
-      : segmentData.points;
+    const segmentPoints = segmentData;
 
     if (!segmentPoints || segmentPoints.length === 0) return null;
 
     // tempVertexTransforms.position is an offset from the original position
     // We need to add it to the original position to get the actual world position
-    const originalPosition = points3d[segmentIndex][pointIndex];
+    const originalPosition = effectivePoints3d[segmentIndex][pointIndex];
     const tempOffset = relevantTempTransforms.position;
     const tempPosition: Vector3Tuple = [
       originalPosition[0] + tempOffset[0],
@@ -453,9 +421,8 @@ export const usePolylineAnnotation = ({
     isAnnotateMode,
     isSelectedForAnnotation,
     selectedPoint,
-    label._id,
-    points3d,
-    polylinePointTransforms,
+    labelId,
+    effectivePoints3d,
     relevantTempTransforms,
     vertexKey,
   ]);
@@ -476,6 +443,7 @@ export const usePolylineAnnotation = ({
     centroid,
     isAnnotateMode,
     isSelectedForAnnotation,
+    effectivePoints3d,
 
     // Refs
     transformControlsRef,
