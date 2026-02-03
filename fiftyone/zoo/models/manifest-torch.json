@@ -1185,7 +1185,7 @@
         },
         {
             "base_name": "segment-anything-3-video-torch",
-            "base_filename": "sam3.pt",
+            "base_filename": "sam3_video.pt",
             "version": null,
             "description": "Open-vocabulary video segmentation that finds, segments, and tracks all objects matching a text concept across video frames",
             "source": "https://github.com/facebookresearch/sam3",

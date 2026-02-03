@@ -444,7 +444,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         pass
 
     def _load_model(self, config):
-        return sam3_builder.build_sam3_video_predictor(device=self._device)
+        return sam3_builder.build_sam3_video_predictor()
 
     def _get_text_prompt(self, sample=None):
         """Get text prompt from config or needs_fields."""
