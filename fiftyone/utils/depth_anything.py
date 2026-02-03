@@ -50,14 +50,13 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
         Args:
             output: a dict containing the model output with a ``"depth"`` key
-                and optionally a ``"confidence"`` key
+                and optionally ``"confidence"`` and ``"sky"`` keys
             frame_size: a ``(width, height)`` tuple
             **kwargs: additional keyword arguments
 
         Returns:
             a list of :class:`fiftyone.core.labels.Heatmap` instances, each
-            with an optional ``confidence_map`` attribute containing the
-            per-pixel confidence values
+            with optional ``confidence_map`` and ``sky_mask`` attributes
         """
         if not isinstance(output, dict):
             raise TypeError(
@@ -84,6 +83,13 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 conf_maps = conf_maps.detach().cpu().numpy()
             if len(conf_maps.shape) == 2:
                 conf_maps = conf_maps[np.newaxis, ...]
+
+        sky_masks = output.get("sky")
+        if sky_masks is not None:
+            if isinstance(sky_masks, torch.Tensor):
+                sky_masks = sky_masks.detach().cpu().numpy()
+            if len(sky_masks.shape) == 2:
+                sky_masks = sky_masks[np.newaxis, ...]
 
         from PIL import Image
 
@@ -118,6 +124,17 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                         )
                         conf = np.array(conf_img)
                 heatmap.confidence_map = conf.astype(np.float32)
+
+            if sky_masks is not None:
+                sky = sky_masks[i]
+                if width is not None and height is not None:
+                    if sky.shape[0] != height or sky.shape[1] != width:
+                        sky_img = Image.fromarray(sky.astype(np.uint8) * 255)
+                        sky_img = sky_img.resize(
+                            (width, height), Image.Resampling.NEAREST
+                        )
+                        sky = (np.array(sky_img) > 127).astype(np.uint8)
+                heatmap.sky_mask = sky.astype(np.uint8)
 
             results.append(heatmap)
 
@@ -196,4 +213,6 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         output = {"depth": prediction.depth}
         if prediction.conf is not None:
             output["confidence"] = prediction.conf
+        if prediction.sky is not None:
+            output["sky"] = prediction.sky
         return output
