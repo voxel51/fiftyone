@@ -42,7 +42,7 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     """Output processor for Depth Anything V3 models.
 
     Converts raw depth predictions to normalized
-    :class:`fiftyone.core.labels.Heatmap` instances.
+    :class:`fiftyone.core.labels.Heatmap` instances with optional confidence.
     """
 
     def __call__(self, output, frame_size, **kwargs):
@@ -50,11 +50,14 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
         Args:
             output: a dict containing the model output with a ``"depth"`` key
+                and optionally a ``"confidence"`` key
             frame_size: a ``(width, height)`` tuple
             **kwargs: additional keyword arguments
 
         Returns:
-            a list of :class:`fiftyone.core.labels.Heatmap` instances
+            a list of :class:`fiftyone.core.labels.Heatmap` instances, each
+            with an optional ``confidence_map`` attribute containing the
+            per-pixel confidence values
         """
         if not isinstance(output, dict):
             raise TypeError(
@@ -75,19 +78,26 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if len(depth_maps.shape) == 2:
             depth_maps = depth_maps[np.newaxis, ...]
 
+        conf_maps = output.get("confidence")
+        if conf_maps is not None:
+            if isinstance(conf_maps, torch.Tensor):
+                conf_maps = conf_maps.detach().cpu().numpy()
+            if len(conf_maps.shape) == 2:
+                conf_maps = conf_maps[np.newaxis, ...]
+
         from PIL import Image
 
         width, height = frame_size
         results = []
-        for depth in depth_maps:
-            if width is None or height is None:
-                pass
-            elif depth.shape[0] != height or depth.shape[1] != width:
-                depth_img = Image.fromarray(depth)
-                depth_img = depth_img.resize(
-                    (width, height), Image.Resampling.BILINEAR
-                )
-                depth = np.array(depth_img)
+
+        for i, depth in enumerate(depth_maps):
+            if width is not None and height is not None:
+                if depth.shape[0] != height or depth.shape[1] != width:
+                    depth_img = Image.fromarray(depth)
+                    depth_img = depth_img.resize(
+                        (width, height), Image.Resampling.BILINEAR
+                    )
+                    depth = np.array(depth_img)
 
             max_depth = np.max(depth)
             if max_depth > 0:
@@ -96,7 +106,20 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 logger.warning("Depth map has max value of 0, returning zeros")
                 depth_normalized = np.zeros_like(depth)
 
-            results.append(fol.Heatmap(map=depth_normalized.astype(np.float32)))
+            heatmap = fol.Heatmap(map=depth_normalized.astype(np.float32))
+
+            if conf_maps is not None:
+                conf = conf_maps[i]
+                if width is not None and height is not None:
+                    if conf.shape[0] != height or conf.shape[1] != width:
+                        conf_img = Image.fromarray(conf)
+                        conf_img = conf_img.resize(
+                            (width, height), Image.Resampling.BILINEAR
+                        )
+                        conf = np.array(conf_img)
+                heatmap.confidence_map = conf.astype(np.float32)
+
+            results.append(heatmap)
 
         return results
 
@@ -170,4 +193,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
 
     def _forward_pass(self, imgs):
         prediction = self._model.inference(imgs)
-        return {"depth": prediction.depth}
+        output = {"depth": prediction.depth}
+        if prediction.conf is not None:
+            output["confidence"] = prediction.conf
+        return output
