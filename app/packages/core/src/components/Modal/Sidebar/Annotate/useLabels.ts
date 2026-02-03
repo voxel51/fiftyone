@@ -147,6 +147,13 @@ export interface LabelsContext {
   addLabelToSidebar: (label: AnnotationLabel) => void;
 
   /**
+   * Remove a label from the annotation sidebar.
+   *
+   * @param labelId ID of label to remove
+   */
+  removeLabelFromSidebar: (labelId: string) => void;
+
+  /**
    * Update the label data for the specified label ID.
    *
    * @param labelId ID of label to update
@@ -161,10 +168,17 @@ export interface LabelsContext {
 export const useLabelsContext = (): LabelsContext => {
   const addLabelToSidebar = useSetAtom(addLabel);
   const updateLabelData = useUpdateLabelAtom();
+  const setLabels = useSetAtom(labels);
+
+  const removeLabelFromSidebar = useCallback(
+    (labelId: string) =>
+      setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
+    [setLabels]
+  );
 
   return useMemo(
-    () => ({ addLabelToSidebar, updateLabelData }),
-    [addLabelToSidebar, updateLabelData]
+    () => ({ addLabelToSidebar, removeLabelFromSidebar, updateLabelData }),
+    [addLabelToSidebar, removeLabelFromSidebar, updateLabelData]
   );
 };
 
