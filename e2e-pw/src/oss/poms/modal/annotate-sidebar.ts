@@ -7,7 +7,6 @@ export class ModalAnnotateSidebarPom {
 
   constructor(page: Page) {
     this.page = page;
-
     this.assert = new ModalAnnotateSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }

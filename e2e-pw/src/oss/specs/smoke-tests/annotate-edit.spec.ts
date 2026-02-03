@@ -9,8 +9,9 @@ import {
 } from "src/oss/assets/annotate-schemas";
 import { ModalAnnotateSidebarPom } from "src/oss/poms/modal/annotate-sidebar";
 import { ModalSidebarPom } from "src/oss/poms/modal/modal-sidebar";
+import { ModalAnnotateEditPom } from "src/oss/poms/modal/annotate-edit";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-annotate-sidebar");
+const datasetName = getUniqueDatasetNameWithPrefix("smoke-annotate-edit");
 
 const test = base.extend<{
   grid: GridPom;
@@ -18,6 +19,7 @@ const test = base.extend<{
   modalAnnotateSidebar: ModalAnnotateSidebarPom;
   modalSidebar: ModalSidebarPom;
   sidebar: SidebarPom;
+  modalAnnotateEdit: ModalAnnotateEditPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -33,6 +35,9 @@ const test = base.extend<{
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
+  },
+  modalAnnotateEdit: async ({ page }, use) => {
+    await use(new ModalAnnotateEditPom(page));
   },
 });
 
@@ -70,6 +75,7 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     annotateSDK,
     modalSidebar,
     modalAnnotateSidebar,
+    modalAnnotateEdit,
   }) => {
     await annotateSDK.updateLabelSchema(
       datasetName,
@@ -83,28 +89,24 @@ test.describe.serial("annotate-sidebar-smoke", () => {
       uniqueness_schema
     );
     await annotateSDK.addFieldToActiveLabelSchema(datasetName, "uniqueness");
-
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-
     await modalSidebar.switchMode("annotate");
-
-    await modalAnnotateSidebar.assert.verifyActiveLabelsCount(3);
-    await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsCount(1);
-
-    await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
-    await modalAnnotateSidebar.collapseActiveLabels();
-    await modalAnnotateSidebar.assert.verifyActiveLabelsIsCollapsed();
-    await modalAnnotateSidebar.expandActiveLabels();
-    await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
-
-    await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
-    await modalAnnotateSidebar.collapseActivePrimitiveFields();
-    await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsCollapsed();
-    await modalAnnotateSidebar.expandActivePrimitiveFields();
-    await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
-
-    // await modalAnnotateSidebar.selectActiveLabel("bird", 1);
-    await modalAnnotateSidebar.selectActivePrimitiveField("uniqueness");
+    await modalAnnotateSidebar.selectActiveLabel("bird", 1);
+    await modalAnnotateEdit.assert.verifyUndoButtonDisabled();
+    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
+    await modalAnnotateEdit.assert.verifyFieldLabel("confidence", "confidence");
+    await modalAnnotateEdit.setFieldValue("confidence", "0.85");
+    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "0.85");
+    await modalAnnotateEdit.assert.verifyUndoButtonEnabled();
+    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
+    await modalAnnotateEdit.undo();
+    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "");
+    await modalAnnotateEdit.assert.verifyUndoButtonDisabled();
+    await modalAnnotateEdit.assert.verifyRedoButtonEnabled();
+    await modalAnnotateEdit.redo();
+    await modalAnnotateEdit.assert.verifyFieldValue("confidence", "0.85");
+    await modalAnnotateEdit.assert.verifyUndoButtonEnabled();
+    await modalAnnotateEdit.assert.verifyRedoButtonDisabled();
   });
 });
