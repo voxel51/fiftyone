@@ -222,8 +222,8 @@ export const useQuickDraw = () => {
       const newLabelValue = getQuickDrawDetectionLabel(newFieldPath);
 
       const newData = {
-        _id: currentLabel.data._id,
-        ...(newLabelValue && { label: newLabelValue }),
+        ...currentLabel.data,
+        ...(newLabelValue ? { label: newLabelValue } : {}),
       };
 
       currentLabel.overlay?.updateField(newFieldPath);
