@@ -68,7 +68,6 @@ export interface Renderer2D {
   ): void;
   drawScrim(
     bounds: Rect,
-    borderWidth: number,
     canonicalMediaBounds: Rect,
     containerId: string
   ): void;

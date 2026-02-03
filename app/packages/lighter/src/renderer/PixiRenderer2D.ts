@@ -196,7 +196,6 @@ export class PixiRenderer2D implements Renderer2D {
 
   drawScrim(
     bounds: Rect,
-    borderWidth: number,
     canonicalMediaBounds: Rect,
     containerId: string
   ): void {
@@ -210,21 +209,18 @@ export class PixiRenderer2D implements Renderer2D {
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
 
-    const scaledBorderWidth = borderWidth / this.getScale();
-    const sceneDimensions = this.getContainerDimensions();
-    const halfWidth = scaledBorderWidth / 2;
-    const x = Math.max(bounds.x - halfWidth, 0);
-    const y = Math.max(bounds.y - halfWidth, 0);
-    const w =
-      Math.min(
-        bounds.width + scaledBorderWidth,
-        sceneDimensions.width - bounds.x
-      ) + Math.min(bounds.x, 0);
-    const h =
-      Math.min(
-        bounds.height + scaledBorderWidth,
-        sceneDimensions.height - bounds.y
-      ) + Math.min(bounds.y, 0);
+    const x = Math.max(bounds.x, canonicalMediaBounds.x);
+    const y = Math.max(bounds.y, canonicalMediaBounds.y);
+    const maxRight = Math.min(
+      canonicalMediaBounds.x + canonicalMediaBounds.width,
+      bounds.x + bounds.width
+    );
+    const w = maxRight - x;
+    const maxBottom = Math.min(
+      canonicalMediaBounds.y + canonicalMediaBounds.height,
+      bounds.y + bounds.height
+    );
+    const h = maxBottom - y;
 
     mask.rect(x, y, w, h);
     mask.cut();

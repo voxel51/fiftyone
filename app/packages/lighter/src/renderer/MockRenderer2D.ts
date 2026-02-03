@@ -52,7 +52,6 @@ export class MockRenderer2D {
 
   drawScrim(
     bounds: Rect,
-    borderWidth: number,
     canonicalMediaBounds: Rect,
     containerId: string
   ): void {
@@ -60,7 +59,6 @@ export class MockRenderer2D {
       type: "scrim",
       bounds,
       canonicalMediaBounds,
-      borderWidth,
     });
   }
 
