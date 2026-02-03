@@ -279,10 +279,9 @@ export function usePolylineOperations() {
 
         const execFn = () => {
           updateLabel(labelId, {
-            points3d: newPoints3d.map((seg) =>
-              seg.map((pt) => roundTuple(pt) as [number, number, number])
-            ),
+            points3d: newPoints3d.map((seg) => seg.map((pt) => roundTuple(pt))),
           });
+          endDrag(labelId);
         };
 
         const undoFn = () => {
