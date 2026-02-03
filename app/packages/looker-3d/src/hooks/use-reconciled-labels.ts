@@ -19,39 +19,12 @@ import {
   currentActiveAnnotationField3dAtom,
   reconciledLabels3DSelector,
 } from "../state";
+import { isDetectionOverlay, isPolylineOverlay } from "../types";
 
 interface UseReconciledLabels3DParams {
   rawOverlays: OverlayLabel[];
   stagedPolylineTransforms: Record<string, PolylinePointTransformData>;
   stagedCuboidTransforms: Record<string, CuboidTransformData>;
-}
-
-/**
- * Type guard to check if an overlay is a Detection overlay (3D).
- */
-function isDetectionOverlay(
-  overlay: OverlayLabel
-): overlay is OverlayLabel & { dimensions: unknown; location: unknown } {
-  return (
-    overlay._cls === "Detection" &&
-    "dimensions" in overlay &&
-    "location" in overlay &&
-    overlay.dimensions != null &&
-    overlay.location != null
-  );
-}
-
-/**
- * Type guard to check if an overlay is a Polyline overlay (3D).
- */
-function isPolylineOverlay(
-  overlay: OverlayLabel
-): overlay is OverlayLabel & { points3d: [number, number, number][][] } {
-  return (
-    overlay._cls === "Polyline" &&
-    "points3d" in overlay &&
-    overlay.points3d != null
-  );
 }
 
 /**

@@ -1,3 +1,4 @@
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { TransformControlsProps } from "@react-three/drei";
 import type { RefObject } from "react";
 import * as THREE from "three";
@@ -129,10 +130,18 @@ export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
  * Type guard to check if an overlay is a Detection overlay (3D).
  */
 export function isDetectionOverlay(
-  overlay: OverlayLabel
-): overlay is OverlayLabel & { dimensions: unknown; location: unknown } {
+  overlay: unknown
+): overlay is OverlayLabel & {
+  _cls: "Detection";
+  dimensions: THREE.Vector3Tuple;
+  location: THREE.Vector3Tuple;
+  rotation?: THREE.Vector3Tuple;
+  quaternion?: THREE.Vector4Tuple;
+} & Record<string, unknown> {
   return (
-    overlay._cls === "Detection" &&
+    typeof overlay === "object" &&
+    "_cls" in overlay &&
+    overlay._cls === DETECTION &&
     "dimensions" in overlay &&
     "location" in overlay &&
     overlay.dimensions != null &&
@@ -143,11 +152,14 @@ export function isDetectionOverlay(
 /**
  * Type guard to check if an overlay is a Polyline overlay (3D).
  */
-export function isPolylineOverlay(
-  overlay: OverlayLabel
-): overlay is OverlayLabel & { points3d: [number, number, number][][] } {
+export function isPolylineOverlay(overlay: unknown): overlay is OverlayLabel & {
+  _cls: "Polyline";
+  points3d: THREE.Vector3Tuple[][];
+} & Record<string, unknown> {
   return (
-    overlay._cls === "Polyline" &&
+    typeof overlay === "object" &&
+    "_cls" in overlay &&
+    overlay._cls === POLYLINE &&
     "points3d" in overlay &&
     overlay.points3d != null
   );
