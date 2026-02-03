@@ -1,9 +1,5 @@
 import { useActivityToast } from "@fiftyone/state";
-import {
-  Icon,
-  IconName,
-  ActivityToast as VoodoActivityToast,
-} from "@voxel51/voodo";
+import { Icon, ActivityToast as VoodoActivityToast } from "@voxel51/voodo";
 import React from "react";
 
 /**
@@ -11,11 +7,12 @@ import React from "react";
  */
 export const ActivityToast = () => {
   const { config, open } = useActivityToast();
-  const iconName = config.iconName ? config.iconName : IconName.Check;
   return (
     <VoodoActivityToast
       open={open}
-      icon={({ ...props }) => <Icon name={iconName} {...props} />}
+      icon={({ ...props }) =>
+        config.iconName ? <Icon name={config.iconName} {...props} /> : null
+      }
       message={config.message}
       variant={config.variant}
     />
