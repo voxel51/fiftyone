@@ -13,7 +13,7 @@ export const ActivityToast = () => {
   const { config, open } = useActivityToast();
   // resolve a bug where undefined icon names are not handled gracefully
   // TODO - handle this on the design system level
-  const iconName = config.iconName ? config.iconName : IconName.Check;
+  const iconName = config.iconName ?? IconName.Check;
   return (
     <VoodoActivityToast
       open={open}
