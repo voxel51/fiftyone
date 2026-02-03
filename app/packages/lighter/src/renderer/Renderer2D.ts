@@ -66,7 +66,12 @@ export interface Renderer2D {
     color: number | string,
     containerId: string
   ): void;
-  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void;
+  drawScrim(
+    bounds: Rect,
+    borderWidth: number,
+    canonicalMediaBounds: Rect,
+    containerId: string
+  ): void;
   drawRect(bounds: Rect, style: DrawStyle, containerId: string): void;
   drawText(
     text: string,
