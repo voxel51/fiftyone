@@ -17,35 +17,39 @@ Core
 - Migrated more methods to use a more robust approach for communication with
   the API: `add_samples()`, `set_values()` now join `delete_sample_fields()`.
   This will significantly increase the reliability and consistency of long
-  running requests. This change is now enabled by default, but can be reverted
-  using environment variables. More details in :ref:`the docs <TODO>`.
+  running requests. This change is now enabled by default, but can be disabled
+  by setting the `FIFTYONE_ENABLE_RPC` environment variable to `False`.
 - User can now configure their priority preference for loading credentials
   (remote vs local) when accessing storage utilities. 
   `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
 
 Plugins, Operators, and Orchestrators
 
-- From the Operator page, users can now rerun Pipeline Operators starting at a
-  failed stage -- rerunning the entire stage, or a single operator. Original
-  runs are archived and hidden by default in the UI, but can be made visible
-  using the "show archived" toggle.
-- Improved reliability of push-based Orchestrators. The system will now
-  automatically retry stuck queued operations for push based orcs. Users can
-  configure their API to automatically requeue operations targeting push based
-  orcs after a delay or a certain number of attempts.
-- New default expiration time for monitored Delegated Operators is now 30
-  minutes, allowing for more accurate termination of stuck pods while
-  respecting non-monitored operations.
+- From the Runs page, users can now rerun an
+  :ref:`OperatorPipeline <fiftyone.operators.OperatorPipeline>` starting at a
+  failed stage -- rerunning the entire stage, or a single
+  :ref:`Operator <using-operators>`. Original runs are archived and hidden by
+  default in the UI, but can be made visible using the "show archived" toggle.
+- Improved reliability of push-based
+  :ref:`orchestrators <enterprise-delegated-orchestrator>`. The system will now
+  automatically retry operations stuck in the queued state for push-based
+  orchestrators. Users can configure their API to automatically requeue
+  operations targeting push-based orchestrators after a delay or a certain
+  number of attempts.
+- New default expiration time for monitored Delegated
+  :ref:`Operators <using-operators>` is now 30 minutes, allowing for more
+  accurate termination of stuck pods while respecting non-monitored operations.
 - Fixed distributed execution to prevent sample skipping, introducing new
   default ID-range batching strategy, and now use a strategy pattern to select
   between slice-based batching and ID-range batching.
-- For K8s Orchestrators, made both `image` and `kubeConfig` parameters
-  optional, allowing users to specify them via configuration if desired.
+- For `Kubernetes Orchestrator <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docs/orchestrators/configuring-kubernetes-orchestrator.md>`_,
+  made both `image` and `kubeConfig` parameters optional, allowing users to
+  specify them via configuration if desired.
 
 Authorization
 
 - Credentials for access to cloud media can now be assigned at the global
-  scope, per each user group, and per each user, in addition to allowing
+  scope, per each user group, and per each user -- in addition to allowing
   different credentials for different cloud buckets.
 - New environment variable `NO_CREDENTIALS` can be set to prevent local use of
   server-provided cloud credentials (allowed by default).
@@ -57,7 +61,7 @@ Authorization
 App
 
 - Added a multi-scope cloud credentials UI to the Admin's Settings page.
-  Available scopes are GLOBAL, GROUP, and USER) each with its own tab.
+  Available scopes are GLOBAL, GROUP, and USER, each with its own tab.
 - Updated UI to show downgrade warning based on tiers.
 
 Security
@@ -82,14 +86,15 @@ Core
   `#6780 <https://github.com/voxel51/fiftyone/pull/6780>`_,
   `#6703 <https://github.com/voxel51/fiftyone/pull/6703>`_,
   `#6730 <https://github.com/voxel51/fiftyone/pull/6730>`_
-- Added a builtin `reload_saved_view` operator that allows for checking +
-  reloading saved generated views. Calling `reload()` on a saved generated view
-  will now automatically update the saved view's metadata. Backing datasets for
-  saved generated views are now marked as persistent so that they are not
-  affected by non-persistent dataset cleanup. Deleting a dataset or specific
-  generated saved views will automatically mark the now-deprecated backing
-  dataset as non-persistent. Switch to `_state["dataset_id"]` in generated
-  views to prevent unnecessary reloads when the parent dataset is renamed.
+- Added a builtin `reload_saved_view` :ref:`operator <using-operators>` that
+  allows for checking + reloading saved generated views. Calling `reload()` on
+  a saved generated view will now automatically update the saved view's
+  metadata. Backing datasets for saved generated views are now marked as
+  persistent so that they are not affected by non-persistent dataset cleanup.
+  Deleting a dataset or specific generated saved views will automatically mark
+  the now-deprecated backing dataset as non-persistent. Switch to
+  `_state["dataset_id"]` in generated views to prevent unnecessary reloads when
+  the parent dataset is renamed.
   `#6067 <https://github.com/voxel51/fiftyone/pull/6067>`_
 - Added :meth:`get_cpu_count() <fiftyone.core.utils.get_cpu_count>` which
   properly accounts for docker / kubernetes CPU limits. Updated
@@ -101,17 +106,19 @@ Core
 
 Plugins and Operators
 
-- Expanded support for rerunning Delegated Operators. Set `rerunnable` to True
-  or False on the operator config of your Operator or Pipeline Stage to control
-  whether users can rerun that operation. Note: the Pipeline Stage config takes
+- Expanded support for rerunning Delegated :ref:`Operators <using-operators>`.
+  Set `rerunnable` to True or False on the operator config of your Operator or
+  :class:`PipelineStages <fiftyone.operators.types.PipelineStage>` to control
+  whether users can rerun that operation. Note: the PipelineStage config takes
   precedence over the Operator config, or set the stage config to `None` to
   default to the Operator `rerunnable` value. 
   `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
-- You can now use :ref:`fiftyone delegated rerun <operatorId>` to rerun
-  Delegated Operators. `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
-- Added support for archiving Delegated Operators, in addition to deleting
-  them. Archived Delegated Operators will automatically be filtered out when
-  calling `list_operations`. 
+- You can now use ``fiftyone delegated rerun <operatorId>`` to rerun
+  Delegated :ref:`Operators <using-operators>`.
+  `#6729 <https://github.com/voxel51/fiftyone/pull/6729>`_
+- Added support for archiving Delegated :ref:`Operators <using-operators>`, in
+  addition to deleting them. Archived Delegated Operators will automatically be
+  filtered out when calling `list_operations`. 
   `#6716 <https://github.com/voxel51/fiftyone/pull/6716>`_
 - Added support for immediate
   :ref:`OperatorPipeline <fiftyone.operators.OperatorPipeline>` execution, with
