@@ -16,22 +16,29 @@ import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
 import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
-import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { ThreeEvent } from "@react-three/fiber";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import {
+  useInitializeWorking,
+  useIsWorkingInitialized,
+  useRenderModel,
+  useResetWorkingOnModeChange,
+} from "../annotation/store";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
 } from "../annotation/types";
-import { useSetEditingToExistingCuboid } from "../annotation/useSetEditingToExistingCuboid";
-import { useSetEditingToExistingPolyline } from "../annotation/useSetEditingToExistingPolyline";
-import { PANEL_ORDER_LABELS } from "../constants";
+import { useSetEditingToExisting3dLabel } from "../annotation/useSetEditingToExisting3dLabel";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+  PANEL_ORDER_LABELS,
+} from "../constants";
 import { usePathFilter } from "../hooks";
-import { useReconciledLabels3D } from "../hooks/use-reconciled-labels";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
@@ -41,11 +48,9 @@ import {
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../state";
-import { Archetype3d } from "../types";
+import { Archetype3d, isDetectionOverlay, isPolylineOverlay } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -60,7 +65,7 @@ export const ThreeDLabels = ({
   sampleMap,
   globalOpacity,
 }: ThreeDLabelsProps) => {
-  const mode = useAtomValue(fos.modalMode);
+  const mode = fos.useModalMode();
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const annotationSchemas = useAtomValue(activeLabelSchemas);
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
@@ -96,11 +101,10 @@ export const ThreeDLabels = ({
     currentArchetypeSelectedForTransformAtom
   );
 
-  const setEditingToExistingPolyline = useSetEditingToExistingPolyline();
-  const setEditingToExistingCuboid = useSetEditingToExistingCuboid();
-
-  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
-  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
+  const setEditingToExistingPolyline =
+    useSetEditingToExisting3dLabel(ANNOTATION_POLYLINE);
+  const setEditingToExistingCuboid =
+    useSetEditingToExisting3dLabel(ANNOTATION_CUBOID);
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -141,17 +145,16 @@ export const ThreeDLabels = ({
 
       // We only support translate for polylines for now
       if (
-        label._cls === "Polyline" &&
+        isPolylineOverlay(label) &&
         (transformMode === "rotate" || transformMode === "scale")
       ) {
         setTransformMode("translate");
       }
 
-      // Set the appropriate annotation mode active based on archetype
-      if (archetype === "cuboid") {
-        setCurrent3dAnnotationMode("cuboid");
-      } else if (archetype === "polyline") {
-        setCurrent3dAnnotationMode("polyline");
+      if (archetype === ANNOTATION_CUBOID) {
+        setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
+      } else if (archetype === ANNOTATION_POLYLINE) {
+        setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
       }
     },
     [
@@ -171,11 +174,11 @@ export const ThreeDLabels = ({
       e: ThreeEvent<MouseEvent>
     ) => {
       if (isSegmenting) return;
-      if (mode === "annotate") {
+      if (mode === fos.ModalMode.ANNOTATE) {
         // Check if field is read-only
         const store = getDefaultStore();
-        const fieldSchema = store.get(labelSchemaData(label.path));
-        const isReadOnly = !!fieldSchema?.read_only;
+        const fieldSchemaData = store.get(labelSchemaData(label.path));
+        const isReadOnly = !!fieldSchemaData?.read_only;
 
         annotationEventBus.dispatch("annotation:3dLabelSelected", {
           id: label._id ?? label["id"],
@@ -183,7 +186,7 @@ export const ThreeDLabels = ({
           label,
         });
 
-        if (archetype === "cuboid") {
+        if (archetype === ANNOTATION_CUBOID) {
           if (!isReadOnly) {
             selectLabelForAnnotation(label, archetype);
             setCurrentArchetypeSelectedForTransform(archetype);
@@ -193,7 +196,7 @@ export const ThreeDLabels = ({
           return;
         }
 
-        if (archetype === "polyline") {
+        if (archetype === ANNOTATION_POLYLINE) {
           if (!isReadOnly) {
             selectLabelForAnnotation(label, archetype);
             setCurrentArchetypeSelectedForTransform(archetype);
@@ -223,6 +226,7 @@ export const ThreeDLabels = ({
       setEditingToExistingPolyline,
       setEditingToExistingCuboid,
       setCurrentArchetypeSelectedForTransform,
+      annotationEventBus,
     ]
   );
 
@@ -258,9 +262,10 @@ export const ThreeDLabels = ({
     [settings]
   );
 
+  // Load raw overlays from sample data (for both explore and annotate modes)
   const rawOverlays = useMemo(
     () =>
-      load3dOverlays(sampleMap, selectedLabels, [], schema)
+      (load3dOverlays(sampleMap, selectedLabels, [], schema) ?? [])
         .map((l) => {
           const path = l.path;
           const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
@@ -282,21 +287,13 @@ export const ThreeDLabels = ({
           }
 
           // In annotate mode, only show fields that exist in annotation schemas
-          if (mode === "annotate") {
+          if (mode === fos.ModalMode.ANNOTATE) {
             const isInAnnotationSchemas = Boolean(
               annotationSchemas?.includes(l.path)
             );
 
             if (!isInAnnotationSchemas) {
               return false;
-            }
-
-            // Further filter based on current annotation mode
-            if (current3dAnnotationMode === "cuboid") {
-              return l._cls === DETECTION || l.type === DETECTION;
-            }
-            if (current3dAnnotationMode === "polyline") {
-              return l._cls === POLYLINE || l.type === POLYLINE;
             }
           }
 
@@ -313,20 +310,45 @@ export const ThreeDLabels = ({
       customizeColorSetting,
       mode,
       annotationSchemas,
-      current3dAnnotationMode,
     ]
   );
 
-  // Step 1: Compute merged overlays (data computation)
-  // This hook also syncs the merged overlays to state for downstream consumers
-  const {
-    detections: reconciledDetection3Ds,
-    polylines: reconciledPolyline3Ds,
-  } = useReconciledLabels3D({
-    rawOverlays,
-    stagedPolylineTransforms,
-    stagedCuboidTransforms,
-  });
+  // Initialize working annotation store from baseline raw overlays
+  useInitializeWorking(rawOverlays);
+
+  // Reset annotation working store when leaving annotate mode
+  useResetWorkingOnModeChange();
+
+  // Combine working store with transient overlays to get render view model
+  const renderModel = useRenderModel();
+  const isWorkingInitialized = useIsWorkingInitialized();
+
+  // Determine which labels to render based on mode
+  const { detectionsToRender, polylinesToRender } = useMemo(() => {
+    if (mode === fos.ModalMode.ANNOTATE && isWorkingInitialized) {
+      return {
+        detectionsToRender: renderModel.detections,
+        polylinesToRender: renderModel.polylines,
+      };
+    }
+
+    // In explore mode or before working store is initialized, use baseline / raw overlays
+    const detections: ReconciledDetection3D[] = [];
+    const polylines: ReconciledPolyline3D[] = [];
+
+    for (const overlay of rawOverlays) {
+      if (isDetectionOverlay(overlay)) {
+        detections.push(overlay);
+      } else if (isPolylineOverlay(overlay)) {
+        polylines.push(overlay);
+      }
+    }
+
+    return {
+      detectionsToRender: detections,
+      polylinesToRender: polylines,
+    };
+  }, [mode, isWorkingInitialized, renderModel, rawOverlays]);
 
   const getOverlayColor = useCallback(
     (overlay: ReconciledDetection3D | ReconciledPolyline3D) =>
@@ -344,10 +366,10 @@ export const ThreeDLabels = ({
     [coloring, labelTagColors, customizeColorSetting]
   );
 
-  // Step 2: Create JSX elements from merged data (rendering only)
+  // Detections render model -> JSX
   const cuboidOverlays = useMemo(
     () =>
-      reconciledDetection3Ds.map((overlay) => (
+      detectionsToRender.map((overlay) => (
         <Cuboid
           key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
             overlay.sampleId
@@ -365,7 +387,7 @@ export const ThreeDLabels = ({
         />
       )),
     [
-      reconciledDetection3Ds,
+      detectionsToRender,
       cuboidLineWidth,
       overlayRotation,
       itemRotation,
@@ -377,8 +399,9 @@ export const ThreeDLabels = ({
     ]
   );
 
+  // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
-    return reconciledPolyline3Ds.map((overlay) => (
+    return polylinesToRender.map((overlay) => (
       <Polyline
         key={`polyline-${overlay.isNew ? "new-" : ""}${overlay._id}-${
           overlay.sampleId
@@ -394,20 +417,19 @@ export const ThreeDLabels = ({
       />
     ));
   }, [
-    reconciledPolyline3Ds,
+    polylinesToRender,
     overlayRotation,
     labelAlpha,
     polylineWidth,
     handleSelect,
     tooltip,
-    coloring,
-    labelTagColors,
-    customizeColorSetting,
     getOverlayColor,
   ]);
 
   const getOnShiftClickLabelCallback = useOnShiftClickLabel();
 
+  // This effect listens for label toggle events to support shift-click selection
+  // of "similar" labels. Similar labels share similar instance IDs.
   useEffect(() => {
     const unsub = selectiveRenderingEventBus.on(
       FO_LABEL_TOGGLED_EVENT,

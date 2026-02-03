@@ -8,12 +8,12 @@ import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { useTransientCuboid } from "../annotation/store";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import {
   current3dAnnotationModeAtom,
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
-  tempLabelTransformsAtom,
   transformModeAtom,
 } from "../state";
 import type { OverlayProps } from "./shared";
@@ -99,63 +99,93 @@ export const Cuboid = ({
     isSelectedForAnnotation,
   });
 
-  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
-
   const transformMode = useRecoilValue(transformModeAtom);
 
-  const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
+  // Transient state for live drag preview
+  const transientState = useTransientCuboid(label._id);
 
-  const geo = useMemo(
-    () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
-    [displayDimensions]
-  );
-
-  // In legacy coordinate system, location was stored as the top-center of the cuboid
-  // (half-height above the geometric center), so we adjust Y downward by half the height
-  // to position the cuboid correctly. In the new coordinate system, location is stored
-  // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
-  const loc = useMemo(() => {
-    const [x, y, z] = effectiveLocation;
-    return useLegacyCoordinates
-      ? new THREE.Vector3(x, y - 0.5 * displayDimensions[1], z)
-      : new THREE.Vector3(x, y, z);
-  }, [effectiveLocation, displayDimensions, useLegacyCoordinates]);
-
-  // When quaternion is present (temp or staged), use it directly to avoid euler conversion issues
-  // (gimbal lock, precision loss). We convert to euler only on final save.
-  // Priority: tempTransforms.quaternion > effectiveQuaternion (staged) > euler fallback
-  const combinedQuaternion = useMemo(() => {
-    // During active rotation, prefer temp transforms quaternion
-    if (transformMode === "rotate" && tempTransforms?.quaternion) {
-      return new THREE.Quaternion(...tempTransforms.quaternion);
+  // Compute display dimensions: apply transient delta if present
+  const displayDimensions = useMemo(() => {
+    if (transientState?.dimensionsDelta) {
+      return [
+        effectiveDimensions[0] + transientState.dimensionsDelta[0],
+        effectiveDimensions[1] + transientState.dimensionsDelta[1],
+        effectiveDimensions[2] + transientState.dimensionsDelta[2],
+      ] as THREE.Vector3Tuple;
     }
-    // Otherwise use effective (staged) quaternion if available
+    return effectiveDimensions;
+  }, [effectiveDimensions, transientState?.dimensionsDelta]);
+
+  // Compute display position: apply transient delta if present
+  const displayPosition = useMemo(() => {
+    let [x, y, z] = effectiveLocation;
+
+    // In legacy coordinate system, location was stored as the top-center of the cuboid
+    // (half-height above the geometric center), so we adjust Y downward by half the height
+    // to position the cuboid correctly. In the new coordinate system, location is stored
+    // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
+    if (useLegacyCoordinates) {
+      y -= 0.5 * displayDimensions[1];
+    }
+
+    if (transientState?.positionDelta) {
+      return [
+        x + transientState.positionDelta[0],
+        y + transientState.positionDelta[1],
+        z + transientState.positionDelta[2],
+      ] as THREE.Vector3Tuple;
+    }
+    return [x, y, z] as const;
+  }, [
+    effectiveLocation,
+    displayDimensions,
+    useLegacyCoordinates,
+    transientState?.positionDelta,
+  ]);
+
+  // When quaternion is present (transient or working), use it directly to avoid euler conversion issues
+  // (gimbal lock, precision loss). We convert to euler only on final save.
+  // Priority: transientState.quaternionOverride > effectiveQuaternion (working) > euler fallback
+  const combinedQuaternion = useMemo(() => {
+    // During active rotation, prefer transient quaternion override
+    if (transformMode === "rotate" && transientState?.quaternionOverride) {
+      return new THREE.Quaternion(...transientState.quaternionOverride);
+    }
+    // Otherwise use effective (working) quaternion if available
     if (effectiveQuaternion) {
       return new THREE.Quaternion(...effectiveQuaternion);
     }
     return null;
   }, [
-    tempTransforms?.quaternion,
+    transientState?.quaternionOverride,
     effectiveQuaternion,
     rotation,
     transformMode,
   ]);
 
   // Fallback to euler-based rotation when no quaternion available
-  const actualRotation = useMemo(() => {
+  const fallbackEuler = useMemo(() => {
     if (combinedQuaternion) {
       return undefined;
     }
     return effectiveRotation;
   }, [combinedQuaternion, effectiveRotation]);
 
-  const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
-  const geometry = useMemo(
+  const renderBoxGeometry = useMemo(
+    () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
+    [displayDimensions]
+  );
+
+  const renderEdgesGeometry = useMemo(
+    () => new THREE.EdgesGeometry(renderBoxGeometry),
+    [renderBoxGeometry]
+  );
+  const lineSegmentsGeometry = useMemo(
     () =>
       new LineSegmentsGeometry().fromLineSegments(
-        new THREE.LineSegments(edgesGeo)
+        new THREE.LineSegments(renderEdgesGeometry)
       ),
-    [edgesGeo]
+    [renderEdgesGeometry]
   );
 
   const complementaryColor = useMemo(
@@ -181,15 +211,15 @@ export const Cuboid = ({
     ]
   );
 
-  // Cleanup
+  // This effect cleans up geometries and material on unmount
   useEffect(() => {
     return () => {
-      geo.dispose();
-      edgesGeo.dispose();
-      geometry.dispose();
+      renderBoxGeometry.dispose();
+      renderEdgesGeometry.dispose();
+      lineSegmentsGeometry.dispose();
       material.dispose();
     };
-  }, [geo, edgesGeo, geometry, material]);
+  }, [renderBoxGeometry, renderEdgesGeometry, lineSegmentsGeometry, material]);
 
   if (!location || !dimensions) return null;
 
@@ -205,13 +235,13 @@ export const Cuboid = ({
       // By default, quaternion is preferred automatically over euler
       ref={contentRef}
       userData={{ labelId: label._id }}
-      rotation={combinedQuaternion ? undefined : actualRotation ?? undefined}
+      rotation={combinedQuaternion ? undefined : fallbackEuler ?? undefined}
       quaternion={combinedQuaternion ?? undefined}
-      position={tempTransforms?.position ?? loc.toArray()}
+      position={displayPosition}
     >
       {/* Outline */}
       {/* @ts-ignore */}
-      <lineSegments2 geometry={geometry} material={material} />
+      <lineSegments2 geometry={lineSegmentsGeometry} material={material} />
 
       {/* Clickable volume */}
       <group

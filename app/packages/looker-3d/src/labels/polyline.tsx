@@ -4,12 +4,12 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
+import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
   current3dAnnotationModeAtom,
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
-  tempLabelTransformsAtom,
 } from "../state";
 import {
   isValidPoint3d,
@@ -244,7 +244,14 @@ export const Polyline = ({
     };
   }, [material]);
 
-  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+  const transientState = useTransientPolyline(label._id);
+
+  const displayPosition = useMemo(() => {
+    if (transientState?.positionDelta) {
+      return transientState.positionDelta as THREE.Vector3Tuple;
+    }
+    return [0, 0, 0] as THREE.Vector3Tuple;
+  }, [transientState?.positionDelta]);
 
   const content = (
     <>
@@ -264,11 +271,7 @@ export const Polyline = ({
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group
-        ref={contentRef}
-        position={tempTransforms?.position ?? [0, 0, 0]}
-        quaternion={tempTransforms?.quaternion ?? [0, 0, 0, 1]}
-      >
+      <group ref={contentRef} position={displayPosition}>
         {markers}
         {previewLines}
         <group
