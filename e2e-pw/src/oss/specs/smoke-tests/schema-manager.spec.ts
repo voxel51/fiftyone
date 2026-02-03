@@ -1,11 +1,13 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("image-classification");
+const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
 
 const id = "000000000000000000000000";
+const videoId = "000000000000000000000001";
 
 const test = base.extend<{
   modal: ModalPom;
@@ -52,6 +54,30 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       "classification",
       fo.EmbeddedDocumentField,
       embedded_doc_type=fo.Classification,
+  )
+  dataset.save()`);
+
+  await mediaFactory.createBlankVideo({
+    outputPath: "/tmp/blank-video.webm",
+    duration: 1,
+    width: 50,
+    height: 50,
+    frameRate: 5,
+    color: "#000000",
+  });
+
+  await fiftyoneLoader.executePythonCode(`
+  from bson import ObjectId
+  import fiftyone as fo
+
+  dataset = fo.Dataset("${videoDatasetName}")
+  dataset.media_type = "video"
+  sample = fo.Sample(
+      _id=ObjectId("${videoId}"),
+      filepath="/tmp/blank-video.webm"
+  )
+  dataset._sample_collection.insert_many(
+      [dataset._make_dict(sample, include_id=True)]
   )
   dataset.save()`);
 });
@@ -140,5 +166,30 @@ test.describe.serial("schema manager", () => {
     // Close
     await schemaManager.close();
     await schemaManager.assert.isClosed();
+  });
+
+  test("schema state resets when switching to video dataset", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+  }) => {
+    // Start on image dataset - annotate tab should be functional
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+    await expect(page.getByTestId("open-schema-manager")).toBeEnabled();
+
+    // Switch to video dataset
+    await modal.close();
+    await fiftyoneLoader.waitUntilGridVisible(page, videoDatasetName, {
+      searchParams: new URLSearchParams({ id: videoId }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Annotation should be disabled for video datasets
+    await expect(
+      page.getByText("isn\u2019t supported for video datasets")
+    ).toBeVisible();
+    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
   });
 });
