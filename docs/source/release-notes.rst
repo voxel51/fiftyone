@@ -19,7 +19,7 @@ Core
   This will significantly increase the reliability and consistency of long
   running requests. This change is now enabled by default, but can be disabled
   by setting the `FIFTYONE_ENABLE_RPC` environment variable to `False`.
-- User can now configure their priority preference for loading credentials
+- Users can now configure their priority preference for loading credentials
   (remote vs local) when accessing storage utilities. 
   `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
 
