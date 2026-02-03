@@ -1,15 +1,15 @@
 import { useSampleMutationManager } from "@fiftyone/annotation";
-import { Primitive } from "@fiftyone/utilities";
-import { Button, Orientation, Stack, Variant } from "@voxel51/voodo";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
-import PrimitiveRenderer from "./PrimitiveRenderer";
-import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
+import { Primitive } from "@fiftyone/utilities";
+import { Orientation, Stack } from "@voxel51/voodo";
+import { useCallback, useEffect, useRef, useState } from "react";
+import PrimitiveRenderer from "./PrimitiveRenderer";
+import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
+import { parseDatabaseValue, serializeFieldValue } from "./serialization";
 
 interface PrimitiveEditProps {
   path: string;
@@ -81,12 +81,6 @@ export default function PrimitiveEdit({
     [editCommand]
   );
 
-  const onExit = useExit();
-
-  const handleSave = useCallback(() => {
-    onExit();
-  }, [onExit]);
-
   return (
     <Stack orientation={Orientation.Column}>
       <PrimitiveRenderer
@@ -95,19 +89,6 @@ export default function PrimitiveEdit({
         handleChange={handleChange}
         primitiveSchema={primitiveSchema}
       />
-      <Stack
-        orientation={Orientation.Row}
-        style={{
-          justifyContent: "flex-end",
-          gap: "0.5rem",
-          marginTop: "0.5rem",
-        }}
-      >
-        <Button variant={Variant.Secondary} onClick={onExit}>
-          Discard
-        </Button>
-        <Button onClick={handleSave}>Save</Button>
-      </Stack>
     </Stack>
   );
 }
