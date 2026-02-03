@@ -82,7 +82,7 @@ export const addLabel = atom(
 export const labels = atom<Array<AnnotationLabel>>([]);
 export const labelAtoms = splitAtom(labels, ({ overlay }) => overlay.id);
 export const labelsByPath = atom((get) => {
-  const map = {};
+  const map: Record<string, AnnotationLabel[]> = {};
   for (const label of get(labels)) {
     if (!label.path) {
       continue;

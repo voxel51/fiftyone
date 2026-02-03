@@ -1,20 +1,20 @@
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, getDefaultStore, useAtom, useAtomValue } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atom, useAtom, useAtomValue } from "jotai";
+import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
 import { fieldType, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField } from "./state";
 
-// Quick draw annotation mode state
-// Use the useQuickDraw hook to interact with quick draw functionality.
-
 /**
  * Flag to track if quick draw mode is active.
  * When true, detection labels are created in quick succession without exiting after each save.
+ *
+ * This atom is exported to allow inspection from non-React code.
+ * This atom should not be used in React code.
  */
-export const quickDrawActiveAtom = atom<boolean>(false);
+export const _dangerousQuickDrawActiveAtom = atom<boolean>(false);
 
 /**
  * Tracks the last-used detection field path in quick draw mode.
@@ -31,13 +31,53 @@ const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
   atom<string | null>(null)
 );
 
+const detectionTypes = new Set(["Detection", "Detections"]);
+
 /**
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useQuickDraw = () => {
-  const [quickDrawActive, setQuickDrawActive] = useAtom(quickDrawActiveAtom);
+  const [quickDrawActive, setQuickDrawActive] = useAtom(
+    _dangerousQuickDrawActiveAtom
+  );
   const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
+  const defaultDetectionField = useAtomValue(defaultField(DETECTION));
+
+  /**
+   * Getter which wraps {@link fieldType} atom family.
+   */
+  const getFieldType = useAtomCallback(
+    useCallback((get, _set, path: string) => get(fieldType(path)), [])
+  );
+
+  /**
+   * Getter whcih wraps {@link lastUsedLabelByFieldAtom} atom family.
+   */
+  const getLastUsedLabel = useAtomCallback(
+    useCallback(
+      (get, _set, path: string) => get(lastUsedLabelByFieldAtom(path)),
+      []
+    )
+  );
+
+  /**
+   * Setter which wraps {@link lastUsedLabelByFieldAtom} atom family.
+   */
+  const setLastUsedLabel = useAtomCallback(
+    useCallback(
+      (_get, set, path: string, label: string) =>
+        set(lastUsedLabelByFieldAtom(path), label),
+      []
+    )
+  );
+
+  /**
+   * Getter which wraps {@link labelSchemaData} atom family.
+   */
+  const getLabelSchema = useAtomCallback(
+    useCallback((get, _set, path: string) => get(labelSchemaData(path)), [])
+  );
 
   /**
    * Enable quick draw mode for Detection annotations.
@@ -65,9 +105,6 @@ export const useQuickDraw = () => {
    * Returns null if no detection field is available.
    */
   const getQuickDrawDetectionField = useCallback((): string | null => {
-    const store = getDefaultStore();
-    const lastUsedField = store.get(lastUsedDetectionFieldAtom);
-
     if (quickDrawActive && lastUsedField) {
       return lastUsedField;
     }
@@ -75,12 +112,10 @@ export const useQuickDraw = () => {
     let maxCount = 0;
     let fieldWithMostLabels: string | null = null;
 
-    const IS_DETECTION = new Set(["Detection", "Detections"]);
-
     for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
-      const typeStr = store.get(fieldType(fieldPath));
+      const typeStr = getFieldType(fieldPath);
 
-      if (IS_DETECTION.has(typeStr || "") && fieldLabels.length > maxCount) {
+      if (detectionTypes.has(typeStr || "") && fieldLabels.length > maxCount) {
         maxCount = fieldLabels.length;
         fieldWithMostLabels = fieldPath;
       }
@@ -91,9 +126,14 @@ export const useQuickDraw = () => {
     }
 
     // Fallback to default detection field
-    const field = store.get(defaultField(DETECTION));
-    return field;
-  }, [quickDrawActive, labelsMap]);
+    return defaultDetectionField;
+  }, [
+    defaultDetectionField,
+    getFieldType,
+    labelsMap,
+    lastUsedField,
+    quickDrawActive,
+  ]);
 
   /**
    * Get the auto-assigned label value (class) for a detection field.
@@ -108,8 +148,7 @@ export const useQuickDraw = () => {
    */
   const getQuickDrawDetectionLabel = useCallback(
     (fieldPath: string): string | null => {
-      const store = getDefaultStore();
-      const lastUsedLabel = store.get(lastUsedLabelByFieldAtom(fieldPath));
+      const lastUsedLabel = getLastUsedLabel(fieldPath);
 
       if (lastUsedLabel) {
         return lastUsedLabel;
@@ -135,7 +174,7 @@ export const useQuickDraw = () => {
       }
 
       // Fallback to first class in schema for the field
-      const schemaData = store.get(labelSchemaData(fieldPath));
+      const schemaData = getLabelSchema(fieldPath);
       const classes = schemaData?.label_schema?.classes;
       if (classes && classes.length > 0) {
         return classes[0];
@@ -143,7 +182,7 @@ export const useQuickDraw = () => {
 
       return null;
     },
-    [labelsMap, quickDrawActive]
+    [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
   /**
@@ -159,11 +198,10 @@ export const useQuickDraw = () => {
 
       // Update last-used label for this field (if label exists)
       if (labelValue) {
-        const store = getDefaultStore();
-        store.set(lastUsedLabelByFieldAtom(fieldPath), labelValue);
+        setLastUsedLabel(fieldPath, labelValue);
       }
     },
-    [setLastUsedField]
+    [setLastUsedField, setLastUsedLabel]
   );
 
   /**
