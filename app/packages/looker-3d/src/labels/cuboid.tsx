@@ -87,6 +87,7 @@ export const Cuboid = ({
     effectiveDimensions,
     effectiveRotation,
     effectiveQuaternion,
+    handleTransformStart,
     handleTransformChange,
     handleTransformEnd,
   } = useCuboidAnnotation({
@@ -280,6 +281,7 @@ export const Cuboid = ({
       archetype="cuboid"
       isSelectedForTransform={isSelectedForAnnotation}
       transformControlsRef={transformControlsRef}
+      onTransformStart={handleTransformStart}
       onTransformEnd={handleTransformEnd}
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
