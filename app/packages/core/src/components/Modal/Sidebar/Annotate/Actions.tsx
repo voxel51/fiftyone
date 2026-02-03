@@ -1,5 +1,6 @@
 import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
+import { useLighter } from "@fiftyone/lighter";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
@@ -24,6 +25,7 @@ import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -117,6 +119,7 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+
   return (
     <Tooltip placement="top-center" text="Create new classification">
       <Square onClick={create}>
@@ -139,10 +142,20 @@ const Classification = () => {
 };
 
 const Detection = () => {
+  const { enableQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
+
   return (
-    <Tooltip placement="top-center" text="Create new detection">
-      <Square onClick={create}>
+    <Tooltip placement="top-center" text="Create new detections">
+      <Square
+        onClick={() => {
+          enableQuickDraw();
+
+          // Create first detection in quick draw mode,
+          // `true` to work around stale quickDrawActive closure
+          create(true);
+        }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"

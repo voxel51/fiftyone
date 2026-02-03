@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { Redo, Round, Undo } from "../Actions";
 
+import { useLighter } from "@fiftyone/lighter";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 import { ItemLeft, ItemRight } from "../Components";
@@ -21,6 +22,7 @@ import {
 } from "./state";
 
 import useColor from "./useColor";
+import { useQuickDraw } from "./useQuickDraw";
 import useExit from "./useExit";
 import { useRef, useState } from "react";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
@@ -82,19 +84,27 @@ const Header = () => {
   const type = useAtomValue(currentType);
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
+
   const onExit = useExit();
+  const { scene } = useLighter();
+  const { disableQuickDraw } = useQuickDraw();
   const annotationContext = useAnnotationContext();
+  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
   const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
-  const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const handleExit = () => {
+    disableQuickDraw();
+    scene?.exitInteractiveMode();
+    onExit();
+  };
 
   return (
     <Row>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
-        <Round onClick={onExit}>
+        <Round onClick={handleExit}>
           <Back />
         </Round>
         {Icon && <Icon fill={color} />}
