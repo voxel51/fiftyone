@@ -138,8 +138,7 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
         self._confidence_threshold = config.confidence_threshold
         self._mask_threshold = config.mask_threshold
         self._processor = None
-        if not hasattr(self, 'needs_fields'):
-            self.needs_fields = {}
+        self.needs_fields = {}
         super().__init__(config)
 
     @property
@@ -286,10 +285,14 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
         all_detections = []
 
         for detection, label in zip(box_prompts.detections, box_labels):
-            x, y, w, h = detection.bounding_box
-            cx = x + w / 2
-            cy = y + h / 2
-            box_cxcywh = [cx, cy, w, h]
+            x_norm, y_norm, w_norm, h_norm = detection.bounding_box
+            x_px = x_norm * width
+            y_px = y_norm * height
+            w_px = w_norm * width
+            h_px = h_norm * height
+            cx = x_px + w_px / 2
+            cy = y_px + h_px / 2
+            box_cxcywh = [cx, cy, w_px, h_px]
 
             output = self._processor.add_geometric_prompt(
                 box=box_cxcywh,
@@ -309,7 +312,7 @@ class SegmentAnything3ImageModel(fom.PromptMixin, fout.TorchImageModel):
         scores = output.get("scores", [])
 
         detections = []
-        for mask, box, score in zip(masks, boxes, scores):
+        for mask, box, score in zip(masks, boxes, scores, strict=True):
             if hasattr(score, "item"):
                 score = score.item()
 
@@ -414,8 +417,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
     def __init__(self, config):
         self._fields = {}
         self.config = config
-        if not hasattr(self, 'needs_fields'):
-            self.needs_fields = {}
+        self.needs_fields = {}
 
         device = config.device
         if device is None:
