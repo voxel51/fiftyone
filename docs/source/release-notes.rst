@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.15.0
 --------------------------
-*Released February 3, 2026*
+*Released February 4, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.12.0 <release-notes-v1.12.0>`, plus:
 
@@ -70,7 +70,7 @@ Security
 
 FiftyOne 1.12.0
 ---------------
-*Released February 3, 2026*
+*Released February 4, 2026*
 
 Core
 
