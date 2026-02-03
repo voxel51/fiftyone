@@ -61,7 +61,7 @@ export default function useFocus() {
           onExit();
         }
       },
-      [scene, onSave, onExit, select]
+      [scene, onSave, onExit, select, quickDrawActive]
     )
   );
 
