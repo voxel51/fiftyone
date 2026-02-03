@@ -1,3 +1,4 @@
+export * from "./annotation/store";
 export type {
   ReconciledDetection3D,
   ReconciledLabels3D,

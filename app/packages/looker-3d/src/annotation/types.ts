@@ -99,7 +99,7 @@ interface ReconciledLabelBase3D {
  * A reconciled detection that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D detection that will be rendered.
  */
-export type ReconciledDetection3D = OverlayLabel &
+export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
   CuboidTransformData &
   ReconciledLabelBase3D & {
     _cls: "Detection";
@@ -109,7 +109,7 @@ export type ReconciledDetection3D = OverlayLabel &
  * A reconciled polyline that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D polyline that will be rendered.
  */
-export type ReconciledPolyline3D = OverlayLabel &
+export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
   ReconciledLabelBase3D & {
     _cls: "Polyline";
     points3d: [number, number, number][][];

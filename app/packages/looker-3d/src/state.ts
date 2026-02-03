@@ -3,19 +3,10 @@ import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { groupId, nullableModalSampleId } from "@fiftyone/state";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
-import {
-  atom,
-  atomFamily,
-  DefaultValue,
-  selector,
-  useRecoilValue,
-} from "recoil";
+import { atom, atomFamily, DefaultValue, selector } from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
-  CuboidTransformData,
-  PolylinePointTransformData,
-  ReconciledLabels3D,
   SegmentState,
   SelectedPoint,
   TransformMode,
@@ -484,30 +475,6 @@ export const hoveredVertexAtom = atom<{
 });
 
 /**
- * This atom stores temporary transform data for polylines being edited.
- * Changes accumulate here as users manipulate polylines in the 3D canvas,
- * and is cleared once user commits changes or exits edit mode.
- */
-export const stagedPolylineTransformsAtom = atom<
-  Record<LabelId, PolylinePointTransformData>
->({
-  key: "fo3d-stagedPolylineTransforms",
-  default: {},
-});
-
-/**
- * This atom stores temporary transform data for cuboids being edited.
- * Changes accumulate here as users manipulate cuboids in the 3D canvas,
- * and is cleared once user commits changes or exits edit mode.
- */
-export const stagedCuboidTransformsAtom = atom<
-  Record<LabelId, CuboidTransformData>
->({
-  key: "fo3d-stagedCuboidTransforms",
-  default: {},
-});
-
-/**
  * The current transform mode (translate, rotate, scale).
  * Determines how objects are transformed when manipulated.
  */
@@ -535,35 +502,16 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
 });
 
 /**
- * Temporary transform data for labels during manipulation.
- * Stores intermediate transform values before they are committed.
- * Keyed by label ID.
- *
- * Depending on the context, this might assume relative or absolute coordinates.
- */
-export const tempLabelTransformsAtom = atomFamily<
-  {
-    position: [number, number, number];
-    /** Optional dimensions for cuboid scale transforms */
-    dimensions?: [number, number, number];
-    /** Optional quaternion for cuboid rotation transforms (stored as quaternion during manipulation, converted to euler on commit) */
-    quaternion?: [number, number, number, number];
-  } | null,
-  string
->({
-  key: "fo3d-tempLabelTransforms",
-  default: null,
-});
-
-/**
  * Temporary transform data for vertices during manipulation.
- * Stores intermediate transform values for polyline vertices before they are committed.
- * Keyed by vertex ID.
+ * Stores the position offset (delta) for polyline vertices before they are committed.
+ * Keyed by vertex ID in format: `${labelId}-${segmentIndex}-${pointIndex}`.
+ *
+ * Note: it's different than transient store. We store per-point vertex
+ * transformations for performance reasons.
  */
 export const tempVertexTransformsAtom = atomFamily<
   {
     position: [number, number, number];
-    quaternion: [number, number, number, number];
   } | null,
   string
 >({
@@ -629,7 +577,6 @@ export const clearTransformStateSelector = selector({
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);
-    // Note: We don't clear stagedPolylineTransforms here as it should persist
     set(activeSegmentationStateAtom, {
       isActive: false,
       vertices: [],
@@ -644,45 +591,3 @@ export const clearTransformStateSelector = selector({
     set(editSegmentsModeAtom, false);
   },
 });
-
-/**
- * Internal atom family keyed by sample ID storing reconciled label data.
- */
-const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D, string>({
-  key: "fo3d-ReconciledLabels3D",
-  default: {
-    detections: [],
-    polylines: [],
-  },
-});
-
-/**
- * Selector that provides access to reconciled labels for the current sample.
- * This is the authoritative source for what labels will be rendered
- * in the 3D viewer.
- */
-export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
-  key: "fo3d-reconciledLabels3DSelector",
-  get: ({ get }) => {
-    const sampleId = get(fos.currentSampleId);
-    if (!sampleId) {
-      return { detections: [], polylines: [] };
-    }
-    return get(reconciledLabels3DAtomFamily(sampleId));
-  },
-  set: ({ get, set }, newValue) => {
-    const sampleId = get(fos.currentSampleId);
-    if (!sampleId || newValue instanceof DefaultValue) {
-      return;
-    }
-    set(reconciledLabels3DAtomFamily(sampleId), newValue);
-  },
-});
-
-/**
- * Hook which provides the reconciled 3D labels for the current sample.
- * This is the authoritative source for what labels will be rendered
- * in the 3D viewer.
- */
-export const useReconciledLabels3D = () =>
-  useRecoilValue(reconciledLabels3DSelector);

@@ -1,20 +1,16 @@
-import * as fos from "@fiftyone/state";
 import { Box, TextField } from "@mui/material";
 import { forwardRef, useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
-import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
-  currentActiveAnnotationField3dAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
-  stagedPolylineTransformsAtom,
+  tempVertexTransformsAtom,
 } from "../../state";
+import { isPolylineOverlay } from "../../types";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
-import {
-  getVertexPosition,
-  updateVertexPosition,
-} from "../utils/polyline-utils";
+import { usePolylineOperations, useWorkingLabel } from "../store";
+import { updateVertexPosition } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
   className?: string;
@@ -225,29 +221,58 @@ export const VertexCoordinateInputs = ({
   className,
   hideTranslate = false,
 }: CoordinateInputsProps) => {
-  const [selectedPoint, setSelectedPoint] = useRecoilState(
-    selectedPolylineVertexAtom
-  );
+  const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
-  const [polylinePointTransforms, setStagedPolylineTransforms] = useRecoilState(
-    stagedPolylineTransformsAtom
+
+  const workingLabel = useWorkingLabel(selectedPoint?.labelId ?? "");
+  const { updatePolylinePoints } = usePolylineOperations();
+
+  const vertexKey = selectedPoint
+    ? `${selectedPoint.labelId}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
+    : "";
+  const tempVertexTransforms = useRecoilValue(
+    tempVertexTransformsAtom(vertexKey)
   );
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
 
+  const points3d = useMemo(() => {
+    if (workingLabel && isPolylineOverlay(workingLabel)) {
+      return workingLabel.points3d;
+    }
+    return null;
+  }, [workingLabel]);
+
+  // Base position from working store
+  const workingPointPosition = useMemo(() => {
+    if (!selectedPoint || !points3d) return null;
+
+    const { segmentIndex, pointIndex } = selectedPoint;
+
+    if (
+      segmentIndex < points3d.length &&
+      pointIndex < points3d[segmentIndex].length
+    ) {
+      return points3d[segmentIndex][pointIndex];
+    }
+
+    return null;
+  }, [selectedPoint, points3d]);
+
+  // Effective position: working position + transient offset (if dragging)
   const selectedPointPosition = useMemo(() => {
-    if (!selectedPoint || !selectedLabel) return null;
+    if (!workingPointPosition) return null;
 
-    const polylineLabel = selectedLabel as unknown as PolyLineProps;
-    const segments =
-      polylinePointTransforms[selectedPoint.labelId]?.segments || [];
+    if (tempVertexTransforms?.position) {
+      // During drag, add the offset to get the live position
+      return [
+        workingPointPosition[0] + tempVertexTransforms.position[0],
+        workingPointPosition[1] + tempVertexTransforms.position[1],
+        workingPointPosition[2] + tempVertexTransforms.position[2],
+      ];
+    }
 
-    return getVertexPosition(
-      selectedPoint,
-      polylineLabel.points3d || [],
-      segments
-    );
-  }, [selectedPoint, selectedLabel, polylinePointTransforms]);
+    return workingPointPosition;
+  }, [workingPointPosition, tempVertexTransforms]);
+
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");
   const [z, setZ] = useState<string>("0");
@@ -272,57 +297,38 @@ export const VertexCoordinateInputs = ({
       const numValue = parseFloat(value);
       if (isNaN(numValue)) return;
 
-      if (selectedPoint && selectedLabel) {
+      if (selectedPoint && selectedLabel && points3d && selectedPointPosition) {
         const { segmentIndex, pointIndex, labelId } = selectedPoint;
 
-        setStagedPolylineTransforms((prev) => {
-          const currentSegments = prev[labelId]?.segments || [];
-          const polylineLabel = selectedLabel as unknown as PolyLineProps;
-          const points3d = polylineLabel.points3d || [];
+        const newPosition: [number, number, number] = [
+          ...selectedPointPosition,
+        ];
+        if (axis === "x") newPosition[0] = numValue;
+        else if (axis === "y") newPosition[1] = numValue;
+        else if (axis === "z") newPosition[2] = numValue;
 
-          if (!selectedPointPosition) return prev;
+        const newSegments = updateVertexPosition(
+          points3d,
+          // Pass all current segments so unchanged ones are preserved
+          points3d.map((seg) => ({ points: seg })),
+          segmentIndex,
+          pointIndex,
+          newPosition,
+          // Update shared vertices
+          true
+        );
 
-          const newPosition: [number, number, number] = [
-            ...selectedPointPosition,
-          ];
-          if (axis === "x") newPosition[0] = numValue;
-          else if (axis === "y") newPosition[1] = numValue;
-          else if (axis === "z") newPosition[2] = numValue;
-
-          // Update this vertex position and all shared vertices
-          const newSegments = updateVertexPosition(
-            points3d,
-            currentSegments,
-            segmentIndex,
-            pointIndex,
-            newPosition,
-            // Update shared vertices
-            true
-          );
-
-          const existingLabelData = prev[labelId];
-          const path = existingLabelData?.path || currentActiveField || "";
-          const sampleId = existingLabelData?.sampleId || currentSampleId;
-
-          return {
-            ...prev,
-            [labelId]: {
-              ...(existingLabelData ?? {}),
-              segments: newSegments,
-              path,
-              sampleId,
-            },
-          };
-        });
+        // Convert segments to points3d format and update working store
+        const newPoints3d = newSegments.map((seg) => seg.points);
+        updatePolylinePoints(labelId, newPoints3d);
       }
     },
     [
       selectedPoint,
       selectedLabel,
+      points3d,
       selectedPointPosition,
-      setStagedPolylineTransforms,
-      currentActiveField,
-      currentSampleId,
+      updatePolylinePoints,
     ]
   );
 

@@ -1,12 +1,12 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
-import { formatDegrees } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
 import {
   useIsDragInProgress,
   useTransientCuboid,
   useWorkingLabel,
-} from "@fiftyone/looker-3d/src/store";
+} from "@fiftyone/looker-3d/src/annotation/store";
+import { formatDegrees } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
 import {
   quaternionToRadians,
   radiansToQuaternion,

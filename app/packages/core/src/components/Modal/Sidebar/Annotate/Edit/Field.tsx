@@ -1,7 +1,6 @@
-import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
+import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
 import { useAtom, useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
@@ -51,17 +50,16 @@ const Field = () => {
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
 
-  const polylinePointTransforms =
-    useRecoilValue(stagedPolylineTransformsAtom) ?? {};
+  const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
 
-  // todo: temp: skip for 3d
-  if (Object.keys(polylinePointTransforms).length > 0) {
+  if (!isCreating) {
     return null;
   }
 
   return (
     <>
-      {!!fields.length && (
+      {/* Note: we don't allow field selection in 3D since it's handled in the "left" in-canvas sidebar */}
+      {!!fields.length && !is3DAnnotationStagingInitialized && (
         <div>
           <SchemaIOComponent
             schema={schema}
