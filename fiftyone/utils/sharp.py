@@ -95,6 +95,7 @@ class AppleSharpModel(fout.TorchImageModel):
         self._output_dir_initialized = False
 
     def _load_model(self, config):
+        """Load the SHARP model and move it to the specified device."""
         fou.ensure_torch()
         import torch
 
@@ -121,6 +122,7 @@ class AppleSharpModel(fout.TorchImageModel):
         return "image"
 
     def _ensure_output_dir(self):
+        """Ensure the output directory exists, creating a temp dir if needed."""
         if not self._output_dir_initialized:
             if self._output_dir is None:
                 self._output_dir = tempfile.mkdtemp(prefix="sharp_")
@@ -139,6 +141,7 @@ class AppleSharpModel(fout.TorchImageModel):
         return np.array(pil_img.convert("RGB"))
 
     def _export_gaussians(self, gaussians, f_px, height, width):
+        """Export gaussians to a PLY file and return a Classification label."""
         self._ensure_output_dir()
         splat_id = uuid.uuid4().hex[:12]
         splat_path = os.path.join(
@@ -148,6 +151,7 @@ class AppleSharpModel(fout.TorchImageModel):
         return fol.Classification(label="3d_gaussians", splat_path=splat_path)
 
     def _predict_all(self, imgs):
+        """Run SHARP inference on a list of images and return Classifications."""
         fou.ensure_torch()
         import torch
         import torch.nn.functional as F
@@ -159,55 +163,56 @@ class AppleSharpModel(fout.TorchImageModel):
             return []
 
         outputs = []
-        for img in imgs:
-            img_np = self._to_numpy(img)
-            height, width = img_np.shape[:2]
+        with torch.no_grad():
+            for img in imgs:
+                img_np = self._to_numpy(img)
+                height, width = img_np.shape[:2]
 
-            sensor_width_mm = 36.0
-            f_px = self._focal_length_mm * width / sensor_width_mm
-            disparity_factor = (
-                torch.tensor([f_px / width]).float().to(self._device)
-            )
-
-            img_pt = torch.from_numpy(img_np.copy()).float().to(self._device)
-            img_pt = img_pt.permute(2, 0, 1) / 255.0
-
-            internal_shape = (1536, 1536)
-            img_resized = F.interpolate(
-                img_pt[None],
-                size=internal_shape,
-                mode="bilinear",
-                align_corners=True,
-            )
-
-            gaussians_ndc = self._model(img_resized, disparity_factor)
-
-            intrinsics = (
-                torch.tensor(
-                    [
-                        [f_px, 0, width / 2, 0],
-                        [0, f_px, height / 2, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1],
-                    ]
+                sensor_width_mm = 36.0
+                f_px = self._focal_length_mm * width / sensor_width_mm
+                disparity_factor = (
+                    torch.tensor([f_px / width]).float().to(self._device)
                 )
-                .float()
-                .to(self._device)
-            )
 
-            intrinsics_resized = intrinsics.clone()
-            intrinsics_resized[0] *= internal_shape[1] / width
-            intrinsics_resized[1] *= internal_shape[0] / height
+                img_pt = torch.from_numpy(img_np.copy()).float().to(self._device)
+                img_pt = img_pt.permute(2, 0, 1) / 255.0
 
-            gaussians = sharp_utils.unproject_gaussians(
-                gaussians_ndc,
-                torch.eye(4).to(self._device),
-                intrinsics_resized,
-                internal_shape,
-            )
+                internal_shape = (1536, 1536)
+                img_resized = F.interpolate(
+                    img_pt[None],
+                    size=internal_shape,
+                    mode="bilinear",
+                    align_corners=True,
+                )
 
-            outputs.append(
-                self._export_gaussians(gaussians, f_px, height, width)
-            )
+                gaussians_ndc = self._model(img_resized, disparity_factor)
+
+                intrinsics = (
+                    torch.tensor(
+                        [
+                            [f_px, 0, width / 2, 0],
+                            [0, f_px, height / 2, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1],
+                        ]
+                    )
+                    .float()
+                    .to(self._device)
+                )
+
+                intrinsics_resized = intrinsics.clone()
+                intrinsics_resized[0] *= internal_shape[1] / width
+                intrinsics_resized[1] *= internal_shape[0] / height
+
+                gaussians = sharp_utils.unproject_gaussians(
+                    gaussians_ndc,
+                    torch.eye(4).to(self._device),
+                    intrinsics_resized,
+                    internal_shape,
+                )
+
+                outputs.append(
+                    self._export_gaussians(gaussians, f_px, height, width)
+                )
 
         return outputs
