@@ -129,7 +129,7 @@ export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 /**
  * Type guard to check if an overlay is a Detection overlay (3D).
  */
-export function isDetectionOverlay(
+export function isDetection3dOverlay(
   overlay: unknown
 ): overlay is OverlayLabel & {
   _cls: "Detection";
@@ -152,7 +152,9 @@ export function isDetectionOverlay(
 /**
  * Type guard to check if an overlay is a Polyline overlay (3D).
  */
-export function isPolylineOverlay(overlay: unknown): overlay is OverlayLabel & {
+export function isPolyline3dOverlay(
+  overlay: unknown
+): overlay is OverlayLabel & {
   _cls: "Polyline";
   points3d: THREE.Vector3Tuple[][];
 } & Record<string, unknown> {

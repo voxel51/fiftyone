@@ -2,11 +2,7 @@ import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import {
-  useCuboidOperations,
-  usePolylineOperations,
-  useUpdateWorkingLabel,
-} from "../annotation/store";
+import { useUpdateWorkingLabel } from "../annotation/store";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 
@@ -15,8 +11,6 @@ import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
  */
 export const use3dAnnotationEventHandlers = () => {
   const updateWorkingLabel = useUpdateWorkingLabel();
-  const { updateCuboid } = useCuboidOperations();
-  const { updatePolyline } = usePolylineOperations();
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
@@ -37,17 +31,13 @@ export const use3dAnnotationEventHandlers = () => {
     useCallback(
       (payload) => {
         const { _id, ...updates } = payload.value;
-
-        if (isDetection3dOverlay(updates)) {
-          updateCuboid(_id, coerceStringBooleans(updates));
-        } else if (isPolyline3dOverlay(updates)) {
-          updatePolyline(_id, coerceStringBooleans(updates));
-        } else {
-          // Fallback for other types (non-undoable)
-          updateWorkingLabel(_id, coerceStringBooleans(updates));
+        if (!isPolyline3dOverlay(updates) && !isDetection3dOverlay(updates)) {
+          return;
         }
+
+        updateWorkingLabel(_id, coerceStringBooleans(updates));
       },
-      [updateCuboid, updatePolyline, updateWorkingLabel]
+      [updateWorkingLabel]
     )
   );
 

@@ -25,7 +25,7 @@ import {
   snapCloseAutomaticallyAtom,
   transformModeAtom,
 } from "../../state";
-import { isDetectionOverlay, isPolylineOverlay } from "../../types";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../../types";
 import {
   useCuboidOperations,
   usePolylineOperations,
@@ -108,7 +108,7 @@ export const useAnnotationActions = () => {
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
     const workingLabel = workingDoc.labelsById[labelId];
-    if (!workingLabel || !isPolylineOverlay(workingLabel)) return;
+    if (!workingLabel || !isPolyline3dOverlay(workingLabel)) return;
 
     const points3d = workingLabel.points3d;
     if (!points3d) return;
@@ -149,9 +149,9 @@ export const useAnnotationActions = () => {
     if (selectedPoint) {
       handleDeleteSelectedPoint();
     } else if (selectedLabelForAnnotation) {
-      if (isPolylineOverlay(selectedLabelForAnnotation)) {
+      if (isPolyline3dOverlay(selectedLabelForAnnotation)) {
         deletePolyline(selectedLabelForAnnotation._id);
-      } else if (isDetectionOverlay(selectedLabelForAnnotation)) {
+      } else if (isDetection3dOverlay(selectedLabelForAnnotation)) {
         deleteCuboid(selectedLabelForAnnotation._id);
       }
     }

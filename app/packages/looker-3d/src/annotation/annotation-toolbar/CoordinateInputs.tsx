@@ -7,7 +7,7 @@ import {
   selectedPolylineVertexAtom,
   tempVertexTransformsAtom,
 } from "../../state";
-import { isPolylineOverlay } from "../../types";
+import { isPolyline3dOverlay } from "../../types";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import { usePolylineOperations, useWorkingLabel } from "../store";
 import { updateVertexPosition } from "../utils/polyline-utils";
@@ -235,7 +235,7 @@ export const VertexCoordinateInputs = ({
   );
 
   const points3d = useMemo(() => {
-    if (workingLabel && isPolylineOverlay(workingLabel)) {
+    if (workingLabel && isPolyline3dOverlay(workingLabel)) {
       return workingLabel.points3d;
     }
     return null;

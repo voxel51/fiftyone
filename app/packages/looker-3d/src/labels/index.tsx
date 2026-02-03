@@ -50,7 +50,11 @@ import {
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
-import { Archetype3d, isDetectionOverlay, isPolylineOverlay } from "../types";
+import {
+  Archetype3d,
+  isDetection3dOverlay,
+  isPolyline3dOverlay,
+} from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
 import { type OverlayLabel, load3dOverlays } from "./loader";
@@ -145,7 +149,7 @@ export const ThreeDLabels = ({
 
       // We only support translate for polylines for now
       if (
-        isPolylineOverlay(label) &&
+        isPolyline3dOverlay(label) &&
         (transformMode === "rotate" || transformMode === "scale")
       ) {
         setTransformMode("translate");
@@ -337,9 +341,9 @@ export const ThreeDLabels = ({
     const polylines: ReconciledPolyline3D[] = [];
 
     for (const overlay of rawOverlays) {
-      if (isDetectionOverlay(overlay)) {
+      if (isDetection3dOverlay(overlay)) {
         detections.push(overlay);
-      } else if (isPolylineOverlay(overlay)) {
+      } else if (isPolyline3dOverlay(overlay)) {
         polylines.push(overlay);
       }
     }

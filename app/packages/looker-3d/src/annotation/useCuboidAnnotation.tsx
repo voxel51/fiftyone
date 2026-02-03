@@ -10,7 +10,7 @@ import {
   useWorkingLabel,
 } from "../annotation/store";
 import type { TransientCuboidState } from "../annotation/store/types";
-import { isDetectionOverlay } from "../types";
+import { isDetection3dOverlay } from "../types";
 
 interface UseCuboidAnnotationProps {
   label: any;
@@ -49,7 +49,7 @@ export const useCuboidAnnotation = ({
     effectiveRotation,
     effectiveQuaternion,
   ] = useMemo(() => {
-    if (isDetectionOverlay(workingLabel)) {
+    if (isDetection3dOverlay(workingLabel)) {
       const result = [
         workingLabel.location,
         workingLabel.dimensions,

@@ -1,7 +1,3 @@
-/**
- * Copyright 2017-2025, Voxel51, Inc.
- */
-
 import { useCallback } from "react";
 import { DelegatingUndoable } from "../actions";
 import { CommandContextManager } from "../context";

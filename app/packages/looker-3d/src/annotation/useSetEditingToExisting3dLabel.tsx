@@ -8,7 +8,7 @@ import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import { clearTransformStateSelector } from "../state";
-import { isDetectionOverlay, isPolylineOverlay } from "../types";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 import { useWorkingDoc } from "./store";
 import { currentEditingCuboidAtom } from "./useSetEditingToNewCuboid";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
@@ -63,14 +63,14 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       // Use working store data if available, otherwise fall back to the label from overlay
       let effectiveLabel = label;
 
-      if (isCuboid && isDetectionOverlay(workingLabel)) {
+      if (isCuboid && isDetection3dOverlay(workingLabel)) {
         effectiveLabel = {
           ...label,
           location: workingLabel.location,
           dimensions: workingLabel.dimensions,
           rotation: workingLabel.rotation,
         };
-      } else if (!isCuboid && isPolylineOverlay(workingLabel)) {
+      } else if (!isCuboid && isPolyline3dOverlay(workingLabel)) {
         effectiveLabel = {
           ...label,
           points3d: workingLabel.points3d,

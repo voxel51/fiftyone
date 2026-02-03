@@ -12,9 +12,9 @@ import {
 import type { OverlayLabel } from "../../labels/loader";
 import {
   isDetection,
-  isDetectionOverlay,
+  isDetection3dOverlay,
   isPolyline,
-  isPolylineOverlay,
+  isPolyline3dOverlay,
 } from "../../types";
 import type { ReconciledDetection3D, ReconciledPolyline3D } from "../types";
 import {
@@ -105,7 +105,7 @@ function mapOverlaysToLabelId(
   > = {};
 
   for (const overlay of overlays) {
-    if (isDetectionOverlay(overlay)) {
+    if (isDetection3dOverlay(overlay)) {
       const detection: ReconciledDetection3D = {
         ...overlay,
         _cls: "Detection",
@@ -115,7 +115,7 @@ function mapOverlaysToLabelId(
         quaternion: (overlay as any).quaternion,
       };
       labelsById[overlay._id] = roundDetection(detection);
-    } else if (isPolylineOverlay(overlay)) {
+    } else if (isPolyline3dOverlay(overlay)) {
       const polyline: ReconciledPolyline3D = {
         ...overlay,
         _cls: "Polyline",

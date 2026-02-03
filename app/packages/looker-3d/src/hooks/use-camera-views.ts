@@ -1,7 +1,3 @@
-/**
- * Copyright 2017-2025, Voxel51, Inc.
- */
-
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import * as fos from "@fiftyone/state";
 import { CameraControls } from "@react-three/drei";
@@ -25,7 +21,7 @@ import {
   cameraViewStatusAtom,
   selectedLabelForAnnotationAtom,
 } from "../state";
-import { isDetectionOverlay, isPolylineOverlay } from "../types";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
 
 interface UseCameraViewsProps {
   cameraRef: React.RefObject<PerspectiveCamera>;
@@ -44,7 +40,7 @@ const calculateLabelCentroidAndRadius = (
     return null;
   }
 
-  if (isDetectionOverlay(label)) {
+  if (isDetection3dOverlay(label)) {
     const location = label.location;
     const dimensions = label.dimensions;
 
@@ -60,7 +56,7 @@ const calculateLabelCentroidAndRadius = (
         radius,
       };
     }
-  } else if (isPolylineOverlay(label)) {
+  } else if (isPolyline3dOverlay(label)) {
     const points3d = label.points3d;
 
     if (points3d && points3d.length > 0) {
