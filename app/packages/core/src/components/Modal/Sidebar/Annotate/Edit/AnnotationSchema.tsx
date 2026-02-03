@@ -54,26 +54,27 @@ const useSchema = (readOnly: boolean) => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseFloat(data);
-          return Number.isFinite(parsed) ? parsed : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseFloat(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseInt(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseInt(data);
-          return Number.isFinite(parsed) ? parsed : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
@@ -137,7 +138,11 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
           const value = { ...data, ...result };
 
           if (isEqual(value, overlay.label)) {
-            return;
+            // todo: there's a stale bug in overlay.label somewhere
+            // just fixing stale closure on overlay didn't fix it,
+            // since staleness might be deeper
+            // until that's fixed, we skip this optimization
+            // return;
           }
 
           eventBus.dispatch("annotation:sidebarValueUpdated", {
