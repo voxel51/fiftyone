@@ -26,7 +26,7 @@ Core
 Plugins, Operators, and Orchestrators
 
 - From the Runs page, users can now rerun an
-  :ref:`OperatorPipeline <fiftyone.operators.OperatorPipeline>` starting at a
+  :class:`PipelineOperator <fiftyone.operators.PipelineOperator>` starting at a
   failed stage -- rerunning the entire stage, or a single
   :ref:`Operator <using-operators>`. Original runs are archived and hidden by
   default in the UI, but can be made visible using the "show archived" toggle.
@@ -108,7 +108,7 @@ Plugins and Operators
 
 - Expanded support for rerunning Delegated :ref:`Operators <using-operators>`.
   Set `rerunnable` to True or False on the operator config of your Operator or
-  :class:`PipelineStages <fiftyone.operators.types.PipelineStage>` to control
+  :class:`PipelineStage <fiftyone.operators.types.PipelineStage>` to control
   whether users can rerun that operation. Note: the PipelineStage config takes
   precedence over the Operator config, or set the stage config to `None` to
   default to the Operator `rerunnable` value. 
@@ -121,7 +121,7 @@ Plugins and Operators
   filtered out when calling `list_operations`. 
   `#6716 <https://github.com/voxel51/fiftyone/pull/6716>`_
 - Added support for immediate
-  :ref:`OperatorPipeline <fiftyone.operators.OperatorPipeline>` execution, with
+  :class:`PipelineOperator <fiftyone.operators.PipelineOperator>` execution, with
   added live pipeline execution capability and enhanced error handling. 
   `#6628 <https://github.com/voxel51/fiftyone/pull/6628>`_
 - Fixed a bug for multi-select autocomplete fields when setting a default
@@ -143,13 +143,13 @@ Model Zoo
   (tiny/base/large) to the Torch model zoo. 
   `#6248 <https://github.com/voxel51/fiftyone/pull/6248>`_
 - Updated
-  :meth:`foo.get_implied_field_kwargs() <fiftyone.core.odm.get_implied_field_kwargs>`
+  :meth:`get_implied_field_kwargs() <fiftyone.core.odm.get_implied_field_kwargs>`
   to correctly handle values that contain subclasses of `EmbeddedDocumentField`. 
   `#6639 <https://github.com/voxel51/fiftyone/pull/6639>`_
 
 Brain
 
-- Fix: When subselecting samples from the lancedb table, ensure the samples
+- Fixed: When subselecting samples from the lancedb table, ensure the samples
   being selected exist in the table. 
   `#272 <https://github.com/voxel51/fiftyone-brain/pull/272>`_
 
@@ -160,7 +160,7 @@ Docs
   :ref:`Camera Intrinsics/Extrinsics <camera-intrinsics-extrinsics>`, and
   :ref:`3D <-> 2D Projection <camera-projection>`.
   `#6711 <https://github.com/voxel51/fiftyone/pull/6711>`_
-- Fix broken active projects reference in CONTRIBUTING.md 
+- Fixed broken active projects reference in CONTRIBUTING.md 
   `#6770 <https://github.com/voxel51/fiftyone/pull/6770>`_
 
 
