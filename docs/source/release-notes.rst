@@ -48,11 +48,6 @@ Plugins, Operators, and Orchestrators
 
 Authorization
 
-- Credentials for access to cloud media can now be assigned at the global
-  scope, per each user group, and per each user -- in addition to allowing
-  different credentials for different cloud buckets.
-- New environment variable `NO_CREDENTIALS` can be set to prevent local use of
-  server-provided cloud credentials (allowed by default).
 - The restriction on role re-upgrades is no longer based on "role" but now
   "license tier". For example, Admin and Member are considered the same tier
   since they both use up the same seat type, so users are free to switch
@@ -152,6 +147,11 @@ Brain
 - Fixed: When subselecting samples from the lancedb table, ensure the samples
   being selected exist in the table. 
   `#272 <https://github.com/voxel51/fiftyone-brain/pull/272>`_
+
+ETA
+
+- Fixed an incompatibility with `numpy>=2` and the `FFmpegVideoReader`.
+  `#686 <https://github.com/voxel51/eta/pull/686>`_
 
 Docs
 
