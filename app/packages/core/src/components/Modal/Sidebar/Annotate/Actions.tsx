@@ -196,7 +196,11 @@ export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
+    <Round
+      onClick={undo}
+      className={undoEnabled ? "" : "disabled"}
+      data-cy="undo-button"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -219,7 +223,11 @@ export const Redo = () => {
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
+      <Round
+        onClick={redo}
+        className={redoEnabled ? "" : "disabled"}
+        data-cy="redo-button"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"

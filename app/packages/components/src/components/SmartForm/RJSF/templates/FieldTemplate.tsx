@@ -8,7 +8,7 @@ import { Text, TextColor } from "@voxel51/voodo";
 import React from "react";
 
 export default function FieldTemplate(props: FieldTemplateProps) {
-  const { classNames, style, rawErrors, help, children, hidden } = props;
+  const { classNames, style, rawErrors, help, children, hidden, id } = props;
 
   if (hidden) {
     return (
@@ -25,10 +25,15 @@ export default function FieldTemplate(props: FieldTemplateProps) {
       sx={{
         width: "100%",
       }}
+      data-cy={`${id}_container`}
     >
       {children}
       {Array.isArray(rawErrors) && rawErrors.length > 0 && (
-        <Text color={TextColor.Secondary} style={{ lineHeight: "normal" }}>
+        <Text
+          color={TextColor.Secondary}
+          style={{ lineHeight: "normal" }}
+          data-cy={`${id}_errors`}
+        >
           {rawErrors.join(". ")}
         </Text>
       )}
