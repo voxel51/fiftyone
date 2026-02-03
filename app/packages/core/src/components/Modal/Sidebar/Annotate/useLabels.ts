@@ -2,15 +2,16 @@ import { useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
   AnnotationLabel,
+  AnnotationLabelData,
   field,
   modalGroupSlice,
   ModalSample,
   useModalSample,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { splitAtom } from "jotai/utils";
+import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import { activeLabelSchemas } from "./state";
@@ -107,6 +108,25 @@ const pathMap = selector<{ [key: string]: string }>({
 });
 
 /**
+ * Hook which provides a method for updating data in a label atom.
+ */
+const useUpdateLabelAtom = () => {
+  return useAtomCallback(
+    useCallback((get, set, id: string, data: AnnotationLabelData) => {
+      const labelMapValue = get(labelMap);
+      const targetAtom = labelMapValue[id];
+
+      if (targetAtom) {
+        const currentValue = get(targetAtom);
+        set(targetAtom, { ...currentValue, data });
+      } else {
+        console.warn(`Unknown label id ${id}`);
+      }
+    }, [])
+  );
+};
+
+/**
  * Public API for interacting with current labels context.
  */
 export interface LabelsContext {
@@ -116,6 +136,14 @@ export interface LabelsContext {
    * @param label Label to add
    */
   addLabelToSidebar: (label: AnnotationLabel) => void;
+
+  /**
+   * Update the label data for the specified label ID.
+   *
+   * @param labelId ID of label to update
+   * @param data Label data
+   */
+  updateLabelData: (labelId: string, data: AnnotationLabelData) => void;
 }
 
 /**
@@ -123,8 +151,12 @@ export interface LabelsContext {
  */
 export const useLabelsContext = (): LabelsContext => {
   const addLabelToSidebar = useSetAtom(addLabel);
+  const updateLabelData = useUpdateLabelAtom();
 
-  return useMemo(() => ({ addLabelToSidebar }), [addLabelToSidebar]);
+  return useMemo(
+    () => ({ addLabelToSidebar, updateLabelData }),
+    [addLabelToSidebar, updateLabelData]
+  );
 };
 
 export default function useLabels() {
@@ -138,6 +170,7 @@ export default function useLabels() {
   const { scene } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
   const prevSliceRef = useRef(currentSlice);
+  const updateLabelAtom = useUpdateLabelAtom();
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) =>
@@ -188,10 +221,14 @@ export default function useLabels() {
         // refresh label data
         getLabelsFromSample().then((result) => {
           result.forEach((annotationLabel) => {
+            // update overlays
             if (scene?.hasOverlay(annotationLabel.data._id)) {
               scene.getOverlay(annotationLabel.data._id)!.label =
                 annotationLabel.data;
             }
+
+            // update sidebar
+            updateLabelAtom(annotationLabel.data._id, annotationLabel.data);
           });
         });
       }
