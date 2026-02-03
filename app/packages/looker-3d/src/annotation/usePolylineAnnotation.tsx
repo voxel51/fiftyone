@@ -49,7 +49,7 @@ export const usePolylineAnnotation = ({
   const { updatePolyline } = useUpdateTransient();
   const startDrag = useStartDrag();
 
-  const { commitPolylineTransform, updatePolylinePoints } =
+  const { finalizePolylineDrag, updatePolylinePoints } =
     usePolylineOperations();
 
   const selectedPoint = useRecoilValue(selectedPolylineVertexAtom);
@@ -59,9 +59,6 @@ export const usePolylineAnnotation = ({
   const transformControlsRef = useRef(null);
   const contentRef = useRef<THREE.Group>(null);
   const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
-
-  // Store the previous points3d for undo
-  const previousPoints3dRef = useRef<[number, number, number][][]>(points3d);
 
   // Compute effective points3d from working store (or fallback to props)
   const effectivePoints3d = useMemo(() => {
@@ -191,14 +188,11 @@ export const usePolylineAnnotation = ({
     const grp = contentRef.current;
     if (!grp) return;
 
-    // Capture the points3d before transformation begins
-    previousPoints3dRef.current = effectivePoints3d;
-
     // Store the start matrix for computing delta later
     setStartMatrix(grp.matrixWorld.clone());
 
     startDrag();
-  }, [effectivePoints3d, startDrag]);
+  }, [startDrag]);
 
   const handleTransformChange = useCallback(() => {
     const grp = contentRef.current;
@@ -241,11 +235,7 @@ export const usePolylineAnnotation = ({
     }
 
     // Commit the transient state to working store
-    commitPolylineTransform(
-      labelId,
-      currentTransient,
-      previousPoints3dRef.current
-    );
+    finalizePolylineDrag(labelId, currentTransient);
 
     // Reset group position to prevent double-application
     if (contentRef.current) {
@@ -253,7 +243,7 @@ export const usePolylineAnnotation = ({
     }
 
     setStartMatrix(null);
-  }, [labelId, startMatrix, transientState, commitPolylineTransform]);
+  }, [labelId, startMatrix, transientState, finalizePolylineDrag]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {

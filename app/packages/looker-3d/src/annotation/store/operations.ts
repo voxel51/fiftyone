@@ -43,15 +43,13 @@ export function useCuboidOperations() {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   /**
-   * Commits a cuboid transformation from transient state to working store.
+   * Updates cuboid properties (location, dimensions, rotation, quaternion).
+   * This is the core undoable operation - all cuboid modifications should
+   * go through this to ensure proper undo/redo support.
    */
-  const commitCuboidTransform = useRecoilCallback(
+  const updateCuboid = useRecoilCallback(
     ({ snapshot }) =>
-      async (
-        labelId: LabelId,
-        transient: TransientCuboidState,
-        previousState: CuboidTransformData
-      ) => {
+      async (labelId: LabelId, updates: Partial<ReconciledDetection3D>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -59,57 +57,83 @@ export function useCuboidOperations() {
           return;
         }
 
-        // New state is a function of working + transient
-        let newLocation = existingLabel.location;
-        let newDimensions = existingLabel.dimensions;
-        let newQuaternion = existingLabel.quaternion;
-
-        if (transient.positionDelta) {
-          newLocation = roundTuple([
-            existingLabel.location[0] + transient.positionDelta[0],
-            existingLabel.location[1] + transient.positionDelta[1],
-            existingLabel.location[2] + transient.positionDelta[2],
-          ]);
-        }
-
-        if (transient.dimensionsDelta) {
-          newDimensions = roundTuple([
-            existingLabel.dimensions[0] + transient.dimensionsDelta[0],
-            existingLabel.dimensions[1] + transient.dimensionsDelta[1],
-            existingLabel.dimensions[2] + transient.dimensionsDelta[2],
-          ]);
-        }
-
-        if (transient.quaternionOverride) {
-          newQuaternion = roundTuple(transient.quaternionOverride);
-        }
-
-        const newState: Partial<ReconciledDetection3D> = {
-          location: newLocation,
-          dimensions: newDimensions,
-          quaternion: newQuaternion,
-          // Clear rotation since quaternion is authoritative
-          // Todo: we can't... actually we need to store .rotation too since legacy customers use .rotation as well
-          rotation: undefined,
+        const previousState: Partial<ReconciledDetection3D> = {
+          location: existingLabel.location,
+          dimensions: existingLabel.dimensions,
+          rotation: existingLabel.rotation,
+          quaternion: existingLabel.quaternion,
         };
 
+        const roundedUpdates: Partial<ReconciledDetection3D> = { ...updates };
+        if (updates.location) {
+          roundedUpdates.location = roundTuple(updates.location);
+        }
+        if (updates.dimensions) {
+          roundedUpdates.dimensions = roundTuple(updates.dimensions);
+        }
+        if (updates.rotation) {
+          roundedUpdates.rotation = roundTuple(updates.rotation);
+        }
+        if (updates.quaternion) {
+          roundedUpdates.quaternion = roundTuple(updates.quaternion);
+        }
+
         const execFn = () => {
-          updateLabel(labelId, newState);
-          endDrag(labelId);
+          updateLabel(labelId, roundedUpdates);
         };
 
         const undoFn = () => {
-          updateLabel(labelId, {
-            location: previousState.location,
-            dimensions: previousState.dimensions,
-            quaternion: previousState.quaternion,
-            rotation: previousState.rotation,
-          });
+          updateLabel(labelId, previousState);
         };
 
-        createPushAndExec(`cuboid-transform-${labelId}`, execFn, undoFn);
+        createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, updateLabel, endDrag]
+    [createPushAndExec, updateLabel]
+  );
+
+  /**
+   * Finalizes a drag operation on a cuboid. Called on pointer-up after
+   * using TransformControls. Applies transient deltas to working store
+   * and clears transient state.
+   */
+  const finalizeCuboidDrag = useRecoilCallback(
+    ({ snapshot }) =>
+      async (labelId: LabelId, transient: TransientCuboidState) => {
+        const working = await snapshot.getPromise(workingAtom);
+        const existingLabel = working.doc.labelsById[labelId];
+
+        if (!existingLabel || !isDetection(existingLabel)) {
+          return;
+        }
+
+        const newState: Partial<ReconciledDetection3D> = {};
+
+        if (transient.positionDelta) {
+          newState.location = [
+            existingLabel.location[0] + transient.positionDelta[0],
+            existingLabel.location[1] + transient.positionDelta[1],
+            existingLabel.location[2] + transient.positionDelta[2],
+          ];
+        }
+
+        if (transient.dimensionsDelta) {
+          newState.dimensions = [
+            existingLabel.dimensions[0] + transient.dimensionsDelta[0],
+            existingLabel.dimensions[1] + transient.dimensionsDelta[1],
+            existingLabel.dimensions[2] + transient.dimensionsDelta[2],
+          ];
+        }
+
+        if (transient.quaternionOverride) {
+          newState.quaternion = transient.quaternionOverride;
+          // Clear rotation since quaternion is authoritative
+          newState.rotation = undefined;
+        }
+
+        await updateCuboid(labelId, newState);
+        endDrag(labelId);
+      },
+    [updateCuboid, endDrag]
   );
 
   /**
@@ -173,7 +197,8 @@ export function useCuboidOperations() {
   );
 
   return {
-    commitCuboidTransform,
+    finalizeCuboidDrag,
+    updateCuboid,
     createCuboid,
     deleteCuboid,
   };
@@ -197,16 +222,13 @@ export function usePolylineOperations() {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   /**
-   * Commits a polyline transformation from transient state to working store.
-   * Called on pointer-up after a drag operation.
+   * Updates polyline properties.
+   * This is the core undoable operation - all polyline modifications should
+   * go through this to ensure proper undo/redo support.
    */
-  const commitPolylineTransform = useRecoilCallback(
+  const updatePolyline = useRecoilCallback(
     ({ snapshot }) =>
-      async (
-        labelId: LabelId,
-        transient: TransientPolylineState,
-        previousPoints3d: [number, number, number][][]
-      ) => {
+      async (labelId: LabelId, updates: Partial<ReconciledPolyline3D>) => {
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
@@ -214,7 +236,51 @@ export function usePolylineOperations() {
           return;
         }
 
-        // Compute the new points3d from working + transient
+        const previousState: Partial<ReconciledPolyline3D> = {
+          points3d: existingLabel.points3d,
+          label: existingLabel.label,
+          filled: existingLabel.filled,
+          closed: existingLabel.closed,
+        };
+
+        const roundedUpdates: Partial<ReconciledPolyline3D> = { ...updates };
+        if (updates.points3d) {
+          roundedUpdates.points3d = updates.points3d.map((segment) =>
+            segment.map(
+              (point) => roundTuple(point) as [number, number, number]
+            )
+          );
+        }
+
+        const execFn = () => {
+          updateLabel(labelId, roundedUpdates);
+        };
+
+        const undoFn = () => {
+          updateLabel(labelId, previousState);
+        };
+
+        createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
+      },
+    [createPushAndExec, updateLabel]
+  );
+
+  /**
+   * Finalizes a drag operation on a polyline. Called on pointer-up after
+   * using TransformControls. Applies transient deltas to working store
+   * and clears transient state.
+   */
+  const finalizePolylineDrag = useRecoilCallback(
+    ({ snapshot }) =>
+      async (labelId: LabelId, transient: TransientPolylineState) => {
+        const working = await snapshot.getPromise(workingAtom);
+        const existingLabel = working.doc.labelsById[labelId];
+
+        if (!existingLabel || !isPolyline(existingLabel)) {
+          return;
+        }
+
+        // Compute new points3d from working + transient deltas
         let newPoints3d = existingLabel.points3d;
 
         if (transient.positionDelta) {
@@ -222,11 +288,11 @@ export function usePolylineOperations() {
           newPoints3d = newPoints3d.map((segment) =>
             segment.map(
               (point) =>
-                roundTuple([
+                [
                   point[0] + delta[0],
                   point[1] + delta[1],
                   point[2] + delta[2],
-                ]) as [number, number, number]
+                ] as [number, number, number]
             )
           );
         }
@@ -237,60 +303,31 @@ export function usePolylineOperations() {
               const key = `${segIdx}-${ptIdx}`;
               const delta = transient.vertexDeltas?.[key];
               if (delta) {
-                return roundTuple([
+                return [
                   point[0] + delta[0],
                   point[1] + delta[1],
                   point[2] + delta[2],
-                ]) as [number, number, number];
+                ];
               }
               return point;
             })
           );
         }
 
-        const execFn = () => {
-          updateLabel(labelId, { points3d: newPoints3d });
-          endDrag(labelId);
-        };
-
-        const undoFn = () => {
-          updateLabel(labelId, { points3d: previousPoints3d });
-        };
-
-        createPushAndExec(`polyline-transform-${labelId}`, execFn, undoFn);
+        await updatePolyline(labelId, { points3d: newPoints3d });
+        endDrag(labelId);
       },
-    [createPushAndExec, updateLabel, endDrag]
+    [updatePolyline, endDrag]
   );
 
   /**
-   * Updates polyline points directly (for vertex editing, segment insertion, etc.).
+   * Updates polyline points directly.
    */
-  const updatePolylinePoints = useRecoilCallback(
-    ({ snapshot }) =>
-      async (labelId: LabelId, newPoints3d: [number, number, number][][]) => {
-        const working = await snapshot.getPromise(workingAtom);
-        const existingLabel = working.doc.labelsById[labelId];
-
-        if (!existingLabel || !isPolyline(existingLabel)) {
-          return;
-        }
-
-        const previousPoints3d = existingLabel.points3d;
-
-        const execFn = () => {
-          updateLabel(labelId, {
-            points3d: newPoints3d.map((seg) => seg.map((pt) => roundTuple(pt))),
-          });
-          endDrag(labelId);
-        };
-
-        const undoFn = () => {
-          updateLabel(labelId, { points3d: previousPoints3d });
-        };
-
-        createPushAndExec(`update-polyline-${labelId}`, execFn, undoFn);
-      },
-    [createPushAndExec, updateLabel]
+  const updatePolylinePoints = useCallback(
+    (labelId: LabelId, newPoints3d: [number, number, number][][]) => {
+      return updatePolyline(labelId, { points3d: newPoints3d });
+    },
+    [updatePolyline]
   );
 
   /**
@@ -357,8 +394,9 @@ export function usePolylineOperations() {
   );
 
   return {
-    commitPolylineTransform,
+    finalizePolylineDrag,
     updatePolylinePoints,
+    updatePolyline,
     createPolyline,
     deletePolyline,
   };

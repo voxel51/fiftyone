@@ -36,7 +36,7 @@ export const useCuboidAnnotation = ({
   const workingLabel = useWorkingLabel(labelId);
   const transientState = useTransientCuboid(labelId);
   const { updateCuboid } = useUpdateTransient();
-  const { commitCuboidTransform } = useCuboidOperations();
+  const { finalizeCuboidDrag } = useCuboidOperations();
   const startDrag = useStartDrag();
 
   const transformControlsRef = useRef<TransformControlsProps>(null);
@@ -62,32 +62,9 @@ export const useCuboidAnnotation = ({
     return [location, dimensions, rotation, null];
   }, [workingLabel, location, dimensions, rotation]);
 
-  // Store the previous state for undo
-  const previousStateRef = useRef({
-    location: effectiveLocation,
-    dimensions: effectiveDimensions,
-    rotation: effectiveRotation,
-    quaternion: effectiveQuaternion,
-  });
-
   const handleTransformStart = useCallback(() => {
-    // Capture the state before transformation begins
-    previousStateRef.current = {
-      location: effectiveLocation,
-      dimensions: effectiveDimensions,
-      rotation: effectiveRotation,
-      quaternion: effectiveQuaternion,
-    };
-
     startDrag();
-  }, [
-    labelId,
-    effectiveLocation,
-    effectiveDimensions,
-    effectiveRotation,
-    effectiveQuaternion,
-    startDrag,
-  ]);
+  }, [startDrag]);
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -148,18 +125,14 @@ export const useCuboidAnnotation = ({
       return;
     }
 
-    commitCuboidTransform(
-      labelId,
-      currentTransient,
-      previousStateRef.current as any
-    );
+    finalizeCuboidDrag(labelId, currentTransient);
 
     // Reset the Three.js object scale after committing
     if (contentRef.current) {
       contentRef.current.scale.set(1, 1, 1);
       // Don't reset quaternion - it's an override, not a delta
     }
-  }, [labelId, transientState, commitCuboidTransform]);
+  }, [labelId, transientState, finalizeCuboidDrag]);
 
   return {
     location,
