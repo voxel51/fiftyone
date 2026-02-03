@@ -12,7 +12,7 @@ import { useCommandContext } from "./useCommandContext";
  * and the undo/redo functions.  clear method to clear the undo/redo stack.
  */
 export const useUndoRedo = (
-  context?: CommandContext
+  context?: CommandContext | string
 ): {
   undoEnabled: boolean;
   redoEnabled: boolean;
