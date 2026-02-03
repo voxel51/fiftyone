@@ -1,15 +1,17 @@
-import type { DeltaSupplier } from "./deltaSupplier";
-import { useCallback } from "react";
+import type { JSONDeltas } from "@fiftyone/core";
+import { DetectionLabel } from "@fiftyone/looker";
 import {
   ReconciledDetection3D,
   ReconciledPolyline3D,
-  useReconciledLabels3D,
+  useIsDragInProgress,
+  useWorkingDetections,
+  useWorkingPolylines,
 } from "@fiftyone/looker-3d";
-import type { JSONDeltas } from "@fiftyone/core";
-import { useGetLabelDelta } from "./useGetLabelDelta";
-import { DetectionLabel } from "@fiftyone/looker";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import { useCallback } from "react";
 import { LabelProxy } from "../deltas";
+import type { DeltaSupplier } from "./deltaSupplier";
+import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
  * List of attributes which are used for internal annotation functionality.
@@ -65,21 +67,37 @@ const buildAnnotationLabel = (
 /**
  * Hook which provides a {@link DeltaSupplier} which captures changes isolated
  * to the 3D annotation context.
+ *
+ * The approach is:
+ * - Read from the working store (committed edits) (See looker-3d/src/annotation/store/index.ts)
+ * - Guard against computing deltas during active drag operations
+ * - Compute deltas against baseline
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
-  const labels = useReconciledLabels3D();
+  const detections = useWorkingDetections();
+  const polylines = useWorkingPolylines();
+
+  const dragInProgress = useIsDragInProgress();
+
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
 
   return useCallback(() => {
+    // Guard: don't compute deltas during active drag
+    // This prevents intermediate states from being persisted
+    if (dragInProgress) {
+      return [];
+    }
+
     const sampleDeltas: JSONDeltas = [];
 
-    labels?.detections?.forEach((detection) => {
+    detections?.forEach((detection) => {
       sampleDeltas.push(...getLabelDelta(detection, detection.path));
     });
-    labels?.polylines?.forEach((polyline) => {
+
+    polylines?.forEach((polyline) => {
       sampleDeltas.push(...getLabelDelta(polyline, polyline.path));
     });
 
     return sampleDeltas;
-  }, [getLabelDelta, labels]);
+  }, [getLabelDelta, detections, polylines, dragInProgress]);
 };
