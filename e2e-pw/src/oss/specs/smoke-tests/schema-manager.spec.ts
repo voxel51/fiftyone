@@ -1,18 +1,35 @@
 import { test as base, expect } from "src/oss/fixtures";
+import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
+import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("image-classification");
 const videoDatasetName = getUniqueDatasetNameWithPrefix("video-dataset");
+const detectionDatasetName =
+  getUniqueDatasetNameWithPrefix("detection-dataset");
+const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
+  "group-video-dataset"
+);
 
 const id = "000000000000000000000000";
 const videoId = "000000000000000000000001";
+const detectionId = "000000000000000000000002";
+const groupVideoId = "000000000000000000000003";
 
 const test = base.extend<{
+  grid: GridPom;
+  gridActionsRow: GridActionsRowPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
+  },
+  gridActionsRow: async ({ page }, use) => {
+    await use(new GridActionsRowPom(page));
+  },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
@@ -57,6 +74,21 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   )
   dataset.save()`);
 
+  await fiftyoneLoader.executePythonCode(`
+  from bson import ObjectId
+  import fiftyone as fo
+
+  dataset = fo.Dataset("${detectionDatasetName}")
+  sample = fo.Sample(
+      _id=ObjectId("${detectionId}"),
+      filepath="/tmp/blank.png",
+      predictions=fo.Detections(detections=[
+          fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
+          fo.Detection(label="dog", bounding_box=[0.3, 0.3, 0.2, 0.2]),
+      ])
+  )
+  dataset.add_samples([sample])`);
+
   await mediaFactory.createBlankVideo({
     outputPath: "/tmp/blank-video.webm",
     duration: 1,
@@ -80,6 +112,20 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       [dataset._make_dict(sample, include_id=True)]
   )
   dataset.save()`);
+
+  await fiftyoneLoader.executePythonCode(`
+  from bson import ObjectId
+  import fiftyone as fo
+
+  dataset = fo.Dataset("${groupVideoDatasetName}")
+  dataset.add_group_field("group", default="video1")
+  group = fo.Group()
+  sample = fo.Sample(
+      _id=ObjectId("${groupVideoId}"),
+      filepath="/tmp/blank-video.webm",
+      group=group.element("video1")
+  )
+  dataset.add_samples([sample])`);
 });
 
 const DEFAULT_LABEL_SCHEMA = {
@@ -189,6 +235,59 @@ test.describe.serial("schema manager", () => {
     // Annotation should be disabled for video datasets
     await expect(
       page.getByText("isn\u2019t supported for video datasets")
+    ).toBeVisible();
+    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
+  });
+
+  test("annotation disabled for patches view", async ({
+    fiftyoneLoader,
+    page,
+    grid,
+    gridActionsRow,
+    modal,
+  }) => {
+    // Close the modal opened by beforeEach on the image dataset
+    await modal.close();
+
+    // Navigate to detection dataset grid (no modal)
+    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
+
+    // Apply toPatches
+    await grid.actionsRow.toggleToClipsOrPatches();
+    const toPatchesRefresh = grid.getWaitForGridRefreshPromise();
+    await gridActionsRow.clickToPatchesByLabelField("predictions");
+    await toPatchesRefresh;
+
+    // Open first sample in the patches grid
+    await grid.openFirstSample();
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Annotation should be disabled for generated views
+    await expect(
+      page.getByText("isn\u2019t supported for patches, frames, clips")
+    ).toBeVisible();
+    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
+  });
+
+  test("annotation disabled for grouped dataset with no supported slices", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+  }) => {
+    // Close the modal opened by beforeEach on the image dataset
+    await modal.close();
+
+    // Navigate to grouped video dataset
+    await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
+      searchParams: new URLSearchParams({ id: groupVideoId }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Annotation should be disabled for grouped datasets with no supported slices
+    await expect(
+      page.getByText("has no slices that support annotation")
     ).toBeVisible();
     await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
   });
