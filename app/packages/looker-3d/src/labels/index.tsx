@@ -1,8 +1,4 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
-import {
-  activeLabelSchemas,
-  labelSchemaData,
-} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
+import { activeLabelSchemas } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/state";
 import {
   FO_LABEL_TOGGLED_EVENT,
   LabelToggledEvent,
@@ -17,7 +13,7 @@ import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
 import { useOnShiftClickLabel } from "@fiftyone/state/src/hooks/useOnShiftClickLabel";
 import { ThreeEvent } from "@react-three/fiber";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
@@ -33,7 +29,6 @@ import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
 } from "../annotation/types";
-import { useSetEditingToExisting3dLabel } from "../annotation/useSetEditingToExisting3dLabel";
 import { useSyncWorkingToSidebar } from "../annotation/useSyncWorkingToSidebar";
 import {
   ANNOTATION_CUBOID,
@@ -41,17 +36,14 @@ import {
   DRAG_GATE_THRESHOLD_PX,
   PANEL_ORDER_LABELS,
 } from "../constants";
-import { usePathFilter } from "../hooks";
+import { usePathFilter, useSelect3DLabelForAnnotation } from "../hooks";
 import { type Looker3dSettings, defaultPluginSettings } from "../settings";
 import {
   cuboidLabelLineWidthAtom,
-  current3dAnnotationModeAtom,
-  currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
   polylineLabelLineWidthAtom,
   selectedLabelForAnnotationAtom,
-  transformModeAtom,
 } from "../state";
 import {
   Archetype3d,
@@ -79,9 +71,6 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const setCurrent3dAnnotationMode = useSetRecoilState(
-    current3dAnnotationModeAtom
-  );
 
   const settings = fop.usePluginSettings<Looker3dSettings>(
     "3d",
@@ -104,15 +93,7 @@ export const ThreeDLabels = ({
     useRecoilState(selectedLabelForAnnotationAtom);
   const setEditSegmentsMode = useSetRecoilState(editSegmentsModeAtom);
 
-  const [transformMode, setTransformMode] = useRecoilState(transformModeAtom);
-  const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
-    currentArchetypeSelectedForTransformAtom
-  );
-
-  const setEditingToExistingPolyline =
-    useSetEditingToExisting3dLabel(ANNOTATION_POLYLINE);
-  const setEditingToExistingCuboid =
-    useSetEditingToExisting3dLabel(ANNOTATION_CUBOID);
+  const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
 
   const labelLevaControls = {
     cuboidLineWidget: {
@@ -147,34 +128,6 @@ export const ThreeDLabels = ({
     [setCuboidLineWidth, setPolylineWidth]
   );
 
-  const selectLabelForAnnotation = useCallback(
-    (label: OverlayLabel, archetype: Archetype3d) => {
-      setSelectedLabelForAnnotation(label);
-
-      // We only support translate for polylines for now
-      if (
-        isPolyline3dOverlay(label) &&
-        (transformMode === "rotate" || transformMode === "scale")
-      ) {
-        setTransformMode("translate");
-      }
-
-      if (archetype === ANNOTATION_CUBOID) {
-        setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
-      } else if (archetype === ANNOTATION_POLYLINE) {
-        setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
-      }
-    },
-    [
-      setSelectedLabelForAnnotation,
-      transformMode,
-      setTransformMode,
-      setCurrent3dAnnotationMode,
-    ]
-  );
-
-  const annotationEventBus = useAnnotationEventBus();
-
   const handleSelect = useCallback(
     (
       label: OverlayLabel,
@@ -183,36 +136,7 @@ export const ThreeDLabels = ({
     ) => {
       if (isSegmenting) return;
       if (mode === fos.ModalMode.ANNOTATE) {
-        // Check if field is read-only
-        const store = getDefaultStore();
-        const fieldSchemaData = store.get(labelSchemaData(label.path));
-        const isReadOnly = !!fieldSchemaData?.read_only;
-
-        annotationEventBus.dispatch("annotation:3dLabelSelected", {
-          id: label._id ?? label["id"],
-          archetype,
-          label,
-        });
-
-        if (archetype === ANNOTATION_CUBOID) {
-          if (!isReadOnly) {
-            selectLabelForAnnotation(label, archetype);
-            setCurrentArchetypeSelectedForTransform(archetype);
-          }
-
-          setEditingToExistingCuboid(label);
-          return;
-        }
-
-        if (archetype === ANNOTATION_POLYLINE) {
-          if (!isReadOnly) {
-            selectLabelForAnnotation(label, archetype);
-            setCurrentArchetypeSelectedForTransform(archetype);
-          }
-
-          setEditingToExistingPolyline(label);
-        }
-
+        select3DLabelForAnnotation(label, archetype);
         return;
       }
 
@@ -226,16 +150,7 @@ export const ThreeDLabels = ({
         },
       });
     },
-    [
-      onSelectLabel,
-      mode,
-      selectLabelForAnnotation,
-      isSegmenting,
-      setEditingToExistingPolyline,
-      setEditingToExistingCuboid,
-      setCurrentArchetypeSelectedForTransform,
-      annotationEventBus,
-    ]
+    [onSelectLabel, mode, select3DLabelForAnnotation, isSegmenting]
   );
 
   useEffect(() => {

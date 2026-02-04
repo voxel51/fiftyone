@@ -7,8 +7,9 @@ import {
   usePolylineOperations,
   workingAtom,
 } from "../annotation/store";
-import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
+import { hoveredLabelAtom } from "../state";
 import { isDetection, isPolyline } from "../types";
+import { useSelect3DLabelForAnnotation } from "./useSelect3DLabelForAnnotation";
 
 /**
  * Hook that registers event handlers for 3D annotation sidebar events.
@@ -16,19 +17,14 @@ import { isDetection, isPolyline } from "../types";
 export const use3dAnnotationEventHandlers = () => {
   const { updateCuboid } = useCuboidOperations();
   const { updatePolyline } = usePolylineOperations();
-  const setSelectedLabelForAnnotation = useSetRecoilState(
-    selectedLabelForAnnotationAtom
-  );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
 
   const handleSidebarLabelSelected = useCallback(
     (payload) => {
-      setSelectedLabelForAnnotation({
-        _id: payload.id,
-        ...payload.data,
-      });
+      select3DLabelForAnnotation(payload.data);
     },
-    [setSelectedLabelForAnnotation]
+    [select3DLabelForAnnotation]
   );
 
   const handleSidebarValueUpdated = useRecoilCallback(
