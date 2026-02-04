@@ -43,18 +43,14 @@ const Field = () => {
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
   const [currentLabel, setCurrent] = useAtom(current);
   const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
-  const schema = useMemo(() => createSchema(fields, disabled), [
-    disabled,
-    fields,
-  ]);
+  const schema = useMemo(
+    () => createSchema(fields, disabled),
+    [disabled, fields]
+  );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
 
   const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
-
-  if (!isCreating) {
-    return null;
-  }
 
   return (
     <>
