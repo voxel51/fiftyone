@@ -37,7 +37,6 @@ export function applyTransientToCuboid(
     ];
   }
 
-  // Dimensions delta - multiplicative for scale
   if (transient.dimensionsDelta) {
     result.dimensions = [
       detection.dimensions[0] + transient.dimensionsDelta[0],

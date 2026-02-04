@@ -139,6 +139,7 @@ export function isDetection3dOverlay(
   quaternion?: THREE.Vector4Tuple;
 } & Record<string, unknown> {
   return (
+    overlay &&
     typeof overlay === "object" &&
     "_cls" in overlay &&
     overlay._cls === DETECTION &&
@@ -159,6 +160,7 @@ export function isPolyline3dOverlay(
   points3d: THREE.Vector3Tuple[][];
 } & Record<string, unknown> {
   return (
+    overlay &&
     typeof overlay === "object" &&
     "_cls" in overlay &&
     overlay._cls === POLYLINE &&

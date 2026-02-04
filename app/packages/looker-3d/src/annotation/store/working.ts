@@ -101,8 +101,8 @@ function mapOverlaysToLabelId(
         _cls: "Detection",
         location: overlay.location as [number, number, number],
         dimensions: overlay.dimensions as [number, number, number],
-        rotation: (overlay as any).rotation,
-        quaternion: (overlay as any).quaternion,
+        rotation: overlay.rotation,
+        quaternion: overlay.quaternion,
       };
       labelsById[overlay._id] = roundDetection(detection);
     } else if (isPolyline3dOverlay(overlay)) {
@@ -110,8 +110,8 @@ function mapOverlaysToLabelId(
         ...overlay,
         _cls: "Polyline",
         points3d: overlay.points3d,
-        filled: (overlay as any).filled,
-        closed: (overlay as any).closed,
+        filled: !!overlay.filled,
+        closed: !!overlay.closed,
       };
       labelsById[overlay._id] = roundPolyline(polyline);
     }

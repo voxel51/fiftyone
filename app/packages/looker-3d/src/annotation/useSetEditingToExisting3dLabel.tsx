@@ -49,7 +49,7 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
       resetCurrentEditing();
       resetEditing();
     };
-  }, [resetCurrentEditing, resetEditing]);
+  }, []);
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -98,7 +98,7 @@ export function useSetEditingToExisting3dLabel(type: AnnotationType) {
         },
       } as fos.AnnotationLabel);
 
-      setEditing(currentEditingAtom as any);
+      setEditing(currentEditingAtom);
 
       jotaiStore.set(savedLabel, effectiveLabel);
     },
