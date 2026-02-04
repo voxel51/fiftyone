@@ -19,6 +19,10 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       return [{ kind: EntryKind.LOADING }] as SidebarEntry[];
     }
 
+    if (!expanded) {
+      return [];
+    }
+
     const labelsByField: Record<
       string,
       Array<{ atom: typeof atoms[0]; id: string; label: string }>
@@ -43,7 +47,6 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
 
     const result: SidebarEntry[] = [];
     const fieldsToShow = activeFields ?? Object.keys(labelsByField);
-
     for (const field of fieldsToShow) {
       const fieldLabels = labelsByField[field];
       if (!fieldLabels?.length) continue;
@@ -53,15 +56,14 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
       }
     }
 
-    result.push(...primitiveEntries);
-
     return result as SidebarEntry[];
   }, [atoms, activeFields, state, primitiveEntries]);
 
   return [
     [
       { kind: EntryKind.GROUP, name: LABELS_GROUP_NAME },
-      ...(expanded ? entries : []),
+      ...entries,
+      ...primitiveEntries,
     ] as SidebarEntry[],
     () => {},
   ];
