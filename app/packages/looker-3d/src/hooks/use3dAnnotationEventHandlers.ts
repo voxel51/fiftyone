@@ -1,20 +1,19 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { useCallback } from "react";
-import { useSetRecoilState } from "recoil";
+import { useRecoilCallback, useSetRecoilState } from "recoil";
 import {
   useCuboidOperations,
   usePolylineOperations,
-  useUpdateWorkingLabel,
+  workingAtom,
 } from "../annotation/store";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
-import { isDetection3dOverlay, isPolyline3dOverlay } from "../types";
+import { isDetection, isPolyline } from "../types";
 
 /**
  * Hook that registers event handlers for 3D annotation sidebar events.
  */
 export const use3dAnnotationEventHandlers = () => {
-  const updateWorkingLabel = useUpdateWorkingLabel();
   const { updateCuboid } = useCuboidOperations();
   const { updatePolyline } = usePolylineOperations();
   const setSelectedLabelForAnnotation = useSetRecoilState(
@@ -22,48 +21,64 @@ export const use3dAnnotationEventHandlers = () => {
   );
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
 
-  useAnnotationEventHandler(
-    "annotation:sidebarLabelSelected",
-    useCallback((payload) => {
+  const handleSidebarLabelSelected = useCallback(
+    (payload) => {
       setSelectedLabelForAnnotation({
         _id: payload.id,
         ...payload.data,
       });
-    }, [])
+    },
+    [setSelectedLabelForAnnotation]
   );
 
-  useAnnotationEventHandler(
-    "annotation:sidebarValueUpdated",
-    useCallback(
-      (payload) => {
+  const handleSidebarValueUpdated = useRecoilCallback(
+    ({ snapshot }) =>
+      async (payload: { value: Record<string, unknown> }) => {
         const { _id, ...updates } = payload.value;
 
-        if (isDetection3dOverlay(updates)) {
+        if (typeof _id !== "string") return;
+
+        const working = await snapshot.getPromise(workingAtom);
+        const existingLabel = working.doc.labelsById[_id];
+
+        if (!existingLabel) return;
+
+        if (isDetection(existingLabel)) {
           updateCuboid(_id, coerceStringBooleans(updates));
-        } else if (isPolyline3dOverlay(updates)) {
+        } else if (isPolyline(existingLabel)) {
           updatePolyline(_id, coerceStringBooleans(updates));
-        } else {
-          // Fallback for other types (non-undoable)
-          updateWorkingLabel(_id, coerceStringBooleans(updates));
         }
       },
-      [updateCuboid, updatePolyline, updateWorkingLabel]
-    )
+    [updateCuboid, updatePolyline]
   );
 
-  useAnnotationEventHandler(
-    "annotation:sidebarLabelHover",
-    useCallback((payload) => {
+  const handleSidebarLabelHover = useCallback(
+    (payload) => {
       setHoveredLabel({
         id: payload.id,
       });
-    }, [])
+    },
+    [setHoveredLabel]
   );
 
+  const handleSidebarLabelUnhover = useCallback(() => {
+    setHoveredLabel(null);
+  }, [setHoveredLabel]);
+
+  useAnnotationEventHandler(
+    "annotation:sidebarLabelSelected",
+    handleSidebarLabelSelected
+  );
+  useAnnotationEventHandler(
+    "annotation:sidebarValueUpdated",
+    handleSidebarValueUpdated
+  );
+  useAnnotationEventHandler(
+    "annotation:sidebarLabelHover",
+    handleSidebarLabelHover
+  );
   useAnnotationEventHandler(
     "annotation:sidebarLabelUnhover",
-    useCallback(() => {
-      setHoveredLabel(null);
-    }, [])
+    handleSidebarLabelUnhover
   );
 };

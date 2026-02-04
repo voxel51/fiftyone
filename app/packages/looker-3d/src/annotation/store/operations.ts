@@ -43,7 +43,7 @@ export function useCuboidOperations() {
   const currentSampleId = useRecoilValue(fos.currentSampleId);
 
   /**
-   * Updates cuboid properties (location, dimensions, rotation, quaternion).
+   * Updates cuboid properties.
    * This is the core undoable operation - all cuboid modifications should
    * go through this to ensure proper undo/redo support.
    */
@@ -57,12 +57,16 @@ export function useCuboidOperations() {
           return;
         }
 
-        const previousState: Partial<ReconciledDetection3D> = {
-          location: existingLabel.location,
-          dimensions: existingLabel.dimensions,
-          rotation: existingLabel.rotation,
-          quaternion: existingLabel.quaternion,
-        };
+        // Dynamically capture only the fields being updated for undo
+        const previousState: Partial<ReconciledDetection3D> = {};
+        for (const key of Object.keys(updates) as Array<
+          keyof ReconciledDetection3D
+        >) {
+          if (key in existingLabel) {
+            (previousState as Record<string, unknown>)[key] =
+              existingLabel[key];
+          }
+        }
 
         const roundedUpdates: Partial<ReconciledDetection3D> = { ...updates };
         if (updates.location) {
@@ -236,12 +240,16 @@ export function usePolylineOperations() {
           return;
         }
 
-        const previousState: Partial<ReconciledPolyline3D> = {
-          points3d: existingLabel.points3d,
-          label: existingLabel.label,
-          filled: existingLabel.filled,
-          closed: existingLabel.closed,
-        };
+        // Dynamically capture only the fields being updated for undo
+        const previousState: Partial<ReconciledPolyline3D> = {};
+        for (const key of Object.keys(updates) as Array<
+          keyof ReconciledPolyline3D
+        >) {
+          if (key in existingLabel) {
+            (previousState as Record<string, unknown>)[key] =
+              existingLabel[key];
+          }
+        }
 
         const roundedUpdates: Partial<ReconciledPolyline3D> = { ...updates };
         if (updates.points3d) {
