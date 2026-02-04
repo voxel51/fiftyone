@@ -138,11 +138,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
           const value = { ...data, ...result };
 
           if (isEqual(value, overlay.label)) {
-            // todo: there's a stale bug in overlay.label somewhere
-            // just fixing stale closure on overlay didn't fix it,
-            // since staleness might be deeper
-            // until that's fixed, we skip this optimization
-            // return;
+            return;
           }
 
           eventBus.dispatch("annotation:sidebarValueUpdated", {
