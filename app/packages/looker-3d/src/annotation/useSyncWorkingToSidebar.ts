@@ -2,8 +2,10 @@ import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Side
 import type { AnnotationLabel } from "@fiftyone/state";
 import type { WritableAtom } from "jotai";
 import { getDefaultStore } from "jotai";
+import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import { useWorkingDoc } from "./store";
+import type { ReconciledDetection3D, ReconciledPolyline3D } from "./types";
 import { currentEditingCuboidAtom } from "./useSetEditingToNewCuboid";
 import { currentEditingPolylineAtom } from "./useSetEditingToNewPolyline";
 
@@ -28,14 +30,15 @@ export function useSyncWorkingToSidebar() {
   const workingDoc = useWorkingDoc();
   const store = getDefaultStore();
 
-  // Track if we're currently updating to prevent loops
-  const isUpdatingRef = useRef(false);
+  // Track the last synced working label to prevent unnecessary updates
+  const lastSyncedWorkingLabelRef = useRef<
+    ReconciledDetection3D | ReconciledPolyline3D | null
+  >(null);
+
   // Store cleared editing state for potential restoration on redo
   const clearedEditingRef = useRef<ClearedEditingState | null>(null);
 
   useEffect(() => {
-    if (isUpdatingRef.current) return;
-
     // Check if we need to restore previously cleared editing state (redo case)
     if (clearedEditingRef.current) {
       const { labelId, editingAtomRef, editingData } =
@@ -45,7 +48,6 @@ export function useSyncWorkingToSidebar() {
         workingDoc.labelsById[labelId] &&
         !workingDoc.deletedIds.has(labelId)
       ) {
-        isUpdatingRef.current = true;
         // Sync latest data from working store
         const workingLabel = workingDoc.labelsById[labelId];
         const restoredEditing = {
@@ -55,9 +57,7 @@ export function useSyncWorkingToSidebar() {
         store.set(editingAtomRef, restoredEditing);
         store.set(editingAtom, editingAtomRef);
         clearedEditingRef.current = null;
-        queueMicrotask(() => {
-          isUpdatingRef.current = false;
-        });
+        lastSyncedWorkingLabelRef.current = workingLabel;
         return;
       }
     }
@@ -80,7 +80,6 @@ export function useSyncWorkingToSidebar() {
 
     // If the label was deleted (like via undo of creation), clear editing state
     if (workingDoc.deletedIds.has(labelId)) {
-      isUpdatingRef.current = true;
       // Store for potential redo restoration
       clearedEditingRef.current = {
         labelId,
@@ -89,26 +88,25 @@ export function useSyncWorkingToSidebar() {
       };
       store.set(editingValue, null);
       store.set(editingAtom, null);
-      queueMicrotask(() => {
-        isUpdatingRef.current = false;
-      });
+      lastSyncedWorkingLabelRef.current = null;
       return;
     }
 
     const workingLabel = workingDoc.labelsById[labelId];
     if (!workingLabel) return;
 
-    const currentData = currentEditing.data;
-
-    // Avoid unnecessary updates)
-    if (
-      JSON.stringify(currentData) ===
-      JSON.stringify({ ...currentData, ...workingLabel })
-    ) {
+    if (lastSyncedWorkingLabelRef.current === workingLabel) {
       return;
     }
 
-    isUpdatingRef.current = true;
+    const currentData = currentEditing.data;
+
+    const mergedData = { ...currentData, ...workingLabel };
+    if (isEqual(currentData, mergedData)) {
+      // No actual difference, but update the ref to track this working label
+      lastSyncedWorkingLabelRef.current = workingLabel;
+      return;
+    }
 
     const updatedEditing = {
       ...currentEditing,
@@ -123,10 +121,6 @@ export function useSyncWorkingToSidebar() {
 
     store.set(editingValue, updatedEditing);
 
-    // Reset flag in a microtask to prevent update loops
-    // Flag stays "true" through any synchronous cascading effects from `store.set()`
-    queueMicrotask(() => {
-      isUpdatingRef.current = false;
-    });
+    lastSyncedWorkingLabelRef.current = workingLabel;
   }, [workingDoc, store]);
 }
