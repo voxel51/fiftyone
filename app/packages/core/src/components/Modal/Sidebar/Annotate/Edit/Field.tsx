@@ -5,13 +5,14 @@ import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
-  isNew,
 } from "./state";
+import { useQuickDraw } from "./useQuickDraw";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -41,20 +42,17 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const schema = useMemo(
-    () => createSchema(fields, disabled),
-    [disabled, fields]
-  );
+  const [currentLabel, setCurrent] = useAtom(current);
+  const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
+  const schema = useMemo(() => createSchema(fields, disabled), [
+    disabled,
+    fields,
+  ]);
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const isCreating = useAtomValue(isNew);
 
   const polylinePointTransforms =
     useRecoilValue(stagedPolylineTransformsAtom) ?? {};
-
-  if (!isCreating) {
-    return null;
-  }
 
   // todo: temp: skip for 3d
   if (Object.keys(polylinePointTransforms).length > 0) {
@@ -69,7 +67,11 @@ const Field = () => {
             schema={schema}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              setCurrentField(field);
+              if (quickDrawActive) {
+                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
+              } else {
+                setCurrentField(field);
+              }
             }}
           />
         </div>

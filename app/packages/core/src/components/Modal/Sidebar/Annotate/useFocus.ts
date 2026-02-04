@@ -9,6 +9,7 @@ import { editing } from "./Edit";
 import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 
 const STORE = getDefaultStore();
 
@@ -19,6 +20,7 @@ export default function useFocus() {
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
+  const { quickDrawActive } = useQuickDraw();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -43,9 +45,11 @@ export default function useFocus() {
           return;
         }
 
-        onExit();
+        if (!quickDrawActive) {
+          onExit();
+        }
       },
-      [onExit]
+      [onExit, quickDrawActive]
     )
   );
 

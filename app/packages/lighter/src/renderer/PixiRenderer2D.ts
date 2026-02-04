@@ -21,9 +21,9 @@ import {
 import type { LighterEventGroup } from "../events";
 import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
-import { DashLine } from "./pixi-renderer-utils/dashed-line";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
 import { sharedPixiApp } from "./SharedPixiApplication";
+import { DashLine } from "./pixi-renderer-utils/dashed-line";
 
 /**
  * PixiJS renderer.
@@ -194,24 +194,33 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
-  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
-    borderWidth /= this.getScale();
-    const sceneDimensions = this.getContainerDimensions();
+  drawScrim(
+    bounds: Rect,
+    canonicalMediaBounds: Rect,
+    containerId: string
+  ): void {
     const mask = new PIXI.Graphics();
-
-    mask.rect(0, 0, sceneDimensions.width, sceneDimensions.height);
+    mask.rect(
+      canonicalMediaBounds.x,
+      canonicalMediaBounds.y,
+      canonicalMediaBounds.width,
+      canonicalMediaBounds.height
+    );
     mask.setFillStyle({ color: SELECTED_COLOR, alpha: SELECTED_ALPHA });
     mask.fill();
 
-    const halfWidth = borderWidth / 2;
-    const x = Math.max(bounds.x - halfWidth, 0);
-    const y = Math.max(bounds.y - halfWidth, 0);
-    const w =
-      Math.min(bounds.width + borderWidth, sceneDimensions.width - bounds.x) +
-      Math.min(bounds.x, 0);
-    const h =
-      Math.min(bounds.height + borderWidth, sceneDimensions.height - bounds.y) +
-      Math.min(bounds.y, 0);
+    const x = Math.max(bounds.x, canonicalMediaBounds.x);
+    const y = Math.max(bounds.y, canonicalMediaBounds.y);
+    const maxRight = Math.min(
+      canonicalMediaBounds.x + canonicalMediaBounds.width,
+      bounds.x + bounds.width
+    );
+    const w = maxRight - x;
+    const maxBottom = Math.min(
+      canonicalMediaBounds.y + canonicalMediaBounds.height,
+      bounds.y + bounds.height
+    );
+    const h = maxBottom - y;
 
     mask.rect(x, y, w, h);
     mask.cut();

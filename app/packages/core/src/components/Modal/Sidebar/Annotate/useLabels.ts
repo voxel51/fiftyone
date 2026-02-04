@@ -54,22 +54,31 @@ const handleSample = async ({
   );
 };
 
-export const addLabel = atom(undefined, (get, set, label: AnnotationLabel) => {
-  const list = get(labels);
-  const newList = [...list, label];
+export const addLabel = atom(
+  undefined,
+  (get, set, newLabel: AnnotationLabel) => {
+    const existingLabels = get(labels);
+    const alreadyHaveIt = existingLabels.some(
+      (label) => label.overlay.id === newLabel.overlay.id
+    );
 
-  set(
-    labels,
-    newList.sort((a, b) =>
-      (a.data.label ?? "").localeCompare(b.data?.label ?? "")
-    )
-  );
-});
+    if (!alreadyHaveIt) {
+      const newList = [...existingLabels, newLabel];
+
+      set(
+        labels,
+        newList.sort((a, b) =>
+          (a.data.label ?? "").localeCompare(b.data?.label ?? "")
+        )
+      );
+    }
+  }
+);
 
 export const labels = atom<Array<AnnotationLabel>>([]);
 export const labelAtoms = splitAtom(labels, ({ overlay }) => overlay.id);
 export const labelsByPath = atom((get) => {
-  const map = {};
+  const map: Record<string, AnnotationLabel[]> = {};
   for (const label of get(labels)) {
     if (!label.path) {
       continue;
@@ -173,20 +182,19 @@ export default function useLabels() {
   const updateLabelAtom = useUpdateLabelAtom();
 
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) =>
-      async (path: string) => {
-        const loadable = await snapshot.getLoadable(field(path));
-        const type = loadable
-          .getValue()
-          ?.embeddedDocType?.split(".")
-          .slice(-1)[0];
+    ({ snapshot }) => async (path: string) => {
+      const loadable = await snapshot.getLoadable(field(path));
+      const type = loadable
+        .getValue()
+        ?.embeddedDocType?.split(".")
+        .slice(-1)[0];
 
-        if (!type) {
-          throw new Error("no type");
-        }
+      if (!type) {
+        throw new Error("no type");
+      }
 
-        return type as LabelType;
-      },
+      return type as LabelType;
+    },
     []
   );
 

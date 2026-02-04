@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus, type EventDispatcher } from "@fiftyone/events";
+import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { getSampleSrc } from "@fiftyone/state";
 import type { LighterEventGroup } from "../events";
 import type { Renderer2D } from "../renderer/Renderer2D";
