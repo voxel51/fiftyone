@@ -1,37 +1,44 @@
-import { useTheme } from "@fiftyone/components";
+import { useAnnotationController } from "@fiftyone/annotation";
 import { ModalMode, useModalMode } from "@fiftyone/state";
+import {
+  Descriptor,
+  Size,
+  ToggleSwitch,
+  ToggleSwitchTab,
+} from "@voxel51/voodo";
 import { useAtomValue } from "jotai";
-import React from "react";
+import { useCallback } from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
-import { useAnnotationController } from "@fiftyone/annotation";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
   width: 100%;
+  margin-top: 12px;
 `;
 
-const Items = styled.div`
-  display: flex;
-  position: relative;
-  border: 1px solid ${({ theme }) => theme.background.level1};
-  border-radius: 3px;
-  width: 100%;
-`;
-
-const Item = styled.div`
-  cursor: pointer;
-  width: 50%;
-  text-align: center;
-`;
+const MODE_TABS: Descriptor<ToggleSwitchTab>[] = [
+  { id: ModalMode.EXPLORE, data: { label: "Explore", content: null } },
+  { id: ModalMode.ANNOTATE, data: { label: "Annotate", content: null } },
+];
 
 const Mode = () => {
   const mode = useModalMode();
   const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
-  const theme = useTheme();
-  const background = { background: theme.background.level1 };
-  const text = { color: theme.text.secondary };
   const editing = useAtomValue(isEditing);
+
+  const defaultIndex = mode === ModalMode.ANNOTATE ? 1 : 0;
+
+  const handleChange = useCallback(
+    (index: number) => {
+      if (index === 1) {
+        enterAnnotationMode();
+      } else {
+        exitAnnotationMode();
+      }
+    },
+    [enterAnnotationMode, exitAnnotationMode]
+  );
 
   if (editing) {
     return null;
@@ -39,30 +46,15 @@ const Mode = () => {
 
   return (
     <Container>
-      <Items>
-        <Item
-          data-cy={ModalMode.EXPLORE}
-          style={mode === ModalMode.EXPLORE ? background : text}
-          onClick={() => {
-            if (mode === ModalMode.ANNOTATE) {
-              exitAnnotationMode();
-            }
-          }}
-        >
-          Explore
-        </Item>
-        <Item
-          data-cy={ModalMode.ANNOTATE}
-          style={mode === ModalMode.ANNOTATE ? background : text}
-          onClick={() => {
-            if (mode !== ModalMode.ANNOTATE) {
-              enterAnnotationMode();
-            }
-          }}
-        >
-          Annotate
-        </Item>
-      </Items>
+      <ToggleSwitch
+        key={mode}
+        tabs={MODE_TABS}
+        defaultIndex={defaultIndex}
+        onChange={handleChange}
+        size={Size.Sm}
+        fullWidth
+        tabPanelClassName="hidden"
+      />
     </Container>
   );
 };
