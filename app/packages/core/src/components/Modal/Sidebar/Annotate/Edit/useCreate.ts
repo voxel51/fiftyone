@@ -16,7 +16,6 @@ import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
-import { useLabelsContext } from "../useLabels";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
@@ -74,13 +73,11 @@ const useCreateAnnotationLabel = () => {
 export default function useCreate(type: LabelType) {
   const setEditing = useSetAtom(editing);
   const createAnnotationLabel = useCreateAnnotationLabel();
-  const { addLabelToSidebar } = useLabelsContext();
 
   return useCallback(() => {
     const label = createAnnotationLabel(type);
 
     if (label) {
-      addLabelToSidebar(label);
       setEditing(
         atom<AnnotationLabel>({
           isNew: true,
@@ -90,5 +87,5 @@ export default function useCreate(type: LabelType) {
     } else {
       setEditing(type);
     }
-  }, [addLabelToSidebar, createAnnotationLabel, setEditing, type]);
+  }, [createAnnotationLabel, setEditing, type]);
 }

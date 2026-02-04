@@ -1,5 +1,6 @@
 import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
+import { BoundingBoxOverlay } from "@fiftyone/lighter";
 
 export const AnnotationChannelId = "default";
 
@@ -75,6 +76,13 @@ export type AnnotationEventGroup = {
    */
   "annotation:sidebarLabelUnhover": {
     id: string;
+  };
+  /**
+   * Notification event emitted when a canvas overlay is established.
+   */
+  "annotation:canvasDetectionOverlayEstablish": {
+    id: string;
+    overlay: BoundingBoxOverlay;
   };
   /**
    * Notification event emitted when a canvas overlay is hovered.
