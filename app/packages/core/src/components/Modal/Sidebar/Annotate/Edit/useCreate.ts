@@ -16,7 +16,6 @@ import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
-import { addLabel } from "../useLabels";
 import { useQuickDraw } from "./useQuickDraw";
 
 const useCreateAnnotationLabel = () => {
@@ -81,12 +80,6 @@ const useCreateAnnotationLabel = () => {
           label: data,
         });
         addOverlay(overlay);
-
-        // In quick draw mode, add label to sidebar BEFORE entering interactive mode
-        if (isQuickDraw) {
-          const labelData = { data, overlay, path: field, type };
-          store.set(addLabel, labelData);
-        }
 
         const handler = new InteractiveDetectionHandler(overlay);
         scene?.enterInteractiveMode(handler);

@@ -5,7 +5,8 @@ import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
 import { fieldType, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
-import { defaultField } from "./state";
+import { defaultField, useAnnotationContext } from "./state";
+import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -43,6 +44,8 @@ export const useQuickDraw = () => {
   const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
+  const { scene, addOverlay } = useLighter();
+  const { selectedLabel } = useAnnotationContext();
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -236,6 +239,38 @@ export const useQuickDraw = () => {
     [quickDrawActive, getQuickDrawDetectionLabel]
   );
 
+  /**
+   * Handle the transition from creating one detection to another.
+   *
+   * This effectively finalizes the current bounding box and creates a new
+   * drawing session.
+   */
+  const handleQuickDrawTransition = useCallback(
+    /**
+     * Closes the current drawing session and initializes a new detection.
+     *
+     * @param initDetection Function to initialize a new detection label
+     */
+    (initDetection: () => void) => {
+      if (selectedLabel && quickDrawActive) {
+        // Always exit interactive mode after save
+        // This ensures clean state transition
+        if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+          scene.exitInteractiveMode();
+          addOverlay(selectedLabel.overlay as BaseOverlay);
+        }
+
+        // Track last-used detection field and label for auto-assignment
+        trackLastUsedDetection(selectedLabel.path, selectedLabel.data.label);
+
+        // Create next detection immediately
+        // This will enter interactive mode with a new handler
+        initDetection();
+      }
+    },
+    [addOverlay, quickDrawActive, scene, selectedLabel, trackLastUsedDetection]
+  );
+
   return useMemo(
     () => ({
       // State (read-only)
@@ -250,8 +285,9 @@ export const useQuickDraw = () => {
       getQuickDrawDetectionField,
       getQuickDrawDetectionLabel,
 
-      // Tracking (for useSave)
+      // Tracking and transitions
       trackLastUsedDetection,
+      handleQuickDrawTransition,
 
       // Field switching (for Field component)
       handleQuickDrawFieldChange,
@@ -263,6 +299,7 @@ export const useQuickDraw = () => {
       disableQuickDraw,
       getQuickDrawDetectionField,
       getQuickDrawDetectionLabel,
+      handleQuickDrawTransition,
       trackLastUsedDetection,
       handleQuickDrawFieldChange,
     ]

@@ -20,6 +20,7 @@ export * from "./schema";
 export { default as sizeBytesEstimate } from "./size-bytes-estimate";
 export * as styles from "./styles";
 export * from "./type-check";
+export * from "./validation";
 
 interface O {
   [key: string]: O | any;
