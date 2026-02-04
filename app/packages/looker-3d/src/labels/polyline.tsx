@@ -4,7 +4,6 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
   current3dAnnotationModeAtom,
@@ -76,6 +75,7 @@ export const Polyline = ({
     centroid,
     transformControlsRef,
     contentRef,
+    effectivePoints3d,
     markers,
     previewLines,
     handleTransformStart,
@@ -95,7 +95,7 @@ export const Polyline = ({
   });
 
   const lines = useMemo(() => {
-    const lineElements = points3d
+    const lineElements = effectivePoints3d
       .map((pts, i) => {
         if (!pts || !Array.isArray(pts) || pts.length === 0) {
           console.warn(`Invalid points array for polyline segment ${i}:`, pts);
@@ -128,7 +128,7 @@ export const Polyline = ({
 
     // If closed, add exactly one closing line per segment
     if (closed) {
-      const closingLines = points3d
+      const closingLines = effectivePoints3d
         .map((pts, i) => {
           if (!pts || !Array.isArray(pts) || pts.length < 2) {
             return null;
@@ -163,7 +163,7 @@ export const Polyline = ({
 
     return lineElements;
   }, [
-    points3d,
+    effectivePoints3d,
     closed,
     strokeAndFillColor,
     lineWidth,
@@ -190,7 +190,7 @@ export const Polyline = ({
   const filledMeshes = useMemo(() => {
     if (!filled || !material) return null;
 
-    const validPoints3d = validatePoints3dArray(points3d);
+    const validPoints3d = validatePoints3dArray(effectivePoints3d);
 
     if (validPoints3d.length === 0) {
       console.warn("No valid points found for filled polygon meshes");
@@ -208,13 +208,13 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, points3d, rotation, material, label._id]);
+  }, [filled, effectivePoints3d, rotation, material, label._id]);
 
   useEffect(() => {
     const currentMeshes = meshesRef.current;
 
     if (filled && material) {
-      const validPoints3d = validatePoints3dArray(points3d);
+      const validPoints3d = validatePoints3dArray(effectivePoints3d);
 
       const meshes =
         validPoints3d.length > 0
@@ -233,7 +233,7 @@ export const Polyline = ({
         }
       });
     };
-  }, [filled, points3d, material]);
+  }, [filled, effectivePoints3d, material]);
 
   // Cleanup material when it changes or component unmounts
   useEffect(() => {
@@ -243,15 +243,6 @@ export const Polyline = ({
       }
     };
   }, [material]);
-
-  const transientState = useTransientPolyline(label._id);
-
-  const displayPosition = useMemo(() => {
-    if (transientState?.positionDelta) {
-      return transientState.positionDelta as THREE.Vector3Tuple;
-    }
-    return [0, 0, 0] as THREE.Vector3Tuple;
-  }, [transientState?.positionDelta]);
 
   const content = (
     <>
@@ -271,7 +262,7 @@ export const Polyline = ({
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group ref={contentRef} position={displayPosition}>
+      <group ref={contentRef}>
         {markers}
         {previewLines}
         <group

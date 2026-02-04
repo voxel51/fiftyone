@@ -2,7 +2,7 @@ import { POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import chroma from "chroma-js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
@@ -60,7 +60,6 @@ export const usePolylineAnnotation = ({
 
   const transformControlsRef = useRef(null);
   const contentRef = useRef<THREE.Group>(null);
-  const [startMatrix, setStartMatrix] = useState<THREE.Matrix4 | null>(null);
 
   // Compute effective points3d from working store (or fallback to props)
   const effectivePoints3d = useMemo(() => {
@@ -187,35 +186,23 @@ export const usePolylineAnnotation = ({
   ]);
 
   const handleTransformStart = useCallback(() => {
-    const grp = contentRef.current;
-    if (!grp) return;
-
-    // Store the start matrix for computing delta later
-    setStartMatrix(grp.matrixWorld.clone());
     startDrag(labelId);
   }, [startDrag, labelId]);
 
   const handleTransformChange = useCallback(() => {
     const grp = contentRef.current;
-    if (!grp || !startMatrix) return;
+    if (!grp) return;
 
-    // Compute world-space delta from start matrix
-    const endMatrix = grp.matrixWorld.clone();
-    const deltaMatrix = endMatrix
-      .clone()
-      .multiply(startMatrix.clone().invert());
-
-    // Extract position delta from the delta matrix
-    const deltaPosition = new THREE.Vector3();
-    deltaPosition.setFromMatrixPosition(deltaMatrix);
+    // Capture the position delta for finalization
+    // TransformControls handles the visual movement of the group directly
+    const position = grp.position;
 
     const transientUpdate: TransientPolylineState = {
-      positionDelta: [deltaPosition.x, deltaPosition.y, deltaPosition.z],
+      positionDelta: [position.x, position.y, position.z],
     };
 
-    // Update transient store
     updatePolyline(labelId, transientUpdate);
-  }, [labelId, startMatrix, updatePolyline]);
+  }, [labelId, updatePolyline]);
 
   // This effect clears transient state and drag state on unmount
   useEffect(() => {
@@ -228,8 +215,7 @@ export const usePolylineAnnotation = ({
   const handleTransformEnd = useCallback(() => {
     const grp = contentRef.current;
 
-    if (!grp || !startMatrix || !transientState) {
-      setStartMatrix(null);
+    if (!grp || !transientState) {
       endDrag(labelId);
       return;
     }
@@ -238,8 +224,7 @@ export const usePolylineAnnotation = ({
 
     // Reset group position to prevent double-application
     grp.position.set(0, 0, 0);
-    setStartMatrix(null);
-  }, [labelId, startMatrix, transientState, finalizePolylineDrag, endDrag]);
+  }, [labelId, transientState, finalizePolylineDrag, endDrag]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
