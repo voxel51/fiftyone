@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { useCallback, useEffect } from "react";
 import {
-  atom,
   atomFamily,
   DefaultValue,
   selector,
@@ -80,15 +79,6 @@ export const workingDocSelector = selector<WorkingDoc>({
   },
 });
 
-/**
- * Atom to track whether working store is dirty (has uncommitted changes).
- * This is set when labels are modified and cleared after persistence.
- */
-export const workingDirtyAtom = atom<boolean>({
-  key: "fo3d-workingDirty",
-  default: false,
-});
-
 // =============================================================================
 // INITIALIZATION HOOKS
 // =============================================================================
@@ -139,7 +129,6 @@ function mapOverlaysToLabelId(
  */
 export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
   const setWorking = useSetRecoilState(workingAtom);
-  const setDirty = useSetRecoilState(workingDirtyAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const workingState = useRecoilValue(workingAtom);
   const mode = fos.useModalMode();
@@ -163,8 +152,6 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
       },
       initialized: true,
     });
-
-    setDirty(false);
   }, [mode, currentSampleId, rawOverlays, workingState.initialized]);
 
   // Return a function to force re-initialization (eg., after save)
@@ -180,9 +167,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
       },
       initialized: true,
     });
-
-    setDirty(false);
-  }, [currentSampleId, rawOverlays, setWorking, setDirty]);
+  }, [currentSampleId, rawOverlays, setWorking]);
 
   return { reinitialize };
 }
@@ -193,14 +178,12 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 export function useResetWorkingOnModeChange() {
   const mode = fos.useModalMode();
   const setWorking = useSetRecoilState(workingAtom);
-  const setDirty = useSetRecoilState(workingDirtyAtom);
 
   useEffect(() => {
     if (mode !== fos.ModalMode.ANNOTATE) {
       setWorking(defaultWorkingState);
-      setDirty(false);
     }
-  }, [mode, setWorking, setDirty]);
+  }, [mode, setWorking]);
 }
 
 // =============================================================================
@@ -233,13 +216,6 @@ export function useIsLabelDeleted(labelId: LabelId): boolean {
 }
 
 /**
- * Hook that returns whether the working store is dirty.
- */
-export function useIsWorkingDirty(): boolean {
-  return useRecoilValue(workingDirtyAtom);
-}
-
-/**
  * Hook that returns all detections from the working store.
  */
 export function useWorkingDetections(): ReconciledDetection3D[] {
@@ -269,8 +245,6 @@ export function useWorkingPolylines(): ReconciledPolyline3D[] {
  * Hook that returns a callback to update a label in the working store.
  */
 export function useUpdateWorkingLabel() {
-  const setDirty = useSetRecoilState(workingDirtyAtom);
-
   return useRecoilCallback(
     ({ set }) =>
       (
@@ -333,10 +307,8 @@ export function useUpdateWorkingLabel() {
             },
           };
         });
-
-        setDirty(true);
       },
-    [setDirty]
+    []
   );
 }
 
@@ -344,8 +316,6 @@ export function useUpdateWorkingLabel() {
  * Hook that returns a callback to add a new label to the working store.
  */
 export function useAddWorkingLabel() {
-  const setDirty = useSetRecoilState(workingDirtyAtom);
-
   return useRecoilCallback(
     ({ set }) =>
       (label: ReconciledDetection3D | ReconciledPolyline3D) => {
@@ -363,10 +333,8 @@ export function useAddWorkingLabel() {
             },
           },
         }));
-
-        setDirty(true);
       },
-    [setDirty]
+    []
   );
 }
 
@@ -374,8 +342,6 @@ export function useAddWorkingLabel() {
  * Hook that returns a callback to delete a label from the working store.
  */
 export function useDeleteWorkingLabel() {
-  const setDirty = useSetRecoilState(workingDirtyAtom);
-
   return useRecoilCallback(
     ({ set }) =>
       (labelId: LabelId) => {
@@ -391,10 +357,8 @@ export function useDeleteWorkingLabel() {
             },
           };
         });
-
-        setDirty(true);
       },
-    [setDirty]
+    []
   );
 }
 
@@ -402,8 +366,6 @@ export function useDeleteWorkingLabel() {
  * Hook that returns a callback to restore a deleted label.
  */
 export function useRestoreWorkingLabel() {
-  const setDirty = useSetRecoilState(workingDirtyAtom);
-
   return useRecoilCallback(
     ({ set }) =>
       (labelId: LabelId) => {
@@ -419,9 +381,7 @@ export function useRestoreWorkingLabel() {
             },
           };
         });
-
-        setDirty(true);
       },
-    [setDirty]
+    []
   );
 }

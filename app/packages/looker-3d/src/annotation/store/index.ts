@@ -21,7 +21,6 @@ export {
   useDeleteWorkingLabel,
   useInitializeWorking,
   useIsLabelDeleted,
-  useIsWorkingDirty,
   useResetWorkingOnModeChange,
   useRestoreWorkingLabel,
   useUpdateWorkingLabel,
@@ -31,7 +30,6 @@ export {
   useWorkingPolylines,
   workingAtom,
   workingAtomFamily,
-  workingDirtyAtom,
   workingDocSelector,
 } from "./working";
 
