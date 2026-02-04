@@ -20,6 +20,7 @@ import {
   useUpdateWorkingLabel,
   workingAtom,
 } from "./working";
+import { quaternionToRadians } from "../../utils";
 
 // =============================================================================
 // CUBOID OPERATIONS
@@ -133,8 +134,7 @@ export function useCuboidOperations() {
 
         if (transient.quaternionOverride) {
           newState.quaternion = transient.quaternionOverride;
-          // Clear rotation since quaternion is authoritative
-          newState.rotation = undefined;
+          newState.rotation = quaternionToRadians(transient.quaternionOverride);
         }
 
         await updateCuboid(labelId, newState);
