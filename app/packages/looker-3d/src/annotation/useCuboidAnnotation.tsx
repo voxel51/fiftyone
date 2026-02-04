@@ -1,9 +1,10 @@
 import { TransformControlsProps } from "@react-three/drei";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
   useCuboidOperations,
+  useEndDrag,
   useStartDrag,
   useTransientCuboid,
   useUpdateTransient,
@@ -38,6 +39,7 @@ export const useCuboidAnnotation = ({
   const { updateCuboid } = useUpdateTransient();
   const { finalizeCuboidDrag } = useCuboidOperations();
   const startDrag = useStartDrag();
+  const endDrag = useEndDrag();
 
   const transformControlsRef = useRef<TransformControlsProps>(null);
   const contentRef = useRef<THREE.Group>(null);
@@ -63,8 +65,8 @@ export const useCuboidAnnotation = ({
   }, [workingLabel, location, dimensions, rotation]);
 
   const handleTransformStart = useCallback(() => {
-    startDrag();
-  }, [startDrag]);
+    startDrag(labelId);
+  }, [startDrag, labelId]);
 
   const handleTransformChange = useCallback(() => {
     if (!contentRef.current || !transformControlsRef.current) return;
@@ -115,24 +117,26 @@ export const useCuboidAnnotation = ({
   }, [labelId, effectiveLocation, effectiveDimensions, updateCuboid]);
 
   const handleTransformEnd = useCallback(() => {
-    if (!contentRef.current || !transformControlsRef.current) {
+    if (
+      !contentRef.current ||
+      !transformControlsRef.current ||
+      !transientState
+    ) {
+      // No-op transform or no transient updates
+      endDrag(labelId);
       return;
     }
 
-    const currentTransient = transientState;
+    finalizeCuboidDrag(labelId, transientState);
 
-    if (!currentTransient) {
-      return;
-    }
+    // We'll have accounted for scale by mutating dimensions, so reset scale
+    contentRef.current.scale.set(1, 1, 1);
+  }, [labelId, transientState, finalizeCuboidDrag, endDrag]);
 
-    finalizeCuboidDrag(labelId, currentTransient);
-
-    // Reset the Three.js object scale after committing
-    if (contentRef.current) {
-      contentRef.current.scale.set(1, 1, 1);
-      // Don't reset quaternion - it's an override, not a delta
-    }
-  }, [labelId, transientState, finalizeCuboidDrag]);
+  // This effect clears drag state on unmount
+  useEffect(() => {
+    return () => endDrag(labelId);
+  }, [labelId, endDrag]);
 
   return {
     location,

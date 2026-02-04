@@ -63,7 +63,7 @@ function createEmptyTransientStore(): TransientStore {
   return {
     cuboids: {},
     polylines: {},
-    dragInProgress: false,
+    activeDragLabel: null,
   };
 }
 
@@ -496,7 +496,7 @@ describe("deriveRenderModel", () => {
         det1: { positionDelta: [5, 10, 15] },
       },
       polylines: {},
-      dragInProgress: true,
+      activeDragLabel: "det1",
     };
 
     const result = deriveRenderModel(workingDoc, transient);
@@ -522,7 +522,7 @@ describe("deriveRenderModel", () => {
       polylines: {
         poly1: { positionDelta: [10, 10, 10] },
       },
-      dragInProgress: true,
+      activeDragLabel: "poly1",
     };
 
     const result = deriveRenderModel(workingDoc, transient);
@@ -563,7 +563,7 @@ describe("deriveRenderModel", () => {
         // poly1 has no transient state
         poly2: { positionDelta: [2, 2, 2] },
       },
-      dragInProgress: false,
+      activeDragLabel: null,
     };
 
     const result = deriveRenderModel(workingDoc, transient);
@@ -593,7 +593,7 @@ describe("deriveRenderModel", () => {
         det1: { positionDelta: [5, 5, 5] },
       },
       polylines: {},
-      dragInProgress: true,
+      activeDragLabel: "det1",
     };
 
     const result = deriveRenderModel(workingDoc, transient);
@@ -612,7 +612,7 @@ describe("deriveRenderModel", () => {
         det1: {}, // Empty transient state
       },
       polylines: {},
-      dragInProgress: false,
+      activeDragLabel: null,
     };
 
     const result = deriveRenderModel(workingDoc, transient);

@@ -112,10 +112,9 @@ export interface TransientStore {
   polylines: Record<LabelId, TransientPolylineState>;
 
   /**
-   * Whether a drag operation is currently in progress.
-   * Used to guard against computing deltas during active manipulation.
+   * The label ID currently being dragged, or null if no drag is in progress.
    */
-  dragInProgress: boolean;
+  activeDragLabel: LabelId | null;
 }
 
 // =============================================================================

@@ -27,15 +27,18 @@ import {
   useIsWorkingInitialized,
   useRenderModel,
   useResetWorkingOnModeChange,
+  useTransientCleanup,
 } from "../annotation/store";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
 } from "../annotation/types";
 import { useSetEditingToExisting3dLabel } from "../annotation/useSetEditingToExisting3dLabel";
+import { useSyncWorkingToSidebar } from "../annotation/useSyncWorkingToSidebar";
 import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
+  DRAG_GATE_THRESHOLD_PX,
   PANEL_ORDER_LABELS,
 } from "../constants";
 import { usePathFilter } from "../hooks";
@@ -57,6 +60,7 @@ import {
 } from "../types";
 import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, type CuboidProps } from "./cuboid";
+import { DragGate3D } from "./DragGate3D";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
 
@@ -75,7 +79,7 @@ export const ThreeDLabels = ({
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
   const isSegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
+  const setCurrent3dAnnotationMode = useSetRecoilState(
     current3dAnnotationModeAtom
   );
 
@@ -323,6 +327,12 @@ export const ThreeDLabels = ({
   // Reset annotation working store when leaving annotate mode
   useResetWorkingOnModeChange();
 
+  // Sync authoritative working store changes to sidebar atoms
+  useSyncWorkingToSidebar();
+
+  // Ensure transient states like drag are properly cleaned up
+  useTransientCleanup();
+
   // Combine working store with transient overlays to get render view model
   const renderModel = useRenderModel();
   const isWorkingInitialized = useIsWorkingInitialized();
@@ -374,21 +384,25 @@ export const ThreeDLabels = ({
   const cuboidOverlays = useMemo(
     () =>
       detectionsToRender.map((overlay) => (
-        <Cuboid
+        <DragGate3D
           key={`cuboid-${overlay.isNew ? "new-" : ""}${overlay._id}-${
             overlay.sampleId
           }`}
-          lineWidth={cuboidLineWidth}
-          rotation={overlayRotation}
-          itemRotation={overlay.rotation ?? itemRotation}
-          opacity={labelAlpha}
-          {...(overlay as unknown as CuboidProps)}
-          onClick={(e) => handleSelect(overlay, "cuboid", e)}
-          label={overlay}
-          tooltip={tooltip}
-          useLegacyCoordinates={settings.useLegacyCoordinates}
-          color={getOverlayColor(overlay)}
-        />
+          dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
+          onClick={(e) => handleSelect(overlay, ANNOTATION_CUBOID, e)}
+        >
+          <Cuboid
+            lineWidth={cuboidLineWidth}
+            rotation={overlayRotation}
+            itemRotation={overlay.rotation ?? itemRotation}
+            opacity={labelAlpha}
+            {...(overlay as unknown as CuboidProps)}
+            label={overlay}
+            tooltip={tooltip}
+            useLegacyCoordinates={settings.useLegacyCoordinates}
+            color={getOverlayColor(overlay)}
+          />
+        </DragGate3D>
       )),
     [
       detectionsToRender,
@@ -406,19 +420,23 @@ export const ThreeDLabels = ({
   // Polylines render model -> JSX
   const polylineOverlays = useMemo(() => {
     return polylinesToRender.map((overlay) => (
-      <Polyline
-        key={`polyline-${overlay.isNew ? "new-" : ""}${overlay._id}-${
+      <DragGate3D
+        key={`polyline-draggate-${overlay.isNew ? "new-" : ""}${overlay._id}-${
           overlay.sampleId
         }`}
-        rotation={overlayRotation}
-        opacity={labelAlpha}
-        lineWidth={polylineWidth}
-        {...(overlay as unknown as PolyLineProps)}
-        label={overlay}
-        onClick={(e) => handleSelect(overlay, "polyline", e)}
-        tooltip={tooltip}
-        color={getOverlayColor(overlay)}
-      />
+        dragThresholdPx={DRAG_GATE_THRESHOLD_PX}
+        onClick={(e) => handleSelect(overlay, ANNOTATION_POLYLINE, e)}
+      >
+        <Polyline
+          rotation={overlayRotation}
+          opacity={labelAlpha}
+          lineWidth={polylineWidth}
+          {...(overlay as unknown as PolyLineProps)}
+          label={overlay}
+          tooltip={tooltip}
+          color={getOverlayColor(overlay)}
+        />
+      </DragGate3D>
     ));
   }, [
     polylinesToRender,

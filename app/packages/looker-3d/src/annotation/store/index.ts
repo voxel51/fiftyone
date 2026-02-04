@@ -41,6 +41,7 @@ export {
   useEndDrag,
   useIsDragInProgress,
   useStartDrag,
+  useTransientCleanup,
   useTransientCuboid,
   useTransientPolyline,
   useTransientStore,

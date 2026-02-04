@@ -7,6 +7,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import type { Vector3Tuple } from "three";
 import * as THREE from "three";
 import {
+  useEndDrag,
   usePolylineOperations,
   useStartDrag,
   useTransientPolyline,
@@ -48,6 +49,7 @@ export const usePolylineAnnotation = ({
   const transientState = useTransientPolyline(labelId);
   const { updatePolyline } = useUpdateTransient();
   const startDrag = useStartDrag();
+  const endDrag = useEndDrag();
 
   const { finalizePolylineDrag, updatePolylinePoints } =
     usePolylineOperations();
@@ -190,9 +192,8 @@ export const usePolylineAnnotation = ({
 
     // Store the start matrix for computing delta later
     setStartMatrix(grp.matrixWorld.clone());
-
-    startDrag();
-  }, [startDrag]);
+    startDrag(labelId);
+  }, [startDrag, labelId]);
 
   const handleTransformChange = useCallback(() => {
     const grp = contentRef.current;
@@ -216,34 +217,29 @@ export const usePolylineAnnotation = ({
     updatePolyline(labelId, transientUpdate);
   }, [labelId, startMatrix, updatePolyline]);
 
+  // This effect clears transient state and drag state on unmount
   useEffect(() => {
     return () => {
-      // Clear transient state on unmount
       updatePolyline(labelId, null);
+      endDrag(labelId);
     };
-  }, [labelId, updatePolyline]);
+  }, [labelId, updatePolyline, endDrag]);
 
   const handleTransformEnd = useCallback(() => {
     const grp = contentRef.current;
-    if (!grp || !startMatrix) return;
 
-    const currentTransient = transientState;
-
-    if (!currentTransient) {
+    if (!grp || !startMatrix || !transientState) {
       setStartMatrix(null);
+      endDrag(labelId);
       return;
     }
 
-    // Commit the transient state to working store
-    finalizePolylineDrag(labelId, currentTransient);
+    finalizePolylineDrag(labelId, transientState);
 
     // Reset group position to prevent double-application
-    if (contentRef.current) {
-      contentRef.current.position.set(0, 0, 0);
-    }
-
+    grp.position.set(0, 0, 0);
     setStartMatrix(null);
-  }, [labelId, startMatrix, transientState, finalizePolylineDrag]);
+  }, [labelId, startMatrix, transientState, finalizePolylineDrag, endDrag]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {
