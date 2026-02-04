@@ -157,7 +157,11 @@ export function useCuboidOperations() {
         path,
         location: roundTuple(data.location),
         dimensions: roundTuple(data.dimensions),
-        rotation: data.rotation ? roundTuple(data.rotation) : [0, 0, 0],
+        rotation: data.rotation
+          ? roundTuple(data.rotation)
+          : data.quaternion
+          ? roundTuple(quaternionToRadians(data.quaternion))
+          : [0, 0, 0],
         quaternion: data.quaternion ? roundTuple(data.quaternion) : undefined,
         sampleId: currentSampleId,
         tags: [],
