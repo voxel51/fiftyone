@@ -35,7 +35,7 @@ const useSchema = (readOnly: boolean) => {
         {
           label: generatePrimitiveSchema("label", {
             type: "str",
-            component: "dropdown",
+            component: config?.component || "dropdown",
             values: config?.classes || [],
             readOnly: effectiveReadOnly,
           }),
@@ -54,26 +54,27 @@ const useSchema = (readOnly: boolean) => {
 
 const useHandleChanges = () => {
   return useRecoilCallback(
-    ({ snapshot }) => async (currentField: string, path: string, data) => {
-      const expanded = await snapshot.getPromise(expandPath(currentField));
-      const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
+    ({ snapshot }) =>
+      async (currentField: string, path: string, data) => {
+        const expanded = await snapshot.getPromise(expandPath(currentField));
+        const schema = await snapshot.getPromise(field(`${expanded}.${path}`));
 
-      if (typeof data === "string") {
-        if (schema?.ftype === FLOAT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseFloat(data);
-          return Number.isFinite(parsed) ? parsed : null;
+        if (typeof data === "string") {
+          if (schema?.ftype === FLOAT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseFloat(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
+
+          if (schema?.ftype === INT_FIELD) {
+            if (!data.length) return null;
+            const parsed = Number.parseInt(data);
+            return Number.isFinite(parsed) ? parsed : null;
+          }
         }
 
-        if (schema?.ftype === INT_FIELD) {
-          if (!data.length) return null;
-          const parsed = Number.parseInt(data);
-          return Number.isFinite(parsed) ? parsed : null;
-        }
-      }
-
-      return data;
-    },
+        return data;
+      },
     []
   );
 };
