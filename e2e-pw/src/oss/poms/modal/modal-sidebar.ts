@@ -72,7 +72,8 @@ export class ModalSidebarPom {
   }
 
   async switchMode(mode: "annotate" | "explore") {
-    await this.locator.getByTestId(mode).click();
+    const label = mode === "annotate" ? "Annotate" : "Explore";
+    await this.locator.getByRole("button", { name: label }).click();
   }
 
   async toggleLabelCheckbox(field: string) {

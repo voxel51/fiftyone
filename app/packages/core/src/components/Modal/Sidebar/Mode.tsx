@@ -27,7 +27,7 @@ const Mode = () => {
   const { enterAnnotationMode, exitAnnotationMode } = useAnnotationController();
   const editing = useAtomValue(isEditing);
 
-  const defaultIndex = mode === ModalMode.ANNOTATE ? 1 : 0;
+  const defaultIndex = MODE_TABS.findIndex((tab) => tab.id === mode);
 
   const handleChange = useCallback(
     (index: number) => {
