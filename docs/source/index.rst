@@ -4,12 +4,12 @@ FiftyOne
 .. raw:: html
 
   <div class="responsive-banner">
-    <a href="https://link.voxel51.com/docs-search-sales" target="_blank" aria-label="Get enterprise features for team collaboration and production workflows">
+    <a href="https://link.voxel51.com/visual-ai-survey-5" target="_blank" aria-label="Share how you build, deploy, and scale visual AI">
       <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_1200x200.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/survey_2026_january_1200x200.webm" type="video/webm">
       </video>
       <video class="banner-desktop" autoplay loop muted playsinline aria-hidden="true">
-        <source src="https://cdn.voxel51.com/banner/cta_sales_2400x400.webm" type="video/webm">
+        <source src="https://cdn.voxel51.com/banner/survey_2026_january_2400x400.webm" type="video/webm">
       </video>
     </a>
   </div>
