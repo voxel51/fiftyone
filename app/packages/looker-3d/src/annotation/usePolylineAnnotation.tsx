@@ -10,7 +10,6 @@ import {
   useEndDrag,
   usePolylineOperations,
   useStartDrag,
-  useTransientPolyline,
   useUpdateTransient,
   useWorkingLabel,
 } from "../annotation/store";
@@ -46,7 +45,6 @@ export const usePolylineAnnotation = ({
   const labelId = label._id;
 
   const workingLabel = useWorkingLabel(labelId);
-  const transientState = useTransientPolyline(labelId);
   const { updatePolyline } = useUpdateTransient();
   const startDrag = useStartDrag();
   const endDrag = useEndDrag();
@@ -215,16 +213,15 @@ export const usePolylineAnnotation = ({
   const handleTransformEnd = useCallback(() => {
     const grp = contentRef.current;
 
-    if (!grp || !transientState) {
-      endDrag(labelId);
+    if (!grp) {
       return;
     }
 
-    finalizePolylineDrag(labelId, transientState);
+    finalizePolylineDrag(labelId);
 
     // Reset group position to prevent double-application
     grp.position.set(0, 0, 0);
-  }, [labelId, transientState, finalizePolylineDrag, endDrag]);
+  }, [labelId, finalizePolylineDrag]);
 
   const handlePointerOver = useCallback(() => {
     if (isAnnotateMode) {

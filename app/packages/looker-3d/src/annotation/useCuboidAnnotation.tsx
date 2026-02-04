@@ -6,7 +6,6 @@ import {
   useCuboidOperations,
   useEndDrag,
   useStartDrag,
-  useTransientCuboid,
   useUpdateTransient,
   useWorkingLabel,
 } from "../annotation/store";
@@ -35,7 +34,6 @@ export const useCuboidAnnotation = ({
   const labelId = label._id;
 
   const workingLabel = useWorkingLabel(labelId);
-  const transientState = useTransientCuboid(labelId);
   const { updateCuboid } = useUpdateTransient();
   const { finalizeCuboidDrag } = useCuboidOperations();
   const startDrag = useStartDrag();
@@ -117,21 +115,15 @@ export const useCuboidAnnotation = ({
   }, [labelId, effectiveLocation, effectiveDimensions, updateCuboid]);
 
   const handleTransformEnd = useCallback(() => {
-    if (
-      !contentRef.current ||
-      !transformControlsRef.current ||
-      !transientState
-    ) {
-      // No-op transform or no transient updates
-      endDrag(labelId);
+    if (!contentRef.current || !transformControlsRef.current) {
       return;
     }
 
-    finalizeCuboidDrag(labelId, transientState);
+    finalizeCuboidDrag(labelId);
 
     // We'll have accounted for scale by mutating dimensions, so reset scale
     contentRef.current.scale.set(1, 1, 1);
-  }, [labelId, transientState, finalizeCuboidDrag, endDrag]);
+  }, [labelId, finalizeCuboidDrag]);
 
   // This effect clears drag state on unmount
   useEffect(() => {

@@ -11,12 +11,8 @@ import type {
   ReconciledPolyline3D,
 } from "../types";
 import { roundTuple } from "../utils/rounding-utils";
-import { useEndDrag } from "./transient";
-import type {
-  LabelId,
-  TransientCuboidState,
-  TransientPolylineState,
-} from "./types";
+import { transientAtom, useEndDrag } from "./transient";
+import type { LabelId } from "./types";
 import {
   useAddWorkingLabel,
   useDeleteWorkingLabel,
@@ -96,17 +92,24 @@ export function useCuboidOperations() {
   );
 
   /**
-   * Finalizes a drag operation on a cuboid. Called on pointer-up after
-   * using TransformControls. Applies transient deltas to working store
-   * and clears transient state.
+   * Finalizes a drag operation on a cuboid.
    */
   const finalizeCuboidDrag = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, transient: TransientCuboidState) => {
+      async (labelId: LabelId) => {
+        const transientStore = await snapshot.getPromise(transientAtom);
+        const transient = transientStore.cuboids[labelId];
+
+        if (!transient) {
+          endDrag(labelId);
+          return;
+        }
+
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
         if (!existingLabel || !isDetection(existingLabel)) {
+          endDrag(labelId);
           return;
         }
 
@@ -274,17 +277,24 @@ export function usePolylineOperations() {
   );
 
   /**
-   * Finalizes a drag operation on a polyline. Called on pointer-up after
-   * using TransformControls. Applies transient deltas to working store
-   * and clears transient state.
+   * Finalizes a drag operation on a polyline.
    */
   const finalizePolylineDrag = useRecoilCallback(
     ({ snapshot }) =>
-      async (labelId: LabelId, transient: TransientPolylineState) => {
+      async (labelId: LabelId) => {
+        const transientStore = await snapshot.getPromise(transientAtom);
+        const transient = transientStore.polylines[labelId];
+
+        if (!transient) {
+          endDrag(labelId);
+          return;
+        }
+
         const working = await snapshot.getPromise(workingAtom);
         const existingLabel = working.doc.labelsById[labelId];
 
         if (!existingLabel || !isPolyline(existingLabel)) {
+          endDrag(labelId);
           return;
         }
 
