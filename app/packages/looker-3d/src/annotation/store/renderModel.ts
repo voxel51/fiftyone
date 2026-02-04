@@ -13,7 +13,7 @@ import type {
   TransientStore,
   WorkingDoc,
 } from "./types";
-import { workingDocSelector } from "./working";
+import { workingAtom, workingDocSelector } from "./working";
 
 /**
  * Applies transient cuboid state to a detection label.
@@ -218,7 +218,6 @@ export function useRenderPolyline(
  * Hook that returns whether the working store is initialized.
  */
 export function useIsWorkingInitialized(): boolean {
-  const workingDoc = useRecoilValue(workingDocSelector);
-  // If we have any labels in the working doc, it's initialized
-  return Object.keys(workingDoc.labelsById).length > 0;
+  const workingState = useRecoilValue(workingAtom);
+  return workingState.initialized;
 }
