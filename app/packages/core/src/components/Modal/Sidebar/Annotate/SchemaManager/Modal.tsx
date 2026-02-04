@@ -28,7 +28,6 @@ import {
 import NewFieldSchema from "./NewFieldSchema";
 import {
   BackButton,
-  CloseButton,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -183,11 +182,20 @@ const Modal = () => {
       >
         <ModalHeader>
           <Heading />
-          <CloseButton
+          <Button
+            variant={Variant.Icon}
+            borderless
+            size={Size.Sm}
             data-cy="close-schema-manager"
-            color="secondary"
             onClick={() => setShowModal(false)}
-          />
+            style={{ marginRight: "14px" }}
+          >
+            <Icon
+              name={IconName.Close}
+              size={Size.Lg}
+              color={TextColor.Secondary}
+            />
+          </Button>
         </ModalHeader>
 
         <Subheading />

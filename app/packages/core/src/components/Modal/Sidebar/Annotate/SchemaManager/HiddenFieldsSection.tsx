@@ -5,10 +5,10 @@
  */
 
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Clickable,
   Icon,
   IconName,
   Pill,
@@ -19,7 +19,6 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
 import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
@@ -71,9 +70,14 @@ const HiddenFieldActions = ({
               anchor={Anchor.Bottom}
               portal
             >
-              <Clickable data-cy={"edit"} onClick={() => setField(path)}>
+              <Button
+                variant={Variant.Icon}
+                borderless
+                data-cy={"edit"}
+                onClick={() => setField(path)}
+              >
                 <Icon name={IconName.Edit} size={Size.Md} />
-              </Clickable>
+              </Button>
             </Tooltip>
           ) : (
             <Button
