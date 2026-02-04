@@ -1,5 +1,4 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
@@ -20,15 +19,11 @@ const groupVideoId = "000000000000000000000003";
 
 const test = base.extend<{
   grid: GridPom;
-  gridActionsRow: GridActionsRowPom;
   modal: ModalPom;
   schemaManager: SchemaManagerPom;
 }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
-  },
-  gridActionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
   },
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
@@ -108,6 +103,8 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       _id=ObjectId("${videoId}"),
       filepath="/tmp/blank-video.webm"
   )
+  # Use internal API to preserve the explicit ObjectId needed
+  # for the beforeEach URL navigation (?id=...) to open the modal
   dataset._sample_collection.insert_many(
       [dataset._make_dict(sample, include_id=True)]
   )
@@ -243,7 +240,6 @@ test.describe.serial("schema manager", () => {
     fiftyoneLoader,
     page,
     grid,
-    gridActionsRow,
     modal,
   }) => {
     // Close the modal opened by beforeEach on the image dataset
@@ -255,7 +251,7 @@ test.describe.serial("schema manager", () => {
     // Apply toPatches
     await grid.actionsRow.toggleToClipsOrPatches();
     const toPatchesRefresh = grid.getWaitForGridRefreshPromise();
-    await gridActionsRow.clickToPatchesByLabelField("predictions");
+    await grid.actionsRow.clickToPatchesByLabelField("predictions");
     await toPatchesRefresh;
 
     // Open first sample in the patches grid
