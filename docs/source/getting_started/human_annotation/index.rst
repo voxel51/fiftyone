@@ -5,32 +5,32 @@ Human Annotation Guide
 
 .. default-role:: code
 
-**Closing the Curate-Annotate-Train-Evaluate Loop with In-App Labeling**
+**Use In-App Labeling Alongside a Complete Curate-Annotate-Train-Evaluate Loop**
 
 **Level:** Intermediate | **Estimated Time:** 40-50 minutes | **Tags:** Annotation, Human-in-the-Loop, Detection, Embeddings, Active Learning, YOLOv8
 
 This step-by-step guide will walk you through a complete human annotation workflow using FiftyOne. You'll learn how to:
 
-- Set up proper data splits for iterative annotation (frozen test, golden QA, active pool)
-- Use embeddings and ZCore to intelligently select high-value samples for labeling
+- Set up proper data splits for iterative annotation
+- Use embeddings and algorithmic sampling to intelligently select high-value samples for labeling
 - Annotate and QA labels directly in the FiftyOne App using patch views
 - Train a YOLOv8 detector and evaluate performance with detailed failure analysis
-- Iterate with a hybrid acquisition strategy that balances coverage and targeted fixes
+- Iterate with a strategy that balances coverage and targeted fixes
 
 .. _human_annotation-overview:
 
 Guide Overview
 --------------
 
-This guide teaches you the **data-centric annotation loop**: instead of labeling randomly, you'll learn to label strategically by combining diversity-based selection (ZCore) with model-driven failure mining.
+This guide teaches you a **data-centric annotation loop**: instead of labeling randomly, you'll learn to label strategically by combining diversity-based selection (ZCore) with model-driven failure mining.
 
 The workflow is broken into five sequential steps:
 
 1. **Setup: Flatten Dataset and Create Splits** - Load KITTI-style grouped data, flatten to images, and establish frozen test, golden QA, and active pool splits
-2. **Bootstrap Selection: Embeddings + ZCore** - Compute embeddings and use ZCore operator to select a coverage-optimized initial batch for labeling
-3. **Human Annotation Pass + QA** - Annotate using patch views in the FiftyOne App with a disciplined QA workflow
-4. **Train Baseline + Evaluate** - Train YOLOv8 on your labels, evaluate with FiftyOne's detection evaluation, and analyze FP/FN failure modes
-5. **Iteration: Hybrid Acquisition Loop** - Select the next batch using 30% coverage refresh + 70% targeted failure mining, then repeat
+2. **Bootstrap Selection: Embeddings + ZCore** - Compute embeddings and use zero-shot coreset selection to select a coverage-optimized initial batch for labeling
+3. **Human Annotation Pass and QA** - Annotate using patch views in the FiftyOne App with a disciplined QA workflow
+4. **Train Baseline and Evaluate** - Train YOLOv8 on your labels, evaluate with FiftyOne's detection evaluation, and analyze FP/FN failure modes
+5. **Iteration: Hybrid Acquisition Loop** - Select the next batch, then repeat
 
 .. _human_annotation-prerequisites:
 
@@ -39,7 +39,7 @@ Prerequisites
 
 **Who Is This Guide For**
 
-This guide is for ML engineers and data scientists who want to implement a rigorous human annotation workflow. You'll learn to avoid common pitfalls like test set contamination, failure-only sampling bias, and label drift. Whether you're building an annotation pipeline from scratch or improving an existing one, this guide provides a battle-tested framework.
+This guide is for ML engineers and data scientists who want to implement a rigorous human annotation workflow. You'll learn to avoid common pitfalls like test set contamination, failure-only sampling bias, and label drift. Whether you're building an annotation pipeline from scratch or improving an existing one, this guide intends to provide a battle-tested framework.
 
 **Packages Used**
 
@@ -63,7 +63,7 @@ Each notebook contains the necessary `pip install` commands at the beginning.
 
 .. _human_annotation-dataset:
 
-The KITTI Dataset (quickstart-groups)
+The KITTI Dataset
 -------------------------------------
 
 We use FiftyOne's `quickstart-groups` dataset, which contains 200 scenes from the KITTI autonomous driving benchmark. Each scene includes:
@@ -73,7 +73,7 @@ We use FiftyOne's `quickstart-groups` dataset, which contains 200 scenes from th
 - **2D bounding box annotations** - Object detections in image space
 - **3D cuboid annotations** - Object locations in 3D space
 
-This grouped, multi-modal dataset represents real-world complexity. However, since human annotation UI works best with standard image views, we'll flatten to a single camera slice for this tutorial.
+This grouped, multi-modal dataset represents real-world complexity. However, as a learning exercise, we'll also flatten to a single camera slice for some tasks in this tutorial.
 
 .. _human_annotation-concepts:
 
@@ -82,9 +82,9 @@ Key Concepts: The Data-Centric Loop
 
 **Why Not Just Label Everything?**
 
-Labeling is expensive. Smart selection means you can achieve the same model performance with 10-30% of the labels. This guide teaches you to:
+Labeling is expensive. Smart selection means you can achieve similar model performance with far fewer labels. This guide teaches you to:
 
-1. **Start with coverage** (ZCore): Label diverse samples first, not random ones
+1. **Start with coverage**: Label diverse samples first, not random ones
 2. **Then chase failures**: After training, label where the model struggles
 3. **Keep a coverage budget**: Don't only fix failures or you'll overfit to edge cases
 
@@ -131,10 +131,6 @@ Ready to Begin?
 ---------------
 
 Click **Next** to start with Step 1: Setting up your dataset with proper splits.
-
-.. important::
-
-    **Honest Framing**: Human annotation in FiftyOne currently works best with patch views. This guide uses patch-based workflows to ensure a smooth experience. Full grouped dataset annotation is coming in future releases.
 
 .. toctree::
    :maxdepth: 1
