@@ -38,6 +38,24 @@ class TestDepthAnythingV3ModelConfig:
 
         assert config.name_or_path == "depth-anything/da3-large"
 
+    def test_use_ray_pose_default(self):
+        """Test use_ray_pose defaults to False."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config = DepthAnythingV3ModelConfig({})
+
+        assert config.use_ray_pose is False
+
+    def test_use_ray_pose_explicit(self):
+        """Test use_ray_pose can be set explicitly."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config_true = DepthAnythingV3ModelConfig({"use_ray_pose": True})
+        assert config_true.use_ray_pose is True
+
+        config_false = DepthAnythingV3ModelConfig({"use_ray_pose": False})
+        assert config_false.use_ray_pose is False
+
 
 class TestDepthAnythingV3OutputProcessor:
     """Test DepthAnythingV3OutputProcessor."""
