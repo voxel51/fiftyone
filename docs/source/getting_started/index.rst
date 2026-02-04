@@ -42,6 +42,14 @@ Each guide is designed as a sequential learning experience with navigation betwe
     :tags: FiftyOne-Enterprise,Annotation
 
 .. customcarditem::
+    :header: Human Annotation Guide
+    :description: Master the data-centric annotation loop with coverage-based selection, human-in-the-loop labeling, and iterative model improvement. Learn to label smarter, not harder.
+    :link: human_annotation/index.html
+    :image: https://cdn.voxel51.com/getting_started_val/notebook3/val_review_ui.webp
+    :tags: Core-Fiftyone,Annotation,Human-in-the-Loop
+
+
+.. customcarditem::
     :header: Object Detection Guide
     :description: Master object detection workflows with COCO, YOLOv8, and comprehensive model evaluation. Learn dataset curation, mistake analysis, and performance assessment through hands-on practice.
     :link: object_detection/index.html
@@ -123,6 +131,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :hidden:
 
    Auto Labeling Guide <auto_labeling/index>
+   Human Annotation Guide <human_annotation/index>
    Object Detection Guide <object_detection/index>
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>
