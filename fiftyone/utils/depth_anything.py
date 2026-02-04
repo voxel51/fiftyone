@@ -56,7 +56,8 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
         Returns:
             a list of :class:`fiftyone.core.labels.Heatmap` instances, each
-            with optional ``confidence_map`` and ``sky_mask`` attributes
+            with optional ``confidence_map``, ``sky_mask``, and ``is_metric``
+            attributes
         """
         if not isinstance(output, dict):
             raise TypeError(
@@ -136,6 +137,8 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                         sky = (np.array(sky_img) > 127).astype(np.uint8)
                 heatmap.sky_mask = sky.astype(np.uint8)
 
+            heatmap.is_metric = output.get("is_metric", False)
+
             results.append(heatmap)
 
         return results
@@ -158,6 +161,11 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
         self.name_or_path = self.parse_string(
             d, "name_or_path", default=DEFAULT_DA3_MODEL
+        )
+
+        self.is_metric = (
+            "metric" in self.name_or_path.lower()
+            or "nested" in self.name_or_path.lower()
         )
 
         self.raw_inputs = True
@@ -215,4 +223,5 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             output["confidence"] = prediction.conf
         if prediction.sky is not None:
             output["sky"] = prediction.sky
+        output["is_metric"] = self.config.is_metric
         return output
