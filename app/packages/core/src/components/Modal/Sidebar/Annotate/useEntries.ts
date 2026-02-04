@@ -57,7 +57,7 @@ const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
     }
 
     return result as SidebarEntry[];
-  }, [atoms, activeFields, state, primitiveEntries]);
+  }, [atoms, activeFields, state, expanded]);
 
   return [
     [
