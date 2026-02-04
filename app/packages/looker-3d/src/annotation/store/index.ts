@@ -18,6 +18,7 @@ export * from "./types";
 // Working store
 export {
   useAddWorkingLabel,
+  useDeletedWorkingLabels,
   useDeleteWorkingLabel,
   useInitializeWorking,
   useIsLabelDeleted,

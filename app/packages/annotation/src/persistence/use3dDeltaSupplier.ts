@@ -3,9 +3,9 @@ import { DetectionLabel } from "@fiftyone/looker";
 import {
   ReconciledDetection3D,
   ReconciledPolyline3D,
+  useDeletedWorkingLabels,
   useIsDragInProgress,
   useWorkingDetections,
-  useWorkingDoc,
   useWorkingPolylines,
 } from "@fiftyone/looker-3d";
 import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
@@ -91,7 +91,7 @@ const buildAnnotationLabelForDelete = (
 export const use3dDeltaSupplier = (): DeltaSupplier => {
   const detections = useWorkingDetections();
   const polylines = useWorkingPolylines();
-  const workingDoc = useWorkingDoc();
+  const deletedLabels = useDeletedWorkingLabels();
 
   const dragInProgress = useIsDragInProgress();
 
@@ -120,12 +120,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
 
     // Generate deletion deltas for deleted labels
     // Only for labels that existed in baseline
-    workingDoc.deletedIds.forEach((deletedId) => {
-      const label = workingDoc.labelsById[deletedId];
-      if (!label) {
-        return;
-      }
-
+    deletedLabels.forEach((label) => {
       if (isDetection(label) || isPolyline(label)) {
         sampleDeltas.push(...getLabelDeleteDelta(label, label.path));
       }
@@ -137,7 +132,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     getLabelDeleteDelta,
     detections,
     polylines,
-    workingDoc,
+    deletedLabels,
     dragInProgress,
   ]);
 };

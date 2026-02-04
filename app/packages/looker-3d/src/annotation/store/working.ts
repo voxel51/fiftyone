@@ -237,6 +237,26 @@ export function useWorkingPolylines(): ReconciledPolyline3D[] {
   );
 }
 
+/**
+ * Hook that returns all deleted labels from the working store.
+ */
+export function useDeletedWorkingLabels(): (
+  | ReconciledDetection3D
+  | ReconciledPolyline3D
+)[] {
+  const doc = useWorkingDoc();
+  const deletedLabels: (ReconciledDetection3D | ReconciledPolyline3D)[] = [];
+
+  doc.deletedIds.forEach((deletedId) => {
+    const label = doc.labelsById[deletedId];
+    if (label) {
+      deletedLabels.push(label);
+    }
+  });
+
+  return deletedLabels;
+}
+
 // =============================================================================
 // CALLBACK HOOKS FOR OPERATIONS
 // =============================================================================
