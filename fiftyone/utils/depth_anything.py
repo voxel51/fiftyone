@@ -8,11 +8,13 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import logging
+import os
 
 import numpy as np
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
 
@@ -225,3 +227,76 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             output["sky"] = prediction.sky
         output["is_metric"] = self.config.is_metric
         return output
+
+
+def compute_3d_exports(
+    samples,
+    output_dir,
+    export_format="glb",
+    model_name="depth-anything/da3-large",
+    rel_dir=None,
+    overwrite=False,
+    skip_failures=False,
+    progress=None,
+):
+    """Computes 3D exports (GLB, PLY) for samples using Depth Anything V3.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.utils.depth_anything as fouda
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+        fouda.compute_3d_exports(dataset, "/tmp/exports", export_format="glb")
+
+        for sample in dataset:
+            print(sample.da3_export_path)
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        output_dir: directory to write exports
+        export_format ("glb"): export format. One of ``"glb"``, ``"gs_ply"``
+        model_name ("depth-anything/da3-large"): DA3 model to use
+        rel_dir (None): optional relative directory to strip from filepaths
+        overwrite (False): whether to overwrite existing exports
+        skip_failures (False): whether to gracefully continue on errors
+        progress (None): whether to show progress bar
+    """
+    fov.validate_collection(samples)
+
+    infer_gs = export_format in ("gs_ply", "gs_video")
+
+    model = da3_api.DepthAnything3.from_pretrained(model_name)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, ignore_existing=overwrite
+    )
+
+    for sample in samples.iter_samples(autosave=True, progress=progress):
+        sample_export_dir = filename_maker.get_output_path(
+            sample.filepath, output_ext=""
+        )
+
+        try:
+            prediction = model.inference(
+                [sample.filepath],
+                infer_gs=infer_gs,
+                export_dir=sample_export_dir,
+                export_format=export_format,
+            )
+        except Exception as e:
+            if not skip_failures:
+                raise
+            logger.warning("Failed to export %s: %s", sample.filepath, e)
+            continue
+
+        if export_format == "glb":
+            sample["da3_export_path"] = os.path.join(sample_export_dir, "scene.glb")
+        elif export_format == "gs_ply":
+            sample["da3_export_path"] = os.path.join(
+                sample_export_dir, "gs_ply", "0000.ply"
+            )
