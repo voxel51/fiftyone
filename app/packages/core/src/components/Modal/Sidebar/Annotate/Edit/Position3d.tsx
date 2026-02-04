@@ -81,6 +81,10 @@ export default function Position3d({ readOnly = false }: Position3dProps) {
       baseQuaternion = workingLabel.quaternion;
     } else if (data?.location && data?.dimensions) {
       // This shouldn't really happen but is here for a fallback
+      console.warn(
+        "[Position3d] Using fallback data path - workingLabel not available for label:",
+        data._id
+      );
       baseLocation = data.location;
       baseDimensions = data.dimensions;
       baseRotation = data.rotation;

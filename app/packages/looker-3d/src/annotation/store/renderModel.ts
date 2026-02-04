@@ -1,5 +1,4 @@
-import * as fos from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { useModalMode } from "@fiftyone/state";
 import { useMemo } from "react";
 import { selector, useRecoilValue } from "recoil";
 import { isDetection, isPolyline } from "../../types";
@@ -173,7 +172,7 @@ export const renderModelSelector = selector<RenderModel>({
  * @returns The render model for current mode
  */
 export function useRenderModel(): RenderModel {
-  const mode = useAtomValue(fos.modalMode);
+  const mode = useModalMode();
   const renderModel = useRecoilValue(renderModelSelector);
 
   // In explore mode, we return an empty model since rendering

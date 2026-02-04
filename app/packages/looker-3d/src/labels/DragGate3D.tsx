@@ -1,5 +1,6 @@
 import { ThreeEvent } from "@react-three/fiber";
 import * as React from "react";
+import { DRAG_GATE_THRESHOLD_PX } from "../constants";
 
 type ClickEvt = ThreeEvent<MouseEvent>;
 type PointerEvt = ThreeEvent<PointerEvent>;
@@ -18,7 +19,7 @@ export type DragGate3DProps = {
  * Only fires onClick if the pointer didn't move beyond the threshold.
  */
 export function DragGate3D({
-  dragThresholdPx = 6,
+  dragThresholdPx = DRAG_GATE_THRESHOLD_PX,
   onClick,
   children,
 }: DragGate3DProps) {
