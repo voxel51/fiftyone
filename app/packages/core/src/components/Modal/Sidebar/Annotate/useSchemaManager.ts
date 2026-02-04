@@ -1,5 +1,5 @@
-import { useCallback, useMemo } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { useCallback, useMemo } from "react";
 
 /**
  * Schema field types.
@@ -354,7 +354,10 @@ export const useSchemaManager = (): SchemaManager => {
     async (
       request: InitializeSchemaRequest
     ): Promise<InitializeSchemaResponse> => {
-      const createResponse = await createSchemas({ field: request.field });
+      const createResponse = await createSchemas({
+        field: request.field,
+        scan_samples: false,
+      });
       const updateResponse = await updateSchema({
         field: request.field,
         label_schema: createResponse.label_schema,
