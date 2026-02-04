@@ -4,7 +4,7 @@ import { freeVideos } from "@fiftyone/looker";
 import type Spotlight from "@fiftyone/spotlight";
 import type { Rejected } from "@fiftyone/spotlight";
 import * as fos from "@fiftyone/state";
-import { useLayoutEffect } from "react";
+import { useLayoutEffect, useRef } from "react";
 import { useSetRecoilState } from "recoil";
 import { MANAGING_GRID_MEMORY } from "../../utils/links";
 import { QP_WAIT, QueryPerformanceToastEvent } from "../QueryPerformanceToast";
@@ -29,6 +29,8 @@ export default ({
 }) => {
   const handleAutosize = useSetRecoilState(fos.snackbarLink);
   const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
+  const spotlightRef = useRef<Spotlight<number, fos.Sample> | null>(null);
+
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;
@@ -63,6 +65,7 @@ export default ({
     };
 
     element && spotlight.attach(element);
+    spotlightRef.current = spotlight; // Track the attached instance
     spotlight.addEventListener("load", mount);
     spotlight.addEventListener("rejected", rejected);
     spotlight.addEventListener("rowchange", set);
@@ -72,9 +75,14 @@ export default ({
       freeVideos();
       document.dispatchEvent(new CustomEvent("grid-unmount"));
       document.getElementById(pixels)?.classList.remove(styles.hidden);
-      spotlight.removeEventListener("load", mount);
-      spotlight.removeEventListener("rowchange", set);
-      spotlight.destroy();
+
+      // Use ref to destroy the instance that was actually attached
+      if (spotlightRef.current) {
+        spotlightRef.current.removeEventListener("load", mount);
+        spotlightRef.current.removeEventListener("rowchange", set);
+        spotlightRef.current.destroy();
+        spotlightRef.current = null;
+      }
     };
   }, [
     cache,
