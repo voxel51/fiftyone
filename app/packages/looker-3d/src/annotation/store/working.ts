@@ -323,16 +323,23 @@ export function useAddWorkingLabel() {
           ? roundDetection(label)
           : roundPolyline(label);
 
-        set(workingAtom, (prev) => ({
-          ...prev,
-          doc: {
-            ...prev.doc,
-            labelsById: {
-              ...prev.doc.labelsById,
-              [roundedLabel._id]: roundedLabel,
+        set(workingAtom, (prev) => {
+          // Remove from deletedIds if present
+          const newDeletedIds = new Set(prev.doc.deletedIds);
+          newDeletedIds.delete(roundedLabel._id);
+
+          return {
+            ...prev,
+            doc: {
+              ...prev.doc,
+              labelsById: {
+                ...prev.doc.labelsById,
+                [roundedLabel._id]: roundedLabel,
+              },
+              deletedIds: newDeletedIds,
             },
-          },
-        }));
+          };
+        });
       },
     []
   );
