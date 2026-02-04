@@ -2,7 +2,7 @@
 """
 Installs FiftyOne.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.11.1"
+VERSION = "1.12.0"
 
 
 def get_version():
@@ -40,6 +40,7 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<2",
     "dill",
     "Deprecated",
+    "exceptiongroup",
     "ftfy",
     "humanize",
     "hypercorn>=0.13.2",
@@ -76,9 +77,9 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.21.4,<0.22",
+    "fiftyone-brain>=0.21.5,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.15.2,<0.16",
+    "voxel51-eta>=0.15.3,<0.16",
 ]
 
 

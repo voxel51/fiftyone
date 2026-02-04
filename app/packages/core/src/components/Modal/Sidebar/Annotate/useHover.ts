@@ -1,56 +1,63 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
-  useEffect(() => {
-    const store = getDefaultStore();
-
-    const handleHover = (event: CustomEvent) => {
-      store.set(hoveringLabelIds, [
-        ...store.get(hoveringLabelIds),
-        event.detail.id,
-      ]);
-    };
-
-    const handleUnhover = (event: CustomEvent) => {
-      store.set(
-        hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== event.detail.id)
-      );
-    };
-
-    const handleAllUnhover = (event: CustomEvent) => {
-      store.set(hoveringLabelIds, []);
-    };
-
-    scene?.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
-
-    scene?.on(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
-    };
-  }, [scene]);
-
-  useAnnotationEventHandler(
-    "annotation:notification:canvasOverlayHover",
+  useEventHandler(
+    "lighter:overlay-hover",
     useCallback((payload) => {
       const store = getDefaultStore();
-      store.set(hoveringLabelIds, [...store.get(hoveringLabelIds), payload.id]);
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
+    }, [])
+  );
+
+  useEventHandler(
+    "lighter:overlay-unhover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      store.set(
+        hoveringLabelIds,
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+      );
+    }, [])
+  );
+
+  useEventHandler(
+    "lighter:overlay-all-unhover",
+    useCallback((_payload) => {
+      const store = getDefaultStore();
+      store.set(hoveringLabelIds, []);
     }, [])
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:canvasOverlayUnhover",
+    "annotation:canvasOverlayHover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
+    }, [])
+  );
+
+  useAnnotationEventHandler(
+    "annotation:canvasOverlayUnhover",
     useCallback((payload) => {
       const store = getDefaultStore();
       store.set(

@@ -1,16 +1,17 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { getEventBus, type EventDispatcher } from "@fiftyone/events";
 import { getSampleSrc } from "@fiftyone/state";
-import { EventBus, LIGHTER_EVENTS } from "../event/EventBus";
-import type { ImageSource, Renderer2D } from "../renderer/Renderer2D";
-import type { ResourceLoader } from "../resource/ResourceLoader";
+import type { LighterEventGroup } from "../events";
+import type { Renderer2D } from "../renderer/Renderer2D";
 import type {
   BoundedOverlay,
   CanonicalMedia,
   Dimensions,
   Rect,
+  RenderMeta,
 } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
@@ -25,25 +26,34 @@ export interface ImageOptions {
   field?: string;
 }
 
+const isRectNonEmpty = (bounds: Rect | undefined): boolean => {
+  if (!bounds) return false;
+  return bounds.width > 0 && bounds.height > 0;
+};
+
 /**
  * Image overlay implementation for displaying sample images.
+ * Uses an HTML <img> element instead of Pixi textures to avoid CORS requirements.
  * Also implements CanonicalMedia for coordinate transformations.
  */
 export class ImageOverlay
   extends BaseOverlay
   implements BoundedOverlay, CanonicalMedia
 {
-  private texture?: ImageSource;
+  private imgElement?: HTMLImageElement;
   private originalDimensions?: Dimensions;
   private currentBounds?: Rect;
   private resizeObserver?: ResizeObserver;
   private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
+  private viewportUnsubscribe?: () => void;
+  private sceneEventBus?: EventDispatcher<LighterEventGroup>;
+  private isImageLoaded = false;
 
   constructor(private options: ImageOptions) {
     const id = `image-${Date.now()}-${Math.random()
       .toString(36)
       .substring(2, 9)}`;
-    super(id, "", null, options.field);
+    super(id, "", null);
   }
 
   getOverlayType(): string {
@@ -51,31 +61,29 @@ export class ImageOverlay
   }
 
   /**
-   * Attaches the event bus to this overlay.
-   * @param bus - The event bus to attach.
+   * Sets the scene ID for this overlay and subscribes to viewport events.
+   * @param sceneId - The scene ID to use for the event bus channel.
    */
-  attachEventBus(bus: EventBus): void {
-    super.attachEventBus(bus);
+  setSceneId(sceneId: string | undefined): void {
+    super.setSceneId(sceneId);
 
-    // Listen for resize events from the event bus
-    if (this.eventBus) {
-      this.eventBus.on(LIGHTER_EVENTS.RESIZE, (event) => {
-        const { width, height } = event.detail;
-        this.handleResize(width, height);
-      });
+    // Clean up previous subscription
+    if (this.viewportUnsubscribe) {
+      this.viewportUnsubscribe();
+      this.viewportUnsubscribe = undefined;
     }
-  }
 
-  /**
-   * Sets the resource loader for this overlay.
-   * Overrides the base method to start background loading when the loader is set.
-   * @param loader - The resource loader to use.
-   */
-  setResourceLoader(loader: ResourceLoader): void {
-    super.setResourceLoader(loader);
+    if (sceneId) {
+      this.sceneEventBus = getEventBus<LighterEventGroup>(sceneId);
 
-    // we could start background loading here
-    // this.startBackgroundLoading();
+      // Subscribe to viewport-moved events to sync image transform
+      this.viewportUnsubscribe = this.sceneEventBus.on(
+        "lighter:viewport-moved",
+        (event) => {
+          this.updateImageTransform(event.x, event.y, event.scale);
+        }
+      );
+    }
   }
 
   /**
@@ -84,6 +92,141 @@ export class ImageOverlay
    */
   setRenderer(renderer: Renderer2D): void {
     super.setRenderer(renderer);
+
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+      this.resizeObserver = undefined;
+    }
+
+    const canvas = renderer.getCanvas();
+    const parentElement = canvas.parentElement;
+
+    if (parentElement) {
+      if (!this.imgElement) {
+        this.createImageElement(parentElement);
+      } else if (this.imgElement.parentElement !== parentElement) {
+        // Migrate existing element to new parent
+        const targetCanvas = parentElement.querySelector("canvas");
+        if (targetCanvas) {
+          targetCanvas.style.position = "relative";
+          targetCanvas.style.zIndex = "1";
+          parentElement.insertBefore(this.imgElement, targetCanvas);
+        } else {
+          parentElement.appendChild(this.imgElement);
+        }
+      }
+    }
+
+    if (parentElement) {
+      this.resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const { width, height } = entry.contentRect;
+          this.handleResize(width, height);
+        }
+      });
+      this.resizeObserver.observe(parentElement);
+    }
+  }
+
+  /**
+   * Creates the HTML image element and appends it to the container.
+   * @param container - The container element to append the image to.
+   */
+  private createImageElement(container: HTMLElement): void {
+    this.imgElement = document.createElement("img");
+    this.imgElement.setAttribute("data-cy", "lighter-sample-image");
+
+    // Note: No CORS requirement
+    const src = getSampleSrc(this.options.src);
+    if (!src) {
+      console.error("Invalid sample source:", this.options.src);
+      this.emitError(new Error(`Invalid sample source: ${this.options.src}`));
+      return;
+    }
+    this.imgElement.src = src;
+
+    this.imgElement.style.position = "absolute";
+    this.imgElement.style.top = "0";
+    this.imgElement.style.left = "0";
+    this.imgElement.style.transformOrigin = "0 0";
+    this.imgElement.style.pointerEvents = "none";
+    this.imgElement.style.userSelect = "none";
+    this.imgElement.style.zIndex = "0";
+    this.imgElement.draggable = false;
+
+    if (this.options.opacity !== undefined && this.options.opacity !== 1) {
+      this.imgElement.style.opacity = String(this.options.opacity);
+    }
+
+    // Handle image load to get dimensions
+    const imgRef = this.imgElement;
+    this.imgElement.onload = () => {
+      // Guard against stale handler execution after destroy
+      if (
+        imgRef === this.imgElement &&
+        this.imgElement &&
+        !this.isImageLoaded
+      ) {
+        this.originalDimensions = {
+          width: this.imgElement.naturalWidth,
+          height: this.imgElement.naturalHeight,
+        };
+        this.isImageLoaded = true;
+
+        // Trigger initial layout
+        if (this.renderer) {
+          const dims = this.renderer.getContainerDimensions();
+          this.handleResize(dims.width, dims.height);
+        }
+
+        this.emitLoaded();
+      }
+    };
+
+    this.imgElement.onerror = (error) => {
+      console.error("Failed to load image:", error);
+      this.emitError(new Error(`Failed to load image: ${this.options.src}`));
+    };
+
+    // Insert the image as the first child to ensure it's in the background
+    // Also ensure proper z-index stacking
+    const canvas = container.querySelector("canvas");
+    if (canvas) {
+      // Ensure canvas is on top of the image
+      canvas.style.position = "relative";
+      canvas.style.zIndex = "1";
+      container.insertBefore(this.imgElement, canvas);
+    } else {
+      container.appendChild(this.imgElement);
+    }
+  }
+
+  /**
+   * Updates the image element's CSS transform to match the viewport.
+   * @param viewportX - The viewport's X position.
+   * @param viewportY - The viewport's Y position.
+   * @param scale - The viewport's scale factor.
+   */
+  private updateImageTransform(
+    viewportX: number,
+    viewportY: number,
+    scale: number
+  ): void {
+    if (!this.imgElement || !this.isImageLoaded) return;
+
+    const bounds = this.currentBounds;
+    if (!bounds) return;
+
+    // Set the base width/height (at scale = 1)
+    this.imgElement.style.width = `${bounds.width}px`;
+    this.imgElement.style.height = `${bounds.height}px`;
+
+    // Calculate the transformed position based on viewport
+    const transformedX = bounds.x * scale + viewportX;
+    const transformedY = bounds.y * scale + viewportY;
+
+    // Use CSS transform for both translation and scaling
+    this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px) scale(${scale})`;
   }
 
   /**
@@ -94,13 +237,28 @@ export class ImageOverlay
   private handleResize(newWidth: number, newHeight: number): void {
     if (!this.renderer) return;
 
-    // Update the current bounds to match the new container size
-    this.currentBounds = {
+    const containerBounds = {
       x: 0,
       y: 0,
       width: newWidth,
       height: newHeight,
     };
+
+    // Calculate bounds that maintain aspect ratio if requested
+    const finalBounds =
+      this.options.maintainAspectRatio !== false
+        ? this.calculateAspectRatioBounds(containerBounds)
+        : containerBounds;
+
+    this.currentBounds = finalBounds;
+
+    // Update image element position/size
+    if (this.imgElement && this.isImageLoaded) {
+      // Get current viewport transform
+      const scale = this.renderer.getScale();
+      const viewportPos = this.renderer.getViewportPosition();
+      this.updateImageTransform(viewportPos.x, viewportPos.y, scale);
+    }
 
     // Mark as dirty instead of triggering re-render
     this.markDirty();
@@ -109,151 +267,30 @@ export class ImageOverlay
     this.notifyBoundsChanged();
   }
 
-  /**
-   * Starts background loading of the image texture.
-   * This is called in the constructor or when the resource loader is set.
-   */
-  private async startBackgroundLoading(): Promise<void> {
-    if (!this.resourceLoader) {
-      // If resource loader isn't set yet, we'll load during render
-      return;
-    }
-
-    try {
-      // Use background loading for better performance with texture hint
-      const rawTexture = await this.resourceLoader.loadBackground(
-        getSampleSrc(this.options.src),
-        {
-          retries: 3,
-          hint: "texture",
-        }
-      );
-
-      this.texture = {
-        type: "texture",
-        texture: rawTexture,
-      };
-
-      // Store original dimensions when texture is first loaded
-      if (this.texture && !this.originalDimensions) {
-        // Try to get dimensions from the texture object
-        const textureObj = this.texture.texture;
-        if (textureObj && typeof textureObj === "object") {
-          // Handle different texture types
-          if ("width" in textureObj && "height" in textureObj) {
-            this.originalDimensions = {
-              width: (textureObj as any).width,
-              height: (textureObj as any).height,
-            };
-          } else if (
-            "naturalWidth" in textureObj &&
-            "naturalHeight" in textureObj
-          ) {
-            this.originalDimensions = {
-              width: (textureObj as any).naturalWidth,
-              height: (textureObj as any).naturalHeight,
-            };
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Failed to background load image overlay:", error);
-      this.emitError(error as Error);
-    }
-  }
-
   get containerId() {
     return this.id;
   }
 
-  protected async renderImpl(renderer: Renderer2D): Promise<void> {
-    // Only dispose if we don't have a texture yet or if the texture source changed
-    const needsDispose = !this.texture || this.texture.type !== "texture";
-
-    if (needsDispose) {
-      renderer.dispose(this.containerId);
+  protected async renderImpl(
+    renderer: Renderer2D,
+    _renderMeta: RenderMeta
+  ): Promise<void> {
+    // The image is rendered via the HTML <img> element, not through Pixi.
+    if (
+      this.imgElement &&
+      this.isImageLoaded &&
+      renderer.isReady() &&
+      (!this.currentBounds || !isRectNonEmpty(this.currentBounds))
+    ) {
+      const dims = renderer.getContainerDimensions();
+      this.handleResize(dims.width, dims.height);
     }
 
-    try {
-      // If texture isn't loaded yet, try to load it now (fallback)
-      if (!this.texture && this.resourceLoader) {
-        const rawTexture = await this.resourceLoader.load(
-          getSampleSrc(this.options.src),
-          {
-            retries: 3,
-            hint: "texture",
-          }
-        );
-
-        if (!rawTexture) {
-          throw new Error("Failed to load image texture");
-        }
-
-        this.texture = {
-          type: "texture",
-          texture: rawTexture,
-        };
-
-        // Store original dimensions when texture is first loaded
-        if (this.texture && !this.originalDimensions) {
-          const textureObj = this.texture.texture;
-          if (textureObj && typeof textureObj === "object") {
-            if ("width" in textureObj && "height" in textureObj) {
-              this.originalDimensions = {
-                width: (textureObj as any).width,
-                height: (textureObj as any).height,
-              };
-            } else if (
-              "naturalWidth" in textureObj &&
-              "naturalHeight" in textureObj
-            ) {
-              this.originalDimensions = {
-                width: (textureObj as any).naturalWidth,
-                height: (textureObj as any).naturalHeight,
-              };
-            }
-          }
-        }
-      }
-
-      // Get bounds - use current bounds from resize handling, then fallback to options, then container dimensions
-      const bounds = this.currentBounds ||
-        this.options.bounds || {
-          x: 0,
-          y: 0,
-          width: renderer.getContainerDimensions().width,
-          height: renderer.getContainerDimensions().height,
-        };
-
-      // Calculate bounds that maintain aspect ratio if requested
-      const finalBounds =
-        this.options.maintainAspectRatio !== false
-          ? this.calculateAspectRatioBounds(bounds)
-          : bounds;
-
-      // Update current bounds to reflect the actual rendered bounds
-      this.currentBounds = finalBounds;
-
-      if (needsDispose) {
-        renderer.drawImage(
-          this.texture!,
-          finalBounds,
-          {
-            opacity: this.options.opacity || 1,
-          },
-          this.containerId
-        );
-      } else {
-        renderer.updateResourceBounds(this.containerId, finalBounds);
-      }
-
+    if (this.isImageLoaded) {
       this.emitLoaded();
-      this.notifyBoundsChanged();
-    } catch (error) {
-      console.error("Failed to render image overlay:", error);
-      this.emitError(error as Error);
-      throw error;
     }
+
+    this.notifyBoundsChanged();
   }
 
   /**
@@ -430,6 +467,24 @@ export class ImageOverlay
   }
 
   /**
+   * Shows the image element.
+   */
+  show(): void {
+    if (this.imgElement) {
+      this.imgElement.style.display = "";
+    }
+  }
+
+  /**
+   * Hides the image element.
+   */
+  hide(): void {
+    if (this.imgElement) {
+      this.imgElement.style.display = "none";
+    }
+  }
+
+  /**
    * Cleanup method to remove resize observer when overlay is destroyed.
    */
   destroy(): void {
@@ -437,6 +492,19 @@ export class ImageOverlay
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;
     }
+
+    if (this.viewportUnsubscribe) {
+      this.viewportUnsubscribe();
+      this.viewportUnsubscribe = undefined;
+    }
+
+    if (this.imgElement) {
+      this.imgElement.onload = null;
+      this.imgElement.onerror = null;
+      this.imgElement.remove();
+      this.imgElement = undefined;
+    }
+
     this.boundsChangeCallbacks = [];
   }
 }

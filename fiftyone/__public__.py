@@ -1,7 +1,7 @@
 """
 FiftyOne's public interface.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,7 @@ app_config = _foc.load_app_config()
 
 _foua.with_fiftyone_useragent()
 
+from .core.annotation import generate_label_schemas, validate_label_schemas
 from .core.aggregations import (
     Aggregation,
     Bounds,
@@ -84,6 +85,16 @@ from .core.fields import (
     StringField,
     MaskTargetsField,
     VectorField,
+)
+from .core.camera import (
+    CameraIntrinsics,
+    PinholeCameraIntrinsics,
+    OpenCVCameraIntrinsics,
+    OpenCVFisheyeCameraIntrinsics,
+    StaticTransform,
+    CameraIntrinsicsRef,
+    StaticTransformRef,
+    CameraProjector,
 )
 from .core.frame import Frame
 from .core.groups import Group

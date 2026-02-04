@@ -13,6 +13,7 @@ import { useVideoModalSelectiveRendering } from "./use-modal-selective-rendering
 
 interface VideoLookerReactProps {
   sample: fos.ModalSample;
+  showControls?: boolean;
 }
 
 export const VideoLookerReact = (props: VideoLookerReactProps) => {

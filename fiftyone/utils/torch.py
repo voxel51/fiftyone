@@ -1,7 +1,7 @@
 """
 PyTorch utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1812,10 +1812,7 @@ def recommend_num_workers(num_workers=None):
         # https://stackoverflow.com/q/20222534
         return 0
 
-    try:
-        default = multiprocessing.cpu_count() // 2
-    except Exception:
-        default = 4
+    default = fou.get_cpu_count() // 2
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default

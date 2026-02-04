@@ -48,9 +48,10 @@ import {
   clearTransformStateSelector,
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
+  isCreatingCuboidPointerDownAtom,
+  current3dAnnotationModeAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
-  isPolylineAnnotateActiveAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
@@ -192,6 +193,9 @@ export const MediaTypeFo3dComponent = () => {
   const datasetName = useRecoilValue(fos.datasetName);
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
   const isSegmentingPointerDown = useRecoilValue(isSegmentingPointerDownAtom);
+  const isCreatingCuboidPointerDown = useRecoilValue(
+    isCreatingCuboidPointerDownAtom
+  );
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
   const keyState = useRef({
@@ -204,8 +208,12 @@ export const MediaTypeFo3dComponent = () => {
   const updateCameraControlsConfig = useCallback(() => {
     if (!cameraControlsRef.current) return;
 
-    // Disable camera controls when transforming
-    if (isSegmentingPointerDown || isCurrentlyTransforming) {
+    // Disable camera controls when transforming or creating annotations
+    if (
+      isSegmentingPointerDown ||
+      isCreatingCuboidPointerDown ||
+      isCurrentlyTransforming
+    ) {
       cameraControlsRef.current.enabled = false;
       return;
     }
@@ -223,7 +231,12 @@ export const MediaTypeFo3dComponent = () => {
       cameraControlsRef.current.mouseButtons.left =
         CameraControlsImpl.ACTION.ROTATE;
     }
-  }, [keyState, isCurrentlyTransforming, isSegmentingPointerDown]);
+  }, [
+    keyState,
+    isCurrentlyTransforming,
+    isSegmentingPointerDown,
+    isCreatingCuboidPointerDown,
+  ]);
 
   /**
    * This effect updates the camera controls config when the transforming state changes
@@ -289,6 +302,7 @@ export const MediaTypeFo3dComponent = () => {
     isComputing: isComputingSceneBoundingBox,
   } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
     hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+    numPrimaryAssets,
   });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
@@ -354,6 +368,16 @@ export const MediaTypeFo3dComponent = () => {
         );
       }
 
+      const defaultCameraPosition = foScene?.cameraProps.position;
+
+      if (defaultCameraPosition) {
+        return new Vector3(
+          defaultCameraPosition[0],
+          defaultCameraPosition[1],
+          defaultCameraPosition[2]
+        );
+      }
+
       if (
         !ignoreLastSavedCameraPosition &&
         lastSavedCameraPosition &&
@@ -363,16 +387,6 @@ export const MediaTypeFo3dComponent = () => {
           lastSavedCameraPosition[0],
           lastSavedCameraPosition[1],
           lastSavedCameraPosition[2]
-        );
-      }
-
-      const defaultCameraPosition = foScene?.cameraProps.position;
-
-      if (defaultCameraPosition) {
-        return new Vector3(
-          defaultCameraPosition[0],
-          defaultCameraPosition[1],
-          defaultCameraPosition[2]
         );
       }
 
@@ -653,7 +667,9 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const isPolylineAnnotateActive = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
+  const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
   const canAnnotate = useCanAnnotate();
 
@@ -745,7 +761,10 @@ export const MediaTypeFo3dComponent = () => {
           </StatusBarRootContainer>
         </MainContainer>
       )}
-      {mode === "annotate" && isPolylineAnnotateActive && <AnnotationToolbar />}
+      {mode === "annotate" &&
+        (isPolylineAnnotateActive || isCuboidAnnotateActive) && (
+          <AnnotationToolbar />
+        )}
     </Fo3dSceneContext.Provider>
   );
 };

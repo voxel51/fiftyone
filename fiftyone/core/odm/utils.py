@@ -1,10 +1,11 @@
 """
 Utilities for documents.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import inspect
 import json
@@ -414,7 +415,9 @@ def get_implied_field_kwargs(value, dynamic=False):
             value_type = next(iter(value_types))
             kwargs["subfield"] = value_type
 
-            if value_type == fof.EmbeddedDocumentField:
+            if inspect.isclass(value_type) and issubclass(
+                value_type, fof.EmbeddedDocumentField
+            ):
                 document_type = _get_list_subfield_type(value)
                 fields = _parse_embedded_doc_list_fields(value, dynamic)
                 kwargs["embedded_doc_type"] = document_type
@@ -511,7 +514,9 @@ def _merge_embedded_doc_fields(fields_dict, fields):
         subfield = field.get("subfield", None)
 
         if name not in fields_dict:
-            if ftype == fof.EmbeddedDocumentField:
+            if inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 _init_embedded_doc_fields(field)
 
             fields_dict[name] = field
@@ -527,14 +532,19 @@ def _merge_embedded_doc_fields(fields_dict, fields):
                     efield["subfield"] = None
                 elif subfield is not None:
                     efield["subfield"] = subfield
-            elif ftype == fof.EmbeddedDocumentField:
+            elif inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 _merge_embedded_doc_fields(efield["fields"], field["fields"])
 
 
 def _init_embedded_doc_fields(field):
     fields_dict = {}
     for _field in field["fields"]:
-        if _field["ftype"] == fof.EmbeddedDocumentField:
+        ftype = _field["ftype"]
+        if inspect.isclass(ftype) and issubclass(
+            ftype, fof.EmbeddedDocumentField
+        ):
             _init_embedded_doc_fields(_field)
 
         fields_dict[_field["name"]] = _field
@@ -547,7 +557,10 @@ def _finalize_embedded_doc_fields(fields_dict):
     for field in fields_dict.values():
         if field is not None:
             fields.append(field)
-            if field["ftype"] == fof.EmbeddedDocumentField:
+            ftype = field["ftype"]
+            if inspect.isclass(ftype) and issubclass(
+                ftype, fof.EmbeddedDocumentField
+            ):
                 field["fields"] = _finalize_embedded_doc_fields(
                     field["fields"]
                 )
@@ -710,36 +723,9 @@ class DocumentRegistryError(Exception):
 _document_registry = DocumentRegistry()
 
 
-def load_dataset(id=None, name=None, reload=False):
-    """Loads the dataset from the database by its unique id or name. Throws
-    an error if neither id nor name is provided.
+# for backwards compatibility
+# @todo FOEPD-2399 remove at next major release
+def load_dataset(*args, **kwargs):
+    from fiftyone.core.odm.database import load_dataset
 
-    Args:
-        id (None): the unique id of the dataset
-        name (None): the name of the dataset
-        reload (False): whether to reload the dataset if necessary
-
-    Returns:
-        a :class:`fiftyone.core.dataset.Dataset`
-    """
-    import fiftyone.core.odm as foo
-    import fiftyone.core.dataset as fod
-
-    if name:
-        return fod.load_dataset(name, reload=reload)
-
-    if not id:
-        raise ValueError("Must provide either id or name")
-
-    db = foo.get_db_conn()
-    try:
-        _id = ObjectId(id)
-    except:
-        # Although _id is an ObjectId by default, it's possible to set it to
-        # something else
-        _id = id
-
-    res = db.datasets.find_one({"_id": _id}, {"name": True})
-    if not res:
-        raise ValueError(f"Dataset with _id={_id} does not exist")
-    return fod.load_dataset(res.get("name"), reload=reload)
+    return load_dataset(*args, **kwargs)

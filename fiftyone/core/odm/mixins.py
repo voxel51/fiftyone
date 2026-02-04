@@ -1,7 +1,7 @@
 """
 Mixins and helpers for dataset backing documents.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,6 +14,7 @@ from bson import ObjectId
 import mongoengine
 from pymongo import UpdateOne
 
+import fiftyone.core.annotation.constants as foac
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
@@ -542,6 +543,10 @@ class DatasetMixin(object):
         coll_paths = []
         schema_paths = []
 
+        label_schemas = dataset.label_schemas
+        new_label_schemas = dataset.label_schemas
+        active_label_schemas = dataset.active_label_schemas
+
         for path, new_path in zip(paths, new_paths):
             is_root_field = "." not in path
             field, is_default = cls._get_field(
@@ -595,6 +600,23 @@ class DatasetMixin(object):
             if field is not None:
                 schema_paths.append((path, new_path))
 
+            if path in label_schemas:
+                new_label_schemas[new_path] = new_label_schemas.pop(path)
+                if path in active_label_schemas:
+                    active_label_schemas[
+                        active_label_schemas.index(path)
+                    ] = new_path
+                continue
+
+            for field in label_schemas:
+                if field.startswith(f"{path}."):
+                    new_field = f"{new_path}.{field.split('.')[1]}"
+                    new_label_schemas[new_field] = new_label_schemas.pop(field)
+
+                _change_nested_label_schema(
+                    dataset, path, new_path, label_schemas, new_label_schemas
+                )
+
         if simple_paths:
             _paths, _new_paths = zip(*simple_paths)
             cls._rename_fields_simple(_paths, _new_paths)
@@ -625,6 +647,9 @@ class DatasetMixin(object):
 
         if schema_paths:
             cls._rename_indexes(paths, new_paths)
+
+        dataset.set_label_schemas(new_label_schemas)
+        dataset.active_label_schemas = active_label_schemas
 
     @classmethod
     def _clone_fields(cls, sample_collection, paths, new_paths):
@@ -766,6 +791,9 @@ class DatasetMixin(object):
         del_paths = []
         del_schema_paths = []
 
+        label_schemas = dataset.label_schemas
+        new_label_schemas = dataset.label_schemas
+
         for path in paths:
             field, is_default = cls._get_field(
                 path, allow_missing=True, check_default=True
@@ -827,6 +855,18 @@ class DatasetMixin(object):
             del_paths.append(path)
             del_schema_paths.append(path)
 
+            if path in label_schemas:
+                del new_label_schemas[path]
+                continue
+
+            for field in label_schemas:
+                if field.startswith(f"{path}."):
+                    del new_label_schemas[field]
+
+            _change_nested_label_schema(
+                dataset, path, None, label_schemas, new_label_schemas
+            )
+
         if not del_paths:
             return
 
@@ -848,6 +888,8 @@ class DatasetMixin(object):
 
         if del_paths:
             cls._delete_indexes(del_paths)
+
+        dataset.set_label_schemas(new_label_schemas)
 
     @classmethod
     def _remove_dynamic_fields(cls, paths, error_level=0):
@@ -1997,3 +2039,34 @@ def _get_index_updates(dataset, paths, new_paths=None):
                 updates[name] = None
 
     return updates
+
+
+def _change_nested_label_schema(
+    dataset, path, new_path, label_schemas, new_label_schemas
+):
+    keys = path.split(".")
+    parent = ".".join(keys[:-1])
+
+    if not dataset._is_label_field(parent):
+        return
+
+    if parent not in label_schemas:
+        # this is a label list field
+        # e.g. remove "detections" from
+        # "ground_truth.detections"
+        parent = ".".join(parent.split(".")[:-1])
+
+    if parent not in label_schemas:
+        return
+
+    attributes = new_label_schemas[parent].get(foac.ATTRIBUTES, {})
+    name = keys[-1]
+
+    if name not in attributes:
+        return
+
+    if new_path is None:
+        del attributes[name]
+    else:
+        new_name = new_path.split(".")[-1]
+        attributes[new_name] = attributes.pop(name)

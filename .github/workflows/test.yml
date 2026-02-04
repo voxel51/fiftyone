@@ -10,6 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup node 22
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
@@ -17,7 +22,7 @@ jobs:
 
       - name: Cache
         id: node-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             app/node_modules
@@ -38,7 +43,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest-m
+          - ubuntu-latest
         python:
           - "3.9"
           - "3.10"
@@ -60,6 +65,10 @@ jobs:
             requirements/common.txt
             requirements/github.txt
             requirements/test.txt
+      - name: Free Disk Space (Ubuntu) # standard runner's 14 GB available disk size isn't enough. Need at least 22 GB free.
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          large-packages: false # e2e test failed when `true`
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |
@@ -67,7 +76,7 @@ jobs:
           pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          pip install .
+          pip install . -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |

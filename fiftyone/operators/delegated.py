@@ -1,7 +1,7 @@
 """
 FiftyOne delegated operations.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -13,19 +13,20 @@ import logging.handlers
 import multiprocessing
 import os
 import traceback
+
 import psutil
 
-from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
+from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.operators.executor import (
-    prepare_operator_executor,
-    do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
-    resolve_type_with_context,
     PipelineExecutionContext,
+    do_execute_operator,
+    do_execute_pipeline,
+    prepare_operator_executor,
+    resolve_type_with_context,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -97,19 +98,37 @@ def _execute_operator_in_child_process(
                 )
 
             result = asyncio.run(service._execute_operator(operation))
+            result.raise_exceptions()
 
-            service.set_completed(doc_id=operation.id, result=result)
+            updated_doc = service.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             result = ExecutionResult(error=traceback.format_exc())
-            service.set_failed(
+            updated_doc = service.set_failed(
                 doc_id=operation_id,
                 result=result,
                 update_pipeline=operation.parent_id if operation else None,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.exception("Operation %s failed", operation_id)
+                if updated_doc:
+                    logger.exception("Operation %s failed", operation_id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation_id,
+                    )
 
 
 class DelegatedOperationService(object):
@@ -129,6 +148,7 @@ class DelegatedOperationService(object):
         context=None,
         metadata=None,
         pipeline=None,
+        rerunnable=True,
     ):
         """Queues the given delegated operation for execution.
 
@@ -145,6 +165,7 @@ class DelegatedOperationService(object):
             pipeline (None): an optional
                 :class:`fiftyone.operators.types.Pipeline` to use for
                 the operation, if this is a pipeline operator
+            rerunnable (True): whether the operation can be rerun
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -156,6 +177,7 @@ class DelegatedOperationService(object):
             context=context,
             metadata=metadata,
             pipeline=pipeline,
+            rerunnable=rerunnable,
         )
         return operation
 
@@ -180,6 +202,7 @@ class DelegatedOperationService(object):
         run_link=None,
         log_path=None,
         required_state=None,
+        monitored=False,
     ):
         """Sets the given delegated operation to running state.
 
@@ -195,6 +218,8 @@ class DelegatedOperationService(object):
                 :class:`fiftyone.operators.executor.ExecutionRunState` required
                 state of the operation. If provided, the update will only be
                 performed if the referenced operation matches this state.
+            monitored (False): whether the operation is being monitored by
+                an external process
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument` if the
@@ -207,6 +232,7 @@ class DelegatedOperationService(object):
             log_path=log_path,
             progress=progress,
             required_state=required_state,
+            monitored=monitored,
         )
 
     def set_scheduled(self, doc_id, required_state=None):
@@ -395,6 +421,28 @@ class DelegatedOperationService(object):
         """
         return self._repo.set_log_size(_id=doc_id, log_size=log_size)
 
+    def archive_operation(self, doc_id):
+        """Archives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.archive_operation(_id=doc_id)
+
+    def unarchive_operation(self, doc_id):
+        """Unarchives the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.unarchive_operation(_id=doc_id)
+
     def delete_operation(self, doc_id):
         """Deletes the given delegated operation.
 
@@ -425,9 +473,15 @@ class DelegatedOperationService(object):
         """
         doc = self._repo.get(_id=doc_id)
         if doc is None:
-            raise ValueError(f"No delegated operation with {doc_id=} found")
+            raise ValueError(f"No delegated operation with {doc_id} found")
+        if not doc.rerunnable:
+            raise ValueError(
+                f"Delegated operation {doc_id} is not marked as rerunnable"
+            )
         if doc.parent_id:
-            raise ValueError("Cannot rerun a child delegated operation.")
+            raise ValueError(
+                "Rerunning pipeline child operations is not supported in the SDK."
+            )
         return self._repo.queue_operation(**doc.__dict__)
 
     def get_queued_operations(self, operator=None, dataset_name=None):
@@ -494,6 +548,7 @@ class DelegatedOperationService(object):
         delegation_target=None,
         paging=None,
         search=None,
+        include_archived=False,
         **kwargs,
     ):
         """Lists the delegated operations matching the given criteria.
@@ -512,6 +567,7 @@ class DelegatedOperationService(object):
             paging (None): optional
                 :class:`fiftyone.factory.DelegatedOperationPagingParams`
             search (None): optional search term dict
+            include_archived (False): whether to include archived operations
 
         Returns:
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -524,6 +580,7 @@ class DelegatedOperationService(object):
             delegation_target=delegation_target,
             paging=paging,
             search=search,
+            include_archived=include_archived,
             **kwargs,
         )
 
@@ -627,6 +684,7 @@ class DelegatedOperationService(object):
                         run_link=run_link,
                         log_path=log_path,
                         required_state=ExecutionRunState.QUEUED,
+                        monitored=monitor,
                     )
                     is not None
                 )
@@ -671,24 +729,46 @@ class DelegatedOperationService(object):
         """Executes an operation synchronously in the current process."""
         try:
             result = asyncio.run(self._execute_operator(operation))
-            self.set_completed(doc_id=operation.id, result=result)
+            result.raise_exceptions()
+            updated_doc = self.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             logger.debug(
                 "Uncaught exception when executing operator",
                 exc_info=True,
             )
             result = ExecutionResult(error=traceback.format_exc())
-            self.set_failed(
+            updated_doc = self.set_failed(
                 doc_id=operation.id,
                 result=result,
                 update_pipeline=operation.parent_id,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.info(
-                    "Operation %s failed\n%s", operation.id, result.error
-                )
+                if updated_doc:
+                    logger.info(
+                        "Operation %s failed\n%s", operation.id, result.error
+                    )
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation.id,
+                    )
+        if not updated_doc:
+            return ExecutionResult(
+                error="Operation state changed externally during execution."
+            )
         return result
 
     def _execute_operation_multi_proc(
@@ -895,7 +975,16 @@ class DelegatedOperationService(object):
 
             operator, _, ctx, __ = prepared
 
-            result = await do_execute_operator(operator, ctx, exhaust=True)
+            if doc.pipeline:
+                result = await do_execute_pipeline(doc.pipeline, ctx)
+                if result:
+                    error, error_message = result
+                    return ExecutionResult(
+                        error=error, error_message=error_message
+                    )
+                result = None
+            else:
+                result = await do_execute_operator(operator, ctx, exhaust=True)
 
             outputs_schema = None
             try:
@@ -912,8 +1001,6 @@ class DelegatedOperationService(object):
                     exc_info=True,
                 )
 
-            execution_result = ExecutionResult(
+            return ExecutionResult(
                 result=result, outputs_schema=outputs_schema
             )
-
-            return execution_result

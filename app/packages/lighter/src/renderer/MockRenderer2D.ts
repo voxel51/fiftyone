@@ -1,8 +1,7 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { EventBus } from "../event/EventBus";
 import type {
   Dimensions2D,
   DrawStyle,
@@ -19,7 +18,6 @@ import type { ImageOptions, ImageSource } from "./Renderer2D";
  */
 export class MockRenderer2D {
   private canvas: HTMLCanvasElement;
-  public eventBus?: EventBus;
   private tickHandlers: (() => void)[] = [];
   private containers = new Map<string, any>();
   private scale = 1;
@@ -27,10 +25,6 @@ export class MockRenderer2D {
 
   constructor(canvas?: HTMLCanvasElement) {
     this.canvas = canvas || document.createElement("canvas");
-  }
-
-  setEventBus(eventBus: EventBus): void {
-    this.eventBus = eventBus;
   }
 
   addTickHandler(onFrame: () => void): void {
@@ -197,6 +191,10 @@ export class MockRenderer2D {
     this.scale = scale;
   }
 
+  getViewportPosition(): { x: number; y: number } {
+    return { x: 0, y: 0 };
+  }
+
   cleanUp(): void {
     this.resetTickHandler();
     this.containers.clear();
@@ -204,7 +202,6 @@ export class MockRenderer2D {
 
   destroy(): void {
     this.cleanUp();
-    this.eventBus = undefined;
   }
 
   getContainerCount(): number {

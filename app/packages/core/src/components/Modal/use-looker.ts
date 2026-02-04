@@ -12,14 +12,22 @@ const CLOSE = "close";
 
 function useLooker<L extends fos.Lookers>({
   sample,
+  showControls = true,
 }: {
   sample: fos.ModalSample;
+  showControls?: boolean;
 }) {
   const [id] = useState(() => uuid());
   const initialRef = useRef<boolean>(true);
   const ref = useRef<HTMLDivElement>(null);
   const [reset, setReset] = useState(false);
-  const lookerOptions = fos.useLookerOptions(true);
+  const baseLookerOptions = fos.useLookerOptions(true);
+
+  const lookerOptions = React.useMemo(
+    () => ({ ...baseLookerOptions, showControls }),
+    [baseLookerOptions, showControls]
+  );
+
   const createLooker = fos.useCreateLooker(
     true,
     false,

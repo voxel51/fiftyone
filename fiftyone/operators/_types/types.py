@@ -1,7 +1,7 @@
 """
 FiftyOne operator types.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2416,6 +2416,51 @@ class DropdownView(Dropdown):
         super().__init__(**kwargs)
 
 
+class DateTimeView(View):
+    """
+    Displays a date/time input - response in epoch time
+
+    Examples::
+        start_datetime_selector = types.DateTimeView(date_only=True)
+        inputs.int(
+            "start_datetime",
+            required=True,
+            label="Start Date/time",
+            description="Start date/time...",
+            view=start_datetime_selector,
+        )
+
+
+        end_datetime_selector = types.DateTimeView()
+        inputs.int(
+            "end_datetime",
+            required=False,
+            label="End Date/time",
+            description="End date/time...",
+            view=end_datetime_selector,
+        )
+
+        ...
+
+        start_datetime = ctx.params.get("start_datetime", None)
+        end_datetime = ctx.params.get("end_datetime", None)
+
+        if start_datetime:
+            start = fou.timestamp_to_datetime(start_datetime)
+            print(f"start: {start}")
+        if end_datetime:
+            end = fou.timestamp_to_datetime(end_datetime)
+            print(f"end: {end}")
+
+    Args:
+        date_only (False): whether to display a date only input
+            and not require HH:MM:SS
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class LabelValueView(View):
     """Displays a label-value component. Used for displaying a label and a
     corresponding value.
@@ -3091,7 +3136,7 @@ class IconButtonView(Button):
         inputs.view("icon_btn", iconButtonView)
 
     Args:
-        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+        icon (None): a icon for the button. See https://github.com/marella/material-icons?tab=readme-ov-file#available-icons
         variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
             ``"outlined"``, or ``"contained"``.
         label (None): a label for the button

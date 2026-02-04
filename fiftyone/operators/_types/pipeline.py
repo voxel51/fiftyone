@@ -1,7 +1,7 @@
 """
 FiftyOne pipeline operator types.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -32,6 +32,9 @@ class PipelineStage:
     params: Optional[Mapping[str, Any]] = None
     """Optional dict of parameters to pass to the operator"""
 
+    rerunnable: Optional[bool] = None
+    """Whether the stage is rerunnable, defaults to operator config"""
+
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
     def __init__(
         self,
@@ -40,6 +43,7 @@ class PipelineStage:
         name: Optional[str] = None,
         num_distributed_tasks: Optional[int] = None,
         params: Optional[Mapping[str, Any]] = None,
+        rerunnable: Optional[bool] = None,
         **_,
     ):
         # Call the default dataclass initialization for the defined fields
@@ -48,6 +52,7 @@ class PipelineStage:
         self.name = name
         self.num_distributed_tasks = num_distributed_tasks
         self.params = params
+        self.rerunnable = rerunnable
         self.__post_init__()
 
     def __post_init__(self):
@@ -97,6 +102,7 @@ class Pipeline:
         name=None,
         num_distributed_tasks=None,
         params=None,
+        rerunnable=None,
         # kwargs accepted for forward compatibility
         **kwargs,
     ):
@@ -111,6 +117,7 @@ class Pipeline:
             num_distributed_tasks: the number of distributed tasks to use
                 for the stage, optional
             params: optional parameters to pass to the operator
+            rerunnable: whether the stage is rerunnable
             **kwargs: reserved for future use
 
         Returns:
@@ -122,6 +129,7 @@ class Pipeline:
             name=name,
             num_distributed_tasks=num_distributed_tasks,
             params=params,
+            rerunnable=rerunnable,
             **kwargs,
         )
         self.stages.append(stage)

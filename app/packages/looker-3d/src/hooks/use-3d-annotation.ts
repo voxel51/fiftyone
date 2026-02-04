@@ -1,17 +1,23 @@
 import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { currentData } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { DetectionLabel } from "@fiftyone/looker/src/overlays/detection";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
-import { PolylinePointTransformData } from "../annotation/types";
+import {
+  CuboidTransformData,
+  PolylinePointTransformData,
+} from "../annotation/types";
 import { points3dToPolylineSegments } from "../annotation/utils/polyline-utils";
 import {
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
   stagedPolylineTransformsAtom,
 } from "../state";
+import { quaternionToRadians } from "../utils";
 
 /**
  * Hook that initializes 3D annotation.
@@ -19,6 +25,9 @@ import {
 export const use3dAnnotation = () => {
   const setStagedPolylineTransforms = useSetRecoilState(
     stagedPolylineTransformsAtom
+  );
+  const setStagedCuboidTransforms = useSetRecoilState(
+    stagedCuboidTransformsAtom
   );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
@@ -28,84 +37,134 @@ export const use3dAnnotation = () => {
   const save = useSetAtom(currentData);
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelSelected",
+    "annotation:sidebarLabelSelected",
     useCallback((payload) => {
-      if (payload.type !== "Polyline") {
-        // Note: we don't support non-polyline annotations in 3D yet
-        return;
-      }
-
       setSelectedLabelForAnnotation({
         _id: payload.id,
         ...payload.data,
       });
 
-      const polylineData = payload.data as PolylineLabel;
+      if (payload.type === "Polyline") {
+        const polylineData = payload.data as PolylineLabel;
+        const points3d = polylineData.points3d;
 
-      const points3d = (polylineData as PolylineLabel).points3d;
+        if (!Array.isArray(points3d)) {
+          return;
+        }
 
-      if (!Array.isArray(points3d)) {
-        return;
-      }
-
-      // Update staging area with the new polyline
-      // overwrite any previously staged polyline
-      setStagedPolylineTransforms({
-        [payload.id]: {
-          segments: points3dToPolylineSegments(points3d),
-          label: polylineData.label ?? "",
-          misc: {
-            ...(polylineData ?? {}),
+        // Update staging area with the new polyline
+        // overwrite any previously staged polyline
+        setStagedPolylineTransforms({
+          [payload.id]: {
+            segments: points3dToPolylineSegments(points3d),
+            label: polylineData.label ?? "",
+            misc: {
+              ...(polylineData ?? {}),
+            },
           },
-        },
-      });
+        });
+      } else if (payload.type === "Detection") {
+        const detectionData = payload.data as DetectionLabel;
+
+        if (
+          !Array.isArray(detectionData.location) ||
+          !Array.isArray(detectionData.dimensions)
+        ) {
+          return;
+        }
+
+        // Update staging area with the new cuboid
+        // overwrite any previously staged cuboid
+        setStagedCuboidTransforms({
+          [payload.id]: { ...detectionData } as CuboidTransformData,
+        });
+      }
     }, [])
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarValueUpdated",
+    "annotation:sidebarValueUpdated",
     useCallback(
       (payload) => {
-        if (!Array.isArray(payload.value["points3d"])) {
-          return;
-        }
+        const hasPoints3d = Array.isArray(payload.value["points3d"]);
+        const hasLocationAndDimensions =
+          Array.isArray(payload.value["location"]) &&
+          Array.isArray(payload.value["dimensions"]);
 
-        const coerced = coerceStringBooleans(payload.value as PolylineLabel);
-        const { points3d, _id, label, ...rest } = coerced;
+        if (hasPoints3d) {
+          const coerced = coerceStringBooleans(payload.value as PolylineLabel);
+          const { points3d, _id, label, ...rest } = coerced;
 
-        setStagedPolylineTransforms((prev) => {
-          if (!prev) {
+          setStagedPolylineTransforms((prev) => {
+            if (!prev) {
+              return {
+                [_id]: {
+                  segments: points3dToPolylineSegments(points3d),
+                  label: label ?? "",
+                  misc: {
+                    ...(rest ?? {}),
+                  },
+                },
+              };
+            }
+
             return {
+              ...prev,
               [_id]: {
-                segments: points3dToPolylineSegments(points3d),
-                label: label ?? "",
+                ...(prev[_id] ?? ({} as PolylinePointTransformData)),
+                label,
                 misc: {
                   ...(rest ?? {}),
                 },
               },
             };
-          }
+          });
 
-          return {
-            ...prev,
-            [_id]: {
-              ...(prev[_id] ?? ({} as PolylinePointTransformData)),
-              label,
-              misc: {
-                ...(rest ?? {}),
+          save(coerced);
+        } else if (hasLocationAndDimensions) {
+          const detectionValue = payload.value as DetectionLabel;
+          const { _id, ...rest } = detectionValue;
+
+          setStagedCuboidTransforms((prev) => {
+            const transformData = {
+              _id,
+              ...rest,
+            };
+
+            if (!prev) {
+              return {
+                [_id]: transformData as CuboidTransformData,
+              };
+            }
+
+            return {
+              ...prev,
+              [_id]: {
+                ...(prev[_id] ?? {}),
+                ...(transformData as CuboidTransformData),
               },
-            },
-          };
-        });
+            };
+          });
 
-        save(coerced);
+          // Save everything except quaternion since it's not part of data model
+          const { quaternion, ...allValidFields } =
+            detectionValue as DetectionLabel & {
+              quaternion?: [number, number, number, number];
+            };
+
+          const rotation = quaternion
+            ? quaternionToRadians(quaternion)
+            : detectionValue.rotation;
+
+          save({ ...allValidFields, rotation });
+        }
       },
       [save]
     )
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelHover",
+    "annotation:sidebarLabelHover",
     useCallback((payload) => {
       setHoveredLabel({
         id: payload.id,
@@ -114,7 +173,7 @@ export const use3dAnnotation = () => {
   );
 
   useAnnotationEventHandler(
-    "annotation:notification:sidebarLabelUnhover",
+    "annotation:sidebarLabelUnhover",
     useCallback(() => {
       setHoveredLabel(null);
     }, [])

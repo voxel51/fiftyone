@@ -2,7 +2,7 @@
 Script for generating Hugging Face dataset documentation from Voxel51's HF
 organization.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

@@ -1,6 +1,5 @@
-import { createUseEventHandler, useEventBus } from "@fiftyone/events";
+import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 
 export const AnnotationChannelId = "default";
 
@@ -17,25 +16,37 @@ type MutationSuccess<T> = {
 
 export type AnnotationEventGroup = {
   /**
+   * Notification event emitted when aggregate annotation persistence is requested.
+   */
+  "annotation:persistenceRequested": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is successful.
+   */
+  "annotation:persistenceSuccess": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is unsuccessful.
+   */
+  "annotation:persistenceError": { error?: Error };
+  /**
    * Notification event emitted when a label is upserted successfully.
    */
-  "annotation:notification:upsertSuccess": MutationSuccess<"upsert">;
+  "annotation:upsertSuccess": MutationSuccess<"upsert">;
   /**
    * Notification event emitted when an error occurs while upserting a label.
    */
-  "annotation:notification:upsertError": MutationError<"upsert">;
+  "annotation:upsertError": MutationError<"upsert">;
   /**
    * Notification event emitted when a label is deleted successfully.
    */
-  "annotation:notification:deleteSuccess": MutationSuccess<"delete">;
+  "annotation:deleteSuccess": MutationSuccess<"delete">;
   /**
    * Notification event emitted when an error occurs while deleting a label.
    */
-  "annotation:notification:deleteError": MutationError<"delete">;
+  "annotation:deleteError": MutationError<"delete">;
   /**
    * Notification event emitted when a sidebar value is updated.
    */
-  "annotation:notification:sidebarValueUpdated": {
+  "annotation:sidebarValueUpdated": {
     overlayId: string;
     currentLabel: AnnotationLabel["data"];
     value: Partial<AnnotationLabel["data"]>;
@@ -43,7 +54,7 @@ export type AnnotationEventGroup = {
   /**
    * Notification event emitted when a label is selected.
    */
-  "annotation:notification:sidebarLabelSelected": {
+  "annotation:sidebarLabelSelected": {
     id: string;
     type: AnnotationLabel["type"];
     data?: Partial<AnnotationLabel["data"]>;
@@ -51,14 +62,14 @@ export type AnnotationEventGroup = {
   /**
    * Notification event emitted when a label is hovered.
    */
-  "annotation:notification:sidebarLabelHover": {
+  "annotation:sidebarLabelHover": {
     id: string;
     tooltip?: boolean;
   };
   /**
    * Notification event emitted when a label is unhovered.
    */
-  "annotation:notification:sidebarLabelUnhover": {
+  "annotation:sidebarLabelUnhover": {
     id: string;
   };
   /**
@@ -66,7 +77,7 @@ export type AnnotationEventGroup = {
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
    */
-  "annotation:notification:canvasOverlayHover": {
+  "annotation:canvasOverlayHover": {
     id: string;
   };
   /**
@@ -74,7 +85,27 @@ export type AnnotationEventGroup = {
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
    */
-  "annotation:notification:canvasOverlayUnhover": {
+  "annotation:canvasOverlayUnhover": {
     id: string;
+  };
+  /**
+   * Notification event emitted when a label is selected for annotation.
+   */
+  "annotation:3dLabelSelected": {
+    id: string;
+    archetype: Archetype3d;
+    label: Looker3dOverlayLabel;
+  };
+  /**
+   * Notification event emitted when a label is unselected for annotation.
+   */
+  "annotation:3dLabelUnselected": {
+    id: string;
+  };
+  /**
+   * Notification event emitted when cuboid creation starts (first click).
+   */
+  "annotation:cuboidCreationStarted": {
+    position: [number, number, number];
   };
 };

@@ -1,22 +1,30 @@
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
+import { groupId, nullableModalSampleId } from "@fiftyone/state";
+import { getBrowserStorageEffectForKey } from "@fiftyone/state/src/recoil/customEffects";
 import {
-  getBrowserStorageEffectForKey,
-  groupId,
-  nullableModalSampleId,
-} from "@fiftyone/state";
-import { atom, atomFamily, DefaultValue, selector } from "recoil";
+  atom,
+  atomFamily,
+  DefaultValue,
+  selector,
+  useRecoilValue,
+} from "recoil";
 import { Vector3 } from "three";
 import type {
   AnnotationPlaneState,
+  CuboidTransformData,
   PolylinePointTransformData,
+  ReconciledLabels3D,
   SegmentState,
   SelectedPoint,
   TransformMode,
-  TransformSpace,
 } from "./annotation/types";
-import { SHADE_BY_HEIGHT } from "./constants";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+  SHADE_BY_HEIGHT,
+} from "./constants";
 import type { FoSceneNode } from "./hooks";
 import type {
   Actions,
@@ -25,6 +33,8 @@ import type {
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
+
+type LabelId = string;
 
 // =============================================================================
 // GENERAL 3D
@@ -362,6 +372,14 @@ export const isSegmentingPointerDownAtom = atom<boolean>({
 });
 
 /**
+ * Tracks whether the pointer is currently down during cuboid creation.
+ */
+export const isCreatingCuboidPointerDownAtom = atom<boolean>({
+  key: "fo3d-isCreatingCuboidPointerDownAtom",
+  default: false,
+});
+
+/**
  * Whether to automatically snap and close polyline active segment.
  * When enabled, the active segment will automatically close when the user double clicks.
  */
@@ -380,15 +398,50 @@ export const editSegmentsModeAtom = atom<boolean>({
 });
 
 /**
- * Whether polyline annotation mode is currently active.
+ * Whether the user is in create cuboid mode.
+ * When enabled, the user can create a new cuboid using a 3-click interaction.
+ */
+export const isCreatingCuboidAtom = atom<boolean>({
+  key: "fo3d-isCreatingCuboid",
+  default: false,
+});
+
+/**
+ * State for tracking cuboid creation with 3-click interaction.
+ * Step 0: waiting for first click (center position)
+ * Step 1: waiting for second click (orientation/yaw and length)
+ * Step 2: waiting for third click (width)
+ */
+export interface CuboidCreationState {
+  step: 0 | 1 | 2;
+  centerPosition: [number, number, number] | null;
+  orientationPoint: [number, number, number] | null;
+  currentPosition: [number, number, number] | null;
+}
+
+export const cuboidCreationStateAtom = atom<CuboidCreationState>({
+  key: "fo3d-cuboidCreationState",
+  default: {
+    step: 0,
+    centerPosition: null,
+    orientationPoint: null,
+    currentPosition: null,
+  },
+});
+
+/**
+ * The currently active 3D annotation mode.
+ * Can be 'cuboid', 'polyline', or null (no annotation mode active).
  * Persisted in session storage to maintain state across page reloads.
  */
-export const isPolylineAnnotateActiveAtom = atom<boolean>({
-  key: "fo3d-isPolylineAnnotateActive",
-  default: false,
+export const current3dAnnotationModeAtom = atom<
+  typeof ANNOTATION_CUBOID | typeof ANNOTATION_POLYLINE | null
+>({
+  key: "fo3d-current3dAnnotationMode",
+  default: null,
   effects: [
-    getBrowserStorageEffectForKey("fo3d-isPolylineAnnotateActive", {
-      valueClass: "boolean",
+    getBrowserStorageEffectForKey("fo3d-current3dAnnotationMode", {
+      useJsonSerialization: true,
       sessionStorage: true,
       prependDatasetNameInKey: true,
     }),
@@ -436,9 +489,21 @@ export const hoveredVertexAtom = atom<{
  * and is cleared once user commits changes or exits edit mode.
  */
 export const stagedPolylineTransformsAtom = atom<
-  Record<string, PolylinePointTransformData>
+  Record<LabelId, PolylinePointTransformData>
 >({
   key: "fo3d-stagedPolylineTransforms",
+  default: {},
+});
+
+/**
+ * This atom stores temporary transform data for cuboids being edited.
+ * Changes accumulate here as users manipulate cuboids in the 3D canvas,
+ * and is cleared once user commits changes or exits edit mode.
+ */
+export const stagedCuboidTransformsAtom = atom<
+  Record<LabelId, CuboidTransformData>
+>({
+  key: "fo3d-stagedCuboidTransforms",
   default: {},
 });
 
@@ -449,15 +514,6 @@ export const stagedPolylineTransformsAtom = atom<
 export const transformModeAtom = atom<TransformMode>({
   key: "fo3d-transformMode",
   default: "translate",
-});
-
-/**
- * The current transform space (world, local).
- * Determines whether transformations are applied in world or local coordinates.
- */
-export const transformSpaceAtom = atom<TransformSpace>({
-  key: "fo3d-transformSpace",
-  default: "world",
 });
 
 /**
@@ -482,11 +538,16 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
  * Temporary transform data for labels during manipulation.
  * Stores intermediate transform values before they are committed.
  * Keyed by label ID.
+ *
+ * Depending on the context, this might assume relative or absolute coordinates.
  */
 export const tempLabelTransformsAtom = atomFamily<
   {
     position: [number, number, number];
-    quaternion: [number, number, number, number];
+    /** Optional dimensions for cuboid scale transforms */
+    dimensions?: [number, number, number];
+    /** Optional quaternion for cuboid rotation transforms (stored as quaternion during manipulation, converted to euler on commit) */
+    quaternion?: [number, number, number, number];
   } | null,
   string
 >({
@@ -565,7 +626,6 @@ export const clearTransformStateSelector = selector({
   get: () => null,
   set: ({ set }) => {
     set(transformModeAtom, "translate");
-    set(transformSpaceAtom, "world");
     set(selectedPolylineVertexAtom, null);
     set(currentArchetypeSelectedForTransformAtom, null);
     set(isCurrentlyTransformingAtom, false);
@@ -584,3 +644,45 @@ export const clearTransformStateSelector = selector({
     set(editSegmentsModeAtom, false);
   },
 });
+
+/**
+ * Internal atom family keyed by sample ID storing reconciled label data.
+ */
+const reconciledLabels3DAtomFamily = atomFamily<ReconciledLabels3D, string>({
+  key: "fo3d-ReconciledLabels3D",
+  default: {
+    detections: [],
+    polylines: [],
+  },
+});
+
+/**
+ * Selector that provides access to reconciled labels for the current sample.
+ * This is the authoritative source for what labels will be rendered
+ * in the 3D viewer.
+ */
+export const reconciledLabels3DSelector = selector<ReconciledLabels3D>({
+  key: "fo3d-reconciledLabels3DSelector",
+  get: ({ get }) => {
+    const sampleId = get(fos.currentSampleId);
+    if (!sampleId) {
+      return { detections: [], polylines: [] };
+    }
+    return get(reconciledLabels3DAtomFamily(sampleId));
+  },
+  set: ({ get, set }, newValue) => {
+    const sampleId = get(fos.currentSampleId);
+    if (!sampleId || newValue instanceof DefaultValue) {
+      return;
+    }
+    set(reconciledLabels3DAtomFamily(sampleId), newValue);
+  },
+});
+
+/**
+ * Hook which provides the reconciled 3D labels for the current sample.
+ * This is the authoritative source for what labels will be rendered
+ * in the 3D viewer.
+ */
+export const useReconciledLabels3D = () =>
+  useRecoilValue(reconciledLabels3DSelector);

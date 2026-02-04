@@ -32,6 +32,7 @@ operators:
   - delete_group_slice
   - list_saved_views
   - load_saved_view
+  - reload_saved_view
   - save_view
   - edit_saved_view_info
   - delete_saved_view
@@ -45,12 +46,16 @@ operators:
   - download_file
   - model_evaluation_configure_scenario
   - mes_plot_resolver
-  - activate_annotation_schemas
-  - compute_annotation_schema
-  - deactivate_annotation_schemas
-  - delete_annotation_schema
-  - get_annotation_schemas
-  - save_annotation_schema
+
+  # view stages
   - load_group_by
-  - add_bounding_box
-  - remove_bounding_box
+
+  # annotation
+  - activate_label_schemas
+  - deactivate_label_schemas
+  - delete_label_schemas
+  - get_label_schemas
+  - generate_label_schemas
+  - set_active_label_schemas
+  - update_label_schema
+  - validate_label_schemas

@@ -31,6 +31,7 @@ const ImportSchema = (
 ) => {
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
+
   return (
     <Container>
       <MuiIconFont
@@ -78,9 +79,7 @@ const ImportSchema = (
           icon={<InfoOutlined fontSize="inherit" color="secondary" />}
           severity="info"
           sx={{
-            position: "absolute",
-            bottom: 2,
-            margin: 2,
+            marginTop: 2,
             background: "#333",
             boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
             alignItems: "center",

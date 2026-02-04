@@ -1,9 +1,14 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import {
+  clearChannel,
+  EventDispatcher,
+  EventHandler,
+  getEventBus,
+} from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import type { Command } from "../commands/Command";
 import {
   MoveOverlayCommand,
   type Movable,
@@ -13,18 +18,13 @@ import {
   TransformOverlayCommand,
   type TransformOptions,
 } from "../commands/TransformOverlayCommand";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
-import {
-  DoLighterEvent,
-  LIGHTER_EVENTS,
-  LighterEventDetail,
-  type LighterEvent,
-} from "../event/EventBus";
+import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { ClassificationOverlay } from "../overlay/ClassificationOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
 import { SelectionManager } from "../selection/SelectionManager";
@@ -32,7 +32,9 @@ import type {
   CanonicalMedia,
   CoordinateSystem,
   DrawStyle,
+  Hoverable,
   Point,
+  Rect,
   Spatial,
 } from "../types";
 import { generateColorFromId } from "../utils/color";
@@ -47,8 +49,16 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
+  isHoverable: (
+    body: Partial<BaseOverlay & Hoverable>
+  ): body is BaseOverlay & Hoverable =>
+    "getTooltipInfo" in body &&
+    "onHoverEnter" in body &&
+    "onHoverLeave" in body &&
+    "onHoverMove" in body,
   isSelectable: (
     body: BaseOverlay | InteractionHandler
   ): body is BaseOverlay & InteractionHandler & Selectable =>
@@ -75,6 +85,16 @@ export const TypeGuards = {
     "setPosition" in body &&
     "getBounds" in body &&
     "setBounds" in body,
+
+  isInteractionHandler: (value: unknown): value is InteractionHandler =>
+    typeof value === "object" &&
+    value !== null &&
+    "id" in value &&
+    typeof (value as { id: unknown }).id === "string" &&
+    "containsPoint" in value &&
+    typeof (value as { containsPoint: unknown }).containsPoint === "function" &&
+    "markDirty" in value &&
+    typeof (value as { markDirty: unknown }).markDirty === "function",
 };
 
 /**
@@ -135,185 +155,172 @@ export class Scene2D {
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
-  private undoRedo = new UndoRedoManager();
-  private unsubscribeCanonicalMedia?: () => void;
+  private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
-  private readonly sceneId: string | undefined;
   private isRenderLoopActive: boolean = false;
-
   private abortController = new AbortController();
+  private readonly sceneId: string;
+  private readonly eventBus: EventDispatcher<LighterEventGroup>;
 
-  public isDestroyed = false;
+  private _isDestroyed = false;
 
   constructor(private readonly config: Scene2DConfig) {
-    this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager(config.eventBus);
-    this.interactionManager = new InteractionManager(
-      config.canvas,
-      config.eventBus,
-      this.undoRedo,
-      this.selectionManager,
-      config.renderer
-    );
     this.sceneOptions = config.options;
     this.sceneId = config.sceneId;
 
-    // Listen for scene options changes to trigger re-rendering
-    config.eventBus.on(
-      LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED,
-      (event) => {
-        const { activePaths, showOverlays, alpha } = event.detail;
-        this.updateOptions({ activePaths, showOverlays, alpha });
-
-        this.overlays.forEach((overlay) => {
-          overlay.markDirty();
-        });
-      },
-      this.abortController
+    this.coordinateSystem = new CoordinateSystem2D();
+    this.selectionManager = new SelectionManager(this.sceneId);
+    this.interactionManager = new InteractionManager(
+      config.canvas,
+      this.selectionManager,
+      config.renderer,
+      this.sceneId
     );
+
+    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
+
+    // Listen for scene options changes to trigger re-rendering
+    this.registerEventHandler("lighter:scene-options-changed", (event) => {
+      const { activePaths, showOverlays, alpha } = event;
+      this.updateOptions({ activePaths, showOverlays, alpha });
+
+      this.overlays.forEach((overlay) => {
+        overlay.markDirty();
+      });
+    });
 
     // Listen for hover move event to trigger re-rendering of overlays that are currently hovered
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_HOVER_MOVE,
-      () => {
-        const { containedIds } =
-          this.recalculateOverlayOrderForInteractiveOrdering();
+    this.registerEventHandler("lighter:overlay-hover-move", () => {
+      const { containedIds } =
+        this.recalculateOverlayOrderForInteractiveOrdering();
 
-        for (const overlayId of this.overlayOrder) {
-          if (containedIds.includes(overlayId)) {
-            const overlay = this.overlays.get(overlayId);
-            if (overlay) {
-              overlay.markDirty();
-            }
-          }
-        }
-      },
-      this.abortController
-    );
-
-    // When we exit all overlays, recalculate the overlay order, and repaint all overlays
-    // todo: might want to store prev order and diff and only mark diff as dirty
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER,
-      () => {
-        this.recalculateOverlayOrder();
-
-        for (const overlayId of this.overlayOrder) {
+      for (const overlayId of this.overlayOrder) {
+        if (containedIds.includes(overlayId)) {
           const overlay = this.overlays.get(overlayId);
           if (overlay) {
             overlay.markDirty();
           }
         }
-      },
-      this.abortController
-    );
+      }
+    });
+
+    // When we exit all overlays, recalculate the overlay order, and repaint all overlays
+    // todo: might want to store prev order and diff and only mark diff as dirty
+    this.registerEventHandler("lighter:overlay-all-unhover", () => {
+      this.recalculateOverlayOrder();
+
+      for (const overlayId of this.overlayOrder) {
+        const overlay = this.overlays.get(overlayId);
+        if (overlay) {
+          overlay.markDirty();
+        }
+      }
+    });
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_ESTABLISH,
-      (event) => {
-        const { overlay, absoluteBounds, relativeBounds } = event.detail;
+    this.registerEventHandler("lighter:overlay-establish", (event) => {
+      const { overlay, absoluteBounds, relativeBounds } = event;
 
-        if (overlay) {
-          const addCommand = new AddOverlayCommand(
-            this,
-            overlay,
-            absoluteBounds,
-            relativeBounds
-          );
-
-          this.undoRedo.push(addCommand);
-        }
-      },
-      this.abortController
-    );
+      if (overlay) {
+        const addCommand = new AddOverlayCommand(
+          this,
+          overlay,
+          absoluteBounds,
+          relativeBounds
+        );
+        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
+      }
+    });
 
     // Listen for OVERLAY_DRAG_END events to trigger re-rendering of overlays that are currently dragged
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_DRAG_END,
-      (event) => {
-        const overlay = this.getOverlay(event.detail.id);
-        if (overlay && TypeGuards.isMovable(overlay)) {
-          const { startBounds, absoluteBounds: endBounds } = event.detail;
-          const moved =
-            Math.abs(startBounds.x - endBounds.x) > 1 ||
-            Math.abs(startBounds.y - endBounds.y) > 1;
+    this.registerEventHandler("lighter:overlay-drag-end", (event) => {
+      const overlay = this.getOverlay(event.id);
+      if (overlay && TypeGuards.isMovable(overlay)) {
+        const { startBounds, absoluteBounds: endBounds } = event;
+        const moved =
+          Math.abs(startBounds.x - endBounds.x) > 1 ||
+          Math.abs(startBounds.y - endBounds.y) > 1;
 
-          if (moved) {
-            const moveCommand = new MoveOverlayCommand(
-              overlay,
-              event.detail.id,
-              startBounds,
-              endBounds
-            );
-            this.undoRedo.push(moveCommand);
-          }
+        if (moved) {
+          const moveCommand = new MoveOverlayCommand(
+            overlay,
+            event.id,
+            startBounds,
+            endBounds
+          );
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
-      },
-      this.abortController
-    );
+      }
+    });
 
     // Listen for OVERLAY_RESIZE_END events to trigger re-rendering of overlays that are currently resized
-    config.eventBus.on(
-      LIGHTER_EVENTS.OVERLAY_RESIZE_END,
-      (event) => {
-        const overlay = this.getOverlay(event.detail.id);
-        if (overlay && TypeGuards.isMovable(overlay)) {
-          const { startBounds, absoluteBounds: endBounds } = event.detail;
-          const moved =
-            Math.abs(startBounds.x - endBounds.x) > 1 ||
-            Math.abs(startBounds.y - endBounds.y) > 1 ||
-            Math.abs(startBounds.width - endBounds.width) > 1 ||
-            Math.abs(startBounds.height - endBounds.height) > 1;
+    this.registerEventHandler("lighter:overlay-resize-end", (event) => {
+      const overlay = this.getOverlay(event.id);
+      if (overlay && TypeGuards.isMovable(overlay)) {
+        const { startBounds, absoluteBounds: endBounds } = event;
+        const moved =
+          Math.abs(startBounds.x - endBounds.x) > 1 ||
+          Math.abs(startBounds.y - endBounds.y) > 1 ||
+          Math.abs(startBounds.width - endBounds.width) > 1 ||
+          Math.abs(startBounds.height - endBounds.height) > 1;
 
-          if (moved) {
-            const moveCommand = new MoveOverlayCommand(
-              overlay,
-              event.detail.id,
-              startBounds,
-              endBounds
-            );
-            this.undoRedo.push(moveCommand);
-          }
+        if (moved) {
+          const moveCommand = new MoveOverlayCommand(
+            overlay,
+            event.id,
+            startBounds,
+            endBounds
+          );
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
-      },
-      this.abortController
-    );
+      }
+    });
 
     // Listen for DO_OVERLAY_HOVER events to force hover state
-    config.eventBus.on(
-      LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-      (event) => {
-        const { id, point } = event.detail;
-        const handler = this.interactionManager.findHandlerById(id);
-        if (handler && handler.onHoverEnter) {
-          handler.onHoverEnter(point ?? null, null);
-        }
-      },
-      this.abortController
-    );
+    this.registerEventHandler("lighter:do-overlay-hover", (event) => {
+      const { id, point } = event;
+      const handler = this.interactionManager.findHandlerById(id);
+      if (handler && handler.onHoverEnter) {
+        handler.onHoverEnter(point ?? null, null);
+      }
+    });
 
     // Listen for DO_OVERLAY_UNHOVER events to force unhover state
-    config.eventBus.on(
-      LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-      (event) => {
-        const { id } = event.detail;
-        const handler = this.interactionManager.findHandlerById(id);
-        if (handler && handler.onHoverLeave) {
-          handler.onHoverLeave(null, null);
-        }
-      },
-      this.abortController
-    );
+    this.registerEventHandler("lighter:do-overlay-unhover", (event) => {
+      const { id } = event;
+      const handler = this.interactionManager.findHandlerById(id);
+      if (handler && handler.onHoverLeave) {
+        handler.onHoverLeave(null, null);
+      }
+    });
 
     document.addEventListener("keydown", this.arrowRotateHandler.bind(this), {
       signal: this.abortController.signal,
     });
+  }
+
+  /**
+   * Gets whether the scene has been destroyed.
+   * @returns True if the scene has been destroyed, false otherwise.
+   */
+  get isDestroyed(): boolean {
+    return this._isDestroyed;
+  }
+
+  /**
+   * Registers an event handler that will be automatically cleaned up when the scene is destroyed.
+   */
+  private registerEventHandler<K extends keyof LighterEventGroup>(
+    event: K,
+    handler: EventHandler<LighterEventGroup[K]>
+  ): void {
+    const offHandler = this.eventBus.on(event, handler);
+    this.abortController.signal.addEventListener("abort", offHandler);
   }
 
   /**
@@ -546,20 +553,14 @@ export class Scene2D {
     // Find the topmost overlay at the current mouse position
     const topmostOverlay = this.findOverlayAtPoint(pixelCoordinates);
 
-    this.dispatch({
-      type: LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER,
-      detail: {
-        point: pixelCoordinates,
-      },
+    this.eventBus.dispatch("lighter:overlay-all-unhover", {
+      point: pixelCoordinates,
     });
 
     if (topmostOverlay && topmostOverlay.id !== this.canonicalMediaId) {
-      this.dispatch({
-        type: LIGHTER_EVENTS.OVERLAY_HOVER,
-        detail: {
-          id: topmostOverlay.id,
-          point: pixelCoordinates,
-        },
+      this.eventBus.dispatch("lighter:overlay-hover", {
+        id: topmostOverlay.id,
+        point: pixelCoordinates,
       });
     }
   }
@@ -577,12 +578,9 @@ export class Scene2D {
     const hoveredOverlay = this.findOverlayAtPoint(pixelCoordinates);
 
     if (hoveredOverlay && hoveredOverlay.id !== this.canonicalMediaId) {
-      this.dispatch({
-        type: LIGHTER_EVENTS.OVERLAY_UNHOVER,
-        detail: {
-          id: hoveredOverlay.id,
-          point: pixelCoordinates,
-        },
+      this.eventBus.dispatch("lighter:overlay-unhover", {
+        id: hoveredOverlay.id,
+        point: pixelCoordinates,
       });
     }
   }
@@ -705,7 +703,7 @@ export class Scene2D {
    * Recalculates the overlay rendering order based on activePaths and interactive state.
    */
   private recalculateOverlayOrder() {
-    const { activePaths, showOverlays, alpha } = this.sceneOptions || {};
+    const { activePaths } = this.sceneOptions || {};
     const pixelCoordinates = this.interactionManager.getPixelCoordinates();
 
     if (!pixelCoordinates) {
@@ -958,7 +956,12 @@ export class Scene2D {
    */
   addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
     if (withUndo) {
-      const command = new AddOverlayCommand(this, overlay);
+      const command = new AddOverlayCommand(
+        this,
+        overlay,
+        undefined,
+        undefined
+      );
       this.executeCommand(command);
       return;
     }
@@ -968,10 +971,10 @@ export class Scene2D {
     }
 
     this.renderingState.setStatus(overlay.id, OVERLAY_STATUS_PENDING);
-    // Inject renderer into overlay
+    // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
-    overlay.attachEventBus(this.config.eventBus);
     overlay.setResourceLoader(this.config.resourceLoader);
+    overlay.setSceneId(this.sceneId);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -990,9 +993,9 @@ export class Scene2D {
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
 
-    this.dispatch({
-      type: LIGHTER_EVENTS.OVERLAY_ADDED,
-      detail: { id: overlay.id, overlay },
+    this.eventBus.dispatch("lighter:overlay-added", {
+      id: overlay.id,
+      overlay,
     });
   }
 
@@ -1013,23 +1016,32 @@ export class Scene2D {
     const overlay = this.overlays.get(id);
 
     if (overlay) {
+      const overlayType = overlay.getOverlayType();
+
       this.interactionManager.removeHandler(overlay);
       this.selectionManager.removeSelectable(id);
 
       // Dispose the renderer container to actually remove it from the renderer
       this.config.renderer.dispose(id);
 
+      // Destroy the overlay to clean up event handlers and other resources
+      overlay.destroy();
+
       this.overlays.delete(id);
       this.overlayOrder = this.overlayOrder.filter(
         (overlayId) => overlayId !== id
       );
       this.renderingState.clear(id);
+
+      // make sure we don't leave a gap in our stack of Classifications
+      if (overlayType === "ClassificationOverlay") {
+        [...this.overlays.values()]
+          .filter((sibling) => sibling.getOverlayType() === overlayType)
+          .forEach((sibling) => sibling.markDirty());
+      }
     }
 
-    this.dispatch({
-      type: LIGHTER_EVENTS.OVERLAY_REMOVED,
-      detail: { id },
-    });
+    this.eventBus.dispatch("lighter:overlay-removed", { id });
   }
 
   /**
@@ -1073,7 +1085,7 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  transformOverlay(id: string, options: TransformOptions): boolean {
+  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1112,7 +1124,7 @@ export class Scene2D {
       newBounds
     );
 
-    this.executeCommand(command);
+    await this.executeCommand(command);
 
     return true;
   }
@@ -1165,119 +1177,17 @@ export class Scene2D {
   }
 
   /**
-   * Registers an event listener on the scene's event bus.
-   *
-   * @param type - The event type to listen for.
-   * @param listener - The event listener function.
-   */
-  on<T extends LighterEvent["type"]>(
-    type: T,
-    listener: (e: CustomEvent<LighterEventDetail<T>>) => void
-  ): void {
-    this.config.eventBus.on(type, listener);
-  }
-
-  /**
-   * Removes an event listener from the scene's event bus.
-   *
-   * @param type - The event type.
-   * @param listener - The event listener function.
-   */
-  off<T extends LighterEvent["type"]>(
-    type: T,
-    listener: (e: CustomEvent<LighterEventDetail<T>>) => void
-  ): void {
-    this.config.eventBus.off(type, listener);
-  }
-
-  /**
-   * Dispatches an event through the scene's event bus.
-   *
-   * @param event - The event to dispatch.
-   */
-  private dispatch(event: LighterEvent): void {
-    this.config.eventBus.emit(event);
-  }
-
-  /**
-   * Dispatches an event through the scene's event bus.
-   * Use `executeCommand` or `dispatchSafely` instead of this method where possible.
-   *
-   * @param event - The event to dispatch.
-   */
-  public dispatch_DANGEROUSLY(event: LighterEvent): void {
-    this.dispatch(event);
-  }
-
-  /**
-   * Dispatches an event through the scene's event bus.
-   *
-   * Use this method to dispatch events that are safe to emit from "outside" of lighter.
-   *
-   * @param event - The event to dispatch.
-   */
-  public dispatchSafely(event: DoLighterEvent): void {
-    this.dispatch(event);
-  }
-
-  /**
    * Executes a command and adds it to the undo stack.
    * @param command - The command to execute.
    * @param isUndoable - Whether the command is undoable.
    */
-  executeCommand(command: Command, isUndoable = true): void {
-    command.execute();
-
-    if (isUndoable) {
-      this.undoRedo.push(command);
-    }
-
-    this.dispatch({
-      type: LIGHTER_EVENTS.COMMAND_EXECUTED,
-      detail: { commandId: command.id, isUndoable, command },
+  async executeCommand(command: Action, isUndoable = true): Promise<void> {
+    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    this.eventBus.dispatch("lighter:command-executed", {
+      commandId: command.id,
+      isUndoable,
+      command,
     });
-  }
-
-  /**
-   * Undoes the last command.
-   */
-  undo(): void {
-    const command = this.undoRedo.undo();
-    if (command) {
-      this.dispatch({
-        type: LIGHTER_EVENTS.UNDO,
-        detail: { commandId: command.id },
-      });
-    }
-  }
-
-  /**
-   * Redoes the last undone command.
-   */
-  redo(): void {
-    const command = this.undoRedo.redo();
-    if (command) {
-      this.dispatch({
-        type: LIGHTER_EVENTS.REDO,
-        detail: { commandId: command.id },
-      });
-    }
-  }
-
-  /**
-   * Checks if undo is available.
-   * @returns True if undo is available.
-   */
-  canUndo(): boolean {
-    return this.undoRedo.canUndo();
-  }
-
-  /**
-   * Checks if redo is available.
-   * @returns True if redo is available.
-   */
-  canRedo(): boolean {
-    return this.undoRedo.canRedo();
   }
 
   /**
@@ -1298,17 +1208,9 @@ export class Scene2D {
     this.selectionManager.clearSelection();
 
     // Emit clear event
-    this.dispatch({
-      type: LIGHTER_EVENTS.SELECTION_CLEARED,
-      detail: { previouslySelectedIds: [] },
+    this.eventBus.dispatch("lighter:selection-cleared", {
+      previouslySelectedIds: [],
     });
-  }
-
-  /**
-   * Clears the undo/redo stack
-   */
-  clearUndoRedoStack() {
-    this.undoRedo.clear();
   }
 
   /**
@@ -1326,29 +1228,38 @@ export class Scene2D {
 
     this.isRenderLoopActive = false;
 
+    // Clean up canonical media subscription BEFORE clearing overlays
+    // This ensures we properly unsubscribe from boundsChangeCallbacks
+    // before the ImageOverlay's boundsChangeCallbacks array is replaced
+    if (this.unsubscribeCanonicalMediaBounds) {
+      this.unsubscribeCanonicalMediaBounds();
+      this.unsubscribeCanonicalMediaBounds = undefined;
+    }
+
+    // Clear canonical media references
+    this.canonicalMedia = undefined;
+    this.canonicalMediaId = undefined;
+
     // Clear all overlays
     this.clear();
 
     // Clear render callbacks
     this.clearRenderCallbacks();
 
-    // Clean up canonical media subscription
-    if (this.unsubscribeCanonicalMedia) {
-      this.unsubscribeCanonicalMedia();
-    }
-
     // Destroy managers
     this.interactionManager.destroy();
     this.selectionManager.destroy();
-    this.undoRedo.clear();
 
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
 
+    // Clear all event handlers for this scene's channel and remove from registry
+    clearChannel(this.sceneId);
+
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
 
-    this.isDestroyed = true;
+    this._isDestroyed = true;
   }
 
   /**
@@ -1445,19 +1356,18 @@ export class Scene2D {
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
     // Set up bounds change listener for coordinate system updates
-    this.unsubscribeCanonicalMedia = overlayOrMedia.onBoundsChanged(
+    this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
 
-        // Update all spatial overlays
         this.updateAllSpatialOverlays();
+        this.updateClassifications();
       }
     );
 
     // Emit event for coordinate transformation updates
-    this.dispatch({
-      type: LIGHTER_EVENTS.CANONICAL_MEDIA_CHANGED,
-      detail: { overlayId: this.canonicalMediaId || "custom" },
+    this.eventBus.dispatch("lighter:canonical-media-changed", {
+      overlayId: this.canonicalMediaId || "custom",
     });
   }
 
@@ -1526,6 +1436,17 @@ export class Scene2D {
   }
 
   /**
+   * Marks Classifications as dirty to be redrawn
+   */
+  private updateClassifications(): void {
+    this.overlays.forEach((overlay) => {
+      if (overlay instanceof ClassificationOverlay) {
+        overlay.markDirty();
+      }
+    });
+  }
+
+  /**
    * Updates coordinates for a single spatial overlay.
    */
   private updateSpatialOverlayCoordinates(
@@ -1585,20 +1506,24 @@ export class Scene2D {
           BaseOverlay.validBounds(absoluteBounds) &&
           BaseOverlay.validBounds(relativeBounds)
         ) {
-          this.dispatch({
-            type: LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED,
-            detail: {
-              id: overlay.id,
-              absoluteBounds,
-              relativeBounds,
-            },
+          this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+            id: overlay.id,
+            absoluteBounds,
+            relativeBounds,
           });
         }
       }
     }
 
+    const overlayIndexes: Record<string, number> = {};
+
     for (const overlayId of this.overlayOrder) {
-      this.renderOverlay(overlayId);
+      const overlayType = this.overlays.get(overlayId)!.getOverlayType();
+      const currentIndex = overlayIndexes[overlayType] ?? -1;
+      const overlayIndex = currentIndex + 1;
+      overlayIndexes[overlayType] = overlayIndex;
+
+      this.renderOverlay(overlayId, overlayIndex);
     }
 
     // Execute after-render callbacks
@@ -1608,8 +1533,9 @@ export class Scene2D {
   /**
    * Renders a specific overlay if it's pending.
    * @param overlayId - The ID of the overlay to render.
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private renderOverlay(overlayId: string): void {
+  private renderOverlay(overlayId: string, overlayIndex: number): void {
     const overlay = this.overlays.get(overlayId);
 
     if (!overlay) {
@@ -1619,7 +1545,7 @@ export class Scene2D {
     const status = this.renderingState.getStatus(overlayId);
 
     if (overlay && this.shouldRenderOverlay(overlay, status)) {
-      this.executeOverlayRender(overlayId, overlay);
+      this.executeOverlayRender(overlayId, overlay, overlayIndex);
     }
 
     if (this.shouldShowOverlay(overlay)) {
@@ -1669,15 +1595,33 @@ export class Scene2D {
    * Executes the rendering of an overlay with proper error handling.
    * @param overlayId - The ID of the overlay being rendered.
    * @param overlay - The overlay to render.
+   * @param overlayIndex - The index of this particular overlay with respect to its type (e.g. ClassificationOverlay, BoundingBoxOverlay, etc.)
    */
-  private executeOverlayRender(overlayId: string, overlay: BaseOverlay): void {
+  private executeOverlayRender(
+    overlayId: string,
+    overlay: BaseOverlay,
+    overlayIndex: number
+  ): void {
     this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTING);
 
     try {
+      const canonicalMediaBounds: Rect =
+        this.getCanonicalMedia()?.getRenderedBounds() || {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+        };
+
       const ret = overlay.render(
         this.config.renderer,
-        this.createOverlayStyle(overlay)
+        this.createOverlayStyle(overlay),
+        {
+          canonicalMediaBounds,
+          overlayIndex,
+        }
       );
+
       if (ret instanceof Promise) {
         ret.then(() => {
           this.renderingState.setStatus(overlayId, OVERLAY_STATUS_PAINTED);
@@ -1723,14 +1667,15 @@ export class Scene2D {
     }
 
     this.interactiveMode = true;
-    this.interactiveHandler = handler;
+    this.interactiveHandler = handler as InteractionHandler;
 
-    this.interactionManager.addHandler(this.interactiveHandler);
+    if (this.interactiveHandler) {
+      this.interactionManager.addHandler(this.interactiveHandler);
+    }
     this.setCursor(handler.cursor || "default");
 
-    this.dispatch({
-      type: LIGHTER_EVENTS.SCENE_INTERACTIVE_MODE_CHANGED,
-      detail: { interactiveMode: true },
+    this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
+      interactiveMode: true,
     });
   }
 
@@ -1752,9 +1697,8 @@ export class Scene2D {
 
     this.setCursor("default");
 
-    this.dispatch({
-      type: LIGHTER_EVENTS.SCENE_INTERACTIVE_MODE_CHANGED,
-      detail: { interactiveMode: false },
+    this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
+      interactiveMode: false,
     });
   }
 

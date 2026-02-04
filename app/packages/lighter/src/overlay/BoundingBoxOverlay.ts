@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import type { Movable } from "../commands/MoveOverlayCommand";
@@ -21,6 +21,7 @@ import type {
   Point,
   RawLookerLabel,
   Rect,
+  RenderMeta,
   Spatial,
 } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
@@ -147,7 +148,7 @@ export class BoundingBoxOverlay
     return this.id;
   }
 
-  protected renderImpl(renderer: Renderer2D): void {
+  protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
 
@@ -249,7 +250,7 @@ export class BoundingBoxOverlay
       }
 
       // Draw text and store the dimensions for accurate header detection
-      const textDimensions = renderer.drawText(
+      this.textBounds = renderer.drawText(
         textToDraw,
         labelPosition,
         {
@@ -258,13 +259,6 @@ export class BoundingBoxOverlay
         },
         this.containerId
       );
-
-      this.textBounds = {
-        x: labelPosition.x,
-        y: labelPosition.y,
-        width: textDimensions.width,
-        height: textDimensions.height,
-      };
     }
 
     this.emitLoaded();
@@ -579,8 +573,10 @@ export class BoundingBoxOverlay
   onPointerUp(_point: Point, _event: PointerEvent): boolean {
     if (!this.moveStartPoint || !this.moveStartBounds) return false;
 
-    // Mark final position for relative-coordinate update and reset drag state
-    this.markForCoordinateUpdate();
+    if (this.isMoving()) {
+      this.markForCoordinateUpdate();
+    }
+
     this.moveState = "NONE";
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
@@ -781,19 +777,6 @@ export class BoundingBoxOverlay
 
   getSelectionPriority(): number {
     return LABEL_ARCHETYPE_PRIORITY.BOUNDING_BOX;
-  }
-
-  // Hoverable interface implementation
-  onHoverEnter(_point: Point, _event: PointerEvent): boolean {
-    this.isHoveredState = true;
-    this.markDirty();
-    return true;
-  }
-
-  onHoverLeave(_point: Point, _event: PointerEvent): boolean {
-    this.isHoveredState = false;
-    this.markDirty();
-    return true;
   }
 
   getTooltipInfo(): {

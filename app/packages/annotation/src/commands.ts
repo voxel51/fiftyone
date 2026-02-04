@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Command } from "@fiftyone/commands";
-import { AnnotationLabel } from "@fiftyone/state";
+import { Command } from "@fiftyone/command-bus";
+import { AnnotationLabel, PrimitiveValue } from "@fiftyone/state";
 import { Field } from "@fiftyone/utilities";
 
 /**
@@ -11,7 +11,7 @@ import { Field } from "@fiftyone/utilities";
  */
 export class UpsertAnnotationCommand extends Command<boolean> {
   constructor(
-    public readonly label: AnnotationLabel,
+    public readonly label: AnnotationLabel | PrimitiveValue,
     public readonly schema: Field
   ) {
     super();
@@ -26,6 +26,15 @@ export class DeleteAnnotationCommand extends Command<boolean> {
     public readonly label: AnnotationLabel,
     public readonly schema: Field
   ) {
+    super();
+  }
+}
+
+/**
+ * Command to persist aggregate annotation changes.
+ */
+export class PersistAnnotationChanges extends Command<boolean | null> {
+  constructor() {
     super();
   }
 }

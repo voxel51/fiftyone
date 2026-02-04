@@ -20,7 +20,12 @@ import {
   setSidebarGroups,
   sidebarGroupsFragment,
 } from "@fiftyone/relay";
-import type { Field, Schema, StrictField } from "@fiftyone/utilities";
+import type {
+  Field,
+  Primitive,
+  Schema,
+  StrictField,
+} from "@fiftyone/utilities";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -116,6 +121,16 @@ export interface Label {
   isNew?: boolean;
 }
 
+interface GenericOverlay<T> {
+  id: string;
+  field: string;
+  label: T;
+  getLabel?: () => T;
+  updateField?: (field: string) => void;
+  updateLabel?: (label: T) => void;
+  setSelected?: (selected: boolean) => void;
+}
+
 export interface ClassificationAnnotationLabel extends Label {
   data: ClassificationLabel;
   overlay: ClassificationOverlay;
@@ -128,24 +143,29 @@ export interface DetectionAnnotationLabel extends Label {
   type: "Detection";
 }
 
+export interface Detection3DAnnotationLabel extends Label {
+  data: DetectionLabel;
+  overlay: GenericOverlay<DetectionLabel>;
+  type: "Detection";
+}
+
 export interface PolylineAnnotationLabel extends Label {
   data: PolylineLabel;
-  overlay: {
-    id: string;
-    field: string;
-    label: PolylineLabel;
-    getLabel?: () => PolylineLabel;
-    updateField?: (field: string) => void;
-    updateLabel?: (label: PolylineLabel) => void;
-    setSelected?: (selected: boolean) => void;
-  };
+  overlay: GenericOverlay<PolylineLabel>;
   type: "Polyline";
 }
 
 export type AnnotationLabel =
   | ClassificationAnnotationLabel
   | DetectionAnnotationLabel
+  | Detection3DAnnotationLabel
   | PolylineAnnotationLabel;
+
+export interface PrimitiveValue {
+  type: "Primitive";
+  data: Primitive;
+  path: string;
+}
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;

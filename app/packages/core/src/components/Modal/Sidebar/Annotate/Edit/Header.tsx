@@ -4,7 +4,7 @@ import { useContext } from "react";
 import { Redo, Round, Undo } from "../Actions";
 import { ItemLeft, ItemRight } from "../Components";
 
-import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { useRecoilValue } from "recoil";
 import { ConfirmationContext } from "../Confirmation";
 import { ICONS } from "../Icons";
@@ -14,11 +14,13 @@ import useColor from "./useColor";
 
 const Header = () => {
   const type = useAtomValue(currentType);
-  const Icon = ICONS[type];
+  const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
   const { onExit } = useContext(ConfirmationContext);
 
-  const isAnnotatingPolyline = useRecoilValue(isPolylineAnnotateActiveAtom);
+  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
+  const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
   return (
     <Row>
@@ -26,10 +28,10 @@ const Header = () => {
         <Round onClick={onExit}>
           <Back />
         </Round>
-        <Icon fill={color} />
-        <div>{type}</div>
+        {Icon && <Icon fill={color} />}
+        <div>Edit {type}</div>
       </ItemLeft>
-      {!isAnnotatingPolyline && (
+      {!isAnnotatingPolyline && !isAnnotatingCuboid && (
         <ItemRight>
           <Undo />
           <Redo />

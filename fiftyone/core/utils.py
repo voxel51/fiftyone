@@ -1,7 +1,7 @@
 """
 Core utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2870,24 +2870,61 @@ def get_multiprocessing_context():
     return multiprocessing.get_context()
 
 
-def recommend_thread_pool_workers(num_workers=None):
-    """Recommends a number of workers for a thread pool.
+def _recommend_num_workers(
+    num_workers, default_num_workers, config_default, max_workers
+):
+    """Helper for recommending number of workers."""
+    if num_workers is None:
+        # Order:
+        # 1. Configured default
+        # 2. Passed-in default
+        # 3. System CPU count
+        num_workers = (
+            config_default
+            if config_default is not None
+            else (
+                default_num_workers
+                if default_num_workers is not None
+                else get_cpu_count()
+            )
+        )
 
-    If a ``fo.config.max_thread_pool_workers`` is set, this limit is applied.
+    num_workers = int(num_workers)
+    if max_workers is not None:
+        num_workers = min(num_workers, max_workers)
+    num_workers = max(num_workers, 0)
+
+    return num_workers
+
+
+def recommend_thread_pool_workers(num_workers=None, default_num_workers=None):
+    """Recommends a number of workers for a process pool.
+
+    If the number is 0, that means no threading is recommended.
+
+    If ``num_workers`` is None, the following order is used to determine the
+    number of workers:
+
+    - The configured (``fo.config``) default number of workers
+    - The passed-in default number of workers (``default_num_workers``)
+    - The system CPU count
+
+    If ``fo.config.max_process_pool_workers`` is set, this limit is applied.
 
     Args:
         num_workers (None): a suggested number of workers
+        default_num_workers (None): a default number of workers to use if
+            ``num_workers`` is None and no configured default is set
 
     Returns:
-        a number of workers
+        a number of workers. 0 means no threading
     """
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
-
-    if fo.config.max_thread_pool_workers is not None:
-        num_workers = min(num_workers, fo.config.max_thread_pool_workers)
-
-    return num_workers
+    return _recommend_num_workers(
+        num_workers,
+        default_num_workers,
+        fo.config.default_thread_pool_workers,
+        fo.config.max_thread_pool_workers,
+    )
 
 
 def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
@@ -2915,36 +2952,162 @@ def recommend_process_pool_workers(num_workers=None, default_num_workers=None):
     Returns:
         a number of workers. 0 means no multiprocessing
     """
+    # "daemonic processes are not allowed to have children"
+    if multiprocessing.current_process().daemon:
+        num_workers = 0
+
+    return _recommend_num_workers(
+        num_workers,
+        default_num_workers,
+        fo.config.default_process_pool_workers,
+        fo.config.max_process_pool_workers,
+    )
+
+
+def _parse_cpuset(cpuset_str):
+    """Parse cpuset format like '0-3,5,7' and return CPU count.
+
+    Args:
+        cpuset_str: a cpuset string (e.g., "0-3,5,7" or "0-7")
+
+    Returns:
+        the number of CPUs in the cpuset
+    """
+    cpus = set()
+    for part in cpuset_str.strip().split(","):
+        if "-" in part:
+            start, end = part.split("-", 1)
+            cpus.update(range(int(start), int(end) + 1))
+        else:
+            cpus.add(int(part))
+    return len(cpus)
+
+
+def get_cpu_count():
+    """Returns the number of logical CPUs available to the current process.
+
+    This function provides a more accurate CPU count than
+    ``multiprocessing.cpu_count()`` in containerized environments like
+    Kubernetes, where CPU limits may be set via cgroups.
+
+    The function checks the following sources in order:
+
+    1. cgroup v2 CPU quota (``/sys/fs/cgroup/cpu.max``)
+    2. cgroup v1 CPU quota (``/sys/fs/cgroup/cpu/cpu.cfs_quota_us``)
+    3. cgroup v2 cpuset (``/sys/fs/cgroup/cpuset.cpus.effective``)
+    4. cgroup v1 cpuset (``/sys/fs/cgroup/cpuset/cpuset.cpus``)
+    5. ``os.process_cpu_count()`` (Python 3.13+)
+    6. ``os.sched_getaffinity(0)`` (Linux)
+    7. ``multiprocessing.cpu_count()``
+
+    If both CPU quota and cpuset limits are detected, the minimum is returned.
+
+    Note:
+        This counts logical CPUs (includes hyperthreading). For example, a
+        4-core CPU with hyperthreading will report 8 CPUs. This is the correct
+        value for determining parallelization limits.
+
+        Fractional CPU limits (e.g., 500m = 0.5 CPUs) are rounded down, with
+        a floor of 1, since you cannot parallelize with less than one worker.
+        E.g., 0.5 -> 1, 1.5 -> 1, 2.5 -> 2
+
+    Returns:
+        the number of logical CPUs available to this process
+    """
+    # https://stackoverflow.com/a/1006301/13228047
+
     try:
-        # "daemonic processes are not allowed to have children"
-        if multiprocessing.current_process().daemon:
-            num_workers = 0
-        elif num_workers is None:
-            # Order:
-            # 1. Configured default
-            # 2. Passed-in default
-            # 3. System CPU count
-            num_workers = (
-                fo.config.default_process_pool_workers
-                if fo.config.default_process_pool_workers is not None
-                else (
-                    default_num_workers
-                    if default_num_workers is not None
-                    else multiprocessing.cpu_count()
-                )
-            )
+        # On Linux we can use cgroup to get a more accurate count of the
+        # available CPUs in some environments such as kubernetes where it will
+        # specify the CPU limit for the container
+        if sys.platform.startswith("linux"):
+            cgroup_cpu_count = None
+
+            # Check CPU quota limits
+            try:
+                # cgroup v2
+                # 50000 100000 -> 500m CPU
+                # max 100000 -> no limit
+                with open("/sys/fs/cgroup/cpu.max") as f:
+                    quota, period = f.read().strip().split()
+                    if quota != "max" and period != "0":
+                        cgroup_cpu_count = max(
+                            1, int(int(quota) / int(period))
+                        )
+            except Exception:
+                pass
+
+            if cgroup_cpu_count is None:
+                # cgroup v1 fallback for quota
+                try:
+                    with open(
+                        "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
+                    ) as fq, open(
+                        "/sys/fs/cgroup/cpu/cpu.cfs_period_us"
+                    ) as fp:
+                        quota = int(fq.read().strip())
+                        period = int(fp.read().strip())
+                        # quota of -1 means unlimited in cgroup v1
+                        if quota > 0 and period > 0:
+                            cgroup_cpu_count = max(1, quota // period)
+                except Exception:
+                    pass
+
+            # Check cpuset limits (which CPUs we're pinned to)
+            cpuset_count = None
+            try:
+                # cgroup v2 - try effective first, then fall back to cpuset.cpus
+                with open("/sys/fs/cgroup/cpuset.cpus.effective") as f:
+                    cpuset_count = _parse_cpuset(f.read())
+            except Exception:
+                try:
+                    with open("/sys/fs/cgroup/cpuset.cpus") as f:
+                        cpuset_count = _parse_cpuset(f.read())
+                except Exception:
+                    pass
+
+            if cpuset_count is None:
+                # cgroup v1 fallback for cpuset
+                try:
+                    with open("/sys/fs/cgroup/cpuset/cpuset.cpus") as f:
+                        cpuset_count = _parse_cpuset(f.read())
+                except Exception:
+                    pass
+
+            # Return the minimum of quota and cpuset if both are set
+            if cgroup_cpu_count is not None and cpuset_count is not None:
+                return min(cgroup_cpu_count, cpuset_count)
+            elif cgroup_cpu_count is not None:
+                return cgroup_cpu_count
+            elif cpuset_count is not None:
+                return cpuset_count
+
+        # Python >= 3.13 adds this function which is more accurate to what the
+        # process can actually use than cpu_count()
+        # https://docs.python.org/3/library/os.html#os.process_cpu_count
+        try:
+            cpu_count = os.process_cpu_count()  # pylint: disable=no-member
+            if cpu_count is not None:
+                return cpu_count
+        except Exception:
+            pass
+
+        # On linux if python < 3.13, we can manually check the affinity which
+        # tells us the number of CPUs available to the process rather than the
+        # total number of CPUs in the system
+        try:
+            return len(os.sched_getaffinity(0))  # pylint: disable=no-member
+        except Exception:
+            pass
+
+        # Fall back to multiprocessing.cpu_count() or 1 if not implemented
+        return multiprocessing.cpu_count()
+
     except Exception:
         logger.debug(
-            "recommend_process_pool_workers: falling back to 4", exc_info=True
+            "Unable to determine CPU count, defaulting to 1", exc_info=True
         )
-        num_workers = 4
-
-    num_workers = int(num_workers)
-    if fo.config.max_process_pool_workers is not None:
-        num_workers = min(num_workers, fo.config.max_process_pool_workers)
-    num_workers = max(num_workers, 0)
-
-    return num_workers
+        return 1
 
 
 sync_task_executor = None

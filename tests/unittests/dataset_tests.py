@@ -1,39 +1,37 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
-from collections import Counter
-from copy import deepcopy, copy
-from datetime import date, datetime, timedelta
-from functools import partial
 import gc
 import os
 import random
 import string
 import unittest
+from collections import Counter
+from copy import copy, deepcopy
+from datetime import date, datetime, timedelta
+from functools import partial
 from unittest.mock import patch
 
-from bson import ObjectId
-from freezegun import freeze_time
-from mongoengine import ValidationError
+import eta.core.utils as etau
 import numpy as np
 import pytz
-
-import eta.core.utils as etau
+from bson import ObjectId
+from decorators import drop_datasets, skip_windows
+from freezegun import freeze_time
+from mongoengine import ValidationError
 
 import fiftyone as fo
 import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-from fiftyone.operators.store import ExecutionStoreService
 import fiftyone.utils.data as foud
 from fiftyone import ViewField as F
-
-from decorators import drop_datasets, skip_windows
+from fiftyone.operators.store import ExecutionStoreService
 
 
 class DatasetTests(unittest.TestCase):
@@ -4669,6 +4667,92 @@ class DatasetTests(unittest.TestCase):
         dataset.save()  # success
 
     @drop_datasets
+    def test_camera_intrinsics(self):
+        dataset = fo.Dataset()
+
+        intrinsics = fo.PinholeCameraIntrinsics(
+            fx=1000.0,
+            fy=1000.0,
+            cx=960.0,
+            cy=540.0,
+        )
+        dataset.camera_intrinsics = {"camera_front": intrinsics}
+
+        dataset.reload()
+        self.assertIn("camera_front", dataset.camera_intrinsics)
+        self.assertEqual(dataset.camera_intrinsics["camera_front"].fx, 1000.0)
+
+        dataset.camera_intrinsics["camera_front"].fx = 1200.0
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(dataset.camera_intrinsics["camera_front"].fx, 1200.0)
+
+        # Multiple cameras
+        intrinsics2 = fo.OpenCVCameraIntrinsics(
+            fx=800.0,
+            fy=800.0,
+            cx=640.0,
+            cy=480.0,
+            k1=-0.1,
+        )
+        dataset.camera_intrinsics["camera_rear"] = intrinsics2
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(len(dataset.camera_intrinsics), 2)
+        self.assertAlmostEqual(
+            dataset.camera_intrinsics["camera_rear"].k1, -0.1
+        )
+
+    @drop_datasets
+    def test_static_transforms(self):
+        dataset = fo.Dataset()
+
+        extrinsics = fo.StaticTransform(
+            translation=[1.0, 0.0, 1.5],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="camera_front",
+            target_frame="ego",
+        )
+        dataset.static_transforms = {"camera_front::ego": extrinsics}
+
+        dataset.reload()
+        self.assertIn("camera_front::ego", dataset.static_transforms)
+        self.assertEqual(
+            dataset.static_transforms["camera_front::ego"].source_frame,
+            "camera_front",
+        )
+        self.assertEqual(
+            dataset.static_transforms["camera_front::ego"].target_frame, "ego"
+        )
+
+        dataset.static_transforms["camera_front::ego"].translation = [
+            2.0,
+            0.0,
+            1.5,
+        ]
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(
+            dataset.static_transforms["camera_front::ego"].translation[0], 2.0
+        )
+
+        # Multiple transforms
+        extrinsics2 = fo.StaticTransform(
+            translation=[0.0, 0.0, 0.0],
+            quaternion=[0.0, 0.0, 0.0, 1.0],
+            source_frame="ego",
+            target_frame="world",
+        )
+        dataset.static_transforms["ego::world"] = extrinsics2
+        dataset.save()
+
+        dataset.reload()
+        self.assertEqual(len(dataset.static_transforms), 2)
+
+    @drop_datasets
     def test_dataset_info_import_export(self):
         dataset = fo.Dataset()
 
@@ -4689,6 +4773,40 @@ class DatasetTests(unittest.TestCase):
             labels=["left eye", "right eye"], edges=[[0, 1]]
         )
 
+        dataset.camera_intrinsics = {
+            "camera_front": fo.PinholeCameraIntrinsics(
+                fx=1000.0,
+                fy=1000.0,
+                cx=960.0,
+                cy=540.0,
+            ),
+            "camera_rear": fo.OpenCVCameraIntrinsics(
+                fx=800.0,
+                fy=800.0,
+                cx=640.0,
+                cy=480.0,
+                k1=-0.1,
+                k2=0.05,
+                p1=0.001,
+                p2=-0.001,
+            ),
+        }
+
+        dataset.static_transforms = {
+            "camera_front::ego": fo.StaticTransform(
+                translation=[1.5, 0.0, 1.2],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="camera_front",
+                target_frame="ego",
+            ),
+            "ego::world": fo.StaticTransform(
+                translation=[0.0, 0.0, 0.0],
+                quaternion=[0.0, 0.0, 0.0, 1.0],
+                source_frame="ego",
+                target_frame="world",
+            ),
+        }
+
         with etau.TempDir() as tmp_dir:
             json_path = os.path.join(tmp_dir, "dataset.json")
 
@@ -4708,6 +4826,13 @@ class DatasetTests(unittest.TestCase):
             self.assertDictEqual(dataset2.skeletons, dataset.skeletons)
             self.assertEqual(
                 dataset2.default_skeleton, dataset.default_skeleton
+            )
+
+            self._assert_camera_intrinsics_equal(
+                dataset2.camera_intrinsics, dataset.camera_intrinsics
+            )
+            self._assert_static_transforms_equal(
+                dataset2.static_transforms, dataset.static_transforms
             )
 
         with etau.TempDir() as tmp_dir:
@@ -4732,6 +4857,82 @@ class DatasetTests(unittest.TestCase):
             self.assertEqual(
                 dataset3.default_skeleton, dataset.default_skeleton
             )
+
+            self._assert_camera_intrinsics_equal(
+                dataset3.camera_intrinsics, dataset.camera_intrinsics
+            )
+            self._assert_static_transforms_equal(
+                dataset3.static_transforms, dataset.static_transforms
+            )
+
+    def _assert_camera_intrinsics_equal(self, actual, expected):
+        self.assertEqual(set(actual.keys()), set(expected.keys()))
+
+        for key in expected:
+            actual_intrinsics = actual[key]
+            expected_intrinsics = expected[key]
+
+            self.assertEqual(
+                type(actual_intrinsics).__name__,
+                type(expected_intrinsics).__name__,
+            )
+
+            self.assertAlmostEqual(
+                actual_intrinsics.fx, expected_intrinsics.fx
+            )
+            self.assertAlmostEqual(
+                actual_intrinsics.fy, expected_intrinsics.fy
+            )
+            self.assertAlmostEqual(
+                actual_intrinsics.cx, expected_intrinsics.cx
+            )
+            self.assertAlmostEqual(
+                actual_intrinsics.cy, expected_intrinsics.cy
+            )
+
+            if hasattr(expected_intrinsics, "k1"):
+                self.assertAlmostEqual(
+                    actual_intrinsics.k1, expected_intrinsics.k1
+                )
+            if hasattr(expected_intrinsics, "k2"):
+                self.assertAlmostEqual(
+                    actual_intrinsics.k2, expected_intrinsics.k2
+                )
+            if hasattr(expected_intrinsics, "p1"):
+                self.assertAlmostEqual(
+                    actual_intrinsics.p1, expected_intrinsics.p1
+                )
+            if hasattr(expected_intrinsics, "p2"):
+                self.assertAlmostEqual(
+                    actual_intrinsics.p2, expected_intrinsics.p2
+                )
+
+    def _assert_static_transforms_equal(self, actual, expected):
+        self.assertEqual(set(actual.keys()), set(expected.keys()))
+
+        for key in expected:
+            actual_extrinsics = actual[key]
+            expected_extrinsics = expected[key]
+
+            self.assertEqual(
+                actual_extrinsics.source_frame,
+                expected_extrinsics.source_frame,
+            )
+            self.assertEqual(
+                actual_extrinsics.target_frame,
+                expected_extrinsics.target_frame,
+            )
+
+            for i in range(3):
+                self.assertAlmostEqual(
+                    actual_extrinsics.translation[i],
+                    expected_extrinsics.translation[i],
+                )
+            for i in range(4):
+                self.assertAlmostEqual(
+                    actual_extrinsics.quaternion[i],
+                    expected_extrinsics.quaternion[i],
+                )
 
 
 class DatasetExtrasTests(unittest.TestCase):

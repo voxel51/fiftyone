@@ -1,7 +1,7 @@
 """
 FiftyOne Server routes
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ FiftyOne Server routes
 from fiftyone.operators.server import OperatorRoutes
 
 from .aggregate import Aggregate
+from .camera import CameraRoutes
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
@@ -29,7 +30,8 @@ from .values import Values
 
 # Starlette routes should not be created here. Please leave as tuple definitions
 routes = (
-    EmbeddingsRoutes
+    CameraRoutes
+    + EmbeddingsRoutes
     + GroupsRoutes
     + OperatorRoutes
     + SampleRoutes

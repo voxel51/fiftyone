@@ -166,7 +166,7 @@ export default function AdaptiveMenu<T extends AdaptiveMenuItemPropsType>(
       <ReactSortable
         group={id}
         list={items}
-        setList={() => {}}
+        setList={() => { }}
         style={{
           display: "flex",
           gap: 8,
@@ -274,7 +274,7 @@ function MoreItems<T extends AdaptiveMenuItemPropsType>(
       <ReactSortable
         group={id}
         list={items}
-        setList={() => {}}
+        setList={() => { }}
         animation={200}
         onMove={(e) => onMove(e, "overflow")}
         onEnd={onEnd}

@@ -1,11 +1,24 @@
+import * as fos from "@fiftyone/state";
 import { extend } from "@react-three/fiber";
+import chroma from "chroma-js";
+import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
+import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
+import {
+  current3dAnnotationModeAtom,
+  hoveredLabelAtom,
+  selectedLabelForAnnotationAtom,
+  tempLabelTransformsAtom,
+  transformModeAtom,
+} from "../state";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
+import { Transformable } from "./shared/TransformControls";
 
 extend({ LineSegments2, LineMaterial, LineSegmentsGeometry });
 
@@ -30,44 +43,111 @@ export const Cuboid = ({
   color,
   useLegacyCoordinates,
 }: CuboidProps) => {
-  const geo = useMemo(
-    () => dimensions && new THREE.BoxGeometry(...dimensions),
-    [dimensions]
+  useHoverState();
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+
+  const isHovered = hoveredLabel?.id === label._id;
+
+  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isSelectedForAnnotation =
+    useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
+  const setCurrent3dAnnotationMode = useSetRecoilState(
+    current3dAnnotationModeAtom
   );
 
-  // @todo: add comment to add more context on what legacy coordinates means
-  const loc = useMemo(() => {
-    const [x, y, z] = location;
-    return useLegacyCoordinates
-      ? new THREE.Vector3(x, y - 0.5 * dimensions[1], z)
-      : new THREE.Vector3(x, y, z);
-  }, [location, dimensions, useLegacyCoordinates]);
+  useEffect(() => {
+    if (isSelectedForAnnotation) {
+      setCurrent3dAnnotationMode("cuboid");
+    }
+  }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
-  const itemRotationVec = useMemo(
-    () => new THREE.Vector3(...itemRotation),
-    [itemRotation]
-  );
-  const resolvedRotation = useMemo(
-    () => new THREE.Vector3(...rotation),
-    [rotation]
-  );
-  const actualRotation = useMemo(
-    () => resolvedRotation.add(itemRotationVec).toArray(),
-    [resolvedRotation, itemRotationVec]
-  );
+  const labelWoQuaternion = useMemo(() => {
+    if (!label.quaternion) {
+      return label;
+    }
+    const { quaternion, ...rest } = label;
+    return rest;
+  }, [label]);
 
-  const { isHovered, setIsHovered } = useHoverState();
-  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
-    tooltip,
-    label
-  );
+  const { onPointerOver, onPointerOut, ...restEventHandlers } =
+    useEventHandlers(tooltip, labelWoQuaternion);
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },
     isHovered,
     label,
-    false
+    isSelectedForAnnotation
   );
+
+  const {
+    transformControlsRef,
+    contentRef,
+    effectiveLocation,
+    effectiveDimensions,
+    effectiveRotation,
+    effectiveQuaternion,
+    handleTransformChange,
+    handleTransformEnd,
+  } = useCuboidAnnotation({
+    label,
+    location,
+    dimensions,
+    rotation,
+    strokeAndFillColor,
+    isAnnotateMode,
+    isSelectedForAnnotation,
+  });
+
+  const tempTransforms = useRecoilValue(tempLabelTransformsAtom(label._id));
+
+  const transformMode = useRecoilValue(transformModeAtom);
+
+  const displayDimensions = tempTransforms?.dimensions ?? effectiveDimensions;
+
+  const geo = useMemo(
+    () => displayDimensions && new THREE.BoxGeometry(...displayDimensions),
+    [displayDimensions]
+  );
+
+  // In legacy coordinate system, location was stored as the top-center of the cuboid
+  // (half-height above the geometric center), so we adjust Y downward by half the height
+  // to position the cuboid correctly. In the new coordinate system, location is stored
+  // as the geometric center, matching Three.js BoxGeometry's center, so no adjustment is needed.
+  const loc = useMemo(() => {
+    const [x, y, z] = effectiveLocation;
+    return useLegacyCoordinates
+      ? new THREE.Vector3(x, y - 0.5 * displayDimensions[1], z)
+      : new THREE.Vector3(x, y, z);
+  }, [effectiveLocation, displayDimensions, useLegacyCoordinates]);
+
+  // When quaternion is present (temp or staged), use it directly to avoid euler conversion issues
+  // (gimbal lock, precision loss). We convert to euler only on final save.
+  // Priority: tempTransforms.quaternion > effectiveQuaternion (staged) > euler fallback
+  const combinedQuaternion = useMemo(() => {
+    // During active rotation, prefer temp transforms quaternion
+    if (transformMode === "rotate" && tempTransforms?.quaternion) {
+      return new THREE.Quaternion(...tempTransforms.quaternion);
+    }
+    // Otherwise use effective (staged) quaternion if available
+    if (effectiveQuaternion) {
+      return new THREE.Quaternion(...effectiveQuaternion);
+    }
+    return null;
+  }, [
+    tempTransforms?.quaternion,
+    effectiveQuaternion,
+    rotation,
+    transformMode,
+  ]);
+
+  // Fallback to euler-based rotation when no quaternion available
+  const actualRotation = useMemo(() => {
+    if (combinedQuaternion) {
+      return undefined;
+    }
+    return effectiveRotation;
+  }, [combinedQuaternion, effectiveRotation]);
 
   const edgesGeo = useMemo(() => new THREE.EdgesGeometry(geo), [geo]);
   const geometry = useMemo(
@@ -76,6 +156,11 @@ export const Cuboid = ({
         new THREE.LineSegments(edgesGeo)
       ),
     [edgesGeo]
+  );
+
+  const complementaryColor = useMemo(
+    () => chroma(strokeAndFillColor).set("hsl.h", "+180").hex(),
+    [strokeAndFillColor]
   );
 
   const material = useMemo(
@@ -115,40 +200,61 @@ export const Cuboid = ({
    *
    * we're using line2 over core line because line2 allows configurable line width
    */
-
-  return (
-    <>
+  const content = (
+    <group
+      // By default, quaternion is preferred automatically over euler
+      ref={contentRef}
+      userData={{ labelId: label._id }}
+      rotation={combinedQuaternion ? undefined : actualRotation ?? undefined}
+      quaternion={combinedQuaternion ?? undefined}
+      position={tempTransforms?.position ?? loc.toArray()}
+    >
       {/* Outline */}
       {/* @ts-ignore */}
-      <lineSegments2
-        position={[loc.x, loc.y, loc.z]}
-        rotation={actualRotation}
-        geometry={geometry}
-        material={material}
-      />
+      <lineSegments2 geometry={geometry} material={material} />
 
       {/* Clickable volume */}
-      <mesh
-        position={[loc.x, loc.y, loc.z]}
-        rotation={actualRotation}
+      <group
         onClick={onClick}
         onPointerOver={() => {
-          setIsHovered(true);
+          setHoveredLabel({ id: label._id });
           onPointerOver();
         }}
         onPointerOut={() => {
-          setIsHovered(false);
+          setHoveredLabel(null);
           onPointerOut();
         }}
         {...restEventHandlers}
       >
-        <boxGeometry args={dimensions} />
-        <meshBasicMaterial
-          transparent={isSimilarLabelHovered ? false : true}
-          opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
-          color={strokeAndFillColor}
-        />
-      </mesh>
-    </>
+        <mesh>
+          <boxGeometry args={displayDimensions} />
+          <meshBasicMaterial
+            transparent={isSimilarLabelHovered ? false : true}
+            opacity={isSimilarLabelHovered ? 0.95 : opacity * 0.5}
+            color={strokeAndFillColor}
+          />
+        </mesh>
+
+        {isSelectedForAnnotation && (
+          <mesh>
+            <boxGeometry args={displayDimensions} />
+            <meshBasicMaterial wireframe color={complementaryColor} />
+          </mesh>
+        )}
+      </group>
+    </group>
+  );
+
+  return (
+    <Transformable
+      archetype="cuboid"
+      isSelectedForTransform={isSelectedForAnnotation}
+      transformControlsRef={transformControlsRef}
+      onTransformEnd={handleTransformEnd}
+      onTransformChange={handleTransformChange}
+      explicitObjectRef={contentRef}
+    >
+      {content}
+    </Transformable>
   );
 };

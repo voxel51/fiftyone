@@ -123,6 +123,7 @@ const Sidebar = () => {
         isDisabled={() => false}
         useEntries={fos.useGridEntries}
         render={renderGridEntry}
+        modal={false}
       />
     </SidebarContainer>
   );

@@ -116,7 +116,7 @@ Then run the install script:
 
 ```shell
 # Mac or Linux
-./install.sh
+bash install.sh
 
 # Windows
 .\install.bat
@@ -142,7 +142,7 @@ git checkout develop
 git pull
 
 # Mac or Linux
-bash install.bash
+bash install.sh
 
 # Windows
 .\install.bat
@@ -163,7 +163,7 @@ script:
 
 ```shell
 # Mac or Linux
-bash install.bash -d
+bash install.sh -d
 
 # Windows
 .\install.bat -d
@@ -187,7 +187,7 @@ git clone --depth 1 https://github.com/voxel51/fiftyone.git
 cd fiftyone
 
 # Mac or Linux
-bash install.bash
+bash install.sh
 
 # Windows
 .\install.bat

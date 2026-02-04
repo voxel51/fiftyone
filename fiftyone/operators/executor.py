@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -18,7 +18,7 @@ from typing import Optional
 import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-import fiftyone.core.odm.utils as focu
+import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 from fiftyone.operators import constants
@@ -32,7 +32,6 @@ from fiftyone.operators.store import ExecutionStore
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 import fiftyone.server.view as fosv
-
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +48,7 @@ class ExecutionRunState(object):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+    TERMINAL_STATES = {COMPLETED, FAILED}
 
 
 class InvocationRequest(object):
@@ -303,6 +303,17 @@ async def execute_or_delegate_operator(
                     raise TypeError(
                         "Pipeline stages must be of type PipelineStage"
                     )
+                registry = OperatorRegistry()
+                for stage in pipeline.stages:
+                    if stage.rerunnable is None:
+                        child = registry.get_operator(stage.operator_uri)
+                        if child:
+                            stage.rerunnable = child.config.rerunnable
+                        else:
+                            logger.warning(
+                                "Pipeline stage operator '%s' does not exist"
+                                % stage.operator_uri
+                            )
             except Exception as e:
                 return ExecutionResult(
                     executor=executor,
@@ -321,12 +332,6 @@ async def execute_or_delegate_operator(
                 ):
                     # Distributed execution is only supported in FiftyOne Enterprise
                     ctx.request_params.pop("num_distributed_tasks", None)
-
-                if isinstance(operator, PipelineOperator):
-                    raise ValueError(
-                        "Pipeline operators require a distributed executor, "
-                        "available only in FiftyOne Enterprise"
-                    )
 
                 ctx.request_params["delegated"] = True
                 metadata = {"inputs_schema": None, "outputs_schema": None}
@@ -349,7 +354,8 @@ async def execute_or_delegate_operator(
                     delegation_target=ctx.delegation_target,
                     label=run_name,
                     metadata=metadata,
-                    pipeline=None,  # pipelines not supported in this repo
+                    pipeline=pipeline,
+                    rerunnable=operator.config.rerunnable,
                 )
 
                 execution = ExecutionResult(
@@ -373,12 +379,18 @@ async def execute_or_delegate_operator(
                     error_message=str(error),
                 )
         else:
-            if isinstance(operator, PipelineOperator):
-                raise NotImplementedError(
-                    "Immediate execution of pipeline operators is not supported"
-                )
             # Not delegated, force distributed execution off
             ctx.request_params.pop("num_distributed_tasks", None)
+
+            # Execute pipeline live in sequence
+            if pipeline is not None:
+                result = await do_execute_pipeline(pipeline, ctx)
+                if result is None:
+                    return ExecutionResult(executor=executor)
+                error, error_message = result
+                return ExecutionResult(
+                    error=error, error_message=error_message, executor=executor
+                )
 
             try:
                 result = await do_execute_operator(
@@ -391,12 +403,10 @@ async def execute_or_delegate_operator(
                     error_message=str(error),
                 )
 
-            if hasattr(operator, "IS_SSE_OPERATOR"):
-                return ExecutionResult(
-                    result=result, executor=executor, is_sse=True
-                )
-
-            return ExecutionResult(result=result, executor=executor)
+            is_sse = hasattr(operator, "IS_SSE_OPERATOR")
+            return ExecutionResult(
+                result=result, executor=executor, is_sse=is_sse
+            )
 
 
 async def prepare_operator_executor(
@@ -460,11 +470,66 @@ async def do_execute_operator(operator, ctx, exhaust=False):
             return result
 
 
+async def do_execute_pipeline(pipeline, ctx):
+    """Executes the given pipeline in sequence.
+
+    Args:
+        pipeline: a :class:`fiftyone.operators.types.Pipeline`
+        ctx: the :class:`ExecutionContext` of the pipeline
+
+    Returns:
+        a tuple of (error, error message string) if an error occurred, or None.
+        Pipelines do not return results directly
+    """
+    registry = OperatorRegistry()
+    pipeline_stages = pipeline.stages or []
+    ctx.pipeline = PipelineExecutionContext(
+        active=True, total_stages=len(pipeline_stages), curr_stage_index=0
+    )
+    active = True
+    error, error_message = None, None
+    idx = 0
+    try:
+        for idx, stage in enumerate(pipeline_stages):
+            try:
+                # Either the pipeline is still going, or it has failures but
+                #   this stage is marked to always run
+                if active or stage.always_run:
+                    ctx.pipeline.curr_stage_index = idx
+                    operator_uri = stage.operator_uri
+                    params = stage.params or {}
+                    ctx.request_params["params"] = params
+                    stage_operator = registry.get_operator(operator_uri)
+                    if not stage_operator:
+                        raise ValueError(
+                            f"Pipeline stage[{idx}] operator '{operator_uri}' does not exist"
+                        )
+                    await do_execute_operator(
+                        stage_operator, ctx, exhaust=True
+                    )
+            # Catch exceptions from single stage execution separately to mark
+            #   pipeline as failed. Keep going if always_run is set though
+            except Exception as e:
+                active = False
+                # Just store the first error message seen
+                if not error_message:
+                    error_message = (
+                        f"Failed to execute pipeline stage[{idx}]: {str(e)}"
+                    )
+                    error = traceback.format_exc()
+
+    except Exception as e:
+        error_message = f"Failed to execute pipeline stage[{idx}]: {str(e)}"
+        error = traceback.format_exc()
+
+    return error, error_message if error or error_message else None
+
+
 async def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
-        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
+        registry: an :class:`fiftyone.operators.OperatorRegistry`
         operator_uri: the URI of the operator
         request_params: a dictionary of request parameters
 
@@ -639,7 +704,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(id=uid, reload=True)
+            self._dataset = foo.load_dataset(id=uid, reload=True)
 
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
@@ -647,7 +712,7 @@ class ExecutionContext(contextlib.AbstractContextManager):
         else:
             uid = self.request_params.get("dataset_name", None)
             if uid:
-                self._dataset = focu.load_dataset(name=uid, reload=True)
+                self._dataset = foo.load_dataset(name=uid, reload=True)
 
         if (
             self.group_slice is not None

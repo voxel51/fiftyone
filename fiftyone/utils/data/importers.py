@@ -1,7 +1,7 @@
 """
 Dataset importers.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -723,6 +723,22 @@ def parse_dataset_info(dataset, info, overwrite=True):
             dataset.default_skeleton = dataset._parse_default_skeleton(
                 default_skeleton
             )
+
+    camera_intrinsics = info.pop("camera_intrinsics", None)
+    if camera_intrinsics:
+        camera_intrinsics = dataset._parse_camera_intrinsics(camera_intrinsics)
+        if overwrite:
+            dataset.camera_intrinsics.update(camera_intrinsics)
+        else:
+            _update_no_overwrite(dataset.camera_intrinsics, camera_intrinsics)
+
+    static_transforms = info.pop("static_transforms", None)
+    if static_transforms:
+        static_transforms = dataset._parse_static_transforms(static_transforms)
+        if overwrite:
+            dataset.static_transforms.update(static_transforms)
+        else:
+            _update_no_overwrite(dataset.static_transforms, static_transforms)
 
     app_config = info.pop("app_config", None)
 
