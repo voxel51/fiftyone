@@ -30,11 +30,17 @@ export const use3dAnnotationEventHandlers = () => {
     "annotation:sidebarValueUpdated",
     useCallback(
       (payload) => {
-        const { _id, ...updates } = payload.value;
-        if (!isPolyline3dOverlay(updates) && !isDetection3dOverlay(updates)) {
+        // Use currentLabel to determine label type since payload.value is partial
+        // and may not include geometry fields for metadata-only updates
+        const { currentLabel, value } = payload;
+        if (
+          !isPolyline3dOverlay(currentLabel) &&
+          !isDetection3dOverlay(currentLabel)
+        ) {
           return;
         }
 
+        const { _id, ...updates } = value;
         updateWorkingLabel(_id, coerceStringBooleans(updates));
       },
       [updateWorkingLabel]
