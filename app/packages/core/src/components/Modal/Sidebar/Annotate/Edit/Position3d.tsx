@@ -2,15 +2,13 @@ import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { LabeledField } from "@fiftyone/components";
 import { DetectionLabel } from "@fiftyone/looker";
 import {
+  formatDegrees,
+  quaternionToRadians,
+  radiansToQuaternion,
   useIsDragInProgress,
   useTransientCuboid,
   useWorkingLabel,
-} from "@fiftyone/looker-3d/src/annotation/store";
-import { formatDegrees } from "@fiftyone/looker-3d/src/annotation/utils/rotation-utils";
-import {
-  quaternionToRadians,
-  radiansToQuaternion,
-} from "@fiftyone/looker-3d/src/utils";
+} from "@fiftyone/looker-3d";
 import { DETECTION } from "@fiftyone/utilities";
 import { Box, Stack, TextField } from "@mui/material";
 import { useAtomValue } from "jotai";
