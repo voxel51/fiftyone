@@ -27,13 +27,30 @@ export function DragGate3D({
 
   const thresholdSq = dragThresholdPx * dragThresholdPx;
 
+  // Store child handlers in a ref to avoid adding them as dependencies
+  const childHandlersRef = React.useRef<{
+    onPointerDown?: (e: PointerEvt) => void;
+    onPointerMove?: (e: PointerEvt) => void;
+    onPointerUp?: (e: PointerEvt) => void;
+    onClick?: (e: ClickEvt) => void;
+  }>({});
+
+  childHandlersRef.current = {
+    onPointerDown: children.props.onPointerDown,
+    onPointerMove: children.props.onPointerMove,
+    onPointerUp: children.props.onPointerUp,
+    onClick: children.props.onClick,
+  };
+
   const handlePointerDown = React.useCallback((e: PointerEvt) => {
+    childHandlersRef.current.onPointerDown?.(e);
     startRef.current = { x: e.nativeEvent.clientX, y: e.nativeEvent.clientY };
     draggedRef.current = false;
   }, []);
 
   const handlePointerMove = React.useCallback(
     (e: PointerEvt) => {
+      childHandlersRef.current.onPointerMove?.(e);
       if (!startRef.current || draggedRef.current) return;
 
       const dx = e.nativeEvent.clientX - startRef.current.x;
@@ -46,7 +63,8 @@ export function DragGate3D({
     [thresholdSq]
   );
 
-  const handlePointerUp = React.useCallback(() => {
+  const handlePointerUp = React.useCallback((e: PointerEvt) => {
+    childHandlersRef.current.onPointerUp?.(e);
     startRef.current = null;
   }, []);
 
@@ -56,6 +74,7 @@ export function DragGate3D({
         e.stopPropagation();
         return;
       }
+      childHandlersRef.current.onClick?.(e);
       onClick?.(e);
     },
     [onClick]
