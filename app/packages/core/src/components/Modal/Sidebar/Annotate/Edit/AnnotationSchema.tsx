@@ -21,7 +21,6 @@ const useSchema = (readOnly: boolean) => {
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
-  console.log("config", config);
   return useMemo(() => {
     const properties = config?.attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
