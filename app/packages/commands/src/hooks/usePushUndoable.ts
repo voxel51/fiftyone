@@ -34,9 +34,14 @@ export const usePushUndoable = (contextId?: string) => {
       }
 
       const undoable = new DelegatingUndoable(id, execFn, undoFn);
-      context.pushUndoable(undoable);
 
-      execFn();
+      try {
+        execFn();
+        context.pushUndoable(undoable);
+      } catch (e) {
+        console.error(`usePushUndoable: execFn failed for "${id}"`, e);
+        throw e;
+      }
     },
     [contextId]
   );

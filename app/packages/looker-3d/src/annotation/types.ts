@@ -103,6 +103,8 @@ export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
   CuboidTransformData &
   ReconciledLabelBase3D & {
     _cls: "Detection";
+    _id: string;
+    path: string;
   } & Record<string, unknown>;
 
 /**
@@ -112,6 +114,8 @@ export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
 export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
   ReconciledLabelBase3D & {
     _cls: "Polyline";
+    _id: string;
+    path: string;
     points3d: [number, number, number][][];
     filled?: boolean;
     closed?: boolean;

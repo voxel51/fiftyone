@@ -90,11 +90,11 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
 
     const sampleDeltas: JSONDeltas = [];
 
-    detections?.forEach((detection) => {
+    detections.forEach((detection) => {
       sampleDeltas.push(...getLabelDelta(detection, detection.path));
     });
 
-    polylines?.forEach((polyline) => {
+    polylines.forEach((polyline) => {
       sampleDeltas.push(...getLabelDelta(polyline, polyline.path));
     });
 
