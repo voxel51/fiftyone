@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   ANNOTATE,
   EXPLORE,
@@ -6,6 +7,13 @@ import {
 } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
+=======
+import * as fos from "@fiftyone/state";
+import { EXPLORE, modalMode, useModalExplorEntries } from "@fiftyone/state";
+import { useAtomValue } from "jotai";
+import React, { useEffect } from "react";
+import { useRecoilValue } from "recoil";
+>>>>>>> main
 import ExploreSidebar from "../../Sidebar";
 import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
@@ -31,17 +39,29 @@ const Explore = () => {
 
 const Sidebar = () => {
   const mode = useAtomValue(modalMode);
+<<<<<<< HEAD
   const { showAnnotationTab, disabledReason, isGroupedDataset } =
     useCanAnnotate();
+=======
+  const { showAnnotationTab, disabledReason } = useCanAnnotate();
+  const datasetName = useRecoilValue(fos.datasetName);
+>>>>>>> main
 
   const loadSchemas = useLoadSchemas();
 
   // This effect loads schemas on init for valid annotation sessions
   useEffect(() => {
+<<<<<<< HEAD
     if (showAnnotationTab && !disabledReason) {
       loadSchemas();
     }
   }, [showAnnotationTab, disabledReason, loadSchemas]);
+=======
+    // Only load schemas if annotation is fully enabled (no disabled reason)
+    // Also reload when dataset changes
+    showAnnotationTab && !disabledReason && loadSchemas();
+  }, [showAnnotationTab, disabledReason, loadSchemas, datasetName]);
+>>>>>>> main
 
   const showSliceSelector =
     showAnnotationTab &&
