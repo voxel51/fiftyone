@@ -272,6 +272,9 @@ export function toNDCForElement(
   element: HTMLElement
 ): { x: number; y: number } {
   const rect = element.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return { x: 0, y: 0 };
+  }
   return {
     x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
     y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
