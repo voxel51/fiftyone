@@ -6,12 +6,8 @@ import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-<<<<<<< HEAD
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
-=======
-import { createSelect, generatePrimitiveSchema } from "./schemaHelpers";
->>>>>>> main
 import {
   currentData,
   currentField,
@@ -21,12 +17,11 @@ import {
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
-  const isLabelReadOnly = config.read_only;
+  const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-<<<<<<< HEAD
     const properties = config?.attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
       .reduce(
@@ -46,23 +41,6 @@ const useSchema = (readOnly: boolean) => {
           }),
         }
       );
-=======
-    const properties: Record<string, any> = {};
-
-    const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? []);
-
-    for (const attr in attributes) {
-      if (attr === "id") {
-        continue;
-      }
-
-      const schema = generatePrimitiveSchema(attr, attributes[attr]);
-      if (schema) {
-        properties[attr] = schema;
-      }
-    }
->>>>>>> main
 
     return {
       type: "object",
