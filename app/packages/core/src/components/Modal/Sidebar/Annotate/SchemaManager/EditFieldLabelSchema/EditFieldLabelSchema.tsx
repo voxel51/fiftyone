@@ -1,4 +1,3 @@
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   Button,
   Icon,
@@ -26,9 +25,6 @@ import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
   const labelSchema = useLabelSchema(field);
   const showScanButton = !labelSchema.savedLabelSchema;
   // Default to JSON tab when scan button is shown (no existing schema)
@@ -46,39 +42,35 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
     <EditContainer>
       <Header field={field} />
 
-      {isM4Enabled && (
-        <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: "0.25rem",
-            }}
-          >
-            <Text variant={TextVariant.Lg}>Read-only</Text>
-            <Toggle
-              size={Size.Md}
-              disabled={labelSchema.isReadOnlyRequired}
-              checked={labelSchema.isReadOnly}
-              onChange={labelSchema.toggleReadOnly}
-            />
-          </div>
-          <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
-            When enabled, annotators can view this field but can't edit its
-            values.
-          </Text>
-        </div>
-      )}
-
-      {isM4Enabled && (
+      <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
         <div
           style={{
-            borderTop: "1px solid var(--fo-palette-divider)",
-            marginBottom: "1rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "0.25rem",
           }}
-        />
-      )}
+        >
+          <Text variant={TextVariant.Lg}>Read-only</Text>
+          <Toggle
+            size={Size.Md}
+            disabled={labelSchema.isReadOnlyRequired}
+            checked={labelSchema.isReadOnly}
+            onChange={labelSchema.toggleReadOnly}
+          />
+        </div>
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          When enabled, annotators can view this field but can't edit its
+          values.
+        </Text>
+      </div>
+
+      <div
+        style={{
+          borderTop: "1px solid var(--fo-palette-divider)",
+          marginBottom: "1rem",
+        }}
+      />
 
       <SchemaSection>
         <Text variant={TextVariant.Lg} style={{ marginBottom: "0.5rem" }}>
@@ -92,17 +84,15 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             marginBottom: "1rem",
           }}
         >
-          {isM4Enabled && (
-            <ToggleSwitch
-              size={Size.Md}
-              defaultIndex={showScanButton ? 1 : 0}
-              onChange={handleTabChange}
-              tabs={[
-                { id: TAB_GUI, data: { label: "GUI" } },
-                { id: TAB_JSON, data: { label: "JSON" } },
-              ]}
-            />
-          )}
+          <ToggleSwitch
+            size={Size.Md}
+            defaultIndex={showScanButton ? 1 : 0}
+            onChange={handleTabChange}
+            tabs={[
+              { id: TAB_GUI, data: { label: "GUI" } },
+              { id: TAB_JSON, data: { label: "JSON" } },
+            ]}
+          />
           {showScanButton && (
             <Button
               data-cy={"scan"}
@@ -120,7 +110,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           )}
         </div>
 
-        {isM4Enabled && activeTab === TAB_GUI ? (
+        {activeTab === TAB_GUI ? (
           <GUIContent
             field={field}
             config={labelSchema.currentLabelSchema}
