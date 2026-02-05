@@ -31,6 +31,10 @@ export const useUpdateSamples = () => {
                 // - https://github.com/voxel51/fiftyone/pull/2622
                 // - https://github.com/facebook/relay/issues/91
                 record?.setValue(JSON.stringify(sample), "sample");
+
+                // Invalidate the record to force a re-fetch on next query
+                // This ensures newly created annotations are available in patches view
+                record.invalidateRecord();
               } else {
                 record.invalidateRecord();
               }

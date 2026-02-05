@@ -55,10 +55,16 @@ export const useBridge = (scene: Scene2D | null) => {
         }
 
         scene.executeCommand(
-          new UpdateLabelCommand(overlay, payload.currentLabel, payload.value)
+          new UpdateLabelCommand(
+            overlay,
+            eventBus,
+            payload.currentLabel,
+            payload.value,
+            payload.origin
+          )
         );
       },
-      [scene]
+      [scene, eventBus]
     )
   );
 
@@ -111,6 +117,24 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
+  useEventHandler(
+    "lighter:label-updated",
+    useCallback(
+      (payload) => {
+        save({
+          data: coerceStringBooleans(payload.label as Record<string, unknown>),
+          replace: true,
+        });
+        if (payload.origin !== "sidebar") {
+          annotationEventBus.dispatch("annotation:externalUpdate", {
+            origin: payload.origin,
+          });
+        }
+      },
+      [annotationEventBus, save]
+    )
+  );
+
   const handleCommandEvent = useCallback(
     (
       payload:
@@ -118,30 +142,15 @@ export const useBridge = (scene: Scene2D | null) => {
         | LighterEventGroup["lighter:undo"]
         | LighterEventGroup["lighter:redo"]
     ) => {
-      // Here, this would be true for `undo` or `redo`
       if (
-        !("command" in payload) ||
-        !(payload.command instanceof UpdateLabelCommand)
+        "command" in payload &&
+        payload.command instanceof UpdateLabelCommand
       ) {
-        const label = overlay?.label;
-
-        if (label) {
-          save(label);
-        }
-
         return;
       }
-
-      if (!payload.command.nextLabel) {
-        return;
-      }
-
-      const newLabel = coerceStringBooleans(
-        payload.command.nextLabel as Record<string, unknown>
-      );
-
-      if (newLabel) {
-        save(newLabel);
+      const label = overlay?.label;
+      if (label) {
+        save(label);
       }
     },
     [overlay, save]

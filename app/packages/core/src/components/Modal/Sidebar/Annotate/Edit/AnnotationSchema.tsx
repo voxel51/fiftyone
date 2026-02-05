@@ -1,11 +1,15 @@
-import { useAnnotationEventBus } from "@fiftyone/annotation";
+import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import { expandPath, field } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { clearUseKeyStores } from "../../../../../plugins/SchemaIO/hooks";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
@@ -93,6 +97,14 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
   const field = useAtomValue(currentField);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+    clearUseKeyStores(overlay?.id);
+  }, [overlay?.id]);
+
+  useAnnotationEventHandler("annotation:externalUpdate", refresh);
 
   if (!field) {
     throw new Error("no field");
@@ -119,7 +131,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   return (
     <div>
       <SchemaIOComponent
-        key={overlay.id}
+        key={`${overlay.id}-${refreshKey}`}
         smartForm={true}
         smartFormProps={{
           liveValidate: "onChange",
@@ -148,6 +160,7 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
             overlayId: overlay.id,
             currentLabel: overlay.label as any,
             value,
+            origin: "sidebar",
           });
         }}
       />

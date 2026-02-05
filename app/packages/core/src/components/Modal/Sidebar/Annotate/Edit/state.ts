@@ -82,14 +82,30 @@ export const current = atom(
 
 export const currentData = atom(
   (get) => get(current)?.data ?? null,
-  (get, set, data: Partial<AnnotationLabel["data"]>) => {
+  (
+    get,
+    set,
+    data:
+      | Partial<AnnotationLabel["data"]>
+      | { data: Partial<AnnotationLabel["data"]>; replace: boolean }
+  ) => {
     const currentEditing = get(editing);
 
     if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
+      const isReplace = "replace" in data && data.replace;
+      const nextData = "replace" in data ? data.data : data;
+
+      const dataToSet = isReplace
+        ? (nextData as AnnotationLabel["data"])
+        : ({
+            ...current.data,
+            ...(nextData as Record<string, unknown>),
+          } as AnnotationLabel["data"]);
+
       return set(currentEditing, {
         ...current,
-        data: { ...current.data, ...data },
+        data: dataToSet,
       });
     }
   }
@@ -108,7 +124,11 @@ export const currentField = atom(
     }
     label.overlay?.updateField(path);
     label.overlay?.updateLabel({ _id: label.data._id });
-    set(current, { ...label, path, data: { _id: label.data._id } });
+    set(current, {
+      ...label,
+      path,
+      data: { _id: label.data._id } as AnnotationLabel["data"],
+    });
   }
 );
 

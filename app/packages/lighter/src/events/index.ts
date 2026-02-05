@@ -5,7 +5,7 @@
 import type { Command } from "../commands/Command";
 import type { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
-import type { Point, Rect } from "../types";
+import type { Point, RawLookerLabel, Rect } from "../types";
 
 /**
  * Event type definitions for lighter events.
@@ -28,6 +28,8 @@ export type LighterEventGroup = {
     absoluteBounds: Rect;
     relativeBounds: Rect;
   };
+  /** Emitted when an overlay's label is updated */
+  "lighter:label-updated": { label: RawLookerLabel; origin?: string };
 
   // ============================================================================
   // COMMAND & UNDO/REDO EVENTS

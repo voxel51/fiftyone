@@ -3,6 +3,8 @@
  */
 
 import { Undoable } from "@fiftyone/commands";
+import type { EventDispatcher } from "@fiftyone/events";
+import type { LighterEventGroup } from "../events";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { RawLookerLabel } from "../types";
 
@@ -17,8 +19,10 @@ export class UpdateLabelCommand implements Undoable {
 
   constructor(
     private overlay: BaseOverlay,
+    private eventBus: EventDispatcher<LighterEventGroup>,
     private currentLabel: RawLookerLabel,
-    nextLabel: RawLookerLabel
+    nextLabel: RawLookerLabel,
+    private origin?: string
   ) {
     this.id = `update-label-${overlay.id}-${Date.now()}`;
     this.description = `Update label ${overlay.id}`;
@@ -26,14 +30,20 @@ export class UpdateLabelCommand implements Undoable {
   }
 
   execute(): void {
-    update(this.overlay, this.nextLabel);
+    update(this.overlay, this.eventBus, this.nextLabel, this.origin);
   }
 
   undo(): void {
-    update(this.overlay, this.currentLabel);
+    update(this.overlay, this.eventBus, this.currentLabel);
   }
 }
 
-const update = (overlay: BaseOverlay, label: RawLookerLabel) => {
+const update = (
+  overlay: BaseOverlay,
+  eventBus: EventDispatcher<LighterEventGroup>,
+  label: RawLookerLabel,
+  origin?: string
+) => {
   overlay.updateLabel?.(label);
+  eventBus.dispatch("lighter:label-updated", { label, origin });
 };

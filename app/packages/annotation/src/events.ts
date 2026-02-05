@@ -55,6 +55,7 @@ export type AnnotationEventGroup = {
     overlayId: string;
     currentLabel: AnnotationLabel["data"];
     value: Partial<AnnotationLabel["data"]>;
+    origin?: string;
   };
   /**
    * Notification event emitted when a label is selected.
@@ -133,4 +134,8 @@ export type AnnotationEventGroup = {
    * Notification event emitted when exiting annotation mode.
    */
   "annotation:exitAnnotationMode": void;
+  /**
+   * Notification event emitted when data is updated externally (e.g. via undo/redo).
+   */
+  "annotation:externalUpdate": { origin?: string } | void;
 };
