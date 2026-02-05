@@ -7,8 +7,9 @@ import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
 import {
+  cursorStateAtom,
   isCurrentlyTransformingAtom,
-  sharedCursorPositionAtom,
+  type PanelId,
 } from "../state";
 
 const CROSS_HAIR_SIZE = 20;
@@ -52,18 +53,34 @@ const Vertical = styled.div<{ $color: string }>`
   transform: translateX(-50%);
 `;
 
-export const Crosshair3D = () => {
+interface Crosshair3DProps {
+  panelId: PanelId;
+}
+
+/**
+ * Crosshair3D - Renders a crosshair at the shared cursor position.
+ *
+ * Only renders when the cursor is in a different panel than this one.
+ * The panel where the cursor is located doesn't need a crosshair since
+ * the cursor itself is visible there.
+ *
+ * @param panelId - The ID of the panel this crosshair belongs to
+ */
+export const Crosshair3D = ({ panelId }: Crosshair3DProps) => {
   const { camera } = useThree();
   const { cursorBounds } = useFo3dContext();
   const theme = useTheme();
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
-  const worldPosition = useRecoilValue(sharedCursorPositionAtom);
+  const cursorState = useRecoilValue(cursorStateAtom);
+
+  const shouldRender =
+    cursorState.sourcePanel !== null && cursorState.sourcePanel !== panelId;
 
   const worldVector = useMemo(() => {
-    if (!worldPosition) return null;
+    if (!shouldRender || !cursorState.worldPosition) return null;
 
-    const vector = new THREE.Vector3(...worldPosition);
+    const vector = new THREE.Vector3(...cursorState.worldPosition);
 
     // Only clamp if the position is extremely far outside the bounds.
     // Allows for a more natural experience when moving the cursor around
@@ -78,7 +95,7 @@ export const Crosshair3D = () => {
     }
 
     return vector;
-  }, [worldPosition, cursorBounds]);
+  }, [shouldRender, cursorState.worldPosition, cursorBounds]);
 
   // Convert 3D world position to 2D screen coordinates
   const screenPosition = useMemo(() => {
@@ -99,7 +116,7 @@ export const Crosshair3D = () => {
     return null;
   }
 
-  if (!screenPosition) {
+  if (!shouldRender || !screenPosition || !worldVector) {
     return null;
   }
 

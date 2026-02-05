@@ -303,12 +303,43 @@ export const annotationToolbarPositionAtom = atom<number>({
 });
 
 /**
- * Shared cursor position in 3D space for annotation interactions.
- * Used to track the current cursor position across different annotation panes.
+ * Panel identifier for multi-panel cursor tracking.
+ * - 'main': The primary 3D view panel
+ * - 'side-top': The top side panel (orthographic view)
+ * - 'side-bottom': The bottom side panel (orthographic view)
  */
-export const sharedCursorPositionAtom = atom<[number, number, number] | null>({
-  key: "fo3d-sharedCursorPosition",
+export type PanelId = "main" | "side-top" | "side-bottom";
+
+/**
+ * Which panel currently has the cursor.
+ * Used to determine which panel should perform raycasting.
+ */
+export const activeCursorPanelAtom = atom<PanelId | null>({
+  key: "fo3d-activeCursorPanel",
   default: null,
+});
+
+/**
+ * Rich cursor state for multi-panel cursor tracking.
+ * Contains the source panel, world position, and timestamp.
+ */
+export interface CursorState {
+  sourcePanel: PanelId | null;
+  worldPosition: [number, number, number] | null;
+  timestamp: number;
+}
+
+/**
+ * Rich cursor state atom that tracks which panel originated the cursor position.
+ * Preferred over sharedCursorPositionAtom for new code.
+ */
+export const cursorStateAtom = atom<CursorState>({
+  key: "fo3d-cursorState",
+  default: {
+    sourcePanel: null,
+    worldPosition: null,
+    timestamp: 0,
+  },
 });
 
 /**

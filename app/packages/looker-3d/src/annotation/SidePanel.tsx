@@ -20,6 +20,7 @@ import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
+import { type PanelId } from "../state";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
@@ -344,6 +345,9 @@ export const SidePanel = ({
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
+  const panelId: PanelId =
+    which === "top" ? "side-top" : which === "bottom" ? "side-bottom" : "main";
+
   /**
    * This effect restores the view to a cardinal view if no image slices are available
    */
@@ -472,10 +476,10 @@ export const SidePanel = ({
                   | "back"
               }
             />
-            <CursorTracker />
+            <CursorTracker panelId={panelId} />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
-            <Crosshair3D />
+            <Crosshair3D panelId={panelId} />
           </Bounds>
           <Lights lights={foScene?.lights} />
         </View>

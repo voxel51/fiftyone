@@ -14,6 +14,7 @@ import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
+import { Crosshair3D } from "../annotation/Crosshair3D";
 import { CursorTracker } from "../annotation/CursorTracker";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { FrustumCollection } from "../frustum";
@@ -175,9 +176,10 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
-      <CursorTracker />
+      <CursorTracker panelId="main" />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
+      <Crosshair3D panelId="main" />
     </>
   );
 };

@@ -19,6 +19,7 @@ import {
   selectedPolylineVertexAtom,
 } from "../state";
 import { StatusBar } from "../StatusBar";
+import { GlobalCursorCoordinator } from "./GlobalCursorCoordinator";
 import { MainPanel } from "./MainPanel";
 import { SidePanel, ViewType } from "./SidePanel";
 
@@ -108,6 +109,7 @@ export const MultiPanelView = ({
 
   return (
     <GridMain ref={containerRef}>
+      <GlobalCursorCoordinator containerRef={containerRef} />
       <HoverMetadataHUD />
       <PcdColorMapTunnel.Out />
 

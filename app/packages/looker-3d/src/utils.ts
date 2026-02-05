@@ -260,6 +260,25 @@ export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
 }
 
 /**
+ * Converts a pointer event to Normalized Device Coordinates (NDC) relative to
+ * a specific HTML element (e.g., a panel container).
+ *
+ * @param ev - The pointer event to convert
+ * @param element - The HTML element to compute NDC relative to
+ * @returns An object with x and y coordinates in NDC space
+ */
+export function toNDCForElement(
+  ev: PointerEvent,
+  element: HTMLElement
+): { x: number; y: number } {
+  const rect = element.getBoundingClientRect();
+  return {
+    x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+/**
  * Calculates the intersection point between a ray and a plane.
  *
  * @param raycaster - The THREE.js raycaster instance
