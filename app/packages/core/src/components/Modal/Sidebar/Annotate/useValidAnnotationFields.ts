@@ -46,7 +46,7 @@ const initializeSampleAtom = atom(
     set(requestInFlightAtom, (prev) => ({ ...prev, [datasetId]: true }));
 
     try {
-      const response = await listValidFields();
+      const response = await listValidFields({});
       set(validFieldsAtom, (prev) => ({
         ...prev,
         [datasetId]: response.valid_fields,
@@ -92,10 +92,10 @@ export const useValidAnnotationFields = (): UseValidAnnotationFields => {
   const datasetId = useCurrentDatasetId();
 
   const refresh = useCallback(() => {
-    setValidFieldsMap((prev) => ({ ...prev, [datasetId]: [] }));
-    setResolvedMap((prev) => ({ ...prev, [datasetId]: false }));
-
     if (datasetId) {
+      setValidFieldsMap((prev) => ({ ...prev, [datasetId]: [] }));
+      setResolvedMap((prev) => ({ ...prev, [datasetId]: false }));
+
       initializeSample(datasetId, listValidAnnotationFields);
     }
   }, [datasetId]);
