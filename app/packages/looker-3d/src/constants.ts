@@ -12,6 +12,8 @@ export const ACTION_TOGGLE_BACKGROUND = "toggleFo3dBackground";
 export const ACTION_VIEW_JSON = "json";
 export const ACTION_VIEW_HELP = "help";
 
+export const DRAG_GATE_THRESHOLD_PX = 4;
+
 export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
 export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";

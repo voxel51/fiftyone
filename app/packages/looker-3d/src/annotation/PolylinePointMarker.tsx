@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { Matrix4, Mesh, Vector3 } from "three";
 import { Transformable } from "../labels/shared/TransformControls";
-import { SphericalMarker } from "./SphericalMarker";
 import {
   activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
@@ -14,6 +13,7 @@ import {
   tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
+import { SphericalMarker } from "./SphericalMarker";
 import { VertexTooltip } from "./VertexTooltip";
 import type { SelectedPoint } from "./types";
 interface PolylinePointMarkerProps {
@@ -112,7 +112,6 @@ export const PolylinePointMarker = ({
       const worldPosition = groupRef.current.position.clone();
       setTempVertexTransforms({
         position: [worldPosition.x, worldPosition.y, worldPosition.z],
-        quaternion: groupRef.current.quaternion.toArray(),
       });
     }
   }, []);
@@ -226,7 +225,6 @@ export const PolylinePointMarker = ({
       <group
         ref={groupRef}
         position={tempVertexTransforms?.position ?? [0, 0, 0]}
-        quaternion={tempVertexTransforms?.quaternion ?? [0, 0, 0, 1]}
       >
         <SphericalMarker
           ref={meshRef}
@@ -244,13 +242,7 @@ export const PolylinePointMarker = ({
         />
         {tooltipDescriptor && (
           <VertexTooltip
-            position={
-              (tempVertexTransforms?.position ?? position.toArray()) as [
-                number,
-                number,
-                number
-              ]
-            }
+            position={position.toArray()}
             tooltipDescriptor={tooltipDescriptor}
             isVisible={isThisVertexHovered}
           />
