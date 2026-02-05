@@ -1,14 +1,15 @@
+import { useAnnotationController } from "@fiftyone/annotation";
 import { useTheme } from "@fiftyone/components";
 import { ModalMode, useModalMode } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import React from "react";
 import styled from "styled-components";
 import { isEditing } from "./Annotate/Edit";
-import { useAnnotationController } from "@fiftyone/annotation";
 
 const Container = styled.div`
   padding: 0.5rem 1rem;
   width: 100%;
+  margin-top: 12px;
 `;
 
 const Items = styled.div`
@@ -17,12 +18,17 @@ const Items = styled.div`
   border: 1px solid ${({ theme }) => theme.background.level1};
   border-radius: 3px;
   width: 100%;
+  height: 30px;
 `;
 
 const Item = styled.div`
   cursor: pointer;
   width: 50%;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 `;
 
 const Mode = () => {

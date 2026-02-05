@@ -3797,7 +3797,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51"],
+                "packages": ["torch", "torchvision", "transformers>=4.51", "timm<1.0.24"],
                 "cpu": {
                     "support": true
                 },

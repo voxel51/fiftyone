@@ -1,5 +1,11 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
-import { isGeneratedView, isGroup, mediaType, readOnly } from "@fiftyone/state";
+import {
+  canAnnotate,
+  isGeneratedView,
+  isGroup,
+  mediaType,
+  readOnly,
+} from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
 import { useRecoilValue } from "recoil";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
@@ -50,7 +56,8 @@ function getDisabledReason(
 }
 
 export default function useCanAnnotate(): CanAnnotateResult {
-  const isReadOnly = useRecoilValue(readOnly);
+  const isReadOnlySnapshot = useRecoilValue(readOnly);
+  const { enabled: canAnnotateEnabled } = useRecoilValue(canAnnotate);
   const { isEnabled: isAnnotationEnabled } = useFeature({
     feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
   });
@@ -61,8 +68,8 @@ export default function useCanAnnotate(): CanAnnotateResult {
 
   const hasSupportedSlices = supportedSlices.length > 0;
 
-  // hide tab entirely for read-only or feature disabled
-  if (isReadOnly || !isAnnotationEnabled) {
+  // hide tab entirely if user lacks edit permission or feature disabled
+  if (isReadOnlySnapshot || !canAnnotateEnabled || !isAnnotationEnabled) {
     return {
       showAnnotationTab: false,
       disabledReason: null,
