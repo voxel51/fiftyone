@@ -37,7 +37,7 @@ export type ModalSelector = {
  * These are set only during session initialization in useLocalSession.
  */
 const READONLY_SESSION_DEFAULTS = {
-  canAnnotate: { enabled: false, message: undefined as string | undefined },
+  canAnnotate: { enabled: true, message: undefined as string | undefined },
   canCreateNewField: {
     enabled: true,
     message: undefined as string | undefined,
@@ -58,7 +58,7 @@ const READONLY_SESSION_DEFAULTS = {
     enabled: true,
     message: undefined as string | undefined,
   },
-  canManageSchema: { enabled: false, message: undefined as string | undefined },
+  canManageSchema: { enabled: true, message: undefined as string | undefined },
   canModifySidebarGroup: {
     enabled: true,
     message: undefined as string | undefined,
