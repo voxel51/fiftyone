@@ -170,10 +170,8 @@ export default function useLabels() {
       setLoading(LabelsState.UNSET);
     };
 
-    if (loadingState === LabelsState.COMPLETE) {
-      resetOverlays();
-    }
-  }, [active]); // omit: [currentLabels, loadingState]
+    resetOverlays();
+  }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
     if (
