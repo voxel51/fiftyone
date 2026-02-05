@@ -16,12 +16,15 @@ import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
+import { TAB_JSON } from "./constants";
 import {
   useActivateFields,
   useCurrentField,
   useCurrentFieldValue,
   useDeactivateFields,
   useNewFieldMode,
+  useSchemaEditorGUIJSONToggle,
+  useSchemaManagerCleanup,
   useSelectedFieldCounts,
   useShowSchemaManagerModal,
 } from "./hooks";
@@ -99,6 +102,7 @@ const Page = () => {
 
 const SchemaManagerFooter = () => {
   const field = useCurrentFieldValue();
+  const { tab } = useSchemaEditorGUIJSONToggle();
   const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
     useSelectedFieldCounts();
   const activateFields = useActivateFields();
@@ -106,6 +110,11 @@ const SchemaManagerFooter = () => {
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
+    return null;
+  }
+
+  // Don't show footer when in JSON tab
+  if (tab === TAB_JSON) {
     return null;
   }
 
@@ -157,6 +166,9 @@ const SchemaManagerFooter = () => {
 };
 
 const Modal = () => {
+  // Reset state on unmount (selection, current field, JSON editor)
+  useSchemaManagerCleanup();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
