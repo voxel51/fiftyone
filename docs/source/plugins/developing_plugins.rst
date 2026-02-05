@@ -2186,6 +2186,11 @@ Plugin names map to Python module namespaces under `fiftyone.plugins.orgs`:
     | `my-plugin`                  | `fiftyone.plugins.orgs.external.my_plugin`    |
     +------------------------------+-----------------------------------------------+
 
+.. note::
+
+    Plugins without an organization prefix are placed under the ``external``
+    namespace.
+
 Names are automatically sanitized: hyphens become underscores and `PascalCase`
 becomes `snake_case`.
 
