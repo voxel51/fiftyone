@@ -33,6 +33,7 @@ import {
   Stack,
 } from "@voxel51/voodo";
 import { useAnnotationController } from "@fiftyone/annotation";
+import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -524,6 +525,7 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const { enterAnnotationMode } = useAnnotationController();
+  const canAnnotate = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
   const closeTooltip = useCallback(() => {
@@ -540,7 +542,7 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          {modalMode === ModalMode.EXPLORE && (
+          {modalMode === ModalMode.EXPLORE && canAnnotate && (
             <Button
               leadingIcon={EditIcon}
               size={Size.Xs}

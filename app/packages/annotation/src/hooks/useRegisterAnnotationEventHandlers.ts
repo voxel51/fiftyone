@@ -4,6 +4,8 @@ import { PersistAnnotationChanges } from "../commands";
 import { useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
+import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import { DetectionLabel } from "@fiftyone/looker";
 
 /**
  * Hook which registers global annotation event handlers.
@@ -12,6 +14,7 @@ import { IconName, Variant } from "@voxel51/voodo";
 export const useRegisterAnnotationEventHandlers = () => {
   const commandBus = useCommandBus();
   const { setConfig } = useActivityToast();
+  const { addLabelToSidebar } = useLabelsContext();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
@@ -55,6 +58,21 @@ export const useRegisterAnnotationEventHandlers = () => {
         });
       },
       [setConfig]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:canvasDetectionOverlayEstablish",
+    useCallback(
+      (payload) => {
+        addLabelToSidebar({
+          data: payload.overlay.label as DetectionLabel,
+          overlay: payload.overlay,
+          path: payload.overlay.field,
+          type: "Detection",
+        });
+      },
+      [addLabelToSidebar]
     )
   );
 };

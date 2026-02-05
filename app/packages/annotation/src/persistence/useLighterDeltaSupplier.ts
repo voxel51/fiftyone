@@ -11,6 +11,8 @@ import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { useGetLabelDelta } from "./useGetLabelDelta";
 import type { LabelProxy } from "../deltas";
+import { hasValidBounds } from "@fiftyone/utilities";
+import { BoundingBox } from "@fiftyone/looker/src/state";
 
 /**
  * Build a {@link LabelProxy} instance from a reconciled 3d label.
@@ -20,12 +22,21 @@ import type { LabelProxy } from "../deltas";
 const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
     const bounds = overlay.getRelativeBounds();
-    return {
-      type: "Detection",
-      data: overlay.label as DetectionLabel,
-      boundingBox: [bounds.x, bounds.y, bounds.width, bounds.height],
-      path: overlay.field,
-    };
+    const boundingBox: BoundingBox = [
+      bounds.x,
+      bounds.y,
+      bounds.width,
+      bounds.height,
+    ];
+
+    if (hasValidBounds(boundingBox)) {
+      return {
+        type: "Detection",
+        data: overlay.label as DetectionLabel,
+        boundingBox,
+        path: overlay.field,
+      };
+    }
   } else if (overlay instanceof ClassificationOverlay && overlay.label.label) {
     return {
       type: "Classification",

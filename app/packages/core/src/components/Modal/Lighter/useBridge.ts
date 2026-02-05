@@ -2,7 +2,10 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
 import {
   type LighterEventGroup,
   type Scene2D,
@@ -27,6 +30,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  */
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
+  const annotationEventBus = useAnnotationEventBus();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -88,6 +92,22 @@ export const useBridge = (scene: Scene2D | null) => {
         });
       },
       [scene, eventBus]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-establish",
+    useCallback(
+      (payload) => {
+        annotationEventBus.dispatch(
+          "annotation:canvasDetectionOverlayEstablish",
+          {
+            id: payload.id,
+            overlay: payload.overlay.overlay,
+          }
+        );
+      },
+      [annotationEventBus]
     )
   );
 

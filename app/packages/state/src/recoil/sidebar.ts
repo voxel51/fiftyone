@@ -161,6 +161,8 @@ export type AnnotationLabel =
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel;
 
+export type AnnotationLabelData = AnnotationLabel["data"];
+
 export interface PrimitiveValue {
   type: "Primitive";
   data: Primitive;

@@ -11,7 +11,6 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
-  stagedCuboidTransformsAtom,
 } from "../state";
 import { quaternionToRadians } from "../utils";
 import type { CuboidTransformData } from "./types";
@@ -30,9 +29,6 @@ export const useSetEditingToNewCuboid = () => {
 
   const setCurrentEditing = useSetAtom(currentEditingCuboidAtom);
   const currentAnnotationSidebar = useAtomValue(current);
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
-  );
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -95,7 +91,6 @@ export const useSetEditingToNewCuboid = () => {
           setSelected: (selected: boolean) => {
             if (!selected) {
               clearTransformState({});
-              setStagedCuboidTransforms({});
             }
           },
         },

@@ -1,10 +1,21 @@
+import type { JSONDeltas } from "@fiftyone/core";
 import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
 import { useCallback } from "react";
 import { buildJsonPath, buildLabelDeltas, LabelProxy } from "../deltas";
-import type { JSONDeltas } from "@fiftyone/core";
 import { getFieldSchema } from "../util";
 
 export type LabelConstructor<T> = (data: T) => LabelProxy | undefined;
+
+export type DeltaOpType = "mutate" | "delete";
+
+export interface UseGetLabelDeltaOptions {
+  /**
+   * The operation type for delta generation.
+   * - "mutate": For creating/updating labels (default)
+   * - "delete": For deleting labels
+   */
+  opType?: DeltaOpType;
+}
 
 /**
  * Hook which provides a function capable of generating a {@link JSONDeltas}
@@ -12,10 +23,13 @@ export type LabelConstructor<T> = (data: T) => LabelProxy | undefined;
  *
  * @param labelConstructor Function to create a {@link LabelProxy}
  * instance from the source label data.
+ * @param options Optional configuration including opType (defaults to "mutate")
  */
 export const useGetLabelDelta = <T>(
-  labelConstructor: LabelConstructor<T>
+  labelConstructor: LabelConstructor<T>,
+  options: UseGetLabelDeltaOptions = {}
 ): ((labelSource: T, path: string) => JSONDeltas) => {
+  const { opType = "mutate" } = options;
   const modalSample = useModalSample();
   const modalSampleSchema = useModalSampleSchema();
 
@@ -32,7 +46,7 @@ export const useGetLabelDelta = <T>(
               modalSample.sample,
               labelProxy,
               fieldSchema,
-              "mutate"
+              opType
             );
 
             return labelDeltas.map((delta) => ({
@@ -46,6 +60,6 @@ export const useGetLabelDelta = <T>(
 
       return [];
     },
-    [labelConstructor, modalSample, modalSampleSchema]
+    [labelConstructor, modalSample, modalSampleSchema, opType]
   );
 };

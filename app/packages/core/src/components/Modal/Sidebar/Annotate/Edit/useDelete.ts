@@ -1,8 +1,4 @@
-import {
-  DeleteAnnotationCommand,
-  getFieldSchema,
-  UpsertAnnotationCommand,
-} from "@fiftyone/annotation";
+import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
@@ -12,6 +8,7 @@ import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { current } from "./state";
 import useExit from "./useExit";
+import { useLabelsContext } from "../useLabels";
 import {
   DelegatingUndoable,
   KnownCommands,
@@ -26,6 +23,7 @@ export default function useDelete() {
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
+  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
 
   const exit = useExit();
   const setNotification = fos.useNotification();
@@ -50,6 +48,7 @@ export default function useDelete() {
 
         try {
           const fieldSchema = getFieldSchema(schema, label?.path);
+
           if (!fieldSchema) {
             setNotification({
               msg: `Unable to delete label: field schema not found for path "${
@@ -64,11 +63,14 @@ export default function useDelete() {
             new DeleteAnnotationCommand(label, fieldSchema)
           );
 
+          removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
+
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
           });
+
           exit();
         } catch (error) {
           console.error(error);
@@ -93,10 +95,9 @@ export default function useDelete() {
               });
               return;
             }
+
             scene?.addOverlay(label.overlay);
-            await commandBus.execute(
-              new UpsertAnnotationCommand(label, fieldSchema)
-            );
+            addLabelToSidebar(label);
           } catch (error) {
             console.error(error);
             setNotification({
@@ -109,7 +110,16 @@ export default function useDelete() {
         }
       }
     );
-  }, [label, commandBus, scene, exit, removeOverlay, setNotification, schema]);
+  }, [
+    commandBus,
+    exit,
+    label,
+    removeLabelFromSidebar,
+    removeOverlay,
+    scene,
+    schema,
+    setNotification,
+  ]);
 
   useKeyBindings(
     KnownContexts.ModalAnnotate,

@@ -100,18 +100,35 @@ def _execute_operator_in_child_process(
             result = asyncio.run(service._execute_operator(operation))
             result.raise_exceptions()
 
-            service.set_completed(doc_id=operation.id, result=result)
+            updated_doc = service.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             result = ExecutionResult(error=traceback.format_exc())
-            service.set_failed(
+            updated_doc = service.set_failed(
                 doc_id=operation_id,
                 result=result,
                 update_pipeline=operation.parent_id if operation else None,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.exception("Operation %s failed", operation_id)
+                if updated_doc:
+                    logger.exception("Operation %s failed", operation_id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation_id,
+                    )
 
 
 class DelegatedOperationService(object):
@@ -713,24 +730,45 @@ class DelegatedOperationService(object):
         try:
             result = asyncio.run(self._execute_operator(operation))
             result.raise_exceptions()
-            self.set_completed(doc_id=operation.id, result=result)
+            updated_doc = self.set_completed(
+                doc_id=operation.id,
+                result=result,
+                required_state=ExecutionRunState.RUNNING,
+            )
             if log:
-                logger.info("Operation %s complete", operation.id)
+                if updated_doc:
+                    logger.info("Operation %s complete", operation.id)
+                else:
+                    logger.info(
+                        "Operation %s was not marked as COMPLETED because its state changed externally.",
+                        operation.id,
+                    )
         except Exception:
             logger.debug(
                 "Uncaught exception when executing operator",
                 exc_info=True,
             )
             result = ExecutionResult(error=traceback.format_exc())
-            self.set_failed(
+            updated_doc = self.set_failed(
                 doc_id=operation.id,
                 result=result,
                 update_pipeline=operation.parent_id,
+                required_state=ExecutionRunState.RUNNING,
             )
             if log:
-                logger.info(
-                    "Operation %s failed\n%s", operation.id, result.error
-                )
+                if updated_doc:
+                    logger.info(
+                        "Operation %s failed\n%s", operation.id, result.error
+                    )
+                else:
+                    logger.info(
+                        "Operation %s was not marked as FAILED because its state changed externally.",
+                        operation.id,
+                    )
+        if not updated_doc:
+            return ExecutionResult(
+                error="Operation state changed externally during execution."
+            )
         return result
 
     def _execute_operation_multi_proc(

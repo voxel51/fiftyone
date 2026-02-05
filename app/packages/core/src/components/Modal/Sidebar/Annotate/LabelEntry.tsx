@@ -1,5 +1,6 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useLighter } from "@fiftyone/lighter";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
@@ -84,6 +85,9 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
     };
   }, [annotationEventBus, label.overlay.id]);
 
+  const is3DLabel =
+    isDetection3dOverlay(label.data) || isPolyline3dOverlay(label.data);
+
   return (
     <Container
       onClick={() => {
@@ -93,10 +97,19 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
         annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
           id: label.overlay.id,
           type: label.type,
-          data: label.data,
+          data: {
+            ...label.data,
+            path: label.path,
+            id: label.overlay.id,
+          },
         });
 
-        setEditing(atom);
+        // For 3D labels, select3DLabelForAnnotation handles setting the editing atom
+        // to the correct 3D-specific atom.
+        // We should not overwrite it here
+        if (!is3DLabel) {
+          setEditing(atom);
+        }
 
         store.set(savedLabel, store.get(atom).data);
       }}

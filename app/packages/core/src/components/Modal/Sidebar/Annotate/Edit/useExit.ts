@@ -1,10 +1,6 @@
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
-} from "@fiftyone/looker-3d/src/state";
+import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
@@ -24,13 +20,6 @@ export default function useExit() {
    * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
    * COUPLED TO LIGHTER OR LOOKER-3D.
    */
-
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
-  );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
@@ -51,8 +40,6 @@ export default function useExit() {
      * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
-    setStagedPolylineTransforms({});
-    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
@@ -62,14 +49,5 @@ export default function useExit() {
     setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
-  }, [
-    overlay,
-    scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
-    setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
-    setStagedPolylineTransforms,
-  ]);
+  }, [overlay, scene, setActivePrimitive, setEditing, setSaved]);
 }
