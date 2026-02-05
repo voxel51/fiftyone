@@ -78,7 +78,6 @@ const ImportSchema = (
           spacing={Spacing.Lg}
           style={{ alignItems: "center" }}
         >
-<<<<<<< HEAD
           <MuiIconFont
             sx={{
               fontSize: 48,
@@ -116,28 +115,6 @@ const ImportSchema = (
             </Text>
           </AlertBox>
         </AlertWrapper>
-=======
-          <Typography color="secondary" fontSize={12}>
-            Dataset managers can add schemas
-          </Typography>
-        </Alert>
-      )}
-      {disabled && (
-        <Alert
-          icon={<InfoOutlined fontSize="inherit" color="secondary" />}
-          severity="info"
-          sx={{
-            marginTop: 2,
-            background: "#333",
-            boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
-            alignItems: "center",
-          }}
-        >
-          <Typography color="secondary" fontSize={12}>
-            {disabledMsg || DISABLED_DEFAULT}
-          </Typography>
-        </Alert>
->>>>>>> main
       )}
     </Container>
   );
