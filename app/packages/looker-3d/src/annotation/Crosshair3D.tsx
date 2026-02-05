@@ -65,8 +65,16 @@ export const Crosshair3D = () => {
 
     const vector = new THREE.Vector3(...worldPosition);
 
+    // Only clamp if the position is extremely far outside the bounds.
+    // Allows for a more natural experience when moving the cursor around
     if (cursorBounds) {
-      vector.clamp(cursorBounds.min, cursorBounds.max);
+      const boundsSize = cursorBounds.getSize(new THREE.Vector3());
+      const maxDim = Math.max(boundsSize.x, boundsSize.y, boundsSize.z);
+      // Allow positions up to 2x the bounds size outside before clamping
+      const margin = maxDim * 2;
+      const expandedMin = cursorBounds.min.clone().subScalar(margin);
+      const expandedMax = cursorBounds.max.clone().addScalar(margin);
+      vector.clamp(expandedMin, expandedMax);
     }
 
     return vector;
