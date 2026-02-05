@@ -24,6 +24,7 @@ import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
+import { CursorTracker } from "./CursorTracker";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
@@ -471,6 +472,7 @@ export const SidePanel = ({
                   | "back"
               }
             />
+            <CursorTracker />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D />

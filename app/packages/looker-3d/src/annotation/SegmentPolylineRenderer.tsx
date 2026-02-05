@@ -18,7 +18,6 @@ import {
   currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
   selectedLabelForAnnotationAtom,
-  sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
 } from "../state";
 import { isPolyline } from "../types";
@@ -26,7 +25,7 @@ import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import { usePolylineOperations } from "./store/operations";
 import { workingAtom } from "./store/working";
-import { PolylinePointTransformData } from "./types";
+import type { PolylinePointTransformData } from "./types";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
@@ -60,9 +59,8 @@ export const SegmentPolylineRenderer = ({
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
-  const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
-  const { upVector, sceneBoundingBox } = useFo3dContext();
+  const { upVector } = useFo3dContext();
 
   // Track last click time for double-click detection
   const lastClickTimeRef = useRef<number>(0);
@@ -228,23 +226,15 @@ export const SegmentPolylineRenderer = ({
 
   // Handle mouse move for rubber band effect
   const handleMouseMove = useCallback(
-    (worldPos: THREE.Vector3, worldPosPerpendicular: THREE.Vector3 | null) => {
+    (worldPos: THREE.Vector3) => {
       if (!worldPos) return;
 
-      const segmentPos = worldPos.clone();
       setSegmentState((prev) => ({
         ...prev,
-        currentMousePosition: [segmentPos.x, segmentPos.y, segmentPos.z],
+        currentMousePosition: [worldPos.x, worldPos.y, worldPos.z],
       }));
-
-      const cursorPos =
-        !annotationPlane.enabled && worldPosPerpendicular
-          ? worldPosPerpendicular.clone()
-          : worldPos.clone();
-
-      setSharedCursorPosition([cursorPos.x, cursorPos.y, cursorPos.z]);
     },
-    [sceneBoundingBox, annotationPlane.enabled]
+    [setSegmentState]
   );
 
   // Calculate the annotation plane for raycasting
@@ -269,7 +259,6 @@ export const SegmentPolylineRenderer = ({
     onPointerMove: handleMouseMove,
     planeNormal: raycastPlane.normal,
     planeConstant: raycastPlane.constant,
-    doubleRaycast: true,
   });
 
   useEffect(() => {

@@ -14,10 +14,11 @@ import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
+import { CursorTracker } from "../annotation/CursorTracker";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { FrustumCollection } from "../frustum";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
-import { FrustumCollection } from "../frustum";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -174,6 +175,7 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
+      <CursorTracker />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
     </>
