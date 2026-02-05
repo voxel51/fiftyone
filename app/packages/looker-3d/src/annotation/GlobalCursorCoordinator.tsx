@@ -33,7 +33,6 @@ interface GlobalCursorCoordinatorProps {
 
 /**
  * GlobalCursorCoordinator - Single component that determines which panel has the cursor.
- * Only the active panel's CursorTracker should perform raycasting.
  *
  * @param containerRef - Reference to the container element (MultiPanelView's GridMain)
  */

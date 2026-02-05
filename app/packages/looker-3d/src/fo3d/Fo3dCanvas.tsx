@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
-  Bvh,
   CameraControls,
   OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
@@ -17,13 +16,13 @@ import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { Crosshair3D } from "../annotation/Crosshair3D";
-import { CursorTracker } from "../annotation/CursorTracker";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
 import { PANEL_ID_MAIN } from "../constants";
 import { FrustumCollection } from "../frustum";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
+import { RaycastService } from "../services/RaycastService";
 import { precisionToThreshold } from "../utils";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
@@ -177,11 +176,10 @@ export const Fo3dSceneContent = ({
         isGridVisible={true}
       />
       {!isSceneInitialized && <SpinningCube />}
-      <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-        <group ref={assetsGroupRef} visible={isSceneInitialized}>
-          <FoSceneComponent scene={foScene} />
-        </group>
-      </Bvh>
+
+      <group ref={assetsGroupRef} visible={isSceneInitialized}>
+        <FoSceneComponent scene={foScene} />
+      </group>
 
       {isSceneInitialized && (
         <>
@@ -199,7 +197,7 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
-      <CursorTracker panelId={PANEL_ID_MAIN} />
+      <RaycastService panelId={PANEL_ID_MAIN} />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
       <Crosshair3D panelId={PANEL_ID_MAIN} />

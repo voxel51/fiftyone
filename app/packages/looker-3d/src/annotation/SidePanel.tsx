@@ -21,12 +21,12 @@ import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
+import { RaycastService } from "../services/RaycastService";
 import type { SidePanelId } from "../types";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
-import { CursorTracker } from "./CursorTracker";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
@@ -476,7 +476,7 @@ export const SidePanel = ({
                   | "back"
               }
             />
-            <CursorTracker panelId={panelId} />
+            <RaycastService panelId={panelId} />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
             <Crosshair3D panelId={panelId} />
