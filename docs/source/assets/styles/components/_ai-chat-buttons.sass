@@ -10,7 +10,10 @@
     padding: 8px
     border-radius: $border-radius
     color: var(--pst-color-text-muted)
-    transition: all $transition-normal
+    cursor: pointer
+    background: none
+    border: none
+    transition: background-color $transition-normal, color $transition-normal, transform $transition-normal
 
     svg
       width: 16px
@@ -19,6 +22,9 @@
     &:hover
       background-color: var(--pst-color-surface)
       color: var(--pst-color-text-base)
+
+    &:active
+      transform: scale(0.95)
 
     &:focus
       outline: 2px solid var(--pst-color-accent)

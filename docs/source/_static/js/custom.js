@@ -695,15 +695,24 @@ function initAIChatButtons() {
     "huggingface",
   ]);
 
+  const getMdUrl = () => {
+    const url = window.location.href;
+    if (url.endsWith(".html")) {
+      return url.replace(/\.html$/, ".md");
+    } else if (url.endsWith("/")) {
+      return url + "index.md";
+    } else {
+      return url + ".md";
+    }
+  };
+
   document.querySelectorAll(".ai-icon-button").forEach((button) => {
     button.addEventListener("click", (e) => {
       e.preventDefault();
       const target = button.dataset.action || button.dataset.ai;
       if (!ALLOWED_TARGETS.has(target)) return;
 
-      const mdUrl = window.location.href
-        .replace(/\.html$/, ".md")
-        .replace(/\/$/, "/index.md");
+      const mdUrl = getMdUrl();
       const prompt = encodeURIComponent(
         `Read from ${mdUrl} so I can ask questions about it.`
       );
@@ -712,12 +721,15 @@ function initAIChatButtons() {
         markdown: mdUrl,
         chatgpt: `https://chatgpt.com/?hints=search&q=${prompt}`,
         claude: `https://claude.ai/new?q=${prompt}`,
-        huggingface: `https://huggingface.co/chat/?q=${prompt}&attachments=${encodeURIComponent(
+        huggingface: `https://huggingface.co/chat/?attachments=${encodeURIComponent(
           mdUrl
-        )}`,
+        )}&prompt=${prompt}`,
       };
 
-      window.open(urls[target], "_blank", "noopener,noreferrer");
+      const popup = window.open(urls[target], "_blank", "noopener,noreferrer");
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        console.warn("Popup blocked. Please allow popups for this site.");
+      }
     });
   });
 }
