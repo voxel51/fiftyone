@@ -17,7 +17,7 @@ import {
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
-  const isLabelReadOnly = config.read_only;
+  const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 

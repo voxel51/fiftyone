@@ -21,6 +21,11 @@ import fiftyone.core.labels as fol
 class ValidationErrors(ExceptionGroup):
     """Validation errors for label schemas"""
 
+    def __str__(self):
+        # pylint: disable=not-an-iterable
+        details = "\n".join(f"  - {exc}" for exc in self.exceptions)
+        return f"{self.message}:\n{details}"
+
 
 def validate_label_schemas(
     sample_collection,
