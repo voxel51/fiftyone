@@ -16,6 +16,7 @@ import {
   useFullSchemaEditor,
   useLabelSchemasData,
   useSchemaEditorGUIJSONToggle,
+  useSelectionCleanup,
 } from "./hooks";
 import { ContentArea } from "./styled";
 
@@ -34,6 +35,9 @@ export { selectedActiveFields, selectedHiddenFields } from "./state";
  * GUI content - field list with drag-drop
  */
 const GUIContent = () => {
+  // Reset selection when switching away from GUI tab
+  useSelectionCleanup();
+
   return (
     <>
       <ActiveFieldsSection />

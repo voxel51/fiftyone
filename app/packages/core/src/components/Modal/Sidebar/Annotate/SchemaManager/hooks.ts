@@ -7,7 +7,7 @@ import { mediaType, useNotification } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
   activePaths,
@@ -388,6 +388,14 @@ export const useFullSchemaEditor = () => {
   const validate = useOperatorExecutor("validate_label_schemas");
   const updateSchema = useOperatorExecutor("update_label_schema");
 
+  // Reset JSON editor state on unmount
+  useEffect(() => {
+    return () => {
+      setDraftJson(null);
+      setErrors([]);
+    };
+  }, []);
+
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
     [schemasData]
@@ -556,4 +564,39 @@ export const useExitNewFieldMode = () => {
  */
 export const useMediaType = () => {
   return useRecoilValue(mediaType);
+};
+
+// =============================================================================
+// Cleanup Hook
+// =============================================================================
+
+/**
+ * Hook to reset SchemaManager state on unmount.
+ * Call this from the Modal component to clean up state when the modal closes.
+ */
+export const useSchemaManagerCleanup = () => {
+  const setCurrentFieldAtom = useSetAtom(currentField);
+
+  useEffect(() => {
+    return () => {
+      // Reset field editing state
+      setCurrentFieldAtom(null);
+    };
+  }, []);
+};
+
+/**
+ * Hook to reset field selection state on unmount.
+ * Call this from GUIContent to clear selection when switching to JSON tab.
+ */
+export const useSelectionCleanup = () => {
+  const setSelectedActive = useSetAtom(selectedActiveFields);
+  const setSelectedHidden = useSetAtom(selectedHiddenFields);
+
+  useEffect(() => {
+    return () => {
+      setSelectedActive(new Set());
+      setSelectedHidden(new Set());
+    };
+  }, []);
 };
