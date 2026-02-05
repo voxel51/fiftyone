@@ -15,6 +15,7 @@ interface Fo3dContextT {
   setUpVector: (upVector: Vector3) => void;
   isComputingSceneBoundingBox: boolean;
   sceneBoundingBox: Box3 | null;
+  cursorBounds: Box3 | null;
   lookAt: Vector3 | null;
   setLookAt: (lookAt: Vector3) => void;
   pluginSettings: Looker3dSettings | null;
@@ -34,6 +35,7 @@ const defaultContext: Fo3dContextT = {
   setUpVector: () => {},
   isComputingSceneBoundingBox: false,
   sceneBoundingBox: null,
+  cursorBounds: null,
   lookAt: null,
   setLookAt: () => {},
   pluginSettings: null,

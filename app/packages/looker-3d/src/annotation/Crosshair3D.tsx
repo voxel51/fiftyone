@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import { Html } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
@@ -54,7 +54,7 @@ const Vertical = styled.div<{ $color: string }>`
 
 export const Crosshair3D = () => {
   const { camera } = useThree();
-  const { sceneBoundingBox } = useFo3dContext();
+  const { cursorBounds } = useFo3dContext();
   const theme = useTheme();
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
@@ -65,12 +65,12 @@ export const Crosshair3D = () => {
 
     const vector = new THREE.Vector3(...worldPosition);
 
-    if (sceneBoundingBox) {
-      vector.clamp(sceneBoundingBox.min, sceneBoundingBox.max);
+    if (cursorBounds) {
+      vector.clamp(cursorBounds.min, cursorBounds.max);
     }
 
     return vector;
-  }, [worldPosition, sceneBoundingBox]);
+  }, [worldPosition, cursorBounds]);
 
   // Convert 3D world position to 2D screen coordinates
   const screenPosition = useMemo(() => {
