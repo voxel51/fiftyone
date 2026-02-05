@@ -93,6 +93,20 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
     [activeCursorPanel, panelId, camera, raycaster, scene]
   );
 
+  // This effect clears stale raycast result when the cursor leaves all panels
+  useEffect(() => {
+    if (activeCursorPanel === null) {
+      setRaycastResult({
+        sourcePanel: null,
+        worldPosition: null,
+        intersectedObjectUuid: null,
+        pointIndex: null,
+        distance: null,
+        timestamp: Date.now(),
+      });
+    }
+  }, [activeCursorPanel, setRaycastResult]);
+
   // This effect sets up the pointermove listener on the canvas and performs raycasting
   useEffect(() => {
     const el = (events.connected ?? gl.domElement) as HTMLCanvasElement;

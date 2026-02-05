@@ -49,7 +49,6 @@ export function isRaycastable(object: THREE.Object3D): boolean {
     !(object instanceof THREE.Mesh) &&
     !(object instanceof THREE.Points) &&
     !(object instanceof THREE.Line) &&
-    !(object instanceof THREE.Line3) &&
     !(object instanceof THREE.LineSegments) &&
     !(object instanceof THREE.Sprite)
   ) {
