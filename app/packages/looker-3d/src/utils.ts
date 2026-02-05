@@ -687,7 +687,8 @@ export const formatDegrees = (radians: number | undefined): string => {
  * - 10 = 0.001 (very precise)
  */
 export const precisionToThreshold = (precision: number): number => {
-  const clampedValue = Math.max(1, Math.min(10, precision));
+  const safePrecision = Number.isFinite(precision) ? precision : 9;
+  const clampedValue = Math.max(1, Math.min(10, safePrecision));
   // Quadratic interpolation
   const diff = 10 - clampedValue;
   return 0.001 + 0.00616 * diff * diff;
