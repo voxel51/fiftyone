@@ -70,6 +70,9 @@ const InlineEditExpandedContent = ({
           </Text>
         )}
       </div>
+      {
+        // TODO: implement it with per-class attributes
+      }
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}

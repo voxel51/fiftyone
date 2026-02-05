@@ -83,6 +83,7 @@ const AddClassCard = ({
             </Text>
           )}
         </div>
+        {/* TODO: add it back with per-class attributes
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
@@ -92,7 +93,7 @@ const AddClassCard = ({
           <Text variant={TextVariant.Md} color={TextColor.Secondary}>
             Include all {attributeCount} attributes
           </Text>
-        </Stack>
+        </Stack> */}
       </Stack>
     ),
   });
