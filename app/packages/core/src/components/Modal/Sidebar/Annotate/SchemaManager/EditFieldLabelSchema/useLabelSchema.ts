@@ -201,11 +201,17 @@ const useValidate = (field: string) => {
   const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
+  const resetErrors = () => {
+    setErrors([]);
+    setIsValid(true);
+  };
+
   return {
     ...discard,
     errors,
     isValid,
     isValidating,
+    resetErrors,
     validate: (data: string) => {
       try {
         setIsValidating(true);
