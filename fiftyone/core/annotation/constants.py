@@ -187,8 +187,7 @@ SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.IntField,
     fof.StringField,
 )
-<<<<<<< HEAD
-SUPPORTED_MEDIA_TYPES = {fom.IMAGE, fom.THREE_D}
+SUPPORTED_MEDIA_TYPES = {fom.GROUP, fom.IMAGE, fom.THREE_D}
 
 # Build LABEL_TYPE_TO_CLASS from supported label types
 _all_supported_labels = SUPPORTED_LABEL_TYPES.copy()
@@ -199,9 +198,6 @@ LABEL_TYPE_TO_CLASS = {
     cls.__name__.lower(): cls for cls in _all_supported_labels
 }
 
-=======
-SUPPORTED_MEDIA_TYPES = {fom.GROUP, fom.IMAGE, fom.THREE_D}
->>>>>>> main
 SUPPORTED_PRIMITIVES = (
     fof.BooleanField,
     fof.DateField,
