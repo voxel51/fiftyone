@@ -22,7 +22,10 @@ const useSchema = (readOnly: boolean) => {
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-    const properties = config?.attributes
+    const attributes = Array.isArray(config?.attributes)
+      ? config.attributes
+      : [];
+    const properties = attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
       .reduce(
         (schema: SchemaType, value: SchemaType) => ({
