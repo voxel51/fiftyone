@@ -82,7 +82,11 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
           fo.Detection(label="dog", bounding_box=[0.3, 0.3, 0.2, 0.2]),
       ])
   )
-  dataset.add_samples([sample])`);
+  dataset.add_samples([sample])
+
+  # Save patches view for testing annotation disabled on generated views
+  patches = dataset.to_patches("predictions")
+  dataset.save_view("patches", patches)`);
 
   await mediaFactory.createBlankVideo({
     outputPath: "/tmp/blank-video.webm",
@@ -249,14 +253,10 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    // Navigate to detection dataset grid (no modal)
-    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
-
-    // Apply toPatches
-    await grid.actionsRow.toggleToClipsOrPatches();
-    const toPatchesRefresh = grid.getWaitForGridRefreshPromise();
-    await grid.actionsRow.clickToPatchesByLabelField("predictions");
-    await toPatchesRefresh;
+    // Navigate to detection dataset with saved patches view
+    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
+      searchParams: new URLSearchParams({ view: "patches" }),
+    });
 
     // Open first sample in the patches grid
     await grid.openFirstSample();
