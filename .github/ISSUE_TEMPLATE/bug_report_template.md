@@ -36,7 +36,7 @@ datasets. Include a short video or screenshot if the bug is in the App.
 
 ### System information
 
--   **OS Platform and Distribution** (e.g., Linux Ubuntu 22.04):
+-   **OS Platform and Distribution** (e.g., Linux Ubuntu 24.04.3 LTS):
 -   **Python version** (`python --version`):
 -   **FiftyOne version** (`fiftyone --version`):
 -   **FiftyOne installed from** (pip or source):
