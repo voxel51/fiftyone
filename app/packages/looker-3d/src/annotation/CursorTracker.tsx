@@ -2,21 +2,14 @@ import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
-import { activeCursorPanelAtom, cursorStateAtom, type PanelId } from "../state";
+import { getPanelElementId } from "../constants";
+import { activeCursorPanelAtom, cursorStateAtom } from "../state";
+import type { PanelId } from "../types";
 import { toNDCForElement } from "../utils";
 
 interface CursorTrackerProps {
   panelId: PanelId;
 }
-
-/**
- * Maps panel IDs to their DOM element IDs.
- */
-const PANEL_ELEMENT_IDS: Record<PanelId, string> = {
-  main: "main-panel",
-  "side-top": "top-panel",
-  "side-bottom": "bottom-panel",
-};
 
 /**
  * Objects to exclude from raycasting (helpers, gizmos, UI elements, etc.)
@@ -109,7 +102,7 @@ export const CursorTracker = ({ panelId }: CursorTrackerProps) => {
 
   // This effect gets the panel element on mount
   useEffect(() => {
-    const elementId = PANEL_ELEMENT_IDS[panelId];
+    const elementId = getPanelElementId(panelId);
     panelElementRef.current = document.getElementById(elementId);
   }, [panelId]);
 

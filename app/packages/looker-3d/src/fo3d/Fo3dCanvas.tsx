@@ -17,6 +17,7 @@ import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { Crosshair3D } from "../annotation/Crosshair3D";
 import { CursorTracker } from "../annotation/CursorTracker";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { PANEL_ID_MAIN } from "../constants";
 import { FrustumCollection } from "../frustum";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
@@ -176,10 +177,10 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
-      <CursorTracker panelId="main" />
+      <CursorTracker panelId={PANEL_ID_MAIN} />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
-      <Crosshair3D panelId="main" />
+      <Crosshair3D panelId={PANEL_ID_MAIN} />
     </>
   );
 };

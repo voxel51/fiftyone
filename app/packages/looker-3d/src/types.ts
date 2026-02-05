@@ -12,6 +12,9 @@ import type {
   ACTION_SHADE_BY,
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
+  PANEL_ID_MAIN,
+  PANEL_ID_SIDE_BOTTOM,
+  PANEL_ID_SIDE_TOP,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -26,6 +29,24 @@ export type Actions =
   | typeof ACTION_SET_PCDS
   | typeof ACTION_VIEW_JSON
   | typeof ACTION_VIEW_HELP;
+
+/**
+ * Panel identifiers.
+ * - 'main': The primary 3D view panel (perspective)
+ * - 'side-top': The top side panel (orthographic view)
+ * - 'side-bottom': The bottom side panel (orthographic view)
+ */
+export type PanelId =
+  | typeof PANEL_ID_MAIN
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
+
+/**
+ * Side panel identifiers.
+ */
+export type SidePanelId =
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
 
 export type ShadeBy =
   | typeof SHADE_BY_INTENSITY

@@ -1,14 +1,8 @@
 import { useCallback, useEffect } from "react";
 import { useSetRecoilState } from "recoil";
-import { activeCursorPanelAtom, type PanelId } from "../state";
-
-const PANEL_IDS: readonly PanelId[] = ["main", "side-top", "side-bottom"];
-
-const PANEL_ELEMENT_IDS: Record<PanelId, string> = {
-  main: "main-panel",
-  "side-top": "top-panel",
-  "side-bottom": "bottom-panel",
-};
+import { PANEL_IDS, getPanelElementId } from "../constants";
+import { activeCursorPanelAtom } from "../state";
+import type { PanelId } from "../types";
 
 /**
  * Determines which panel the cursor is currently over by checking DOM elements.
@@ -23,7 +17,7 @@ function getPanelUnderCursor(clientX: number, clientY: number): PanelId | null {
   while (current) {
     const id = current.id;
     for (const panelId of PANEL_IDS) {
-      if (id === PANEL_ELEMENT_IDS[panelId]) {
+      if (id === getPanelElementId(panelId)) {
         return panelId;
       }
     }

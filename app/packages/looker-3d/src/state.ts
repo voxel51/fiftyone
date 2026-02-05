@@ -21,6 +21,7 @@ import type {
   Actions,
   AssetLoadingLog,
   LoadingStatusWithContext,
+  PanelId,
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
@@ -303,14 +304,6 @@ export const annotationToolbarPositionAtom = atom<number>({
 });
 
 /**
- * Panel identifier for multi-panel cursor tracking.
- * - 'main': The primary 3D view panel
- * - 'side-top': The top side panel (orthographic view)
- * - 'side-bottom': The bottom side panel (orthographic view)
- */
-export type PanelId = "main" | "side-top" | "side-bottom";
-
-/**
  * Which panel currently has the cursor.
  * Used to determine which panel should perform raycasting.
  */
@@ -331,7 +324,6 @@ export interface CursorState {
 
 /**
  * Rich cursor state atom that tracks which panel originated the cursor position.
- * Preferred over sharedCursorPositionAtom for new code.
  */
 export const cursorStateAtom = atom<CursorState>({
   key: "fo3d-cursorState",
@@ -614,7 +606,6 @@ export const clearTransformStateSelector = selector({
       currentMousePosition: null,
       isClosed: false,
     });
-    set(sharedCursorPositionAtom, null);
     set(cameraViewStatusAtom, {
       viewName: null,
       timestamp: null,

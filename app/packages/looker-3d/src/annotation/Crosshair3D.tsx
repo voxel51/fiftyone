@@ -6,11 +6,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
-import {
-  cursorStateAtom,
-  isCurrentlyTransformingAtom,
-  type PanelId,
-} from "../state";
+import { cursorStateAtom, isCurrentlyTransformingAtom } from "../state";
+import type { PanelId } from "../types";
 
 const CROSS_HAIR_SIZE = 20;
 const LINE_WIDTH = 2;
