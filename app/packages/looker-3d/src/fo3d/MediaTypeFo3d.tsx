@@ -38,7 +38,10 @@ import {
   useTrackStatus,
   useZoomToSelected,
 } from "../hooks";
+import { useRenderModel } from "../annotation/store/renderModel";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useCursorBounds } from "../hooks/use-cursor-bounds";
+import { useLabelBounds } from "../hooks/use-label-bounds";
 import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
@@ -308,6 +311,11 @@ export const MediaTypeFo3dComponent = () => {
   });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
+
+  const renderModel = useRenderModel();
+  const labelBounds = useLabelBounds(renderModel);
+
+  const cursorBounds = useCursorBounds(effectiveSceneBoundingBox, labelBounds);
 
   useEffect(() => {
     if (effectiveSceneBoundingBox && !lookAt) {
@@ -660,8 +668,12 @@ export const MediaTypeFo3dComponent = () => {
     "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
     }
+  );
+
+  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
+    "fo3d-raycastPrecision",
+    9
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -708,12 +720,15 @@ export const MediaTypeFo3dComponent = () => {
         isComputingSceneBoundingBox,
         fo3dRoot,
         sceneBoundingBox: effectiveSceneBoundingBox,
+        cursorBounds,
         lookAt,
         setLookAt,
         autoRotate,
         setAutoRotate,
         pointCloudSettings,
         setPointCloudSettings,
+        raycastPrecision,
+        setRaycastPrecision,
         hoverMetadata,
         setHoverMetadata,
         pluginSettings: settings,

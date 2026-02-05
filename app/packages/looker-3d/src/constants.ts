@@ -100,21 +100,31 @@ export const LABEL_3D_SELECTED_FOR_ANNOTATION_COLOR = "orangered";
 export const LABEL_3D_ANNOTATION_POINT_SELECTED_FOR_TRANSFORMATION_COLOR =
   "#ff0000";
 
-// ray casting for points
-export const RAY_CASTING_SENSITIVITY = {
-  // Very precise: only registers hits when the ray is extremely close to the point.
-  // Best for dense point clouds or precision tools
-  high: 0.001,
-
-  // Balanced: good tradeoff between ease of selection and accuracy.
-  // Works well for general UI interactions with moderately sized points.
-  medium: 0.1,
-
-  // Lenient: ray can be relatively far and still hit a point.
-  // Useful for sparse clouds, large points, or user-friendly selection modes.
-  low: 0.25,
-};
-
 export const SNAP_TOLERANCE = 0.5;
 
 export const SCENE_BOUNDS_EXPANSION_FACTOR = 5;
+
+export const PANEL_ID_MAIN = "main" as const;
+export const PANEL_ID_SIDE_TOP = "side-top" as const;
+export const PANEL_ID_SIDE_BOTTOM = "side-bottom" as const;
+
+export const PANEL_IDS = [
+  PANEL_ID_MAIN,
+  PANEL_ID_SIDE_TOP,
+  PANEL_ID_SIDE_BOTTOM,
+] as const;
+
+/**
+ * Get the DOM element ID for a given panel ID.
+ * Convention: element ID is `${panelId}-panel`
+ */
+export const getPanelElementId = (panelId: typeof PANEL_IDS[number]): string =>
+  `${panelId}-panel`;
+
+/**
+ * Get the CSS grid area name for a side panel ID.
+ * Maps "side-top" -> "top", "side-bottom" -> "bottom"
+ */
+export const getSidePanelGridArea = (
+  panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM
+): "top" | "bottom" => panelId.replace("side-", "") as "top" | "bottom";

@@ -15,11 +15,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
+import { getPanelElementId, getSidePanelGridArea } from "../constants";
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
+import { RaycastService } from "../services/RaycastService";
+import type { SidePanelId } from "../types";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
@@ -318,7 +321,7 @@ const calculateCameraUpForSidePanel = (
 };
 
 export interface SidePanelProps {
-  which: "top" | "middle" | "bottom";
+  panelId: SidePanelId;
   view: ViewType;
   setView: (view: ViewType) => void;
   foScene: FoScene;
@@ -330,7 +333,7 @@ export interface SidePanelProps {
 }
 
 export const SidePanel = ({
-  which,
+  panelId,
   view,
   setView,
   foScene,
@@ -342,6 +345,8 @@ export const SidePanel = ({
 }: SidePanelProps) => {
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
+
+  const gridArea = getSidePanelGridArea(panelId);
 
   /**
    * This effect restores the view to a cardinal view if no image slices are available
@@ -405,7 +410,7 @@ export const SidePanel = ({
   }, [position, cameraUp, lookAt, upVector]);
 
   return (
-    <SidePanelContainer id={`${which}-panel`} $area={which}>
+    <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
       {imageSlices && imageSlices.includes(view) ? (
         <ImageSliceContainer>
           <ImageSliceImg src={resolveUrlForImageSlice(view)} />
@@ -424,7 +429,7 @@ export const SidePanel = ({
         </ImageSliceContainer>
       ) : (
         <View
-          key={`${which}-${view}-${resetKey}`}
+          key={`${panelId}-${view}-${resetKey}`}
           style={{
             position: "absolute",
             top: 0,
@@ -471,9 +476,10 @@ export const SidePanel = ({
                   | "back"
               }
             />
+            <RaycastService panelId={panelId} />
             <SegmentPolylineRenderer ignoreEffects />
             <CreateCuboidRenderer ignoreEffects />
-            <Crosshair3D />
+            <Crosshair3D panelId={panelId} />
           </Bounds>
           <Lights lights={foScene?.lights} />
         </View>
