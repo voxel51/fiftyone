@@ -5,7 +5,6 @@
  */
 
 import { Code, scrollable } from "@fiftyone/components";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
 import ActiveFieldsSection from "./ActiveFieldsSection";
@@ -88,9 +87,6 @@ const JSONContent = () => {
 // =============================================================================
 
 const GUIView = () => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
   const { tab: activeTab, setTab: setActiveTab } =
     useSchemaEditorGUIJSONToggle();
 
@@ -107,15 +103,6 @@ const GUIView = () => {
     },
     [setActiveTab]
   );
-
-  // When M4 flag is off, show GUI content directly without toggle
-  if (!isM4Enabled) {
-    return (
-      <Container className={scrollable} style={{ marginBottom: "0.5rem" }}>
-        <GUIContent />
-      </Container>
-    );
-  }
 
   return (
     <Container className={scrollable} style={{ marginBottom: "0.5rem" }}>
