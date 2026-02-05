@@ -301,3 +301,22 @@ class CreateAndActivateField(foo.Operator):
             label_schema.update(schema_config)
 
         return label_schema
+
+
+class ListValidAnnotationFields(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_valid_annotation_fields",
+            label="List valid annotation fields",
+            unlisted=True,
+        )
+
+    def execute(self, ctx: foo.ExecutionContext):
+        require_app_support = ctx.params.get("require_app_support", True)
+
+        valid_fields = foau.list_valid_annotation_fields(
+            ctx.dataset, require_app_support=require_app_support, flatten=True
+        )
+
+        return {"valid_fields": valid_fields}

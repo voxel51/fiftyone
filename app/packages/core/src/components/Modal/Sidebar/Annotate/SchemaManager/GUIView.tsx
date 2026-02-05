@@ -4,11 +4,10 @@
  * Main view for the Schema Manager with GUI and JSON tabs.
  */
 
-import { scrollable } from "@fiftyone/components";
+import { Code, scrollable } from "@fiftyone/components";
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
-import { CodeView } from "../../../../../plugins/SchemaIO/components";
 import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
 import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
@@ -17,6 +16,7 @@ import {
   useFullSchemaEditor,
   useLabelSchemasData,
   useSchemaEditorGUIJSONToggle,
+  useSelectionCleanup,
 } from "./hooks";
 import { ContentArea } from "./styled";
 
@@ -35,6 +35,9 @@ export { selectedActiveFields, selectedHiddenFields } from "./state";
  * GUI content - field list with drag-drop
  */
 const GUIContent = () => {
+  // Reset selection when switching away from GUI tab
+  useSelectionCleanup();
+
   return (
     <>
       <ActiveFieldsSection />
@@ -69,22 +72,12 @@ const JSONContent = () => {
         bottom: 0,
       }}
     >
-      <CodeView
-        data={currentJson}
-        path="schemas"
-        schema={{
-          view: {
-            language: "json",
-            readOnly: true,
-            width: "100%",
-            height: "100%",
-            componentsProps: {
-              container: {
-                style: { height: "100%" },
-              },
-            },
-          },
-        }}
+      <Code
+        value={currentJson}
+        language="json"
+        height="100%"
+        width="100%"
+        readOnly
       />
     </ContentArea>
   );

@@ -38,9 +38,13 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
 
-  const handleTabChange = useCallback((index: number) => {
-    setActiveTab(TAB_IDS[index]);
-  }, []);
+  const handleTabChange = useCallback(
+    (index: number) => {
+      setActiveTab(TAB_IDS[index]);
+      labelSchema.resetErrors();
+    },
+    [labelSchema.resetErrors]
+  );
 
   return (
     <EditContainer>

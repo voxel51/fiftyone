@@ -64,7 +64,6 @@ const Loading = () => {
 };
 
 const AnnotateSidebar = () => {
-  useLabels();
   usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
@@ -122,6 +121,8 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const editing = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+
+  useLabels();
   useDelete();
 
   useEffect(() => {
@@ -144,7 +145,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   return (
     <>
       {editing && <Edit key="edit" />}
-      {showImport ? (
+      {showImport || isDisabled ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}

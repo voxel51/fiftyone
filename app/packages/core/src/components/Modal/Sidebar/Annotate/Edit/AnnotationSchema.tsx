@@ -17,12 +17,15 @@ import {
 
 const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
-  const isLabelReadOnly = config.read_only;
+  const isLabelReadOnly = config?.read_only;
   // respect either the field OR the parent schema's readOnly flag
   const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-    const properties = config?.attributes
+    const attributes = Array.isArray(config?.attributes)
+      ? config.attributes
+      : [];
+    const properties = attributes
       .filter(({ name }) => name && !["id", "attributes"].includes(name))
       .reduce(
         (schema: SchemaType, value: SchemaType) => ({

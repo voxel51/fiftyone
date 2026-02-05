@@ -135,7 +135,7 @@ jobs:
       - name: Enable corepack
         run: corepack enable
       - name: Prepare yarn 4
-        run: corepack prepare yarn@4.9.1 --activate
+        run: corepack prepare yarn@4.12.0 --activate
 
       - name: Cache Node Modules
         id: node-cache

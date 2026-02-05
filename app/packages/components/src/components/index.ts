@@ -3,6 +3,7 @@ export { default as Arrow } from "./Arrow";
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as CenteredStack } from "./CenteredStack";
+export { default as Code } from "./Code";
 export { default as CodeBlock } from "./CodeBlock";
 export { default as CodeTabs } from "./CodeTabs";
 export { default as ColoredDot } from "./ColoredDot";

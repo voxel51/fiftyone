@@ -1,11 +1,11 @@
 import {
   CenteredStack,
+  Code,
   LoadingSpinner,
   scrollable,
 } from "@fiftyone/components";
 import { Text, TextColor } from "@voxel51/voodo";
 import { useEffect, useState } from "react";
-import { CodeView } from "../../../../../../plugins/SchemaIO/components";
 import { ContentArea } from "../styled";
 
 type JSONValue =
@@ -55,25 +55,16 @@ const JSONEditor = ({
           : {}
       }
     >
-      <CodeView
-        data={value}
-        onChange={(_, value) => {
-          onChange(value);
-          setValue(value);
+      <Code
+        defaultValue={value}
+        onChange={(value) => {
+          const strValue = value as string;
+          onChange(strValue);
+          setValue(strValue);
         }}
-        schema={{
-          view: {
-            language: "json",
-            readOnly: false,
-            width: "100%",
-            height: "100%",
-            componentsProps: {
-              container: {
-                style: { height: "100%" },
-              },
-            },
-          },
-        }}
+        language="json"
+        height={"100%"}
+        width={"100%"}
       />
     </ContentArea>
   );

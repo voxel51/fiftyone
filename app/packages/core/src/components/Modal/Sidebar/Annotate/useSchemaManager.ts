@@ -105,6 +105,14 @@ export type ListSchemasResponse = {
   label_schemas: Record<string, LabelSchemaMeta>;
 };
 
+export type ListValidAnnotationFieldsRequest = {
+  require_app_support?: boolean;
+};
+
+export type ListValidAnnotationFieldsResponse = {
+  valid_fields: string[];
+};
+
 export type SetActiveSchemasRequest = {
   fields?: string[];
 };
@@ -185,6 +193,15 @@ export interface SchemaManager {
    * @param request List request
    */
   listSchemas: (request: ListSchemasRequest) => Promise<ListSchemasResponse>;
+
+  /**
+   * List valid annotation fields.
+   *
+   * @param request List request
+   */
+  listValidAnnotationFields: (
+    request: ListValidAnnotationFieldsRequest
+  ) => Promise<ListValidAnnotationFieldsResponse>;
 
   /**
    * Set the active schema.
@@ -284,6 +301,12 @@ export const useSchemaManager = (): SchemaManager => {
   const listSchemasOperator = useOperatorExecutor(
     "@voxel51/operators/get_label_schemas"
   ) as Operator<ListSchemasRequest, ListSchemasResponse>;
+  const listValidFieldsOperator = useOperatorExecutor(
+    "@voxel51/operators/list_valid_annotation_fields"
+  ) as Operator<
+    ListValidAnnotationFieldsRequest,
+    ListValidAnnotationFieldsResponse
+  >;
   const setActiveSchemasOperator = useOperatorExecutor(
     "@voxel51/operators/set_active_label_schemas"
   ) as Operator<SetActiveSchemasRequest, SetActiveSchemasResponse>;
@@ -327,6 +350,15 @@ export const useSchemaManager = (): SchemaManager => {
       return operatorAsPromise(listSchemasOperator, request);
     },
     [listSchemasOperator]
+  );
+
+  const listValidFields = useCallback(
+    (
+      request: ListValidAnnotationFieldsRequest
+    ): Promise<ListValidAnnotationFieldsResponse> => {
+      return operatorAsPromise(listValidFieldsOperator, request);
+    },
+    [listValidFieldsOperator]
   );
 
   const setActiveSchemas = useCallback(
@@ -378,6 +410,7 @@ export const useSchemaManager = (): SchemaManager => {
       deleteSchemas: deleteSchemas,
       initializeSchema,
       listSchemas: listSchemas,
+      listValidAnnotationFields: listValidFields,
       setActiveSchemas: setActiveSchemas,
       updateSchema,
       validateSchemas: validateSchemas,
@@ -389,6 +422,7 @@ export const useSchemaManager = (): SchemaManager => {
       deleteSchemas,
       initializeSchema,
       listSchemas,
+      listValidFields,
       setActiveSchemas,
       updateSchema,
       validateSchemas,
