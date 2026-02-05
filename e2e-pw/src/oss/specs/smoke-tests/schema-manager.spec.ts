@@ -1,4 +1,4 @@
-import { test as base, expect } from "src/oss/fixtures";
+import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
@@ -136,13 +136,15 @@ const DEFAULT_LABEL_SCHEMA = {
 };
 
 test.describe.serial("schema manager", () => {
-  test.beforeEach(async ({ fiftyoneLoader, page }) => {
+  test("JSON view configuration", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
       searchParams: new URLSearchParams({ id }),
     });
-  });
-
-  test("JSON view configuration", async ({ modal, schemaManager }) => {
     // Init
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
@@ -215,11 +217,15 @@ test.describe.serial("schema manager", () => {
     fiftyoneLoader,
     page,
     modal,
+    schemaManager,
   }) => {
     // Start on image dataset - annotate tab should be functional
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
-    await expect(page.getByTestId("open-schema-manager")).toBeEnabled();
+    await schemaManager.assert.isEnabled();
 
     // Switch to video dataset
     await modal.close();
@@ -230,10 +236,10 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Annotation should be disabled for video datasets
-    await expect(
-      page.getByText("isn\u2019t supported for video datasets")
-    ).toBeVisible();
-    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
+    await modal.sidebar.assert.hasDisabledMessage(
+      "isn\u2019t supported for video datasets"
+    );
+    await schemaManager.assert.isDisabled();
   });
 
   test("annotation disabled for patches view", async ({
@@ -241,10 +247,8 @@ test.describe.serial("schema manager", () => {
     page,
     grid,
     modal,
+    schemaManager,
   }) => {
-    // Close the modal opened by beforeEach on the image dataset
-    await modal.close();
-
     // Navigate to detection dataset grid (no modal)
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
 
@@ -260,20 +264,18 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Annotation should be disabled for generated views
-    await expect(
-      page.getByText("isn\u2019t supported for patches, frames, clips")
-    ).toBeVisible();
-    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
+    await modal.sidebar.assert.hasDisabledMessage(
+      "isn\u2019t supported for patches, frames, clips"
+    );
+    await schemaManager.assert.isDisabled();
   });
 
   test("annotation disabled for grouped dataset with no supported slices", async ({
     fiftyoneLoader,
     page,
     modal,
+    schemaManager,
   }) => {
-    // Close the modal opened by beforeEach on the image dataset
-    await modal.close();
-
     // Navigate to grouped video dataset
     await fiftyoneLoader.waitUntilGridVisible(page, groupVideoDatasetName, {
       searchParams: new URLSearchParams({ id: groupVideoId }),
@@ -282,9 +284,9 @@ test.describe.serial("schema manager", () => {
     await modal.sidebar.switchMode("annotate");
 
     // Annotation should be disabled for grouped datasets with no supported slices
-    await expect(
-      page.getByText("has no slices that support annotation")
-    ).toBeVisible();
-    await expect(page.getByTestId("open-schema-manager")).toBeDisabled();
+    await modal.sidebar.assert.hasDisabledMessage(
+      "has no slices that support annotation"
+    );
+    await schemaManager.assert.isDisabled();
   });
 });
