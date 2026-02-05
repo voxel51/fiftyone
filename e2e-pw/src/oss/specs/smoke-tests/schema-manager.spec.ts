@@ -14,7 +14,6 @@ const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
 
 const id = "000000000000000000000000";
 const videoId = "000000000000000000000001";
-const detectionId = "000000000000000000000002";
 const groupVideoId = "000000000000000000000003";
 
 const test = base.extend<{
@@ -70,12 +69,10 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   dataset.save()`);
 
   await fiftyoneLoader.executePythonCode(`
-  from bson import ObjectId
   import fiftyone as fo
 
   dataset = fo.Dataset("${detectionDatasetName}")
   sample = fo.Sample(
-      _id=ObjectId("${detectionId}"),
       filepath="/tmp/blank.png",
       predictions=fo.Detections(detections=[
           fo.Detection(label="cat", bounding_box=[0.1, 0.1, 0.2, 0.2]),
@@ -253,7 +250,15 @@ test.describe.serial("schema manager", () => {
     modal,
     schemaManager,
   }) => {
-    // Navigate to detection dataset with saved patches view
+    // Start on detection dataset - annotation should be enabled
+    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
+    await grid.openFirstSample();
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+    await schemaManager.assert.isEnabled();
+
+    // Switch to patches view
+    await modal.close();
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
       searchParams: new URLSearchParams({ view: "patches" }),
     });
