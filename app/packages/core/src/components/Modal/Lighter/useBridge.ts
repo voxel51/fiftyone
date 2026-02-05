@@ -6,6 +6,7 @@ import {
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
+import { type AnnotationLabel } from "@fiftyone/state";
 import {
   type LighterEventGroup,
   type Scene2D,
@@ -121,9 +122,12 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:label-updated",
     useCallback(
       (payload) => {
+        const labelData = payload.label
+          ? coerceStringBooleans(payload.label as Record<string, unknown>)
+          : {};
         save({
-          data: coerceStringBooleans(payload.label as Record<string, unknown>),
-          replace: true,
+          data: labelData as Partial<AnnotationLabel["data"]>,
+          __undo_replacement__: true,
         });
         if (payload.origin !== "sidebar") {
           annotationEventBus.dispatch("annotation:externalUpdate", {

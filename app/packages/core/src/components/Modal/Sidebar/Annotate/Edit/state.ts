@@ -87,21 +87,30 @@ export const currentData = atom(
     set,
     data:
       | Partial<AnnotationLabel["data"]>
-      | { data: Partial<AnnotationLabel["data"]>; replace: boolean }
+      | {
+          data: Partial<AnnotationLabel["data"]>;
+          __undo_replacement__: boolean;
+        }
   ) => {
     const currentEditing = get(editing);
 
     if (currentEditing && typeof currentEditing !== "string") {
       const current = get(currentEditing);
-      const isReplace = "replace" in data && data.replace;
-      const nextData = "replace" in data ? data.data : data;
+      const isReplace =
+        "__undo_replacement__" in data && data.__undo_replacement__;
+      const nextData = "__undo_replacement__" in data ? data.data : data;
+
+      const safeNextData = (nextData ?? {}) as Record<string, unknown>;
 
       const dataToSet = isReplace
-        ? (nextData as AnnotationLabel["data"])
-        : ({
-            ...current.data,
-            ...(nextData as Record<string, unknown>),
-          } as AnnotationLabel["data"]);
+        ? {
+            ...safeNextData,
+            _id: current.data._id,
+          }
+        : {
+            ...(current.data as Record<string, unknown>),
+            ...safeNextData,
+          };
 
       return set(currentEditing, {
         ...current,
@@ -127,7 +136,7 @@ export const currentField = atom(
     set(current, {
       ...label,
       path,
-      data: { _id: label.data._id } as AnnotationLabel["data"],
+      data: { _id: label.data._id } as unknown as AnnotationLabel["data"],
     });
   }
 );
