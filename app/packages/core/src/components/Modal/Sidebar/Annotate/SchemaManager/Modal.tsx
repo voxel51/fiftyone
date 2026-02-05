@@ -166,7 +166,9 @@ const SchemaManagerFooter = () => {
 };
 
 const Modal = () => {
-  // Reset state on unmount (selection, current field, JSON editor)
+  // Reset currentField on unmount.
+  // Note: Selection state is reset by useSelectionCleanup in GUIContent,
+  // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
   useSchemaManagerCleanup();
 
   const element = useMemo(() => {

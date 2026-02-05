@@ -5,42 +5,9 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { currentField, labelSchemaData } from "../../state";
-import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
 import { currentLabelSchema } from "../state";
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Extract new attributes from current schema that don't exist in saved or default.
- * Returns a dict format for the backend API (name -> config without name field).
- */
-const getNewAttributes = (
-  current: unknown,
-  saved: unknown,
-  defaultSchema: unknown
-): Record<string, unknown> => {
-  const savedNames = getAttributeNames(saved);
-  const defaultNames = getAttributeNames(defaultSchema);
-
-  const newAttributes: Record<string, unknown> = {};
-
-  if (hasAttributes(current) && Array.isArray(current.attributes)) {
-    for (const attr of current.attributes) {
-      if (isNamedAttribute(attr)) {
-        const { name, ...config } = attr;
-        if (!savedNames.has(name) && !defaultNames.has(name)) {
-          newAttributes[name] = config;
-        }
-      }
-    }
-  }
-
-  return newAttributes;
-};
 
 // =============================================================================
 // Internal Hooks
@@ -64,7 +31,6 @@ const useDiscard = (field: string, reset: () => void) => {
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
-  const setCurrentField = useSetAtom(currentField);
 
   return {
     currentLabelSchema: currentSchema,
@@ -201,10 +167,10 @@ const useValidate = (field: string) => {
   const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
-  const resetErrors = () => {
+  const resetErrors = useCallback(() => {
     setErrors([]);
     setIsValid(true);
-  };
+  }, []);
 
   return {
     ...discard,
