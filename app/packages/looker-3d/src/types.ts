@@ -143,6 +143,31 @@ export interface EventHandlers {
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
 
+/**
+ * Rich raycast result for centralized raycasting service.
+ */
+export interface RaycastResult {
+  sourcePanel: PanelId | null;
+  worldPosition: [number, number, number] | null;
+  intersectedObjectUuid: string | null;
+  pointIndex: number | null;
+  distance: number | null;
+  timestamp: number;
+}
+
+/**
+ * State for tracking cuboid creation with 3-click interaction.
+ * Step 0: waiting for first click (center position)
+ * Step 1: waiting for second click (orientation/yaw and length)
+ * Step 2: waiting for third click (width)
+ */
+export interface CuboidCreationState {
+  step: 0 | 1 | 2;
+  centerPosition: [number, number, number] | null;
+  orientationPoint: [number, number, number] | null;
+  currentPosition: [number, number, number] | null;
+}
+
 // =============================================================================
 // TYPE GUARDS
 // =============================================================================

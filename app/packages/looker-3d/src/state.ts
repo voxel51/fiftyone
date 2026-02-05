@@ -20,13 +20,13 @@ import type { FoSceneNode } from "./hooks";
 import type {
   Actions,
   AssetLoadingLog,
+  CuboidCreationState,
   LoadingStatusWithContext,
   PanelId,
+  RaycastResult,
   ShadeBy,
 } from "./types";
 import { Archetype3d, LoadingStatus } from "./types";
-
-type LabelId = string;
 
 // =============================================================================
 // GENERAL 3D
@@ -313,23 +313,16 @@ export const activeCursorPanelAtom = atom<PanelId | null>({
 });
 
 /**
- * Rich cursor state for multi-panel cursor tracking.
- * Contains the source panel, world position, and timestamp.
+ * Centralized raycast result atom that stores intersection data from the RaycastService.
  */
-export interface CursorState {
-  sourcePanel: PanelId | null;
-  worldPosition: [number, number, number] | null;
-  timestamp: number;
-}
-
-/**
- * Rich cursor state atom that tracks which panel originated the cursor position.
- */
-export const cursorStateAtom = atom<CursorState>({
-  key: "fo3d-cursorState",
+export const raycastResultAtom = atom<RaycastResult>({
+  key: "fo3d-raycastResult",
   default: {
     sourcePanel: null,
     worldPosition: null,
+    intersectedObjectUuid: null,
+    pointIndex: null,
+    distance: null,
     timestamp: 0,
   },
 });
@@ -419,19 +412,6 @@ export const isCreatingCuboidAtom = atom<boolean>({
   key: "fo3d-isCreatingCuboid",
   default: false,
 });
-
-/**
- * State for tracking cuboid creation with 3-click interaction.
- * Step 0: waiting for first click (center position)
- * Step 1: waiting for second click (orientation/yaw and length)
- * Step 2: waiting for third click (width)
- */
-export interface CuboidCreationState {
-  step: 0 | 1 | 2;
-  centerPosition: [number, number, number] | null;
-  orientationPoint: [number, number, number] | null;
-  currentPosition: [number, number, number] | null;
-}
 
 export const cuboidCreationStateAtom = atom<CuboidCreationState>({
   key: "fo3d-cuboidCreationState",

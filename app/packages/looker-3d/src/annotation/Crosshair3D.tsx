@@ -6,7 +6,8 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import * as THREE from "three";
 import { useFo3dContext } from "../fo3d/context";
-import { cursorStateAtom, isCurrentlyTransformingAtom } from "../state";
+import { useRaycastResult } from "../hooks/use-raycast-result";
+import { isCurrentlyTransformingAtom } from "../state";
 import type { PanelId } from "../types";
 
 const CROSS_HAIR_SIZE = 20;
@@ -69,15 +70,15 @@ export const Crosshair3D = ({ panelId }: Crosshair3DProps) => {
   const theme = useTheme();
   const isCurrentlyTransforming = useRecoilValue(isCurrentlyTransformingAtom);
 
-  const cursorState = useRecoilValue(cursorStateAtom);
+  const raycastResult = useRaycastResult();
 
   const shouldRender =
-    cursorState.sourcePanel !== null && cursorState.sourcePanel !== panelId;
+    raycastResult.sourcePanel !== null && raycastResult.sourcePanel !== panelId;
 
   const worldVector = useMemo(() => {
-    if (!shouldRender || !cursorState.worldPosition) return null;
+    if (!shouldRender || !raycastResult.worldPosition) return null;
 
-    const vector = new THREE.Vector3(...cursorState.worldPosition);
+    const vector = new THREE.Vector3(...raycastResult.worldPosition);
 
     // Only clamp if the position is extremely far outside the bounds.
     // Allows for a more natural experience when moving the cursor around
@@ -92,7 +93,7 @@ export const Crosshair3D = ({ panelId }: Crosshair3DProps) => {
     }
 
     return vector;
-  }, [shouldRender, cursorState.worldPosition, cursorBounds]);
+  }, [shouldRender, raycastResult.worldPosition, cursorBounds]);
 
   // Convert 3D world position to 2D screen coordinates
   const screenPosition = useMemo(() => {
