@@ -42,17 +42,14 @@ export const GlobalCursorCoordinator = ({
 }: GlobalCursorCoordinatorProps) => {
   const setActiveCursorPanel = useSetRecoilState(activeCursorPanelAtom);
 
-  const handlePointerMove = useCallback(
-    (ev: PointerEvent) => {
-      const panelId = getPanelUnderCursor(ev.clientX, ev.clientY);
-      setActiveCursorPanel(panelId);
-    },
-    [setActiveCursorPanel]
-  );
+  const handlePointerMove = useCallback((ev: PointerEvent) => {
+    const panelId = getPanelUnderCursor(ev.clientX, ev.clientY);
+    setActiveCursorPanel(panelId);
+  }, []);
 
   const handlePointerLeave = useCallback(() => {
     setActiveCursorPanel(null);
-  }, [setActiveCursorPanel]);
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;

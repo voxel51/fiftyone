@@ -26,6 +26,7 @@ const EXCLUDED_OBJECT_TYPES = new Set([
   "PointLightHelper",
   "SpotLightHelper",
   "TransformControls",
+  "TransformControlsPlane",
 ]);
 
 /**

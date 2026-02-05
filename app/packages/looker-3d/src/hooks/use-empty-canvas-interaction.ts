@@ -34,7 +34,7 @@ export function useEmptyCanvasInteraction({
   onPointerDownRef.current = onPointerDown;
   onPointerMoveRef.current = onPointerMove;
 
-  const { gl, camera, scene, raycaster, events } = useThree();
+  const { gl, camera, raycaster, events } = useThree();
 
   const plane = useMemo(
     () => createPlane(planeNormal, planeConstant),
@@ -74,5 +74,5 @@ export function useEmptyCanvasInteraction({
       el.removeEventListener("pointerdown", handleDown);
       el.removeEventListener("pointerup", handleUp);
     };
-  }, [gl, camera, scene, raycaster, events, plane, button]);
+  }, [gl, camera, raycaster, events, plane, button]);
 }

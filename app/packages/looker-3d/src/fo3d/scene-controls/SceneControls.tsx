@@ -26,6 +26,8 @@ export const SceneControls = ({
     setAutoRotate,
     pointCloudSettings,
     setPointCloudSettings,
+    raycastPrecision,
+    setRaycastPrecision,
     isComputingSceneBoundingBox,
   } = useFo3dContext();
 
@@ -96,6 +98,16 @@ export const SceneControls = ({
               setAvoidZFighting(value);
             },
           },
+          raycastPrecision: {
+            value: raycastPrecision,
+            label: "Raycast Precision",
+            min: 1,
+            max: 10,
+            step: 1,
+            onChange: (value: number) => {
+              setRaycastPrecision(value);
+            },
+          },
         },
         { collapsed: true, order: PANEL_ORDER_SCENE_CONTROLS }
       ),
@@ -117,18 +129,6 @@ export const SceneControls = ({
               enableTooltip: value,
             });
           },
-        },
-        rayCastingSensitivity: {
-          value: pointCloudSettings.rayCastingSensitivity,
-          label: "Ray Casting Sensitivity",
-          options: ["high", "medium", "low"],
-          onChange: (value) => {
-            setPointCloudSettings({
-              ...pointCloudSettings,
-              rayCastingSensitivity: value,
-            });
-          },
-          render: () => pointCloudSettings.enableTooltip,
         },
       }),
     }),

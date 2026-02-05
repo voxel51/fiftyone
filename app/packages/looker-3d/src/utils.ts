@@ -671,3 +671,24 @@ export const formatDegrees = (radians: number | undefined): string => {
   if (radians === undefined || !Number.isFinite(radians)) return "";
   return Math.round(rad2deg(radians)).toString();
 };
+
+/**
+ * Converts raycast precision to a raycaster threshold value.
+ * Uses quadratic scale.
+ * Higher precision values = smaller threshold (more precise).
+ *
+ * @param precision - Value from 1 to 10 (default: 9)
+ * @returns Threshold value for raycaster.params.Points.threshold
+ *
+ * Scale (quadratic):
+ * - 1 = 0.5 (lenient)
+ * - 5 = ~0.155
+ * - 9 = ~0.007
+ * - 10 = 0.001 (very precise)
+ */
+export const precisionToThreshold = (precision: number): number => {
+  const clampedValue = Math.max(1, Math.min(10, precision));
+  // Quadratic interpolation
+  const diff = 10 - clampedValue;
+  return 0.001 + 0.00616 * diff * diff;
+};

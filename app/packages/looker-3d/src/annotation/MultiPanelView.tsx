@@ -95,7 +95,6 @@ export const MultiPanelView = ({
 
   const [pointCloudSettings] = useBrowserStorage("fo3d-pointCloudSettings", {
     enableTooltip: false,
-    rayCastingSensitivity: "high",
   });
 
   const setPanelView = useCallback(

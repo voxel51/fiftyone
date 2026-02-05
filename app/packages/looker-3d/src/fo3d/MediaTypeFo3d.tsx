@@ -668,8 +668,12 @@ export const MediaTypeFo3dComponent = () => {
     "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
     }
+  );
+
+  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
+    "fo3d-raycastPrecision",
+    9
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -723,6 +727,8 @@ export const MediaTypeFo3dComponent = () => {
         setAutoRotate,
         pointCloudSettings,
         setPointCloudSettings,
+        raycastPrecision,
+        setRaycastPrecision,
         hoverMetadata,
         setHoverMetadata,
         pluginSettings: settings,
