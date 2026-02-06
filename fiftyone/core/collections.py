@@ -3626,7 +3626,9 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def generate_label_schemas(self, fields=None, scan_samples=True):
+    def generate_label_schemas(
+        self, fields=None, scan_samples=True, scan_mode="auto"
+    ):
         """Generates label schemas for the
         :class:`fiftyone.core.collections.SampleCollection`.
 
@@ -3863,6 +3865,10 @@ class SampleCollection(object):
                 values, etc). If False, the label schema is generated from
                 *only* the statically available information in the dataset's
                 field schema
+            scan_mode ("auto"): How to scan for field values.
+                - "auto": Full scan for datasets under 1M samples; random sample of
+                  50,000 for larger datasets
+                - "full": Always scan all samples
 
         Raises:
             ValueError: if the sample collection or field is not supported
@@ -3872,7 +3878,7 @@ class SampleCollection(object):
             ``dict`` if only one field is provided
         """
         return foan.generate_label_schemas(
-            self, fields=fields, scan_samples=scan_samples
+            self, fields=fields, scan_samples=scan_samples, scan_mode=scan_mode
         )
 
     def apply_model(

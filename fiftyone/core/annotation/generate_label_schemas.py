@@ -290,7 +290,7 @@ def generate_label_schemas(
         total_samples = (
             sample_collection._dataset._sample_collection.estimated_document_count()
         )
-        if total_samples > 1_000_000:
+        if total_samples > AUTO_FULL_SCAN_THRESHOLD:
             logger.info(
                 f"Dataset has {total_samples} samples. Scan will be limited to "
                 f"a random {MAX_SCAN_SAMPLE_SIZE} samples for performance. "
