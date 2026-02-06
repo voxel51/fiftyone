@@ -1,12 +1,16 @@
 import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
-import { useLighter } from "@fiftyone/lighter";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
 } from "@fiftyone/looker-3d/src/constants";
 import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
+import {
+  useCurrent3dAnnotationMode,
+  useReset3dAnnotationMode,
+  useSetCurrent3dAnnotationMode,
+} from "@fiftyone/looker-3d/src/state/accessors";
 import { is3DDataset, pinned3d } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -19,7 +23,7 @@ import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
@@ -119,10 +123,18 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+  const reset3dAnnotationMode = useReset3dAnnotationMode();
+
+  const handleCreateClassification = useCallback(() => {
+    create();
+
+    // Exit other "persistent" annotation modes like 3D
+    reset3dAnnotationMode();
+  }, [create]);
 
   return (
     <Tooltip placement="top-center" text="Create new classification">
-      <Square onClick={create}>
+      <Square onClick={handleCreateClassification}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -274,9 +286,8 @@ export const ThreeDPolylines = () => {
 
 export const ThreeDCuboids = () => {
   const setEditing = useSetAtom(editing);
-  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
