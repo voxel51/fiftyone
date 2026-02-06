@@ -85,7 +85,6 @@ class GenerateLabelSchemas(foo.Operator):
     def execute(self, ctx):
         field = ctx.params.get("field", None)
         limit = ctx.params.get("limit", None)
-        print("Executing generatelabelSchemas with limit", limit)
         if limit:
             view = ctx.dataset.limit(limit)
         else:

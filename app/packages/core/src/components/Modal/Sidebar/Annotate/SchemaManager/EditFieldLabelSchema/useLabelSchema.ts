@@ -137,7 +137,6 @@ const useScan = (field: string) => {
   const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
   const limit = useRecoilValue(queryPerformanceMaxSearch);
-  console.log("limit", limit);
   return {
     isScanning,
     scan: () => {
