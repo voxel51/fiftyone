@@ -215,8 +215,12 @@ export function sessionAtom<K extends keyof Session>(
       }
 
       if (!isTest) {
-        setterRef(options.key, newValue);
-        sessionRef[options.key] = newValue;
+        if (setterRef) {
+          setterRef(options.key, newValue);
+        }
+        if (sessionRef) {
+          sessionRef[options.key] = newValue;
+        }
       }
 
       set(value, newValue);
