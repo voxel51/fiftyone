@@ -110,6 +110,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
           if (!canManageSchema) {
+            setLabelSchema(listSchemaResponse.label_schemas);
             return {
               status: InitializationStatus.InsufficientPermissions,
             };
