@@ -9708,6 +9708,35 @@
             "tags": ["embeddings", "vlm", "torch", "transformer"],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "map-anything-apache-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Universal feed-forward metric 3D reconstruction from images producing depth maps, camera poses, intrinsics, and point clouds",
+            "source": "https://huggingface.co/facebook/map-anything-apache",
+            "author": "Nikhil Keetha, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 4230000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.mapanything.MapAnythingModel",
+                "config": {
+                    "hf_repo": "facebook/map-anything-apache",
+                    "output_type": "depth"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "mapanything"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "pointcloud", "reconstruction", "torch"],
+            "training_data": [],
+            "date_added": "2026-02-06 12:00:00"
         }
     ]
 }
