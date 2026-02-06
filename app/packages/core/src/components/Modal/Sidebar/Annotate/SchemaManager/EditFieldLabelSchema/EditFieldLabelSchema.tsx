@@ -26,8 +26,7 @@ import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
-  const hasSavedSchema = !labelSchema.savedLabelSchema;
-  // Default to JSON tab when scan button is shown (no existing schema)
+  const hasSavedSchema = !!labelSchema.savedLabelSchema;
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
