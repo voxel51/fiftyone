@@ -154,7 +154,13 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(
                 filepath="image.png",
                 detections_field=fo.Detections(
-                    detections=[fo.Detection(label="test")]
+                    detections=[
+                        fo.Detection(
+                            label="test",
+                            # 'attributes' is ignored
+                            attributes={"ignore": fo.Attribute()},
+                        )
+                    ]
                 ),
             )
         )
