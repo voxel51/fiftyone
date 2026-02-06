@@ -1,5 +1,5 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { expandPath, field } from "@fiftyone/state";
+import { expandPath, field, type AnnotationLabel } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
@@ -144,9 +144,11 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
             return;
           }
 
+          _save(value);
+
           eventBus.dispatch("annotation:sidebarValueUpdated", {
             overlayId: overlay.id,
-            currentLabel: overlay.label as any,
+            currentLabel: overlay.label as unknown as AnnotationLabel["data"],
             value,
           });
         }}
