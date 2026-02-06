@@ -138,7 +138,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
         )
 
 
-class TestMongoChangeStreamNotificationServiceAsync(unittest.IsolatedAsyncioTestCase):
+class TestMongoChangeStreamNotificationServiceAsync(
+    unittest.IsolatedAsyncioTestCase
+):
     async def asyncSetUp(self):
         self.remote_notifier = MagicMock()
         self.remote_notifier.broadcast_to_store = AsyncMock()
@@ -187,7 +189,6 @@ class TestMongoChangeStreamNotificationServiceAsync(unittest.IsolatedAsyncioTest
         assert called_message.metadata.dataset_id == "test_dataset"
         assert called_message.metadata.operation_type == "insert"
         self.remote_notifier.broadcast_to_store.assert_awaited_once()
-        
 
     async def test_handle_change_delete(self):
         callback = MagicMock()

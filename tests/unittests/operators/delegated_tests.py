@@ -5,6 +5,7 @@ FiftyOne delegated operator related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import copy
 import time
@@ -166,6 +167,7 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
     def resolve_output(self, *args, **kwargs):
         return MockOutputs()
 
+
 @patch(
     "fiftyone.operators.registry.OperatorRegistry.get_operator",
     return_value=MockOperator(),
@@ -219,6 +221,7 @@ class DelegatedOperationAsyncServiceTests(unittest.IsolatedAsyncioTestCase):
 
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+
 
 @patch(
     "fiftyone.operators.registry.OperatorRegistry.get_operator",
