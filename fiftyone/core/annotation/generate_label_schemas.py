@@ -255,11 +255,10 @@ def generate_label_schemas(
             component settings based on actual field values (ranges,
             values, etc). If False, the label schema is generated from *only*
             the statically available information in the dataset's field schema
-        scan_mode ("auto"): the mode to use when scanning samples for field values.
-            Must be one of the following:
-            - "auto" (the default) will randomly sample up to 50,000 samples for datasets with more than 1M samples,
-            and perform a full scan for smaller datasets
-            - "full" will perform a full scan of all samples regardless of dataset size
+        scan_mode ("auto"): How to scan for field values.
+            - "auto": Full scan for datasets under 1M samples; random sample of
+              50,000 for larger datasets
+            - "full": Always scan all samples
 
     Raises:
         ValueError: if the sample collection or field is not supported
@@ -293,7 +292,9 @@ def generate_label_schemas(
         )
         if total_samples > 1_000_000:
             logger.info(
-                f"Dataset has {total_samples} samples. Scan will be limited to a random {MAX_SCAN_SAMPLE_SIZE} samples for performance. Set `scan_mode='full'` to scan the entire dataset."
+                f"Dataset has {total_samples} samples. Scan will be limited to "
+                f"a random {MAX_SCAN_SAMPLE_SIZE} samples for performance. "
+                f"Set `scan_mode='full'` to scan the entire dataset."
             )
             sample_size = MAX_SCAN_SAMPLE_SIZE
 
