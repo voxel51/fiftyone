@@ -5,136 +5,97 @@ logging.basicConfig(level=logging.WARNING)
 
 import numpy as np
 from PIL import Image
+import pytest
 import torch
-import traceback
 import tempfile
 import os
 import sys
-
-PASSED = 0
-FAILED = 0
-
-def _test(name):
-    """Decorator for test functions."""
-    def decorator(func):
-        def wrapper():
-            global PASSED, FAILED
-            print(f"\n{'='*70}")
-            print(f"TEST: {name}")
-            print('='*70)
-            try:
-                func()
-                print(f"[PASSED] {name}")
-                PASSED += 1
-            except Exception as e:
-                print(f"[FAILED] {name}")
-                print(f"  Error: {e}")
-                traceback.print_exc()
-                FAILED += 1
-        return wrapper
-    return decorator
 
 
 # =============================================================================
 # CONFIG TESTS - EXTENDED
 # =============================================================================
 
-@_test("Config: default hf_repo is C-RADIOv4-H")
 def test_config_default_repo():
     from fiftyone.utils.radio import CRadioV4ModelConfig, DEFAULT_CRADIO_MODEL
     config = CRadioV4ModelConfig({})
     assert config.hf_repo == DEFAULT_CRADIO_MODEL
     assert config.hf_repo == "nvidia/C-RADIOv4-H"
 
-@_test("Config: output_type accepts 'summary'")
 def test_config_output_summary():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"output_type": "summary"})
     assert config.output_type == "summary"
     assert config.as_feature_extractor == True
 
-@_test("Config: output_type accepts 'spatial'")
 def test_config_output_spatial():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"output_type": "spatial"})
     assert config.output_type == "spatial"
     assert not getattr(config, 'as_feature_extractor', False)
 
-@_test("Config: use_mixed_precision default True")
 def test_config_mixed_precision_default():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({})
     assert config.use_mixed_precision == True
 
-@_test("Config: use_mixed_precision can be False")
 def test_config_mixed_precision_false():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"use_mixed_precision": False})
     assert config.use_mixed_precision == False
 
-@_test("Config: apply_smoothing default True")
 def test_config_smoothing_default():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({})
     assert config.apply_smoothing == True
 
-@_test("Config: apply_smoothing can be False")
 def test_config_smoothing_false():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"apply_smoothing": False})
     assert config.apply_smoothing == False
 
-@_test("Config: smoothing_sigma default 1.51")
 def test_config_sigma_default():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({})
     assert config.smoothing_sigma == 1.51
 
-@_test("Config: smoothing_sigma custom value")
 def test_config_sigma_custom():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"smoothing_sigma": 3.0})
     assert config.smoothing_sigma == 3.0
 
-@_test("Config: smoothing_sigma zero")
 def test_config_sigma_zero():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"smoothing_sigma": 0.0})
     assert config.smoothing_sigma == 0.0
 
-@_test("Config: smoothing_sigma small value")
 def test_config_sigma_small():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"smoothing_sigma": 0.1})
     assert config.smoothing_sigma == 0.1
 
-@_test("Config: smoothing_sigma large value")
 def test_config_sigma_large():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"smoothing_sigma": 10.0})
     assert config.smoothing_sigma == 10.0
 
-@_test("Config: SO400M model variant")
 def test_config_so400m():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({"hf_repo": "nvidia/C-RADIOv4-SO400M"})
     assert config.hf_repo == "nvidia/C-RADIOv4-SO400M"
 
-@_test("Config: inherits from TorchImageModelConfig")
 def test_config_inheritance():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     import fiftyone.utils.torch as fout
     config = CRadioV4ModelConfig({})
     assert isinstance(config, fout.TorchImageModelConfig)
 
-@_test("Config: inherits from HasZooModel")
 def test_config_has_zoo_model():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     import fiftyone.zoo.models as fozm
     config = CRadioV4ModelConfig({})
     assert isinstance(config, fozm.HasZooModel)
 
-@_test("Config: multiple options combined")
 def test_config_combined():
     from fiftyone.utils.radio import CRadioV4ModelConfig
     config = CRadioV4ModelConfig({
@@ -155,7 +116,6 @@ def test_config_combined():
 # OUTPUT PROCESSOR TESTS - EXTENDED
 # =============================================================================
 
-@_test("RadioOutputProcessor: batch size 1")
 def test_radio_proc_batch1():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -164,7 +124,6 @@ def test_radio_proc_batch1():
     assert len(result) == 1
     assert result[0].shape == (2560,)
 
-@_test("RadioOutputProcessor: batch size 2")
 def test_radio_proc_batch2():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -172,7 +131,6 @@ def test_radio_proc_batch2():
     result = proc(tensor, [(640, 480), (800, 600)])
     assert len(result) == 2
 
-@_test("RadioOutputProcessor: batch size 8")
 def test_radio_proc_batch8():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -180,7 +138,6 @@ def test_radio_proc_batch8():
     result = proc(tensor, [(100, 100)] * 8)
     assert len(result) == 8
 
-@_test("RadioOutputProcessor: batch size 16")
 def test_radio_proc_batch16():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -188,7 +145,6 @@ def test_radio_proc_batch16():
     result = proc(tensor, [(100, 100)] * 16)
     assert len(result) == 16
 
-@_test("RadioOutputProcessor: preserves embedding dimension")
 def test_radio_proc_dim():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -197,7 +153,6 @@ def test_radio_proc_dim():
         result = proc(tensor, (100, 100))
         assert result[0].shape == (dim,)
 
-@_test("RadioOutputProcessor: float32 output")
 def test_radio_proc_dtype_float32():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -205,7 +160,6 @@ def test_radio_proc_dtype_float32():
     result = proc(tensor, (100, 100))
     assert result[0].dtype == np.float32
 
-@_test("RadioOutputProcessor: float16 input converts to float32")
 def test_radio_proc_dtype_float16():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -214,7 +168,6 @@ def test_radio_proc_dtype_float16():
     # numpy converts to float32 or float16 depending on version
     assert result[0].dtype in [np.float32, np.float16]
 
-@_test("RadioOutputProcessor: bfloat16 input")
 def test_radio_proc_dtype_bfloat16():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -222,7 +175,6 @@ def test_radio_proc_dtype_bfloat16():
     result = proc(tensor, (100, 100))
     assert result[0].dtype == np.float32  # bfloat16 converts to float32
 
-@_test("RadioOutputProcessor: GPU tensor")
 def test_radio_proc_gpu():
     from fiftyone.utils.radio import RadioOutputProcessor
     if not torch.cuda.is_available():
@@ -232,7 +184,6 @@ def test_radio_proc_gpu():
     result = proc(tensor, (100, 100))
     assert isinstance(result[0], np.ndarray)
 
-@_test("RadioOutputProcessor: numpy input passthrough")
 def test_radio_proc_numpy():
     from fiftyone.utils.radio import RadioOutputProcessor
     proc = RadioOutputProcessor()
@@ -240,7 +191,6 @@ def test_radio_proc_numpy():
     result = proc(arr, [(100, 100)] * 3)
     assert len(result) == 3
 
-@_test("SpatialHeatmapOutputProcessor: NCHW format [1, 1280, 32, 32]")
 def test_spatial_proc_nchw():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -248,7 +198,6 @@ def test_spatial_proc_nchw():
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
 
-@_test("SpatialHeatmapOutputProcessor: NCHW format [1, 512, 16, 16]")
 def test_spatial_proc_nchw_small():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -256,7 +205,6 @@ def test_spatial_proc_nchw_small():
     result = proc(tensor, [(320, 240)])
     assert result[0].map.shape == (240, 320)
 
-@_test("SpatialHeatmapOutputProcessor: NCHW format [1, 2048, 64, 64]")
 def test_spatial_proc_nchw_large():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -264,7 +212,6 @@ def test_spatial_proc_nchw_large():
     result = proc(tensor, [(1024, 768)])
     assert result[0].map.shape == (768, 1024)
 
-@_test("SpatialHeatmapOutputProcessor: NLC format [1, 256, 1280]")
 def test_spatial_proc_nlc_256():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -272,7 +219,6 @@ def test_spatial_proc_nlc_256():
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
 
-@_test("SpatialHeatmapOutputProcessor: NLC format [1, 1024, 1280]")
 def test_spatial_proc_nlc_1024():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -280,7 +226,6 @@ def test_spatial_proc_nlc_1024():
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
 
-@_test("SpatialHeatmapOutputProcessor: non-square NLC [1, 512, 1280]")
 def test_spatial_proc_nlc_nonsquare():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -288,7 +233,6 @@ def test_spatial_proc_nlc_nonsquare():
     result = proc(tensor, [(640, 480)])
     assert result[0].map.shape == (480, 640)
 
-@_test("SpatialHeatmapOutputProcessor: output is uint8")
 def test_spatial_proc_dtype():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -296,7 +240,6 @@ def test_spatial_proc_dtype():
     result = proc(tensor, [(320, 240)])
     assert result[0].map.dtype == np.uint8
 
-@_test("SpatialHeatmapOutputProcessor: output range [0, 255]")
 def test_spatial_proc_range():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -305,7 +248,6 @@ def test_spatial_proc_range():
     assert result[0].map.min() >= 0
     assert result[0].map.max() <= 255
 
-@_test("SpatialHeatmapOutputProcessor: heatmap range attribute")
 def test_spatial_proc_range_attr():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -313,7 +255,6 @@ def test_spatial_proc_range_attr():
     result = proc(tensor, [(320, 240)])
     assert result[0].range == [0, 255]
 
-@_test("SpatialHeatmapOutputProcessor: smoothing effect")
 def test_spatial_proc_smoothing_effect():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     tensor = torch.randn(1, 512, 16, 16)
@@ -328,7 +269,6 @@ def test_spatial_proc_smoothing_effect():
     # (just check they're different)
     assert not np.array_equal(result_smooth[0].map, result_no_smooth[0].map)
 
-@_test("SpatialHeatmapOutputProcessor: handles all NaN")
 def test_spatial_proc_all_nan():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -336,7 +276,6 @@ def test_spatial_proc_all_nan():
     result = proc(tensor, [(100, 100)])
     assert not np.isnan(result[0].map).any()
 
-@_test("SpatialHeatmapOutputProcessor: handles all Inf")
 def test_spatial_proc_all_inf():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -344,7 +283,6 @@ def test_spatial_proc_all_inf():
     result = proc(tensor, [(100, 100)])
     assert not np.isinf(result[0].map).any()
 
-@_test("SpatialHeatmapOutputProcessor: handles mixed NaN/Inf/normal")
 def test_spatial_proc_mixed_nan_inf():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -356,7 +294,6 @@ def test_spatial_proc_mixed_nan_inf():
     assert not np.isnan(result[0].map).any()
     assert not np.isinf(result[0].map).any()
 
-@_test("SpatialHeatmapOutputProcessor: constant input")
 def test_spatial_proc_constant():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -365,7 +302,6 @@ def test_spatial_proc_constant():
     # Constant input should produce zeros (no variation to visualize)
     assert result[0].map.shape == (100, 100)
 
-@_test("SpatialHeatmapOutputProcessor: batch of different sizes")
 def test_spatial_proc_batch_diff_sizes():
     from fiftyone.utils.radio import SpatialHeatmapOutputProcessor
     proc = SpatialHeatmapOutputProcessor()
@@ -383,7 +319,6 @@ def test_spatial_proc_batch_diff_sizes():
 # INFERENCE TESTS - EXTENDED
 # =============================================================================
 
-@_test("Inference: RGB image basic")
 def test_infer_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -393,7 +328,6 @@ def test_infer_rgb():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: image with random pixels")
 def test_infer_random():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -404,7 +338,6 @@ def test_infer_random():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: black image")
 def test_infer_black():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -414,7 +347,6 @@ def test_infer_black():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: white image")
 def test_infer_white():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -424,7 +356,6 @@ def test_infer_white():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: red image")
 def test_infer_red():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -434,7 +365,6 @@ def test_infer_red():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: gradient image")
 def test_infer_gradient():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -447,7 +377,6 @@ def test_infer_gradient():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 128x128 image")
 def test_infer_128():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -457,7 +386,6 @@ def test_infer_128():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 256x256 image")
 def test_infer_256():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -467,7 +395,6 @@ def test_infer_256():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 512x512 image")
 def test_infer_512():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -477,7 +404,6 @@ def test_infer_512():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 1024x1024 image")
 def test_infer_1024():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -487,7 +413,6 @@ def test_infer_1024():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 1920x1080 (1080p)")
 def test_infer_1080p():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -497,7 +422,6 @@ def test_infer_1080p():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: 3840x2160 (4K)")
 def test_infer_4k():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -507,7 +431,6 @@ def test_infer_4k():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: portrait 480x640")
 def test_infer_portrait():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -517,7 +440,6 @@ def test_infer_portrait():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: landscape 640x480")
 def test_infer_landscape():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -527,7 +449,6 @@ def test_infer_landscape():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: extreme portrait 100x1000")
 def test_infer_extreme_portrait():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -537,7 +458,6 @@ def test_infer_extreme_portrait():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: extreme landscape 1000x100")
 def test_infer_extreme_landscape():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -547,7 +467,6 @@ def test_infer_extreme_landscape():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Inference: batch size 1")
 def test_infer_batch1():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -557,7 +476,6 @@ def test_infer_batch1():
         result = model._predict_all(imgs)
     assert len(result) == 1
 
-@_test("Inference: batch size 2")
 def test_infer_batch2():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -567,7 +485,6 @@ def test_infer_batch2():
         result = model._predict_all(imgs)
     assert len(result) == 2
 
-@_test("Inference: batch size 4")
 def test_infer_batch4():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -577,7 +494,6 @@ def test_infer_batch4():
         result = model._predict_all(imgs)
     assert len(result) == 4
 
-@_test("Inference: batch size 8")
 def test_infer_batch8():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -587,7 +503,6 @@ def test_infer_batch8():
         result = model._predict_all(imgs)
     assert len(result) == 8
 
-@_test("Inference: batch with mixed sizes")
 def test_infer_batch_mixed():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -604,7 +519,6 @@ def test_infer_batch_mixed():
     for r in result:
         assert r.shape == (2560,)
 
-@_test("Inference: spatial single image")
 def test_infer_spatial_single():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone.core.labels as fol
@@ -616,7 +530,6 @@ def test_infer_spatial_single():
     assert isinstance(result[0], fol.Heatmap)
     assert result[0].map.shape == (480, 640)
 
-@_test("Inference: spatial batch")
 def test_infer_spatial_batch():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone.core.labels as fol
@@ -634,7 +547,6 @@ def test_infer_spatial_batch():
     assert result[1].map.shape == (480, 640)
     assert result[2].map.shape == (600, 800)
 
-@_test("Inference: spatial preserves aspect ratio")
 def test_infer_spatial_aspect():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "spatial"})
@@ -645,7 +557,6 @@ def test_infer_spatial_aspect():
         result = model._predict_all([img])
     assert result[0].map.shape == (1080, 1920)
 
-@_test("Inference: different images produce different embeddings")
 def test_infer_different_images():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -657,7 +568,6 @@ def test_infer_different_images():
     # Different images should produce different embeddings
     assert not np.allclose(result[0], result[1])
 
-@_test("Inference: same image produces same embedding")
 def test_infer_same_image():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -673,7 +583,6 @@ def test_infer_same_image():
 # FIFTYONE INTEGRATION TESTS - EXTENDED
 # =============================================================================
 
-@_test("FiftyOne: load model and check type")
 def test_fo_model_type():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone.core.models as fom
@@ -681,57 +590,59 @@ def test_fo_model_type():
     model = CRadioV4Model(config)
     assert isinstance(model, fom.Model)
 
-@_test("FiftyOne: compute_embeddings stores correct field")
 def test_fo_embeddings_field():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="my_embeddings")
+        dataset.compute_embeddings(model, embeddings_field="my_embeddings")
 
-    assert "my_embeddings" in dataset.first().field_names
-    fo.delete_dataset(dataset.name)
+        assert "my_embeddings" in dataset.first().field_names
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: embeddings are numpy arrays")
 def test_fo_embeddings_type():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
 
-    sample = dataset.first()
-    emb = np.array(sample.test_emb)
-    assert isinstance(emb, np.ndarray)
-    fo.delete_dataset(dataset.name)
+        sample = dataset.first()
+        emb = np.array(sample.test_emb)
+        assert isinstance(emb, np.ndarray)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: embeddings dimension is 2560")
 def test_fo_embeddings_dim():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
 
-    for sample in dataset:
-        emb = np.array(sample.test_emb)
-        assert emb.shape == (2560,)
+        for sample in dataset:
+            emb = np.array(sample.test_emb)
+            assert emb.shape == (2560,)
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: apply_model stores Heatmap")
 def test_fo_heatmap_type():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
@@ -739,17 +650,18 @@ def test_fo_heatmap_type():
     import fiftyone.core.labels as fol
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
-    config = CRadioV4ModelConfig({"output_type": "spatial"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "spatial"})
+        model = CRadioV4Model(config)
 
-    dataset.apply_model(model, label_field="test_heat")
+        dataset.apply_model(model, label_field="test_heat")
 
-    for sample in dataset:
-        assert isinstance(sample.test_heat, fol.Heatmap)
+        for sample in dataset:
+            assert isinstance(sample.test_heat, fol.Heatmap)
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: heatmap matches image dimensions")
 def test_fo_heatmap_dims():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
@@ -757,82 +669,86 @@ def test_fo_heatmap_dims():
     from PIL import Image as PILImage
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
-    config = CRadioV4ModelConfig({"output_type": "spatial"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "spatial"})
+        model = CRadioV4Model(config)
 
-    dataset.apply_model(model, label_field="test_heat")
+        dataset.apply_model(model, label_field="test_heat")
 
-    for sample in dataset:
-        img = PILImage.open(sample.filepath)
-        w, h = img.size
-        heat_h, heat_w = sample.test_heat.map.shape
-        assert heat_w == w
-        assert heat_h == h
+        for sample in dataset:
+            img = PILImage.open(sample.filepath)
+            w, h = img.size
+            heat_h, heat_w = sample.test_heat.map.shape
+            assert heat_w == w
+            assert heat_h == h
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: embeddings work with view")
 def test_fo_embeddings_view():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=10)
-    view = dataset.take(5)
+    try:
+        view = dataset.take(5)
 
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    view.compute_embeddings(model, embeddings_field="test_emb")
+        view.compute_embeddings(model, embeddings_field="test_emb")
 
-    # Only view samples should have embeddings
-    count_with_emb = len([s for s in dataset if s.test_emb is not None])
-    assert count_with_emb == 5
+        # Only view samples should have embeddings
+        count_with_emb = len([s for s in dataset if s.test_emb is not None])
+        assert count_with_emb == 5
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: heatmaps work with filtered view")
 def test_fo_heatmap_view():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=10)
-    view = dataset.skip(3).take(4)
+    try:
+        view = dataset.skip(3).take(4)
 
-    config = CRadioV4ModelConfig({"output_type": "spatial"})
-    model = CRadioV4Model(config)
+        config = CRadioV4ModelConfig({"output_type": "spatial"})
+        model = CRadioV4Model(config)
 
-    view.apply_model(model, label_field="test_heat")
+        view.apply_model(model, label_field="test_heat")
 
-    count_with_heat = len([s for s in dataset if s.test_heat is not None])
-    assert count_with_heat == 4
+        count_with_heat = len([s for s in dataset if s.test_heat is not None])
+        assert count_with_heat == 4
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: can re-compute embeddings")
 def test_fo_recompute_embeddings():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    # Compute twice
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
-    first_emb = np.array(dataset.first().test_emb).copy()
+        # Compute twice
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
+        first_emb = np.array(dataset.first().test_emb).copy()
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
-    second_emb = np.array(dataset.first().test_emb)
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
+        second_emb = np.array(dataset.first().test_emb)
 
-    # Should be the same (deterministic)
-    assert np.allclose(first_emb, second_emb)
+        # Should be the same (deterministic)
+        assert np.allclose(first_emb, second_emb)
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: similarity sort_by_similarity")
 def test_fo_sort_by_similarity():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
@@ -840,23 +756,24 @@ def test_fo_sort_by_similarity():
     import fiftyone.brain as fob
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=15)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
-    fob.compute_similarity(dataset, embeddings="test_emb", brain_key="test_sim")
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
+        fob.compute_similarity(dataset, embeddings="test_emb", brain_key="test_sim")
 
-    # Sort by similarity to first sample
-    query_id = dataset.first().id
-    similar = dataset.sort_by_similarity(query_id, brain_key="test_sim", k=5)
+        # Sort by similarity to first sample
+        query_id = dataset.first().id
+        similar = dataset.sort_by_similarity(query_id, brain_key="test_sim", k=5)
 
-    assert len(similar) == 5
-    # First result should be the query itself
-    assert similar.first().id == query_id
+        assert len(similar) == 5
+        # First result should be the query itself
+        assert similar.first().id == query_id
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: uniqueness computation")
 def test_fo_uniqueness():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
@@ -864,68 +781,71 @@ def test_fo_uniqueness():
     import fiftyone.brain as fob
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=10)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
-    fob.compute_uniqueness(dataset, embeddings="test_emb")
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
+        fob.compute_uniqueness(dataset, embeddings="test_emb")
 
-    # Check uniqueness field exists
-    for sample in dataset:
-        assert hasattr(sample, 'uniqueness')
-        assert 0 <= sample.uniqueness <= 1
+        # Check uniqueness field exists
+        for sample in dataset:
+            assert hasattr(sample, 'uniqueness')
+            assert 0 <= sample.uniqueness <= 1
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: multiple label fields")
 def test_fo_multiple_fields():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=3)
+    try:
 
-    # Compute embeddings
-    config_emb = CRadioV4ModelConfig({"output_type": "summary"})
-    model_emb = CRadioV4Model(config_emb)
-    dataset.compute_embeddings(model_emb, embeddings_field="radio_emb")
+        # Compute embeddings
+        config_emb = CRadioV4ModelConfig({"output_type": "summary"})
+        model_emb = CRadioV4Model(config_emb)
+        dataset.compute_embeddings(model_emb, embeddings_field="radio_emb")
 
-    # Compute heatmaps
-    config_heat = CRadioV4ModelConfig({"output_type": "spatial"})
-    model_heat = CRadioV4Model(config_heat)
-    dataset.apply_model(model_heat, label_field="radio_heat")
+        # Compute heatmaps
+        config_heat = CRadioV4ModelConfig({"output_type": "spatial"})
+        model_heat = CRadioV4Model(config_heat)
+        dataset.apply_model(model_heat, label_field="radio_heat")
 
-    # Both should exist
-    sample = dataset.first()
-    assert sample.radio_emb is not None
-    assert sample.radio_heat is not None
+        # Both should exist
+        sample = dataset.first()
+        assert sample.radio_emb is not None
+        assert sample.radio_heat is not None
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
-@_test("FiftyOne: works with shuffled dataset")
 def test_fo_shuffled():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     import fiftyone as fo
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=10, shuffle=True, seed=42)
-    config = CRadioV4ModelConfig({"output_type": "summary"})
-    model = CRadioV4Model(config)
+    try:
+        config = CRadioV4ModelConfig({"output_type": "summary"})
+        model = CRadioV4Model(config)
 
-    dataset.compute_embeddings(model, embeddings_field="test_emb")
+        dataset.compute_embeddings(model, embeddings_field="test_emb")
 
-    for sample in dataset:
-        assert sample.test_emb is not None
-        assert np.array(sample.test_emb).shape == (2560,)
+        for sample in dataset:
+            assert sample.test_emb is not None
+            assert np.array(sample.test_emb).shape == (2560,)
 
-    fo.delete_dataset(dataset.name)
+    finally:
+        fo.delete_dataset(dataset.name)
 
 
 # =============================================================================
 # EDGE CASE TESTS - EXTENDED
 # =============================================================================
 
-@_test("Edge: grayscale to RGB")
 def test_edge_gray_to_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -936,7 +856,6 @@ def test_edge_gray_to_rgb():
         result = model._predict_all([rgb])
     assert result[0].shape == (2560,)
 
-@_test("Edge: RGBA to RGB")
 def test_edge_rgba_to_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -947,7 +866,6 @@ def test_edge_rgba_to_rgb():
         result = model._predict_all([rgb])
     assert result[0].shape == (2560,)
 
-@_test("Edge: palette image to RGB")
 def test_edge_palette_to_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -958,7 +876,6 @@ def test_edge_palette_to_rgb():
         result = model._predict_all([rgb])
     assert result[0].shape == (2560,)
 
-@_test("Edge: 1-bit image to RGB")
 def test_edge_1bit_to_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -969,7 +886,6 @@ def test_edge_1bit_to_rgb():
         result = model._predict_all([rgb])
     assert result[0].shape == (2560,)
 
-@_test("Edge: CMYK to RGB")
 def test_edge_cmyk_to_rgb():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -980,7 +896,6 @@ def test_edge_cmyk_to_rgb():
         result = model._predict_all([rgb])
     assert result[0].shape == (2560,)
 
-@_test("Edge: minimum size 32x32")
 def test_edge_min_size():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -990,7 +905,6 @@ def test_edge_min_size():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Edge: odd dimensions 511x513")
 def test_edge_odd_dims():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1000,7 +914,6 @@ def test_edge_odd_dims():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Edge: prime dimensions 509x503")
 def test_edge_prime_dims():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1010,7 +923,6 @@ def test_edge_prime_dims():
         result = model._predict_all([img])
     assert result[0].shape == (2560,)
 
-@_test("Edge: power of 2 dimensions")
 def test_edge_power2_dims():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1021,7 +933,6 @@ def test_edge_power2_dims():
             result = model._predict_all([img])
         assert result[0].shape == (2560,)
 
-@_test("Edge: image from file")
 def test_edge_from_file():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1044,7 +955,6 @@ def test_edge_from_file():
 
     assert result[0].shape == (2560,)
 
-@_test("Edge: JPEG image")
 def test_edge_jpeg():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1065,7 +975,6 @@ def test_edge_jpeg():
 
     assert result[0].shape == (2560,)
 
-@_test("Edge: model reuse across batches")
 def test_edge_model_reuse():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "summary"})
@@ -1077,7 +986,6 @@ def test_edge_model_reuse():
             result = model._predict_all([img])
             assert result[0].shape == (2560,)
 
-@_test("Edge: spatial heatmap tiny image")
 def test_edge_spatial_tiny():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "spatial"})
@@ -1087,7 +995,6 @@ def test_edge_spatial_tiny():
         result = model._predict_all([img])
     assert result[0].map.shape == (64, 64)
 
-@_test("Edge: spatial heatmap large image")
 def test_edge_spatial_large():
     from fiftyone.utils.radio import CRadioV4ModelConfig, CRadioV4Model
     config = CRadioV4ModelConfig({"output_type": "spatial"})
@@ -1103,117 +1010,4 @@ def test_edge_spatial_large():
 # =============================================================================
 
 if __name__ == "__main__":
-    print("=" * 70)
-    print("C-RADIOv4 COMPREHENSIVE TEST SUITE")
-    print("=" * 70)
-
-    # Config tests
-    test_config_default_repo()
-    test_config_output_summary()
-    test_config_output_spatial()
-    test_config_mixed_precision_default()
-    test_config_mixed_precision_false()
-    test_config_smoothing_default()
-    test_config_smoothing_false()
-    test_config_sigma_default()
-    test_config_sigma_custom()
-    test_config_sigma_zero()
-    test_config_sigma_small()
-    test_config_sigma_large()
-    test_config_so400m()
-    test_config_inheritance()
-    test_config_has_zoo_model()
-    test_config_combined()
-
-    # Output processor tests
-    test_radio_proc_batch1()
-    test_radio_proc_batch2()
-    test_radio_proc_batch8()
-    test_radio_proc_batch16()
-    test_radio_proc_dim()
-    test_radio_proc_dtype_float32()
-    test_radio_proc_dtype_float16()
-    test_radio_proc_dtype_bfloat16()
-    test_radio_proc_gpu()
-    test_radio_proc_numpy()
-    test_spatial_proc_nchw()
-    test_spatial_proc_nchw_small()
-    test_spatial_proc_nchw_large()
-    test_spatial_proc_nlc_256()
-    test_spatial_proc_nlc_1024()
-    test_spatial_proc_nlc_nonsquare()
-    test_spatial_proc_dtype()
-    test_spatial_proc_range()
-    test_spatial_proc_range_attr()
-    test_spatial_proc_smoothing_effect()
-    test_spatial_proc_all_nan()
-    test_spatial_proc_all_inf()
-    test_spatial_proc_mixed_nan_inf()
-    test_spatial_proc_constant()
-    test_spatial_proc_batch_diff_sizes()
-
-    # Inference tests
-    test_infer_rgb()
-    test_infer_random()
-    test_infer_black()
-    test_infer_white()
-    test_infer_red()
-    test_infer_gradient()
-    test_infer_128()
-    test_infer_256()
-    test_infer_512()
-    test_infer_1024()
-    test_infer_1080p()
-    test_infer_4k()
-    test_infer_portrait()
-    test_infer_landscape()
-    test_infer_extreme_portrait()
-    test_infer_extreme_landscape()
-    test_infer_batch1()
-    test_infer_batch2()
-    test_infer_batch4()
-    test_infer_batch8()
-    test_infer_batch_mixed()
-    test_infer_spatial_single()
-    test_infer_spatial_batch()
-    test_infer_spatial_aspect()
-    test_infer_different_images()
-    test_infer_same_image()
-
-    # FiftyOne integration tests
-    test_fo_model_type()
-    test_fo_embeddings_field()
-    test_fo_embeddings_type()
-    test_fo_embeddings_dim()
-    test_fo_heatmap_type()
-    test_fo_heatmap_dims()
-    test_fo_embeddings_view()
-    test_fo_heatmap_view()
-    test_fo_recompute_embeddings()
-    test_fo_sort_by_similarity()
-    test_fo_uniqueness()
-    test_fo_multiple_fields()
-    test_fo_shuffled()
-
-    # Edge case tests
-    test_edge_gray_to_rgb()
-    test_edge_rgba_to_rgb()
-    test_edge_palette_to_rgb()
-    test_edge_1bit_to_rgb()
-    test_edge_cmyk_to_rgb()
-    test_edge_min_size()
-    test_edge_odd_dims()
-    test_edge_prime_dims()
-    test_edge_power2_dims()
-    test_edge_from_file()
-    test_edge_jpeg()
-    test_edge_model_reuse()
-    test_edge_spatial_tiny()
-    test_edge_spatial_large()
-
-    print("\n" + "=" * 70)
-    print(f"RESULTS: {PASSED} passed, {FAILED} failed")
-    print("=" * 70)
-
-    if FAILED > 0:
-        sys.exit(1)
+    sys.exit(pytest.main([__file__, "-v"]))
