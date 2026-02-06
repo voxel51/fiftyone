@@ -7,17 +7,13 @@ import {
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import {
-  type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
-import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -37,8 +33,6 @@ export const useBridge = (scene: Scene2D | null) => {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const save = useSetAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -110,46 +104,6 @@ export const useBridge = (scene: Scene2D | null) => {
       [annotationEventBus]
     )
   );
-
-  const handleCommandEvent = useCallback(
-    (
-      payload:
-        | LighterEventGroup["lighter:command-executed"]
-        | LighterEventGroup["lighter:undo"]
-        | LighterEventGroup["lighter:redo"]
-    ) => {
-      // Here, this would be true for `undo` or `redo`
-      if (
-        !("command" in payload) ||
-        !(payload.command instanceof UpdateLabelCommand)
-      ) {
-        const label = overlay?.label;
-
-        if (label) {
-          save(label);
-        }
-
-        return;
-      }
-
-      if (!payload.command.nextLabel) {
-        return;
-      }
-
-      const newLabel = coerceStringBooleans(
-        payload.command.nextLabel as Record<string, unknown>
-      );
-
-      if (newLabel) {
-        save(newLabel);
-      }
-    },
-    [overlay, save]
-  );
-
-  useEventHandler("lighter:command-executed", handleCommandEvent);
-  useEventHandler("lighter:redo", handleCommandEvent);
-  useEventHandler("lighter:undo", handleCommandEvent);
 
   const context = useColorMappingContext();
 
