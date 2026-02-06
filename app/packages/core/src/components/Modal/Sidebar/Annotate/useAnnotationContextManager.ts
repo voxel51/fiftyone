@@ -144,6 +144,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     },
     [
       canManageSchema,
+      sampleScanLimit,
       schemaManager,
       setActiveFields,
       setActiveSchemaPaths,
