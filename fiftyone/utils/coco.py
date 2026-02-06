@@ -2277,9 +2277,14 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
     for points in polyline.points:
         polygon = []
         for x, y in points:
-            polygon.append(int(x * width))
-            polygon.append(int(y * height))
+            px = x * width
+            py = y * height
 
+            px = min(max(px, 0.0), float(width))
+            py = min(max(py, 0.0), float(height))
+
+            polygon.append(px)
+            polygon.append(py)
         polygons.append(polygon)
 
     return polygons
