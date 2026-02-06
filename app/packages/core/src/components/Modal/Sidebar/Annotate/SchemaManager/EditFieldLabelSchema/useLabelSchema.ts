@@ -155,6 +155,9 @@ const useScan = (field: string) => {
         }
       );
     },
+    cancelScan: () => {
+      setIsScanning(false);
+    },
   };
 };
 

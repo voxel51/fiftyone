@@ -129,6 +129,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             field={field}
             config={labelSchema.currentLabelSchema}
             scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
             onConfigChange={labelSchema.updateConfig}
           />
         ) : (
@@ -138,6 +139,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             data={labelSchema.currentLabelSchema}
             onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
           />
         )}
       </SchemaSection>

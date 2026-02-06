@@ -3,7 +3,14 @@
  */
 
 import { LoadingSpinner, scrollable } from "@fiftyone/components";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import { useFieldType } from "../../hooks";
@@ -29,6 +36,7 @@ interface GUIContentProps {
   field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
+  onCancelScan?: () => void;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
@@ -36,6 +44,7 @@ const GUIContent = ({
   field,
   config,
   scanning,
+  onCancelScan,
   onConfigChange,
 }: GUIContentProps) => {
   const fType = useFieldType(field);
@@ -158,6 +167,14 @@ const GUIContent = ({
             <Text color={TextColor.Secondary}>Scanning schema</Text>
           </EmptyStateBox>
         </Section>
+        <Button
+          size={Size.Sm}
+          variant={Variant.Secondary}
+          onClick={onCancelScan}
+          style={{ alignSelf: "center", marginTop: 8 }}
+        >
+          Cancel
+        </Button>
       </ListContainer>
     );
   }
