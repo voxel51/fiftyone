@@ -5,7 +5,6 @@ import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
 } from "@fiftyone/looker-3d/src/constants";
-import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import {
   useCurrent3dAnnotationMode,
   useReset3dAnnotationMode,
@@ -24,7 +23,7 @@ import CuboidIcon from "@mui/icons-material/ViewInAr";
 import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
@@ -234,9 +233,8 @@ export const Redo = () => {
 
 export const ThreeDPolylines = () => {
   const setEditing = useSetAtom(editing);
-  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const polylineFields = use3dAnnotationFields(
     useCallback(

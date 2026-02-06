@@ -1,4 +1,4 @@
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
 import { current3dAnnotationModeAtom } from "./recoil";
 
 /**
@@ -29,9 +29,9 @@ export const useSetCurrent3dAnnotationMode = () => {
  * @returns A function that resets the annotation mode when called
  */
 export const useReset3dAnnotationMode = () => {
-  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const reset3dAnnotationMode = useResetRecoilState(
+    current3dAnnotationModeAtom
+  );
 
-  return () => {
-    setCurrent3dAnnotationMode(null);
-  };
+  return reset3dAnnotationMode;
 };
