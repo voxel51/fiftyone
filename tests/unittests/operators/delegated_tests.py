@@ -166,6 +166,59 @@ class MockProgressiveOperatorWithOutputs(MockGeneratorOperator):
     def resolve_output(self, *args, **kwargs):
         return MockOutputs()
 
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.get_operator",
+    return_value=MockOperator(),
+)
+class DelegatedOperationAsyncServiceTests(unittest.IsolatedAsyncioTestCase):
+    _should_fail = False
+
+    def setUp(self):
+        self.mock_is_remote_service = patch.object(
+            delegated_operation,
+            "is_remote_service",
+            return_value=False,
+        ).start()
+
+        self.mock_operator_exists = patch(
+            "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+            return_value=True,
+        ).start()
+        self.docs_to_delete = []
+        self.svc = DelegatedOperationService()
+
+    def tearDown(self):
+        self.delete_test_data()
+        patch.stopall()
+
+    def delete_test_data(self):
+        self.svc._repo._collection.delete_many(
+            {"operator": {"$regex": TEST_DO_PREFIX}}
+        )
+
+    @patch("fiftyone.core.odm.load_dataset")
+    async def test_set_completed_in_async_context(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        self.assertEqual(doc.label, mock_get_operator.return_value.name)
+
+        self.docs_to_delete.append(doc)
+
+        doc = self.svc.set_completed(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
 @patch(
     "fiftyone.operators.registry.OperatorRegistry.get_operator",
@@ -1805,31 +1858,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc = self.svc.get(doc.id)
         self.assertEqual(doc.label, "this is my delegated operation run.")
-
-    @patch("fiftyone.core.odm.load_dataset")
-    @pytest.mark.asyncio
-    async def test_set_completed_in_async_context(
-        self, mock_load_dataset, mock_get_operator
-    ):
-        dataset_id = ObjectId()
-        dataset_name = f"test_dataset_{dataset_id}"
-        mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value._doc.id = dataset_id
-
-        ctx = ExecutionContext()
-        ctx.request_params = {"foo": "bar"}
-        doc = self.svc.queue_operation(
-            operator=f"{TEST_DO_PREFIX}/operator/foo",
-            label=mock_get_operator.return_value.name,
-            delegation_target="test_target",
-            context=ctx.serialize(),
-        )
-        self.assertEqual(doc.label, mock_get_operator.return_value.name)
-
-        self.docs_to_delete.append(doc)
-
-        doc = self.svc.set_completed(doc_id=doc.id)
-        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
 
     def test_queue_op_remote_service(self, mock_get_operator):
         self.mock_is_remote_service.return_value = True

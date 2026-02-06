@@ -107,10 +107,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
             key="test_key", value="test_value", metadata=metadata
         )
 
-        with patch("asyncio.create_task"):
-            asyncio.run(
-                self.notification_service.notify("test_store", message_data)
-            )
+        asyncio.run(
+            self.notification_service.notify("test_store", message_data)
+        )
 
         callback1.assert_called_once_with(message_data)
         callback2.assert_not_called()
@@ -129,10 +128,9 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
             key="test_key", value="test_value", metadata=metadata
         )
 
-        with patch("asyncio.create_task"):
-            asyncio.run(
-                self.notification_service.notify("test_store", message_data)
-            )
+        asyncio.run(
+            self.notification_service.notify("test_store", message_data)
+        )
 
         callback.assert_called_once_with(message_data)
         self.remote_notifier.broadcast_to_store.assert_called_once_with(
@@ -140,39 +138,32 @@ class TestMongoChangeStreamNotificationService(unittest.TestCase):
         )
 
 
-@pytest.fixture
-def event_loop():
-    """Create an instance of the default event loop for each test case."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+class TestMongoChangeStreamNotificationServiceAsync(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.remote_notifier = MagicMock()
+        self.remote_notifier.broadcast_to_store = AsyncMock()
 
+        self.collection = MagicMock()
+        self.db = MagicMock()
+        self.db.__getitem__.return_value = self.collection
 
-class TestMongoChangeStreamNotificationServiceAsync:
-    @pytest.fixture
-    def notification_service(self, event_loop):
-        remote_notifier = MagicMock()
-        remote_notifier.broadcast_to_store = AsyncMock()
+        # Patch async DB connection getter used by the service
+        # Initialize collection manually for testing
+        self.get_db_patcher = patch("fiftyone.core.odm.get_async_db_conn")
+        self.mock_get_db = self.get_db_patcher.start()
+        self.addCleanup(self.get_db_patcher.stop)
+        self.mock_get_db.return_value = self.db
 
-        collection = MagicMock()
-        db = MagicMock()
-        db.__getitem__.return_value = collection
+        self.service = MongoChangeStreamNotificationService(
+            collection_name="test_collection",
+            remote_notifier=self.remote_notifier,
+        )
 
-        with patch("fiftyone.core.odm.get_async_db_conn") as mock_get_db:
-            mock_get_db.return_value = db
-            notification_service = MongoChangeStreamNotificationService(
-                collection_name="test_collection",
-                remote_notifier=remote_notifier,
-            )
-            # Initialize collection manually for testing
-            notification_service._collection_async = collection
-            yield notification_service, collection, remote_notifier
+        self.service._collection_async = self.collection
 
-    @pytest.mark.asyncio
-    async def test_handle_change_insert(self, notification_service):
-        service, collection, remote_notifier = notification_service
+    async def test_handle_change_insert(self):
         callback = MagicMock()
-        service.subscribe("test_store", callback)
+        self.service.subscribe("test_store", callback)
 
         change = {
             "operationType": "insert",
@@ -185,8 +176,8 @@ class TestMongoChangeStreamNotificationServiceAsync:
             "wallTime": datetime.datetime.now(),
         }
 
-        with patch("asyncio.create_task"):
-            await service._handle_change(change)
+        await self.service._handle_change(change)
+        await asyncio.gather(*self.service._background_tasks)
 
         callback.assert_called_once()
         called_message = callback.call_args[0][0]
@@ -195,12 +186,12 @@ class TestMongoChangeStreamNotificationServiceAsync:
         assert called_message.value == "test_value"
         assert called_message.metadata.dataset_id == "test_dataset"
         assert called_message.metadata.operation_type == "insert"
+        self.remote_notifier.broadcast_to_store.assert_awaited_once()
+        
 
-    @pytest.mark.asyncio
-    async def test_handle_change_delete(self, notification_service):
-        service, collection, remote_notifier = notification_service
+    async def test_handle_change_delete(self):
         callback = MagicMock()
-        service.subscribe("test_store", callback)
+        self.service.subscribe("test_store", callback)
 
         # Mock a delete operation where fullDocument is not available
         change = {
@@ -215,8 +206,8 @@ class TestMongoChangeStreamNotificationServiceAsync:
             "wallTime": datetime.datetime.now(),
         }
 
-        with patch("asyncio.create_task"):
-            await service._handle_change(change)
+        await self.service._handle_change(change)
+        await asyncio.gather(*self.service._background_tasks)
 
         callback.assert_called_once()
         called_message = callback.call_args[0][0]
@@ -225,17 +216,16 @@ class TestMongoChangeStreamNotificationServiceAsync:
         assert called_message.value is None
         assert called_message.metadata.dataset_id == "test_dataset"
         assert called_message.metadata.operation_type == "delete"
+        self.remote_notifier.broadcast_to_store.assert_awaited_once()
 
-    @pytest.mark.asyncio
-    async def test_run_with_change_stream(self, notification_service):
-        service, collection, remote_notifier = notification_service
+    async def test_run_with_change_stream(self):
 
         with patch.object(
-            service, "_run_change_stream"
+            self.service, "_run_change_stream"
         ) as mock_run_change_stream:
             mock_run_change_stream.return_value = None
 
-            task = asyncio.create_task(service._run())
+            task = asyncio.create_task(self.service._run())
 
             await asyncio.sleep(0.1)
 
@@ -248,15 +238,13 @@ class TestMongoChangeStreamNotificationServiceAsync:
 
             mock_run_change_stream.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_run_with_fallback_to_polling(self, notification_service):
-        service, collection, remote_notifier = notification_service
+    async def test_run_with_fallback_to_polling(self):
 
         # Patch the _run method and check its calls
         with patch.object(
-            service, "_run_change_stream"
+            self.service, "_run_change_stream"
         ) as mock_run_change_stream, patch.object(
-            service, "_start_polling"
+            self.service, "_start_polling"
         ) as mock_start_polling:
             # Make _run_change_stream raise an exception to trigger fallback
             mock_run_change_stream.side_effect = OperationFailure(
@@ -267,7 +255,7 @@ class TestMongoChangeStreamNotificationServiceAsync:
             mock_start_polling.return_value = asyncio.Future()
             mock_start_polling.return_value.set_result(None)
 
-            task = asyncio.create_task(service._run())
+            task = asyncio.create_task(self.service._run())
 
             await asyncio.sleep(0.1)
 
@@ -282,9 +270,7 @@ class TestMongoChangeStreamNotificationServiceAsync:
             mock_run_change_stream.assert_called_once()
             mock_start_polling.assert_called_once()
 
-    @pytest.mark.asyncio
-    async def test_poll(self, notification_service):
-        service, collection, remote_notifier = notification_service
+    async def test_poll(self):
 
         with patch.object(
             MongoChangeStreamNotificationService, "_get_current_stores"
@@ -294,13 +280,13 @@ class TestMongoChangeStreamNotificationServiceAsync:
 
             # Mock the collection's distinct method
             current_keys = {"key1", "key2", "key3"}
-            collection.distinct = AsyncMock(return_value=current_keys)
+            self.collection.distinct = AsyncMock(return_value=current_keys)
 
             # Set up previous state
-            service._last_poll_time = datetime.datetime.now(
+            self.service._last_poll_time = datetime.datetime.now(
                 datetime.timezone.utc
             )
-            service._last_keys = {"test_store": {"key1", "key2", "key4"}}
+            self.service._last_keys = {"test_store": {"key1", "key2", "key4"}}
 
             # Mock find to return updated documents
             mock_cursor = MagicMock()
@@ -323,31 +309,31 @@ class TestMongoChangeStreamNotificationServiceAsync:
                     },
                 ]
             )
-            collection.find.return_value = mock_cursor
+            self.collection.find.return_value = mock_cursor
 
             # Save the poll time to ensure it's the same one used in the query
-            last_poll_time = service._last_poll_time
+            last_poll_time = self.service._last_poll_time
 
             # Add a small delay to ensure time passes between poll calls
             await asyncio.sleep(0.001)
 
             # Call the poll method
-            await service._poll()
+            await self.service._poll()
 
             # Verify distinct was called
-            collection.distinct.assert_called_with(
+            self.collection.distinct.assert_called_with(
                 "key", {"store_name": "test_store"}
             )
 
             # Don't directly compare the query since timestamps may have microsecond differences
-            assert collection.find.call_count == 1
-            call_args = collection.find.call_args[0][0]
+            assert self.collection.find.call_count == 1
+            call_args = self.collection.find.call_args[0][0]
             assert call_args["store_name"] == "test_store"
             assert "$gt" in call_args["updated_at"]
 
             # Verify _last_keys was updated
-            assert service._last_keys["test_store"] == current_keys
+            assert self.service._last_keys["test_store"] == current_keys
 
             # Verify _last_poll_time was updated
-            assert service._last_poll_time is not None
-            assert service._last_poll_time != last_poll_time
+            assert self.service._last_poll_time is not None
+            assert self.service._last_poll_time != last_poll_time
