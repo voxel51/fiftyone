@@ -26,11 +26,9 @@ import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
-  const showScanButton = !labelSchema.savedLabelSchema;
+  const hasSavedSchema = !labelSchema.savedLabelSchema;
   // Default to JSON tab when scan button is shown (no existing schema)
-  const [activeTab, setActiveTab] = useState<TabId>(
-    showScanButton ? TAB_JSON : TAB_GUI
-  );
+  const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
 
@@ -90,28 +88,27 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
         >
           <ToggleSwitch
             size={Size.Md}
-            defaultIndex={showScanButton ? 1 : 0}
+            defaultIndex={0}
             onChange={handleTabChange}
             tabs={[
               { id: TAB_GUI, data: { label: "GUI" } },
               { id: TAB_JSON, data: { label: "JSON" } },
             ]}
           />
-          {showScanButton && (
-            <Button
-              data-cy={"scan"}
+
+          <Button
+            data-cy={"scan"}
+            size={Size.Md}
+            variant={Variant.Secondary}
+            onClick={labelSchema.scan}
+          >
+            <Icon
+              name={IconName.Refresh}
               size={Size.Md}
-              variant={Variant.Secondary}
-              onClick={labelSchema.scan}
-            >
-              <Icon
-                name={IconName.Refresh}
-                size={Size.Md}
-                style={{ marginRight: 4 }}
-              />
-              Scan
-            </Button>
-          )}
+              style={{ marginRight: 4 }}
+            />
+            Scan
+          </Button>
         </div>
 
         {activeTab === TAB_GUI ? (
@@ -136,7 +133,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
 
       <Footer
         leftContent={
-          !showScanButton ? (
+          hasSavedSchema ? (
             <Stack
               orientation={Orientation.Row}
               spacing={Spacing.Sm}
