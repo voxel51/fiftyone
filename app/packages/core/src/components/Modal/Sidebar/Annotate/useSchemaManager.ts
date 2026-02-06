@@ -72,6 +72,7 @@ export type ActivateSchemasResponse = EmptyBody;
 export type CreateSchemasRequest = {
   field: string | string[];
   scan_samples?: boolean;
+  limit?: number;
 };
 
 export type CreateSchemasResponse = {

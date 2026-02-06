@@ -3,9 +3,11 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { queryPerformanceMaxSearch } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { currentField, labelSchemaData } from "../../state";
 import { currentLabelSchema } from "../state";
 
@@ -95,7 +97,6 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
-  const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
@@ -135,13 +136,14 @@ const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
   const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
-
+  const limit = useRecoilValue(queryPerformanceMaxSearch);
+  console.log("limit", limit);
   return {
     isScanning,
     scan: () => {
       setIsScanning(true);
       generate.execute(
-        { field },
+        { field, limit },
         {
           callback: (result) => {
             if (result.result) {
