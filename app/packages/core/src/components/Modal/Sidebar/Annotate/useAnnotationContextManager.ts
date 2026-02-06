@@ -91,7 +91,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
-  const { enabled: canManageSchema } = useCanManageSchema();
+  const canManageSchema = useCanManageSchema();
 
   const initializeFieldSchema = useCallback(
     async (field: string) => {
