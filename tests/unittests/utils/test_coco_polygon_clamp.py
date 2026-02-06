@@ -34,6 +34,8 @@ def test_mask_to_polygons_clamps_vertices_to_bbox_bounds_regression_2847():
         mask, tolerance=None, bbox_bounds=bbox_bounds
     )
 
+    assert len(segmentation) > 0
+
     # Should be valid after fix; would fail before fix
     _assert_polygons_within_bounds(segmentation, bbox_bounds)
 
@@ -55,4 +57,7 @@ def test_mask_to_polygons_respects_rounded_bbox_bounds_num_decimals_edgecase():
     segmentation = _mask_to_polygons(
         mask, tolerance=None, bbox_bounds=rounded_bbox_bounds
     )
+
+    assert len(segmentation) > 0
+
     _assert_polygons_within_bounds(segmentation, rounded_bbox_bounds)
