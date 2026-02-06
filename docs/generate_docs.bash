@@ -139,9 +139,15 @@ if [[ ${FAST_BUILD} = false ]]; then
     wait
 fi
 
-echo "Building docs"
+echo "Building HTML docs"
 # sphinx-build [OPTIONS] SOURCEDIR OUTPUTDIR [FILENAMES...]
 sphinx-build -M html source build --jobs auto $SPHINXOPTS
+
+echo "Building Markdown docs"
+sphinx-build -M markdown source build --jobs auto $SPHINXOPTS
+
+echo "Copying markdown files to HTML output"
+cp -r build/markdown/* build/html/
 
 # Remove symlink to fiftyone-teams
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
