@@ -82,7 +82,7 @@ const HiddenFieldActions = ({
               variant={Variant.Secondary}
               onClick={() => setField(path)}
             >
-              Scan
+              Setup
             </Button>
           )}
         </>
