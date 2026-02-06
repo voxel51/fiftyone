@@ -434,7 +434,7 @@ def _generate_field_label_schema(
     return {k: result[k] for k in sorted(result)}
 
 
-def _handle_bool(collection, field_name, is_list, settings, *args):
+def _handle_bool(collection, field_name, is_list, settings, *args, **kwargs):
     if is_list:
         settings[foac.COMPONENT] = foac.TEXT
     else:
