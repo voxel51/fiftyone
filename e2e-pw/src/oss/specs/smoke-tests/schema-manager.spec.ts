@@ -154,8 +154,9 @@ test.describe.serial("schema manager", () => {
 
     // Configure
     const row = schemaManager.getFieldRow("classification");
-    // on initial scan is scan, later it's edit()
+    // on initial click is setup, later it's edit()
     const jsonEditor = await row.scan();
+    await jsonEditor.switchToJSONTab();
     await jsonEditor.assert.hasJSON(DEFAULT_LABEL_SCHEMA);
 
     // Unsuccessful validation

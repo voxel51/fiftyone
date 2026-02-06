@@ -4,7 +4,6 @@
  * Displays the collapsible list of hidden fields.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
@@ -41,9 +40,6 @@ const HiddenFieldActions = ({
   path: string;
   hasSchema: boolean;
 }) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
   const setField = useSetCurrentField();
   const fieldData = useFieldSchemaData(path);
   const isSystemReadOnly = isSystemReadOnlyField(path);
@@ -57,7 +53,7 @@ const HiddenFieldActions = ({
           Unsupported
         </Pill>
       )}
-      {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
+      {(isReadOnly || isSystemReadOnly) && (
         <Pill data-cy="pill" size={Size.Md}>
           Read-only
         </Pill>

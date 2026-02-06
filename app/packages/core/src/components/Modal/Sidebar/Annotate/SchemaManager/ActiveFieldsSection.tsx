@@ -4,7 +4,6 @@
  * Displays the list of active (visible) fields with drag-drop reordering.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
@@ -60,10 +59,6 @@ const FieldActions = ({ path }: { path: string }) => {
 };
 
 const ActiveFieldsSection = () => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
-
   const { setIsNewField: setNewFieldMode } = useNewFieldMode();
 
   const handleNewField = useCallback(() => {
@@ -127,7 +122,7 @@ const ActiveFieldsSection = () => {
           ),
           actions: (
             <span className="flex items-center gap-2">
-              {isM4Enabled && fieldReadOnlyStates[path] && (
+              {fieldReadOnlyStates[path] && (
                 <Pill size={Size.Md}>Read-only</Pill>
               )}
               <FieldActions path={path} />
@@ -135,7 +130,7 @@ const ActiveFieldsSection = () => {
           ),
         } as ListItemProps,
       })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates, isM4Enabled]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
   );
 
   const handleOrderChange = useCallback(
