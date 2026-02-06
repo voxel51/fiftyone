@@ -31,10 +31,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   });
   const labelSchema = useLabelSchema(field);
   const showScanButton = !labelSchema.savedLabelSchema;
-  // Default to JSON tab when scan button is shown (no existing schema)
-  const [activeTab, setActiveTab] = useState<TabId>(
-    showScanButton ? TAB_JSON : TAB_GUI
-  );
+  const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
 
@@ -99,7 +96,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           {isM4Enabled && (
             <ToggleSwitch
               size={Size.Md}
-              defaultIndex={showScanButton ? 1 : 0}
+              defaultIndex={0}
               onChange={handleTabChange}
               tabs={[
                 { id: TAB_GUI, data: { label: "GUI" } },
@@ -129,6 +126,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             field={field}
             config={labelSchema.currentLabelSchema}
             scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
             onConfigChange={labelSchema.updateConfig}
           />
         ) : (
@@ -138,6 +136,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             data={labelSchema.currentLabelSchema}
             onChange={labelSchema.validate}
             scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
           />
         )}
       </SchemaSection>
