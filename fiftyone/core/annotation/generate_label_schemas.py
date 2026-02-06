@@ -353,22 +353,24 @@ def _generate_field_label_schema(
         settings[foac.READ_ONLY] = True
         return settings
 
-    fn = None
-
     if isinstance(field, fof.BooleanField):
-        fn = _handle_bool
+        return _handle_bool(is_list=is_list, settings=settings)
     elif isinstance(field, (fof.FloatField, fof.IntField)):
-        fn = _handle_float_or_int
+        return _handle_float_or_int(
+            collection=collection,
+            field_name=field_name,
+            is_list=is_list,
+            settings=settings,
+            scan_samples=scan_samples,
+            sample_size=sample_size,
+        )
     elif isinstance(field, fof.StringField):
-        fn = _handle_str
-
-    if fn:
-        return fn(
-            collection,
-            field_name,
-            is_list,
-            settings,
-            scan_samples,
+        return _handle_str(
+            collection=collection,
+            field_name=field_name,
+            is_list=is_list,
+            settings=settings,
+            scan_samples=scan_samples,
             sample_size=sample_size,
         )
 
@@ -437,14 +439,7 @@ def _generate_field_label_schema(
     return {k: result[k] for k in sorted(result)}
 
 
-def _handle_bool(
-    collection,
-    field_name: str,
-    is_list: bool,
-    settings: dict,
-    *args,
-    **kwargs,
-) -> dict:
+def _handle_bool(is_list: bool, settings: dict) -> dict:
     if is_list:
         settings[foac.COMPONENT] = foac.TEXT
     else:
@@ -454,12 +449,11 @@ def _handle_bool(
 
 
 def _handle_float_or_int(
-    collection,
+    collection: "SampleCollection",
     field_name: str,
     is_list: bool,
     settings: dict,
     scan_samples: bool,
-    *,
     sample_size: Optional[int] = None,
 ) -> dict:
     settings[foac.COMPONENT] = foac.TEXT
@@ -489,7 +483,6 @@ def _handle_str(
     is_list: bool,
     settings: dict,
     scan_samples: bool,
-    *,
     sample_size: Optional[int] = None,
 ) -> dict:
     values = None
