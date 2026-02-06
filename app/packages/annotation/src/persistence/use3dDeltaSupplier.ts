@@ -1,15 +1,19 @@
-import type { DeltaSupplier } from "./deltaSupplier";
-import { useCallback } from "react";
+import type { JSONDeltas } from "@fiftyone/core";
+import { DetectionLabel } from "@fiftyone/looker";
 import {
   ReconciledDetection3D,
   ReconciledPolyline3D,
-  useReconciledLabels3D,
+  useDeletedWorkingLabels,
+  useIsDragInProgress,
+  useWorkingDetections,
+  useWorkingPolylines,
 } from "@fiftyone/looker-3d";
-import type { JSONDeltas } from "@fiftyone/core";
-import { useGetLabelDelta } from "./useGetLabelDelta";
-import { DetectionLabel } from "@fiftyone/looker";
+import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
+import { useCallback } from "react";
 import { LabelProxy } from "../deltas";
+import type { DeltaSupplier } from "./deltaSupplier";
+import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
  * List of attributes which are used for internal annotation functionality.
@@ -43,17 +47,20 @@ const omit = <T, K extends keyof T>(data: T, ...keys: K[]): Omit<T, K> => {
  * Build a {@link LabelProxy} instance from a reconciled 3d label.
  *
  * @param label Reconciled 3d label
+ * @param requireLabel If true, only build proxy if label has a label value.
+ *   Used for mutations to avoid persisting incomplete labels.
  */
 const buildAnnotationLabel = (
-  label: ReconciledDetection3D | ReconciledPolyline3D
+  label: ReconciledDetection3D | ReconciledPolyline3D,
+  requireLabel = true
 ): LabelProxy | undefined => {
-  if (label._cls === "Detection" && label.label) {
+  if (label._cls === "Detection" && (!requireLabel || label.label)) {
     return {
       type: "Detection",
       data: omit(label, ...reservedAttributes) as DetectionLabel,
       path: label.path,
     };
-  } else if (label._cls === "Polyline" && label.label) {
+  } else if (label._cls === "Polyline" && (!requireLabel || label.label)) {
     return {
       type: "Polyline",
       data: omit(label, ...reservedAttributes) as PolylineLabel,
@@ -63,23 +70,69 @@ const buildAnnotationLabel = (
 };
 
 /**
+ * Build a {@link LabelProxy} for deletions
+ */
+const buildAnnotationLabelForDelete = (
+  label: ReconciledDetection3D | ReconciledPolyline3D
+): LabelProxy | undefined => {
+  return buildAnnotationLabel(label, false);
+};
+
+/**
  * Hook which provides a {@link DeltaSupplier} which captures changes isolated
  * to the 3D annotation context.
+ *
+ * The approach is:
+ * - Read from the working store (committed edits) (See looker-3d/src/annotation/store/index.ts)
+ * - Guard against computing deltas during active drag operations
+ * - Compute mutation deltas for modified labels
+ * - Compute deletion deltas for deleted labels (that existed in baseline)
  */
 export const use3dDeltaSupplier = (): DeltaSupplier => {
-  const labels = useReconciledLabels3D();
+  const detections = useWorkingDetections();
+  const polylines = useWorkingPolylines();
+  const deletedLabels = useDeletedWorkingLabels();
+
+  const dragInProgress = useIsDragInProgress();
+
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
+  const getLabelDeleteDelta = useGetLabelDelta(buildAnnotationLabelForDelete, {
+    opType: "delete",
+  });
 
   return useCallback(() => {
+    // Guard: don't compute deltas during active drag
+    // This prevents intermediate states from being persisted
+    if (dragInProgress) {
+      return [];
+    }
+
     const sampleDeltas: JSONDeltas = [];
 
-    labels?.detections?.forEach((detection) => {
+    // Generate mutation deltas for non-deleted labels
+    detections.forEach((detection) => {
       sampleDeltas.push(...getLabelDelta(detection, detection.path));
     });
-    labels?.polylines?.forEach((polyline) => {
+
+    polylines.forEach((polyline) => {
       sampleDeltas.push(...getLabelDelta(polyline, polyline.path));
     });
 
+    // Generate deletion deltas for deleted labels
+    // Only for labels that existed in baseline
+    deletedLabels.forEach((label) => {
+      if (isDetection(label) || isPolyline(label)) {
+        sampleDeltas.push(...getLabelDeleteDelta(label, label.path));
+      }
+    });
+
     return sampleDeltas;
-  }, [getLabelDelta, labels]);
+  }, [
+    getLabelDelta,
+    getLabelDeleteDelta,
+    detections,
+    polylines,
+    deletedLabels,
+    dragInProgress,
+  ]);
 };

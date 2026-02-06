@@ -24,7 +24,7 @@ export type OverlayLabel = {
     _cls: "Instance";
     _id: string;
   };
-};
+} & Record<string, unknown>;
 
 export const load3dOverlayForSample = (
   sampleId: string,

@@ -7,8 +7,7 @@ import {
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import { PrimitiveAtom, useAtomValue } from "jotai";
-import { atom } from "jotai";
+import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";

@@ -633,3 +633,22 @@ export const calculateCameraPositionForUpVector = (
     .add(upDir.multiplyScalar(verticalDist))
     .add(proj.multiplyScalar(horizontalDist));
 };
+
+/**
+ * Converts radians to degrees.
+ *
+ * @param radians - The angle in radians
+ * @returns The angle in degrees
+ */
+export const rad2deg = (radians: number): number => radians * (180 / Math.PI);
+
+/**
+ * Formats radians as degrees (rounded to integer).
+ *
+ * @param radians - The angle in radians (may be undefined)
+ * @returns Formatted string representation of degrees, or empty string if invalid
+ */
+export const formatDegrees = (radians: number | undefined): string => {
+  if (radians === undefined || !Number.isFinite(radians)) return "";
+  return Math.round(rad2deg(radians)).toString();
+};

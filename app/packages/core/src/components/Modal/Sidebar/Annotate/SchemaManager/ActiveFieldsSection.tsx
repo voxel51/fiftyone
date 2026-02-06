@@ -10,7 +10,6 @@ import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Clickable,
   Icon,
   IconName,
   Pill,
@@ -48,9 +47,14 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable data-cy="edit" onClick={() => setField(path)}>
+      <Button
+        variant={Variant.Icon}
+        borderless
+        data-cy="edit"
+        onClick={() => setField(path)}
+      >
         <Icon name={IconName.Edit} size={Size.Md} />
-      </Clickable>
+      </Button>
     </Tooltip>
   );
 };

@@ -43,7 +43,7 @@ const AddSchema = ({ type }: { type: string }) => {
       <Icon
         sx={{
           fontSize: 64,
-          color: "#FF9950",
+          color: "var(--color-brand-accent)",
           marginBottom: 2,
         }}
       />
@@ -74,7 +74,7 @@ const AddSchema = ({ type }: { type: string }) => {
             position: "absolute",
             bottom: 2,
             margin: 2,
-            background: "#333",
+            background: "var(--color-content-bg-muted)",
             boxShadow: "0px 1px 2px 0px rgba(16, 24, 40, 0.05)",
           }}
         >

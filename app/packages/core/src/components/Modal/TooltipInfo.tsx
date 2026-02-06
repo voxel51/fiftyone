@@ -33,6 +33,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
+import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -525,6 +526,7 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
   const { enterAnnotationMode } = useAnnotationController();
+  const canAnnotate = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
   const closeTooltip = useCallback(() => {
@@ -546,7 +548,7 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       </span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          {modalMode === ModalMode.EXPLORE && (
+          {modalMode === ModalMode.EXPLORE && canAnnotate && (
             <Button
               data-cy={"quick-edit"}
               leadingIcon={EditIcon}

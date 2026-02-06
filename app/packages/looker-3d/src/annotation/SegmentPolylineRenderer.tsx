@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { objectId } from "@fiftyone/utilities";
+import { objectId, POLYLINE } from "@fiftyone/utilities";
 import { Line as LineDrei } from "@react-three/drei";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
@@ -17,15 +17,16 @@ import {
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
   isSegmentingPointerDownAtom,
-  stagedPolylineTransformsAtom,
   selectedLabelForAnnotationAtom,
   sharedCursorPositionAtom,
   snapCloseAutomaticallyAtom,
 } from "../state";
+import { isPolyline } from "../types";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
+import { usePolylineOperations } from "./store/operations";
+import { workingAtom } from "./store/working";
 import { PolylinePointTransformData } from "./types";
-import { useReverseSyncPolylinePointTransforms } from "./useReverseSyncPolylinePointTransforms";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
 
@@ -52,16 +53,13 @@ export const SegmentPolylineRenderer = ({
     activeSegmentationStateAtom
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
+  const { createPolyline, updatePolylinePoints } = usePolylineOperations();
 
   const setEditingToNewPolyline = useSetEditingToNewPolyline();
 
   const setIsActivelySegmenting = useSetRecoilState(
     isSegmentingPointerDownAtom
   );
-  useReverseSyncPolylinePointTransforms();
   const setSharedCursorPosition = useSetRecoilState(sharedCursorPositionAtom);
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const { upVector, sceneBoundingBox } = useFo3dContext();
@@ -73,7 +71,7 @@ export const SegmentPolylineRenderer = ({
 
   const commitSegment = useRecoilCallback(
     ({ snapshot }) =>
-      (
+      async (
         vertices: [number, number, number][],
         overrideShouldClose: boolean = false
       ) => {
@@ -85,41 +83,49 @@ export const SegmentPolylineRenderer = ({
 
         const labelId = selectedLabelForAnnotation?._id || objectId();
 
-        const newSegment = {
-          points: vertices.map(
-            (pt) =>
-              pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
-          ),
-        };
+        const newSegmentPoints = vertices.map(
+          (pt) =>
+            pt.map((p) => Number(p.toFixed(7))) as [number, number, number]
+        );
 
-        setStagedPolylineTransforms((prev) => {
-          let transformData: PolylinePointTransformData;
-          if (!prev || Object.keys(prev).length === 0 || !prev[labelId]) {
-            transformData = {
-              segments: [newSegment],
-              path: currentActiveField,
-              sampleId: currentSampleId,
-              misc: {
-                closed: shouldClose,
-              },
-            };
-          } else {
-            const currentData = prev[labelId];
-            const existingSegments = currentData?.segments || [];
-            const newSegments = [...existingSegments, newSegment];
-            transformData = {
-              segments: newSegments,
-              path: currentActiveField || "",
-              sampleId: currentSampleId,
-              misc: {
-                ...(currentData?.misc ?? {}),
-                closed: shouldClose,
-              },
-            };
-          }
-          setEditingToNewPolyline(labelId, transformData);
-          return { ...(prev ?? {}), [labelId]: transformData };
-        });
+        // Check if the label already exists in working store
+        const working = await snapshot.getPromise(workingAtom);
+        const existingLabel = working.doc.labelsById[labelId];
+
+        let transformData: PolylinePointTransformData;
+
+        if (existingLabel && isPolyline(existingLabel)) {
+          // Add segment to existing polyline
+          const existingPoints3d = existingLabel.points3d || [];
+          const newPoints3d = [...existingPoints3d, newSegmentPoints];
+
+          // Update existing polyline in working store
+          updatePolylinePoints(labelId, newPoints3d);
+
+          transformData = {
+            segments: newPoints3d.map((pts) => ({ points: pts })),
+            path: currentActiveField,
+            sampleId: currentSampleId,
+            misc: {
+              closed: shouldClose,
+            },
+          };
+        } else {
+          transformData = {
+            segments: [{ points: newSegmentPoints }],
+            path: currentActiveField,
+            sampleId: currentSampleId,
+            misc: {
+              closed: shouldClose,
+            },
+          };
+
+          // Create polyline in working store
+          createPolyline(labelId, transformData, currentActiveField || "");
+        }
+
+        // Set editing for sidebar UI
+        setEditingToNewPolyline(labelId, transformData);
 
         if (selectedLabelForAnnotation) {
           setSelectedLabelForAnnotation({
@@ -131,8 +137,7 @@ export const SegmentPolylineRenderer = ({
             _id: labelId,
             path: currentActiveField || "",
             sampleId: currentSampleId,
-            _cls: "Polyline" as const,
-            selected: false,
+            _cls: POLYLINE,
             label: "",
           });
         }
@@ -144,7 +149,13 @@ export const SegmentPolylineRenderer = ({
           isClosed: false,
         });
       },
-    [selectedLabelForAnnotation, currentActiveField, currentSampleId]
+    [
+      selectedLabelForAnnotation,
+      currentActiveField,
+      currentSampleId,
+      createPolyline,
+      updatePolylinePoints,
+    ]
   );
 
   // Check if current position is close to first vertex for closing

@@ -1,5 +1,6 @@
 import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
+import { useLighter } from "@fiftyone/lighter";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
   ANNOTATION_CUBOID,
@@ -16,6 +17,7 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import React, { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -23,6 +25,7 @@ import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
+import { useQuickDraw } from "./Edit/useQuickDraw";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
 
@@ -59,7 +62,7 @@ const Container = styled.div<{ $active?: boolean }>`
   white-space: nowrap;
 
   path {
-    fill: #999999;
+    fill: var(--color-content-icon-subtle);
   }
 
   ${({ $active, theme }) =>
@@ -88,7 +91,7 @@ const Container = styled.div<{ $active?: boolean }>`
 `;
 
 export const Round = styled(Container)`
-  border-radius: 1.25rem;
+  border-radius: var(--radius-full);
   width: 2rem;
   height: 2rem;
   &:hover {
@@ -111,11 +114,12 @@ export const RoundButtonWhite = styled(RoundButton)`
 `;
 
 const Square = styled(Container)<{ $active?: boolean }>`
-  border-radius: 0.1rem;
+  border-radius: var(--radius-xs);
 `;
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+
   return (
     <Tooltip placement="top-center" text="Create new classification">
       <Square onClick={create}>
@@ -138,10 +142,20 @@ const Classification = () => {
 };
 
 const Detection = () => {
+  const { enableQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
+
   return (
-    <Tooltip placement="top-center" text="Create new detection">
-      <Square onClick={create}>
+    <Tooltip placement="top-center" text="Create new detections">
+      <Square
+        onClick={() => {
+          enableQuickDraw();
+
+          // Create first detection in quick draw mode,
+          // `true` to work around stale quickDrawActive closure
+          create(true);
+        }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -164,7 +178,11 @@ export const Undo = () => {
   const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
+    <Round
+      onClick={undo}
+      className={undoEnabled ? "" : "disabled"}
+      data-cy="undo-button"
+    >
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -187,7 +205,11 @@ export const Redo = () => {
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
+      <Round
+        onClick={redo}
+        className={redoEnabled ? "" : "disabled"}
+        data-cy="redo-button"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"
@@ -312,7 +334,11 @@ export const ThreeDCuboids = () => {
 const Schema = () => {
   const showModal = useShowModal();
 
-  return <RoundButton onClick={showModal}>Schema</RoundButton>;
+  return (
+    <RoundButton onClick={showModal}>
+      <Text variant={TextVariant.Lg}>Schema</Text>
+    </RoundButton>
+  );
 };
 
 const Actions = () => {
@@ -345,8 +371,12 @@ const Actions = () => {
         </ItemRight>
       </Row>
       {canManage && (
-        <Row style={{ fontSize: "0.80rem" }}>
-          <ItemLeft style={{ width: "50%" }}>Click labels to edit</ItemLeft>
+        <Row>
+          <ItemLeft style={{ width: "50%" }}>
+            <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+              Click labels to edit
+            </Text>
+          </ItemLeft>
           <ItemRight style={{ width: "50%" }}>
             <Schema />
           </ItemRight>

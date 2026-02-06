@@ -18,6 +18,10 @@ import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     """Generates label schemas for a
@@ -364,8 +368,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
                 collection, f"{field_name}.{f.name}", scan_samples
             )
         except ValueError:
-            # Field type not supported for schema generation
-            pass
+            logger.debug(f"Field '{f.name}' is not supported")
 
     label = attributes.pop(foac.LABEL, {})
     label.pop(foac.TYPE, None)
@@ -413,9 +416,12 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
     try:
         if scan_samples and field_name != foac.FILEPATH:
             values = collection.distinct(field_name)
-    except OperationFailure:
-        # too many distinct values
-        pass
+    except OperationFailure as e:
+        # Likely too many distinct values
+        errmsg = (e.details or {}).get("errmsg") or str(e)
+        logger.debug(
+            f"Could not compute distinct values for field `{field_name}`: {errmsg}"
+        )
 
     if values:
         if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:

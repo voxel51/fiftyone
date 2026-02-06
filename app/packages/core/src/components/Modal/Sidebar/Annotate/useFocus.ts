@@ -6,10 +6,12 @@ import {
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
 import { editing } from "./Edit";
-import { current, hasChanges, savedLabel } from "./Edit/state";
+import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
-import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
+import { useQuickDraw } from "./Edit/useQuickDraw";
+import useCreate from "./Edit/useCreate";
+import { DETECTION } from "@fiftyone/utilities";
 
 const STORE = getDefaultStore();
 
@@ -20,7 +22,8 @@ export default function useFocus() {
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
-  const onSave = useSave();
+  const createDetection = useCreate(DETECTION);
+  const { quickDrawActive, handleQuickDrawTransition } = useQuickDraw();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -45,26 +48,13 @@ export default function useFocus() {
           return;
         }
 
-        const id = STORE.get(current)?.overlay?.id;
-
-        // no unsaved changes, allow the exit
-        if (!id || !STORE.get(hasChanges)) {
+        if (!quickDrawActive) {
           onExit();
-          return;
+        } else {
+          handleQuickDrawTransition(createDetection);
         }
-
-        // there are unsaved changes, ask for confirmation
-        scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
-        onSave();
-        onExit();
-
-        scene?.deselectOverlay(id, {
-          ignoreSideEffects: true,
-        });
-
-        select();
       },
-      [scene, onSave, onExit, select]
+      [createDetection, handleQuickDrawTransition, onExit, quickDrawActive]
     )
   );
 

@@ -2,6 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
@@ -287,6 +288,23 @@ export class InteractionManager {
     }
   };
 
+  private configureCursorStyle(
+    handler: InteractionHandler,
+    worldPoint: Point,
+    scale: number
+  ): void {
+    if (
+      quickDrawBridge.isQuickDrawActive() &&
+      handler &&
+      TypeGuards.isSelectable(handler) &&
+      !handler.isSelected()
+    ) {
+      this.canvas.style.cursor = "crosshair";
+    } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
+      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+    }
+  }
+
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
@@ -342,11 +360,7 @@ export class InteractionManager {
 
         event.preventDefault();
       }
-
-      // Update cursor
-      if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-        this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
-      }
+      this.configureCursorStyle(handler, worldPoint, scale);
     }
   };
 
@@ -380,9 +394,6 @@ export class InteractionManager {
         this.removeHandler(interactiveHandler);
       }
 
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
-
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
         const detail = {
@@ -405,6 +416,10 @@ export class InteractionManager {
             ...detail,
             overlay: interactiveHandler,
           });
+
+          if (quickDrawBridge.isQuickDrawActive()) {
+            this.selectionManager.clearSelection();
+          }
         } else {
           const type =
             moveState === "DRAGGING"
@@ -506,7 +521,7 @@ export class InteractionManager {
 
     const distance = Math.sqrt(
       Math.pow(point.x - this.clickStartPoint.x, 2) +
-      Math.pow(point.y - this.clickStartPoint.y, 2)
+        Math.pow(point.y - this.clickStartPoint.y, 2)
     );
     const duration = now - this.clickStartTime;
 
@@ -621,6 +636,7 @@ export class InteractionManager {
 
     // Update the hovered handler
     this.hoveredHandler = handler;
+    this.configureCursorStyle(handler, worldPoint, scale);
   }
 
   private handleZoomed = (
@@ -635,7 +651,7 @@ export class InteractionManager {
     const timeDiff = now - this.lastClickTime;
     const distance = Math.sqrt(
       Math.pow(point.x - this.lastClickPoint.x, 2) +
-      Math.pow(point.y - this.lastClickPoint.y, 2)
+        Math.pow(point.y - this.lastClickPoint.y, 2)
     );
 
     return (

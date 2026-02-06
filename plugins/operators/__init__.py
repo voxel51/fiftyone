@@ -31,6 +31,7 @@ from .annotation import (
     DeleteLabelSchemas,
     GetLabelSchemas,
     GenerateLabelSchemas,
+    ListValidAnnotationFields,
     SetActiveLabelSchemas,
     UpdateLabelSchema,
     ValidateLabelSchemas,
@@ -3478,6 +3479,7 @@ def register(p):
     p.register(DeleteLabelSchemas)
     p.register(GenerateLabelSchemas)
     p.register(GetLabelSchemas)
+    p.register(ListValidAnnotationFields)
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)
