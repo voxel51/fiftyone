@@ -14,7 +14,8 @@ export const useRegisterRendererEventHandlers = () => {
   const handleLighterEvent = useLighterEventHandler(scene?.getEventChannel());
 
   const select3DLabel = useSelect3DLabelForAnnotation();
-  const labels3D = [...useWorkingDetections(), ...useWorkingPolylines()];
+  const detections3D = useWorkingDetections();
+  const polylines3D = useWorkingPolylines();
 
   const { entranceLabelId, clearEntranceLabelId } =
     useAnnotationContextManager();
@@ -43,7 +44,8 @@ export const useRegisterRendererEventHandlers = () => {
   // For 3D, we can listen to changes in the working label set and select
   // the label once it's available.
   useEffect(() => {
-    if (entranceLabelId && labels3D) {
+    if (entranceLabelId) {
+      const labels3D = [...detections3D, ...polylines3D];
       const targetLabel = labels3D.find(
         (label) => label._id === entranceLabelId
       );
@@ -54,5 +56,5 @@ export const useRegisterRendererEventHandlers = () => {
         clearEntranceLabelId();
       }
     }
-  }, [entranceLabelId, labels3D]);
+  }, [detections3D, entranceLabelId, polylines3D]);
 };
