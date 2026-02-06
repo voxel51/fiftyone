@@ -7,11 +7,11 @@ import { useSetEditingToExisting3dLabel } from "../annotation/useSetEditingToExi
 import { ANNOTATION_CUBOID, ANNOTATION_POLYLINE } from "../constants";
 import type { OverlayLabel } from "../labels/loader";
 import {
-  current3dAnnotationModeAtom,
   currentArchetypeSelectedForTransformAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
+import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
   Archetype3d,
   isDetection3dOverlay,
@@ -26,12 +26,11 @@ export const useSelect3DLabelForAnnotation = () => {
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
-  const setCurrent3dAnnotationMode = useSetRecoilState(
-    current3dAnnotationModeAtom
-  );
   const setCurrentArchetypeSelectedForTransform = useSetRecoilState(
     currentArchetypeSelectedForTransformAtom
   );
+
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   const setEditingToExistingPolyline =
     useSetEditingToExisting3dLabel(ANNOTATION_POLYLINE);

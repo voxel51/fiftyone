@@ -10,13 +10,13 @@ import type {
   SegmentState,
   SelectedPoint,
   TransformMode,
-} from "./annotation/types";
+} from "../annotation/types";
 import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
   SHADE_BY_HEIGHT,
-} from "./constants";
-import type { FoSceneNode } from "./hooks";
+} from "../constants";
+import type { FoSceneNode } from "../hooks";
 import type {
   Actions,
   AssetLoadingLog,
@@ -25,8 +25,8 @@ import type {
   PanelId,
   RaycastResult,
   ShadeBy,
-} from "./types";
-import { Archetype3d, LoadingStatus } from "./types";
+} from "../types";
+import { Archetype3d, LoadingStatus } from "../types";
 
 // =============================================================================
 // GENERAL 3D
