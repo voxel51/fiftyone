@@ -32,9 +32,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
-  // const { isLargeDataset, scanLimit } = useIsLargeDataset();
-  const { scanLimit } = useIsLargeDataset();
-  const isLargeDataset = true;
+  const { isLargeDataset, scanLimit } = useIsLargeDataset();
 
   const handleTabChange = useCallback(
     (index: number) => {
