@@ -696,14 +696,18 @@ function initAIChatButtons() {
   ]);
 
   const getMdUrl = () => {
-    const url = window.location.href;
-    if (url.endsWith(".html")) {
-      return url.replace(/\.html$/, ".md");
-    } else if (url.endsWith("/")) {
-      return url + "index.md";
+    const url = new URL(window.location.href);
+    const path = url.pathname;
+    if (path.endsWith(".html")) {
+      url.pathname = path.replace(/\.html$/, ".md");
+    } else if (path.endsWith("/")) {
+      url.pathname = path + "index.md";
     } else {
-      return url + ".md";
+      url.pathname = path + ".md";
     }
+    url.hash = "";
+    url.search = "";
+    return url.href;
   };
 
   document.querySelectorAll(".ai-icon-button").forEach((button) => {
