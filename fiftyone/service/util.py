@@ -111,7 +111,7 @@ def get_listening_tcp_ports(process):
     Returns:
         generator of integers
     """
-    for conn in process.net_connections(kind="tcp"):
+    for conn in process.connections(kind="tcp"):
         if (
             not conn.raddr  # not connected to a remote socket
             and conn.status == psutil.CONN_LISTEN
