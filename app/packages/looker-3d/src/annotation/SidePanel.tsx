@@ -384,11 +384,24 @@ export const SidePanel = ({
 
   const cameraRef = useRef<THREE.OrthographicCamera>();
 
-  // We need to observe the bounds for a short period of time to ensure the camera is in the correct position
-  // But turn it off so that users can pan/zoom and work with a stable scene
+  // --- "Fit bounds" reset key mechanism ---
+  //
+  // We can't call drei's `useBounds()` API directly from here because it's
+  // only available inside the R3F <Bounds> component tree. Instead, we use a
+  // `fitBoundsKey` counter to coordinate two things:
+  //
+  // 1. Force-remount the R3F <View> (via its `key` prop) so the camera,
+  //    controls, and scene are cleanly re-initialized for the new orientation.
+  //
+  // 2. Temporarily enable <Bounds observe={true}> so drei auto-fits the
+  //    camera to the scene contents. We disable it after 750ms so the user
+  //    can freely pan/zoom without Bounds fighting them.
+  //
+  // Increment `fitBoundsKey` whenever the camera should re-fit: view changes,
+  // reset button clicks, etc.
   const [observe, setObserve] = useState(true);
 
-  const [resetKey, setResetKey] = useState(0);
+  const [fitBoundsKey, setFitBoundsKey] = useState(0);
 
   useEffect(() => {
     setObserve(true);
@@ -397,7 +410,7 @@ export const SidePanel = ({
     }, 750);
 
     return () => clearTimeout(timer);
-  }, [resetKey]);
+  }, [fitBoundsKey]);
 
   // Update camera to look at the scene center and use correct up vector
   useEffect(() => {
@@ -429,7 +442,7 @@ export const SidePanel = ({
         </ImageSliceContainer>
       ) : (
         <View
-          key={`${panelId}-${view}-${resetKey}`}
+          key={`${panelId}-${view}-${fitBoundsKey}`}
           style={{
             position: "absolute",
             top: 0,
@@ -487,7 +500,10 @@ export const SidePanel = ({
       <ViewSelectorWrapper>
         <Select
           value={view}
-          onChange={(e) => setView(e.target.value as ViewType)}
+          onChange={(e) => {
+            setView(e.target.value as ViewType);
+            setFitBoundsKey((prev) => prev + 1);
+          }}
           size="small"
           sx={{
             backgroundColor: (theme as any).background.level3,
@@ -518,7 +534,7 @@ export const SidePanel = ({
         <IconButton
           color="secondary"
           onClick={() => {
-            setResetKey((prev) => prev + 1);
+            setFitBoundsKey((prev) => prev + 1);
           }}
           title="Reset and fit"
         >
