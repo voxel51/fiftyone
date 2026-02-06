@@ -224,22 +224,9 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
         // Nothing mutated — skip the state write entirely
         if (!changed || !next) return;
 
-        // If we removed labels from `next`, make sure deletedIds doesn't
-        // reference ids that no longer exist in the map.
-        let deletedIds = state.doc.deletedIds;
-        for (const id of deletedIds) {
-          if (!next[id]) {
-            // Clone the Set lazily on first mutation
-            if (deletedIds === state.doc.deletedIds) {
-              deletedIds = new Set(deletedIds);
-            }
-            (deletedIds as Set<LabelId>).delete(id);
-          }
-        }
-
         set(workingAtom, {
           ...state,
-          doc: { labelsById: next, deletedIds },
+          doc: { labelsById: next, deletedIds: state.doc.deletedIds },
         });
       },
     []
