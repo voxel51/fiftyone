@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useCallback, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   atomFamily,
   DefaultValue,
@@ -98,18 +98,11 @@ function mapOverlaysToLabelId(
     if (isDetection3dOverlay(overlay)) {
       const detection: ReconciledDetection3D = {
         ...overlay,
-        _cls: "Detection",
-        location: overlay.location as [number, number, number],
-        dimensions: overlay.dimensions as [number, number, number],
-        rotation: overlay.rotation,
-        quaternion: overlay.quaternion,
       };
       labelsById[overlay._id] = roundDetection(detection);
     } else if (isPolyline3dOverlay(overlay)) {
       const polyline: ReconciledPolyline3D = {
         ...overlay,
-        _cls: "Polyline",
-        points3d: overlay.points3d,
         filled: !!overlay.filled,
         closed: !!overlay.closed,
       };
@@ -121,11 +114,11 @@ function mapOverlaysToLabelId(
 }
 
 /**
- * Hook that initializes the working store from baseline raw overlays.
- * Should be called when entering annotate mode.
+ * Hook that initializes the working store from baseline raw overlays and
+ * patches it whenever rawOverlays gets a new reference (like coloring,
+ * annotation schema, path filter, etc).
  *
- * @param rawOverlays - The baseline raw overlays from server loaded from modalSample
- * @returns Function to force re-initialization
+ * @param rawOverlays - The baseline raw overlays derived from modalSample
  */
 export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
   const setWorking = useSetRecoilState(workingAtom);
@@ -133,7 +126,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
   const workingState = useRecoilValue(workingAtom);
   const mode = fos.useModalMode();
 
-  // Initialize working store from overlays when entering annotate mode
+  // This effect initializes working store from overlays when entering annotate mode
   useEffect(() => {
     if (
       mode !== fos.ModalMode.ANNOTATE ||
@@ -154,22 +147,97 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     });
   }, [mode, currentSampleId, rawOverlays, workingState.initialized]);
 
-  // Return a function to force re-initialization (eg., after save)
-  const reinitialize = useCallback(() => {
-    if (!currentSampleId) return;
+  const prevRawRef = useRef(rawOverlays);
 
-    const labelsById = mapOverlaysToLabelId(rawOverlays);
+  // Patches the working store whenever rawOverlays changes (e.g. coloring,
+  // annotation schema, path filter, etc.)
+  const patchWorking = useRecoilCallback(
+    ({ snapshot, set }) =>
+      (overlays: OverlayLabel[]) => {
+        const state = snapshot.getLoadable(workingAtom).getValue();
 
-    setWorking({
-      doc: {
-        labelsById,
-        deletedIds: new Set(),
+        if (!state.initialized) return;
+
+        const rawById = new Map<string, OverlayLabel>();
+
+        for (const o of overlays) {
+          rawById.set(o._id, o);
+        }
+
+        const prev = state.doc.labelsById;
+
+        // Lazily shallow-copy `prev` on first mutation so we avoid
+        // allocating when nothing actually changed.
+        let next: Record<
+          LabelId,
+          ReconciledDetection3D | ReconciledPolyline3D
+        > | null = null;
+        let changed = false;
+
+        // --- Pass 1: walk existing working labels ---
+        // For each label already in the working store, check whether the
+        // fresh baseline still contains it and whether its color drifted.
+        for (const [id, label] of Object.entries(prev)) {
+          const raw = rawById.get(id);
+
+          // Baseline no longer includes this label (e.g. annotationSchemas
+          // contracted). User-created labels (isNew) are always kept.
+          if (!raw && !label.isNew) {
+            if (!next) next = { ...prev };
+            delete next[id];
+            changed = true;
+            continue;
+          }
+
+          // Color drifted (e.g. coloring settings changed).
+          // Only touch `color` — geometry fields are user edits and stay put.
+          if (raw && raw.color !== label.color) {
+            if (!next) next = { ...prev };
+            next[id] = { ...label, color: raw.color };
+            changed = true;
+          }
+        }
+
+        // --- Pass 2: pick up labels that are new in the baseline ---
+        // These appear when annotationSchemas expands to include a field
+        // that wasn't there at init time.
+        for (const overlay of overlays) {
+          // Already in working — handled above
+          if (prev[overlay._id]) continue;
+
+          if (!next) next = { ...prev };
+
+          if (isDetection3dOverlay(overlay)) {
+            next[overlay._id] = roundDetection({
+              ...overlay,
+            });
+          } else if (isPolyline3dOverlay(overlay)) {
+            next[overlay._id] = roundPolyline({
+              ...overlay,
+              filled: !!overlay.filled,
+              closed: !!overlay.closed,
+            });
+          }
+          changed = true;
+        }
+
+        // Nothing mutated — skip the state write entirely
+        if (!changed || !next) return;
+
+        set(workingAtom, {
+          ...state,
+          doc: { labelsById: next, deletedIds: state.doc.deletedIds },
+        });
       },
-      initialized: true,
-    });
-  }, [currentSampleId, rawOverlays, setWorking]);
+    []
+  );
 
-  return { reinitialize };
+  // Patch the working store whenever rawOverlays gets a new reference
+  useEffect(() => {
+    if (prevRawRef.current === rawOverlays) return;
+    prevRawRef.current = rawOverlays;
+    patchWorking(rawOverlays);
+  }, [rawOverlays, patchWorking]);
 }
 
 /**
