@@ -180,6 +180,12 @@ plugin:
     If your FiftyOne App is already running, you may need to restart the server
     and refresh your browser to see new plugins.
 
+.. note::
+
+    When writing Python plugins with multiple files, see
+    :ref:`importing modules <operator-importing-modules>` for how to import
+    code between files in your plugin.
+
 .. _plugin-fiftyone-yml:
 
 fiftyone.yml
@@ -2158,6 +2164,74 @@ plugin. Operators can access these secrets via the `ctx.secrets` dict:
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
       email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
+
+.. _operator-importing-modules:
+
+Importing modules
+-----------------
+
+When your plugin has multiple Python files, you can import between them using
+absolute imports based on your plugin's name.
+
+Plugin names map to Python module namespaces under `fiftyone.plugins.orgs`:
+
+.. table::
+    :widths: 40 60
+
+    +------------------------------+-----------------------------------------------+
+    | Plugin name                  | Module namespace                              |
+    +==============================+===============================================+
+    | `@myorg/my-plugin`           | `fiftyone.plugins.orgs.myorg.my_plugin`       |
+    +------------------------------+-----------------------------------------------+
+    | `my-plugin`                  | `fiftyone.plugins.orgs.external.my_plugin`    |
+    +------------------------------+-----------------------------------------------+
+
+.. note::
+
+    Plugins without an organization prefix are placed under the ``external``
+    namespace.
+
+Names are automatically sanitized: hyphens become underscores and `PascalCase`
+becomes `snake_case`.
+
+For example, if your plugin `@myorg/my-plugin` has this structure:
+
+.. code-block:: text
+
+    my-plugin/
+        fiftyone.yml
+        __init__.py
+        utils.py
+        models/
+            __init__.py
+            classifier.py
+
+You can import modules using absolute paths:
+
+.. code-block:: python
+    :linenos:
+
+    # In __init__.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+    from fiftyone.plugins.orgs.myorg.my_plugin.models import classifier
+
+    # In models/classifier.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+
+Relative imports also work:
+
+.. code-block:: python
+
+    # In __init__.py
+    from .utils import helper
+    from .models import classifier
+
+.. warning::
+
+    These module paths are for **internal plugin use only**. External code
+    should not import plugin modules directly, as the namespace is created
+    dynamically when FiftyOne loads the plugin. To run plugin code from
+    external scripts, use the :ref:`operator execution API <using-operators>`.
 
 .. _operator-outputs:
 
