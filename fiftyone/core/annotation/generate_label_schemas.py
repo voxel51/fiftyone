@@ -5,7 +5,7 @@ Annotation label schema generation
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import Literal
+from typing import Iterable, Literal, Optional, TYPE_CHECKING, Union
 
 from pymongo.errors import OperationFailure
 
@@ -32,10 +32,10 @@ ScanMode = Literal["auto", "full"]
 
 def generate_label_schemas(
     sample_collection,
-    fields=None,
-    scan_samples=True,
+    fields: Optional[Union[str, Iterable[str]]] = None,
+    scan_samples: bool = True,
     scan_mode: ScanMode = "auto",
-):
+) -> dict:
     """Generates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.
 
@@ -324,8 +324,11 @@ def generate_label_schemas(
 
 
 def _generate_field_label_schema(
-    collection, field_name, scan_samples, sample_size=None
-):
+    collection,
+    field_name: str,
+    scan_samples: bool,
+    sample_size: Optional[int] = None,
+) -> dict:
     field = collection.get_field(field_name)
     read_only = field.read_only
     _type = foau.get_type(field)
@@ -434,7 +437,14 @@ def _generate_field_label_schema(
     return {k: result[k] for k in sorted(result)}
 
 
-def _handle_bool(collection, field_name, is_list, settings, *args, **kwargs):
+def _handle_bool(
+    collection,
+    field_name: str,
+    is_list: bool,
+    settings: dict,
+    *args,
+    **kwargs,
+) -> dict:
     if is_list:
         settings[foac.COMPONENT] = foac.TEXT
     else:
@@ -445,13 +455,13 @@ def _handle_bool(collection, field_name, is_list, settings, *args, **kwargs):
 
 def _handle_float_or_int(
     collection,
-    field_name,
-    is_list,
-    settings,
-    scan_samples,
+    field_name: str,
+    is_list: bool,
+    settings: dict,
+    scan_samples: bool,
     *,
-    sample_size=None,
-):
+    sample_size: Optional[int] = None,
+) -> dict:
     settings[foac.COMPONENT] = foac.TEXT
     if is_list or not scan_samples:
         return settings
@@ -460,7 +470,7 @@ def _handle_float_or_int(
         pre_filter = collection._pipeline()
     except:
         pre_filter = None
-    pipeline = build_minmax_pipeline(
+    pipeline = _build_minmax_pipeline(
         field_name, sample_size=sample_size, pre_filter=pre_filter
     )
     results = list(collection._dataset._sample_collection.aggregate(pipeline))
@@ -474,14 +484,14 @@ def _handle_float_or_int(
 
 
 def _handle_str(
-    collection,
-    field_name,
-    is_list,
-    settings,
-    scan_samples,
+    collection: "SampleCollection",
+    field_name: str,
+    is_list: bool,
+    settings: dict,
+    scan_samples: bool,
     *,
-    sample_size=None,
-):
+    sample_size: Optional[int] = None,
+) -> dict:
     values = None
 
     try:
@@ -490,7 +500,7 @@ def _handle_str(
                 pre_filter = collection._pipeline()
             except:
                 pre_filter = None
-            pipeline = build_distinct_pipeline(
+            pipeline = _build_distinct_pipeline(
                 field_name,
                 sample_size=sample_size,
                 limit=foac.VALUES_THRESHOLD + 1,
@@ -521,7 +531,9 @@ def _handle_str(
 
 
 def _build_base_pipeline(
-    path: str, sample_size: int = None, pre_filter: list = None
+    path: str,
+    sample_size: Optional[int] = None,
+    pre_filter: Optional[list] = None,
 ) -> list:
     parts = path.split(".")
     pipeline = []
@@ -542,11 +554,11 @@ def _build_base_pipeline(
     return pipeline
 
 
-def build_distinct_pipeline(
+def _build_distinct_pipeline(
     path: str,
-    sample_size: int = None,
-    limit: int = None,
-    pre_filter: list = None,
+    sample_size: Optional[int] = None,
+    limit: Optional[int] = None,
+    pre_filter: Optional[list] = None,
 ) -> list:
     pipeline = _build_base_pipeline(path, sample_size, pre_filter=pre_filter)
     pipeline.append({"$group": {"_id": f"${path}"}})
@@ -555,8 +567,10 @@ def build_distinct_pipeline(
     return pipeline
 
 
-def build_minmax_pipeline(
-    path: str, sample_size: int = None, pre_filter: list = None
+def _build_minmax_pipeline(
+    path: str,
+    sample_size: Optional[int] = None,
+    pre_filter: Optional[list] = None,
 ) -> list:
     pipeline = _build_base_pipeline(path, sample_size, pre_filter=pre_filter)
     pipeline.append(

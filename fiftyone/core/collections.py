@@ -3627,7 +3627,7 @@ class SampleCollection(object):
         )
 
     def generate_label_schemas(
-        self, fields=None, scan_samples=True, scan_mode="auto"
+        self, fields=None, *, scan_samples=True, scan_mode="auto"
     ):
         """Generates label schemas for the
         :class:`fiftyone.core.collections.SampleCollection`.
