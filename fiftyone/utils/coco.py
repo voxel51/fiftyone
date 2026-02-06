@@ -1304,9 +1304,23 @@ class COCOObject(object):
             x, y, w, h = label.bounding_box
             bbox = [x * width, y * height, w * width, h * height]
 
+            bbox_bounds = None
+            if bbox is not None and num_decimals is not None:
+                bbox = [round(p, num_decimals) for p in bbox]
+                bbox_bounds = (
+                    float(bbox[0]),
+                    float(bbox[1]),
+                    float(bbox[0] + bbox[2]),
+                    float(bbox[1] + bbox[3]),
+                )
+
             if label.has_mask:
                 segmentation = _instance_to_coco_segmentation(
-                    label, frame_size, iscrowd=iscrowd, tolerance=tolerance
+                    label,
+                    frame_size,
+                    iscrowd=iscrowd,
+                    tolerance=tolerance,
+                    bbox_bounds=bbox_bounds,
                 )
         elif isinstance(label, fol.Polyline):
             points = np.concatenate(label.points, axis=0)
@@ -1329,7 +1343,10 @@ class COCOObject(object):
         confidence = label.confidence
 
         if bbox is not None:
-            if num_decimals is not None:
+            # NOTE: bbox rounding for Detection is handled above (before segmentation)
+            if num_decimals is not None and not isinstance(
+                label, fol.Detection
+            ):
                 bbox = [round(p, num_decimals) for p in bbox]
 
             area = bbox[2] * bbox[3]
@@ -2269,7 +2286,11 @@ def _polyline_to_coco_segmentation(polyline, frame_size, iscrowd="iscrowd"):
 
 
 def _instance_to_coco_segmentation(
-    detection, frame_size, iscrowd="iscrowd", tolerance=None
+    detection,
+    frame_size,
+    iscrowd="iscrowd",
+    tolerance=None,
+    bbox_bounds=None,
 ):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
 
@@ -2290,12 +2311,18 @@ def _instance_to_coco_segmentation(
     # Why: COCO bboxes can be floats (e.g. 753.65) but contours come from a pixel grid,
     # which can create ~1px drift outside the bbox. Clamping preserves mask shape while
     # ensuring COCO validity (segmentation must be within bbox).
-    x, y, w, h = detection.bounding_box  # relative [0..1]
-    bbox_xmin = x * width
-    bbox_ymin = y * height
-    bbox_xmax = bbox_xmin + (w * width)
-    bbox_ymax = bbox_ymin + (h * height)
-    bbox_bounds = (bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
+    if bbox_bounds is None:
+        x, y, w, h = detection.bounding_box  # relative [0..1]
+        bbox_xmin = x * width
+        bbox_ymin = y * height
+        bbox_xmax = bbox_xmin + (w * width)
+        bbox_ymax = bbox_ymin + (h * height)
+        bbox_bounds = (
+            float(bbox_xmin),
+            float(bbox_ymin),
+            float(bbox_xmax),
+            float(bbox_ymax),
+        )
 
     return _mask_to_polygons(mask, tolerance, bbox_bounds=bbox_bounds)
 
