@@ -153,28 +153,34 @@ const GUIContent = ({
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Attributes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
-        <Button
-          size={Size.Sm}
-          variant={Variant.Secondary}
-          onClick={onCancelScan}
-          style={{ alignSelf: "center", marginTop: 8 }}
-        >
-          Cancel
-        </Button>
       </ListContainer>
     );
   }

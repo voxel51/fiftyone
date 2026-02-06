@@ -4,7 +4,14 @@ import {
   LoadingSpinner,
   scrollable,
 } from "@fiftyone/components";
-import { Button, Size, Text, TextColor, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useEffect, useState } from "react";
 import { ContentArea } from "../styled";
 
@@ -83,7 +90,8 @@ const JSONEditor = ({
       </ContentArea>
       <Text
         color={TextColor.Secondary}
-        style={{ marginTop: "0.5rem", fontSize: "0.8125rem" }}
+        variant={TextVariant.Md}
+        style={{ marginTop: "0.5rem" }}
       >
         Learn how to configure schema JSON in the{" "}
         <a
