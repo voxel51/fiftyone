@@ -1,3 +1,4 @@
+import { useAnnotationController } from "@fiftyone/annotation";
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
@@ -9,6 +10,15 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+} from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -23,16 +33,6 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
-import {
-  Button,
-  Icon,
-  IconName,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-} from "@voxel51/voodo";
-import { useAnnotationController } from "@fiftyone/annotation";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -251,7 +251,7 @@ export const ContentItem = ({
       }}
     >
       <ContentItemDiv style={style}>
-        <ContentValue>
+        <ContentValue data-cy={`attribute-${name}`}>
           {(() => {
             switch (typeof value) {
               case "number":
@@ -370,6 +370,7 @@ export const TooltipInfo = React.memo(() => {
 
     return (
       <TooltipDiv
+        data-cy={"sample-canvas-tooltip locked"}
         $isTooltipLocked={isTooltipLocked}
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
@@ -382,7 +383,7 @@ export const TooltipInfo = React.memo(() => {
           )}
           <Component key={"attrs"} detail={detail} />
           {isTooltipLocked && (
-            <HiddenItemsContainer>
+            <HiddenItemsContainer data-cy={"hidden-attributes"}>
               <HiddenItems key={detail.field} field={detail.field} />
             </HiddenItemsContainer>
           )}
@@ -400,9 +401,9 @@ export const TooltipInfo = React.memo(() => {
   }
 
   return ReactDOM.createPortal(
-    <div>
-      <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>
-    </div>,
+    <Draggable data-cy={"tooltip-locked"} handle={"#" + TOOLTIP_HEADER_ID}>
+      {tooltipDiv}
+    </Draggable>,
     document.body
   );
 });
@@ -537,18 +538,24 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       key="header"
       id={TOOLTIP_HEADER_ID}
     >
-      <span style={{ fontSize: "0.8rem" }}>{title}</span>
+      <span
+        data-cy="sample-canvas-tooltip-title"
+        style={{ fontSize: "0.8rem" }}
+      >
+        {title}
+      </span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
           {modalMode === ModalMode.EXPLORE && (
             <Button
+              data-cy={"quick-edit"}
               leadingIcon={EditIcon}
               size={Size.Xs}
               onClick={() => {
                 enterAnnotationMode(title, labelId);
                 closeTooltip();
               }}
-            ></Button>
+            />
           )}
 
           <IconButton size="small" onClick={closeTooltip}>

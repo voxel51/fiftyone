@@ -1,7 +1,10 @@
+import { useAnnotationController } from "@fiftyone/annotation";
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React, { Suspense, useState } from "react";
+import { Stack } from "@mui/material";
+import { Clickable, IconName, Size, Icon as VoodoIcon } from "@voxel51/voodo";
+import { Suspense, useState } from "react";
 import {
   DefaultValue,
   selectorFamily,
@@ -11,9 +14,6 @@ import {
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
-import { Clickable, Icon as VoodoIcon, IconName, Size } from "@voxel51/voodo";
-import { Stack } from "@mui/material";
-import { useAnnotationController } from "@fiftyone/annotation";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
@@ -106,7 +106,10 @@ const useTitleTemplate = ({
             >
               {PATH_OVERRIDES[path] || path}
               {hovering && canAnnotate && modal && (
-                <Clickable onClick={() => enterAnnotationMode(path)}>
+                <Clickable
+                  data-cy={"quick-edit"}
+                  onClick={() => enterAnnotationMode(path)}
+                >
                   <VoodoIcon name={IconName.Edit} size={Size.Sm} />
                 </Clickable>
               )}

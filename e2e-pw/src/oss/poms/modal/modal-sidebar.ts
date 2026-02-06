@@ -36,6 +36,10 @@ export class ModalSidebarPom {
       .click();
   }
 
+  getSidebarField(field: string) {
+    return this.locator.getByTestId(`sidebar-field-container-${field}`);
+  }
+
   getSidebarEntry(key: string) {
     return this.locator.getByTestId(`sidebar-entry-${key}`);
   }
@@ -50,8 +54,7 @@ export class ModalSidebarPom {
 
   async getLabelTagCount() {
     return Number(
-      await this.locator
-        .getByTestId("sidebar-field-container-_label_tags")
+      await this.getField("_label_tags")
         .getByTestId("entry-count-all")
         .textContent()
     );
@@ -69,6 +72,12 @@ export class ModalSidebarPom {
     }
 
     return absPath;
+  }
+
+  async quickEdit(field: string) {
+    const locator = this.getSidebarField(field);
+    await locator.hover();
+    await locator.getByTestId("quick-edit").click();
   }
 
   async switchMode(mode: "annotate" | "explore") {

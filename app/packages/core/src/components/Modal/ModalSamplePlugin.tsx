@@ -11,11 +11,10 @@ const ContentColumn = styled.div`
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  padding-top: 5px;
   width: 100%;
   height: 100%;
   position: relative;
-  overflow-y: hidden;
+  overflow: hidden;
 `;
 
 export const ModalSample = React.memo(() => {

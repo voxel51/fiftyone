@@ -60,6 +60,18 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     await page.addInitScript(() => {
+      // eslint-disable-next-line
+      // @ts-ignore
+      window.CURRENT_CURSOR = "default";
+      document.addEventListener("mousemove", (e) => {
+        const element = document.elementFromPoint(e.clientX, e.clientY);
+        if (element) {
+          // eslint-disable-next-line
+          // @ts-ignore
+          window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
+        }
+      });
+
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
       // we can disable 1) analytics, and 2) QA performance toast banners
