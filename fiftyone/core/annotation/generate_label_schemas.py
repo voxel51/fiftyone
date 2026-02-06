@@ -456,11 +456,13 @@ def _handle_float_or_int(
     if is_list or not scan_samples:
         return settings
 
-    pipeline = build_minmax_pipeline(field_name, sample_size=sample_size)
     try:
-        pipeline += collection._pipeline()
+        pre_filter = collection._pipeline()
     except:
-        ...
+        pre_filter = None
+    pipeline = build_minmax_pipeline(
+        field_name, sample_size=sample_size, pre_filter=pre_filter
+    )
     results = list(collection._dataset._sample_collection.aggregate(pipeline))
     mn = results[0]["min"] if results else None
     mx = results[0]["max"] if results else None
@@ -484,15 +486,16 @@ def _handle_str(
 
     try:
         if scan_samples and field_name != foac.FILEPATH:
+            try:
+                pre_filter = collection._pipeline()
+            except:
+                pre_filter = None
             pipeline = build_distinct_pipeline(
                 field_name,
                 sample_size=sample_size,
                 limit=foac.VALUES_THRESHOLD + 1,
+                pre_filter=pre_filter,
             )
-            try:
-                pipeline += collection._pipeline()
-            except:
-                ...
             cursor = collection._dataset._sample_collection.aggregate(pipeline)
             values = [v["_id"] for v in cursor]
     except OperationFailure as e:
@@ -517,12 +520,17 @@ def _handle_str(
     return settings
 
 
-def _build_base_pipeline(path: str, sample_size: int = None) -> list:
+def _build_base_pipeline(
+    path: str, sample_size: int = None, pre_filter: list = None
+) -> list:
     parts = path.split(".")
     pipeline = []
 
     if sample_size:
         pipeline.append({"$sample": {"size": sample_size}})
+
+    if pre_filter:
+        pipeline.extend(pre_filter)
 
     pipeline.append({"$project": {parts[0]: 1, "_id": 0}})
 
@@ -535,17 +543,22 @@ def _build_base_pipeline(path: str, sample_size: int = None) -> list:
 
 
 def build_distinct_pipeline(
-    path: str, sample_size: int = None, limit: int = None
+    path: str,
+    sample_size: int = None,
+    limit: int = None,
+    pre_filter: list = None,
 ) -> list:
-    pipeline = _build_base_pipeline(path, sample_size)
+    pipeline = _build_base_pipeline(path, sample_size, pre_filter=pre_filter)
     pipeline.append({"$group": {"_id": f"${path}"}})
     if limit:
         pipeline.append({"$limit": limit})
     return pipeline
 
 
-def build_minmax_pipeline(path: str, sample_size: int = None) -> list:
-    pipeline = _build_base_pipeline(path, sample_size)
+def build_minmax_pipeline(
+    path: str, sample_size: int = None, pre_filter: list = None
+) -> list:
+    pipeline = _build_base_pipeline(path, sample_size, pre_filter=pre_filter)
     pipeline.append(
         {
             "$group": {
