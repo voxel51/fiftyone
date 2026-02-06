@@ -5,6 +5,7 @@ Annotation label schema generation
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from typing import Literal
 
 from pymongo.errors import OperationFailure
 
@@ -22,8 +23,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+AUTO_FULL_SCAN_THRESHOLD = 1_000_000
+MAX_SCAN_SAMPLE_SIZE = 50_000  # 5% of threshold to avoid a full collscan (
+# https://www.mongodb.com/docs/manual/reference/operator/aggregation/sample/#behavior)
 
-def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
+ScanMode = Literal["auto", "full"]
+
+
+def generate_label_schemas(
+    sample_collection,
+    fields=None,
+    scan_samples=True,
+    scan_mode: ScanMode = "auto",
+):
     """Generates label schemas for a
     :class:`fiftyone.core.collections.SampleCollection`.
 
@@ -243,6 +255,11 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
             component settings based on actual field values (ranges,
             values, etc). If False, the label schema is generated from *only*
             the statically available information in the dataset's field schema
+        scan_mode ("auto"): the mode to use when scanning samples for field values.
+            Must be one of the following:
+            - "auto" (the default) will randomly sample up to 50,000 samples for datasets with more than 1M samples,
+            and perform a full scan for smaller datasets
+            - "full" will perform a full scan of all samples regardless of dataset size
 
     Raises:
         ValueError: if the sample collection or field is not supported
@@ -265,12 +282,30 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     is_scalar = is_scalar and len(fields) == 1 and fields[0] == original_fields
 
     schema = {}
+    sample_size = None
+
+    # TODO: Potential additional optimization - sample first 100 docs to detect high-cardinality fields,
+    # then run two aggregation pipelines (one for bounds, one for distinct values) instead
+    # of a separate pipeline per field.
+    if scan_samples and scan_mode == "auto":
+        total_samples = (
+            sample_collection._dataset._sample_collection.estimated_document_count()
+        )
+        if total_samples > 1_000_000:
+            logger.info(
+                f"Dataset has {total_samples} samples. Scan will be limited to a random {MAX_SCAN_SAMPLE_SIZE} samples for performance. Set `scan_mode='full'` to scan the entire dataset."
+            )
+            sample_size = MAX_SCAN_SAMPLE_SIZE
+
     for field_name in fields:
         if field_name not in all_fields:
             raise ValueError(f"field '{field_name}' is not supported")
 
         label_schema = _generate_field_label_schema(
-            sample_collection, field_name, scan_samples
+            sample_collection,
+            field_name,
+            scan_samples,
+            sample_size=sample_size,
         )
 
         validate_label_schemas(
@@ -287,7 +322,9 @@ def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     return schema
 
 
-def _generate_field_label_schema(collection, field_name, scan_samples):
+def _generate_field_label_schema(
+    collection, field_name, scan_samples, sample_size=None
+):
     field = collection.get_field(field_name)
     read_only = field.read_only
     _type = foau.get_type(field)
@@ -322,7 +359,14 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
         fn = _handle_str
 
     if fn:
-        return fn(collection, field_name, is_list, settings, scan_samples)
+        return fn(
+            collection,
+            field_name,
+            is_list,
+            settings,
+            scan_samples,
+            sample_size=sample_size,
+        )
 
     if is_list:
         raise ValueError(f"unsupported field {field_name}: {field}")
@@ -365,7 +409,10 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
 
         try:
             attributes[f.name] = _generate_field_label_schema(
-                collection, f"{field_name}.{f.name}", scan_samples
+                collection,
+                f"{field_name}.{f.name}",
+                scan_samples,
+                sample_size=sample_size,
             )
         except ValueError:
             logger.debug(f"Field '{f.name}' is not supported")
@@ -386,7 +433,7 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     return {k: result[k] for k in sorted(result)}
 
 
-def _handle_bool(collection, field_name, is_list, settings, scan_samples):
+def _handle_bool(collection, field_name, is_list, settings, *args):
     if is_list:
         settings[foac.COMPONENT] = foac.TEXT
     else:
@@ -396,13 +443,26 @@ def _handle_bool(collection, field_name, is_list, settings, scan_samples):
 
 
 def _handle_float_or_int(
-    collection, field_name, is_list, settings, scan_samples
+    collection,
+    field_name,
+    is_list,
+    settings,
+    scan_samples,
+    *,
+    sample_size=None,
 ):
     settings[foac.COMPONENT] = foac.TEXT
     if is_list or not scan_samples:
         return settings
 
-    mn, mx = collection.bounds(field_name, safe=True)
+    pipeline = build_minmax_pipeline(field_name, sample_size=sample_size)
+    try:
+        pipeline += collection._pipeline()
+    except:
+        ...
+    results = list(collection._dataset._sample_collection.aggregate(pipeline))
+    mn = results[0]["min"] if results else None
+    mx = results[0]["max"] if results else None
     if mn != mx:
         settings[foac.COMPONENT] = foac.SLIDER
         settings[foac.RANGE] = [mn, mx]
@@ -410,12 +470,30 @@ def _handle_float_or_int(
     return settings
 
 
-def _handle_str(collection, field_name, is_list, settings, scan_samples):
+def _handle_str(
+    collection,
+    field_name,
+    is_list,
+    settings,
+    scan_samples,
+    *,
+    sample_size=None,
+):
     values = None
 
     try:
         if scan_samples and field_name != foac.FILEPATH:
-            values = collection.distinct(field_name)
+            pipeline = build_distinct_pipeline(
+                field_name,
+                sample_size=sample_size,
+                limit=foac.VALUES_THRESHOLD + 1,
+            )
+            try:
+                pipeline += collection._pipeline()
+            except:
+                ...
+            cursor = collection._dataset._sample_collection.aggregate(pipeline)
+            values = [v["_id"] for v in cursor]
     except OperationFailure as e:
         # Likely too many distinct values
         errmsg = (e.details or {}).get("errmsg") or str(e)
@@ -436,3 +514,44 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
             settings[foac.VALUES] = values
 
     return settings
+
+
+def _build_base_pipeline(path: str, sample_size: int = None) -> list:
+    parts = path.split(".")
+    pipeline = []
+
+    if sample_size:
+        pipeline.append({"$sample": {"size": sample_size}})
+
+    pipeline.append({"$project": {parts[0]: 1, "_id": 0}})
+
+    current_path = ""
+    for part in parts:
+        current_path = f"{current_path}.{part}" if current_path else part
+        pipeline.append({"$unwind": f"${current_path}"})
+
+    return pipeline
+
+
+def build_distinct_pipeline(
+    path: str, sample_size: int = None, limit: int = None
+) -> list:
+    pipeline = _build_base_pipeline(path, sample_size)
+    pipeline.append({"$group": {"_id": f"${path}"}})
+    if limit:
+        pipeline.append({"$limit": limit})
+    return pipeline
+
+
+def build_minmax_pipeline(path: str, sample_size: int = None) -> list:
+    pipeline = _build_base_pipeline(path, sample_size)
+    pipeline.append(
+        {
+            "$group": {
+                "_id": None,
+                "min": {"$min": f"${path}"},
+                "max": {"$max": f"${path}"},
+            }
+        }
+    )
+    return pipeline
