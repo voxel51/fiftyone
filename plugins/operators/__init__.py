@@ -33,6 +33,7 @@ from .annotation import (
     GenerateLabelSchemas,
     ListValidAnnotationFields,
     SetActiveLabelSchemas,
+    SubscribeSchemaManager,
     UpdateLabelSchema,
     ValidateLabelSchemas,
 )
@@ -3483,3 +3484,4 @@ def register(p):
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)
+    p.register(SubscribeSchemaManager)

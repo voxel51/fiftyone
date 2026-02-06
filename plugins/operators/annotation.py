@@ -6,6 +6,10 @@ Annotation label schemas operators
 |
 """
 
+import time
+import uuid
+from datetime import datetime, timezone
+
 import fiftyone.core.annotation.constants as foac
 import fiftyone.core.annotation.utils as foau
 from fiftyone.core.annotation.validate_label_schemas import (
@@ -14,6 +18,10 @@ from fiftyone.core.annotation.validate_label_schemas import (
 )
 import fiftyone.core.fields as fof
 import fiftyone.operators as foo
+from fiftyone.operators.sse import SseOperator, SseOperatorConfig
+
+# Store name for schema manager scan results
+SCHEMA_MANAGER_STORE = "schema_manager"
 
 
 class ActivateLabelSchemas(foo.Operator):
@@ -80,15 +88,82 @@ class GenerateLabelSchemas(foo.Operator):
             name="generate_label_schemas",
             label="Generate label schemas",
             unlisted=True,
+            allow_immediate_execution=True,
+            allow_delegated_execution=True,
         )
+
+    def resolve_delegation(self, ctx):
+        """Delegate when scanning samples on large datasets."""
+        scan_samples = ctx.params.get("scan_samples", True)
+        if not scan_samples:
+            # Quick operation (no scanning), run immediately
+            return False
+
+        # Let caller decide via request_delegation param
+        return None
 
     def execute(self, ctx):
         field = ctx.params.get("field", None)
-        return {
-            "label_schema": ctx.dataset.generate_label_schemas(
-                fields=field, scan_samples=ctx.params.get("scan_samples", True)
+        scan_samples = ctx.params.get("scan_samples", True)
+        is_delegated = ctx.delegated
+
+        store = ctx.store(SCHEMA_MANAGER_STORE)
+        dataset_id = str(ctx.dataset._doc.id)
+        scan_run_key = f"scan_run_{dataset_id}_{field}"
+
+        # Create scan run record for delegated operations
+        if is_delegated:
+            now = datetime.now(timezone.utc).isoformat()
+            scan_run = {
+                "run_id": str(uuid.uuid4()),
+                "status": "running",
+                "field": field,
+                "dataset_id": dataset_id,
+                "operator_run_id": str(ctx._delegated_operation_id),
+                "created_by": ctx.operator_uri,  # TODO: get actual user
+                "created_at": now,
+                "started_at": now,
+                "completed_at": None,
+                "progress": 0.0,
+                "error": None,
+            }
+            store.set(scan_run_key, scan_run)
+            ctx.set_progress(label="Scanning dataset for label values...")
+
+        # TODO: Remove this - artificial delay for testing delegated execution
+        time.sleep(15)  # 15 seconds
+
+        try:
+            result = ctx.dataset.generate_label_schemas(
+                fields=field, scan_samples=scan_samples
             )
-        }
+
+            if is_delegated:
+                # Persist result directly to dataset.label_schemas for delegated ops
+                ctx.dataset.update_label_schema(field, result)
+
+                # Update scan run status to completed, include the result
+                scan_run["status"] = "completed"
+                scan_run["completed_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
+                scan_run["progress"] = 1.0
+                scan_run["result"] = result  # Include result for frontend
+                store.set(scan_run_key, scan_run)
+
+            ctx.set_progress(progress=1.0, label="Complete")
+            return {"label_schema": result}
+
+        except Exception as e:
+            if is_delegated:
+                # Update scan run status to failed
+                scan_run["status"] = "failed"
+                scan_run["completed_at"] = datetime.now(
+                    timezone.utc
+                ).isoformat()
+                scan_run["error"] = str(e)
+                store.set(scan_run_key, scan_run)
+            raise
 
 
 class GetLabelSchemas(foo.Operator):
@@ -320,3 +395,15 @@ class ListValidAnnotationFields(foo.Operator):
         )
 
         return {"valid_fields": valid_fields}
+
+
+class SubscribeSchemaManager(SseOperator):
+    """SSE operator for subscribing to schema manager execution store changes."""
+
+    @property
+    def subscription_config(self):
+        return SseOperatorConfig(
+            name="subscribe_schema_manager",
+            label="Subscribe to Schema Manager",
+            store_name=SCHEMA_MANAGER_STORE,
+        )

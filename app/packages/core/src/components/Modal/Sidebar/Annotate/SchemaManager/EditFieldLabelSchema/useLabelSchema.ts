@@ -3,11 +3,17 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import * as fos from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
+import { useExecutionStoreSubscribe } from "../../../../../../subscription/useExecutionStoreSubscribe";
 import { currentField, labelSchemaData } from "../../state";
 import { currentLabelSchema } from "../state";
+
+// Constants for execution store subscription
+const SCHEMA_MANAGER_STORE_OPERATOR = "subscribe_schema_manager";
 
 // =============================================================================
 // Internal Hooks
@@ -131,30 +137,147 @@ const useSave = (field: string) => {
   };
 };
 
+// Types for scan run tracking
+type ScanRunStatus = "pending" | "running" | "completed" | "failed";
+
+type ScanRun = {
+  run_id: string;
+  status: ScanRunStatus;
+  field: string;
+  dataset_id: string;
+  operator_run_id: string;
+  created_by: string;
+  created_at: string;
+  started_at: string;
+  completed_at: string | null;
+  progress: number;
+  error: string | null;
+  result?: unknown; // Included when status is "completed"
+};
+
 const useScan = (field: string) => {
-  const [isScanning, setIsScanning] = useState(false);
+  const [scanRun, setScanRun] = useState<ScanRun | null>(null);
+  const [scanKey, setScanKey] = useState(0);
   const [, setCurrent] = useCurrentLabelSchema(field);
-  const generate = useOperatorExecutor("generate_label_schemas");
+  const [, setSavedSchema] = useSavedLabelSchema(field);
+  const datasetId = useRecoilValue(fos.datasetId);
+
+  // Derive scanning state from scan run status
+  const isScanning =
+    scanRun?.status === "running" || scanRun?.status === "pending";
+  const scanProgress = scanRun?.progress ?? 0;
+  const scanError = scanRun?.error ?? null;
+
+  // Expected store key for this field's scan run
+  const scanRunKey = `scan_run_${datasetId}_${field}`;
+
+  // Callback to handle execution store updates
+  const handleStoreUpdate = useCallback(
+    (
+      key: string,
+      value: ScanRun | null,
+      _metadata: Record<string, unknown>
+    ) => {
+      console.log("[useLabelSchema] handleStoreUpdate called", {
+        key,
+        scanRunKey,
+        value,
+      });
+
+      // Handle scan run status updates
+      if (key === scanRunKey) {
+        console.log("[useLabelSchema] Scan run update:", value);
+        setScanRun(value);
+
+        // When scan completes, update the saved schema with the result
+        if (value?.status === "completed" && value?.result) {
+          console.log(
+            "[useLabelSchema] Scan completed, updating schema:",
+            value.result
+          );
+          // Update both current and saved schema
+          setCurrent(value.result);
+          setSavedSchema(value.result);
+          // Increment key to force JSONEditor re-render
+          setScanKey((k) => k + 1);
+          document.dispatchEvent(
+            new CustomEvent("schema-manager-scan-complete")
+          );
+        }
+      }
+    },
+    [scanRunKey, setCurrent, setSavedSchema]
+  );
+
+  // Subscribe to execution store changes
+  useExecutionStoreSubscribe({
+    operatorUri: SCHEMA_MANAGER_STORE_OPERATOR,
+    callback: handleStoreUpdate,
+    datasetId: datasetId ?? undefined,
+  });
+
+  // Called when user selects an execution option from the dropdown
+  const onScanStart = useCallback(() => {
+    console.log("[useLabelSchema] onScanStart called for field:", field);
+    // Set a pending scan run immediately to show the spinner
+    setScanRun({
+      run_id: "",
+      status: "pending",
+      field,
+      dataset_id: datasetId ?? "",
+      operator_run_id: "",
+      created_by: "",
+      created_at: new Date().toISOString(),
+      started_at: new Date().toISOString(),
+      completed_at: null,
+      progress: 0,
+      error: null,
+    });
+  }, [field, datasetId]);
+
+  // Called when operator execution completes successfully
+  const onScanSuccess = useCallback(
+    (result: { result?: { label_schema?: unknown }; delegated?: boolean }) => {
+      console.log("[useLabelSchema] onScanSuccess called", result);
+      // For immediate execution, result comes directly
+      if (result.result?.label_schema && !result.delegated) {
+        console.log("[useLabelSchema] Immediate execution, setting schema");
+        setCurrent(result.result.label_schema);
+        // Clear scan run to stop spinner
+        setScanRun(null);
+        // Increment key to force JSONEditor re-render
+        setScanKey((k) => k + 1);
+        document.dispatchEvent(new CustomEvent("schema-manager-scan-complete"));
+      } else if (result.delegated) {
+        console.log(
+          "[useLabelSchema] Delegated execution, waiting for SSE updates"
+        );
+        // For delegated, the backend will update the scan run via SSE
+        // Set status to "running" while we wait
+        setScanRun((prev) => (prev ? { ...prev, status: "running" } : null));
+      }
+    },
+    [setCurrent]
+  );
+
+  // Called when operator execution fails
+  const onScanError = useCallback((error: unknown) => {
+    console.log("[useLabelSchema] onScanError called", error);
+    setScanRun(null);
+  }, []);
 
   return {
     isScanning,
-    scan: () => {
-      setIsScanning(true);
-      generate.execute(
-        { field },
-        {
-          callback: (result) => {
-            if (result.result) {
-              setCurrent(result.result.label_schema);
-            }
-            setIsScanning(false);
-            document.dispatchEvent(
-              new CustomEvent("schema-manager-scan-complete")
-            );
-          },
-        }
-      );
-    },
+    scanProgress,
+    scanError,
+    scanRun,
+    scanKey,
+    // Params to pass to the operator
+    scanParams: { field },
+    // Callbacks for OperatorExecutionTrigger
+    onScanStart,
+    onScanSuccess,
+    onScanError,
   };
 };
 
@@ -234,6 +357,9 @@ export default function useLabelSchema(field: string) {
     save.savedLabelSchema
   );
 
+  // Combine keys from discard and scan to force editor re-render
+  const combinedEditorKey = `${validate.editorKey}-${scan.scanKey}`;
+
   return {
     hasChanges: hasChanges || !!validate.errors.length,
 
@@ -242,5 +368,7 @@ export default function useLabelSchema(field: string) {
     ...save,
     ...scan,
     ...validate,
+    // Override editorKey with combined key
+    editorKey: combinedEditorKey,
   };
 }

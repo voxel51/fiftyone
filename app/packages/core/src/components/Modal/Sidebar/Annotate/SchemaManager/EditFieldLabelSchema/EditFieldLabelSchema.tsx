@@ -1,4 +1,5 @@
 import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import { OperatorExecutionTrigger } from "@fiftyone/operators/src/components/OperatorExecutionTrigger";
 import {
   Button,
   Icon,
@@ -24,6 +25,8 @@ import GUIContent from "./GUIContent";
 import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
+
+const GENERATE_LABEL_SCHEMAS_OPERATOR = "generate_label_schemas";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const { isEnabled: isM4Enabled } = useFeature({
@@ -108,19 +111,29 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             />
           )}
           {showScanButton && (
-            <Button
-              data-cy={"scan"}
-              size={Size.Md}
-              variant={Variant.Secondary}
-              onClick={labelSchema.scan}
+            <OperatorExecutionTrigger
+              operatorUri={GENERATE_LABEL_SCHEMAS_OPERATOR}
+              executionParams={labelSchema.scanParams}
+              onSuccess={labelSchema.onScanSuccess}
+              onError={labelSchema.onScanError}
+              onOptionSelected={labelSchema.onScanStart}
+              disabled={labelSchema.isScanning}
+              insideModal
             >
-              <Icon
-                name={IconName.Refresh}
+              <Button
+                data-cy={"scan"}
                 size={Size.Md}
-                style={{ marginRight: 4 }}
-              />
-              Scan
-            </Button>
+                variant={Variant.Secondary}
+                disabled={labelSchema.isScanning}
+              >
+                <Icon
+                  name={IconName.Refresh}
+                  size={Size.Md}
+                  style={{ marginRight: 4 }}
+                />
+                {labelSchema.isScanning ? "Scanning..." : "Scan"}
+              </Button>
+            </OperatorExecutionTrigger>
           )}
         </div>
 

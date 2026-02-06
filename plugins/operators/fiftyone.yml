@@ -59,5 +59,6 @@ operators:
   - generate_label_schemas
   - list_valid_annotation_fields
   - set_active_label_schemas
+  - subscribe_schema_manager
   - update_label_schema
   - validate_label_schemas

@@ -195,3 +195,9 @@ export const hasJsonChanges = atom((get) => {
 export const currentLabelSchema = atomFamily((_field: string) =>
   atom<object | undefined>(undefined)
 );
+
+/**
+ * Track fields with pending delegated scans
+ * This persists across component unmount/remount
+ */
+export const pendingDelegatedScans = atom<Set<string>>(new Set());
