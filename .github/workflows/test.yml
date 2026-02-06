@@ -39,6 +39,8 @@ jobs:
     timeout-minutes: 90
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      # Assuming no pytest should take more than 60 seconds
+      PYTEST_TIMEOUT: 60
     strategy:
       fail-fast: false
       matrix:
