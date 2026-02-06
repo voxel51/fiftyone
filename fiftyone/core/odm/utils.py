@@ -9,12 +9,14 @@ Utilities for documents.
 from datetime import date, datetime
 import inspect
 import json
+import logging
 import numbers
 import sys
 
 from bson import Binary, json_util, ObjectId, SON
 import numpy as np
 import pytz
+from mongoengine.errors import NotRegistered
 
 import eta.core.utils as etau
 
@@ -26,6 +28,8 @@ import fiftyone.core.utils as fou
 fol = fou.lazy_import("fiftyone.core.labels")
 food = fou.lazy_import("fiftyone.core.odm.document")
 fooe = fou.lazy_import("fiftyone.core.odm.embedded_document")
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_value(value, extended=False):
@@ -120,6 +124,58 @@ def deserialize_value(value):
         return [deserialize_value(v) for v in value]
 
     return value
+
+
+def sanitize_unknown_embedded_docs(d):
+    """Recursively replaces unknown embedded document types with DynamicEmbeddedDocument,
+    removing unresolvable _cls fields so MongoEngine doesn't try to resolve them.
+
+    This enables backward compatibility when loading datasets created with newer
+    FiftyOne versions that contain embedded document types not available in the
+    current version.
+
+    Args:
+        d: a dictionary potentially containing embedded documents
+
+    Returns:
+        the sanitized dictionary
+    """
+    if not isinstance(d, dict):
+        return d
+
+    result = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            if "_cls" in v:
+                try:
+                    result[k] = deserialize_value(v)
+                except DocumentRegistryError:
+                    # Just keep the dict as-is without _cls
+                    v_copy = v.copy()
+                    unknown_cls = v_copy.pop("_cls", None)
+                    if unknown_cls:
+                        logger.warning(
+                            "Removing unknown embedded document type '%s' from field '%s'",
+                            unknown_cls,
+                            k,
+                        )
+                    result[k] = sanitize_unknown_embedded_docs(v_copy)
+            else:
+                # Recursively sanitize nested dicts
+                result[k] = sanitize_unknown_embedded_docs(v)
+        elif isinstance(v, list):
+            result[k] = [
+                (
+                    sanitize_unknown_embedded_docs(item)
+                    if isinstance(item, dict)
+                    else item
+                )
+                for item in v
+            ]
+        else:
+            result[k] = v
+
+    return result
 
 
 def validate_field_name(field_name, media_type=None, is_frame_field=False):
