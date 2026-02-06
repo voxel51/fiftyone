@@ -115,10 +115,10 @@ function mapOverlaysToLabelId(
 
 /**
  * Hook that initializes the working store from baseline raw overlays and
- * keeps it in sync when two upstream dependencies change - coloring and annotationSchemas
+ * patches it whenever rawOverlays gets a new reference (like coloring,
+ * annotation schema, path filter, etc).
  *
- * @param rawOverlays - The baseline raw overlays from server loaded from modalSample
- * @returns Function to force re-initialization
+ * @param rawOverlays - The baseline raw overlays derived from modalSample
  */
 export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
   const setWorking = useSetRecoilState(workingAtom);
@@ -149,7 +149,8 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
   const prevRawRef = useRef(rawOverlays);
 
-  // Currently we watch only coloring change + annotation schema change
+  // Patches the working store whenever rawOverlays changes (e.g. coloring,
+  // annotation schema, path filter, etc.)
   const patchWorking = useRecoilCallback(
     ({ snapshot, set }) =>
       (overlays: OverlayLabel[]) => {
@@ -244,7 +245,7 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     []
   );
 
-  // This effect patches working store if baseline's dependencies (annotation schema, or color) change
+  // Patch the working store whenever rawOverlays gets a new reference
   useEffect(() => {
     if (prevRawRef.current === rawOverlays) return;
     prevRawRef.current = rawOverlays;
