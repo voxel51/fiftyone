@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Button,
   Icon,
   IconName,
@@ -11,11 +12,12 @@ import {
   TextVariant,
   Toggle,
   ToggleSwitch,
+  Tooltip,
   Variant,
 } from "@voxel51/voodo";
 import { useCallback, useState } from "react";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { useToggleFieldVisibility } from "../hooks";
+import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
 import Footer from "../Footer";
 import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
@@ -30,6 +32,9 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
   const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
     useToggleFieldVisibility(field);
+  // const { isLargeDataset, scanLimit } = useIsLargeDataset();
+  const { scanLimit } = useIsLargeDataset();
+  const isLargeDataset = true;
 
   const handleTabChange = useCallback(
     (index: number) => {
@@ -94,20 +99,35 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
               { id: TAB_JSON, data: { label: "JSON" } },
             ]}
           />
-
-          <Button
-            data-cy={"scan"}
-            size={Size.Md}
-            variant={Variant.Secondary}
-            onClick={labelSchema.scan}
-          >
-            <Icon
-              name={IconName.Refresh}
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button
+              data-cy={"scan"}
               size={Size.Md}
-              style={{ marginRight: 4 }}
-            />
-            Scan
-          </Button>
+              variant={Variant.Secondary}
+              onClick={labelSchema.scan}
+            >
+              <Icon
+                name={IconName.Refresh}
+                size={Size.Md}
+                style={{ marginRight: 4 }}
+              />
+              Scan
+            </Button>
+            {isLargeDataset && (
+              <Tooltip
+                content={
+                  <Text>
+                    Auto-scanning will run on the first{" "}
+                    {scanLimit.toLocaleString()} samples
+                  </Text>
+                }
+                anchor={Anchor.Bottom}
+                portal
+              >
+                <Icon name={IconName.Info} size={Size.Md} />
+              </Tooltip>
+            )}
+          </span>
         </div>
 
         {activeTab === TAB_GUI ? (

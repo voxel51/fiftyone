@@ -3,7 +3,12 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { mediaType, useNotification } from "@fiftyone/state";
+import {
+  datasetSampleCount,
+  mediaType,
+  queryPerformanceMaxSearch,
+  useNotification,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
@@ -564,6 +569,16 @@ export const useExitNewFieldMode = () => {
  */
 export const useMediaType = () => {
   return useRecoilValue(mediaType);
+};
+
+/**
+ * Hook to check if the dataset sample count exceeds the scan limit.
+ * Returns whether the dataset is large and the scan sample limit.
+ */
+export const useIsLargeDataset = () => {
+  const count = useRecoilValue(datasetSampleCount);
+  const maxSearch = useRecoilValue(queryPerformanceMaxSearch);
+  return { isLargeDataset: (count ?? 0) > maxSearch, scanLimit: maxSearch };
 };
 
 // =============================================================================
