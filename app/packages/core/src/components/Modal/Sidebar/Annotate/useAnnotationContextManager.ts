@@ -93,7 +93,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
   const sampleScanLimit = useQueryPerformanceSampleLimit();
-  const { enabled: canManageSchema } = useCanManageSchema();
+  const canManageSchema = useCanManageSchema();
 
   const initializeFieldSchema = useCallback(
     async (field: string) => {
@@ -112,6 +112,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
           if (!canManageSchema) {
+            setLabelSchema(listSchemaResponse.label_schemas);
             return {
               status: InitializationStatus.InsufficientPermissions,
             };

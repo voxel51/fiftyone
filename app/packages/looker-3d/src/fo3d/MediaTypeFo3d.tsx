@@ -23,6 +23,7 @@ import { Vector3 } from "three";
 import { StatusBar } from "../StatusBar";
 import { MultiPanelView } from "../annotation/MultiPanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
+import { useRenderModel } from "../annotation/store/renderModel";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_BOUNDING_BOX,
@@ -38,7 +39,6 @@ import {
   useTrackStatus,
   useZoomToSelected,
 } from "../hooks";
-import { useRenderModel } from "../annotation/store/renderModel";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { useCursorBounds } from "../hooks/use-cursor-bounds";
 import { useLabelBounds } from "../hooks/use-label-bounds";
@@ -52,12 +52,12 @@ import {
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidPointerDownAtom,
-  current3dAnnotationModeAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import { useCurrent3dAnnotationMode } from "../state/accessors";
 import { HoverMetadata } from "../types";
 import { calculateCameraPositionForUpVector } from "../utils";
 import { Annotation3d } from "./Annotation3d";
@@ -681,7 +681,8 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
