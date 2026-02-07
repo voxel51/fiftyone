@@ -6865,6 +6865,586 @@
             "date_added": "2025-04-10 12:24:41"
         },
         {
+            "base_name": "yoloe26n-seg-torch",
+            "base_filename": "yoloe-26n-seg.pt",
+            "description": "Open-vocabulary nano segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 11463019,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-torch",
+            "base_filename": "yoloe-26s-seg.pt",
+            "description": "Open-vocabulary small segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 30759531,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-torch",
+            "base_filename": "yoloe-26m-seg.pt",
+            "description": "Open-vocabulary medium segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 70048027,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-torch",
+            "base_filename": "yoloe-26l-seg.pt",
+            "description": "Open-vocabulary large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 78909291,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-torch",
+            "base_filename": "yoloe-26x-seg.pt",
+            "description": "Open-vocabulary extra-large segmentation with text/visual prompts",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 171013099,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26n-seg-pf-torch",
+            "base_filename": "yoloe-26n-seg-pf.pt",
+            "description": "Prompt-free nano segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 15748710,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26n-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26n-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26s-seg-pf-torch",
+            "base_filename": "yoloe-26s-seg-pf.pt",
+            "description": "Prompt-free small segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 35163686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26s-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26s-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26m-seg-pf-torch",
+            "base_filename": "yoloe-26m-seg-pf.pt",
+            "description": "Prompt-free medium segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 75324434,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26m-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26m-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26l-seg-pf-torch",
+            "base_filename": "yoloe-26l-seg-pf.pt",
+            "description": "Prompt-free large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 84185830,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26l-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26l-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
+            "base_name": "yoloe26x-seg-pf-torch",
+            "base_filename": "yoloe-26x-seg-pf.pt",
+            "description": "Prompt-free extra-large segmentation with 4,585 built-in classes",
+            "source": "https://docs.ultralytics.com/models/yoloe/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 175571686,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yoloe-26x-seg-pf.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yoloe-26x-seg-pf.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "torch", "yolo", "zero-shot", "prompt-free", "official"],
+            "training_data": [
+                {
+                    "name": "Objects365v1",
+                    "url": "https://www.objects365.org"
+                },
+                {
+                    "name": "GQA",
+                    "url": "https://cs.stanford.edu/people/dorarad/gqa/"
+                },
+                {
+                    "name": "Flickr30k",
+                    "url": "https://shannon.cs.illinois.edu/DenotationGraph/"
+                },
+                {
+                    "name": "CC3M-Lite",
+                    "url": null
+                }
+            ],
+            "date_added": "2026-01-29 12:00:00"
+        },
+        {
             "base_name": "rtdetr-l-coco-torch",
             "base_filename": "rtdetr-l-coco.pt",
             "description": "Modern real-time object detector that finds items without complex post-processing for responsive applications",
