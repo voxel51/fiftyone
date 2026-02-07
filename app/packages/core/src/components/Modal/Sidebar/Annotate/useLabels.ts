@@ -184,13 +184,14 @@ export const useLabelsContext = (): LabelsContext => {
 
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
+  const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
   const addLabel = useAddAnnotationLabelToRenderer();
   const createLabel = useCreateAnnotationLabel();
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
   const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
@@ -220,6 +221,20 @@ export default function useLabels() {
       setLoading(LabelsState.UNSET);
     }
   }, [currentSlice]);
+
+  // Reset labels when active schemas change to reload and update scene
+  useEffect(() => {
+    const resetOverlays = () => {
+      currentLabels.forEach((label) => {
+        removeOverlay(label.overlay.id, false);
+      });
+
+      setLabels([]);
+      setLoading(LabelsState.UNSET);
+    };
+
+    resetOverlays();
+  }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
     if (modalSample?.sample && active) {

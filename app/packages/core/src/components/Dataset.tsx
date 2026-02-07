@@ -1,6 +1,7 @@
 import { useTrackEvent } from "@fiftyone/analytics";
 import { subscribe } from "@fiftyone/relay";
-import { isModalActive } from "@fiftyone/state";
+import { isModalActive, useCurrentDatasetId } from "@fiftyone/state";
+import { clearFetchCache } from "@fiftyone/utilities/src/fetch";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -33,6 +34,14 @@ const ModalWrapper = () => {
 function Dataset() {
   const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
   const trackEvent = useTrackEvent();
+
+  const datasetId = useCurrentDatasetId();
+
+  // This effect clears the fetch cache whenever the dataset changes to ensure that
+  // we don't serve stale data from the cache when switching between datasets.
+  useEffect(() => {
+    clearFetchCache();
+  }, [datasetId]);
 
   useEffect(() => {
     trackEvent("open_dataset");

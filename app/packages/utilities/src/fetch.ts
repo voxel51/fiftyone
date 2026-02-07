@@ -3,14 +3,44 @@ import {
   fetchEventSource,
 } from "@microsoft/fetch-event-source";
 import fetchRetry from "fetch-retry";
-
+import { LRUCache } from "lru-cache";
 import { NetworkError, ServerError } from "./errors";
+
+const FETCH_CACHE_MAX_ENTRIES = 100;
+// 100 MB
+const FETCH_CACHE_MAX_SIZE_BYTES = 100 * 1024 * 1024;
+// 10 minutes
+const FETCH_CACHE_TTL = 10 * 60 * 1000;
 
 let fetchOrigin: string;
 let fetchFunctionSingleton: FetchFunction;
 let fetchFunctionExtendedSingleton: FetchFunctionExtended;
 let fetchHeaders: HeadersInit;
 let fetchPathPrefix = "";
+
+const fetchCache = new LRUCache<string, unknown>({
+  max: FETCH_CACHE_MAX_ENTRIES,
+  maxSize: FETCH_CACHE_MAX_SIZE_BYTES,
+  ttl: FETCH_CACHE_TTL,
+  sizeCalculation: (value) => {
+    try {
+      return JSON.stringify(value).length;
+    } catch {
+      return 1;
+    }
+  },
+});
+
+// Tracks in-flight requests to dedupe parallel fetches with the same cache key
+const inFlightRequests = new Map<string, Promise<unknown>>();
+
+/**
+ * Clears cached fetch responses.
+ */
+export const clearFetchCache = () => {
+  fetchCache.clear();
+  inFlightRequests.clear();
+};
 
 /**
  * Supported methods for accessing response data.
@@ -34,6 +64,12 @@ export type FetchFunctionConfig<T> = {
   retryCodes?: number[];
   errorHandler?: (response: Response) => void | Promise<void>;
   headers?: Record<string, string>;
+  /**
+   * When true, enables caching of responses. The cache key is automatically
+   * derived from the request method, path, and body.
+   * @default false
+   */
+  cache?: boolean;
 };
 
 /**
@@ -73,8 +109,88 @@ export interface FetchFunctionExtended {
   ): Promise<FetchFunctionResult<R>>;
 }
 
-export const getFetchFunction = () => {
-  return fetchFunctionSingleton;
+/**
+ * Options for {@link getFetchFunction}.
+ */
+export type GetFetchFunctionOptions = {
+  /**
+   * When true, enables caching of responses. The cache key is automatically
+   * derived from the request method, path, and body.
+   * @default false
+   */
+  cache?: boolean;
+};
+
+/**
+ * Helper to wrap a fetch call with caching logic.
+ * Handles cache lookup, in-flight request deduplication, and cache storage.
+ */
+const withCache = <T>(
+  cacheKey: string,
+  fetchFn: () => Promise<T>
+): Promise<T> => {
+  if (fetchCache.has(cacheKey)) {
+    return Promise.resolve(fetchCache.get(cacheKey) as T);
+  }
+
+  if (inFlightRequests.has(cacheKey)) {
+    return inFlightRequests.get(cacheKey) as Promise<T>;
+  }
+
+  const requestPromise = fetchFn()
+    .then((result) => {
+      fetchCache.set(cacheKey, result);
+      inFlightRequests.delete(cacheKey);
+      return result;
+    })
+    .catch((error) => {
+      inFlightRequests.delete(cacheKey);
+      throw error;
+    });
+
+  inFlightRequests.set(cacheKey, requestPromise);
+  return requestPromise;
+};
+
+const buildCacheKey = (method: string, path: string, body?: unknown): string =>
+  `${method}:${path}:${body ? JSON.stringify(body) : ""}`;
+
+/**
+ * Returns the configured fetch function singleton.
+ *
+ * @param options - Optional configuration for the fetch function.
+ * @param options.cache - When true, returns a fetch function that caches
+ * responses by URL (method + path + serialized body). Subsequent calls with
+ * the same parameters return the cached response. Use {@link clearFetchCache}
+ * to invalidate cached entries.
+ */
+export const getFetchFunction = (options?: GetFetchFunctionOptions) => {
+  if (!options?.cache) {
+    return fetchFunctionSingleton;
+  }
+
+  return <A, R>(
+    method: string,
+    path: string,
+    body?: A,
+    result?: FetchResultType,
+    retries?: number,
+    retryCodes?: number[],
+    errorHandler?: (response: Response) => void | Promise<void>,
+    headers?: Record<string, string>
+  ): Promise<R> =>
+    withCache(buildCacheKey(method, path, body), () =>
+      fetchFunctionSingleton<A, R>(
+        method,
+        path,
+        body,
+        result,
+        retries,
+        retryCodes,
+        errorHandler,
+        headers
+      )
+    );
 };
 
 /**
@@ -85,17 +201,28 @@ export const getFetchFunctionExtended =
   (): (<A, R>(
     config: FetchFunctionConfig<A>
   ) => Promise<FetchFunctionResult<R>>) =>
-  <A>(config: FetchFunctionConfig<A>) =>
-    fetchFunctionExtendedSingleton(
-      config.method,
-      config.path,
-      config.body,
-      config.result,
-      config.retries,
-      config.retryCodes,
-      config.errorHandler,
-      config.headers
-    );
+  <A, R>(config: FetchFunctionConfig<A>): Promise<FetchFunctionResult<R>> => {
+    const doFetch = () =>
+      fetchFunctionExtendedSingleton<A, R>(
+        config.method,
+        config.path,
+        config.body,
+        config.result,
+        config.retries,
+        config.retryCodes,
+        config.errorHandler,
+        config.headers
+      );
+
+    if (config.cache) {
+      return withCache(
+        buildCacheKey(config.method, config.path, config.body),
+        doFetch
+      );
+    }
+
+    return doFetch();
+  };
 
 export const getFetchHeaders = () => {
   return fetchHeaders;
