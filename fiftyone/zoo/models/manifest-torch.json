@@ -9708,6 +9708,72 @@
             "tags": ["embeddings", "vlm", "torch", "transformer"],
             "training_data": [],
             "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "c-radio-v4-h-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "C-RADIOv4-H (631M params) vision foundation model combining SigLIP2, DINOv3, and SAM3 for embeddings and spatial attention",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 2520000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.radio.CRadioV4Model",
+                "config": {
+                    "hf_repo": "nvidia/C-RADIOv4-H"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers", "timm", "open-clip-torch", "scikit-learn", "scipy"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
+        },
+        {
+            "base_name": "c-radio-v4-so400m-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "C-RADIOv4-SO400M (412M params) efficient vision foundation model competitive with ViT-H at lower cost",
+            "source": "https://github.com/NVlabs/RADIO",
+            "author": "NVIDIA",
+            "license": "NVIDIA Open Model License Agreement",
+            "size_bytes": 1648000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.radio.CRadioV4Model",
+                "config": {
+                    "hf_repo": "nvidia/C-RADIOv4-SO400M"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers", "timm", "open-clip-torch", "scikit-learn", "scipy"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "heatmap", "torch", "transformer", "nvidia", "foundation"],
+            "training_data": [
+                {
+                    "name": "Multi-teacher distillation (SigLIP2, DINOv3, SAM3)",
+                    "url": "https://arxiv.org/abs/2601.17237"
+                }
+            ],
+            "date_added": "2026-02-05 12:00:00"
         }
     ]
 }
