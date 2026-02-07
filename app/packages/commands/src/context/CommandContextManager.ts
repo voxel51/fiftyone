@@ -22,7 +22,9 @@ export enum KnownCommands {
   ModalSidebarToggle = "fo.modal.sidebar.toggle",
   ModalFullScreenToggle = "fo.modal.fullscreen.toggle",
   ModalClose = "fo.modal.close",
+  ModalNextMediaField = "fo.modal.next.mediafield",
   ModalNextSample = "fo.modal.next.sample",
+  ModalPreviousMediaField = "fo.modal.previous.mediafield",
   ModalPreviousSample = "fo.modal.previous.sample",
   ModalDeleteAnnotation = "fo.modal.delete.annotation",
 }
