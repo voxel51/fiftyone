@@ -6,9 +6,7 @@ import {
   OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
-import { useThree } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
-import { useEffect } from "react";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
@@ -23,29 +21,10 @@ import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
-import { precisionToThreshold } from "../utils";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { Fo3dPointCloudSettings, useFo3dContext } from "./context";
+import { Fo3dPointCloudSettings } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
-
-/**
- * Sets the raycaster threshold for Points based on raycast precision setting.
- * This affects all raycasting in the scene.
- */
-const RaycasterConfig = () => {
-  const { raycaster } = useThree();
-  const { raycastPrecision } = useFo3dContext();
-
-  useEffect(() => {
-    const threshold = precisionToThreshold(raycastPrecision);
-    if (raycaster.params.Points) {
-      raycaster.params.Points.threshold = threshold;
-    }
-  }, [raycaster, raycastPrecision]);
-
-  return null;
-};
 
 interface Fo3dSceneContentProps {
   /**
@@ -141,7 +120,7 @@ export const Fo3dSceneContent = ({
 
   return (
     <>
-      <RaycasterConfig />
+      <RaycastService panelId={PANEL_ID_MAIN} />
       <StatusTunnel.Out />
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
@@ -197,7 +176,6 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
-      <RaycastService panelId={PANEL_ID_MAIN} />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
       <Crosshair3D panelId={PANEL_ID_MAIN} />

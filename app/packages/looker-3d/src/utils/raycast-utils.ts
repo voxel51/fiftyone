@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { FO_USER_DATA } from "../constants";
 
 /**
  * Objects to exclude from raycasting (helpers, gizmos, UI elements, etc.)
@@ -22,11 +23,8 @@ const EXCLUDED_OBJECT_TYPES = new Set([
  * User data keys that indicate an object should be excluded from raycasting
  */
 const EXCLUDED_USER_DATA_KEYS = [
-  "isHelper",
-  "isGizmo",
-  "isTransformControls",
-  "isAnnotationPlane",
-  "isCrosshair",
+  FO_USER_DATA.IS_HELPER,
+  FO_USER_DATA.IS_ANNOTATION_PLANE,
 ];
 
 /**
@@ -64,11 +62,16 @@ export function isRaycastable(object: THREE.Object3D): boolean {
 export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   const objects: THREE.Object3D[] = [];
 
-  scene.traverse((object) => {
+  function traverse(object: THREE.Object3D) {
     if (isRaycastable(object)) {
       objects.push(object);
     }
-  });
 
+    for (const child of object.children) {
+      traverse(child);
+    }
+  }
+
+  traverse(scene);
   return objects;
 }

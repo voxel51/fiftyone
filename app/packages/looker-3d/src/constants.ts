@@ -104,6 +104,26 @@ export const SNAP_TOLERANCE = 0.5;
 
 export const SCENE_BOUNDS_EXPANSION_FACTOR = 5;
 
+/**
+ * Typed keys for Three.js Object3D.userData relevant to FO.
+ */
+export const FO_USER_DATA = {
+  /** Marks object as a helper (grid, axes, etc.) */
+  IS_HELPER: "isHelper",
+  /** Marks object as a gizmo */
+  IS_GIZMO: "isGizmo",
+  /** Marks object as transform controls */
+  IS_TRANSFORM_CONTROLS: "isTransformControls",
+  /** Marks object as annotation plane */
+  IS_ANNOTATION_PLANE: "isAnnotationPlane",
+  /** Marks object as crosshair */
+  IS_CROSSHAIR: "isCrosshair",
+  /** Associates a FiftyOne label ID with a 3D object */
+  LABEL_ID: "labelId",
+  /** Stores original material config before transparency changes */
+  FO_ORIGINAL_MATERIAL_CONFIG: "foOriginalMaterialConfig",
+} as const;
+
 export const PANEL_ID_MAIN = "main" as const;
 export const PANEL_ID_SIDE_TOP = "side-top" as const;
 export const PANEL_ID_SIDE_BOTTOM = "side-bottom" as const;

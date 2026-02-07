@@ -19,57 +19,69 @@ export const useTrackStatus = () => {
   const loadingStatusRef = useRef(loadingStatus);
   loadingStatusRef.current = loadingStatus;
 
-  THREE.DefaultLoadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
-    const log = "Started loading file: " + url;
-    setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
+  // Note: these callbacks can fire synchronously during React's render phase
+  // (e.g. when useLoader triggers a THREE loader).
+  // We defer state updates with queueMicrotask to avoid the React warning:
 
-    setLoadingStatus({
-      status: LoadingStatus.STARTED,
-      currentUrl: url,
-      itemsLoaded,
-      itemsTotal,
-      progress: itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 0,
-      timestamp: Date.now(),
+  THREE.DefaultLoadingManager.onStart = (url, itemsLoaded, itemsTotal) => {
+    queueMicrotask(() => {
+      const log = "Started loading file: " + url;
+      setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
+
+      setLoadingStatus({
+        status: LoadingStatus.STARTED,
+        currentUrl: url,
+        itemsLoaded,
+        itemsTotal,
+        progress: itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 0,
+        timestamp: Date.now(),
+      });
     });
   };
 
   THREE.DefaultLoadingManager.onLoad = () => {
-    const log = ALL_LOADING_COMPLETE;
-    setLogs((prevLogs) => [...prevLogs, { message: log, status: "success" }]);
+    queueMicrotask(() => {
+      const log = ALL_LOADING_COMPLETE;
+      setLogs((prevLogs) => [...prevLogs, { message: log, status: "success" }]);
 
-    const latestItemsTotal = loadingStatusRef.current.itemsTotal || 0;
-    setLoadingStatus({
-      status: LoadingStatus.SUCCESS,
-      progress: 100,
-      itemsLoaded: latestItemsTotal,
-      itemsTotal: latestItemsTotal,
-      timestamp: Date.now(),
+      const latestItemsTotal = loadingStatusRef.current.itemsTotal || 0;
+      setLoadingStatus({
+        status: LoadingStatus.SUCCESS,
+        progress: 100,
+        itemsLoaded: latestItemsTotal,
+        itemsTotal: latestItemsTotal,
+        timestamp: Date.now(),
+      });
     });
   };
 
   THREE.DefaultLoadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-    const log = `Loading file: ${url}. Loaded ${itemsLoaded} of ${itemsTotal} files.`;
-    setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
+    queueMicrotask(() => {
+      const log = `Loading file: ${url}. Loaded ${itemsLoaded} of ${itemsTotal} files.`;
+      setLogs((prevLogs) => [...prevLogs, { message: log, status: "info" }]);
 
-    setLoadingStatus({
-      status: LoadingStatus.LOADING,
-      currentUrl: url,
-      itemsLoaded,
-      itemsTotal,
-      progress: itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 0,
-      timestamp: Date.now(),
+      setLoadingStatus({
+        status: LoadingStatus.LOADING,
+        currentUrl: url,
+        itemsLoaded,
+        itemsTotal,
+        progress: itemsTotal > 0 ? (itemsLoaded / itemsTotal) * 100 : 0,
+        timestamp: Date.now(),
+      });
     });
   };
 
   THREE.DefaultLoadingManager.onError = (url) => {
-    const log = "There was an error loading " + url;
-    setLogs((prevLogs) => [...prevLogs, { message: log, status: "error" }]);
+    queueMicrotask(() => {
+      const log = "There was an error loading " + url;
+      setLogs((prevLogs) => [...prevLogs, { message: log, status: "error" }]);
 
-    setLoadingStatus({
-      status: LoadingStatus.FAILED,
-      currentUrl: url,
-      errorMessage: log,
-      timestamp: Date.now(),
+      setLoadingStatus({
+        status: LoadingStatus.FAILED,
+        currentUrl: url,
+        errorMessage: log,
+        timestamp: Date.now(),
+      });
     });
   };
 };

@@ -3,9 +3,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { getPanelElementId } from "../constants";
+import { useFo3dContext } from "../fo3d/context";
 import { activeCursorPanelAtom, raycastResultAtom } from "../state";
 import type { PanelId } from "../types";
-import { toNDCForElement } from "../utils";
+import { precisionToThreshold, toNDCForElement } from "../utils";
 import { getRaycastableObjects } from "../utils/raycast-utils";
 
 interface RaycastServiceProps {
@@ -24,8 +25,17 @@ export const RaycastService = ({ panelId }: RaycastServiceProps) => {
   const setRaycastResult = useSetRecoilState(raycastResultAtom);
 
   const { camera, raycaster, gl, events, scene } = useThree();
+  const { raycastPrecision } = useFo3dContext();
 
   const panelElementRef = useRef<HTMLElement | null>(null);
+
+  // This effect applies the configured raycast precision threshold to this panel's raycaster.
+  useEffect(() => {
+    const threshold = precisionToThreshold(raycastPrecision);
+    if (raycaster.params.Points) {
+      raycaster.params.Points.threshold = threshold;
+    }
+  }, [raycaster, raycastPrecision]);
 
   // This effect gets the panel element on mount
   useEffect(() => {

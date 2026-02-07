@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { Material, Mesh, Object3D } from "three";
+import { FO_USER_DATA } from "../constants";
 import type { useMeshMaterialControls } from "./use-mesh-material-controls";
 
 const setOpacity = (
@@ -7,8 +8,8 @@ const setOpacity = (
   newMaterial: ReturnType<typeof useMeshMaterialControls>["material"],
   userData: Record<string, any>
 ) => {
-  if (!userData.foOriginalMaterialConfig) {
-    userData.foOriginalMaterialConfig = {
+  if (!userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG]) {
+    userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG] = {
       transparent: mtl.transparent,
       depthWrite: mtl.depthWrite,
       alphaTest: mtl.alphaTest,
@@ -21,9 +22,12 @@ const setOpacity = (
     mtl.depthWrite = false;
     mtl.alphaTest = Number.EPSILON;
   } else {
-    mtl.transparent = userData.foOriginalMaterialConfig.transparent;
-    mtl.depthWrite = userData.foOriginalMaterialConfig.depthWrite;
-    mtl.alphaTest = userData.foOriginalMaterialConfig.alphaTest;
+    mtl.transparent =
+      userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG].transparent;
+    mtl.depthWrite =
+      userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG].depthWrite;
+    mtl.alphaTest =
+      userData[FO_USER_DATA.FO_ORIGINAL_MATERIAL_CONFIG].alphaTest;
   }
 
   mtl.opacity = newMaterial.opacity;
