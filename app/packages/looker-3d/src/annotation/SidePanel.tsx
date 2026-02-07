@@ -15,7 +15,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import * as THREE from "three";
 import { Box3, Vector3 } from "three";
-import { getPanelElementId, getSidePanelGridArea } from "../constants";
+import {
+  FO_USER_DATA,
+  getPanelElementId,
+  getSidePanelGridArea,
+} from "../constants";
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
@@ -547,7 +551,7 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: string,
+  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
   value: unknown
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;
@@ -569,7 +573,7 @@ const BoundsSideEffectsComponent = () => {
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
     const { label } = payload;
 
-    const object = findByUserData(scene, "labelId", label._id);
+    const object = findByUserData(scene, FO_USER_DATA.LABEL_ID, label._id);
 
     if (object) {
       const objectBox = new Box3().setFromObject(object);

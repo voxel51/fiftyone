@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { FO_USER_DATA } from "../constants";
 
 /**
  * Objects to exclude from raycasting (helpers, gizmos, UI elements, etc.)
@@ -22,11 +23,11 @@ const EXCLUDED_OBJECT_TYPES = new Set([
  * User data keys that indicate an object should be excluded from raycasting
  */
 const EXCLUDED_USER_DATA_KEYS = [
-  "isHelper",
-  "isGizmo",
-  "isTransformControls",
-  "isAnnotationPlane",
-  "isCrosshair",
+  FO_USER_DATA.IS_HELPER,
+  FO_USER_DATA.IS_GIZMO,
+  FO_USER_DATA.IS_TRANSFORM_CONTROLS,
+  FO_USER_DATA.IS_ANNOTATION_PLANE,
+  FO_USER_DATA.IS_CROSSHAIR,
 ];
 
 /**

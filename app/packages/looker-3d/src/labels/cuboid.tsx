@@ -8,6 +8,7 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import { useTransientCuboid } from "../annotation/store";
+import { FO_USER_DATA } from "../constants";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import {
   hoveredLabelAtom,
@@ -232,7 +233,7 @@ export const Cuboid = ({
     <group
       // By default, quaternion is preferred automatically over euler
       ref={contentRef}
-      userData={{ labelId: label._id }}
+      userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
       rotation={combinedQuaternion ? undefined : fallbackEuler ?? undefined}
       quaternion={combinedQuaternion ?? undefined}
       position={displayPosition}

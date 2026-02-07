@@ -2,6 +2,7 @@ import { GizmoHelper, GizmoViewport, Grid, Line } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { DoubleSide, Vector3 } from "three";
+import { FO_USER_DATA } from "../constants";
 import {
   gridCellSizeAtom,
   gridSectionSizeAtom,
@@ -153,7 +154,7 @@ export const Gizmos = ({
   return (
     <>
       {isGridOn && isGridVisible && (
-        <group userData={{ isHelper: true }}>
+        <group userData={{ [FO_USER_DATA.IS_HELPER]: true }}>
           <Grid
             quaternion={gridHelperQuarternion}
             infiniteGrid={isGridInfinitelyLarge}
