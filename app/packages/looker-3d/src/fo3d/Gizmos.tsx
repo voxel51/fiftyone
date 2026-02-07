@@ -153,7 +153,7 @@ export const Gizmos = ({
   return (
     <>
       {isGridOn && isGridVisible && (
-        <>
+        <group userData={{ isHelper: true }}>
           <Grid
             quaternion={gridHelperQuarternion}
             infiniteGrid={isGridInfinitelyLarge}
@@ -171,7 +171,7 @@ export const Gizmos = ({
             sectionThickness={0.4}
           />
           <FoAxesHelper maxInOrthonormalPlane={maxInOrthonormalPlane} />
-        </>
+        </group>
       )}
       {isGizmoHelperVisible && (
         <GizmoHelper alignment="top-left" margin={[80, 100]}>

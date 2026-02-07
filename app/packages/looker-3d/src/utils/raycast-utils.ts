@@ -64,11 +64,21 @@ export function isRaycastable(object: THREE.Object3D): boolean {
 export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   const objects: THREE.Object3D[] = [];
 
-  scene.traverse((object) => {
+  function traverse(object: THREE.Object3D) {
+    // Skip entire subtree if this object has excluded userData
+    for (const key of EXCLUDED_USER_DATA_KEYS) {
+      if (object.userData[key]) return;
+    }
+
     if (isRaycastable(object)) {
       objects.push(object);
     }
-  });
 
+    for (const child of object.children) {
+      traverse(child);
+    }
+  }
+
+  traverse(scene);
   return objects;
 }

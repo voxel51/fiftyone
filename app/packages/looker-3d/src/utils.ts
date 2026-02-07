@@ -676,23 +676,24 @@ export const formatDegrees = (radians: number | undefined): string => {
 };
 
 /**
- * Converts raycast precision to a raycaster threshold value.
- * Uses quadratic scale.
+ * Converts raycast precision (1-10) to a raycaster threshold value.
  * Higher precision values = smaller threshold (more precise).
  *
- * @param precision - Value from 1 to 10 (default: 9)
- * @returns Threshold value for raycaster.params.Points.threshold
+ * - Precision 1-5: linear from 2.0 to 1.0 (lenient range)
+ * - Precision 5-10: exponential from 1.0 to 0.001 (precise range)
  *
- * Scale (quadratic):
- * - 1 = 0.5 (lenient)
- * - 5 = ~0.155
- * - 9 = ~0.007
- * - 10 = 0.001 (very precise)
+ * @param precision - Value from 1 to 10
+ * @returns Threshold value for raycaster.params.Points.threshold
  */
 export const precisionToThreshold = (precision: number): number => {
-  const safePrecision = Number.isFinite(precision) ? precision : 9;
+  const safePrecision = Number.isFinite(precision) ? precision : 5;
   const clampedValue = Math.max(1, Math.min(10, safePrecision));
-  // Quadratic interpolation
-  const diff = 10 - clampedValue;
-  return 0.001 + 0.00616 * diff * diff;
+
+  if (clampedValue <= 5) {
+    // Linear: precision 1 -> 2.0, precision 5 -> 1.0
+    return 2 - (clampedValue - 1) * 0.25;
+  }
+
+  // Exponential: precision 5 -> 1.0, precision 10 -> 0.01
+  return Math.pow(10, (5 - clampedValue) * 0.4);
 };
