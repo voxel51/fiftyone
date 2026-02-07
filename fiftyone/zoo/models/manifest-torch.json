@@ -3497,6 +3497,34 @@
             "date_added": "2026-01-05 12:00:00"
         },
         {
+            "base_name": "hunyuan3d-v2-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "State-of-the-art image-to-3D mesh generation model from Tencent that creates high-resolution textured 3D assets from a single image",
+            "source": "https://github.com/Tencent-Hunyuan/Hunyuan3D-2",
+            "author": "Tencent Hunyuan Team",
+            "license": "Tencent Hunyuan Community License",
+            "size_bytes": 4928151562,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.hunyuan3d.Hunyuan3DModel",
+                "config": {
+                    "name_or_path": "tencent/Hunyuan3D-2"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "hy3dgen", "trimesh"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["3d", "mesh", "reconstruction", "torch", "generative"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
+        },
+        {
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,
