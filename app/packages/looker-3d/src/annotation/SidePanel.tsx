@@ -23,6 +23,7 @@ import {
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
+import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
@@ -31,6 +32,7 @@ import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
+import { ProjectedCuboidOverlay } from "./ProjectedCuboidOverlay";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
@@ -350,6 +352,14 @@ export const SidePanel = ({
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
+  const { data: frustumData } = useFetchFrustumParameters();
+
+  // Find the frustum data matching the current image-slice view
+  const activeFrustum = useMemo(
+    () => frustumData.find((f) => f.sliceName === view) ?? null,
+    [frustumData, view]
+  );
+
   const gridArea = getSidePanelGridArea(panelId);
 
   /**
@@ -431,18 +441,9 @@ export const SidePanel = ({
       {imageSlices && imageSlices.includes(view) ? (
         <ImageSliceContainer>
           <ImageSliceImg src={resolveUrlForImageSlice(view)} />
-          {/* todo: replace with Lighter once we can have muliples scenes at once
-          <LighterSampleRenderer
-            key={view}
-            sample={{
-              ...sample,
-              urls: [
-                {
-                  url: resolveUrlForImageSlice(view),
-                },
-              ],
-            }}
-          /> */}
+          {activeFrustum && (
+            <ProjectedCuboidOverlay frustumData={activeFrustum} />
+          )}
         </ImageSliceContainer>
       ) : (
         <View
