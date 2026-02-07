@@ -4,6 +4,7 @@ import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
+  useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
 import useCanManageSchema from "./useCanManageSchema";
 import { useAnnotationSchemaContext } from "./state";
@@ -91,6 +92,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
+  const sampleScanLimit = useQueryPerformanceSampleLimit();
   const canManageSchema = useCanManageSchema();
 
   const initializeFieldSchema = useCallback(
@@ -116,7 +118,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
             };
           }
 
-          await schemaManager.initializeSchema({ field });
+          await schemaManager.initializeSchema({
+            field,
+            scan_samples: true,
+            limit: sampleScanLimit,
+          });
         }
 
         await schemaManager.activateSchemas({ fields: [field] });
@@ -139,6 +145,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     },
     [
       canManageSchema,
+      sampleScanLimit,
       schemaManager,
       setActiveFields,
       setActiveSchemaPaths,
