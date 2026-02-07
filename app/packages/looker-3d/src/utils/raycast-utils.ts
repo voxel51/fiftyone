@@ -24,10 +24,7 @@ const EXCLUDED_OBJECT_TYPES = new Set([
  */
 const EXCLUDED_USER_DATA_KEYS = [
   FO_USER_DATA.IS_HELPER,
-  FO_USER_DATA.IS_GIZMO,
-  FO_USER_DATA.IS_TRANSFORM_CONTROLS,
   FO_USER_DATA.IS_ANNOTATION_PLANE,
-  FO_USER_DATA.IS_CROSSHAIR,
 ];
 
 /**
@@ -66,11 +63,6 @@ export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   const objects: THREE.Object3D[] = [];
 
   function traverse(object: THREE.Object3D) {
-    // Skip entire subtree if this object has excluded userData
-    for (const key of EXCLUDED_USER_DATA_KEYS) {
-      if (object.userData[key]) return;
-    }
-
     if (isRaycastable(object)) {
       objects.push(object);
     }
