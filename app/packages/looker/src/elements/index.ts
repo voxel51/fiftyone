@@ -20,6 +20,7 @@ import * as pcd from "./three-d";
 import type { ElementsTemplate } from "./util";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
+import * as audio from "./audio";
 
 export type GetElements<State extends BaseState> = (params: {
   abortController: AbortController;
@@ -199,6 +200,73 @@ export const getVideoElements: GetElements<VideoState> = (params) => {
   };
 
   return createElementsTree<VideoState, common.LookerElement<VideoState>>({
+    ...params,
+    root: elements,
+  });
+};
+
+export const getAudioElements: GetElements<any> = (params) => {
+  const elements = {
+    node: common.LookerElement,
+    children: [
+      {
+        node: audio.SpectrogramElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: audio.TimelineInteractionElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: audio.TimelineInteractionElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
+      },
+      {
+        node: audio.LoaderBar,
+      },
+      {
+        node: common.ControlsElement,
+        children: [
+          { node: audio.SeekBarElement },
+          { node: audio.SeekBarThumbElement },
+          { node: audio.PlayButtonElement },
+          { node: audio.TimeElement },
+          audio.PLAYBACK_RATE,
+          audio.VOLUME,
+          { node: common.PlusElement },
+          { node: common.MinusElement },
+          { node: common.JSONButtonElement },
+          { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
+        ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<any, common.LookerElement<any>>({
     ...params,
     root: elements,
   });

@@ -616,6 +616,7 @@ export const isNativeMediaType = (mediaType: string): boolean => {
     undefined,
     "image",
     "video",
+    "audio",
     "3d",
     "three_d",
     "point-cloud",
