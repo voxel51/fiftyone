@@ -49,7 +49,7 @@ INSTALL_REQUIRES = [
     "matplotlib",
     "mongoengine~=0.29.1",
     "motor~=3.6.0",
-    "numpy",
+    "numpy<2",
     "packaging",
     "pandas",
     # Pillow 11.2.0 introduced CVE 2025-48379 that is fixed in 11.3.0
