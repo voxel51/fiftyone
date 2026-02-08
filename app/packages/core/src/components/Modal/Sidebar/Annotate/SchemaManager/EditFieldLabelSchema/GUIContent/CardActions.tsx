@@ -4,13 +4,14 @@
  */
 
 import {
-  Clickable,
+  Button,
   Icon,
   IconName,
   Orientation,
   Size,
   Spacing,
   Stack,
+  Variant,
 } from "@voxel51/voodo";
 
 interface CardActionsProps {
@@ -31,24 +32,34 @@ const CardActions = ({
   onDelete,
 }: CardActionsProps) => (
   <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
-    <Clickable onClick={onCancel} style={{ padding: 4 }}>
-      <Icon name={IconName.Close} size={Size.Md} />
-    </Clickable>
+    <Button variant={Variant.Icon} borderless onClick={onCancel}>
+      <Icon
+        name={IconName.Close}
+        size={Size.Md}
+        color="var(--color-content-text-secondary)"
+      />
+    </Button>
     {onDelete && (
-      <Clickable onClick={onDelete} style={{ padding: 4 }}>
-        <Icon name={IconName.Delete} size={Size.Md} />
-      </Clickable>
+      <Button variant={Variant.Icon} borderless onClick={onDelete}>
+        <Icon
+          name={IconName.Delete}
+          size={Size.Md}
+          color="var(--color-content-text-secondary)"
+        />
+      </Button>
     )}
-    <Clickable
+    <Button
+      variant={Variant.Icon}
+      borderless
       onClick={canSave ? onSave : undefined}
-      style={{
-        padding: 4,
-        opacity: canSave ? 1 : 0.5,
-        cursor: canSave ? "pointer" : "not-allowed",
-      }}
+      disabled={!canSave}
     >
-      <Icon name={IconName.Check} size={Size.Md} />
-    </Clickable>
+      <Icon
+        name={IconName.Check}
+        size={Size.Md}
+        color="var(--color-content-text-secondary)"
+      />
+    </Button>
   </Stack>
 );
 

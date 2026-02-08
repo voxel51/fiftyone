@@ -20,7 +20,14 @@ import {
 } from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import CuboidIcon from "@mui/icons-material/ViewInAr";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
@@ -336,9 +343,9 @@ const Schema = () => {
   const showModal = useShowModal();
 
   return (
-    <RoundButton onClick={showModal}>
-      <Text variant={TextVariant.Lg}>Schema</Text>
-    </RoundButton>
+    <Button variant={Variant.Borderless} size={Size.Sm} onClick={showModal}>
+      Schema
+    </Button>
   );
 };
 

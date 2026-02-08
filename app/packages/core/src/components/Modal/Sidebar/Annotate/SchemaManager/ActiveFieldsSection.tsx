@@ -52,7 +52,11 @@ const FieldActions = ({ path }: { path: string }) => {
         data-cy="edit"
         onClick={() => setField(path)}
       >
-        <Icon name={IconName.Edit} size={Size.Md} />
+        <Icon
+          name={IconName.Edit}
+          size={Size.Md}
+          color="var(--color-content-text-secondary)"
+        />
       </Button>
     </Tooltip>
   );

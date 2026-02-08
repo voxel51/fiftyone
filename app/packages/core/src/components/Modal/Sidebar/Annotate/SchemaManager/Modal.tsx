@@ -207,7 +207,7 @@ const Modal = () => {
             <Icon
               name={IconName.Close}
               size={Size.Lg}
-              color={TextColor.Secondary}
+              color="var(--color-content-text-secondary)"
             />
           </Button>
         </ModalHeader>
