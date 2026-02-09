@@ -296,23 +296,31 @@ class TestSampleRoutes:
     async def test_if_match_header_failure(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 412 HTTPException is raised for an invalid If-Match."""
-        if if_match is None:
-            pytest.skip("Fixture returned None, skipping this test.")
-
+        """Tests that a 412 response with the current sample is returned
+        for a stale If-Match."""
         sample["primitive_field"] = "new_value"
         sample.save()
+        sample.reload()
 
         mock_request.body.return_value = json_payload(
             {"primitive_field": "newer_value"}
         )
 
-        with pytest.raises(HTTPException) as exc_info:
-            #####
-            await mutator.patch(mock_request)
-            #####
+        #####
+        response = await mutator.patch(mock_request)
+        #####
 
-            assert exc_info.value.status_code == 412
+        assert response.status_code == 412
+
+        # Response should contain the current sample data
+        response_dict = json.loads(response.body)
+        assert isinstance(response_dict, dict)
+        assert response_dict["primitive_field"] == "new_value"
+
+        # ETag should match the current sample
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
 
     @pytest.mark.asyncio
     async def test_unsupported_label_class(
@@ -1043,27 +1051,16 @@ class TestSampleFieldRoute:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        "if_match", [None] + _if_match_values, indirect=True
-    )
-    async def test_if_match_header_failure(
+    @pytest.mark.parametrize("if_match", [None], indirect=True)
+    async def test_if_match_header_missing(
         self, mutator, mock_request, sample, if_match
     ):
-        """Tests that a 4xx HTTPException is raised for an invalid If-Match."""
-        if if_match is None:
-            expected_status = 400
-            expected_detail = "Invalid If-Match header"
-        else:
-            expected_status = 412
-            expected_detail = "If-Match condition failed"
-
-        # Update the sample to change its last_modified_at
+        """Tests that a 400 HTTPException is raised for a missing If-Match."""
         sample["primitive_field"] = "new_value"
         sample.save()
         sample.reload()
 
         patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
-
         mock_request.body.return_value = json_payload(patch_payload)
 
         with pytest.raises(HTTPException) as exc_info:
@@ -1071,8 +1068,38 @@ class TestSampleFieldRoute:
             await mutator.patch(mock_request)
             #####
 
-        assert exc_info.value.status_code == expected_status
-        assert exc_info.value.detail == expected_detail
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.detail == "Invalid If-Match header"
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("if_match", _if_match_values, indirect=True)
+    async def test_if_match_header_failure(
+        self, mutator, mock_request, sample, if_match
+    ):
+        """Tests that a 412 response with the current sample is returned
+        for a stale If-Match."""
+        # Update the sample to change its last_modified_at
+        sample["primitive_field"] = "new_value"
+        sample.save()
+        sample.reload()
+
+        patch_payload = [{"op": "replace", "path": "/label", "value": "fish"}]
+        mock_request.body.return_value = json_payload(patch_payload)
+
+        #####
+        response = await mutator.patch(mock_request)
+        #####
+
+        assert response.status_code == 412
+
+        # Response should contain the current sample data
+        response_dict = json.loads(response.body)
+        assert isinstance(response_dict, dict)
+
+        # ETag should match the current sample
+        assert response.headers.get("ETag") == fors.generate_sample_etag(
+            sample
+        )
 
     @pytest.mark.asyncio
     async def test_field_path_not_found(self, mutator, mock_request, sample):
