@@ -118,7 +118,7 @@ const ValuesList = ({
       >
         <Text
           variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-          color={largeLabels ? TextColor.Primary : TextColor.Secondary}
+          color={TextColor.Primary}
         >
           Values
         </Text>

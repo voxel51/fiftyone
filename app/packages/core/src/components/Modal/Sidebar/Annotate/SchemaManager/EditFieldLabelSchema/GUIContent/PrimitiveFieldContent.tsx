@@ -206,7 +206,7 @@ const PrimitiveFieldContent = ({
         <FormFieldGroup orientation={Orientation.Column} spacing={Spacing.Sm}>
           <Text
             variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
+            color={TextColor.Primary}
           >
             Input type
           </Text>
