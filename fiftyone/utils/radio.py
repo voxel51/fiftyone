@@ -36,18 +36,12 @@ class RadioGetItem(fout.GetItem):
         return ["filepath"]
 
     def __call__(self, sample_dict):
-        """Load and return a single image.
-
-        Args:
-            sample_dict: dict containing ``filepath`` key
-
-        Returns:
-            PIL Image in RGB format
-        """
-        from PIL import Image
-
-        filepath = sample_dict["filepath"]
-        return Image.open(filepath).convert("RGB")
+        """Load and return a single image."""
+        return fout._load_image(
+            sample_dict["filepath"],
+            use_numpy=False,
+            force_rgb=True,
+        )
 
 
 class RadioOutputProcessor(fout.OutputProcessor):
