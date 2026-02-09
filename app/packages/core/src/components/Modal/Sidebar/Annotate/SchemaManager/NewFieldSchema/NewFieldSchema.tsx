@@ -83,7 +83,6 @@ const NewFieldSchema = () => {
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
-  const activateFields = useOperatorExecutor("activate_label_schemas");
   const notify = useNotification();
   const refreshSchema = useRefresh();
 
@@ -256,32 +255,11 @@ const NewFieldSchema = () => {
                   label_schemas,
                 } = schemasResult.result;
 
-                activateFields.execute(
-                  { fields: active_label_schemas },
-                  {
-                    callback: (activateResult) => {
-                      if (activateResult.error) {
-                        const error =
-                          activateResult.errorMessage || activateResult.error;
+                addToActiveSchema(new Set(active_label_schemas));
+                setLabelSchemasData(label_schemas);
+                setActiveLabelSchemas(active_label_schemas);
 
-                        console.error("Failed to activate fields:", error);
-                        notify({
-                          msg: `Failed to activate fields: ${error}`,
-                          variant: "error",
-                        });
-
-                        return;
-                      }
-
-                      addToActiveSchema(new Set(active_label_schemas));
-                      setLabelSchemasData(label_schemas);
-                      setActiveLabelSchemas(active_label_schemas);
-                      refreshSchema();
-                      exitNewFieldMode();
-                    },
-                  }
-                );
-              } else {
+                refreshSchema();
                 exitNewFieldMode();
               }
             },
@@ -292,7 +270,6 @@ const NewFieldSchema = () => {
   }, [
     addToActiveSchema,
     attributes,
-    activateFields,
     canCreate,
     category,
     classes,
