@@ -137,10 +137,16 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
+    additional_media_fields = fosm._get_additional_media_fields(view)
     nodes = await asyncio.gather(
         *[
             _create_sample_item(
-                view, sample, metadata_cache, url_cache, pagination_data
+                view,
+                sample,
+                metadata_cache,
+                url_cache,
+                pagination_data,
+                additional_media_fields=additional_media_fields,
             )
             for sample in samples
         ]
@@ -172,12 +178,19 @@ async def _create_sample_item(
     metadata_cache: t.Dict[str, t.Dict],
     url_cache: t.Dict[str, str],
     pagination_data: bool,
+    *,
+    additional_media_fields: t.Optional[t.Tuple] = None,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
     cls = MEDIA_TYPES[media_type]
 
     metadata = await fosm.get_metadata(
-        dataset, sample, media_type, metadata_cache, url_cache
+        dataset,
+        sample,
+        media_type,
+        metadata_cache,
+        url_cache,
+        additional_media_fields=additional_media_fields,
     )
 
     if cls == VideoSample:
