@@ -996,7 +996,7 @@ class TestBatchProcessing:
         pred_shallow["depth_z"][0][0, 0, 0] = 2.0
 
         pred_deep = _mock_pred(depth_val=10.0)
-        pred_deep["depth_z"][0][0, 0, 0] = 20.0
+        pred_deep["depth_z"][0][1, 0, 0] = 20.0
 
         model._model = MagicMock()
         model._model.infer = MagicMock(
