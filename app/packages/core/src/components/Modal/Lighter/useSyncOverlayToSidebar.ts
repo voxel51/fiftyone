@@ -30,6 +30,12 @@ export function useSyncOverlayToSidebar(scene: Scene2D | null) {
   // Track the last synced label data to prevent unnecessary updates (and focus loss)
   const lastSyncedDataRef = useRef<AnnotationLabel["data"] | null>(null);
 
+  // Reset the ref when the editing atom changes so we don't compare against stale data
+  // from a previously selected label.
+  useEffect(() => {
+    lastSyncedDataRef.current = null;
+  }, [editingValue]);
+
   const { context } = useCommandContext(KnownContexts.ModalAnnotate);
 
   const sync = useCallback(() => {

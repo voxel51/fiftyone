@@ -147,9 +147,10 @@ export default function Position({ readOnly = false }: PositionProps) {
 
           const oldBounds = overlay.getAbsoluteBounds();
           const newBounds = {
-            ...oldBounds,
-            ...data.dimensions,
-            ...data.position,
+            x: data.position.x ?? oldBounds.x,
+            y: data.position.y ?? oldBounds.y,
+            width: data.dimensions.width ?? oldBounds.width,
+            height: data.dimensions.height ?? oldBounds.height,
           };
 
           scene?.executeCommand(
