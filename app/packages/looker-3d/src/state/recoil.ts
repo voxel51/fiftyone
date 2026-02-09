@@ -1,3 +1,4 @@
+import { DetectionLabel } from "@fiftyone/looker";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
@@ -332,7 +333,7 @@ export const raycastResultAtom = atom<RaycastResult>({
  * Used to track which label is being actively edited or manipulated.
  */
 export const selectedLabelForAnnotationAtom = atom<
-  (Partial<PolylineLabel> & { _id: string }) | null
+  (Partial<PolylineLabel | DetectionLabel> & { _id: string }) | null
 >({
   key: "fo3d-selectedLabelForAnnotation",
   default: null,

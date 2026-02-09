@@ -17,6 +17,7 @@ import * as THREE from "three";
 import { Box3, Vector3 } from "three";
 import {
   FO_USER_DATA,
+  ANNOTATION_CUBOID,
   getPanelElementId,
   getSidePanelGridArea,
 } from "../constants";
@@ -27,12 +28,13 @@ import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFru
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
+import { useCurrent3dAnnotationMode } from "../state";
 import type { SidePanelId } from "../types";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
-import { ProjectedCuboidOverlay } from "./ProjectedCuboidOverlay";
+import { ProjectedCuboidOverlay } from "./projection";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
@@ -353,6 +355,7 @@ export const SidePanel = ({
     useImageSlicesIfAvailable(sample);
 
   const { data: frustumData } = useFetchFrustumParameters();
+  const annotationMode = useCurrent3dAnnotationMode();
 
   // Find the frustum data matching the current image-slice view
   const activeFrustum = useMemo(
@@ -441,7 +444,7 @@ export const SidePanel = ({
       {imageSlices && imageSlices.includes(view) ? (
         <ImageSliceContainer>
           <ImageSliceImg src={resolveUrlForImageSlice(view)} />
-          {activeFrustum && (
+          {activeFrustum && annotationMode === ANNOTATION_CUBOID && (
             <ProjectedCuboidOverlay frustumData={activeFrustum} />
           )}
         </ImageSliceContainer>
@@ -552,7 +555,7 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
+  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
   value: unknown
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;
