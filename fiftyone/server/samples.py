@@ -137,7 +137,9 @@ async def paginate_samples(
 
     metadata_cache = {}
     url_cache = {}
-    additional_media_fields = fosm._get_additional_media_fields(view)
+    additional_media_fields = (
+        fosm._get_additional_media_fields(view) if samples else None
+    )
     nodes = await asyncio.gather(
         *[
             _create_sample_item(
