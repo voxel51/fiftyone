@@ -20,6 +20,17 @@ import useFocus from "./useFocus";
 import useHover from "./useHover";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 
+/**
+ * Map from plural label _cls to the list key and singular LabelType.
+ * Used to load labels from sample data when the field is not yet in the
+ * Recoil schema (e.g. field just created via Schema Manager).
+ */
+const LABEL_LIST_INFO: Record<string, { listKey: string; type: LabelType }> = {
+  Detections: { listKey: "detections", type: "Detection" },
+  Classifications: { listKey: "classifications", type: "Classification" },
+  Polylines: { listKey: "polylines", type: "Polyline" },
+};
+
 const handleSample = async ({
   createLabel,
   getFieldType,
@@ -41,12 +52,44 @@ const handleSample = async ({
       continue;
     }
 
-    const type = await getFieldType(paths[path]);
+    let type: LabelType;
+    try {
+      type = await getFieldType(paths[path]);
+    } catch {
+      continue;
+    }
     const result = get(data, paths[path]);
 
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     labels.push(...array.map((data) => createLabel(path, type, data)));
+  }
+
+  // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
+  // (e.g. fields created via Schema Manager not yet in the Recoil schema cache)
+  for (const schemaPath of schemas) {
+    if (schemaPath in paths) continue;
+
+    const fieldData = data?.[schemaPath];
+    if (!fieldData || typeof fieldData !== "object") continue;
+
+    const cls = (fieldData as Record<string, unknown>)?._cls as string;
+    if (!cls) continue;
+
+    const listInfo = LABEL_LIST_INFO[cls];
+    if (listInfo) {
+      const items = (fieldData as Record<string, unknown>)[
+        listInfo.listKey
+      ] as unknown[];
+      if (Array.isArray(items)) {
+        labels.push(
+          ...items.map((item) => createLabel(schemaPath, listInfo.type, item))
+        );
+      }
+    } else {
+      // Singular label type (e.g. Classification, Detection, Polyline)
+      labels.push(createLabel(schemaPath, cls as LabelType, fieldData));
+    }
   }
 
   return labels.sort((a, b) =>
