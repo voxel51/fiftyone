@@ -1,5 +1,5 @@
 import { useSchemaManager } from "./useSchemaManager";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   type ContextManager,
   DefaultContextManager,
@@ -9,7 +9,6 @@ import {
 import useCanManageSchema from "./useCanManageSchema";
 import { useAnnotationSchemaContext } from "./state";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -84,11 +83,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
   const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
 
-  const {
-    activate: activateCommandContext,
-    deactivate: deactivateCommandContext,
-  } = useCommandContext(KnownContexts.ModalAnnotate, true);
-
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
@@ -153,6 +147,17 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     ]
   );
 
+  /*
+   * We use a ref for activeFields to avoid re-creating the enter callback
+   * when activeFields changes. This prevents the AnnotationContextManager
+   * from changing, which causes the useEffect in Annotate to re-run and loop.
+   */
+  const activeFieldsRef = useRef(activeFields);
+  activeFieldsRef.current = activeFields;
+
+  const initializeFieldSchemaRef = useRef(initializeFieldSchema);
+  initializeFieldSchemaRef.current = initializeFieldSchema;
+
   const enter = useCallback(
     async (field?: string, labelId?: string): Promise<EnterResult> => {
       // exit early if the context is already active
@@ -165,10 +170,8 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // enter annotation context
       contextManager.enter();
 
-      // activate command context
-      activateCommandContext();
-
       // register callback to restore active fields on context exit
+      const activeFields = activeFieldsRef.current;
       contextManager.registerExitCallback({
         callback: () => setActiveFields(activeFields),
       });
@@ -179,7 +182,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // initialize and activate field schema if specified
       if (field) {
-        result = await initializeFieldSchema(field);
+        result = await initializeFieldSchemaRef.current(field);
       }
 
       if (labelId) {
@@ -189,10 +192,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
-      activateCommandContext,
-      activeFields,
+      // activeFieldsRef is stable
       contextManager,
-      initializeFieldSchema,
+      // initializeFieldSchemaRef is stable
       setActiveFields,
       setActiveLabelId,
     ]
@@ -200,10 +202,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
-      deactivateCommandContext();
       contextManager.exit();
     }
-  }, [contextManager, deactivateCommandContext]);
+  }, [contextManager]);
 
   return useMemo(
     () => ({

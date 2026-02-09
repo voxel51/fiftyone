@@ -1,45 +1,75 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { CommandContext, CommandContextManager } from "../context";
-import { resolveContext } from "./utils";
 
 /**
- * Hook to create or bind to an existing context.  Used with useCommand, useKeyBinding to
- * contextualize execution.
- * If the context is created, it will be destroyed on unmount.
- * If the context already existed, it will not be destroyed, as someone else owns it's lifecycle.
- * A context contains the state of the command system for a particular workflow,
- * including registered commands, keybindings and the undo/redo stack.
- * @param context The context or id of an existing context to use
- * @param inheritCurrent If the context is new, true to inherit the parent context
- * @returns The context, and an activate/deactive method to use it.
+ * Hook to create and manage a NEW command context for a component.
+ *
+ * This hook manages the lifecycle of a CommandContext for the given `contextId`.
+ * It strictly creates the context on mount and cleans it up on unmount.
+ *
+ * IMPORTANT: The `contextId` must be unique. If a context with the same ID
+ * already exists in the CommandContextManager, this hook will throw an error.
+ *
+ * It provides:
+ * - `context`: The effective CommandContext instance.
+ * - `activate`: Function to push this context onto the stack.
+ * - `deactivate`: Function to pop this context from the stack.
+ *
+ * @param contextId Unique identifier for the new context
+ * @param inheritCurrent Whether to inherit commands/keybindings from the currently active context
  */
 export const useCommandContext = (
-  context?: CommandContext | string,
+  contextId: string,
   inheritCurrent?: boolean
 ): {
-  context: CommandContext;
+  context: CommandContext | undefined;
   activate: () => void;
   deactivate: () => void;
 } => {
-  const boundContext = useMemo(() => {
-    return resolveContext(context, inheritCurrent);
-  }, [context, inheritCurrent]);
+  const [context, setContext] = useState<CommandContext>();
 
+  const mgr = CommandContextManager.instance();
+
+  // Initialize/Create context
+  // Use useLayoutEffect to ensure context is created before layout paints/children effects,
+  // helping with avoiding flashes or missing context issues in consumers.
   useEffect(() => {
+    let ctx = context;
+    if (!ctx || !mgr.getCommandContext(contextId)) {
+      // If context is missing in state OR missing in manager (e.g. Strict Mode cleanup),
+      // create (or re-create) it.
+      ctx = mgr.createCommandContext(contextId, Boolean(inheritCurrent));
+      setContext(ctx);
+    }
+
     return () => {
-      if (!boundContext.existed) {
-        CommandContextManager.instance().deleteContext(boundContext.context.id);
+      // In Strict Mode, this cleanup runs, deleting the context.
+      // The next effect run will re-create it.
+      // We check manager presence to be safe, though usage implies ownership.
+      if (mgr.getCommandContext(contextId)) {
+        mgr.deleteContext(contextId);
       }
     };
-  }, [boundContext]);
+  }, [contextId, inheritCurrent]);
 
-  const activate = useCallback(() => {
-    CommandContextManager.instance().pushContext(boundContext.context);
-  }, [boundContext.context]);
-
-  const deactivate = useCallback(() => {
-    CommandContextManager.instance().popContext(boundContext.context.id);
-  }, [boundContext.context.id]);
-
-  return { context: boundContext.context, activate, deactivate };
+  // We return undefined initially if not yet created.
+  // Consumers must handle context potentially being undefined on first render.
+  return {
+    context:
+      context && mgr.getCommandContext(contextId) === context
+        ? context
+        : undefined,
+    activate: useCallback(() => {
+      const ctx = CommandContextManager.instance().getCommandContext(contextId);
+      if (ctx) {
+        CommandContextManager.instance().pushContext(ctx);
+      }
+    }, [contextId]),
+    deactivate: useCallback(() => {
+      const ctx = CommandContextManager.instance().getCommandContext(contextId);
+      if (ctx) {
+        CommandContextManager.instance().popContext(ctx.id);
+      }
+    }, [contextId]),
+  };
 };

@@ -19,8 +19,7 @@ import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
-import useDelete from "./Edit/useDelete";
-import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
+import useBindAnnotationCommands from "./useBindAnnotationCommands";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -120,19 +119,21 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
-  const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
-
   useLabels();
-  useDelete();
+  /*
+   * useAnnotationCommands consolidates:
+   * - Delete command (ModalDeleteAnnotation)
+   * - Undo/Redo commands (specific to ModalAnnotate context)
+   */
+  useBindAnnotationCommands();
 
   useEffect(() => {
     contextManager.enter();
 
     return () => {
       contextManager.exit();
-      clearUndo();
     };
-  }, []);
+  }, [contextManager]);
 
   const isDisabled = disabledReason !== null;
   const disabledMsg =

@@ -24,11 +24,8 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
+import { CommandContextActivator, KnownContexts } from "@fiftyone/commands";
+import { useBindModalCommands } from "./useBindModalCommands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -63,11 +60,15 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
-const ModalCommandHandlersRegistration = () => {
+const ModalCommandHandlersRegistration = ({
+  modalCloseHandler,
+}: {
+  modalCloseHandler: () => Promise<void>;
+}) => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
   useRegisterRendererEventHandlers();
-
+  useBindModalCommands(modalCloseHandler);
   const modalMode = useModalMode();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
@@ -137,90 +138,7 @@ const Modal = () => {
     [clearModal, jsonPanel, helpPanel]
   );
 
-  const selectCallback = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const current = await snapshot.getPromise(fos.modalSelector);
-        set(fos.selectedSamples, (selected) => {
-          const newSelected = new Set([...Array.from(selected)]);
-          if (current?.id) {
-            if (newSelected.has(current.id)) {
-              newSelected.delete(current.id);
-            } else {
-              newSelected.add(current.id);
-            }
-          }
-          return newSelected;
-        });
-      },
-    []
-  );
-
-  const sidebarFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.sidebarVisible(true), (prev) => !prev);
-      },
-    []
-  );
-
-  const fullscreenFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.fullscreen, (prev) => !prev);
-      },
-    []
-  );
-
-  const closeFn = useRecoilCallback(
-    ({ snapshot }) =>
-      async () => {
-        const mediaType = await snapshot.getPromise(fos.mediaType);
-        const is3dVisible = await snapshot.getPromise(
-          fos.groupMediaIs3dVisible
-        );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
-          // we handle close logic in modal + other places
-          return;
-        }
-
-        await modalCloseHandler();
-      },
-    [modalCloseHandler]
-  );
-  useKeyBindings(KnownContexts.Modal, [
-    {
-      commandId: KnownCommands.ModalClose,
-      sequence: "Escape",
-      handler: closeFn,
-      label: "Close",
-      description: "Close the window.",
-    },
-    {
-      commandId: KnownCommands.ModalFullScreenToggle,
-      sequence: "f",
-      handler: fullscreenFn,
-      label: "Fullscreen",
-      description: "Enter/Exit full screen mode",
-    },
-    {
-      commandId: KnownCommands.ModalSidebarToggle,
-      sequence: "s",
-      handler: sidebarFn,
-      label: "Sidebar",
-      description: "Show/Hide the sidebar",
-    },
-    {
-      commandId: KnownCommands.ModalSelect,
-      sequence: "x",
-      handler: selectCallback,
-      label: "Select",
-      description: "Select Sample",
-    },
-  ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
-
-  const { closePanels } = useLookerHelpers();
 
   const screenParams = useMemo(() => {
     return isFullScreen
@@ -278,34 +196,38 @@ const Modal = () => {
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
-        <Actions />
-        <ModalCommandHandlersRegistration />
-        <TooltipInfo />
-        <ModalContainer style={{ ...screenParams }}>
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
-          <ModalNavigation closePanels={closePanels} />
-          <SpacesContainer>
-            <ModalSpace />
-          </SpacesContainer>
-          {isSidebarVisible && <Sidebar />}
-          <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
+        <CommandContextActivator id={KnownContexts.Modal}>
+          <Actions />
+          <ModalCommandHandlersRegistration
+            modalCloseHandler={modalCloseHandler}
+          />
+          <TooltipInfo />
+          <ModalContainer style={{ ...screenParams }}>
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />
+            <ModalNavigation />
+            <SpacesContainer>
+              <ModalSpace />
+            </SpacesContainer>
+            {isSidebarVisible && <Sidebar />}
+            <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_RIGHT} />
 
-          {jsonPanel.isOpen && (
-            <JSONPanel
-              containerRef={jsonPanel.containerRef}
-              onClose={() => jsonPanel.close()}
-              onCopy={() => jsonPanel.copy()}
-              json={jsonPanel.json}
-            />
-          )}
-          {helpPanel.isOpen && (
-            <HelpPanel
-              containerRef={helpPanel.containerRef}
-              onClose={() => helpPanel.close()}
-              items={helpPanel.items}
-            />
-          )}
-        </ModalContainer>
+            {jsonPanel.isOpen && (
+              <JSONPanel
+                containerRef={jsonPanel.containerRef}
+                onClose={() => jsonPanel.close()}
+                onCopy={() => jsonPanel.copy()}
+                json={jsonPanel.json}
+              />
+            )}
+            {helpPanel.isOpen && (
+              <HelpPanel
+                containerRef={helpPanel.containerRef}
+                onClose={() => helpPanel.close()}
+                items={helpPanel.items}
+              />
+            )}
+          </ModalContainer>
+        </CommandContextActivator>
       </ModalWrapper>
     </modalContext.Provider>,
     document.getElementById("modal") as HTMLDivElement
