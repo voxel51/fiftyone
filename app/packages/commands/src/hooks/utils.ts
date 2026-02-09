@@ -9,28 +9,15 @@ import { CommandContext, CommandContextManager } from "../context";
  * If it is a string and the context does not exists, it creates a new one.
  */
 export function resolveContext(
-  context: string | CommandContext | undefined,
-  inheritParent?: boolean
-): { context: CommandContext; existed: boolean } {
+  context: string | CommandContext | undefined
+): CommandContext | undefined {
+  if (context instanceof CommandContext) {
+    return context;
+  }
   if (!context) {
-    return {
-      context: CommandContextManager.instance().getActiveContext(),
-      existed: true,
-    };
+    return CommandContextManager.instance().getActiveContext();
   }
   if (typeof context === "string") {
-    const existing =
-      CommandContextManager.instance().getCommandContext(context);
-    if (existing) {
-      return { context: existing, existed: true };
-    }
-    return {
-      context: CommandContextManager.instance().createCommandContext(
-        context,
-        inheritParent ?? true
-      ),
-      existed: false,
-    };
+    return CommandContextManager.instance().getCommandContext(context);
   }
-  return { context, existed: true };
 }

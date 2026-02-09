@@ -20,11 +20,12 @@ import {
   useAnnotationContext,
 } from "./state";
 
+import useColor from "./useColor";
+import { useQuickDraw } from "./useQuickDraw";
+import useExit from "./useExit";
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
-import useColor from "./useColor";
-import useExit from "./useExit";
-import { useQuickDraw } from "./useQuickDraw";
+import React from "react";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);

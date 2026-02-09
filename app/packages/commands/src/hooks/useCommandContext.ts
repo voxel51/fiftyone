@@ -1,45 +1,78 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { CommandContext, CommandContextManager } from "../context";
-import { resolveContext } from "./utils";
 
 /**
- * Hook to create or bind to an existing context.  Used with useCommand, useKeyBinding to
- * contextualize execution.
- * If the context is created, it will be destroyed on unmount.
- * If the context already existed, it will not be destroyed, as someone else owns it's lifecycle.
- * A context contains the state of the command system for a particular workflow,
- * including registered commands, keybindings and the undo/redo stack.
- * @param context The context or id of an existing context to use
- * @param inheritCurrent If the context is new, true to inherit the parent context
- * @returns The context, and an activate/deactive method to use it.
+ * Hook to create and manage a NEW command context for a component.
+ *
+ * This hook manages the lifecycle of a CommandContext for the given `contextId`.
+ * It strictly creates the context on mount and cleans it up on unmount.
+ *
+ * IMPORTANT: The `contextId` must be unique. If a context with the same ID
+ * already exists in the CommandContextManager, this hook will throw an error.
+ *
+ * It provides:
+ * - `context`: The effective CommandContext instance.
+ * - `activate`: Function to push this context onto the stack.
+ * - `deactivate`: Function to pop this context from the stack.
+ *
+ * @param contextId Unique identifier for the new context
+ * @param inheritCurrent Whether to inherit commands/keybindings from the currently active context
  */
 export const useCommandContext = (
-  context?: CommandContext | string,
+  contextId: string,
   inheritCurrent?: boolean
 ): {
-  context: CommandContext;
+  context: CommandContext | undefined;
   activate: () => void;
   deactivate: () => void;
 } => {
-  const boundContext = useMemo(() => {
-    return resolveContext(context, inheritCurrent);
-  }, [context, inheritCurrent]);
+  const [context, setContext] = useState<CommandContext>();
 
+  const mgr = CommandContextManager.instance();
+  let effectiveContext = context;
+
+  // If we have a context in state, but it's been deleted from the manager (e.g. by cleanup),
+  // we must revive it immediately during render so children can use it.
+  if (context && !mgr.getCommandContext(contextId)) {
+    effectiveContext = mgr.createCommandContext(
+      contextId,
+      Boolean(inheritCurrent)
+    );
+  }
+
+  // Initialize/Create context
   useEffect(() => {
+    let ctx = effectiveContext;
+
+    if (!ctx) {
+      ctx = mgr.createCommandContext(contextId, Boolean(inheritCurrent));
+    }
+
+    // Sync state if needed
+    if (context !== ctx) {
+      setContext(ctx);
+    }
+
     return () => {
-      if (!boundContext.existed) {
-        CommandContextManager.instance().deleteContext(boundContext.context.id);
-      }
+      // In Strict Mode, this cleanup runs, deleting the context.
+      // The next render (before effect) will trigger the "revival" logic above.
+      mgr.deleteContext(contextId);
     };
-  }, [boundContext]);
+  }, [contextId, inheritCurrent]); // Don't include effectiveContext to avoid render loop
 
   const activate = useCallback(() => {
-    CommandContextManager.instance().pushContext(boundContext.context);
-  }, [boundContext.context]);
+    const ctx = CommandContextManager.instance().getCommandContext(contextId);
+    if (ctx) {
+      CommandContextManager.instance().pushContext(ctx);
+    }
+  }, [contextId]);
 
   const deactivate = useCallback(() => {
-    CommandContextManager.instance().popContext(boundContext.context.id);
-  }, [boundContext.context.id]);
+    const ctx = CommandContextManager.instance().getCommandContext(contextId);
+    if (ctx) {
+      CommandContextManager.instance().popContext(ctx.id);
+    }
+  }, [contextId]);
 
-  return { context: boundContext.context, activate, deactivate };
+  return { context: effectiveContext, activate, deactivate };
 };
