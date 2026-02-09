@@ -9,6 +9,13 @@ FiftyOne Server expected exceptions
 import strawberry as gql
 
 
+class DbVersionMismatchError(Exception):
+    """Raised when a sample update conflicts with the current state."""
+
+    def __init__(self, sample):
+        self.sample = sample
+
+
 @gql.type
 class QueryTimeout:
     query_time: int

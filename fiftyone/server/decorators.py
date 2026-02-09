@@ -17,6 +17,7 @@ from starlette.requests import Request
 
 from fiftyone.core.utils import create_response
 from fiftyone.server import utils
+from fiftyone.server.exceptions import DbVersionMismatchError
 
 
 def route(func):
@@ -40,6 +41,18 @@ def route(func):
             # Immediately re-raise starlette HTTP exceptions
             if isinstance(e, HTTPException):
                 raise e
+
+            if isinstance(e, DbVersionMismatchError):
+                from fiftyone.server.routes.sample import (
+                    generate_sample_etag,
+                )
+
+                etag = generate_sample_etag(e.sample)
+                return utils.json.JSONResponse(
+                    utils.json.serialize(e.sample),
+                    status_code=412,
+                    headers={"ETag": etag},
+                )
 
             # Cast non-starlette HTTP exceptions as JSON with 500 status code
             logging.exception(e)
