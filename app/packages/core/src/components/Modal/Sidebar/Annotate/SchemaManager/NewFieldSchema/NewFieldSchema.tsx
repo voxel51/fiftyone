@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSetAtom } from "jotai";
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { useNotification } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
   Input,
@@ -83,6 +84,7 @@ const NewFieldSchema = () => {
 
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const activateFields = useOperatorExecutor("activate_label_schemas");
+  const notify = useNotification();
 
   // Initialize correct attributes for 3D media
   useEffect(() => {
@@ -228,6 +230,14 @@ const NewFieldSchema = () => {
     createField.execute(params, {
       callback: (createResult) => {
         if (createResult.error) {
+          const error = createResult.errorMessage || createResult.error;
+
+          console.error("Failed to create field:", error);
+          notify({
+            msg: `Failed to create field: ${error}`,
+            variant: "error",
+          });
+
           setIsCreating(false);
           return;
         }
@@ -245,22 +255,40 @@ const NewFieldSchema = () => {
                   label_schemas,
                 } = schemasResult.result;
 
-                addToActiveSchema(active_label_schemas);
-                activateFields.execute({
-                  fields: active_label_schemas,
-                });
-                setLabelSchemasData(label_schemas);
-                setActiveLabelSchemas(active_label_schemas);
-              }
+                activateFields.execute(
+                  { fields: active_label_schemas },
+                  {
+                    callback: (activateResult) => {
+                      if (activateResult.error) {
+                        const error =
+                          activateResult.errorMessage || activateResult.error;
 
-              // Go back to schema manager (both label and primitive are fully configured)
-              exitNewFieldMode();
+                        console.error("Failed to activate fields:", error);
+                        notify({
+                          msg: `Failed to activate fields: ${error}`,
+                          variant: "error",
+                        });
+
+                        return;
+                      }
+
+                      addToActiveSchema(new Set(active_label_schemas));
+                      setLabelSchemasData(label_schemas);
+                      setActiveLabelSchemas(active_label_schemas);
+                      exitNewFieldMode();
+                    },
+                  }
+                );
+              } else {
+                exitNewFieldMode();
+              }
             },
           }
         );
       },
     });
   }, [
+    addToActiveSchema,
     attributes,
     activateFields,
     canCreate,
@@ -272,6 +300,7 @@ const NewFieldSchema = () => {
     getSchemas,
     labelType,
     newAttributes,
+    notify,
     primitiveConfig,
     primitiveType,
     setActiveLabelSchemas,
