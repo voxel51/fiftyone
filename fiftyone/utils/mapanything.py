@@ -202,6 +202,7 @@ class MapAnythingModel(fout.TorchImageModel):
                     depth = (
                         pred["depth_z"][0].squeeze(-1).cpu().numpy()
                     )
+                    depth = np.clip(depth, 0, None)
                     depth_max = depth.max()
                     if depth_max > 0:
                         depth_norm = depth / depth_max
