@@ -255,7 +255,6 @@ const NewFieldSchema = () => {
                   label_schemas,
                 } = schemasResult.result;
 
-                addToActiveSchema(new Set(active_label_schemas));
                 setLabelSchemasData(label_schemas);
                 setActiveLabelSchemas(active_label_schemas);
 
