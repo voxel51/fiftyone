@@ -43,15 +43,10 @@ def route(func):
                 raise e
 
             if isinstance(e, DbVersionMismatchError):
-                from fiftyone.server.routes.sample import (
-                    generate_sample_etag,
-                )
-
-                etag = generate_sample_etag(e.sample)
                 return utils.json.JSONResponse(
                     utils.json.serialize(e.sample),
                     status_code=412,
-                    headers={"ETag": etag},
+                    headers={"ETag": e.etag},
                 )
 
             # Cast non-starlette HTTP exceptions as JSON with 500 status code

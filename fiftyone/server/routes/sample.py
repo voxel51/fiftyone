@@ -144,7 +144,9 @@ def get_sample(
                 sample.last_modified_at,
                 if_last_modified_at,
             )
-            raise DbVersionMismatchError(sample)
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
+            )
 
     return sample
 
@@ -340,11 +342,13 @@ def save_sample(
                 sample.id,
                 if_last_modified_at,
             )
-            raise DbVersionMismatchError(sample)
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
+            )
     else:
         sample.save()
 
-    # Ensure last_modified_at reflects persisted state before computing
+    # Ensure last_modified_at reflects persisted state before computing Etag
     # ETag
     try:
         sample.reload(hard=True)
