@@ -63,7 +63,7 @@ import { calculateCameraPositionForUpVector } from "../utils";
 import { Annotation3d } from "./Annotation3d";
 import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
-import { Fo3dSceneContext } from "./context";
+import { DEFAULT_RAYCAST_PRECISION, Fo3dSceneContext } from "./context";
 import {
   getCameraPositionKey,
   getFo3dRoot,
@@ -672,8 +672,8 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
-    "fo3d-raycastPrecision",
-    9
+    "fo3d-raycastingPrecision",
+    DEFAULT_RAYCAST_PRECISION
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
