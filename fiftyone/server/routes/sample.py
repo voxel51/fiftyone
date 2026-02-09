@@ -19,6 +19,7 @@ from starlette.requests import Request
 
 import fiftyone as fo
 from fiftyone.server import decorators, utils
+from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
     get_dataset,
     get_sample_from_dataset,
@@ -143,8 +144,8 @@ def get_sample(
                 sample.last_modified_at,
                 if_last_modified_at,
             )
-            raise HTTPException(
-                status_code=412, detail="If-Match condition failed"
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
             )
 
     return sample
@@ -341,13 +342,13 @@ def save_sample(
                 sample.id,
                 if_last_modified_at,
             )
-            raise HTTPException(
-                status_code=412, detail="If-Match condition failed"
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
             )
     else:
         sample.save()
 
-    # Ensure last_modified_at reflects persisted state before computing
+    # Ensure last_modified_at reflects persisted state before computing Etag
     # ETag
     try:
         sample.reload(hard=True)
