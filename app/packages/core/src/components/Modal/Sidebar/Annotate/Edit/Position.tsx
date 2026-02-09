@@ -5,7 +5,7 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 import { useAtom, useAtomValue } from "jotai";
@@ -146,12 +146,19 @@ export default function Position({ readOnly = false }: PositionProps) {
           }
 
           const oldBounds = overlay.getAbsoluteBounds();
+          const newBounds = {
+            ...oldBounds,
+            ...data.dimensions,
+            ...data.position,
+          };
+
           scene?.executeCommand(
-            new TransformOverlayCommand(overlay, overlay.id, oldBounds, {
-              ...oldBounds,
-              ...data.dimensions,
-              ...data.position,
-            })
+            new TransformOverlayCommand(
+              overlay,
+              overlay.id,
+              oldBounds,
+              newBounds
+            )
           );
         }}
       />

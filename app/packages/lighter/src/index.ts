@@ -70,6 +70,7 @@ export type {
   Dimensions,
   DrawStyle,
   Point,
+  RawLookerLabel,
   Rect,
   Spatial,
   TextOptions,

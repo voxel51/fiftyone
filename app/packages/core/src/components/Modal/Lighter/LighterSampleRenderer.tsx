@@ -23,6 +23,7 @@ import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
+import { useSyncOverlayToSidebar } from "./useSyncOverlayToSidebar";
 
 export interface LighterSampleRendererProps {
   /** Custom CSS class name */
@@ -140,6 +141,7 @@ const LighterSetupImpl = (props: {
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);
+  useSyncOverlayToSidebar(scene);
 
   return null;
 };
