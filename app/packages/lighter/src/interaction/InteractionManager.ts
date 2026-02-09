@@ -254,13 +254,32 @@ export class InteractionManager {
 
     let handler: InteractionHandler | undefined = undefined;
 
-    const interactiveHandler = this.getInteractiveHandler();
+    let interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
+
+      // QuickDraw: clicking outside the selected overlay starts a new detection.
+      if (quickDrawBridge.isQuickDrawActive()) {
+        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+        const isUnselectedOverlay =
+          !!handler &&
+          TypeGuards.isSelectable(handler) &&
+          !this.selectionManager.isSelected(handler.id);
+
+        if (isNonOverlay || isUnselectedOverlay) {
+          this.selectionManager.clearSelection();
+
+          interactiveHandler = this.getInteractiveHandler();
+          if (interactiveHandler) {
+            handler = interactiveHandler.getOverlay();
+            this.selectionManager.select(handler.id);
+          }
+        }
+      }
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
@@ -361,6 +380,8 @@ export class InteractionManager {
         event.preventDefault();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
+    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+      this.canvas.style.cursor = "crosshair";
     }
   };
 
@@ -416,10 +437,6 @@ export class InteractionManager {
             ...detail,
             overlay: interactiveHandler,
           });
-
-          if (quickDrawBridge.isQuickDrawActive()) {
-            this.selectionManager.clearSelection();
-          }
         } else {
           const type =
             moveState === "DRAGGING"
