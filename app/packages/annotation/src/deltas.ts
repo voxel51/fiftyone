@@ -328,10 +328,22 @@ export const buildDetectionsMutationDelta = (
     detections: [],
   };
 
+  const newDetection = makeDetectionLabel(label);
+  const existingDetection = existingLabel.detections.find(
+    (det) => det._id === label.data._id
+  );
+
+  // Merge with existing data so server-enriched properties (tags,
+  // attributes, _cls, etc.) are preserved when the overlay only carries
+  // a minimal subset of fields.
+  const mergedDetection = existingDetection
+    ? { ...existingDetection, ...newDetection }
+    : newDetection;
+
   const newArray = [...existingLabel.detections];
   upsertArrayElement(
     newArray,
-    makeDetectionLabel(label),
+    mergedDetection,
     (det) => det._id === label.data._id
   );
 
@@ -375,10 +387,18 @@ export const buildClassificationsMutationDeltas = (
     classifications: [],
   };
 
+  const existingClassification = existingLabel.classifications.find(
+    (cls) => cls._id === label.data._id
+  );
+
+  const mergedClassification = existingClassification
+    ? { ...existingClassification, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.classifications];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedClassification,
     (cls) => cls._id === label.data._id
   );
 
@@ -425,10 +445,18 @@ export const buildPolylinesMutationDeltas = (
     polylines: [],
   };
 
+  const existingPolyline = existingLabel.polylines.find(
+    (ply) => ply._id === label.data._id
+  );
+
+  const mergedPolyline = existingPolyline
+    ? { ...existingPolyline, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.polylines];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedPolyline,
     (ply) => ply._id === label.data._id
   );
 
