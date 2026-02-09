@@ -410,9 +410,9 @@ class TestPointcloudOutput:
         result, _, _ = self._run_pointcloud()
         assert hasattr(result[0], "points3d")
 
-    def test_points3d_is_list(self):
+    def test_points3d_is_ndarray(self):
         result, _, _ = self._run_pointcloud()
-        assert isinstance(result[0].points3d, list)
+        assert isinstance(result[0].points3d, np.ndarray)
 
     def test_points3d_shape(self):
         result, _, _ = self._run_pointcloud()
@@ -685,7 +685,7 @@ class TestDeterminism:
         with _patch_load_images(), _patch_depthmap_to_world(pts3d, valid):
             r1 = model._predict_all([img])
             r2 = model._predict_all([img])
-        assert r1[0].points3d == r2[0].points3d
+        np.testing.assert_array_equal(r1[0].points3d, r2[0].points3d)
 
     def test_different_images_may_differ(self):
         """Different depth predictions produce different heatmaps."""
@@ -877,7 +877,7 @@ class TestBatchProcessing:
             ]
 
         for b, s in zip(batch_result, single_results):
-            assert b.points3d == s.points3d
+            np.testing.assert_array_equal(b.points3d, s.points3d)
 
     def test_mixed_input_types_in_batch(self, tmp_path):
         """Batch with PIL, numpy, and filepath all produce Heatmaps."""

@@ -233,7 +233,7 @@ class MapAnythingModel(fout.TorchImageModel):
                     outputs.append(
                         fol.Classification(
                             label="3d_pointcloud",
-                            points3d=pts3d_np[mask].tolist(),
+                            points3d=pts3d_np[mask],
                         )
                     )
                 else:
