@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSetAtom } from "jotai";
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useNotification } from "@fiftyone/state";
+import { useNotification, useRefresh } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
   Input,
@@ -85,6 +85,7 @@ const NewFieldSchema = () => {
   const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const activateFields = useOperatorExecutor("activate_label_schemas");
   const notify = useNotification();
+  const refreshSchema = useRefresh();
 
   // Initialize correct attributes for 3D media
   useEffect(() => {
@@ -275,6 +276,7 @@ const NewFieldSchema = () => {
                       addToActiveSchema(new Set(active_label_schemas));
                       setLabelSchemasData(label_schemas);
                       setActiveLabelSchemas(active_label_schemas);
+                      refreshSchema();
                       exitNewFieldMode();
                     },
                   }
@@ -303,6 +305,7 @@ const NewFieldSchema = () => {
     notify,
     primitiveConfig,
     primitiveType,
+    refreshSchema,
     setActiveLabelSchemas,
     setLabelSchemasData,
   ]);

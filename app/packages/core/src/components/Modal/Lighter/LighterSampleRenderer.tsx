@@ -12,7 +12,13 @@ import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { singletonCanvas } from "./SharedCanvas";
