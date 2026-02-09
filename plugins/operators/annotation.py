@@ -260,10 +260,13 @@ class CreateAndActivateField(foo.Operator):
         classes = label_schema_config.get("classes")
 
         # Determine component based on number of classes
-        if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-            component = foac.DROPDOWN
+        if classes:
+            if len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+                component = foac.DROPDOWN
+            else:
+                component = foac.RADIO
         else:
-            component = foac.RADIO
+            component = foac.TEXT
 
         # Build label schema
         return {
