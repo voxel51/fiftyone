@@ -19,7 +19,7 @@ import useEntries from "./useEntries";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
-import useAnnotationCommands from "./useAnnotationCommands";
+import useBindAnnotationCommands from "./useBindAnnotationCommands";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -125,7 +125,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
    * - Delete command (ModalDeleteAnnotation)
    * - Undo/Redo commands (specific to ModalAnnotate context)
    */
-  useAnnotationCommands();
+  useBindAnnotationCommands();
 
   useEffect(() => {
     contextManager.enter();

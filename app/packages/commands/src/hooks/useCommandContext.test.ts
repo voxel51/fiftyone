@@ -5,9 +5,7 @@ import { CommandContextManager } from "../context";
 
 describe("useCommandContext", () => {
   beforeEach(() => {
-    // Clear contexts before each test
-    // We might need to mock or reset the singleton instance if no clear method exists
-    // Assuming we can just access the instance
+    CommandContextManager.instance().reset();
   });
 
   it("should create and register a context on mount", () => {

@@ -4,10 +4,10 @@ import { useRecoilCallback } from "recoil";
 import * as fos from "@fiftyone/state";
 
 import { useModalNavigation } from "./useModalNavigation";
-import { useModalContext } from "./hooks";
 
-export const useModalCommands = (modalCloseHandler: () => Promise<void>) => {
-  const { activeLookerRef } = useModalContext();
+export const useBindModalCommands = (
+  modalCloseHandler: () => Promise<void>
+) => {
   const selectCallback = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -43,6 +43,8 @@ export const useModalCommands = (modalCloseHandler: () => Promise<void>) => {
     []
   );
 
+  const modalMode = fos.useModalMode();
+
   const closeFn = useRecoilCallback(
     ({ snapshot }) =>
       async () => {
@@ -51,14 +53,18 @@ export const useModalCommands = (modalCloseHandler: () => Promise<void>) => {
           fos.groupMediaIs3dVisible
         );
 
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+        if (
+          modalMode === fos.ModalMode.ANNOTATE ||
+          mediaType === "3d" ||
+          is3dVisible
+        ) {
           // we handle close logic in modal + other places
           return;
         }
 
         await modalCloseHandler();
       },
-    [modalCloseHandler]
+    [modalCloseHandler, modalMode]
   );
 
   const { next, previous } = useModalNavigation();

@@ -17,7 +17,7 @@ import { useLabelsContext } from "./useLabels";
 import { current } from "./Edit/state";
 import useExit from "./Edit/useExit";
 
-export default function useAnnotationCommands() {
+export default function useBindAnnotationCommands() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);

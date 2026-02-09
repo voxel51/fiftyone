@@ -29,50 +29,47 @@ export const useCommandContext = (
   const [context, setContext] = useState<CommandContext>();
 
   const mgr = CommandContextManager.instance();
-  let effectiveContext = context;
-
-  // If we have a context in state, but it's been deleted from the manager (e.g. by cleanup),
-  // we must revive it immediately during render so children can use it.
-  if (context && !mgr.getCommandContext(contextId)) {
-    effectiveContext = mgr.createCommandContext(
-      contextId,
-      Boolean(inheritCurrent)
-    );
-  }
 
   // Initialize/Create context
+  // Use useLayoutEffect to ensure context is created before layout paints/children effects,
+  // helping with avoiding flashes or missing context issues in consumers.
   useEffect(() => {
-    let ctx = effectiveContext;
-
-    if (!ctx) {
+    let ctx = context;
+    if (!ctx || !mgr.getCommandContext(contextId)) {
+      // If context is missing in state OR missing in manager (e.g. Strict Mode cleanup),
+      // create (or re-create) it.
       ctx = mgr.createCommandContext(contextId, Boolean(inheritCurrent));
-    }
-
-    // Sync state if needed
-    if (context !== ctx) {
       setContext(ctx);
     }
 
     return () => {
       // In Strict Mode, this cleanup runs, deleting the context.
-      // The next render (before effect) will trigger the "revival" logic above.
-      mgr.deleteContext(contextId);
+      // The next effect run will re-create it.
+      // We check manager presence to be safe, though usage implies ownership.
+      if (mgr.getCommandContext(contextId)) {
+        mgr.deleteContext(contextId);
+      }
     };
-  }, [contextId, inheritCurrent]); // Don't include effectiveContext to avoid render loop
+  }, [contextId, inheritCurrent]);
 
-  const activate = useCallback(() => {
-    const ctx = CommandContextManager.instance().getCommandContext(contextId);
-    if (ctx) {
-      CommandContextManager.instance().pushContext(ctx);
-    }
-  }, [contextId]);
-
-  const deactivate = useCallback(() => {
-    const ctx = CommandContextManager.instance().getCommandContext(contextId);
-    if (ctx) {
-      CommandContextManager.instance().popContext(ctx.id);
-    }
-  }, [contextId]);
-
-  return { context: effectiveContext, activate, deactivate };
+  // We return undefined initially if not yet created.
+  // Consumers must handle context potentially being undefined on first render.
+  return {
+    context:
+      context && mgr.getCommandContext(contextId) === context
+        ? context
+        : undefined,
+    activate: useCallback(() => {
+      const ctx = CommandContextManager.instance().getCommandContext(contextId);
+      if (ctx) {
+        CommandContextManager.instance().pushContext(ctx);
+      }
+    }, [contextId]),
+    deactivate: useCallback(() => {
+      const ctx = CommandContextManager.instance().getCommandContext(contextId);
+      if (ctx) {
+        CommandContextManager.instance().popContext(ctx.id);
+      }
+    }, [contextId]),
+  };
 };

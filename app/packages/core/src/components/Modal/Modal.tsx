@@ -25,7 +25,7 @@ import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
 import { CommandContextActivator, KnownContexts } from "@fiftyone/commands";
-import { useModalCommands } from "./useModalCommands";
+import { useBindModalCommands } from "./useBindModalCommands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -68,7 +68,7 @@ const ModalCommandHandlersRegistration = ({
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
   useRegisterRendererEventHandlers();
-  useModalCommands(modalCloseHandler);
+  useBindModalCommands(modalCloseHandler);
   const modalMode = useModalMode();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
