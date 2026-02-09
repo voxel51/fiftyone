@@ -263,7 +263,6 @@ const NewFieldSchema = () => {
   }, [
     attributes,
     activateFields,
-    addToActiveSchema,
     canCreate,
     category,
     classes,

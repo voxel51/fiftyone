@@ -55,7 +55,12 @@ const handleSample = async ({
     let type: LabelType;
     try {
       type = await getFieldType(paths[path]);
-    } catch {
+    } catch (error) {
+      console.warn(
+        `Skipping path "${path}": unable to resolve field type`,
+        error
+      );
+
       continue;
     }
     const result = get(data, paths[path]);
@@ -67,10 +72,16 @@ const handleSample = async ({
 
   // Process fields in activeLabelSchemas that aren't in Recoil's activeFields
   // (e.g. fields created via Schema Manager not yet in the Recoil schema cache)
+  const KNOWN_SINGULAR_TYPES = new Set<string>([
+    "Classification",
+    "Detection",
+    "Polyline",
+  ]);
+
   for (const schemaPath of schemas) {
     if (schemaPath in paths) continue;
 
-    const fieldData = data?.[schemaPath];
+    const fieldData = get(data, schemaPath);
     if (!fieldData || typeof fieldData !== "object") continue;
 
     const cls = (fieldData as Record<string, unknown>)?._cls as string;
@@ -81,14 +92,16 @@ const handleSample = async ({
       const items = (fieldData as Record<string, unknown>)[
         listInfo.listKey
       ] as unknown[];
+
       if (Array.isArray(items)) {
         labels.push(
           ...items.map((item) => createLabel(schemaPath, listInfo.type, item))
         );
       }
-    } else {
-      // Singular label type (e.g. Classification, Detection, Polyline)
+    } else if (KNOWN_SINGULAR_TYPES.has(cls)) {
       labels.push(createLabel(schemaPath, cls as LabelType, fieldData));
+    } else {
+      console.warn(`Unsupported label _cls "${cls}" for field "${schemaPath}"`);
     }
   }
 
