@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CommandContext } from "../context";
 import { CommandFunction } from "../types";
 import { resolveContext } from "./utils";
@@ -7,7 +7,7 @@ import { CommandHookReturn } from ".";
 /**
  * Hook to create and register a command in a given context.
  * The command is unregistered on unmount.
- * @param context An acquired context @see useCommandContext
+ * @param context An acquired context @see CommandContext
  * @param id The id of the command
  * @param execFn The function to call when the command is executed
  * @param enablement A function to determine if the command is enabled
@@ -24,9 +24,7 @@ export const useCreateCommand = (
   label?: string,
   description?: string
 ): CommandHookReturn => {
-  const boundContext = useMemo(() => {
-    return resolveContext(context);
-  }, [context]);
+  const boundContext = resolveContext(context);
 
   const exec = useRef(execFn);
   const enable = useRef(enablement);
@@ -38,7 +36,8 @@ export const useCreateCommand = (
   }, [execFn, enablement]);
 
   useEffect(() => {
-    const cmd = boundContext.context.registerCommand(
+    if (!boundContext) return;
+    const cmd = boundContext.registerCommand(
       id,
       () => exec.current(),
       () => enable.current(),
@@ -51,12 +50,13 @@ export const useCreateCommand = (
 
     return () => {
       unsub();
-      boundContext.context.unregisterCommand(cmd.id);
+      boundContext.unregisterCommand(cmd.id);
     };
   }, [boundContext, id, label, description]);
 
   useEffect(() => {
-    const cmd = boundContext.context.getCommand(id);
+    if (!boundContext) return;
+    const cmd = boundContext.getCommand(id);
     if (cmd) {
       setEnabled(cmd.isEnabled());
     }
@@ -64,7 +64,7 @@ export const useCreateCommand = (
 
   return {
     callback: useCallback(async () => {
-      return await boundContext.context.executeCommand(id);
+      return await boundContext?.executeCommand(id);
     }, [id, boundContext]),
     descriptor: {
       id: id,

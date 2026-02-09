@@ -17,6 +17,8 @@ import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+import React from "react";
+import { CommandContextActivator, KnownContexts } from "@fiftyone/commands";
 
 const Explore = () => {
   const renderEntry = useModalSidebarRenderEntry();
@@ -67,7 +69,12 @@ const Sidebar = () => {
       {mode === EXPLORE || !showAnnotationTab ? (
         <Explore />
       ) : (
-        <Annotate disabledReason={disabledReason} />
+        <CommandContextActivator
+          id={KnownContexts.ModalAnnotate}
+          inheritContext={true}
+        >
+          <Annotate disabledReason={disabledReason} />
+        </CommandContextActivator>
       )}
     </SidebarContainer>
   );

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
 import { CommandContext } from "../context";
-import { useCommandContext } from "./useCommandContext";
 import { CommandHookReturn } from ".";
+import { resolveContext } from "./utils";
+import { useCallback, useEffect, useState } from "react";
 
 export type CommandDescriptor = {
   id: string;
@@ -16,16 +16,17 @@ export type CommandDescriptor = {
  * @returns A callback to invoke the command and the command object,
  * a descriptor object, and a boolean indicating if the command is enabled.
  */
+
 export const useCommand = (
   commandId: string,
   context?: string | CommandContext
 ): CommandHookReturn => {
-  const boundContext = useCommandContext(context);
+  const boundContext = resolveContext(context);
   const [state, setState] = useState<{
     descriptor: CommandDescriptor;
     enabled: boolean;
   }>(() => {
-    const command = boundContext.context.getCommand(commandId);
+    const command = boundContext?.getCommand(commandId);
     return {
       descriptor: {
         id: commandId,
@@ -37,9 +38,10 @@ export const useCommand = (
   });
 
   useEffect(() => {
+    if (!boundContext) return;
     let unsubCommand: (() => void) | undefined;
     const update = () => {
-      const command = boundContext.context.getCommand(commandId);
+      const command = boundContext.getCommand(commandId);
       setState({
         descriptor: {
           id: commandId,
@@ -58,16 +60,16 @@ export const useCommand = (
     };
 
     update();
-    const unsubRegistry = boundContext.context.subscribeCommands(update);
+    const unsubRegistry = boundContext.subscribeCommands(update);
     return () => {
       unsubRegistry();
       unsubCommand?.();
     };
-  }, [commandId, boundContext.context]);
+  }, [commandId, boundContext]);
 
   const execute = useCallback(async () => {
-    await boundContext.context.executeCommand(commandId);
-  }, [commandId, boundContext.context]);
+    await boundContext?.executeCommand(commandId);
+  }, [commandId, boundContext]);
 
   return {
     callback: execute,

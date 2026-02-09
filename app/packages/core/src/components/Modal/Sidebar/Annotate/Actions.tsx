@@ -1,4 +1,4 @@
-import { useUndoRedo } from "@fiftyone/commands";
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
 import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
 import {
@@ -110,12 +110,6 @@ export const RoundButton = styled(Round)`
   column-gap: 1rem;
 `;
 
-export const RoundButtonWhite = styled(RoundButton)`
-  &:hover path {
-    fill: ${({ theme }) => theme.text.primary};
-  }
-`;
-
 const Square = styled(Container)<{ $active?: boolean }>`
   border-radius: var(--radius-xs);
 `;
@@ -185,8 +179,9 @@ const Detection = () => {
   );
 };
 
+// ...
 export const Undo = () => {
-  const { undo, undoEnabled } = useUndoRedo();
+  const { undo, undoEnabled } = useUndoRedo(KnownContexts.ModalAnnotate);
 
   return (
     <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
@@ -208,7 +203,7 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, redoEnabled } = useUndoRedo();
+  const { redo, redoEnabled } = useUndoRedo(KnownContexts.ModalAnnotate);
 
   return (
     <Tooltip placement="top-center" text="Redo">

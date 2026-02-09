@@ -1,14 +1,21 @@
 import { useEffect, useRef } from "react";
-import { useCommandContext } from "./useCommandContext";
-import { CommandFunction } from "../types";
+import { Command, CommandFunction } from "../types";
+import { resolveContext } from "./utils";
 
-export type KeyBinding = {
-  commandId: string;
-  sequence: string;
+type CommandId = string;
+type CommandDefinition = {
+  commandId: CommandId;
   handler: CommandFunction;
   label: string;
   description?: string;
   enablement?: () => boolean;
+};
+
+type BindingCommand = CommandDefinition | CommandId;
+
+export type KeyBinding = {
+  sequence: string;
+  command: BindingCommand;
 };
 
 /**
@@ -22,7 +29,7 @@ export const useKeyBindings = (
   keyBindings: KeyBinding[],
   deps: unknown[] = []
 ) => {
-  const { context } = useCommandContext(contextId);
+  const context = resolveContext(contextId);
   const keyBindingsRef = useRef(keyBindings);
 
   useEffect(() => {
@@ -30,31 +37,55 @@ export const useKeyBindings = (
   });
 
   useEffect(() => {
+    if (!context) {
+      return;
+    }
     const registeredCommands: string[] = [];
+    // ... rest of logic
+
     const registeredBindings: string[] = [];
 
     for (const binding of keyBindings) {
-      const { commandId, sequence, label, description } = binding;
-      const cmd = context.registerCommand(
-        commandId,
-        async () => {
-          const latest = keyBindingsRef.current.find(
-            (b) => b.commandId === commandId
-          );
-          return await latest?.handler();
-        },
-        () => {
-          const latest = keyBindingsRef.current.find(
-            (b) => b.commandId === commandId
-          );
-          return latest?.enablement?.() ?? true;
-        },
-        label,
-        description
-      );
-      registeredCommands.push(cmd.id);
-      context.bindKey(sequence, cmd.id);
-      registeredBindings.push(sequence);
+      let cmd: Command | undefined = undefined;
+      if (typeof binding.command === "string") {
+        cmd = context.getCommand(binding.command);
+        if (!cmd) {
+          throw new Error(`Command ${binding.command} not found`);
+        }
+      } else {
+        cmd = context.registerCommand(
+          binding.command.commandId,
+          async () => {
+            const latest = keyBindingsRef.current.find(
+              (b) =>
+                typeof b.command !== "string" &&
+                b.command.commandId ===
+                  (binding.command as CommandDefinition).commandId
+            );
+            if (latest && typeof latest.command !== "string") {
+              return await latest.command.handler();
+            }
+          },
+          () => {
+            const latest = keyBindingsRef.current.find(
+              (b) =>
+                typeof b.command !== "string" &&
+                b.command.commandId ===
+                  (binding.command as CommandDefinition).commandId
+            );
+            return (
+              (typeof latest?.command !== "string"
+                ? latest?.command.enablement?.()
+                : undefined) ?? true
+            );
+          },
+          binding.command.label,
+          binding.command.description
+        );
+        registeredCommands.push(cmd.id);
+      }
+      context.bindKey(binding.sequence, cmd.id);
+      registeredBindings.push(binding.sequence);
     }
 
     return () => {

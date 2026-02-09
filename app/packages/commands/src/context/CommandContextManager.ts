@@ -47,33 +47,6 @@ export class CommandContextManager {
     if (document) {
       document.addEventListener("keydown", this.handleKeyDown.bind(this));
     }
-    this.defaultContext.registerCommand(
-      KnownCommands.Undo,
-      async () => {
-        await this.getActiveContext().undo();
-      },
-      () => {
-        return this.getActiveContext().canUndo();
-      },
-      "Undo",
-      "Undoes the previous command."
-    );
-    this.defaultContext.bindKey("ctrl+z", KnownCommands.Undo);
-    this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
-    this.defaultContext.registerCommand(
-      KnownCommands.Redo,
-      async () => {
-        await this.getActiveContext().redo();
-      },
-      () => {
-        return this.getActiveContext().canRedo();
-      },
-      "Redo",
-      "Redoes a previously undone command."
-    );
-    this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
-    this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
-    this.defaultContext.bindKey("meta+shift+z", KnownCommands.Redo);
   }
   /**
    * @returns the single instance of this manager
