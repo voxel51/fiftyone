@@ -1,10 +1,11 @@
 import { Matrix4, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import type { CameraIntrinsics, FrustumData } from "../../frustum/types";
-import type { CuboidTransformData } from "../types";
+import type { CuboidTransformData, PolylineTransformData } from "../types";
 import {
   CUBOID_EDGES,
   computeCuboidProjection,
+  computePolylineProjection,
   getCuboidWorldCorners,
   projectToPixel,
 } from "./geometry";
@@ -281,5 +282,137 @@ describe("computeCuboidProjection", () => {
 
     expect(result).not.toBeNull();
     expect(result!.edges).toHaveLength(12);
+  });
+});
+
+describe("computePolylineProjection", () => {
+  it("returns null when intrinsics are missing", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, 5],
+          [1, 0, 5],
+        ],
+      ],
+    };
+    const frustum = makeFrustumData(null);
+    expect(computePolylineProjection(label, frustum)).toBeNull();
+  });
+
+  it("returns null when staticTransform is missing", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, 5],
+          [1, 0, 5],
+        ],
+      ],
+    };
+    const frustum: FrustumData = {
+      sliceName: "test",
+      intrinsics: SIMPLE_INTRINSICS,
+      staticTransform: null,
+    };
+    expect(computePolylineProjection(label, frustum)).toBeNull();
+  });
+
+  it("projects a single segment with all points in front of the camera", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, 5],
+          [1, 0, 5],
+          [1, 1, 5],
+        ],
+      ],
+    };
+    const frustum = makeFrustumData();
+    const result = computePolylineProjection(label, frustum);
+
+    expect(result).not.toBeNull();
+    // 3 points -> 2 consecutive edges
+    expect(result!.edges).toHaveLength(2);
+    expect(result!.vertices).toHaveLength(3);
+  });
+
+  it("adds a closing edge when closed is true", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, 5],
+          [1, 0, 5],
+          [1, 1, 5],
+        ],
+      ],
+      closed: true,
+    };
+    const frustum = makeFrustumData();
+    const result = computePolylineProjection(label, frustum);
+
+    expect(result).not.toBeNull();
+    // 3 points -> 2 consecutive edges + 1 closing edge = 3
+    expect(result!.edges).toHaveLength(3);
+  });
+
+  it("projects a multi-segment polyline", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, 5],
+          [1, 0, 5],
+        ],
+        [
+          [2, 0, 5],
+          [3, 0, 5],
+          [4, 0, 5],
+        ],
+      ],
+    };
+    const frustum = makeFrustumData();
+    const result = computePolylineProjection(label, frustum);
+
+    expect(result).not.toBeNull();
+    // Segment 1: 2 points -> 1 edge
+    // Segment 2: 3 points -> 2 edges
+    expect(result!.edges).toHaveLength(3);
+    expect(result!.vertices).toHaveLength(5);
+  });
+
+  it("handles partial visibility (some points behind camera)", () => {
+    const label: PolylineTransformData = {
+      // First point behind, second and third in front
+      points3d: [
+        [
+          [0, 0, -5],
+          [1, 0, 5],
+          [2, 0, 5],
+        ],
+      ],
+    };
+    const frustum = makeFrustumData();
+    const result = computePolylineProjection(label, frustum);
+
+    expect(result).not.toBeNull();
+    // Only the edge between points 1 and 2 (both in front) is valid
+    expect(result!.edges).toHaveLength(1);
+    expect(result!.vertices[0]).toBeNull();
+    expect(result!.vertices[1]).not.toBeNull();
+    expect(result!.vertices[2]).not.toBeNull();
+  });
+
+  it("returns null when all points are behind the camera", () => {
+    const label: PolylineTransformData = {
+      points3d: [
+        [
+          [0, 0, -5],
+          [1, 0, -5],
+          [2, 0, -5],
+        ],
+      ],
+    };
+    const frustum = makeFrustumData();
+    const result = computePolylineProjection(label, frustum);
+
+    expect(result).toBeNull();
   });
 });

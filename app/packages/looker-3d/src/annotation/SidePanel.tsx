@@ -18,6 +18,7 @@ import { Box3, Vector3 } from "three";
 import {
   FO_USER_DATA,
   ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
   getPanelElementId,
   getSidePanelGridArea,
 } from "../constants";
@@ -34,7 +35,7 @@ import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
-import { ProjectedCuboidOverlay } from "./projection";
+import { ProjectedCuboidOverlay, ProjectedPolylineOverlay } from "./projection";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
 
@@ -446,6 +447,9 @@ export const SidePanel = ({
           <ImageSliceImg src={resolveUrlForImageSlice(view)} />
           {activeFrustum && annotationMode === ANNOTATION_CUBOID && (
             <ProjectedCuboidOverlay frustumData={activeFrustum} />
+          )}
+          {activeFrustum && annotationMode === ANNOTATION_POLYLINE && (
+            <ProjectedPolylineOverlay frustumData={activeFrustum} />
           )}
         </ImageSliceContainer>
       ) : (

@@ -19,3 +19,8 @@ export interface CuboidProjectionData {
   edges: ProjectedEdge[];
   corners: (ProjectedCorner | null)[];
 }
+
+export interface PolylineProjectionData {
+  edges: ProjectedEdge[];
+  vertices: (ProjectedCorner | null)[];
+}

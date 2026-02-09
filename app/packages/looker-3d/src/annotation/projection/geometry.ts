@@ -1,8 +1,12 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { staticTransformToMatrix4 } from "../../frustum/builders";
 import type { CameraIntrinsics, FrustumData } from "../../frustum/types";
-import type { CuboidTransformData } from "../types";
-import type { CuboidProjectionData, ProjectedCorner } from "./types";
+import type { CuboidTransformData, PolylineTransformData } from "../types";
+import type {
+  CuboidProjectionData,
+  PolylineProjectionData,
+  ProjectedCorner,
+} from "./types";
 
 /** 12 edges of a cuboid, as pairs of corner indices. */
 export const CUBOID_EDGES: [number, number][] = [
@@ -132,4 +136,59 @@ export function computeCuboidProjection(
   if (edges.length === 0) return null;
 
   return { edges, corners: projected };
+}
+
+/**
+ * Compute projected edges and vertices for a polyline label.
+ *
+ * Returns null if frustum data is incomplete or no valid edges can be produced.
+ */
+export function computePolylineProjection(
+  label: PolylineTransformData,
+  frustumData: FrustumData
+): PolylineProjectionData | null {
+  if (!frustumData.intrinsics || !frustumData.staticTransform) return null;
+
+  const { intrinsics, staticTransform } = frustumData;
+
+  const camToWorld = staticTransformToMatrix4(staticTransform);
+  const worldToCam = camToWorld.clone().invert();
+
+  const allVertices: (ProjectedCorner | null)[] = [];
+  const edges: PolylineProjectionData["edges"] = [];
+
+  for (const segment of label.points3d) {
+    const projected = segment.map((pt) =>
+      projectToPixel(new Vector3(pt[0], pt[1], pt[2]), worldToCam, intrinsics)
+    );
+
+    allVertices.push(...projected);
+
+    // Connect consecutive points within the segment
+    for (let i = 0; i < projected.length - 1; i++) {
+      const p1 = projected[i];
+      const p2 = projected[i + 1];
+      if (p1 && p2) {
+        edges.push({ x1: p1.u, y1: p1.v, x2: p2.u, y2: p2.v });
+      }
+    }
+
+    // If closed, add edge from last to first point
+    if (label.closed && projected.length >= 2) {
+      const pFirst = projected[0];
+      const pLast = projected[projected.length - 1];
+      if (pFirst && pLast) {
+        edges.push({
+          x1: pLast.u,
+          y1: pLast.v,
+          x2: pFirst.u,
+          y2: pFirst.v,
+        });
+      }
+    }
+  }
+
+  if (edges.length === 0) return null;
+
+  return { edges, vertices: allVertices };
 }
