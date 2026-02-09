@@ -233,6 +233,9 @@ class CreateAndActivateField(foo.Operator):
 
             # Activate the field (prepend to make it appear at top)
             ctx.dataset.activate_label_schemas(field_name, prepend=True)
+            # Persist changes and sync with frontend
+            ctx.dataset.save()
+            ctx.trigger("reload_dataset")
 
             return {
                 "field_name": field_name,
