@@ -250,10 +250,8 @@ const NewFieldSchema = () => {
               setIsCreating(false);
 
               if (schemasResult.result) {
-                const {
-                  active_label_schemas,
-                  label_schemas,
-                } = schemasResult.result;
+                const { active_label_schemas, label_schemas } =
+                  schemasResult.result;
 
                 setLabelSchemasData(label_schemas);
                 setActiveLabelSchemas(active_label_schemas);
@@ -267,7 +265,6 @@ const NewFieldSchema = () => {
       },
     });
   }, [
-    addToActiveSchema,
     attributes,
     canCreate,
     category,
