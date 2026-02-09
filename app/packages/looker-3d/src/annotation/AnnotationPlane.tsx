@@ -303,6 +303,7 @@ export const AnnotationPlane = ({
           onPointerUp={handleMouseUp}
           onClick={handlePlaneClick}
           renderOrder={1000}
+          userData={{ isAnnotationPlane: true }}
         >
           <planeGeometry args={[planeSize, planeSize]} />
           <meshBasicMaterial
@@ -341,6 +342,7 @@ export const AnnotationPlane = ({
         onPointerMove={handleMouseMove}
         onPointerUp={handleMouseUp}
         onClick={handlePlaneClick}
+        userData={{ isAnnotationPlane: true }}
       >
         <Line
           ref={lineRef}

@@ -5,11 +5,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
-import {
-  current3dAnnotationModeAtom,
-  hoveredLabelAtom,
-  selectedLabelForAnnotationAtom,
-} from "../state";
+import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
+import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
   isValidPoint3d,
   validatePoints3d,
@@ -54,9 +51,7 @@ export const Polyline = ({
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
-  const setCurrent3dAnnotationMode = useSetRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   useEffect(() => {
     if (isSelectedForAnnotation) {

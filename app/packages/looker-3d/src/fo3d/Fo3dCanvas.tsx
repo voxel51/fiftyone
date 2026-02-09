@@ -2,27 +2,50 @@ import * as fos from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
-  Bvh,
   CameraControls,
   OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
 } from "@react-three/drei";
+import { useThree } from "@react-three/fiber";
 import { useAtomValue } from "jotai";
+import { useEffect } from "react";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
+import { Crosshair3D } from "../annotation/Crosshair3D";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { PANEL_ID_MAIN } from "../constants";
+import { FrustumCollection } from "../frustum";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
-import { FrustumCollection } from "../frustum";
 import { ThreeDLabels } from "../labels";
+import { RaycastService } from "../services/RaycastService";
+import { precisionToThreshold } from "../utils";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { Fo3dPointCloudSettings } from "./context";
+import { Fo3dPointCloudSettings, useFo3dContext } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
+
+/**
+ * Sets the raycaster threshold for Points based on raycast precision setting.
+ * This affects all raycasting in the scene.
+ */
+const RaycasterConfig = () => {
+  const { raycaster } = useThree();
+  const { raycastPrecision } = useFo3dContext();
+
+  useEffect(() => {
+    const threshold = precisionToThreshold(raycastPrecision);
+    if (raycaster.params.Points) {
+      raycaster.params.Points.threshold = threshold;
+    }
+  }, [raycaster, raycastPrecision]);
+
+  return null;
+};
 
 interface Fo3dSceneContentProps {
   /**
@@ -118,6 +141,7 @@ export const Fo3dSceneContent = ({
 
   return (
     <>
+      <RaycasterConfig />
       <StatusTunnel.Out />
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
@@ -152,11 +176,10 @@ export const Fo3dSceneContent = ({
         isGridVisible={true}
       />
       {!isSceneInitialized && <SpinningCube />}
-      <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-        <group ref={assetsGroupRef} visible={isSceneInitialized}>
-          <FoSceneComponent scene={foScene} />
-        </group>
-      </Bvh>
+
+      <group ref={assetsGroupRef} visible={isSceneInitialized}>
+        <FoSceneComponent scene={foScene} />
+      </group>
 
       {isSceneInitialized && (
         <>
@@ -174,8 +197,10 @@ const AnnotationControls = () => {
   return (
     <>
       <AnnotationPlane panelType="main" viewType="top" />
+      <RaycastService panelId={PANEL_ID_MAIN} />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
+      <Crosshair3D panelId={PANEL_ID_MAIN} />
     </>
   );
 };

@@ -23,6 +23,7 @@ import { Vector3 } from "three";
 import { StatusBar } from "../StatusBar";
 import { MultiPanelView } from "../annotation/MultiPanelView";
 import { AnnotationToolbar } from "../annotation/annotation-toolbar/AnnotationToolbar";
+import { useRenderModel } from "../annotation/store/renderModel";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
 import {
   DEFAULT_BOUNDING_BOX,
@@ -39,6 +40,8 @@ import {
   useZoomToSelected,
 } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
+import { useCursorBounds } from "../hooks/use-cursor-bounds";
+import { useLabelBounds } from "../hooks/use-label-bounds";
 import { useLoadingStatus } from "../hooks/use-loading-status";
 import type { Looker3dSettings } from "../settings";
 import {
@@ -49,12 +52,12 @@ import {
   currentHoveredPointAtom,
   isActivelySegmentingSelector,
   isCreatingCuboidPointerDownAtom,
-  current3dAnnotationModeAtom,
   isCurrentlyTransformingAtom,
   isFo3dBackgroundOnAtom,
   isSegmentingPointerDownAtom,
   selectedPolylineVertexAtom,
 } from "../state";
+import { useCurrent3dAnnotationMode } from "../state/accessors";
 import { HoverMetadata } from "../types";
 import { calculateCameraPositionForUpVector } from "../utils";
 import { Annotation3d } from "./Annotation3d";
@@ -308,6 +311,11 @@ export const MediaTypeFo3dComponent = () => {
   });
 
   const effectiveSceneBoundingBox = sceneBoundingBox || DEFAULT_BOUNDING_BOX;
+
+  const renderModel = useRenderModel();
+  const labelBounds = useLabelBounds(renderModel);
+
+  const cursorBounds = useCursorBounds(effectiveSceneBoundingBox, labelBounds);
 
   useEffect(() => {
     if (effectiveSceneBoundingBox && !lookAt) {
@@ -660,8 +668,12 @@ export const MediaTypeFo3dComponent = () => {
     "fo3d-pointCloudSettings",
     {
       enableTooltip: false,
-      rayCastingSensitivity: "high",
     }
+  );
+
+  const [raycastPrecision, setRaycastPrecision] = useBrowserStorage(
+    "fo3d-raycastPrecision",
+    9
   );
 
   const [hoverMetadata, setHoverMetadata] = useState<HoverMetadata | null>(
@@ -669,7 +681,8 @@ export const MediaTypeFo3dComponent = () => {
   );
 
   const isAnnotationPlaneEnabled = useRecoilValue(annotationPlaneAtom).enabled;
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
 
@@ -708,12 +721,15 @@ export const MediaTypeFo3dComponent = () => {
         isComputingSceneBoundingBox,
         fo3dRoot,
         sceneBoundingBox: effectiveSceneBoundingBox,
+        cursorBounds,
         lookAt,
         setLookAt,
         autoRotate,
         setAutoRotate,
         pointCloudSettings,
         setPointCloudSettings,
+        raycastPrecision,
+        setRaycastPrecision,
         hoverMetadata,
         setHoverMetadata,
         pluginSettings: settings,

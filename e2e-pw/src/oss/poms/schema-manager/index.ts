@@ -125,6 +125,24 @@ class SchemaManagerAsserter {
   }
 
   /**
+   * Is the "Add schema" button disabled
+   */
+  async isDisabled() {
+    await expect(
+      this.schemaManagerPom.page.getByTestId("open-schema-manager")
+    ).toBeDisabled();
+  }
+
+  /**
+   * Is the "Add schema" button enabled
+   */
+  async isEnabled() {
+    await expect(
+      this.schemaManagerPom.page.getByTestId("open-schema-manager")
+    ).toBeEnabled();
+  }
+
+  /**
    * Are the provided field rows in the active fields section
    *
    * @param fields a list of name and type rows, .e.g 'id' and 'system'

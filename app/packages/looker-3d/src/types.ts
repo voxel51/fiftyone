@@ -12,6 +12,9 @@ import type {
   ACTION_SHADE_BY,
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
+  PANEL_ID_MAIN,
+  PANEL_ID_SIDE_BOTTOM,
+  PANEL_ID_SIDE_TOP,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -26,6 +29,24 @@ export type Actions =
   | typeof ACTION_SET_PCDS
   | typeof ACTION_VIEW_JSON
   | typeof ACTION_VIEW_HELP;
+
+/**
+ * Panel identifiers.
+ * - 'main': The primary 3D view panel (perspective)
+ * - 'side-top': The top side panel (orthographic view)
+ * - 'side-bottom': The bottom side panel (orthographic view)
+ */
+export type PanelId =
+  | typeof PANEL_ID_MAIN
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
+
+/**
+ * Side panel identifiers.
+ */
+export type SidePanelId =
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
 
 export type ShadeBy =
   | typeof SHADE_BY_INTENSITY
@@ -121,6 +142,31 @@ export interface EventHandlers {
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
+
+/**
+ * Rich raycast result for centralized raycasting service.
+ */
+export interface RaycastResult {
+  sourcePanel: PanelId | null;
+  worldPosition: [number, number, number] | null;
+  intersectedObjectUuid: string | null;
+  pointIndex: number | null;
+  distance: number | null;
+  timestamp: number;
+}
+
+/**
+ * State for tracking cuboid creation with 3-click interaction.
+ * Step 0: waiting for first click (center position)
+ * Step 1: waiting for second click (orientation/yaw and length)
+ * Step 2: waiting for third click (width)
+ */
+export interface CuboidCreationState {
+  step: 0 | 1 | 2;
+  centerPosition: [number, number, number] | null;
+  orientationPoint: [number, number, number] | null;
+  currentPosition: [number, number, number] | null;
+}
 
 // =============================================================================
 // TYPE GUARDS

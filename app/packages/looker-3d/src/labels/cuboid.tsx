@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { extend } from "@react-three/fiber";
 import chroma from "chroma-js";
-import { useAtomValue } from "jotai";
 import { useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -11,11 +10,11 @@ import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeome
 import { useTransientCuboid } from "../annotation/store";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
 import {
-  current3dAnnotationModeAtom,
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
   transformModeAtom,
 } from "../state";
+import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import type { OverlayProps } from "./shared";
 import { useEventHandlers, useHoverState, useLabelColor } from "./shared/hooks";
 import { Transformable } from "./shared/TransformControls";
@@ -49,12 +48,10 @@ export const Cuboid = ({
 
   const isHovered = hoveredLabel?.id === label._id;
 
-  const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
+  const isAnnotateMode = fos.useModalMode() === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
-  const setCurrent3dAnnotationMode = useSetRecoilState(
-    current3dAnnotationModeAtom
-  );
+  const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
 
   useEffect(() => {
     if (isSelectedForAnnotation) {

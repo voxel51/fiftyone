@@ -1,19 +1,18 @@
-import { useRef, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
 import { useLighter } from "@fiftyone/lighter";
-import { ICONS } from "../Icons";
-import { Row } from "./Components";
-import { ItemLeft, ItemRight } from "../Components";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
+import { ItemLeft, ItemRight } from "../Components";
+import { ICONS } from "../Icons";
+import { Row } from "./Components";
 
-import { showModal } from "../state";
 import * as fos from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
-import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
+import { showModal } from "../state";
 import {
   currentFieldIsReadOnlyAtom,
   currentOverlay,
@@ -21,13 +20,11 @@ import {
   useAnnotationContext,
 } from "./state";
 
-import useColor from "./useColor";
-import { useQuickDraw } from "./useQuickDraw";
-import useExit from "./useExit";
-import { useRef, useState } from "react";
-import { Box, Menu, MenuItem, Stack } from "@mui/material";
-import { Clickable, Icon, IconName, Size, Text } from "@voxel51/voodo";
 import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
+import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/accessors";
+import useColor from "./useColor";
+import useExit from "./useExit";
+import { useQuickDraw } from "./useQuickDraw";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -91,7 +88,7 @@ const Header = () => {
   const annotationContext = useAnnotationContext();
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
 
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 

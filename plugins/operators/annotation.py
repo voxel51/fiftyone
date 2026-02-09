@@ -84,8 +84,13 @@ class GenerateLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         field = ctx.params.get("field", None)
+        limit = ctx.params.get("limit", None)
+        if limit:
+            view = ctx.dataset.limit(limit)
+        else:
+            view = ctx.dataset
         return {
-            "label_schema": ctx.dataset.generate_label_schemas(
+            "label_schema": view.generate_label_schemas(
                 fields=field, scan_samples=ctx.params.get("scan_samples", True)
             )
         }

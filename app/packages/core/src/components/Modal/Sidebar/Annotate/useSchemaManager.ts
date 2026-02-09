@@ -72,6 +72,7 @@ export type ActivateSchemasResponse = EmptyBody;
 export type CreateSchemasRequest = {
   field: string | string[];
   scan_samples?: boolean;
+  limit?: number;
 };
 
 export type CreateSchemasResponse = {
@@ -92,6 +93,8 @@ export type DeleteSchemasResponse = EmptyBody;
 
 export type InitializeSchemaRequest = {
   field: string;
+  scan_samples?: boolean;
+  limit?: number;
 };
 
 export type InitializeSchemaResponse = {
@@ -388,7 +391,8 @@ export const useSchemaManager = (): SchemaManager => {
     ): Promise<InitializeSchemaResponse> => {
       const createResponse = await createSchemas({
         field: request.field,
-        scan_samples: false,
+        scan_samples: request.scan_samples,
+        limit: request.limit,
       });
       const updateResponse = await updateSchema({
         field: request.field,

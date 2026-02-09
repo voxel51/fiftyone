@@ -260,6 +260,28 @@ export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
 }
 
 /**
+ * Converts a pointer event to Normalized Device Coordinates (NDC) relative to
+ * a specific HTML element (e.g., a panel container).
+ *
+ * @param ev - The pointer event to convert
+ * @param element - The HTML element to compute NDC relative to
+ * @returns An object with x and y coordinates in NDC space
+ */
+export function toNDCForElement(
+  ev: PointerEvent,
+  element: HTMLElement
+): { x: number; y: number } {
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+/**
  * Calculates the intersection point between a ray and a plane.
  *
  * @param raycaster - The THREE.js raycaster instance
@@ -651,4 +673,26 @@ export const rad2deg = (radians: number): number => radians * (180 / Math.PI);
 export const formatDegrees = (radians: number | undefined): string => {
   if (radians === undefined || !Number.isFinite(radians)) return "";
   return Math.round(rad2deg(radians)).toString();
+};
+
+/**
+ * Converts raycast precision to a raycaster threshold value.
+ * Uses quadratic scale.
+ * Higher precision values = smaller threshold (more precise).
+ *
+ * @param precision - Value from 1 to 10 (default: 9)
+ * @returns Threshold value for raycaster.params.Points.threshold
+ *
+ * Scale (quadratic):
+ * - 1 = 0.5 (lenient)
+ * - 5 = ~0.155
+ * - 9 = ~0.007
+ * - 10 = 0.001 (very precise)
+ */
+export const precisionToThreshold = (precision: number): number => {
+  const safePrecision = Number.isFinite(precision) ? precision : 9;
+  const clampedValue = Math.max(1, Math.min(10, safePrecision));
+  // Quadratic interpolation
+  const diff = 10 - clampedValue;
+  return 0.001 + 0.00616 * diff * diff;
 };
