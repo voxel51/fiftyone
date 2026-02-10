@@ -125,13 +125,21 @@ export function useFo3dBounds(
   }, [computeOnce, hardTimeoutMs, epsilon, stableSamples]);
 
   const recomputeBounds = useCallback(() => {
-    if (skip || !isReady) return;
+    if (skip || !isReady) {
+      runToken.current++;
+      setIsComputing(false);
+      return;
+    }
     runToken.current++;
     startLoop();
   }, [startLoop, skip, isReady]);
 
   useLayoutEffect(() => {
-    if (skip || !isReady) return;
+    if (skip || !isReady) {
+      runToken.current++;
+      setIsComputing(false);
+      return;
+    }
 
     const cancel = startLoop();
     return () => {

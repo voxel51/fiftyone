@@ -5,7 +5,6 @@ import { ProjectedPointOverlay } from "./ProjectedPointOverlay";
 
 interface Projected3dOverlaysProps {
   frustumData: FrustumData;
-  annotationMode: string | null;
   panelId: PanelId;
 }
 
@@ -14,7 +13,6 @@ interface Projected3dOverlaysProps {
  */
 export function Projected3dOverlays({
   frustumData,
-  annotationMode,
   panelId,
 }: Projected3dOverlaysProps) {
   return (

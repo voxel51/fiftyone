@@ -4,6 +4,9 @@ export const DEFAULT_OPACITY = 0.7;
 /** Reduced opacity for annotations when another label is selected */
 export const DESELECTED_OPACITY = 0.3;
 
+/** Color for when a label is hovered */
+export const HOVERED_COLOR = "#ffffff";
+
 /** Default stroke color when an annotation has no color assigned */
 export const FALLBACK_COLOR = "#00ff00";
 

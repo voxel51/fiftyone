@@ -1,4 +1,3 @@
-import styled from "styled-components";
 import type { FrustumData } from "../../frustum/types";
 import {
   useCurrentSelected3dAnnotationLabel,
@@ -7,15 +6,7 @@ import {
 import { useRenderModel } from "../store/renderModel";
 import { ProjectedCuboidItem } from "./ProjectedCuboidItem";
 import { ProjectedPolylineItem } from "./ProjectedPolylineItem";
-
-const OverlaySvg = styled.svg`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-`;
+import { OverlaySvg } from "./shared";
 
 interface AllProjectedAnnotationsProps {
   frustumData: FrustumData;
@@ -33,15 +24,21 @@ export function AllProjectedAnnotations({
 
   const { intrinsics } = frustumData;
 
-  const imgW = intrinsics?.width ?? Math.round((intrinsics?.cx ?? 0) * 2);
-  const imgH = intrinsics?.height ?? Math.round((intrinsics?.cy ?? 0) * 2);
+  if (!intrinsics) return null;
+
+  const hasSize =
+    (intrinsics.width != null && intrinsics.height != null) ||
+    (intrinsics.cx != null && intrinsics.cy != null);
+
+  if (!hasSize) return null;
+
+  const imgW = intrinsics.width ?? Math.round(intrinsics.cx * 2);
+  const imgH = intrinsics.height ?? Math.round(intrinsics.cy * 2);
 
   const selectedId = selectedLabel?._id ?? null;
   const hoveredId = hoveredLabel?.id ?? null;
   const isSameAsSelected = hoveredId != null && hoveredId === selectedId;
   const isAnyLabelSelected = selectedId != null;
-
-  if (!imgW || !imgH) return null;
 
   return (
     <OverlaySvg

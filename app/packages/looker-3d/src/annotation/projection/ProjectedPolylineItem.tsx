@@ -4,6 +4,7 @@ import {
   DEFAULT_OPACITY,
   DESELECTED_OPACITY,
   FALLBACK_COLOR,
+  HOVERED_COLOR,
   SELECTED_DASH_ARRAY,
 } from "./constants";
 import { SvgPolylineProjection } from "./SvgPolylineProjection";
@@ -56,7 +57,7 @@ export function ProjectedPolylineItem({
     return (
       <SvgPolylineProjection
         data={projection}
-        color={polyline.color ?? FALLBACK_COLOR}
+        color={HOVERED_COLOR}
         opacity={1}
       />
     );

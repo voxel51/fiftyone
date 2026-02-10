@@ -4,6 +4,7 @@ import {
   DEFAULT_OPACITY,
   DESELECTED_OPACITY,
   FALLBACK_COLOR,
+  HOVERED_COLOR,
   SELECTED_DASH_ARRAY,
 } from "./constants";
 import { SvgCuboidProjection } from "./SvgCuboidProjection";
@@ -56,7 +57,7 @@ export function ProjectedCuboidItem({
     return (
       <SvgCuboidProjection
         data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
+        color={HOVERED_COLOR}
         opacity={1}
       />
     );

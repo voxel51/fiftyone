@@ -2,7 +2,6 @@ import { useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { PANEL_ID_SIDE_TOP, VIEW_TYPE_LEFT, VIEW_TYPE_TOP } from "../constants";
 import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
-import { useCurrent3dAnnotationMode } from "../state";
 import type { SidePanelId, SidePanelViewType } from "../types";
 import { Projected3dOverlays } from "./projection";
 
@@ -100,7 +99,6 @@ export const ImageSlicePanel = ({
   resolveUrlForImageSlice,
 }: ImageSlicePanelProps) => {
   const { data: frustumData } = useFetchFrustumParameters();
-  const annotationMode = useCurrent3dAnnotationMode();
 
   // Find the frustum data matching the current image-slice view
   const activeFrustum = useMemo(() => {
@@ -153,11 +151,7 @@ export const ImageSlicePanel = ({
     <ImageSliceContainer>
       <ImageSliceImg src={imageUrl} />
       {activeFrustum && (
-        <Projected3dOverlays
-          frustumData={activeFrustum}
-          annotationMode={annotationMode}
-          panelId={panelId}
-        />
+        <Projected3dOverlays frustumData={activeFrustum} panelId={panelId} />
       )}
     </ImageSliceContainer>
   );

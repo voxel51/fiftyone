@@ -76,8 +76,10 @@ export const usePointCloudHoverFromRaycast = ({
 
     if (raycastResult.worldPosition) {
       md.coord = raycastResult.worldPosition;
-
       setCurrentHoveredPoint(new Vector3(...raycastResult.worldPosition));
+    } else {
+      md.coord = null;
+      setCurrentHoveredPoint(null);
     }
 
     // Dynamically handle all other attributes

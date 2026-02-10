@@ -269,7 +269,8 @@ export const MediaTypeFo3dComponent = () => {
   const loadingStatus = useLoadingStatus();
 
   // Ready when fo3d is parsed, foScene has assets, and all referenced assets are loaded
-  const isReadyForBounds = foScene && !isParsingFo3d && loadingStatus.isSuccess;
+  const isReadyForBounds =
+    Boolean(foScene) && !isParsingFo3d && loadingStatus.isSuccess;
 
   const {
     boundingBox: sceneBoundingBox,
