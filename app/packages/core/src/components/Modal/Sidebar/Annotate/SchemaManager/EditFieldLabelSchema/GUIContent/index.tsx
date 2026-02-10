@@ -14,6 +14,7 @@ import {
 import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import { useFieldType } from "../../hooks";
+import { reconcileComponent } from "../../utils";
 import {
   EditSectionHeader,
   EmptyStateBox,
@@ -60,7 +61,7 @@ const GUIContent = ({
     (name: string) => {
       if (!config) return;
       const newClasses = [name, ...classes];
-      onConfigChange?.({ ...config, classes: newClasses });
+      onConfigChange?.(reconcileComponent({ ...config, classes: newClasses }));
     },
     [config, classes, onConfigChange]
   );
@@ -78,7 +79,7 @@ const GUIContent = ({
     (name: string) => {
       if (!config) return;
       const newClasses = classes.filter((c) => c !== name);
-      onConfigChange?.({ ...config, classes: newClasses });
+      onConfigChange?.(reconcileComponent({ ...config, classes: newClasses }));
     },
     [config, classes, onConfigChange]
   );

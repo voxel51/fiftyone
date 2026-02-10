@@ -6,6 +6,7 @@ import { is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
+  CLASSES_COMPONENT_THRESHOLD,
   componentNeedsRange,
   componentNeedsValues,
   getDefaultComponent,
@@ -574,6 +575,35 @@ export const getAttributeFormErrors = (
  */
 export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
   !!(errors.values || errors.range || errors.default);
+
+// =============================================================================
+// Component Reconciliation
+// =============================================================================
+
+/**
+ * Auto-adjust the component type to match the current classes.
+ * - Classes present + component is "text" → switch to "radio" or "dropdown"
+ * - Classes removed + component is "radio"/"dropdown" → switch to "text"
+ */
+export const reconcileComponent = (
+  config: SchemaConfigType
+): SchemaConfigType => {
+  const { classes, component } = config;
+
+  if (classes && classes.length > 0) {
+    if (component === "text") {
+      return {
+        ...config,
+        component:
+          classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio",
+      };
+    }
+  } else if (component === "radio" || component === "dropdown") {
+    return { ...config, component: "text" };
+  }
+
+  return config;
+};
 
 // =============================================================================
 // Media Type Helpers
