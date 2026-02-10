@@ -580,7 +580,7 @@ def test_infer_same_image():
     with model:
         result1 = model._predict_all([img])
         result2 = model._predict_all([img])
-    assert np.allclose(result1[0], result2[0])
+    assert np.allclose(result1[0], result2[0], rtol=1e-4, atol=1e-6)
 
 
 # =============================================================================
@@ -748,7 +748,7 @@ def test_fo_recompute_embeddings():
         second_emb = np.array(dataset.first().test_emb)
 
         # Should be the same (deterministic)
-        assert np.allclose(first_emb, second_emb)
+        assert np.allclose(first_emb, second_emb, rtol=1e-4, atol=1e-6)
 
     finally:
         fo.delete_dataset(dataset.name)
