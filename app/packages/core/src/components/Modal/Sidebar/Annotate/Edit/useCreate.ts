@@ -17,6 +17,8 @@ import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
 import { useQuickDraw } from "./useQuickDraw";
+import { DetectionLabel } from "@fiftyone/looker";
+import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
@@ -55,13 +57,15 @@ const useCreateAnnotationLabel = () => {
       };
 
       if (type === CLASSIFICATION) {
+        data["_cls"] = "Classification";
+
         const overlay = overlayFactory.create<
           ClassificationOptions,
           ClassificationOverlay
         >("classification", {
           field,
           id,
-          label: data,
+          label: data as ClassificationLabel,
         });
         addOverlay(overlay);
         scene?.selectOverlay(id, { ignoreSideEffects: true });
@@ -71,13 +75,15 @@ const useCreateAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
+        data["_cls"] = "Detection";
+
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
         >("bounding-box", {
           field,
           id,
-          label: data,
+          label: data as DetectionLabel,
         });
         addOverlay(overlay);
 
