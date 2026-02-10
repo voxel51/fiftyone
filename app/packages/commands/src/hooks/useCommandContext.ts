@@ -1,5 +1,15 @@
-import { useCallback, useState, useEffect } from "react";
+import {
+  useCallback,
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+} from "react";
 import { CommandContext, CommandContextManager } from "../context";
+
+const ReactCommandContext = createContext<CommandContext | undefined>(
+  undefined
+);
 
 /**
  * Hook to create and manage a NEW command context for a component.
@@ -25,32 +35,39 @@ export const useCommandContext = (
   context: CommandContext | undefined;
   activate: () => void;
   deactivate: () => void;
+  Provider: React.Provider<CommandContext | undefined>;
 } => {
-  const [context, setContext] = useState<CommandContext>();
-
   const mgr = CommandContextManager.instance();
+  const parentContext = useContext(ReactCommandContext);
 
-  // Initialize/Create context
-  // Use useLayoutEffect to ensure context is created before layout paints/children effects,
-  // helping with avoiding flashes or missing context issues in consumers.
-  useEffect(() => {
-    let ctx = context;
-    if (!ctx || !mgr.getCommandContext(contextId)) {
-      // If context is missing in state OR missing in manager (e.g. Strict Mode cleanup),
-      // create (or re-create) it.
-      ctx = mgr.createCommandContext(contextId, Boolean(inheritCurrent));
-      setContext(ctx);
+  const [context] = useState(() => {
+    // Synchronously create or retrieve the context on first render
+    const existing = mgr.getCommandContext(contextId);
+    if (existing) {
+      return existing;
     }
 
+    // Use the nearest React context as the parent if we want to inherit.
+    // If inheritCurrent is true but no React context exists, fall back to the manager's active context.
+    // We pass 'true' to manager if we want to fallback to the manager's stack-based parent resolution.
+    // But since we are synchronous now, passing parentContext directly is better.
+    const parent = inheritCurrent ? parentContext || true : false;
+
+    return mgr.createCommandContext(contextId, parent);
+  });
+
+  useEffect(() => {
+    // The context is created synchronously above.
+    // This effect manages the deletion of the context on unmount.
     return () => {
       // In Strict Mode, this cleanup runs, deleting the context.
-      // The next effect run will re-create it.
-      // We check manager presence to be safe, though usage implies ownership.
+      // The next time the component renders (after the remount), a new
+      // context will be created synchronously in the useState initializer.
       if (mgr.getCommandContext(contextId)) {
         mgr.deleteContext(contextId);
       }
     };
-  }, [contextId, inheritCurrent]);
+  }, [contextId, mgr]);
 
   // We return undefined initially if not yet created.
   // Consumers must handle context potentially being undefined on first render.
@@ -71,5 +88,6 @@ export const useCommandContext = (
         CommandContextManager.instance().popContext(ctx.id);
       }
     }, [contextId]),
+    Provider: ReactCommandContext.Provider,
   };
 };

@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState } from "react";
+import React, { useLayoutEffect } from "react";
 import { useCommandContext } from "../hooks/useCommandContext";
 
 export interface CommandContextActivatorProps {
@@ -12,30 +12,29 @@ const CommandContextActivatorImpl: React.FC<CommandContextActivatorProps> = ({
   inheritContext,
   children,
 }) => {
-  const { context, activate, deactivate } = useCommandContext(
-    id,
-    inheritContext
-  );
-  const [active, setActive] = useState(false);
+  const {
+    context,
+    activate,
+    deactivate,
+    Provider: ContextProvider,
+  } = useCommandContext(id, inheritContext);
 
   useLayoutEffect(() => {
     if (context) {
       activate();
-      setActive(true);
     }
     return () => {
       if (context) {
-        setActive(false);
         deactivate();
       }
     };
   }, [activate, deactivate, context]);
 
-  if (!context || !active) {
+  if (!context) {
     return null;
   }
 
-  return <>{children}</>;
+  return <ContextProvider value={context}>{children}</ContextProvider>;
 };
 
 export const CommandContextActivator: React.FC<CommandContextActivatorProps> = (

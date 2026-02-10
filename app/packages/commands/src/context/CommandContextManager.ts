@@ -67,17 +67,20 @@ export class CommandContextManager {
    */
   public createCommandContext(
     id: string,
-    inheritCurrent: boolean
+    parentOrInherit: CommandContext | boolean
   ): CommandContext {
     if (this.contexts.has(id)) {
       throw new Error(`The command context ${id} already exists.`);
     }
-    const newContext = new CommandContext(
-      id,
-      inheritCurrent
-        ? this.contextStack[this.contextStack.length - 1]
-        : undefined
-    );
+
+    let parent: CommandContext | undefined = undefined;
+    if (parentOrInherit instanceof CommandContext) {
+      parent = parentOrInherit;
+    } else if (parentOrInherit === true) {
+      parent = this.contextStack[this.contextStack.length - 1];
+    }
+
+    const newContext = new CommandContext(id, parent);
     this.contexts.set(id, newContext);
     return newContext;
   }
@@ -111,7 +114,23 @@ export class CommandContextManager {
    * @param context The context to activate
    */
   public pushContext(context: CommandContext): void {
-    this.contextStack.push(context);
+    if (this.contextStack.includes(context)) {
+      return;
+    }
+
+    // Find the first context on the stack that is a descendant of the new context.
+    // We want to insert the new context BEFORE its descendants to maintain
+    // the correct "inner-most is top-most" order, especially since React
+    // effects run bottom-up.
+    let insertIndex = this.contextStack.length;
+    for (let i = 0; i < this.contextStack.length; i++) {
+      if (this.contextStack[i].isDescendantOf(context)) {
+        insertIndex = i;
+        break;
+      }
+    }
+
+    this.contextStack.splice(insertIndex, 0, context);
     context.activate();
     this.fireListeners();
   }

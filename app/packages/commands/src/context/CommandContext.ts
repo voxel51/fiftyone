@@ -45,6 +45,28 @@ export class CommandContext {
   }
 
   /**
+   * @returns the parent context if any
+   */
+  public getParent(): CommandContext | undefined {
+    return this.parent;
+  }
+
+  /**
+   * Checks if this context is a descendant of the given context.
+   * @param context The context to check
+   */
+  public isDescendantOf(context: CommandContext): boolean {
+    let current = this.parent;
+    while (current) {
+      if (current === context) {
+        return true;
+      }
+      current = current.parent;
+    }
+    return false;
+  }
+
+  /**
    * Marks the context as active, causing it to listen
    * to parent contexts.
    */
