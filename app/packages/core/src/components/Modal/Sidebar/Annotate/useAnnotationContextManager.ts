@@ -127,7 +127,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
           });
         }
 
-        await schemaManager.activateSchemas({ fields: [field] });
+        if (canManageSchema) {
+          await schemaManager.activateSchemas({ fields: [field] });
+        }
 
         // refresh annotation state
         listSchemaResponse = await schemaManager.listSchemas({});
