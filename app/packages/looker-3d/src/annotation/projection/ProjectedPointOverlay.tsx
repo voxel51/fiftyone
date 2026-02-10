@@ -62,6 +62,12 @@ export function ProjectedPointOverlay({
   const { intrinsics } = frustumData;
   if (!intrinsics) return null;
 
+  const hasSize =
+    (intrinsics.width != null && intrinsics.height != null) ||
+    (intrinsics.cx != null && intrinsics.cy != null);
+
+  if (!hasSize) return null;
+
   const imgW = intrinsics.width ?? Math.round(intrinsics.cx * 2);
   const imgH = intrinsics.height ?? Math.round(intrinsics.cy * 2);
 

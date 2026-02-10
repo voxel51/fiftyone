@@ -1,12 +1,6 @@
 import type { FrustumData } from "../../frustum/types";
 import type { ReconciledDetection3D } from "../types";
-import {
-  DEFAULT_OPACITY,
-  DESELECTED_OPACITY,
-  FALLBACK_COLOR,
-  HOVERED_COLOR,
-  SELECTED_DASH_ARRAY,
-} from "./constants";
+import { resolveVisualProps } from "./shared";
 import { SvgCuboidProjection } from "./SvgCuboidProjection";
 import { useProjectedCuboid } from "./useProjectedCuboid";
 
@@ -32,42 +26,19 @@ export function ProjectedCuboidItem({
 
   if (!projection) return null;
 
-  if (isSelected) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
-        opacity={1}
-        strokeDasharray={SELECTED_DASH_ARRAY}
-      />
-    );
-  }
-
-  if (isAnyLabelSelected) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
-        opacity={DESELECTED_OPACITY}
-      />
-    );
-  }
-
-  if (isHovered) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={HOVERED_COLOR}
-        opacity={1}
-      />
-    );
-  }
+  const { color, opacity, strokeDasharray } = resolveVisualProps(
+    detection.color,
+    isSelected,
+    isHovered,
+    isAnyLabelSelected
+  );
 
   return (
     <SvgCuboidProjection
       data={projection}
-      color={detection.color ?? FALLBACK_COLOR}
-      opacity={DEFAULT_OPACITY}
+      color={color}
+      opacity={opacity}
+      strokeDasharray={strokeDasharray}
     />
   );
 }
