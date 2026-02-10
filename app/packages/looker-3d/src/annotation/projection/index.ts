@@ -1,6 +1,6 @@
 export * from "./geometry";
 export { Projected3dOverlays } from "./Projected3dOverlays";
-export { ProjectedCuboidOverlay } from "./ProjectedCuboidOverlay";
+export { ProjectedCuboidItem } from "./ProjectedCuboidItem";
 export { ProjectedPointOverlay } from "./ProjectedPointOverlay";
-export { ProjectedPolylineOverlay } from "./ProjectedPolylineOverlay";
+export { ProjectedPolylineItem } from "./ProjectedPolylineItem";
 export { useProjected3dPoint } from "./useProjected3dPoint";

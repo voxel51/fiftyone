@@ -5,16 +5,8 @@ import {
   useHoveredLabel3d,
 } from "../../state";
 import { useRenderModel } from "../store/renderModel";
-import type { ReconciledDetection3D, ReconciledPolyline3D } from "../types";
-import { SvgCuboidProjection } from "./SvgCuboidProjection";
-import { SvgPolylineProjection } from "./SvgPolylineProjection";
-import { useProjectedCuboid } from "./useProjectedCuboid";
-import { useProjectedPolyline } from "./useProjectedPolyline";
-
-const DEFAULT_OPACITY = 0.7;
-const DESELECTED_OPACITY = 0.3;
-const FALLBACK_COLOR = "#00ff00";
-const SELECTED_DASH_ARRAY = "5,5";
+import { ProjectedCuboidItem } from "./ProjectedCuboidItem";
+import { ProjectedPolylineItem } from "./ProjectedPolylineItem";
 
 const OverlaySvg = styled.svg`
   position: absolute;
@@ -27,130 +19,6 @@ const OverlaySvg = styled.svg`
 
 interface AllProjectedAnnotationsProps {
   frustumData: FrustumData;
-}
-
-interface ProjectedCuboidItemProps {
-  detection: ReconciledDetection3D & { color?: string };
-  frustumData: FrustumData;
-  isSelected: boolean;
-  isHovered: boolean;
-  isAnyLabelSelected: boolean;
-}
-
-/**
- * Individual cuboid projection item
- */
-function ProjectedCuboidItem({
-  detection,
-  frustumData,
-  isSelected,
-  isHovered,
-  isAnyLabelSelected,
-}: ProjectedCuboidItemProps) {
-  const projection = useProjectedCuboid(detection, frustumData);
-
-  if (!projection) return null;
-
-  if (isSelected) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
-        opacity={1}
-        strokeDasharray={SELECTED_DASH_ARRAY}
-      />
-    );
-  }
-
-  if (isAnyLabelSelected) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
-        opacity={DESELECTED_OPACITY}
-      />
-    );
-  }
-
-  if (isHovered) {
-    return (
-      <SvgCuboidProjection
-        data={projection}
-        color={detection.color ?? FALLBACK_COLOR}
-        opacity={1}
-      />
-    );
-  }
-
-  return (
-    <SvgCuboidProjection
-      data={projection}
-      color={detection.color ?? FALLBACK_COLOR}
-      opacity={DEFAULT_OPACITY}
-    />
-  );
-}
-
-interface ProjectedPolylineItemProps {
-  polyline: ReconciledPolyline3D & { color?: string };
-  frustumData: FrustumData;
-  isSelected: boolean;
-  isHovered: boolean;
-  isAnyLabelSelected: boolean;
-}
-
-/**
- * Individual polyline projection item
- */
-function ProjectedPolylineItem({
-  polyline,
-  frustumData,
-  isSelected,
-  isHovered,
-  isAnyLabelSelected,
-}: ProjectedPolylineItemProps) {
-  const projection = useProjectedPolyline(polyline, frustumData);
-
-  if (!projection) return null;
-
-  if (isSelected) {
-    return (
-      <SvgPolylineProjection
-        data={projection}
-        color={polyline.color ?? FALLBACK_COLOR}
-        opacity={1}
-        strokeDasharray={SELECTED_DASH_ARRAY}
-      />
-    );
-  }
-
-  if (isAnyLabelSelected) {
-    return (
-      <SvgPolylineProjection
-        data={projection}
-        color={polyline.color ?? FALLBACK_COLOR}
-        opacity={DESELECTED_OPACITY}
-      />
-    );
-  }
-
-  if (isHovered) {
-    return (
-      <SvgPolylineProjection
-        data={projection}
-        color={polyline.color ?? FALLBACK_COLOR}
-        opacity={1}
-      />
-    );
-  }
-
-  return (
-    <SvgPolylineProjection
-      data={projection}
-      color={polyline.color ?? FALLBACK_COLOR}
-      opacity={DEFAULT_OPACITY}
-    />
-  );
 }
 
 /**
