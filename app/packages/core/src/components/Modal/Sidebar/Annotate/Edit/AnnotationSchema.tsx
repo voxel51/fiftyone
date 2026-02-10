@@ -6,7 +6,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
-import { useCommandContext } from "@fiftyone/commands";
+import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
@@ -103,12 +103,13 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   // Counter to force re-render only when commands execute (undo/redo)
   // This avoids remounting on every keystroke which would lose focus
   const [renderKey, setRenderKey] = useState(0);
-  const { context } = useCommandContext();
+  const { context } = useCommandContext(KnownContexts.ModalAnnotate);
 
   useEffect(() => {
     // Increment the key to force SchemaIOComponent to re-render on undo/redo
-    return context.subscribeActions((_actionId, isUndo) => {
-      if (isUndo) {
+    return context.subscribeActions((_actionId, isUndo, isRedo) => {
+      if (isUndo || isRedo) {
+        pendingValueRef.current = null;
         setRenderKey((prev) => prev + 1);
       }
     });
@@ -134,13 +135,6 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
             Array.isArray(value) ? value.join(", ") : value,
           ])
         );
-
-    console.log("[AnnotationSchema.displayData]", {
-      data,
-      displayData: result,
-      "data.index": (data as any)?.index,
-      "displayData.index": (result as any)?.index,
-    });
 
     return result;
   }, [data, readOnly]);

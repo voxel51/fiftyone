@@ -11,7 +11,11 @@ export type UndoStateListener = (
   redoEnabled: boolean
 ) => void;
 
-export type ActionListener = (actionId: string, isUndo: boolean) => void;
+export type ActionListener = (
+  actionId: string,
+  isUndo: boolean,
+  isRedo: boolean
+) => void;
 
 /**
  * Manages the execution of actions and supports
@@ -75,7 +79,7 @@ export class ActionManager {
       try {
         await undoable.undo();
         this.redoStack.push(undoable);
-        this.fireActionListeners(undoable.id, true);
+        this.fireActionListeners(undoable.id, true, false);
         this.fireUndoListeners();
         return true;
       } catch (error) {
@@ -100,7 +104,7 @@ export class ActionManager {
       try {
         await undoable.execute();
         this.undoStack.push(undoable);
-        this.fireActionListeners(undoable.id, false);
+        this.fireActionListeners(undoable.id, false, true);
         this.fireUndoListeners();
         return true;
       } catch (error) {
@@ -158,7 +162,7 @@ export class ActionManager {
     if (isUndoable(action)) {
       this.push(action as Undoable);
     }
-    this.fireActionListeners(action.id, false);
+    this.fireActionListeners(action.id, false, false);
   }
   /**
    * Gets the current redo stack size.
@@ -201,9 +205,9 @@ export class ActionManager {
     });
   }
 
-  private fireActionListeners(id: string, isUndo: boolean) {
+  private fireActionListeners(id: string, isUndo: boolean, isRedo: boolean) {
     this.actionListeners.forEach((listener) => {
-      listener(id, isUndo);
+      listener(id, isUndo, isRedo);
     });
   }
 }
