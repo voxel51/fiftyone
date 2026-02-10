@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { expandPath, field, type AnnotationLabel } from "@fiftyone/state";
 import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
@@ -5,6 +6,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
+import { useCommandContext } from "@fiftyone/commands";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 import { generatePrimitiveSchema } from "./schemaHelpers";
@@ -92,6 +94,26 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
   const handleChanges = useHandleChanges();
+
+  // Track the last pending value to handle rapid onChange events
+  // When typing fast, the atom doesn't update in time, so we need to track
+  // the pending value ourselves to get the correct "before" state
+  const pendingValueRef = useRef<AnnotationLabel["data"] | null>(null);
+
+  // Counter to force re-render only when commands execute (undo/redo)
+  // This avoids remounting on every keystroke which would lose focus
+  const [renderKey, setRenderKey] = useState(0);
+  const { context } = useCommandContext();
+
+  useEffect(() => {
+    // Increment the key to force SchemaIOComponent to re-render on undo/redo
+    return context.subscribeActions((_actionId, isUndo) => {
+      if (isUndo) {
+        setRenderKey((prev) => prev + 1);
+      }
+    });
+  }, [context]);
+
   const field = useAtomValue(currentField);
 
   if (!field) {
@@ -104,22 +126,29 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
 
   // Transform data for read-only display: convert arrays to comma-separated strings
   const displayData = useMemo(() => {
-    if (!readOnly) {
-      return data;
-    }
+    const result = !readOnly
+      ? data
+      : Object.fromEntries(
+          Object.entries(data || {}).map(([key, value]) => [
+            key,
+            Array.isArray(value) ? value.join(", ") : value,
+          ])
+        );
 
-    return Object.fromEntries(
-      Object.entries(data || {}).map(([key, value]) => [
-        key,
-        Array.isArray(value) ? value.join(", ") : value,
-      ])
-    );
+    console.log("[AnnotationSchema.displayData]", {
+      data,
+      displayData: result,
+      "data.index": (data as any)?.index,
+      "displayData.index": (result as any)?.index,
+    });
+
+    return result;
   }, [data, readOnly]);
 
   return (
     <div>
       <SchemaIOComponent
-        key={overlay.id}
+        key={renderKey}
         smartForm={true}
         smartFormProps={{
           liveValidate: "onChange",
@@ -144,11 +173,22 @@ const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
             return;
           }
 
+          // Use the pending value as currentLabel if available, otherwise use data
+          // This ensures we capture the correct "before" state during rapid typing
+          const currentLabel = (pendingValueRef.current ||
+            data) as AnnotationLabel["data"];
+
+          // Update the pending value ref for the next onChange
+          // Deep clone to prevent mutation of the stored reference
+          pendingValueRef.current = structuredClone(
+            value
+          ) as AnnotationLabel["data"];
+
           _save(value);
 
           eventBus.dispatch("annotation:sidebarValueUpdated", {
             overlayId: overlay.id,
-            currentLabel: overlay.label as unknown as AnnotationLabel["data"],
+            currentLabel,
             value,
           });
         }}

@@ -9,10 +9,12 @@ import {
   type Scene2D,
 } from "@fiftyone/lighter";
 import { type AnnotationLabel } from "@fiftyone/state";
-import { getDefaultStore, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useRef } from "react";
 import { editing as editingAtom } from "../Sidebar/Annotate/Edit/state";
+import { useLabelsContext } from "../Sidebar/Annotate/useLabels";
 import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
 
 /**
@@ -24,8 +26,8 @@ export function useSyncOverlayToSidebar(scene: Scene2D | null) {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const store = getDefaultStore();
   const editingValue = useAtomValue(editingAtom);
+  const { updateLabelData } = useLabelsContext();
 
   // Track the last synced label data to prevent unnecessary updates (and focus loss)
   const lastSyncedDataRef = useRef<AnnotationLabel["data"] | null>(null);
@@ -38,40 +40,41 @@ export function useSyncOverlayToSidebar(scene: Scene2D | null) {
 
   const { context } = useCommandContext(KnownContexts.ModalAnnotate);
 
-  const sync = useCallback(() => {
-    // Only sync if we are actually editing a label atom
-    if (!editingValue || typeof editingValue === "string") {
-      return;
-    }
+  const sync = useAtomCallback(
+    useCallback(
+      (get) => {
+        // Only sync if we are actually editing a label atom
+        if (!editingValue || typeof editingValue === "string") {
+          return;
+        }
 
-    const currentEditing = store.get(editingValue);
-    if (!currentEditing?.overlay) {
-      return;
-    }
+        const currentEditing = get(editingValue);
+        if (!currentEditing?.overlay) {
+          return;
+        }
 
-    const overlayLabel = currentEditing.overlay.label;
-    if (!overlayLabel) {
-      return;
-    }
+        const overlayLabel = currentEditing.overlay.label;
+        if (!overlayLabel) {
+          return;
+        }
 
-    // Coerce data to match Sidebar expectations (e.g. string booleans)
-    const coercedLabel = coerceStringBooleans(
-      overlayLabel as Record<string, unknown>
-    ) as AnnotationLabel["data"];
+        // Coerce data to match Sidebar expectations (e.g. string booleans)
+        const coercedLabel = coerceStringBooleans(
+          overlayLabel as Record<string, unknown>
+        ) as AnnotationLabel["data"];
 
-    if (isEqual(coercedLabel, lastSyncedDataRef.current)) {
-      return;
-    }
+        if (isEqual(coercedLabel, lastSyncedDataRef.current)) {
+          return;
+        }
 
-    // Update the atom with the latest authoritative data from the overlay
-    // We perform a full replacement to ensure fields are cleared correctly on undo
-    store.set(editingValue, {
-      ...currentEditing,
-      data: coercedLabel,
-    } as AnnotationLabel);
+        // Update the atom via useLabels infrastructure to ensure consistency
+        updateLabelData(currentEditing.overlay.id, coercedLabel);
 
-    lastSyncedDataRef.current = coercedLabel;
-  }, [editingValue, store]);
+        lastSyncedDataRef.current = coercedLabel;
+      },
+      [editingValue, updateLabelData]
+    )
+  );
 
   const handleEvent = useCallback(() => {
     sync();
