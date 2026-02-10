@@ -19,7 +19,7 @@ import useExit from "./Edit/useExit";
 
 export default function useBindAnnotationCommands() {
   const commandBus = useCommandBus();
-  const { scene, removeOverlay } = useLighter();
+  const { scene } = useLighter();
   const label = useAtomValue(current);
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
@@ -87,7 +87,7 @@ export default function useBindAnnotationCommands() {
               if (currentLabel.isNew) {
                 if (scene && !scene.isDestroyed && scene.renderLoopActive) {
                   scene.exitInteractiveMode();
-                  removeOverlay(currentLabel.data._id, true);
+                  scene.removeOverlay(currentLabel.data._id, false);
                 }
                 exit();
                 return;
@@ -108,7 +108,7 @@ export default function useBindAnnotationCommands() {
                 );
 
                 removeLabelFromSidebar(currentLabel.data._id);
-                removeOverlay(currentLabel.overlay.id, false);
+                scene.removeOverlay(currentLabel.overlay.id, false);
 
                 notify({
                   msg: `Label "${currentLabel.data.label}" successfully deleted.`,
@@ -128,17 +128,25 @@ export default function useBindAnnotationCommands() {
             },
             async () => {
               try {
-                const fieldSchema = getFieldSchema(schema, currentLabel.path);
-                if (!fieldSchema) {
-                  notify({
-                    msg: `Error restoring deleted label. "${currentLabel.path}".`,
-                    variant: "error",
-                  });
-                  return;
+                if (!currentLabel.isNew) {
+                  const fieldSchema = getFieldSchema(schema, currentLabel.path);
+                  if (!fieldSchema) {
+                    notify({
+                      msg: `Error restoring deleted label. "${currentLabel.path}".`,
+                      variant: "error",
+                    });
+                    return;
+                  }
                 }
 
-                scene?.addOverlay(currentLabel.overlay);
+                scene?.addOverlay(currentLabel.overlay as any);
                 addLabelToSidebar(currentLabel);
+
+                if (currentLabel.isNew) {
+                  scene?.selectOverlay(currentLabel.overlay.id, {
+                    ignoreSideEffects: false,
+                  });
+                }
               } catch (error) {
                 console.error(error);
                 notify({
