@@ -4,8 +4,7 @@ import {
   getCls,
   getFieldInfo,
 } from "@fiftyone/utilities";
-import { MIN_ZOOM_SCALE } from "@fiftyone/core/src/constants/viewport";
-import { MIN_PIXELS } from "./constants";
+import { MIN_PIXELS, MIN_ZOOM_SCALE } from "./constants";
 import { POINTS_FROM_FO } from "./overlays";
 import { Overlay } from "./overlays/base";
 import {

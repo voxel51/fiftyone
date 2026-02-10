@@ -83,7 +83,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
 
   // important: make sure all dependencies of the navigators are referentially stable,
   // or else the debouncing mechanism won't work
-  const setViewport = useSetAtom(fos.modalViewport as any);
+  const setViewport = useSetAtom(fos.modalViewport);
   const nextNavigator = useMemo(
     () =>
       createDebouncedNavigator({

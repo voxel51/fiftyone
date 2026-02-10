@@ -5,7 +5,7 @@
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
-import { MIN_ZOOM_SCALE_LIGHTER } from "@fiftyone/core/src/constants/viewport";
+import { MIN_ZOOM_SCALE_LIGHTER } from "@fiftyone/looker";
 import {
   DEFAULT_TEXT_PADDING,
   FONT_FAMILY,
