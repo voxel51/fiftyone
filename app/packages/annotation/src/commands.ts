@@ -17,12 +17,3 @@ export class DeleteAnnotationCommand extends Command<boolean> {
     super();
   }
 }
-
-/**
- * Command to persist aggregate annotation changes.
- */
-export class PersistAnnotationChanges extends Command<boolean | null> {
-  constructor() {
-    super();
-  }
-}
