@@ -60,4 +60,11 @@ class FileDelete(HTTPEndpoint):
     """
 
     async def delete(self, request: Request) -> Response:
-        raise NotImplementedError("TODO: implement in next phase")
+        path = request.query_params.get("path")
+
+        try:
+            await delete_file(path=path)
+            return Response(status_code=204)
+
+        except FileOperationError as e:
+            return JSONResponse(e.to_dict(), status_code=e.status_code)
