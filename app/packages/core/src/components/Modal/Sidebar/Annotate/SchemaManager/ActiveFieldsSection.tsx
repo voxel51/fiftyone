@@ -16,6 +16,7 @@ import {
   Size,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
   Variant,
@@ -52,7 +53,11 @@ const FieldActions = ({ path }: { path: string }) => {
         data-cy="edit"
         onClick={() => setField(path)}
       >
-        <Icon name={IconName.Edit} size={Size.Md} />
+        <Icon
+          name={IconName.Edit}
+          size={Size.Md}
+          className={textColorClass(TextColor.Secondary)}
+        />
       </Button>
     </Tooltip>
   );

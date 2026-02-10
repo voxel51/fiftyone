@@ -36,7 +36,7 @@ const ComponentTypeButton = ({
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             gap: 8,
             padding: "8px 12px",
             borderRadius: "var(--radius-md)",

@@ -8,15 +8,16 @@ import {
   Stack,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
+import { TAB_JSON } from "./constants";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
-import { TAB_JSON } from "./constants";
 import {
   useActivateFields,
   useCurrentField,
@@ -207,7 +208,7 @@ const Modal = () => {
             <Icon
               name={IconName.Close}
               size={Size.Lg}
-              color={TextColor.Secondary}
+              className={textColorClass(TextColor.Secondary)}
             />
           </Button>
         </ModalHeader>

@@ -6,22 +6,21 @@
  * - Primitive fields: configure component type, values, range
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { scrollable } from "@fiftyone/components";
 import { useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useNotification, useRefresh } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
+  FormField,
   Input,
   Orientation,
   Select,
   Size,
   Spacing,
   Stack,
-  Text,
-  TextColor,
-  TextVariant,
   ToggleSwitch,
 } from "@voxel51/voodo";
 
@@ -289,87 +288,80 @@ const NewFieldSchema = () => {
 
   return (
     <ListContainer style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+      <div
+        className={scrollable}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          paddingBottom: "1rem",
+          paddingRight: "1rem",
+        }}
+      >
         <Stack
           orientation={Orientation.Column}
           spacing={Spacing.Lg}
           style={{ width: "100%" }}
         >
           {/* Field name input */}
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              Field name
-            </Text>
-            <Input
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-              placeholder="Enter field name"
-              error={!!fieldNameError}
-              autoFocus
-            />
-            {fieldNameError && (
-              <Text
-                variant={TextVariant.Sm}
-                color={TextColor.Destructive}
-                style={{ marginTop: "0.2rem" }}
-              >
-                {fieldNameError}
-              </Text>
-            )}
-          </div>
+          <FormField
+            label="Field name"
+            control={
+              <Input
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+                placeholder="Enter field name"
+                error={!!fieldNameError}
+                autoFocus
+              />
+            }
+            error={fieldNameError || undefined}
+          />
 
           {/* Category toggle */}
-          <div style={{ width: "100%" }}>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              Field category
-            </Text>
-            <ToggleSwitch
-              size={Size.Md}
-              defaultIndex={CATEGORY_LABEL}
-              onChange={handleCategoryChange}
-              fullWidth
-              tabs={[
-                { id: "label", data: { label: "Label" } },
-                { id: "primitive", data: { label: "Primitive" } },
-              ]}
-            />
-          </div>
+          <FormField
+            label="Field category"
+            control={
+              <ToggleSwitch
+                size={Size.Md}
+                defaultIndex={CATEGORY_LABEL}
+                onChange={handleCategoryChange}
+                fullWidth
+                tabs={[
+                  { id: "label", data: { label: "Label", content: null } },
+                  {
+                    id: "primitive",
+                    data: { label: "Primitive", content: null },
+                  },
+                ]}
+              />
+            }
+          />
 
           {/* Type dropdown */}
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              {category === "label" ? "Label type" : "Primitive type"}
-            </Text>
-            <Select
-              exclusive
-              portal
-              value={category === "label" ? labelType : primitiveType}
-              onChange={(value) => {
-                if (typeof value === "string") {
-                  if (category === "label") {
-                    handleLabelTypeChange(value);
-                  } else {
-                    handlePrimitiveTypeChange(value);
+          <FormField
+            label={category === "label" ? "Label type" : "Primitive type"}
+            control={
+              <Select
+                exclusive
+                portal
+                value={category === "label" ? labelType : primitiveType}
+                onChange={(value) => {
+                  if (typeof value === "string") {
+                    if (category === "label") {
+                      handleLabelTypeChange(value);
+                    } else {
+                      handlePrimitiveTypeChange(value);
+                    }
                   }
+                }}
+                options={
+                  category === "label"
+                    ? labelTypeOptions
+                    : ATTRIBUTE_TYPE_OPTIONS
                 }
-              }}
-              options={
-                category === "label" ? labelTypeOptions : ATTRIBUTE_TYPE_OPTIONS
-              }
-            />
-          </div>
+              />
+            }
+          />
 
           {/* Primitive field config */}
           {category === "primitive" && (
