@@ -4,7 +4,7 @@
 
 export { createColorGenerator, getRGB } from "@fiftyone/utilities";
 export * from "./cache";
-export * from "./constants";
+export { MIN_ZOOM_SCALE, MIN_ZOOM_SCALE_LIGHTER } from "./constants";
 export { freeVideos, getFrameNumber } from "./elements/util";
 export * from "./lookers";
 export * from "./overlays";
