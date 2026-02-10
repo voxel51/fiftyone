@@ -141,7 +141,13 @@ export default function useBindAnnotationCommands() {
                   }
                 }
 
-                scene?.addOverlay(currentLabel.overlay as any);
+                if (
+                  currentLabel.type === "Classification" ||
+                  currentLabel.type === "Detection"
+                ) {
+                  scene?.addOverlay(currentLabel.overlay);
+                }
+
                 addLabelToSidebar(currentLabel);
 
                 if (currentLabel.isNew) {
