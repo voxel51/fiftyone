@@ -311,7 +311,8 @@ async def stream_upload(
 async def delete_file(path: str) -> None:
     """Deletes a file. Idempotent -- succeeds even if file doesn't exist.
 
-    Only files (not directories) may be deleted.
+    Only files (not directories) may be deleted.  The actual removal is
+    offloaded to a worker thread via :func:`anyio.to_thread.run_sync`.
 
     Args:
         path: the file path to delete
@@ -319,4 +320,29 @@ async def delete_file(path: str) -> None:
     Raises:
         FileOperationError: on validation failure or delete error
     """
-    raise NotImplementedError("TODO: implement in next phase")
+    _check_feature_enabled()
+    normalized = _check_and_resolve_path(path)
+
+    def _sync_delete():
+        if not fos.exists(normalized):
+            return  # Idempotent -- already gone
+
+        if fos.isdir(normalized):
+            raise FileOperationError(
+                code=FileOperationErrorCode.NOT_A_FILE,
+                message="Cannot delete a directory. Only files are allowed.",
+                details={"path": path},
+            )
+
+        fos.delete_file(normalized)
+
+    try:
+        await anyio.to_thread.run_sync(_sync_delete)
+    except FileOperationError:
+        raise
+    except Exception as e:
+        raise FileOperationError(
+            code=FileOperationErrorCode.DELETE_FAILED,
+            message=f"Failed to delete file: {e}",
+            details={"path": path},
+        )
