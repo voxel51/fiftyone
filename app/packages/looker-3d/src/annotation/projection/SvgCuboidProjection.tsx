@@ -1,17 +1,23 @@
 import type { CuboidProjectionData } from "./types";
 
+interface SvgCuboidProjectionProps {
+  data: CuboidProjectionData;
+  color: string;
+  opacity?: number;
+  strokeDasharray?: string;
+}
+
 /**
  * Renders a 3D cuboid projected onto 2D as an SVG group of edges and corner vertices.
  */
 export function SvgCuboidProjection({
   data,
   color,
-}: {
-  data: CuboidProjectionData;
-  color: string;
-}) {
+  opacity = 1,
+  strokeDasharray,
+}: SvgCuboidProjectionProps) {
   return (
-    <g>
+    <g opacity={opacity}>
       {data.edges.map((e, i) => (
         <line
           key={i}
@@ -23,6 +29,7 @@ export function SvgCuboidProjection({
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
+          strokeDasharray={strokeDasharray}
         />
       ))}
       {data.corners.map((p, i) =>

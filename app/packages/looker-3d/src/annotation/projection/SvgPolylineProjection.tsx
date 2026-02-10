@@ -1,17 +1,23 @@
 import type { PolylineProjectionData } from "./types";
 
+interface SvgPolylineProjectionProps {
+  data: PolylineProjectionData;
+  color: string;
+  opacity?: number;
+  strokeDasharray?: string;
+}
+
 /**
  * Renders a 3D polyline projected onto 2D as an SVG group of edges and vertices.
  */
 export function SvgPolylineProjection({
   data,
   color,
-}: {
-  data: PolylineProjectionData;
-  color: string;
-}) {
+  opacity = 1,
+  strokeDasharray,
+}: SvgPolylineProjectionProps) {
   return (
-    <g>
+    <g opacity={opacity}>
       {data.edges.map((e, i) => (
         <line
           key={i}
@@ -23,6 +29,7 @@ export function SvgPolylineProjection({
           strokeWidth={2}
           vectorEffect="non-scaling-stroke"
           strokeLinecap="round"
+          strokeDasharray={strokeDasharray}
         />
       ))}
       {data.vertices.map((p, i) =>
