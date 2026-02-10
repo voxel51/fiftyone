@@ -1,5 +1,9 @@
 """Comprehensive test suite for C-RADIOv4 wrapper - extended coverage."""
 
+import pytest
+
+pytest.importorskip("transformers")
+
 import logging
 logging.basicConfig(level=logging.WARNING)
 
