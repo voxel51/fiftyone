@@ -17,6 +17,7 @@ import {
   removeFromActiveSchemas,
 } from "../../state";
 import { currentLabelSchema } from "../state";
+import { reconcileComponent } from "../utils";
 
 // =============================================================================
 // Internal Hooks
@@ -118,7 +119,11 @@ const useSave = (field: string) => {
       const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
 
-      const params: Record<string, unknown> = { field, label_schema: current };
+      const labelSchema = current ? reconcileComponent(current) : current;
+      const params: Record<string, unknown> = {
+        field,
+        label_schema: labelSchema,
+      };
 
       update.execute(params, {
         callback: (result) => {

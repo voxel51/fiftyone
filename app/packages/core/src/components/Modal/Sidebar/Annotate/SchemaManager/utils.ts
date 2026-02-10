@@ -589,8 +589,9 @@ export const reconcileComponent = (
   config: SchemaConfigType
 ): SchemaConfigType => {
   const { classes, component } = config;
+  const hasClasses = classes && classes.length > 0;
 
-  if (classes && classes.length > 0) {
+  if (hasClasses) {
     if (component === "text") {
       return {
         ...config,
@@ -598,8 +599,13 @@ export const reconcileComponent = (
           classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio",
       };
     }
-  } else if (component === "radio" || component === "dropdown") {
-    return { ...config, component: "text" };
+  } else {
+    // Strip empty classes key and reset component to text
+    const { classes: _, ...rest } = config;
+    if (component === "radio" || component === "dropdown") {
+      return { ...rest, component: "text" };
+    }
+    return rest;
   }
 
   return config;
