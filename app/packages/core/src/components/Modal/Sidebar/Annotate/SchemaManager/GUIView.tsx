@@ -105,7 +105,7 @@ const GUIView = () => {
   );
 
   return (
-    <Container className={scrollable} style={{ marginBottom: "0.5rem" }}>
+    <Container className={scrollable} style={{ marginTop: "1.5rem" }}>
       <ToggleSwitch
         size={Size.Md}
         defaultIndex={defaultIndex}
