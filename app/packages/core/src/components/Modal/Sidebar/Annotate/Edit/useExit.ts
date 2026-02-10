@@ -5,15 +5,16 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { currentOverlay, savedLabel } from "./state";
+import { current, currentOverlay, savedLabel } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
+  const label = useAtomValue(current);
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -28,7 +29,13 @@ export default function useExit() {
    */
 
   return useCallback(() => {
-    if (overlay) {
+    // If this is an uncommitted dummy label with no value, remove it from the scene
+    if (label?.isNew && !label.data.label) {
+      if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+        scene.exitInteractiveMode();
+        removeOverlay(label.data._id, true);
+      }
+    } else if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       if (TypeGuards.isHoverable(overlay)) {
         overlay.onHoverLeave?.();
@@ -49,5 +56,5 @@ export default function useExit() {
     setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
-  }, [overlay, scene, setActivePrimitive, setEditing, setSaved]);
+  }, [label, overlay, removeOverlay, scene, setActivePrimitive, setEditing, setSaved]);
 }
