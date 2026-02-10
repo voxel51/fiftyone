@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useRecoilState } from "recoil";
-import type { BufferGeometry, Quaternion } from "three";
+import type { BufferGeometry } from "three";
 import { Points, Vector3 } from "three";
 import { useFo3dContext } from "../fo3d/context";
 import { currentHoveredPointAtom } from "../state";
@@ -10,9 +10,6 @@ interface UsePointCloudHoverFromRaycastProps {
   geometry: BufferGeometry;
   assetName: string;
   shadingMode: string;
-  position: Vector3;
-  quaternion: Quaternion;
-  scale: Vector3;
   pointsRef: React.RefObject<Points | null>;
 }
 
@@ -23,9 +20,6 @@ export const usePointCloudHoverFromRaycast = ({
   geometry,
   assetName,
   shadingMode,
-  position,
-  quaternion,
-  scale,
   pointsRef,
 }: UsePointCloudHoverFromRaycastProps) => {
   const { pointCloudSettings, setHoverMetadata } = useFo3dContext();
@@ -80,22 +74,10 @@ export const usePointCloudHoverFromRaycast = ({
       md.rgb = [colorAttr.getX(idx), colorAttr.getY(idx), colorAttr.getZ(idx)];
     }
 
-    if (geometry.hasAttribute("position")) {
-      const posAttr = geometry.getAttribute("position");
-      const localPosition = new Vector3(
-        posAttr.getX(idx),
-        posAttr.getY(idx),
-        posAttr.getZ(idx)
-      );
-      md.coord = [localPosition.x, localPosition.y, localPosition.z];
+    if (raycastResult.worldPosition) {
+      md.coord = raycastResult.worldPosition;
 
-      // Transform the local position to world position
-      const worldPosition = localPosition.clone();
-      worldPosition.multiply(scale);
-      worldPosition.applyQuaternion(quaternion);
-      worldPosition.add(position);
-
-      setCurrentHoveredPoint(worldPosition);
+      setCurrentHoveredPoint(new Vector3(...raycastResult.worldPosition));
     }
 
     // Dynamically handle all other attributes
@@ -116,9 +98,6 @@ export const usePointCloudHoverFromRaycast = ({
     pointCloudSettings.enableTooltip,
     assetName,
     shadingMode,
-    position,
-    quaternion,
-    scale,
   ]);
 
   // This effect cleans up marker on unmount
