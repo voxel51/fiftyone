@@ -1,5 +1,4 @@
 import { LoadingDots } from "@fiftyone/components";
-import { predicateOrFallbackAfterTimeout } from "@fiftyone/core";
 import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
@@ -72,7 +71,6 @@ import {
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
-const SCENE_BOUNDS_COMPUTE_TIMEOUT_MS = 15000;
 
 const MainContainer = styled.main`
   display: flex;
@@ -270,43 +268,14 @@ export const MediaTypeFo3dComponent = () => {
 
   const loadingStatus = useLoadingStatus();
 
-  const isLoadingStatusFinal =
-    loadingStatus.isSuccess ||
-    loadingStatus.isFailed ||
-    loadingStatus.isAborted;
-
-  // keep the current value in a ref so the predicate always sees fresh state
-  const isFinalRef = useRef(isLoadingStatusFinal);
-  isFinalRef.current = isLoadingStatusFinal;
-
-  const canComputeBoundsPredicateRef = useRef(
-    predicateOrFallbackAfterTimeout(
-      () => isFinalRef.current,
-      true,
-      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
-    )
-  );
-
-  useEffect(() => {
-    canComputeBoundsPredicateRef.current = predicateOrFallbackAfterTimeout(
-      () => isFinalRef.current,
-      true,
-      SCENE_BOUNDS_COMPUTE_TIMEOUT_MS
-    );
-    // here, fo3dRoot plays the role of the key that indicates a fresh load
-  }, [fo3dRoot]);
-
-  const canComputeBounds = useCallback(
-    () => canComputeBoundsPredicateRef.current(),
-    []
-  );
+  // Ready when fo3d is parsed, foScene has assets, and all referenced assets are loaded
+  const isReadyForBounds = foScene && !isParsingFo3d && loadingStatus.isSuccess;
 
   const {
     boundingBox: sceneBoundingBox,
     recomputeBounds,
     isComputing: isComputingSceneBoundingBox,
-  } = useFo3dBounds(assetsGroupRef, canComputeBounds, {
-    hardTimeoutMs: SCENE_BOUNDS_COMPUTE_TIMEOUT_MS,
+  } = useFo3dBounds(assetsGroupRef, isReadyForBounds, {
     numPrimaryAssets,
   });
 
