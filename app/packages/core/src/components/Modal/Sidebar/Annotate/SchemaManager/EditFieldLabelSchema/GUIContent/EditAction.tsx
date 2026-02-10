@@ -2,7 +2,15 @@
  * Edit action button component.
  */
 
-import { Button, Icon, IconName, Size, Variant } from "@voxel51/voodo";
+import {
+  Button,
+  Icon,
+  IconName,
+  Size,
+  TextColor,
+  textColorClass,
+  Variant,
+} from "@voxel51/voodo";
 
 interface EditActionProps {
   onEdit: () => void;
@@ -13,7 +21,7 @@ const EditAction = ({ onEdit }: EditActionProps) => (
     <Icon
       name={IconName.Edit}
       size={Size.Md}
-      color="var(--color-content-text-secondary)"
+      className={textColorClass(TextColor.Secondary)}
     />
   </Button>
 );

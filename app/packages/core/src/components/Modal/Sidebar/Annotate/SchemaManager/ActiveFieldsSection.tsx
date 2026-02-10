@@ -16,6 +16,7 @@ import {
   Size,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
   Variant,
@@ -55,7 +56,7 @@ const FieldActions = ({ path }: { path: string }) => {
         <Icon
           name={IconName.Edit}
           size={Size.Md}
-          color="var(--color-content-text-secondary)"
+          className={textColorClass(TextColor.Secondary)}
         />
       </Button>
     </Tooltip>

@@ -11,6 +11,8 @@ import {
   Size,
   Spacing,
   Stack,
+  TextColor,
+  textColorClass,
   Variant,
 } from "@voxel51/voodo";
 
@@ -36,7 +38,7 @@ const CardActions = ({
       <Icon
         name={IconName.Close}
         size={Size.Md}
-        color="var(--color-content-text-secondary)"
+        className={textColorClass(TextColor.Secondary)}
       />
     </Button>
     {onDelete && (
@@ -44,7 +46,7 @@ const CardActions = ({
         <Icon
           name={IconName.Delete}
           size={Size.Md}
-          color="var(--color-content-text-secondary)"
+          className={textColorClass(TextColor.Secondary)}
         />
       </Button>
     )}
@@ -57,7 +59,7 @@ const CardActions = ({
       <Icon
         name={IconName.Check}
         size={Size.Md}
-        color="var(--color-content-text-secondary)"
+        className={textColorClass(TextColor.Secondary)}
       />
     </Button>
   </Stack>

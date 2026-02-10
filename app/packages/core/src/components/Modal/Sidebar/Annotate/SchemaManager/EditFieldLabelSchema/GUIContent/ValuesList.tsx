@@ -11,6 +11,7 @@ import {
   Size,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
@@ -92,7 +93,7 @@ const ValuesList = ({
           <Icon
             name={IconName.Delete}
             size={Size.Md}
-            color="var(--color-content-text-secondary)"
+            className={textColorClass(TextColor.Secondary)}
           />
         </Button>
       ),
@@ -122,9 +123,14 @@ const ValuesList = ({
         >
           Values
         </Text>
-        <Button variant={Variant.Borderless} onClick={handleAddValue}>
-          <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
-          <span>Add</span>
+        <Button
+          variant={Variant.Borderless}
+          onClick={handleAddValue}
+          leadingIcon={() => (
+            <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+          )}
+        >
+          Add
         </Button>
       </div>
       <Input

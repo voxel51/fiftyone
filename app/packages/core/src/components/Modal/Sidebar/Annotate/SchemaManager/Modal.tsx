@@ -8,6 +8,7 @@ import {
   Stack,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
@@ -207,7 +208,7 @@ const Modal = () => {
             <Icon
               name={IconName.Close}
               size={Size.Lg}
-              color="var(--color-content-text-secondary)"
+              className={textColorClass(TextColor.Secondary)}
             />
           </Button>
         </ModalHeader>
