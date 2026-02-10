@@ -19,32 +19,31 @@ import {
   FO_USER_DATA,
   getPanelElementId,
   getSidePanelGridArea,
+  VIEW_TYPE_BACK,
+  VIEW_TYPE_BOTTOM,
+  VIEW_TYPE_FRONT,
+  VIEW_TYPE_LEFT,
+  VIEW_TYPE_RIGHT,
+  VIEW_TYPE_TOP,
 } from "../constants";
 import { FoSceneComponent } from "../fo3d/FoScene";
 import { Gizmos } from "../fo3d/Gizmos";
 import { Lights } from "../fo3d/scene-controls/lights/Lights";
-import { useFetchFrustumParameters } from "../frustum/hooks/internal/useFetchFrustumParameters";
 import { FoScene } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { RaycastService } from "../services/RaycastService";
-import { useCurrent3dAnnotationMode } from "../state";
-import type { SidePanelId } from "../types";
+import type { SidePanelId, SidePanelViewType } from "../types";
 import { expandBoundingBox } from "../utils";
 import { AnnotationPlane } from "./AnnotationPlane";
 import { CreateCuboidRenderer } from "./CreateCuboidRenderer";
 import { Crosshair3D } from "./Crosshair3D";
-import { Projected3dOverlays } from "./projection";
+import {
+  encodeImageSliceView,
+  ImageSlicePanel,
+  isImageSliceView,
+} from "./ImageSlicePanel";
 import { SegmentPolylineRenderer } from "./SegmentPolylineRenderer";
 import { useImageSlicesIfAvailable } from "./useImageSlicesIfAvailable";
-
-export type ViewType =
-  | "Top"
-  | "Bottom"
-  | "Left"
-  | "Right"
-  | "Front"
-  | "Back"
-  | string;
 
 const SidePanelContainer = styled.div<{ $area: string }>`
   grid-area: ${(p) => p.$area};
@@ -63,43 +62,11 @@ const ViewSelectorWrapper = styled.div`
   z-index: 1000;
 `;
 
-const ImageSliceContainer = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #000;
-`;
-
-const ImageSliceImg = styled.img`
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-`;
-
-/**
- * Check if a view is a cardinal view (Top, Bottom, Front, Back, Left, Right)
- */
-const isCardinalView = (view: ViewType): boolean => {
-  return (
-    view === "Top" ||
-    view === "Bottom" ||
-    view === "Front" ||
-    view === "Back" ||
-    view === "Left" ||
-    view === "Right"
-  );
-};
-
 /**
  * Calculate camera position for different side panel views based on upVector and lookAt point
  */
 const calculateCameraPositionForSidePanel = (
-  viewType: ViewType,
+  sidePanelViewType: SidePanelViewType,
   upVector: Vector3,
   lookAt: Vector3,
   sceneBoundingBox: Box3 | null
@@ -114,7 +81,7 @@ const calculateCameraPositionForSidePanel = (
       Back: [0, 0, -10] as [number, number, number],
       Front: [0, 0, 10] as [number, number, number],
     };
-    const position = defaultPositions[viewType];
+    const position = defaultPositions[sidePanelViewType];
     return position ? new Vector3(...position) : new Vector3(0, 10, 0);
   }
 
@@ -129,14 +96,14 @@ const calculateCameraPositionForSidePanel = (
   // Create orthogonal vectors for different views
   let direction: Vector3;
 
-  switch (viewType) {
-    case "Top":
+  switch (sidePanelViewType) {
+    case VIEW_TYPE_TOP:
       direction = upDir.clone();
       break;
-    case "Bottom":
+    case VIEW_TYPE_BOTTOM:
       direction = upDir.clone().negate();
       break;
-    case "Left":
+    case VIEW_TYPE_LEFT:
       // Create a vector perpendicular to up vector
       if (Math.abs(upDir.y) > 0.9) {
         // If up is mostly Y, use negative X axis for left
@@ -146,7 +113,7 @@ const calculateCameraPositionForSidePanel = (
         direction = right.negate();
       }
       break;
-    case "Right":
+    case VIEW_TYPE_RIGHT:
       // Opposite of Left
       if (Math.abs(upDir.y) > 0.9) {
         direction = new Vector3(1, 0, 0);
@@ -154,7 +121,7 @@ const calculateCameraPositionForSidePanel = (
         direction = new Vector3(0, 1, 0).cross(upDir).normalize();
       }
       break;
-    case "Front":
+    case VIEW_TYPE_FRONT:
       // Create a vector perpendicular to both up and left
       if (Math.abs(upDir.y) > 0.9) {
         direction = new Vector3(0, 0, 1);
@@ -163,7 +130,7 @@ const calculateCameraPositionForSidePanel = (
         direction = upDir.clone().cross(left).normalize();
       }
       break;
-    case "Back":
+    case VIEW_TYPE_BACK:
       // Opposite of Front
       if (Math.abs(upDir.y) > 0.9) {
         direction = new Vector3(0, 0, -1);
@@ -183,14 +150,14 @@ const calculateCameraPositionForSidePanel = (
  * Calculate camera "up" vector for different side panel views to ensure proper axis alignment
  */
 const calculateCameraUpForSidePanel = (
-  viewType: ViewType,
+  sidePanelViewType: SidePanelViewType,
   upVector: Vector3,
   lookAt: Vector3
 ): Vector3 => {
   const upDir = upVector.clone().normalize();
 
-  switch (viewType) {
-    case "Top": {
+  switch (sidePanelViewType) {
+    case VIEW_TYPE_TOP: {
       // For Top view, camera is looking down along upDir
       // Camera's "up" must be perpendicular to the viewing direction
       // Find a horizontal vector perpendicular to upDir
@@ -248,7 +215,7 @@ const calculateCameraUpForSidePanel = (
 
       return projection;
     }
-    case "Bottom": {
+    case VIEW_TYPE_BOTTOM: {
       // For Bottom view, camera is looking up along -upDir
       // Camera's "up" must be perpendicular to the viewing direction
       // Use similar logic to Top but apply cross product to maintain correct orientation
@@ -315,10 +282,10 @@ const calculateCameraUpForSidePanel = (
 
       return bottomUp.length() > 0.1 ? bottomUp : projection;
     }
-    case "Left":
-    case "Right":
-    case "Front":
-    case "Back":
+    case VIEW_TYPE_LEFT:
+    case VIEW_TYPE_RIGHT:
+    case VIEW_TYPE_FRONT:
+    case VIEW_TYPE_BACK:
       // For these views, camera is looking perpendicular to upDir
       // Camera's "up" should be along upDir (or its appropriate orientation)
       return upDir.clone();
@@ -329,8 +296,8 @@ const calculateCameraUpForSidePanel = (
 
 export interface SidePanelProps {
   panelId: SidePanelId;
-  view: ViewType;
-  setView: (view: ViewType) => void;
+  view: SidePanelViewType;
+  setView: (view: SidePanelViewType) => void;
   foScene: FoScene;
   upVector: Vector3 | null;
   lookAt: Vector3 | null;
@@ -353,27 +320,7 @@ export const SidePanel = ({
   const { imageSlices, resolveUrlForImageSlice, isLoadingImageSlices } =
     useImageSlicesIfAvailable(sample);
 
-  const { data: frustumData } = useFetchFrustumParameters();
-  const annotationMode = useCurrent3dAnnotationMode();
-
-  // Find the frustum data matching the current image-slice view
-  const activeFrustum = useMemo(
-    () => frustumData.find((f) => f.sliceName === view) ?? null,
-    [frustumData, view]
-  );
-
   const gridArea = getSidePanelGridArea(panelId);
-
-  /**
-   * This effect restores the view to a cardinal view if no image slices are available
-   */
-  useEffect(() => {
-    if (isLoadingImageSlices) return;
-
-    if (imageSlices.length === 0 && !isCardinalView(view)) {
-      setView("Left");
-    }
-  }, [isLoadingImageSlices, imageSlices, view, setView]);
 
   const position = useMemo(
     () =>
@@ -438,20 +385,20 @@ export const SidePanel = ({
     }
   }, [position, cameraUp, lookAt, upVector]);
 
+  const imageSlicePanelContent = (
+    <ImageSlicePanel
+      panelId={panelId}
+      view={view}
+      setView={setView}
+      imageSlices={imageSlices}
+      isLoadingImageSlices={isLoadingImageSlices}
+      resolveUrlForImageSlice={resolveUrlForImageSlice}
+    />
+  );
+
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
-      {imageSlices && imageSlices.includes(view) ? (
-        <ImageSliceContainer>
-          <ImageSliceImg src={resolveUrlForImageSlice(view)} />
-          {activeFrustum && (
-            <Projected3dOverlays
-              frustumData={activeFrustum}
-              annotationMode={annotationMode}
-              panelId={panelId}
-            />
-          )}
-        </ImageSliceContainer>
-      ) : (
+      {imageSlicePanelContent || (
         <View
           key={`${panelId}-${view}-${fitBoundsKey}`}
           style={{
@@ -510,9 +457,15 @@ export const SidePanel = ({
       )}
       <ViewSelectorWrapper>
         <Select
-          value={view}
+          value={
+            // While slices are loading, use a safe cardinal view to avoid validation errors
+            // The ImageSlicePanel component will validate once loading completes
+            isLoadingImageSlices && isImageSliceView(view)
+              ? VIEW_TYPE_LEFT
+              : view
+          }
           onChange={(e) => {
-            setView(e.target.value as ViewType);
+            setView(e.target.value as SidePanelViewType);
             setFitBoundsKey((prev) => prev + 1);
           }}
           size="small"
@@ -529,15 +482,15 @@ export const SidePanel = ({
             },
           }}
         >
-          <MenuItem value="Top">Top</MenuItem>
-          <MenuItem value="Bottom">Bottom</MenuItem>
-          <MenuItem value="Left">Left</MenuItem>
-          <MenuItem value="Right">Right</MenuItem>
-          <MenuItem value="Front">Front</MenuItem>
-          <MenuItem value="Back">Back</MenuItem>
+          <MenuItem value={VIEW_TYPE_TOP}>Top</MenuItem>
+          <MenuItem value={VIEW_TYPE_BOTTOM}>Bottom</MenuItem>
+          <MenuItem value={VIEW_TYPE_LEFT}>Left</MenuItem>
+          <MenuItem value={VIEW_TYPE_RIGHT}>Right</MenuItem>
+          <MenuItem value={VIEW_TYPE_FRONT}>Front</MenuItem>
+          <MenuItem value={VIEW_TYPE_BACK}>Back</MenuItem>
           {imageSlices &&
             imageSlices.map((slice) => (
-              <MenuItem key={slice} value={slice}>
+              <MenuItem key={slice} value={encodeImageSliceView(slice)}>
                 Image Slice: {slice}
               </MenuItem>
             ))}
@@ -558,7 +511,7 @@ export const SidePanel = ({
 
 function findByUserData(
   scene: THREE.Scene,
-  key: (typeof FO_USER_DATA)[keyof typeof FO_USER_DATA],
+  key: typeof FO_USER_DATA[keyof typeof FO_USER_DATA],
   value: unknown
 ): THREE.Object3D | null {
   let result: THREE.Object3D | null = null;

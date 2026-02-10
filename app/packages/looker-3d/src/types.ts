@@ -20,6 +20,12 @@ import type {
   SHADE_BY_INTENSITY,
   SHADE_BY_NONE,
   SHADE_BY_RGB,
+  VIEW_TYPE_BACK,
+  VIEW_TYPE_BOTTOM,
+  VIEW_TYPE_FRONT,
+  VIEW_TYPE_LEFT,
+  VIEW_TYPE_RIGHT,
+  VIEW_TYPE_TOP,
 } from "./constants";
 import { OverlayLabel } from "./labels/loader";
 
@@ -47,6 +53,15 @@ export type PanelId =
 export type SidePanelId =
   | typeof PANEL_ID_SIDE_TOP
   | typeof PANEL_ID_SIDE_BOTTOM;
+
+export type SidePanelViewType =
+  | typeof VIEW_TYPE_TOP
+  | typeof VIEW_TYPE_BOTTOM
+  | typeof VIEW_TYPE_LEFT
+  | typeof VIEW_TYPE_RIGHT
+  | typeof VIEW_TYPE_FRONT
+  | typeof VIEW_TYPE_BACK
+  | string;
 
 export type ShadeBy =
   | typeof SHADE_BY_INTENSITY

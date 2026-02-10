@@ -148,3 +148,10 @@ export const getPanelElementId = (panelId: typeof PANEL_IDS[number]): string =>
 export const getSidePanelGridArea = (
   panelId: typeof PANEL_ID_SIDE_TOP | typeof PANEL_ID_SIDE_BOTTOM
 ): "top" | "bottom" => panelId.replace("side-", "") as "top" | "bottom";
+
+export const VIEW_TYPE_TOP = "Top";
+export const VIEW_TYPE_BOTTOM = "Bottom";
+export const VIEW_TYPE_LEFT = "Left";
+export const VIEW_TYPE_RIGHT = "Right";
+export const VIEW_TYPE_FRONT = "Front";
+export const VIEW_TYPE_BACK = "Back";
