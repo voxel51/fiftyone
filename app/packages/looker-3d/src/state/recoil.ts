@@ -506,24 +506,6 @@ export const isCurrentlyTransformingAtom = atom<boolean>({
 });
 
 /**
- * Temporary transform data for vertices during manipulation.
- * Stores the position offset (delta) for polyline vertices before they are committed.
- * Keyed by vertex ID in format: `${labelId}-${segmentIndex}-${pointIndex}`.
- *
- * Note: it's different than transient store. We store per-point vertex
- * transformations for performance reasons.
- */
-export const tempVertexTransformsAtom = atomFamily<
-  {
-    position: [number, number, number];
-  } | null,
-  string
->({
-  key: "fo3d-tempVertexTransforms",
-  default: null,
-});
-
-/**
  * Internal implementation for the annotation plane state facade.
  */
 const annotationPlaneAtomImpl = atomFamily<AnnotationPlaneState, string>({
