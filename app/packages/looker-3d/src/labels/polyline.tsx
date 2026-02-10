@@ -6,6 +6,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
+import { FO_USER_DATA } from "../constants";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
@@ -264,7 +265,11 @@ export const Polyline = ({
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group ref={contentRef} position={centroidDragPosition}>
+      <group
+        ref={contentRef}
+        position={centroidDragPosition}
+        userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
+      >
         {markers}
         {previewLines}
         <group
