@@ -17,8 +17,7 @@ import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
 import { useQuickDraw } from "./useQuickDraw";
-import { DetectionLabel } from "@fiftyone/looker";
-import { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
+import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
