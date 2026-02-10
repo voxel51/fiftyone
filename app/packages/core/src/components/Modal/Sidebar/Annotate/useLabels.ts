@@ -293,6 +293,8 @@ export default function useLabels() {
   }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
+    let stale = false;
+
     if (modalSample?.sample && active) {
       const getLabelsFromSample = () =>
         handleSample({
@@ -306,6 +308,11 @@ export default function useLabels() {
       if (loadingState === LabelsState.UNSET) {
         setLoading(LabelsState.LOADING);
         getLabelsFromSample().then((result) => {
+          if (stale) {
+            setLoading(LabelsState.UNSET);
+            return;
+          }
+
           setLabels(result);
           result.forEach((annotationLabel) => addLabel(annotationLabel));
           setLoading(LabelsState.COMPLETE);
@@ -313,6 +320,8 @@ export default function useLabels() {
       } else if (loadingState === LabelsState.COMPLETE) {
         // refresh label data
         getLabelsFromSample().then((result) => {
+          if (stale) return;
+
           result.forEach((annotationLabel) => {
             // update overlays
             if (scene?.hasOverlay(annotationLabel.data._id)) {
@@ -326,6 +335,10 @@ export default function useLabels() {
         });
       }
     }
+
+    return () => {
+      stale = true;
+    };
   }, [active, getFieldType, loadingState, modalSample?.sample, paths]);
 
   useEffect(() => {
