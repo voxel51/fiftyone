@@ -7,7 +7,11 @@
  */
 
 import { scrollable } from "@fiftyone/components";
+import { useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { useNotification, useRefresh } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
   FormField,
@@ -19,7 +23,24 @@ import {
   Stack,
   ToggleSwitch,
 } from "@voxel51/voodo";
-import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { addToActiveSchemas } from "../../state";
+
+import {
+  useExitNewFieldMode,
+  useLabelSchemasData,
+  useMediaType,
+  useSetActiveLabelSchemas,
+  useSetLabelSchemasData,
+} from "../hooks";
+
+import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
+import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
+import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
+import Footer from "../Footer";
+import { ListContainer } from "../styled";
+import { getLabelTypeOptions, validateFieldName } from "../utils";
+
 import {
   ATTRIBUTE_TYPE_OPTIONS,
   CATEGORY_LABEL,
@@ -28,24 +49,8 @@ import {
   getDefaultComponent,
   toFieldType,
 } from "../constants";
-import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
-import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
-import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
-import Footer from "../Footer";
-import {
-  useExitNewFieldMode,
-  useLabelSchemasData,
-  useMediaType,
-  useSetActiveLabelSchemas,
-  useSetLabelSchemasData,
-} from "../hooks";
-import { ListContainer } from "../styled";
-import {
-  getLabelTypeOptions,
-  validateFieldName,
-  type AttributeConfig,
-  type SchemaConfigType,
-} from "../utils";
+
+import type { AttributeConfig, SchemaConfigType } from "../utils";
 
 type FieldCategory = "label" | "primitive";
 
@@ -75,6 +80,10 @@ const NewFieldSchema = () => {
   const schemasData = useLabelSchemasData();
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
+
+  const addToActiveSchema = useSetAtom(addToActiveSchemas);
+  const notify = useNotification();
+  const refreshSchema = useRefresh();
 
   // Initialize correct attributes for 3D media
   useEffect(() => {
@@ -220,8 +229,15 @@ const NewFieldSchema = () => {
     createField.execute(params, {
       callback: (createResult) => {
         if (createResult.error) {
+          const error = createResult.errorMessage || createResult.error;
+
+          console.error("Failed to create field:", error);
+          notify({
+            msg: `Failed to create field: ${error}`,
+            variant: "error",
+          });
+
           setIsCreating(false);
-          console.error("Failed to create field:", createResult.error);
           return;
         }
 
@@ -233,34 +249,37 @@ const NewFieldSchema = () => {
               setIsCreating(false);
 
               if (schemasResult.result) {
-                setLabelSchemasData(schemasResult.result.label_schemas);
-                setActiveLabelSchemas(
-                  schemasResult.result.active_label_schemas
-                );
-              }
+                const { active_label_schemas, label_schemas } =
+                  schemasResult.result;
 
-              // Go back to schema manager (both label and primitive are fully configured)
-              exitNewFieldMode();
+                setLabelSchemasData(label_schemas);
+                setActiveLabelSchemas(active_label_schemas);
+
+                refreshSchema();
+                exitNewFieldMode();
+              }
             },
           }
         );
       },
     });
   }, [
-    canCreate,
-    fieldName,
-    category,
-    labelType,
-    primitiveType,
-    primitiveConfig,
-    classes,
     attributes,
-    newAttributes,
+    canCreate,
+    category,
+    classes,
     createField,
-    getSchemas,
-    setLabelSchemasData,
-    setActiveLabelSchemas,
     exitNewFieldMode,
+    fieldName,
+    getSchemas,
+    labelType,
+    newAttributes,
+    notify,
+    primitiveConfig,
+    primitiveType,
+    refreshSchema,
+    setActiveLabelSchemas,
+    setLabelSchemasData,
   ]);
 
   const handleDiscard = useCallback(() => {
