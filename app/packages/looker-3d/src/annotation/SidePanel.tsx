@@ -151,8 +151,7 @@ const calculateCameraPositionForSidePanel = (
  */
 const calculateCameraUpForSidePanel = (
   sidePanelViewType: SidePanelViewType,
-  upVector: Vector3,
-  lookAt: Vector3
+  upVector: Vector3
 ): Vector3 => {
   const upDir = upVector.clone().normalize();
 
@@ -337,10 +336,10 @@ export const SidePanel = ({
 
   const cameraUp = useMemo(
     () =>
-      upVector && lookAt
-        ? calculateCameraUpForSidePanel(view, upVector, lookAt)
+      upVector
+        ? calculateCameraUpForSidePanel(view, upVector)
         : new Vector3(0, 1, 0),
-    [view, upVector, lookAt]
+    [view, upVector]
   );
 
   const theme = useTheme();
@@ -385,20 +384,20 @@ export const SidePanel = ({
     }
   }, [position, cameraUp, lookAt, upVector]);
 
-  const imageSlicePanelContent = (
-    <ImageSlicePanel
-      panelId={panelId}
-      view={view}
-      setView={setView}
-      imageSlices={imageSlices}
-      isLoadingImageSlices={isLoadingImageSlices}
-      resolveUrlForImageSlice={resolveUrlForImageSlice}
-    />
-  );
+  const showImageSlicePanel = isImageSliceView(view) && imageSlices.length > 0;
 
   return (
     <SidePanelContainer id={getPanelElementId(panelId)} $area={gridArea}>
-      {imageSlicePanelContent || (
+      {showImageSlicePanel ? (
+        <ImageSlicePanel
+          panelId={panelId}
+          view={view}
+          setView={setView}
+          imageSlices={imageSlices}
+          isLoadingImageSlices={isLoadingImageSlices}
+          resolveUrlForImageSlice={resolveUrlForImageSlice}
+        />
+      ) : (
         <View
           key={`${panelId}-${view}-${fitBoundsKey}`}
           style={{
