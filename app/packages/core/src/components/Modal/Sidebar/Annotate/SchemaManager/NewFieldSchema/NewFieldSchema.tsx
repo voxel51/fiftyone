@@ -6,6 +6,7 @@
  * - Primitive fields: configure component type, values, range
  */
 
+import { scrollable } from "@fiftyone/components";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { is3d } from "@fiftyone/utilities";
 import {
@@ -268,7 +269,15 @@ const NewFieldSchema = () => {
 
   return (
     <ListContainer style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+      <div
+        className={scrollable}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          paddingBottom: "1rem",
+          paddingRight: "1rem",
+        }}
+      >
         <Stack
           orientation={Orientation.Column}
           spacing={Spacing.Lg}

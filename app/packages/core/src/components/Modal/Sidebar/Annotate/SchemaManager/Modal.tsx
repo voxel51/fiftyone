@@ -14,9 +14,9 @@ import {
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
+import { TAB_JSON } from "./constants";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
-import { TAB_JSON } from "./constants";
 import {
   useActivateFields,
   useCurrentField,

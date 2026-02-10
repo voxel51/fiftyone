@@ -1,3 +1,4 @@
+import { scrollable } from "@fiftyone/components";
 import {
   Anchor,
   Button,
@@ -17,8 +18,8 @@ import {
 } from "@voxel51/voodo";
 import { useCallback, useState } from "react";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
-import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
 import Footer from "../Footer";
+import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
 import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
@@ -43,7 +44,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   );
 
   return (
-    <EditContainer>
+    <EditContainer className={scrollable}>
       <Header field={field} />
 
       <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
