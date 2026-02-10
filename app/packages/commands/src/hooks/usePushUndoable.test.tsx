@@ -1,33 +1,11 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { usePushUndoable } from "./usePushUndoable";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 
 describe("usePushUndoable", () => {
-  const contextId = "test-push-undoable-context";
-
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    const ctx = mgr.createCommandContext(contextId, false);
-    mgr.pushContext(ctx);
-  });
-
-  afterEach(() => {
-    const mgr = CommandContextManager.instance();
-    // Pop implementation prevents popping last one sometimes, or need explicit pop if we pushed
-    // But for cleanup, we just delete context
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    // Ideally reset manager to clean state, but singleton persists.
-    // We pushed context, so let's pop it to be clean for others
-    const active = mgr.getActiveContext();
-    if (active.id === contextId) {
-      mgr.popContext(contextId);
-    }
+    CommandContextManager.instance().reset();
   });
 
   it("should execute and push to active context", () => {
@@ -35,7 +13,7 @@ describe("usePushUndoable", () => {
     const mgr = CommandContextManager.instance();
     const ctx = mgr.getActiveContext();
 
-    expect(ctx.id).toBe(contextId);
+    expect(ctx.id).toBe(KnownContexts.Default);
     expect(ctx.canUndo()).toBe(false);
 
     const execFn = vi.fn();
@@ -56,7 +34,11 @@ describe("usePushUndoable", () => {
   it("should execute and push to specified context", () => {
     const otherContextId = "other-context";
     const mgr = CommandContextManager.instance();
-    const otherCtx = mgr.createCommandContext(otherContextId, false);
+    const otherCtx = mgr.createCommandContext(
+      otherContextId,
+      KnownContexts.Default,
+      false
+    );
 
     // Active context is still `contextId` from beforeEach
 
@@ -91,19 +73,7 @@ describe("usePushUndoable", () => {
     });
 
     expect(consoleSpy).toHaveBeenCalled();
-    expect(execFn).not.toHaveBeenCalled(); // Should assume safety check skips exec?
-    // Checking source:
-    /*
-          if (contextId) {
-            context = manager.getCommandContext(contextId);
-            if (!context) {
-              console.warn(...)
-              return; 
-            }
-          }
-        */
-    // Yes, it returns early.
-
+    expect(execFn).not.toHaveBeenCalled();
     consoleSpy.mockRestore();
   });
 });

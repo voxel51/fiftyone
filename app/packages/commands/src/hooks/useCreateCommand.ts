@@ -5,16 +5,23 @@ import { resolveContext } from "./utils";
 import { CommandHookReturn } from ".";
 
 /**
- * Hook to create and register a command in a given context.
- * The command is unregistered on unmount.
- * @param context An acquired context @see CommandContext
- * @param id The id of the command
- * @param execFn The function to call when the command is executed
- * @param enablement A function to determine if the command is enabled
- * @param label The short name of the command, ie Edit, Save, etc
- * @param description A longer description fit for a tooltip
- * @returns A function to invoke the command, a descriptor object,
- * and a boolean indicating if the command is enabled
+ * Hook to define and register a command within a specific context.
+ *
+ * The command is automatically registered on mount and unregistered on unmount.
+ *
+ * @param context - The context in which to register the command.
+ *   - Can be a `CommandContext` object or a string ID.
+ *   - If the context cannot be resolved, the command is not registered.
+ * @param id - Unique ID for the command.
+ * @param execFn - The function to execute when the command is triggered.
+ * @param enablement - Function returning a boolean to determine if the command is enabled.
+ * @param label - (Optional) Display label for the command.
+ * @param description - (Optional) Tooltip/help text for the command.
+ *
+ * @returns An object containing:
+ * - `callback`: Function to explicitly execute the command.
+ * - `descriptor`: Metadata (id, label, description).
+ * - `enabled`: Current enabled state of the command.
  */
 export const useCreateCommand = (
   context: CommandContext | string,

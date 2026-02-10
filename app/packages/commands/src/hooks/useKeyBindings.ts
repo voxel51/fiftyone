@@ -19,10 +19,13 @@ export type KeyBinding = {
 };
 
 /**
- * Registers a set of key bindings in a given context.
- * @param contextId The id of the context
- * @param keyBindings The key bindings to register
- * @param deps The optional dependency array for the hook
+ * Hook to register global or context-specific key bindings.
+ *
+ * @param contextId - The ID of the command context to bind keys to.
+ *   - The hook resolves this ID to a `CommandContext` instance.
+ * @param keyBindings - An array of `KeyBinding` objects defining sequences and commands.
+ *   - Commands can be referenced by string ID or defined inline.
+ * @param deps - (Optional) Dependency array to trigger re-registration.
  */
 export const useKeyBindings = (
   contextId: string,

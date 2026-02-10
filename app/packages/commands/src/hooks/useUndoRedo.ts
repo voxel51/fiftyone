@@ -7,14 +7,18 @@ import { CommandContext } from "../context";
 import { resolveContext } from "./utils";
 
 /**
- * hook that exposes the undo/redo state and methods for a given context.
- * @param context The context to use. If not provided, the active context is used.
- * @returns An object containing the undo/redo state and methods.
- * - undoEnabled: true if undo is available
- * - redoEnabled: true if redo is available
- * - undo: method to perform an undo
- * - redo: method to perform a redo
- * - clear: method to clear the undo/redo stack
+ * Hook to access and observe the undo/redo state of a context.
+ *
+ * @param context - (Optional) The context to observe.
+ *   - Can be a `CommandContext` object or a string ID.
+ *   - If undefined, it resolves to the currently active context.
+ *
+ * @returns An object containing:
+ * - `undoEnabled`: Boolean, true if undo is available.
+ * - `redoEnabled`: Boolean, true if redo is available.
+ * - `undo`: Async function to perform an undo operation.
+ * - `redo`: Async function to perform a redo operation.
+ * - `clear`: Function to clear the undo/redo stack.
  */
 export const useUndoRedo = (
   context?: CommandContext | string

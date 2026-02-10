@@ -1,15 +1,18 @@
 import React, { useLayoutEffect } from "react";
 import { useCommandContext } from "../hooks/useCommandContext";
+import { KnownContexts } from "../context";
 
 export interface CommandContextActivatorProps {
   id: string;
-  inheritContext?: boolean;
+  parent?: string;
+  propagate?: boolean;
   children: React.ReactNode;
 }
 
 const CommandContextActivatorImpl: React.FC<CommandContextActivatorProps> = ({
   id,
-  inheritContext,
+  parent,
+  propagate = true,
   children,
 }) => {
   const {
@@ -17,7 +20,7 @@ const CommandContextActivatorImpl: React.FC<CommandContextActivatorProps> = ({
     activate,
     deactivate,
     Provider: ContextProvider,
-  } = useCommandContext(id, inheritContext);
+  } = useCommandContext(id, parent, propagate);
 
   useLayoutEffect(() => {
     if (context) {
@@ -43,7 +46,7 @@ export const CommandContextActivator: React.FC<CommandContextActivatorProps> = (
   // Use key to force remount (and state reset) when context ID changes
   return (
     <CommandContextActivatorImpl
-      key={`${props.id}-${props.inheritContext}`}
+      key={`${props.id}-${props.parent}-${props.propagate}`}
       {...props}
     />
   );

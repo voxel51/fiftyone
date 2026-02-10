@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useCommand } from "./useCommand";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 
 describe("useCommand", () => {
   const contextId = "test-use-command-context";
@@ -10,31 +10,27 @@ describe("useCommand", () => {
   const description = "Test Description";
 
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    // Ensure clean state
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    const ctx = mgr.createCommandContext(contextId, false);
-    ctx.registerCommand(
-      commandId,
-      async () => {},
-      () => true,
-      label,
-      description
+    CommandContextManager.instance().reset();
+    CommandContextManager.instance().createCommandContext(
+      contextId,
+      KnownContexts.Default,
+      false
     );
-  });
-
-  afterEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
+    CommandContextManager.instance()
+      .getCommandContext(contextId)!
+      .registerCommand(
+        commandId,
+        async () => {
+          return;
+        },
+        () => true,
+        label,
+        description
+      );
   });
 
   it("should retrieve an existing command", () => {
-    const mgr = CommandContextManager.instance();
-    const ctx = mgr.getCommandContext(contextId)!;
+    const ctx = CommandContextManager.instance().getCommandContext(contextId)!;
 
     // Ensure command exists
     expect(ctx.getCommand(commandId)).toBeDefined();
@@ -48,8 +44,7 @@ describe("useCommand", () => {
   });
 
   it("should execute the command", async () => {
-    const mgr = CommandContextManager.instance();
-    const ctx = mgr.getCommandContext(contextId)!;
+    const ctx = CommandContextManager.instance().getCommandContext(contextId)!;
     const handler = vi.fn();
 
     ctx.unregisterCommand(commandId);
@@ -65,15 +60,16 @@ describe("useCommand", () => {
   });
 
   it("should update when command enablement changes", async () => {
-    const mgr = CommandContextManager.instance();
-    const ctx = mgr.getCommandContext(contextId)!;
+    const ctx = CommandContextManager.instance().getCommandContext(contextId)!;
 
     // Setup command with variable enablement
     let isEnabled = true;
     ctx.unregisterCommand(commandId);
     ctx.registerCommand(
       commandId,
-      async () => {},
+      async () => {
+        return;
+      },
       () => isEnabled
     );
 

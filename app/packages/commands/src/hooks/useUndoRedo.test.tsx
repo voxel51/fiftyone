@@ -1,33 +1,15 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useUndoRedo } from "./useUndoRedo";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 import { DelegatingUndoable } from "../actions";
 
 describe("useUndoRedo", () => {
-  const contextId = "test-undo-redo-context";
-
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    const ctx = mgr.createCommandContext(contextId, false);
-    mgr.pushContext(ctx);
+    CommandContextManager.instance().reset();
   });
 
-  afterEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    const active = mgr.getActiveContext();
-    if (active.id === contextId) {
-      mgr.popContext(contextId);
-    }
-  });
-
-  const pushUndoable = (id: string = "test") => {
+  const pushUndoable = (id = "test") => {
     const mgr = CommandContextManager.instance();
     const ctx = mgr.getActiveContext();
     const undoable = new DelegatingUndoable(id, vi.fn(), vi.fn());
@@ -106,9 +88,13 @@ describe("useUndoRedo", () => {
   it("should use specified context", () => {
     const otherId = "other-undo-context";
     const mgr = CommandContextManager.instance();
-    const otherCtx = mgr.createCommandContext(otherId, false);
+    const otherCtx = mgr.createCommandContext(
+      otherId,
+      KnownContexts.Default,
+      false
+    );
     // Context must be active to emit update events
-    mgr.pushContext(otherCtx);
+    mgr.activateContext(otherId);
 
     const { result } = renderHook(() => useUndoRedo(otherId));
 
@@ -123,8 +109,12 @@ describe("useUndoRedo", () => {
 
     // Create another context to be "Active" on top
     const topId = "top-context";
-    const topCtx = mgr.createCommandContext(topId, false);
-    mgr.pushContext(topCtx);
+    const topCtx = mgr.createCommandContext(
+      topId,
+      KnownContexts.Default,
+      false
+    );
+    mgr.activateContext(topId);
 
     // Active context (topCtx) shouldn't affect otherCtx
     act(() => {
@@ -138,10 +128,9 @@ describe("useUndoRedo", () => {
     // Also verify topCtx has item?
     expect(topCtx.canUndo()).toBe(true);
 
-    mgr.popContext(topId);
+    mgr.deactivateContext(topId);
     mgr.deleteContext(topId);
 
-    mgr.popContext(otherId);
     mgr.deleteContext(otherId);
   });
 });

@@ -2,25 +2,17 @@ import React from "react";
 import { render, cleanup } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { CommandContextActivator } from "./CommandContextActivator";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 
 describe("CommandContextActivator", () => {
   const contextId = "test-activator-context";
 
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    // Ensure clean slate
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
+    CommandContextManager.instance().reset();
   });
 
   afterEach(() => {
     cleanup();
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
   });
 
   it("should activate context on mount", () => {
@@ -79,7 +71,7 @@ describe("CommandContextActivator", () => {
 
     const { findByTestId } = render(
       <CommandContextActivator id={parentId}>
-        <CommandContextActivator id={childId} inheritContext>
+        <CommandContextActivator id={childId}>
           <div data-testid="child">Child</div>
         </CommandContextActivator>
       </CommandContextActivator>

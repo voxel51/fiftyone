@@ -9,12 +9,16 @@ export type CommandDescriptor = {
   description: string;
 };
 /**
- * Gets a previously registered command @see useCreateCommand.
- * @param commandId A command id
- * @param context The context the command is bound to.  If not
- * provided the active context is checked.
- * @returns A callback to invoke the command and the command object,
- * a descriptor object, and a boolean indicating if the command is enabled.
+ * Hook to retrieve and observe a command's state from a specific or active context.
+ *
+ * @param commandId - The ID of the command to retrieve.
+ * @param context - Optional context to search for the command in.
+ *   - If a `CommandContext` object or ID is provided, it attempts to resolve that specific context.
+ *   - If undefined, it resolves to the currently active context.
+ * @returns An object containing:
+ *   - `callback`: A function to execute the command.
+ *   - `descriptor`: Metadata about the command (label, description).
+ *   - `enabled`: Boolean indicating if the command is currently enabled.
  */
 
 export const useCommand = (

@@ -2,7 +2,7 @@ import { render, cleanup, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { useKeyBindings } from "./useKeyBindings";
 import { CommandContextActivator } from "../components/CommandContextActivator";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 
 // Mock component that uses useKeyBindings
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -37,26 +37,13 @@ describe("useKeyBindings Integration", () => {
   const contextId = "test-integration-context";
 
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    // Ensure KeyManager is clean or mocked if needed
+    CommandContextManager.instance().reset();
   });
-
-  afterEach(() => {
-    cleanup();
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-  });
-
   it("should register and execute command on key press", async () => {
     const handler = vi.fn();
 
     render(
-      <CommandContextActivator id={contextId}>
+      <CommandContextActivator id={contextId} parent={KnownContexts.Default}>
         <TestComponent contextId={contextId} handler={handler} />
       </CommandContextActivator>
     );
@@ -90,7 +77,7 @@ describe("useKeyBindings Integration", () => {
     const handler = vi.fn();
 
     const { rerender } = render(
-      <CommandContextActivator id={contextId}>
+      <CommandContextActivator id={contextId} parent={KnownContexts.Default}>
         <TestComponent contextId={contextId} handler={handler} dummy={1} />
       </CommandContextActivator>
     );
@@ -110,7 +97,7 @@ describe("useKeyBindings Integration", () => {
 
     // Rerender with same props to simulate update
     rerender(
-      <CommandContextActivator id={contextId}>
+      <CommandContextActivator id={contextId} parent={KnownContexts.Default}>
         <TestComponent contextId={contextId} handler={handler} dummy={2} />
       </CommandContextActivator>
     );
@@ -133,7 +120,7 @@ describe("useKeyBindings Integration", () => {
     const handler = vi.fn();
 
     const { unmount } = render(
-      <CommandContextActivator id={contextId}>
+      <CommandContextActivator id={contextId} parent={KnownContexts.Default}>
         <TestComponent contextId={contextId} handler={handler} />
       </CommandContextActivator>
     );
@@ -173,7 +160,7 @@ describe("useKeyBindings Integration", () => {
     const handler = vi.fn();
 
     const { unmount } = render(
-      <CommandContextActivator id={contextId}>
+      <CommandContextActivator id={contextId} parent={KnownContexts.Default}>
         <TestComponent
           contextId={contextId}
           bindings={[

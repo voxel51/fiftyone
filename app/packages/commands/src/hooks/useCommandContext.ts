@@ -5,32 +5,44 @@ import {
   createContext,
   useContext,
 } from "react";
-import { CommandContext, CommandContextManager } from "../context";
+import {
+  CommandContext,
+  CommandContextManager,
+  KnownContexts,
+} from "../context";
 
 const ReactCommandContext = createContext<CommandContext | undefined>(
   undefined
 );
 
 /**
- * Hook to create and manage a NEW command context for a component.
+ * Hook to create and manage the lifecycle of a new `CommandContext`.
  *
- * This hook manages the lifecycle of a CommandContext for the given `contextId`.
- * It strictly creates the context on mount and cleans it up on unmount.
+ * This hook creates a new context with the given `contextId` on mount and removes it on unmount.
+ * It is designed for components that need to establish their own command scope.
  *
- * IMPORTANT: The `contextId` must be unique. If a context with the same ID
- * already exists in the CommandContextManager, this hook will throw an error.
+ * Behavior:
+ * - **Creation**: A new `CommandContext` is created in the `CommandContextManager`.
+ * - **Parent Resolution**:
+ *   1. If `parent` param is provided, it uses that ID.
+ *   2. If not, it looks for a parent `CommandContext` provided via React Context (implicit nesting).
+ *   3. Defaults to `KnownContexts.Default`.
+ * - **Cleanup**: The context is deleted from the manager when the component unmounts.
  *
- * It provides:
- * - `context`: The effective CommandContext instance.
- * - `activate`: Function to push this context onto the stack.
- * - `deactivate`: Function to pop this context from the stack.
+ * @param contextId - Unique identifier for the new context. Must be unique within the manager.
+ * @param parent - Optional ID of the parent context. If omitted, it is inferred from React Context.
+ * @param propagate - Whether unhandled commands/events should propagate to the parent context. Defaults to `true`.
  *
- * @param contextId Unique identifier for the new context
- * @param inheritCurrent Whether to inherit commands/keybindings from the currently active context
+ * @returns An object containing:
+ * - `context`: The created `CommandContext` instance.
+ * - `activate`: Function to make this context the active one in the manager.
+ * - `deactivate`: Function to deactivate this context (if active) and restore the parent.
+ * - `Provider`: A React Context Provider to wrap children, enabling recursive parent inference.
  */
 export const useCommandContext = (
   contextId: string,
-  inheritCurrent?: boolean
+  parent?: string,
+  propagate = true
 ): {
   context: CommandContext | undefined;
   activate: () => void;
@@ -38,7 +50,8 @@ export const useCommandContext = (
   Provider: React.Provider<CommandContext | undefined>;
 } => {
   const mgr = CommandContextManager.instance();
-  const parentContext = useContext(ReactCommandContext);
+  const parentCtx = useContext(ReactCommandContext);
+  const resolvedParent = parent || parentCtx?.id || KnownContexts.Default;
 
   const [context] = useState(() => {
     // Synchronously create or retrieve the context on first render
@@ -46,14 +59,7 @@ export const useCommandContext = (
     if (existing) {
       return existing;
     }
-
-    // Use the nearest React context as the parent if we want to inherit.
-    // If inheritCurrent is true but no React context exists, fall back to the manager's active context.
-    // We pass 'true' to manager if we want to fallback to the manager's stack-based parent resolution.
-    // But since we are synchronous now, passing parentContext directly is better.
-    const parent = inheritCurrent ? parentContext || true : false;
-
-    return mgr.createCommandContext(contextId, parent);
+    return mgr.createCommandContext(contextId, resolvedParent, propagate);
   });
 
   useEffect(() => {
@@ -77,15 +83,13 @@ export const useCommandContext = (
         ? context
         : undefined,
     activate: useCallback(() => {
-      const ctx = CommandContextManager.instance().getCommandContext(contextId);
-      if (ctx) {
-        CommandContextManager.instance().pushContext(ctx);
-      }
+      CommandContextManager.instance().activateContext(contextId);
     }, [contextId]),
     deactivate: useCallback(() => {
-      const ctx = CommandContextManager.instance().getCommandContext(contextId);
-      if (ctx) {
-        CommandContextManager.instance().popContext(ctx.id);
+      const mgr = CommandContextManager.instance();
+      const ctx = mgr.getCommandContext(contextId);
+      if (ctx && mgr.getActiveContext().id === ctx.id) {
+        mgr.deactivateContext(ctx.id);
       }
     }, [contextId]),
     Provider: ReactCommandContext.Provider,

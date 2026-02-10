@@ -1,7 +1,7 @@
-import { renderHook, act, waitFor } from "@testing-library/react";
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useCreateCommand } from "./useCreateCommand";
-import { CommandContextManager } from "../context";
+import { CommandContextManager, KnownContexts } from "../context";
 
 describe("useCreateCommand", () => {
   const contextId = "test-create-command-context";
@@ -10,18 +10,12 @@ describe("useCreateCommand", () => {
   const description = "Test Description";
 
   beforeEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
-    mgr.createCommandContext(contextId, false);
-  });
-
-  afterEach(() => {
-    const mgr = CommandContextManager.instance();
-    if (mgr.getCommandContext(contextId)) {
-      mgr.deleteContext(contextId);
-    }
+    CommandContextManager.instance().reset();
+    CommandContextManager.instance().createCommandContext(
+      contextId,
+      KnownContexts.Default,
+      false
+    );
   });
 
   it("should register a command in the specified context", () => {
