@@ -3013,6 +3013,8 @@ __metadata:
     typescript: "npm:^4.7.4"
     typescript-plugin-css-modules: "npm:^5.1.0"
     vite: "npm:^5.4.21"
+  peerDependencies:
+    react: "*"
   languageName: unknown
   linkType: soft
 
