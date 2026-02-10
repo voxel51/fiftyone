@@ -236,7 +236,9 @@ export class Scene2D {
           absoluteBounds,
           relativeBounds
         );
-        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(addCommand);
       }
     });
 
@@ -256,7 +258,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -279,7 +283,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -996,6 +1002,18 @@ export class Scene2D {
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
 
+    // Mark sibling classifications dirty
+    // so new overlay doesn't...overlay them
+    if (overlay.getOverlayType() === "ClassificationOverlay") {
+      [...this.overlays.values()]
+        .filter(
+          (sibling) =>
+            sibling !== overlay &&
+            sibling.getOverlayType() === "ClassificationOverlay"
+        )
+        .forEach((sibling) => sibling.markDirty());
+    }
+
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
       overlay,
@@ -1088,7 +1106,10 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+  async transformOverlay(
+    id: string,
+    options: TransformOptions
+  ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1185,7 +1206,9 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   async executeCommand(command: Action, isUndoable = true): Promise<void> {
-    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    await CommandContextManager.instance()
+      .getActiveContext()
+      .executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
