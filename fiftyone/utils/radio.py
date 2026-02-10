@@ -360,6 +360,9 @@ class CRadioV4Model(fout.TorchImageModel, fom.SupportsGetItem):
         """
         import torch.nn.functional as F
 
+        if not imgs:
+            return []
+
         original_sizes = [img.size for img in imgs]  # (width, height)
 
         summaries = []
