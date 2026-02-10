@@ -322,7 +322,7 @@ class FiftyOneConfig(EnvConfig):
             d,
             "browser_file_operations_dir",
             env_var="FIFTYONE_BROWSER_FILE_OPERATIONS_DIR",
-            default=None,
+            default=os.path.expanduser("~"),
         )
         self._init()
 
