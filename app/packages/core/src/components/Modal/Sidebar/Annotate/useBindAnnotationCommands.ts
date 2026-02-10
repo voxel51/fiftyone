@@ -87,7 +87,7 @@ export default function useBindAnnotationCommands() {
               if (currentLabel.isNew) {
                 if (scene && !scene.isDestroyed && scene.renderLoopActive) {
                   scene.exitInteractiveMode();
-                  scene.removeOverlay(currentLabel.data._id, false);
+                  scene.removeOverlay(currentLabel.overlay.id, false);
                 }
                 exit();
                 return;
@@ -108,7 +108,9 @@ export default function useBindAnnotationCommands() {
                 );
 
                 removeLabelFromSidebar(currentLabel.data._id);
-                scene.removeOverlay(currentLabel.overlay.id, false);
+                if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+                  scene.removeOverlay(currentLabel.overlay.id, false);
+                }
 
                 notify({
                   msg: `Label "${currentLabel.data.label}" successfully deleted.`,
