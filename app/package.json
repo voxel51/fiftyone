@@ -62,6 +62,7 @@
         "react-plotly.js": "^2.6.0"
     },
     "resolutions": {
-        "brace-expansion": "^2.0.2"
+        "brace-expansion": "^2.0.2",
+        "three-stdlib": "^2.36.1"
     }
 }
