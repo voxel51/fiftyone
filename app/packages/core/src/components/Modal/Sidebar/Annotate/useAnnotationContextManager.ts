@@ -10,6 +10,7 @@ import useCanManageSchema from "./useCanManageSchema";
 import { useAnnotationSchemaContext } from "./state";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { KnownContexts, useCommandContext } from "@fiftyone/commands";
+import useSave from "./Edit/useSave";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -83,6 +84,7 @@ const activeLabelIdAtom = atom<string | null>(null);
 export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
   const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
+  const saveChanges = useSave();
 
   const {
     activate: activateCommandContext,
@@ -200,10 +202,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
+      saveChanges();
       deactivateCommandContext();
       contextManager.exit();
     }
-  }, [contextManager, deactivateCommandContext]);
+  }, [contextManager, deactivateCommandContext, saveChanges]);
 
   return useMemo(
     () => ({
