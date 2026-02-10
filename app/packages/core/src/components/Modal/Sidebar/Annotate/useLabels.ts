@@ -177,16 +177,17 @@ const pathMap = selector<{ [key: string]: string }>({
  */
 const useUpdateLabelAtom = () => {
   return useAtomCallback(
-    useCallback((get, set, id: string, data: AnnotationLabelData) => {
+    useCallback((get, set, id: string, data: AnnotationLabelData): boolean => {
       const labelMapValue = get(labelMap);
       const targetAtom = labelMapValue[id];
 
       if (targetAtom) {
         const currentValue = get(targetAtom);
         set(targetAtom, { ...currentValue, data });
-      } else {
-        console.warn(`Unknown label id ${id}`);
+        return true;
       }
+
+      return false;
     }, [])
   );
 };
@@ -245,7 +246,8 @@ export default function useLabels() {
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
-  const addLabel = useAddAnnotationLabelToRenderer();
+  const addLabelToRenderer = useAddAnnotationLabelToRenderer();
+  const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
@@ -314,7 +316,9 @@ export default function useLabels() {
           }
 
           setLabels(result);
-          result.forEach((annotationLabel) => addLabel(annotationLabel));
+          result.forEach((annotationLabel) =>
+            addLabelToRenderer(annotationLabel)
+          );
           setLoading(LabelsState.COMPLETE);
         });
       } else if (loadingState === LabelsState.COMPLETE) {
@@ -329,8 +333,17 @@ export default function useLabels() {
                 annotationLabel.data;
             }
 
-            // update sidebar
-            updateLabelAtom(annotationLabel.data._id, annotationLabel.data);
+            // update sidebar, or add if this is a new label
+            const updated = updateLabelAtom(
+              annotationLabel.data._id,
+              annotationLabel.data
+            );
+
+            // new label
+            if (!updated) {
+              addLabelToStore(annotationLabel);
+              addLabelToRenderer(annotationLabel);
+            }
           });
         });
       }
