@@ -52,7 +52,7 @@ function ImageIcon(props: ImageIconPropsType) {
       src={src}
       height={21}
       width={21}
-      style={{ maxWidth: "none" }}
+      style={{ ...iconProps?.style, maxWidth: "none" }}
     />
   );
 }
