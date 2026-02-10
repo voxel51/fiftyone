@@ -13,6 +13,12 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from fiftyone.server.files import (
+    FileOperationError,
+    delete_file,
+    stream_upload,
+)
+
 
 class FileUpload(HTTPEndpoint):
     """Handles file uploads from the browser.
@@ -29,7 +35,17 @@ class FileUpload(HTTPEndpoint):
     """
 
     async def post(self, request: Request) -> JSONResponse:
-        raise NotImplementedError("TODO: implement")
+        path = request.query_params.get("path")
+
+        try:
+            resolved_path = await stream_upload(
+                stream=request.stream(),
+                path=path,
+            )
+            return JSONResponse({"path": resolved_path}, status_code=201)
+
+        except FileOperationError as e:
+            return JSONResponse(e.to_dict(), status_code=e.status_code)
 
 
 class FileDelete(HTTPEndpoint):
@@ -44,4 +60,4 @@ class FileDelete(HTTPEndpoint):
     """
 
     async def delete(self, request: Request) -> Response:
-        raise NotImplementedError("TODO: implement")
+        raise NotImplementedError("TODO: implement in next phase")

@@ -312,6 +312,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_SINGLETON_CACHE",
             default=True,
         )
+        self.allow_browser_file_operations = self.parse_bool(
+            d,
+            "allow_browser_file_operations",
+            env_var="FIFTYONE_ALLOW_BROWSER_FILE_OPERATIONS",
+            default=False,
+        )
+        self.browser_file_operations_dir = self.parse_path(
+            d,
+            "browser_file_operations_dir",
+            env_var="FIFTYONE_BROWSER_FILE_OPERATIONS_DIR",
+            default=None,
+        )
         self._init()
 
     @property
