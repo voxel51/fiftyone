@@ -2592,7 +2592,7 @@ __metadata:
     "@types/styled-components": "npm:^5.1.23"
     "@use-gesture/react": "npm:^10.3.0"
     "@vitejs/plugin-react-refresh": "npm:^1.3.3"
-    "@voxel51/voodo": "npm:0.0.16"
+    "@voxel51/voodo": "npm:0.0.17"
     "@xstate/react": "npm:1.3.3"
     classnames: "npm:^2.2.6"
     color: "npm:^4.2.3"
@@ -7326,9 +7326,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@voxel51/voodo@npm:0.0.16":
-  version: 0.0.16
-  resolution: "@voxel51/voodo@npm:0.0.16"
+"@voxel51/voodo@npm:0.0.17":
+  version: 0.0.17
+  resolution: "@voxel51/voodo@npm:0.0.17"
   dependencies:
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
@@ -7336,6 +7336,7 @@ __metadata:
     "@headlessui/react": "npm:^2.2.9"
     clsx: "npm:^2.1.1"
     date-fns-tz: "npm:^3.2.0"
+    lodash.debounce: "npm:^4.0.8"
     react-datepicker: "npm:^9.1.0"
     tailwind-merge: "npm:^3.4.0"
   peerDependencies:
@@ -7344,7 +7345,7 @@ __metadata:
     react: ^18.0.0
     react-dom: ^18.0.0
     react-is: ^18.0.0
-  checksum: 10/9c47206d03ff6a6ba2c39ed53c9f7ffc8e1f9699c2ae08e1b7e910f9521df0790ae165920e4f54fc07a1b9156f361c6d85699219146f683c3cb4bb4774fc9379
+  checksum: 10/414a6019de9c92e4f813bc48108701ff6aa9d905942575e03268906393b400a944e3508b1e27b9374b4d0efd073530ff3ac53ae1fc30a211e8431849fb600c22
   languageName: node
   linkType: hard
 
@@ -14357,7 +14358,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash.debounce@npm:^4.0.0":
+"lodash.debounce@npm:^4.0.0, lodash.debounce@npm:^4.0.8":
   version: 4.0.8
   resolution: "lodash.debounce@npm:4.0.8"
   checksum: 10/cd0b2819786e6e80cb9f5cda26b1a8fc073daaf04e48d4cb462fa4663ec9adb3a5387aa22d7129e48eed1afa05b482e2a6b79bfc99b86886364449500cbb00fd
