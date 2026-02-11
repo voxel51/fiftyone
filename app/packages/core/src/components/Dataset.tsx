@@ -1,6 +1,4 @@
 import { useTrackEvent } from "@fiftyone/analytics";
-import { KnownContexts } from "@fiftyone/commands/src/context/CommandContextManager";
-import { useCommandContext } from "@fiftyone/commands/src/hooks/useCommandContext";
 import { subscribe } from "@fiftyone/relay";
 import { isModalActive, useCurrentDatasetId } from "@fiftyone/state";
 import { clearFetchCache } from "@fiftyone/utilities/src/fetch";
@@ -30,20 +28,6 @@ const Body = styled.div`
 
 const ModalWrapper = () => {
   const isModalOpen = useRecoilValue(isModalActive);
-
-  const {
-    activate: activateCommandContext,
-    deactivate: deactivateCommandContext,
-  } = useCommandContext(KnownContexts.Modal, true);
-
-  useEffect(() => {
-    activateCommandContext();
-
-    return () => {
-      deactivateCommandContext();
-    };
-  }, [isModalOpen, activateCommandContext, deactivateCommandContext]);
-
   return isModalOpen ? <Modal /> : null;
 };
 

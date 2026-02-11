@@ -4,6 +4,12 @@ import {
   useRegisterAnnotationEventHandlers,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
+import {
+  KnownCommands,
+  KnownContexts,
+  useCommandContext,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -13,7 +19,13 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { Fragment, useCallback, useMemo, useRef } from "react";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -24,11 +36,6 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -188,6 +195,35 @@ const Modal = () => {
       },
     [modalCloseHandler]
   );
+
+  const {
+    activate: activateCommandContext,
+    deactivate: deactivateCommandContext,
+  } = useCommandContext(KnownContexts.Modal, true);
+
+  const {
+    activate: activateAnnotateCommandContext,
+    deactivate: deactivateAnnotateCommandContext,
+  } = useCommandContext(KnownContexts.ModalAnnotate, true);
+
+  const isSidebarVisibleValue = useRecoilValue(fos.sidebarVisible(true));
+
+  useEffect(() => {
+    activateCommandContext();
+    activateAnnotateCommandContext;
+
+    return () => {
+      deactivateCommandContext();
+      deactivateAnnotateCommandContext();
+    };
+  }, [
+    isSidebarVisibleValue,
+    activateCommandContext,
+    deactivateCommandContext,
+    activateAnnotateCommandContext,
+    deactivateAnnotateCommandContext,
+  ]);
+
   useKeyBindings(KnownContexts.Modal, [
     {
       commandId: KnownCommands.ModalClose,
