@@ -74,15 +74,19 @@ export const doPatchSample = async ({
         }
       }
 
-      // transform response data to match the graphql sample format
-      const cleanedSample = transformSampleData(updatedSample);
-      if (isSampleIsh(cleanedSample)) {
-        refreshSample(cleanedSample as Sample);
+      if (updatedSample) {
+        // transform response data to match the graphql sample format
+        const cleanedSample = transformSampleData(updatedSample);
+        if (isSampleIsh(cleanedSample)) {
+          refreshSample(cleanedSample as Sample);
+        } else {
+          console.error(
+            "response data does not adhere to sample format",
+            cleanedSample
+          );
+        }
       } else {
-        console.error(
-          "response data does not adhere to sample format",
-          cleanedSample
-        );
+        console.warn("received empty sample data; deltas may be stale");
       }
     } catch (error) {
       console.error("error patching sample", error);
