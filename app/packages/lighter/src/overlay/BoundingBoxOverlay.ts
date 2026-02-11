@@ -297,6 +297,9 @@ export class BoundingBoxOverlay
     if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
       return;
 
+    // Respect read-only flags
+    if (!this.isDraggable && !this.isResizeable) return;
+
     const distance = Math.sqrt(
       Math.pow((point.x - this.moveStartPoint.x) / scale, 2) +
         Math.pow((point.y - this.moveStartPoint.y) / scale, 2)
@@ -304,9 +307,13 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = !this.hasValidBounds()
-        ? "SETTING"
-        : resizeRegion || "DRAGGING";
+      if (!this.hasValidBounds()) {
+        this.moveState = "SETTING";
+      } else if (resizeRegion && this.isResizeable) {
+        this.moveState = resizeRegion;
+      } else if (!resizeRegion && this.isDraggable) {
+        this.moveState = "DRAGGING";
+      }
     }
   }
 
