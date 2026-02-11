@@ -134,6 +134,7 @@ const ValuesList = ({
         </Button>
       </div>
       <Input
+        data-cy="value-input"
         type={isNumeric ? "number" : "text"}
         value={newValue}
         onChange={handleChange}
