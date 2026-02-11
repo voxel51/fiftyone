@@ -303,12 +303,12 @@ class SidebarAsserter {
    * Assert that a toggle switch is visible in the modal
    */
   async hasBooleanToggle() {
-    // ToggleSwitch renders as two buttons: "False" and "True"
+    // voodo ToggleSwitch renders Headless UI tabs
     await expect(
-      this.modalSidebarPom.modal.getByRole("button", { name: "False" })
+      this.modalSidebarPom.modal.getByRole("tab", { name: "False" })
     ).toBeVisible();
     await expect(
-      this.modalSidebarPom.modal.getByRole("button", { name: "True" })
+      this.modalSidebarPom.modal.getByRole("tab", { name: "True" })
     ).toBeVisible();
   }
 
