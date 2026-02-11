@@ -170,8 +170,11 @@ export class ImageOverlay
     this.imgElement.style.display = "none";
 
     // Match Looker's pixelated rendering (imageSmoothingEnabled = false)
+    // "pixelated" is widely supported; "crisp-edges" is the fallback for older browsers.
     this.imgElement.style.imageRendering = "pixelated";
-    this.imgElement.style.imageRendering = "crisp-edges"; // Fallback for some browsers
+    if (getComputedStyle(this.imgElement).imageRendering !== "pixelated") {
+      this.imgElement.style.imageRendering = "crisp-edges";
+    }
     this.imgElement.draggable = false;
 
     if (this.options.opacity !== undefined && this.options.opacity !== 1) {

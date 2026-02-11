@@ -10,12 +10,14 @@ import { useCallback } from "react";
  *   setViewport: (viewport: { pan: [number, number]; scale: number } | null) => void;
  *   setPan: (pan: [number, number]) => void;
  *   setZoom: (scale: number) => void;
+ *   pan: [number, number];
+ *   scale: number;
  * }
  */
 export const useViewport = () => {
   const [viewport, setViewport] = useAtom(fos.modalViewport) as [
     { scale: number; pan: [number, number] } | null,
-    (update: any) => void
+    (update: unknown) => void
   ];
 
   const setPan = useCallback(

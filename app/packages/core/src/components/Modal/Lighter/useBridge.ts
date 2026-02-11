@@ -198,7 +198,7 @@ export const useBridge = (scene: Scene2D | null) => {
           renderer.setViewport(viewport.scale, viewport.pan);
         }
       }
-    }, [scene, viewport])
+    }, [scene])
   );
 
   useEventHandler(
