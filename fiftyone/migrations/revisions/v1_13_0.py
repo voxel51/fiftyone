@@ -1,5 +1,5 @@
 """
-FiftyOne v1.12.0 revision.
+FiftyOne v1.13.0 revision.
 
 Beta (VFF_EXP_ANNOTATION=1) only supported classification and detection label
 types. The HA (human annotation) label schema was persisted to the sample field
@@ -26,10 +26,15 @@ def up(db, dataset_name):
     has_schemas = False
     for field in sample_fields:
         schema = field.pop("schema", None)
-        if not schema:
+        if schema:
+            has_schemas = True
             continue
 
-        has_schemas = True
+        subfields = field.get("fields", [])
+        for subfield in subfields:
+            schema = subfield.pop("schema", None)
+            if schema is not None:
+                has_schemas = True
 
     if has_schemas:
         db.datasets.update_one(
