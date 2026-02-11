@@ -1,1112 +1,562 @@
 .. _fiftyone-annotation:
+In-App Annotation
+==================
 
-Annotating Datasets
-===================
+Overview
+--------
 
-.. default-role:: code
+This guide will walk you through the basics of FiftyOne's in-App annotation features.
 
-FiftyOne provides a powerful annotation API that makes it easy to add or edit
-labels on your :ref:`datasets <using-datasets>` or specific
-:ref:`views <using-views>` into them.
+Currently in-App annotation is designed for ad hoc, sample-by-sample metadata editing. The features and controls extend FiftyOne's existing data visualization UI. Once you have samples loaded into a FiftyOne dataset, you can begin defining your Annotation Schema and labeling your data in the App.
 
-.. note::
+----
 
-    Did you know? You can request, manage, and import annotations from within
-    the FiftyOne App by installing the
-    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
-    plugin!
+Basics
+------
 
-.. note::
+Supported Media and Label Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    Check out :doc:`this tutorial </tutorials/cvat_annotation>` to see an
-    example workflow that uses the annotation API to create, delete, and fix
-    annotations on a FiftyOne dataset.
+To perform in-App annotation, your dataset must contain at least one of the following media and label types:
 
-.. _annotation-basic-recipe:
+* `media_type <https://docs.voxel51.com/user_guide/using_datasets.html#media-type>`_
 
-Basic recipe
-____________
+  * ``image``
+  * ``3D``
 
-The basic workflow to use the annotation API to add or edit labels on your
-FiftyOne datasets is as follows:
+* `Labels <https://docs.voxel51.com/user_guide/basics.html#labels>`_
 
-1) Load a :ref:`labeled or unlabeled dataset <importing-datasets>` into FiftyOne
+  * ``Classification``
+  * ``Classifications``
+  * ``Detections``
+  * ``3D Polylines``
+  * ``3D Cuboids``
 
-2) Explore the dataset using the :ref:`App <fiftyone-app>` or
-   :ref:`dataset views <using-views>` to locate either unlabeled samples that
-   you wish to annotate or labeled samples whose annotations you want to edit
+Annotation UI: Sample Visualizer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-3) Use the
-   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-   method on your dataset or view to upload the samples and optionally their
-   existing labels to the annotation backend
+All in-App annotation controls now live in the `expanded view for samples <https://docs.voxel51.com/user_guide/app.html#viewing-a-sample>`_. Open a sample in the expanded view, and find the new "Annotate" tab in the right sidebar.
 
-4) In the annotation tool, perform the necessary annotation work
+.. image:: /_static/annotation/image1.gif
+   :alt: Annotate tab location
 
-5) Back in FiftyOne, load your dataset and use the
-   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-   method to merge the annotations back into your FiftyOne dataset
-
-6) If desired, delete the annotation tasks and the record of the annotation run
-   from your FiftyOne dataset
-
-|br|
-The example below demonstrates this workflow using the default
-:ref:`CVAT backend <cvat-integration>`.
-
-.. note::
-
-    You must create an account at `app.cvat.ai <https://app.cvat.ai>`_ in order to
-    run this example.
-
-    Note that you can store your credentials as described in
-    :ref:`this section <cvat-setup>` to avoid entering them manually each time
-    you interact with CVAT.
-
-First, we create the annotation tasks:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-    from fiftyone import ViewField as F
-
-    # Step 1: Load your data into FiftyOne
-
-    dataset = foz.load_zoo_dataset(
-        "quickstart", dataset_name="cvat-annotation-example"
-    )
-    dataset.persistent = True
-
-    dataset.evaluate_detections(
-        "predictions", gt_field="ground_truth", eval_key="eval"
-    )
-
-    # Step 2: Locate a subset of your data requiring annotation
-
-    # Create a view that contains only high confidence false positive model
-    # predictions, with samples containing the most false positives first
-    most_fp_view = (
-        dataset
-        .filter_labels("predictions", (F("confidence") > 0.8) & (F("eval") == "fp"))
-        .sort_by(F("predictions.detections").length(), reverse=True)
-    )
-
-    # Let's edit the ground truth annotations for the sample with the most
-    # high confidence false positives
-    sample_id = most_fp_view.first().id
-    view = dataset.select(sample_id)
-
-    # Step 3: Send samples to CVAT
-
-    # A unique identifier for this run
-    anno_key = "cvat_basic_recipe"
-
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        attributes=["iscrowd"],
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Step 4: Perform annotation in CVAT and save the tasks
-
-Then, once the annotation work is complete, we merge the annotations back into
-FiftyOne:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    anno_key = "cvat_basic_recipe"
-
-    # Step 5: Merge annotations back into FiftyOne dataset
-
-    dataset = fo.load_dataset("cvat-annotation-example")
-    dataset.load_annotations(anno_key)
-
-    # Load the view that was annotated in the App
-    view = dataset.load_annotation_view(anno_key)
-    session = fo.launch_app(view=view)
-
-    # Step 6: Cleanup
-
-    # Delete tasks from CVAT
-    results = dataset.load_annotation_results(anno_key)
-    results.cleanup()
-
-    # Delete run record (not the labels) from FiftyOne
-    dataset.delete_annotation_run(anno_key)
-
-.. note::
-
-    Check out :ref:`this page <cvat-examples>` to see a variety of common
-    annotation patterns using the CVAT backend to illustrate the full process.
-
-.. _annotation-setup:
-
-Setup
-_____
-
-By default, all annotation is performed via `app.cvat.ai <https://app.cvat.ai>`_,
-which simply requires that you create an account and then configure your
-username and password credentials.
-
-However, you can configure FiftyOne to use a
-:ref:`self-hosted CVAT server <cvat-self-hosted-server>`, or you can even use a
-completely :ref:`custom backend <custom-annotation-backend>`.
-
-.. note::
-
-    See :ref:`this page <cvat-setup>` for CVAT-specific setup instructions.
-
-Changing your annotation backend
---------------------------------
-
-You can use a specific backend for a particular annotation run by passing the
-`backend` parameter to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
-
-.. code:: python
-    :linenos:
-
-    view.annotate(..., backend="<backend>", ...)
-
-Alternatively, you can change your default annotation backend for an entire
-session by setting the `FIFTYONE_ANNOTATION_DEFAULT_BACKEND` environment
-variable.
-
-.. code-block:: shell
-
-    export FIFTYONE_ANNOTATION_DEFAULT_BACKEND=<backend>
-
-Finally, you can permanently change your default annotation backend by updating
-the `default_backend` key of your :ref:`annotation config <annotation-config>`
-at `~/.fiftyone/annotation_config.json`:
-
-.. code-block:: text
-
-    {
-        "default_backend": "<backend>",
-        "backends": {
-            "<backend>": {...},
-            ...
-        }
-    }
-
-.. _configuring-your-backend:
-
-Configuring your backend
-------------------------
-
-Annotation backends may be configured in a variety of backend-specific ways,
-which you can see by inspecting the parameters of a backend's associated
-|AnnotationBackendConfig| class.
-
-The relevant classes for the builtin annotation backends are:
-
--   `"cvat"`: :class:`fiftyone.utils.cvat.CVATBackendConfig`
--   `"labelstudio"`: :class:`fiftyone.utils.labelstudio.LabelStudioBackendConfig`
--   `"labelbox"`: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
-
-You can configure an annotation backend's parameters for a specific run by
-simply passing supported config parameters as keyword arguments each time you call
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
-
-.. code:: python
-    :linenos:
-
-    view.annotate(
-        ...
-        backend="cvat",
-        url="http://localhost:8080",
-        username=...,
-        password=...,
-    )
-
-Alternatively, you can more permanently configure your backend(s) via your
-:ref:`annotation config <annotation-config>`.
-
-.. _annotation-config:
-
-Annotation config
-_________________
-
-FiftyOne provides an annotation config that you can use to either temporarily
-or permanently configure the behavior of the annotation API.
-
-Viewing your config
--------------------
-
-You can print your current annotation config at any time via the Python library
-and the CLI:
-
-.. tabs::
-
-  .. tab:: Python
-
-    .. code-block:: python
-
-        import fiftyone as fo
-
-        # Print your current annotation config
-        print(fo.annotation_config)
-
-    .. code-block:: text
-
-        {
-            "default_backend": "cvat",
-            "backends": {
-                "cvat": {
-                    "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://app.cvat.ai"
-                }
-            }
-        }
-
-  .. tab:: CLI
-
-    .. code-block:: shell
-
-        # Print your current annotation config
-        fiftyone annotation config
-
-    .. code-block:: text
-
-        {
-            "default_backend": "cvat",
-            "backends": {
-                "cvat": {
-                    "config_cls": "fiftyone.utils.cvat.CVATBackendConfig",
-                    "url": "https://app.cvat.ai"
-                }
-            }
-        }
-
-.. note::
-
-    If you have customized your annotation config via any of the methods
-    described below, printing your config is a convenient way to ensure that
-    the changes you made have taken effect as you expected.
-
-Modifying your config
----------------------
-
-You can modify your annotation config in a variety of ways. The following
-sections describe these options in detail.
-
-Order of precedence
-~~~~~~~~~~~~~~~~~~~
-
-The following order of precedence is used to assign values to your annotation
-config settings as runtime:
-
-1. Config settings applied at runtime by directly editing
-   `fiftyone.annotation_config`
-2. `FIFTYONE_XXX` environment variables
-3. Settings in your JSON config (`~/.fiftyone/annotation_config.json`)
-4. The default config values
-
-Editing your JSON config
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can permanently customize your annotation config by creating a
-`~/.fiftyone/annotation_config.json` file on your machine. The JSON file may
-contain any desired subset of config fields that you wish to customize.
-
-For example, the following config JSON file customizes the URL of your CVAT
-server without changing any other default config settings:
-
-.. code-block:: json
-
-    {
-        "backends": {
-            "cvat": {
-                "url": "http://localhost:8080"
-            }
-        }
-    }
-
-When `fiftyone` is imported, any options from your JSON config are merged into
-the default config, as per the order of precedence described above.
-
-.. note::
-
-    You can customize the location from which your JSON config is read by
-    setting the `FIFTYONE_ANNOTATION_CONFIG_PATH` environment variable.
-
-Setting environment variables
+Saving and Reverting Changes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Annotation config settings may be customized on a per-session basis by setting
-the `FIFTYONE_XXX` environment variable(s) for the desired config settings.
+When you make changes to sample metadata with FiftyOne's in-App annotation, your changes automatically save to the database. The auto-save functionality triggers either explicitly after an action (e.g., deleting a label) or after a short period of time (e.g., updating the spatial properties of a bounding box multiple times in succession), depending on the action.
 
-The `FIFTYONE_ANNOTATION_DEFAULT_BACKEND` environment variable allows you to
-configure your default backend:
+You can tell whether your changes are saved or are in the process of being saved thanks to this indicator:
 
-.. code-block:: shell
+.. todo:: Screenshot needed
 
-    export FIFTYONE_ANNOTATION_DEFAULT_BACKEND=labelbox
+Undo/Redo
+^^^^^^^^^
 
-You can declare parameters for specific annotation backends by setting
-environment variables of the form `FIFTYONE_<BACKEND>_<PARAMETER>`. Any
-settings that you declare in this way will be passed as keyword arguments to
-methods like
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-whenever the corresponding backend is in use. For example, you can configure
-the URL, username, password, and email (if applicable) of your CVAT server as
-follows:
+.. image:: /_static/annotation/image2.png
+   :alt: Undo/Redo buttons
 
-.. code-block:: shell
+While editing metadata, you can undo and redo actions using the buttons in the upper-right corner of the "Annotate" panel, or via ``Ctrl+``/``Cmd+z`` and ``Ctrl+``/``Cmd+y``. Your changes included in the undo stack are limited to your active annotation session, i.e., while the expanded view remains open.
 
-    export FIFTYONE_CVAT_URL=http://localhost:8080
-    export FIFTYONE_CVAT_USERNAME=...
-    export FIFTYONE_CVAT_PASSWORD=...
-    export FIFTYONE_CVAT_EMAIL=...  # if applicable
+----
 
-The `FIFTYONE_ANNOTATION_BACKENDS` environment variable can be set to a
-`list,of,backends` that you want to expose in your session, which may exclude
-native backends and/or declare additional custom backends whose parameters are
-defined via additional config modifications of any kind:
+User Guide
+----------
 
-.. code-block:: shell
+.. _schema-import-management:
 
-    export FIFTYONE_ANNOTATION_BACKENDS=custom,cvat,labelbox
+Schema Import / Management
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When declaring new backends, you can include `*` to append new backend(s)
-without omitting or explicitly enumerating the builtin backends. For example,
-you can add a `custom` annotation backend as follows:
-
-.. code-block:: shell
-
-    export FIFTYONE_ANNOTATION_BACKENDS=*,custom
-    export FIFTYONE_CUSTOM_CONFIG_CLS=your.custom.AnnotationConfig
-
-Modifying your config in code
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can dynamically modify your annotation config at runtime by directly
-editing the `fiftyone.annotation_config` object.
-
-Any changes to your annotation config applied via this manner will immediately
-take effect in all subsequent calls to `fiftyone.annotation_config` during your
-current session.
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-
-    fo.annotation_config.default_backend = "<backend>"
-
-.. _requesting-annotations:
-
-Requesting annotations
-______________________
-
-Use the
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
-to send the samples and optionally existing labels in a |Dataset| or
-|DatasetView| to your annotation backend for processing.
-
-The basic syntax is:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-    view.annotate(anno_key, ...)
-
-The `anno_key` argument defines a unique identifier for the annotation run, and
-you will provide it to methods like
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`,
-:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`, and
-:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
-to manage the run in the future.
+To perform in-App annotation, your dataset must first have an "Annotation Schema". For a field, attribute, or value to be available in in-App annotation, it must be present in the Annotation Schema. Currently, you may only have one Annotation Schema per dataset, and your Annotation Schema applies across all samples and views on the dataset.
 
 .. warning::
+   Only users with `"Can manage" access <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_ to a dataset may import and manage the Annotation Schema on that dataset.
 
-    FiftyOne assumes that all labels in an annotation run can fit in memory.
-
-    If you are annotating very large scale video datasets with dense frame
-    labels, you may violate this assumption. Instead, consider breaking the
-    work into multiple smaller annotation runs that each contain limited
-    subsets of the samples you wish to annotate.
-
-    You can use :meth:`Dataset.stats() <fiftyone.core.dataset.Dataset.stats>`
-    to get a sense for the total size of the labels in a dataset as a rule of
-    thumb to estimate the size of a candidate annotation run.
-
-In addition,
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-provides various parameters that you can use to customize the annotation tasks
-that you wish to be performed.
-
-The following parameters are supported by all annotation backends:
-
--   **backend** (*None*): the annotation backend to use. The supported values
-    are `fiftyone.annotation_config.backends.keys()` and the default is
-    `fiftyone.annotation_config.default_backend`
--   **media_field** (*"filepath"*): the sample field containing the path to the
-    source media to upload
--   **launch_editor** (*False*): whether to launch the annotation backend's
-    editor after uploading the samples
-
-The following parameters allow you to configure the labeling schema to use for
-your annotation tasks. See :ref:`this section <annotation-label-schema>` for
-more details:
-
--   **label_schema** (*None*): a dictionary defining the label schema to use.
-    If this argument is provided, it takes precedence over the remaining fields
--   **label_field** (*None*): a string indicating a new or existing label field
-    to annotate
--   **label_type** (*None*): a string indicating the type of labels to
-    annotate. The possible label types are:
-
-    -   ``"classification"``: a single classification stored in
-        |Classification| fields
-    -   ``"classifications"``: multilabel classifications stored in
-        |Classifications| fields
-    -   ``"detections"``: object detections stored in |Detections| fields
-    -   ``"instances"``: instance segmentations stored in |Detections| fields
-        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
-        attributes populated
-    -   ``"polylines"``: polylines stored in |Polylines| fields with their
-        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
-        `False`
-    -   ``"polygons"``: polygons stored in |Polylines| fields with their
-        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
-        `True`
-    -   ``"keypoints"``: keypoints stored in |Keypoints| fields
-    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
-        fields
-    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
-        |StringField|, or |BooleanField| fields
-
-    All new label fields must have their type specified via this argument or in
-    `label_schema`
--   **classes** (*None*): a list of strings indicating the class options for
-    `label_field` or all fields in `label_schema` without classes specified.
-    All new label fields must have a class list provided via one of the
-    supported methods. For existing label fields, if classes are not provided
-    by this argument nor `label_schema`, the observed labels on your dataset
-    are used
--   **attributes** (*True*): specifies the label attributes of each label field
-    to include (other than their `label`, which is always included) in the
-    annotation export. Can be any of the following:
-
-    -   `True`: export all label attributes
-    -   `False`: don't export any custom label attributes
-    -   a list of label attributes to export
-    -   a dict mapping attribute names to dicts specifying the `type`,
-        `values`, and `default` for each attribute
-
-    If a `label_schema` is also provided, this parameter determines which
-    attributes are included for all fields that do not explicitly define their
-    per-field attributes (in addition to any per-class attributes)
--   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations. All new
-    label fields must have mask targets provided via one of the supported
-    methods. For existing label fields, if mask targets are not provided by
-    this argument nor `label_schema`, any applicable mask targets stored on
-    your dataset will be used, if available
--   **allow_additions** (*True*): whether to allow new labels to be added. Only
-    applicable when editing existing label fields
--   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
-    applicable when editing existing label fields
--   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing
-    fields with `label` attributes
--   **allow_index_edits** (*True*): whether to allow the `index` attribute
-    of existing video tracks to be modified. Only applicable when editing
-    existing frame fields with `index` attributes
--   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
-    Only applicable when editing existing spatial label fields
-
-|br|
-In addition, each annotation backend can typically be configured in a variety
-of backend-specific ways. See :ref:`this section <configuring-your-backend>`
-for more details.
-
-.. note::
-
-    Specific annotation backends may not support all ``label_type`` options.
-
-.. _annotation-label-schema:
-
-Label schema
-------------
-
-The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
-you to define the annotation schema that you wish to be used.
-
-The label schema may define new label field(s) that you wish to populate, and
-it may also include existing label field(s), in which case you can add, delete,
-or edit the existing labels on your FiftyOne dataset.
-
-The `label_schema` argument is the most flexible way to define how to construct
-tasks in CVAT. In its most verbose form, it is a dictionary that defines the
-label type, annotation type, possible classes, and possible attributes for each
-label field:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_schema = {
-        "new_field": {
-            "type": "classifications",
-            "classes": ["class1", "class2"],
-            "attributes": {
-                "attr1": {
-                    "type": "select",
-                    "values": ["val1", "val2"],
-                    "default": "val1",
-                },
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                    "default": False,
-                }
-            },
-        },
-        "existing_field": {
-            "classes": ["class3", "class4"],
-            "attributes": {
-                "attr3": {
-                    "type": "text",
-                }
-            }
-        },
-    }
-
-    dataset.annotate(anno_key, label_schema=label_schema)
-
-You can also define class-specific attributes by setting elements of the
-`classes` list to dicts that specify groups of `classes` and their
-corresponding `attributes`. For example, in the configuration below, `attr1`
-only applies to `class1` and `class2` while `attr2` applies to all classes:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_schema = {
-        "new_field": {
-            "type": "detections",
-            "classes": [
-                {
-                    "classes": ["class1", "class2"],
-                    "attributes": {
-                        "attr1": {
-                            "type": "select",
-                            "values": ["val1", "val2"],
-                            "default": "val1",
-                        }
-                     }
-                },
-                "class3",
-                "class4",
-            ],
-            "attributes": {
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                    "default": False,
-                }
-            },
-        },
-    }
-
-    dataset.annotate(anno_key, label_schema=label_schema)
-
-Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to specify the components of the label schema
-individually:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_field = "new_field",
-    label_type = "classifications"
-    classes = ["class1", "class2"]
-
-    # These are optional
-    attributes = {
-        "attr1": {
-            "type": "select",
-            "values": ["val1", "val2"],
-            "default": "val1",
-        },
-        "attr2": {
-            "type": "radio",
-            "values": [True, False],
-            "default": False,
-        }
-    }
-
-    dataset.annotate(
-        anno_key,
-        label_field=label_field,
-        label_type=label_type,
-        classes=classes,
-        attributes=attributes,
-    )
-
-When you are annotating existing label fields, you can omit some of these
-parameters from
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, as
-FiftyOne can infer the appropriate values to use:
-
--   **label_type**: if omitted, the |Label| type of the field will be used to
-    infer the appropriate value for this parameter
--   **classes**: if omitted, the observed labels on your dataset will be used
-    to construct a classes list
--   **mask_targets**: if omitted for a semantic segmentation field, the mask
-    targets from the
-    :meth:`mask_targets <fiftyone.core.dataset.Dataset.mask_targets>` or
-    :meth:`default_mask_targets <fiftyone.core.dataset.Dataset.default_mask_targets>`
-    properties of your dataset will be used, if available
-
-.. _annotation-label-attributes:
-
-Label attributes
-----------------
-
-The `attributes` parameter allows you to configure whether
-:ref:`custom attributes <using-labels>` beyond the default `label` attribute
-are included in the annotation tasks.
-
-When adding new label fields for which you want to include attributes, you must
-use the dictionary syntax demonstrated below to define the schema of each
-attribute that you wish to label:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "occluded": {
-            "type": "radio",
-            "values": [True, False],
-            "default": False,
-        },
-        "gender": {
-            "type": "select",
-            "values": ["male", "female"],
-        },
-        "caption": {
-            "type": "text",
-        }
-    }
-
-    view.annotate(
-        anno_key,
-        label_field="new_field",
-        label_type="detections",
-        classes=["dog", "cat", "person"],
-        attributes=attributes,
-    )
-
-You can always omit this parameter if you do not require attributes beyond the
-default `label`.
-
-Each annotation backend may support different `type` values, as declared by the
-:meth:`supported_attr_types() <fiftyone.utils.annotations.AnnotationBackend.supported_attr_types>`
-method of its |AnnotationBackend| class. For example, CVAT supports the
-following choices for `type`:
-
--   `text`: a free-form text box. In this case, `default` is optional and
-    `values` is unused
--   `select`: a selection dropdown. In this case, `values` is required and
-    `default` is optional
--   `radio`: a radio button list UI. In this case, `values` is required and
-    `default` is optional
--   `checkbox`: a boolean checkbox UI. In this case, `default` is optional and
-    `values` is unused
-
-When you are annotating existing label fields, the `attributes` parameter can
-take additional values:
-
--   `True` (default): export all custom attributes observed on the existing
-    labels, using their observed values to determine the appropriate UI type
-    and possible values, if applicable
--   `False`: do not include any custom attributes in the export
--   a list of custom attributes to include in the export
--   a full dictionary syntax described above
-
-Note that only scalar-valued label attributes are supported. Other attribute
-types like lists, dictionaries, and arrays will be omitted.
-
-.. _annotation-restricting-edits:
-
-Restricting additions, deletions, and edits
--------------------------------------------
-
-When you create annotation runs that involve editing existing label fields, you
-can optionally specify that certain changes are not allowed by passing the
-following flags to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
-
--   **allow_additions** (*True*): whether to allow new labels to be added
--   **allow_deletions** (*True*): whether to allow labels to be deleted
--   **allow_label_edits** (*True*): whether to allow the `label` attribute to
-    be modified
--   **allow_index_edits** (*True*): whether to allow the `index` attribute of
-    video tracks to be modified
--   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, etc) of labels
-
-If you are using the `label_schema` parameter to provide a full annotation
-schema to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, you
-can also directly include the above flags in the configuration dicts for any
-existing label field(s) you wish.
-
-For example, suppose you have an existing `ground_truth` field that contains
-objects of various types and you would like to add new `sex` and `age`
-attributes to all people in this field while also strictly enforcing that no
-objects can be added, deleted, or have their labels or bounding boxes modified.
-You can configure an annotation run for this as follows:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "sex": {
-            "type": "select",
-            "values": ["male", "female"],
-        },
-        "age": {
-            "type": "text",
-        },
-    }
-
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        classes=["person"],
-        attributes=attributes,
-        allow_additions=False,
-        allow_deletions=False,
-        allow_label_edits=False,
-        allow_spatial_edits=False,
-    )
-
-You can also include a `read_only=True` parameter when uploading existing
-label attributes to specify that the attribute's value should be uploaded to
-the annotation backend for informational purposes, but any edits to the
-attribute's value should not be imported back into FiftyOne.
-
-For example, if you have vehicles with their `make` attribute populated and you
-want to populate a new `model` attribute based on this information without
-allowing changes to the vehicle's `make`, you can configure an annotation run
-for this as follows:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "make": {
-            "type": "text",
-            "read_only": True,
-        },
-        "model": {
-            "type": "text",
-        },
-    }
-
-    view.annotate(
-        anno_key,
-        label_field="ground_truth",
-        classes=["vehicle"],
-        attributes=attributes,
-    )
-
-.. note::
-
-    Some annotation backends may not support restrictions to additions,
-    deletions, spatial edits, and read-only attributes in their editing
-    interface.
-
-    However, any restrictions that you specify via the above parameters will
-    still be enforced when you call
-    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-    to merge the annotations back into FiftyOne.
-
-.. _annotation-labeling-videos:
-
-Labeling videos
+.. image:: /_static/annotation/image3.png
+   :alt: Create Annotation Schema button
+
+When accessing the "Annotate" tab in the expanded view on a dataset for the first time, you'll see a button to create the Annotation Schema. By default, **no** `fields in the dataset schema <https://docs.voxel51.com/user_guide/using_datasets.html#fields>`_ are included automatically in the Annotation Schema; you'll need to explicitly add fields, attributes, and values.
+
+Supported Field Types
+^^^^^^^^^^^^^^^^^^^^^
+
+FiftyOne's in-App annotation supports two groups of field types: **label-type** fields (e.g., ``Detections`` or ``Classification``) and non-label-type **primitive** fields (e.g., ``StringField``\s or ``IntField``\s). Your Annotation Schema can be a mix of fields within these groups. The parameters available for configuring fields' schemas in your Annotation Schema will depend on the type of field (see: :ref:`annotation-schema-format`).
+
+.. _schema-manager:
+
+Schema Manager
+^^^^^^^^^^^^^^
+
+The "Schema Manager" user interface defines the Annotation Schema for the dataset. The main page of the Schema Manager features two sections: "Active fields" and "Hidden fields".
+
+"Active fields" are fields included in your Annotation Schema.
+
+"Hidden fields" are all fields not yet included in your Annotation Schema, but that can be activated for your Annotation Schema. To activate (a) field(s) for your Annotation Schema, check the box next to the field(s) you want, then click "Move…to active fields".
+
+.. _ordering-in-the-annotation-schema:
+
+Ordering in the Annotation Schema
+""""""""""""""""""""""""""""""""""
+
+Across the Schema Manager you'll see handles to drag-and-drop ``fields``, ``classes``, ``attributes``, and ``values`` within sections. You can reorder this information to update how values appear in the "Annotate" tab of the sample expanded view.
+
+For example, reordering a primitive field ``foo`` above another primitive field ``bar`` will cause ``foo`` to appear above ``bar`` in the :ref:`list of primitives in the "Annotate" tab <list-of-primitives>`.
+
+Configuring a Field Schema
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Before you can add a field to the Annotation Schema, you must first configure its schema. Click the ✏️ icon on any field in the Schema Manager (including both the "Active fields" and "Hidden fields" sections) to open the "Edit field schema" page and configure that field's schema.
+
+You can compose a field's schema from scratch, or scan all samples across the dataset to import metadata. If you choose to scan the dataset, you may edit the results of that scan before saving the schema.
+
+.. warning::
+   Because scanning for metadata looks at samples across your entire dataset, it could take a few seconds or minutes.
+
+The "Edit field schema" page includes two ways for you to configure the field's schema: GUI or JSON. Both interfaces represent the same data model, and any updates you make in one interface should update the data model's representation in the other interface in realtime.
+
+.. _annotation-schema-format:
+
+Annotation Schema Format
+""""""""""""""""""""""""
+
+The in-App Annotation Schema format is borrowed from `FiftyOne's existing label_schema format <https://docs.voxel51.com/user_guide/annotation.html#label-schema>`_ (historically supported for requesting annotations from third-party backends).
+
+For label-type fields, ``classes`` are a first-order list of classes available for selection on all instances of your label across samples in your dataset. Label-type fields also have ``attributes``, which are optional semantic properties whose values may also be edited across samples on your dataset.
+
+For both primitive fields and ``attributes``, the following properties apply:
+
+* ``type``: the data type (e.g., ``int``, ``str``).
+* ``component``: the UI component through which values are edited on the "Annotate" tab. Available ``component``\s include:
+
+  * ``text``: a free text field. Applicable when ``type`` is ``str``, ``int``, ``float``, or ``list``.
+  * ``dropdown``: an autocomplete dropdown menu. Applicable when ``type`` is ``str``, ``int``, ``float``, or ``list``. ``values`` is required.
+  * ``radio``: a radio button group. Applicable when ``type`` is ``str``, ``int`` or ``float``. ``values`` is required.
+  * ``slider``: a numeric slider and numeric input boxes. Applicable when ``type`` is ``int`` or ``float``. ``range`` is required.
+  * ``toggle``: a toggle where one and only one of two possible options must be selected. Applicable when ``type`` is ``bool``.
+  * ``datepicker``: a calendar date picker component. Applicable when ``type`` is ``date`` or ``datetime``.
+  * ``json``: an editable JSON code block. Applicable when ``type`` is ``list`` or ``dict``.
+
+* ``values``: the list of allowed values available for selection in the ``attribute`` or ``primitive``.
+* ``range``: the ``[min, max]`` values available for numeric ``type``\s, used in the ``slider``. When ``range`` is defined, ``values`` must be omitted.
+* ``default``: the default value assigned to the attribute on new label instances. Not applicable to primitive fields.
+
+**Reserved attribute names**
+
+When configuring your field's schema, you may not use any of the following reserved key names:
+
+* ``color``
+* ``id``
+* ``isNew``
+* ``path``
+* ``selected``
+* ``sampleId``
+* ``type``
+
+Configuring with GUI
+""""""""""""""""""""
+
+Here you'll see different sections depending on whether your field is a label-type, or a non-label primitive field.
+
+For label fields, you'll see sections for adding and editing label ``classes`` and ``attributes``. Click the "+Add class" or "+Add attribute" buttons to create new ``classes`` and ``attributes``, respectively.
+
+For each ``class`` and ``attribute`` in the GUI:
+
+* Click the ✏️ icon to edit its properties.
+* Click the 🗑️ icon to delete.
+* Drag and drop ``classes`` or ``attributes`` within sections to reorder within the Annotation Schema (see: :ref:`ordering-in-the-annotation-schema`).
+
+For primitives, depending on your field's data type, you'll see optional and/or required properties to configure for your field's schema.
+
+Creating New Fields
+^^^^^^^^^^^^^^^^^^^
+
+Click the "New field" button in the Schema Manager to begin creating a new field on your dataset.
+
+On the next screen, you'll need to provide a unique name for your new field. Next, choose whether your new field should be a label-type field, or primitive. In either case, open the "Field type" dropdown menu to choose a data type for your new field.
+
+You'll then see different sections depending on your choices. Once you are satisfied with your new field's configuration, click the "Save" button, and two things happen:
+
+1. Your new field immediately gets written to the database
+2. Your new field is added as an "Active field" in the Annotation Schema
+
+To cancel at any time while configuring your new field, click the "Discard" button.
+
+Bypassing Schema Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you do not see a field or its contents in the "Annotate" tab of the sample expanded view, and you don't want to go through the process of configuring a schema for the field and adding it to the Annotation Schema, you can bypass interacting with the Schema Manager altogether and ask the FiftyOne App to take the requisite steps on your behalf.
+
+.. warning::
+   Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with `"Can manage" access <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_ on a dataset.
+
+While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
+
+1. The App scans your dataset to impute a schema for the field
+2. The App then adds your field to the Annotation Schema, using the imputed field schema
+3. You are then navigated to the "Annotate" tab and placed into either an edit context for your field or a filtered :ref:`list of label instances <list-of-label-instances>`, depending on your field's type
+
+Getting Started with Annotation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To access fields in the "Annotate" tab, first check the box next to the field in the "Explore" tab. Only those labels you are visualizing in the "Explore" tab will be available for in-App annotation in the "Annotate" tab.
+
+.. image:: /_static/annotation/image4.png
+   :alt: Explore tab field selection
+
+While in the "Annotate" tab, the sample expanded view consists of three parts:
+
+1. The "Annotation Canvas"
+2. Annotation actions toolbar
+3. List of label instances
+
+Annotation Canvas
+^^^^^^^^^^^^^^^^^
+
+The Annotation Canvas is where you visualize your sample and interact directly with label instances using mouse and keyboard actions. We refer to the Annotation Canvas below when describing :ref:`3D <creating-3d-polylines>` and :ref:`2D <creating-a-detection-label>` label creations and edits in more detail.
+
+You can edit an existing label instance by clicking on that label instance on the Annotation Canvas.
+
+Annotation Actions Toolbar
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The annotation actions toolbar is where you can create a new label instance or (if you are a user with "Can manage" access on the dataset; see :ref:`above <schema-import-management>`) access the Schema Manager and Annotation Schema.
+
+.. _list-of-label-instances:
+
+List of Label Instances
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Under the "Labels" header, you'll see a flattened list of all label instances included in fields enabled while in the "Explore" tab. You can edit an existing label instance by clicking on that label instance within the "Labels" list.
+
+For label types with spatial properties (e.g., 2D bounding boxes), you'll notice a visual indicator highlighting label instances in both the Annotation Canvas and "Labels" list as you hover over either part of the user interface.
+
+.. _list-of-primitives:
+
+List of Primitives
+^^^^^^^^^^^^^^^^^^
+
+Labels are not the only type of metadata available for edits in FiftyOne's in-App annotation functionality. Primitive `fields <https://docs.voxel51.com/user_guide/basics.html#fields>`_ (e.g., ``StringField``\s or ``IntField``\s) on the dataset may also be made available in the Annotation Schema via :ref:`the Schema Manager interface <schema-import-management>`. When primitives exist in the Annotation Schema, you'll see a flattened list of all such fields under the "Primitives" header.
+
+----
+
+How to: 2D Label Annotation
+----------------------------
+
+Creating a Classification label
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: /_static/annotation/image5.png
+   :alt: Creating a classification
+
+Click the "Create new classification" icon in the annotation actions toolbar to display the classification editor in the right sidebar. A field and label are required to save the new classification label. Only fields available in your schema will be displayed as options in the dropdown boxes.
+
+.. _creating-a-detection-label:
+
+Creating a Detection label
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: /_static/annotation/image6.png
+   :alt: Create detection icon
+
+Click the "Create new detection" icon in the annotation actions toolbar to enable the crosshair mouse cursor on the Annotation Canvas and display the detection editor in the right sidebar. Position the cursor at one corner of the new detection, then click and hold the mouse button while dragging diagonally to create a bounding box.
+
+.. image:: /_static/annotation/image7.gif
+   :alt: Drawing a bounding box
+
+Once a bounding box has been created, it can be resized and repositioned as desired by clicking and holding any edge or corner drag handle while moving the mouse cursor. For finer adjustments, first zoom in on the image. To maintain the aspect ratio of the selection, hold down the shift key while dragging.
+
+A field and label are required to save the new detection label. Only fields available in your schema will be displayed as options in the dropdown boxes.
+
+Editing on the Annotation Canvas
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A detection label's size and shape can be adjusted directly in the annotation canvas by clicking on the detection to select it, then dragging an edge or corner drag handle.
+
+.. image:: /_static/annotation/image8.gif
+   :alt: Editing detection on canvas
+
+Editing in the Right Sidebar
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Labels can be selected by clicking on its bounding box or on the item in the list in the right sidebar, which will highlight the associated bounding box on the annotation canvas if the label is a detection, then clicking the chosen row. This will open the editing panel in the right sidebar.
+
+.. image:: /_static/annotation/image9.gif
+   :alt: Right sidebar editor
+
+Spatial Properties
+^^^^^^^^^^^^^^^^^^
+
+.. image:: /_static/annotation/image10.png
+   :alt: Spatial properties editor
+
+Within the editing panel the x/y coordinates, width, and height can be adjusted. Editing the x/y coordinates and/or the width/height will display the changes in the annotation canvas. This allows finite adjustments that could be difficult with a mouse.
+
+Attributes
+^^^^^^^^^^
+
+The editing panel also enables editing the label, tags, confidence, and index properties.
+
+----
+
+Working with 3D
 ---------------
 
-When annotating spatiotemporal objects in videos, you have a few additional
-options at your fingertips.
+3D Annotation Mode
+~~~~~~~~~~~~~~~~~~
 
-First, each object attribute specification can include a `mutable` property
-that controls whether the attribute's value can change between frames for each
-object:
+Supported 3D Datasets
+^^^^^^^^^^^^^^^^^^^^^
 
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "type": {
-            "type": "select",
-            "values": ["sedan", "suv", "truck"],
-            "mutable": False,
-        },
-        "occluded": {
-            "type": "radio",
-            "values": [True, False],
-            "default": False,
-            "mutable": True,
-        },
-    }
-
-    view.annotate(
-        anno_key,
-        label_field="frames.new_field",
-        label_type="detections",
-        classes=["vehicle"],
-        attributes=attributes,
-    )
-
-The meaning of the `mutable` attribute is defined as follows:
-
--   `True` (default): the attribute is dynamic and can have a different value
-    for every frame in which the object track appears
--   `False`: the attribute is static and is the same for every frame in which
-    the object track appears
-
-In addition, if you are using an annotation backend
-:ref:`like CVAT <cvat-annotating-videos>` that supports keyframes, then when
-you :ref:`download annotation runs <loading-annotations>` that include track
-annotations, the downloaded label corresponding to each keyframe of an object
-track will have its `keyframe=True` attribute set to denote that it was a
-keyframe.
-
-Similarly, when you create an annotation run on a video dataset that involves
-*editing* existing video tracks, if at least one existing label has a
-`keyframe=True` attribute set, then the available keyframe information will be
-uploaded to the annotation backend.
-
-.. _loading-annotations:
-
-Loading annotations
-___________________
-
-After your annotations tasks in the annotation backend are complete, you can
-use the
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-method to download them and merge them back into your FiftyOne dataset.
-
-.. code:: python
-    :linenos:
-
-    view.load_annotations(anno_key)
-
-The `anno_key` parameter is the unique identifier for the annotation run that
-you provided when calling
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`. You
-can use
-:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
-to see the available keys on a dataset.
+3D annotation mode is only supported for ``3d`` `type datasets <https://docs.voxel51.com/user_guide/using_datasets.html#d-datasets>`_ and dataset views, or grouped datasets with ``3d`` slices.
 
 .. note::
+   ``point-cloud`` `type datasets <https://docs.voxel51.com/user_guide/using_datasets.html#point-cloud-datasets>`_ are deprecated and do not support annotation. We recommend converting them to ``3d`` type datasets.
 
-    By default, calling
-    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-    will not delete any information for the run from the annotation backend.
+For grouped datasets, you can use the slice selector within the Annotate tab to select the image or 3d slice you wish to annotate.
 
-    However, you can pass `cleanup=True` to delete all information associated
-    with the run from the backend after the annotations are downloaded.
+.. image:: /_static/annotation/image11.png
+   :alt: Slice selector
 
-You can use the optional `dest_field` parameter to override the task's
-label schema and instead load annotations into different field name(s) of your
-dataset. This can be useful, for example, when editing existing annotations, if
-you would like to do a before/after comparison of the edits that you import. If
-the annotation run involves multiple fields, `dest_field` should be a
-dictionary mapping label schema field names to destination field names.
+Camera Projections
+^^^^^^^^^^^^^^^^^^
 
-Some annotation backends like CVAT cannot explicitly prevent annotators from
-creating labels that don't obey the run's label schema. You can pass the
-optional `unexpected` parameter to
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-to configure how to deal with any such unexpected labels that are found. The
-supported values are:
+**Pointcloud projections**
 
--   `"prompt"` (**default**): present an interactive prompt to direct/discard
-    unexpected labels
--   ``"keep"``: automatically keep all unexpected labels in a field whose name
-    matches the label type
--   `"ignore"`: automatically ignore any unexpected labels
--   `"return"`: return a dict containing all unexpected labels, if any
+.. image:: /_static/annotation/image12.png
+   :alt: Pointcloud projections
 
-.. _managing-annotation-runs:
+Projection surfaces allow you to flatten a 3D point cloud onto a 2D plane for easier annotation. You can toggle between different projection views using the dropdown menus.
 
-Managing annotation runs
-________________________
+**2D Image Projections**
 
-FiftyOne provides a variety of methods that you can use to manage in-progress
-or completed annotation runs.
+If your dataset contains `groups <https://docs.voxel51.com/user_guide/groups.html#overview>`_, where at least one group slice contains 2D images, you'll also see those slices available for visualization in the dropdown menu.
 
-For example, you can call
-:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
-to see the available annotation keys on a dataset:
+.. image:: /_static/annotation/image13.png
+   :alt: 2D image projections
 
-.. code:: python
-    :linenos:
+If you have defined the necessary `camera intrinsic and extrinsic parameters <https://docs.voxel51.com/user_guide/using_datasets.html#camera-intrinsics-and-extrinsics>`_, then you will also be able to project the 3D labels onto the 2D images in real time.
 
-    dataset.list_annotation_runs()
+.. image:: /_static/annotation/projection.gif
+   :alt: 3D image projections
 
-Or, you can use
-:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.get_annotation_info>`
-to retrieve information about the configuration of an annotation run:
 
-.. code:: python
-    :linenos:
+3D Annotation Controls
+~~~~~~~~~~~~~~~~~~~~~~
 
-    info = dataset.get_annotation_info(anno_key)
-    print(info)
+Annotation Plane
+^^^^^^^^^^^^^^^^
 
-Use :meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`
-to load the :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
-instance for an annotation run.
+.. image:: /_static/annotation/image14.gif
+   :alt: Annotation plane concept
 
-All results objects provide a :class:`cleanup() <fiftyone.utils.annotations.AnnotationResults.cleanup>`
-method that you can use to delete all information associated with a run from
-the annotation backend.
+3D annotation mode in FiftyOne provides the concept of an "annotation plane". When a new point is created (for example the vertex of a polyline or cuboid), it gets placed at the location of the mouse pointer. However, the depth of the point would be ambiguous and so this annotation plane is used to define the point depth. By default, the annotation plane is set to be the XY plane.
 
-.. code:: python
-    :linenos:
+.. image:: /_static/annotation/image15.gif
+   :alt: Annotation plane positioning
 
-    results = dataset.load_annotation_results(anno_key)
-    results.cleanup()
+The annotation plane can be repositioned by clicking the annotation plane icon in the left toolbar. Iteratively moving the annotation plane and placing vertices is an efficient way to annotate complex 3D shapes.
 
-In addition, the
-:class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
-subclasses for each backend may provide additional utilities such as support
-for programmatically monitoring the status of the annotation tasks in the run.
+.. image:: /_static/annotation/image16.gif
+   :alt: Moving annotation plane
 
-You can use
-:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
-to rename the annotation key associated with an existing annotation run:
+Visualizer Controls
+^^^^^^^^^^^^^^^^^^^
 
-.. code:: python
-    :linenos:
+The 3D annotation toolbar on the left side of the screen contains all options for spatially manipulating 3D cuboids and polylines. The icons represent the following actions:
 
-    dataset.rename_annotation_run(anno_key, new_anno_key)
+* Cancel the annotation of the current label, presenting the option to either save or discard changes
 
-Finally, you can use
-:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
-to delete the record of an annotation run from your FiftyOne dataset:
+.. image:: /_static/annotation/cancel.png
+   :alt: Cancel annotation button
 
-.. code:: python
-    :linenos:
+* Begin annotation of a new cuboid
 
-    dataset.delete_annotation_run(anno_key)
+.. image:: /_static/annotation/begin_cuboid.png
+   :alt: Begin annotation of a new cuboid
 
-.. note::
+* Begin annotation of a new polyline or segment
 
-    Calling
-    :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
-    only deletes the **record** of the annotation run from your FiftyOne
-    dataset; it will not delete any annotations loaded onto your dataset via
-    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
-    nor will it delete any associated information from the annotation backend.
+.. image:: /_static/annotation/begin_polyline.png
+   :alt: Begin annotation of a new polyline or segment
 
-.. _custom-annotation-backend:
+* Add a new vertex to the selected polyline
 
-Custom annotation backends
-__________________________
+.. image:: /_static/annotation/add_vertex.png
+   :alt: Add a new vertex to the selected polyline
 
-If you would like to use an annotation tool that is not natively supported by
-FiftyOne, you can follow the instructions below to implement an interface for
-your tool and then configure your environment so that the
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
-:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
-methods will use your custom backend.
+* Enable a mode where double clicking automatically closes the polyline
 
-Annotation backends are defined by writing subclasses of the following
-three classes with the appropriate abstract methods implemented:
+.. image:: /_static/annotation/enable_mode.png
+   :alt: Enable a mode where double clicking automatically closes the polyline
 
--   |AnnotationBackend|: this class implements the logic required for your
-    annotation backend to declare the types of labeling tasks that it supports,
-    as well as the core
-    :meth:`upload_annotations() <fiftyone.utils.annotations.AnnotationBackend.upload_annotations>`
-    and
-    :meth:`download_annotations() <fiftyone.utils.annotations.AnnotationBackend.download_annotations>`
-    methods, which handle uploading and downloading data and labels to your
-    annotation tool
+* Enable visualization and manipulation of the annotation plane
 
--   |AnnotationBackendConfig|: this class defines the available parameters that
-    users can pass as keyword arguments to
-    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
-    customize the behavior of the annotation run
+.. image:: /_static/annotation/enable_visualization.png
+   :alt: Enable visualization and manipulation of the annotation plane
 
--   :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`:
-    this class stores any intermediate information necessary to track the
-    progress of an annotation run that has been created and is now waiting for
-    its results to be merged back into the FiftyOne dataset
+The camera position can be manipulated to snap to the X,Y,Z directions or to the annotation plane with the keyboard shortcuts. The number keys 1-4 and CTRL+1-4 correspond to the top/bottom, right/left, front/back, and annotation plane respectively as shown in the video below.
 
-.. note::
+.. image:: /_static/annotation/image19.gif
+   :alt: Camera controls
 
-    Refer to the
-    `fiftyone.utils.cvat <https://github.com/voxel51/fiftyone/blob/develop/fiftyone/utils/cvat.py>`_
-    module for an example of how the above subclasses are implemented for the
-    CVAT backend.
+How to: 3D Cuboid Annotation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The recommended way to expose a custom backend is to add it to your
-:ref:`annotation config <annotation-config>` at
-`~/.fiftyone/annotation_config.json` as follows:
+To begin creating and editing 3D cuboids, enter polyline annotation mode by clicking on the cuboid icon in the annotate actions toolbar. When in cuboid annotation mode, the 3D cuboid toolbar becomes available on the left side of the Annotation Canvas.
 
-.. code-block:: text
+.. image:: /_static/annotation/image20.png
+   :alt: 3D cuboid toolbar
 
-    {
-        "default_backend": "<backend>",
-        "backends": {
-            "<backend>": {
-                "config_cls": "your.custom.AnnotationConfig",
-                # custom parameters here
-            }
-        }
-    }
+Creating 3D Cuboids
+^^^^^^^^^^^^^^^^^^^
 
-In the above, `<backend>` defines the name of your custom backend, which you
-can henceforward pass as the `backend` parameter to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, and
-the `config_cls` parameter specifies the fully-qualified name of the
-|AnnotationBackendConfig| subclass for your annotation backend.
+.. image:: /_static/annotation/image21.gif
+   :alt: Creating a 3D cuboid
 
-With the `default_backend` parameter set to your custom backend as shown above,
-calling
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` will
-automatically use your backend.
+After entering cuboid annotation mode, create a new 3D cuboid by clicking on the cuboid icon in the cuboid toolbar on the left side, then click the 3D scene to place the first corner of the cuboid. Click a second time to define the opposite corner of the base (XY plane) of the cuboid. This second click finishes the creation of the cuboid, always defaulting to a height of 1.0 in the lz direction.
 
-Alternatively, you can manually opt to use your custom backend on a per-run
-basis by passing the `backend` parameter:
+Newly created cuboids are oriented based on the current annotation plane. The depth of the first two clicks in the 3D scene is dictated by the location of the annotation plane which is described above (defaulting to the XY plane).
 
-.. code:: python
-    :linenos:
+Transforming 3D Cuboids
+^^^^^^^^^^^^^^^^^^^^^^^
 
-    view.annotate(..., backend="<backend>", ...)
+After selecting a cuboid, the left toolbar provides new actions to transform the cuboid via translation, rotation, and scaling.
+
+**Translation**
+
+.. image:: /_static/annotation/image22.gif
+   :alt: Translation mode
+
+Click the translation icon in the left toolbar to enable translation mode. In this mode, the cuboid can be translated (moved) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. Additionally, you can move the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle. For 3D translation in all directions, click and drag the white cube at the center of the cuboid.
+
+**Rotation**
+
+.. image:: /_static/annotation/image23.gif
+   :alt: Rotation mode
+
+After selecting a cuboid, click the rotation icon in the left toolbar to enable rotation mode. In this mode, the cuboid can be rotated about the x, y, or z axes by clicking and dragging the corresponding colored circle on the cuboid. You can also rotate about the plane orthogonal to the current camera view using the outermost yellow circle.
+
+**Scaling**
+
+.. image:: /_static/annotation/image24.gif
+   :alt: Scaling mode
+
+After selecting a cuboid, click the scaling icon in the left toolbar to enable scaling mode. In this mode, the cuboid can be scaled (resized) along the x, y, or z axes by clicking and dragging the corresponding directional arrow on the cuboid. In addition to scaling along an axis, you can scale the cuboid within a plane (XY, XZ, or YZ) by clicking and dragging the corresponding colored plane handle.
+
+Attribute Editing
+^^^^^^^^^^^^^^^^^
+
+.. image:: /_static/annotation/image25.png
+   :alt: Cuboid attributes panel
+
+Cuboid attributes can be edited in the right sidebar when a given cuboid is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
+
+How to: 3D Polyline Annotation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: /_static/annotation/image26.gif
+   :alt: 3D polyline annotation
+
+To begin creating and editing 3D polylines, enter polyline annotation mode by clicking on the polyline icon in the annotate actions toolbar. When in polyline annotation mode, the 3D polyline toolbar becomes available on the left side of the Annotation Canvas.
+
+
+.. image:: /_static/annotation/image27.png
+   :alt: Polyline toolbar
+
+.. _creating-3d-polylines:
+
+Creating Polylines
+^^^^^^^^^^^^^^^^^^
+
+After entering polyline annotation mode, create a new 3D polyline by clicking on the polyline icon in the polyline toolbar on the left side, then click the 3D scene to create the first vertex of the polyline. After placing the final vertex of your polyline, double click anywhere on the 3D scene to finish creation of the polyline segment.
+
+.. image:: /_static/annotation/image28.gif
+   :alt: Creating a polyline
+
+
+Newly created vertices are placed at the location of the mouse pointer. The depth of a newly created vertex in the 3D scene is dictated by the location of the annotation plane which is described below (defaulting to the XY plane).
+
+Polylines vs Segments
+^^^^^^^^^^^^^^^^^^^^^
+
+The points of a single `Polyline in FiftyOne <https://docs.voxel51.com/user_guide/using_datasets.html#d-polylines>`_ are represented as a list of lists of vertices:
+
+.. code-block:: python
+
+   # A list of lists of `[x, y, z]` points in scene coordinates describing
+   # the vertices of each shape in the polyline
+   points3d = [[[-5, -99, -2], [-8, 99, -2]], [[4, -99, -2], [1, 99, -2]]]
+
+This allows for the possibility of multiple disjointed segments within a single polyline as shown in the code example above. This may be useful, for example, if you are annotating a dashed lane marking where each dash is a disjointed segment of the same polyline, allowing all of the segments to share the same attributes.
+
+.. image:: /_static/annotation/image29.png
+   :alt: Polyline segments
+
+In the right Annotate sidebar, you can see the number of segments and vertices in the current Polyline.
+
+Adding New Segments
+^^^^^^^^^^^^^^^^^^^
+
+.. image:: /_static/annotation/image30.gif
+   :alt: Adding new segments
+
+To add a new segment to an existing polyline, first select the polyline to be edited, then select the new polyline segment button in the left toolbar and finally click to annotate the new segment.
+
+Vertex Manipulation
+^^^^^^^^^^^^^^^^^^^
+
+When positioning a vertex in 3D space, the vertex controls become available when you click to select a given vertex (or the polyline centroid). These controls allow you to click either the 3 RGB directional arrows to move the vertex along the given axis, 3 CMY planes to move the vertex in the given plane, and a clickable center to position the vertex in 3D space.
+
+.. image:: /_static/annotation/image31.gif
+   :alt: Vertex manipulation controls
+
+Adding and Deleting Vertices
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. image:: /_static/annotation/image32.gif
+   :alt: Adding and deleting vertices
+
+
+Vertices can also be added to and deleted from existing polylines. To add a new vertex, first select the polyline to which the vertex should be added, then click on the new vertex icon in the left toolbar, and finally select the location on the polyline that the new vertex should be added. The new vertex can now be moved to the desired location.
+
+A selected vertex can be deleted by pressing the trash can icon in the left toolbar (or by pressing the delete key).
+
+.. image:: /_static/annotation/image33.png
+   :alt: Delete vertex icon
+
+Attribute Editing
+^^^^^^^^^^^^^^^^^
+
+.. image:: /_static/annotation/image34.png
+   :alt: Polyline attributes panel
+
+Polyline attributes can be edited in the right sidebar when a given polyline is selected. Custom attributes in this panel are defined by the :ref:`Schema Manager <schema-manager>`.
+
+In addition to custom attributes, the attribute sidebar for 3D polylines also shows the number of segments and vertices in the selected polyline, as well as the polyline-specific "closed" and "filled" attributes which affect how the polyline is rendered. Setting the "closed" attribute to True will automatically render a line segment from the first vertex of a polyline to the last vertex to close the shape. Setting the "filled" attribute to True will show the region enclosed by the polyline as filled.
+
+.. image:: /_static/annotation/image35.png
+   :alt: Closed polyline example
+
+.. image:: /_static/annotation/image36.png
+   :alt: Filled polyline example
+
+.. image:: /_static/annotation/image37.png
+   :alt: Closed and filled polyline
+
+.. image:: /_static/annotation/image38.png
+   :alt: Auto-close mode icon
+
+Additionally, you can select the icon to the left to enter a mode that will automatically close the polyline when the annotation canvas is double clicked.
+
+----
+
+How to: Editing Primitives
+---------------------------
+
+Editing in the Right Sidebar
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Clicking on a primitive field in the "Annotate" tab will open the editing panel in the right sidebar. Like editing a label's attributes, you can edit the primitive's values per the Annotation Schema.
+
+.. image:: /_static/images/annotation/primitive_editing.png
+   :alt: Editing primitives in the right sidebar
