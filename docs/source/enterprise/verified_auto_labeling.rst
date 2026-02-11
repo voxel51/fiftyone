@@ -571,6 +571,208 @@ Auto-Labeling experience. The following actions will occur:
     process at any time by clicking on the
     :ref:`Review <verified-auto-labeling-review-tab>` tab.
 
+.. _verified-auto-labeling-label-mistakes:
+
+Scanning for label mistakes
+___________________________
+
+Correct annotations are crucial in developing high performing models. The
+**Scan for label mistakes** operator uses embeddings and a small set of
+verified reference labels to compute a *mistakenness* score for each
+:ref:`classification <classification>` label in your dataset. Labels that are
+likely to be incorrect are assigned a high mistakenness score, allowing you to
+quickly identify and correct annotation errors.
+
+This operator is powered by
+:ref:`delegated operations <enterprise-delegated-operations>` and runs as a
+two-stage pipeline:
+
+1. **Compute embeddings**
+    Generates an embedding for each label using a pre-trained model.
+
+2. **Compute mistakenness scores**
+    Uses the embeddings together with your verified reference labels to
+    score every label in the selected classes.
+
+.. note::
+
+    GPU acceleration is highly recommended for running this pipeline at scale.
+    See :ref:`infrastructure guidance <verified-auto-labeling-infrastructure>`
+    for more information.
+
+.. _verified-auto-labeling-label-mistakes-overview:
+
+How it works
+------------
+
+The scoring algorithm works by learning a representation of "correct" labels
+from the verified examples you provide. It then measures how well each label
+in the dataset fits the learned distribution and assigns a mistakenness score
+that reflects the likelihood that the label is incorrect.
+
+The general workflow is:
+
+1. **Tag high-quality labels**
+    Use the
+    :ref:`Tag labels as verified <verified-auto-labeling-tag-verified>` action
+    to mark a set of known-correct labels for each class you want to scan.
+
+2. **Run the operator**
+    Launch **Scan for label mistakes** from the operator browser and
+    configure the run.
+
+3. **Review results**
+    Sort or filter by the mistakenness score to surface the most likely
+    mistakes.
+
+.. note::
+
+    For best results, provide at least **3 verified examples** per class. At
+    most 100 verified examples per class are used for training.
+
+.. _verified-auto-labeling-tag-verified:
+
+Tagging verified labels
+-----------------------
+
+Before running the scan, you need to identify a set of high-quality reference
+labels. The **Tag labels as verified** action provides a convenient way to do
+this directly from the App.
+
+.. _verified-auto-labeling-tag-verified-configure:
+
+Configuring the action
+^^^^^^^^^^^^^^^^^^^^^^
+
+When you first click the **Tag labels as verified** icon in the samples grid
+actions bar with no samples selected, a configuration form is presented:
+
+**Verified tag** - the tag to apply to labels that you mark as verified
+(default: `verified`).
+
+**Label field(s)** - one or more :ref:`Classification <classification>` fields
+whose labels should receive the tag when you use this action.
+
+Once configured, your settings are saved per-user and per-dataset and persist
+across sessions.
+
+.. _verified-auto-labeling-tag-verified-usage:
+
+Using the action
+^^^^^^^^^^^^^^^^
+
+After the action is configured, select one or more samples in the grid and
+click the **Tag labels as verified** icon. The configured tag is applied to
+all labels in the target field(s) of the selected samples, and the selection
+is cleared automatically.
+
+.. note::
+
+    You can reconfigure the action at any time by clicking its icon with no
+    samples selected.
+
+.. _verified-auto-labeling-label-mistakes-config:
+
+Configuring a scan
+------------------
+
+Open the operator browser and select **Scan for label mistakes**. The
+configuration form guides you through the following inputs.
+
+.. _verified-auto-labeling-label-mistakes-inputs:
+
+Inputs
+^^^^^^
+
+**Target view** - choose which samples to scan.
+
+**Entire dataset** - scan all samples in the dataset.
+
+**Current view** - scan only the samples in your current
+:ref:`view <using-views>`.
+
+**Selected samples** - scan only the
+:ref:`currently-selected samples <app-select-samples>`.
+
+**Selected labels** - scan only the currently-selected labels.
+
+**Label field** - a :ref:`Classification <classification>` field on your
+samples to score for mistakenness.
+
+**Embeddings field** - the field in which to store (or read) embeddings for
+each label (default: `mistakenness_embedding`). If embeddings already exist
+for some samples, they will not be re-computed. You can provide either a
+top-level field or an attribute of the label field in the form
+`<label_field>.<attribute>`.
+
+**Mistakenness scores field** - the name of the attribute on each label in
+which to store the computed mistakenness score (default: `mistakenness`).
+
+**High quality tag** - the label tag that identifies your verified reference
+labels. This should match the tag you applied with the
+:ref:`Tag labels as verified <verified-auto-labeling-tag-verified>` action.
+
+**Classes** - the specific classes to include in the scan. Only classes with
+tagged training data are shown. You can enable or disable individual classes
+as needed.
+
+**Batch size** - (optional) the batch size for embedding inference.
+
+**Num workers** - (optional) the number of data-loading workers for
+embedding computation (delegated runs only).
+
+.. _verified-auto-labeling-label-mistakes-outputs:
+
+Outputs
+^^^^^^^
+
+After the pipeline completes, the following attributes are stored on each
+label in the configured label field:
+
+**mistakenness** - a score between 0 and 1 indicating the likelihood that
+the label is incorrect. Higher values indicate a greater chance of a mistake.
+
+The operator also returns the following run-level statistics:
+
+**mistakenness_threshold** - the recommended threshold above which labels
+are considered likely mistakes.
+
+**accuracy_threshold** - an estimated accuracy threshold for the scoring
+model.
+
+**eta** - the estimated label noise rate.
+
+**chi_zero** - a scoring model parameter.
+
+**chi_rand** - a scoring model parameter.
+
+.. _verified-auto-labeling-label-mistakes-expect:
+
+What to expect
+^^^^^^^^^^^^^^
+
+The scan leverages embeddings to build a representation of each class based on
+your verified reference labels. Samples whose embeddings diverge from the
+learned class representation receive higher mistakenness scores. After the
+scan completes, you can:
+
+**Sort by mistakenness** - sort the samples grid by the mistakenness
+attribute to surface the most likely mistakes first.
+
+**Filter by threshold** - use the `mistakenness_threshold` returned by the
+operator to filter labels above the recommended cutoff.
+
+**Use the embeddings panel** - leverage the
+:ref:`embeddings visualizer <brain-embeddings-visualization>` with the
+computed embeddings to visually explore clusters of potentially mislabeled
+samples.
+
+.. note::
+
+    Finding mistakes in human annotations is inherently challenging. The
+    mistakenness score is a ranking metric - labels with higher scores are
+    *more likely* to be incorrect, but manual review is still recommended.
+
 .. _verified-auto-labeling-infrastructure:
 
 Infrastructure Guidance
