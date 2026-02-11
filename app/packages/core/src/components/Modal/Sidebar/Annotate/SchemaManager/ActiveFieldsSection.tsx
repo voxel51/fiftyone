@@ -160,7 +160,11 @@ const ActiveFieldsSection = () => {
     return (
       <div style={{ marginTop: "0.5rem" }}>
         <GUISectionHeader>
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            style={{ fontWeight: 500 }}
+            color={TextColor.Secondary}
+          >
             Active fields
           </Text>
           <Tooltip
@@ -194,7 +198,11 @@ const ActiveFieldsSection = () => {
   return (
     <>
       <GUISectionHeader>
-        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+        <Text
+          variant={TextVariant.Lg}
+          style={{ fontWeight: 500 }}
+          color={TextColor.Secondary}
+        >
           Active fields
         </Text>
         <Tooltip

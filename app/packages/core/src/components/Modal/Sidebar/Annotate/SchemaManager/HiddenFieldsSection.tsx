@@ -153,7 +153,11 @@ const HiddenFieldsSection = () => {
           onClick={() => setExpanded((v) => !v)}
           style={{ padding: 0, flex: "none" }}
         >
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            color={TextColor.Secondary}
+            style={{ fontWeight: 500 }}
+          >
             Hidden fields
           </Text>
           {expanded ? (
