@@ -4,12 +4,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CommandContext } from "../context";
-import { useCommandContext } from "./useCommandContext";
+import { resolveContext } from "./utils";
+
 /**
- * Hook to access undo and redo.  Provides undo/redo methods and the
- * undo/redo stack states.  The clear method clears the undo/redo stack.
- * @returns the undo/redo state...enabled, disabled, undoCount, redoCount
- * and the undo/redo functions.  clear method to clear the undo/redo stack.
+ * Hook to access and observe the undo/redo state of a context.
+ *
+ * @param context - (Optional) The context to observe.
+ *   - Can be a `CommandContext` object or a string ID.
+ *   - If undefined, it resolves to the currently active context.
+ *
+ * @returns An object containing:
+ * - `undoEnabled`: Boolean, true if undo is available.
+ * - `redoEnabled`: Boolean, true if redo is available.
+ * - `undo`: Async function to perform an undo operation.
+ * - `redo`: Async function to perform a redo operation.
+ * - `clear`: Function to clear the undo/redo stack.
  */
 export const useUndoRedo = (
   context?: CommandContext | string
@@ -20,37 +29,33 @@ export const useUndoRedo = (
   redo: () => Promise<void>;
   clear: () => void;
 } => {
-  const {
-    context: boundContext,
-    activate,
-    deactivate,
-  } = useCommandContext(context);
+  const boundContext = resolveContext(context);
 
-  const [undoEnabled, setUndoEnabled] = useState(boundContext.canUndo());
-  const [redoEnabled, setRedoEnabled] = useState(boundContext.canRedo());
+  const [undoEnabled, setUndoEnabled] = useState(
+    boundContext?.canUndo() ?? false
+  );
+  const [redoEnabled, setRedoEnabled] = useState(
+    boundContext?.canRedo() ?? false
+  );
 
   useEffect(() => {
+    if (!boundContext) return;
     return boundContext.subscribeUndoState((undoEnabled, redoEnabled) => {
       setUndoEnabled(undoEnabled);
       setRedoEnabled(redoEnabled);
     });
   }, [boundContext]);
 
-  useEffect(() => {
-    activate();
-    return deactivate;
-  }, [activate, deactivate]);
-
   const undo = useCallback(async () => {
-    await boundContext.undo();
+    await boundContext?.undo();
   }, [boundContext]);
 
   const redo = useCallback(async () => {
-    await boundContext.redo();
+    await boundContext?.redo();
   }, [boundContext]);
 
   const clear = useCallback(() => {
-    boundContext.clearUndoRedoStack();
+    boundContext?.clearUndoRedoStack();
   }, [boundContext]);
 
   return { undoEnabled, redoEnabled, undo, redo, clear };

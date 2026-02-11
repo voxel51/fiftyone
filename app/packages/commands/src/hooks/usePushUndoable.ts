@@ -3,13 +3,14 @@ import { DelegatingUndoable } from "../actions";
 import { CommandContextManager } from "../context";
 
 /**
- * Hook that provides a convenient way to push undoable actions to a command context.
+ * Hook to push undoable actions to a specific or active command context.
  *
- * @param contextId - Optional ID of a specific command context to push undoables to.
- *   If provided, the hook will attempt to find this context by ID. If the context
- *   doesn't exist, a warning will be logged and the operation will be skipped.
- *   If not provided, undoables are pushed to the currently active context.
- * @returns Object containing the createAndPushUndoable function
+ * @param contextId - (Optional) The ID of the target command context.
+ *   - If provided, it attempts to find the context by ID. Logs a warning if not found.
+ *   - If omitted, it defaults to the currently **active** context in the manager.
+ *
+ * @returns An object containing:
+ * - `createPushAndExec`: Helper string to create, execute, and push a `DelegatingUndoable`.
  */
 export const usePushUndoable = (contextId?: string) => {
   const createPushAndExec = useCallback(

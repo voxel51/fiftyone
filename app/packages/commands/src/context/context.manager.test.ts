@@ -13,23 +13,24 @@ describe("CommandContextManager", () => {
     });
     const newContext = CommandContextManager.instance().createCommandContext(
       "fo.test",
+      KnownContexts.Default,
       true
     );
     const unsub = CommandContextManager.instance().subscribe(listener);
-    CommandContextManager.instance().pushContext(newContext);
+    CommandContextManager.instance().activateContext("fo.test");
     expect(listener).toBeCalledTimes(1);
     expect(listener.mock.calls[0][0]).toBe(newContext.id);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       newContext.id
     );
-    CommandContextManager.instance().popContext();
+    CommandContextManager.instance().deactivateContext();
     expect(listener).toBeCalledTimes(2);
     expect(listener.mock.calls[1][0]).toBe(KnownContexts.Default);
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       KnownContexts.Default
     );
     unsub();
-    CommandContextManager.instance().pushContext(newContext);
+    CommandContextManager.instance().activateContext("fo.test");
     //not called after unsubscribe
     expect(listener).toBeCalledTimes(2);
   });
@@ -40,24 +41,25 @@ describe("CommandContextManager", () => {
     );
     const newContext = CommandContextManager.instance().createCommandContext(
       "fo.test",
+      KnownContexts.Default,
       true
     );
-    CommandContextManager.instance().pushContext(newContext);
+    CommandContextManager.instance().activateContext("fo.test");
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       newContext.id
     );
     //pop returns to the default
-    CommandContextManager.instance().popContext();
+    CommandContextManager.instance().deactivateContext();
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       KnownContexts.Default
     );
     //further pops stay at default
-    CommandContextManager.instance().popContext();
+    CommandContextManager.instance().deactivateContext();
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       KnownContexts.Default
     );
 
-    CommandContextManager.instance().pushContext(newContext);
+    CommandContextManager.instance().activateContext("fo.test");
     expect(CommandContextManager.instance().getActiveContext().id).toBe(
       newContext.id
     );
@@ -100,9 +102,10 @@ describe("CommandContextManager", () => {
       .bindKey("ctrl+x", cmd.id);
     const context = CommandContextManager.instance().createCommandContext(
       "new.context",
+      KnownContexts.Default,
       true
     );
-    CommandContextManager.instance().pushContext(context);
+    CommandContextManager.instance().activateContext("new.context");
     await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
@@ -121,11 +124,12 @@ describe("CommandContextManager", () => {
     CommandContextManager.instance()
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
-    const context = CommandContextManager.instance().createCommandContext(
+    CommandContextManager.instance().createCommandContext(
       "new.context",
+      KnownContexts.Default,
       false
     );
-    CommandContextManager.instance().pushContext(context);
+    CommandContextManager.instance().activateContext("new.context");
     await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );
@@ -151,11 +155,12 @@ describe("CommandContextManager", () => {
     CommandContextManager.instance()
       .getActiveContext()
       .bindKey("ctrl+x", cmd.id);
-    const context = CommandContextManager.instance().createCommandContext(
+    CommandContextManager.instance().createCommandContext(
       "new.context",
+      KnownContexts.Default,
       true
     );
-    CommandContextManager.instance().pushContext(context);
+    CommandContextManager.instance().activateContext("new.context");
     await CommandContextManager.instance().handleKeyDown(
       new KeyboardEvent("keydown", { ctrlKey: true, key: "x" })
     );

@@ -36,12 +36,35 @@ export class CommandContext {
    */
   constructor(
     public readonly id: string,
-    private readonly parent?: CommandContext
+    private readonly parent?: CommandContext,
+    private readonly propagate: boolean = true
   ) {
-    if (parent) {
+    if (parent && propagate) {
       this.lastCanUndo = parent.canUndo();
       this.lastCanRedo = parent.canRedo();
     }
+  }
+
+  /**
+   * @returns the parent context if any
+   */
+  public getParent(): CommandContext | undefined {
+    return this.parent;
+  }
+
+  /**
+   * Checks if this context is a descendant of the given context.
+   * @param context The context to check
+   */
+  public isDescendantOf(context: CommandContext): boolean {
+    let current = this.parent;
+    while (current) {
+      if (current === context) {
+        return true;
+      }
+      current = current.parent;
+    }
+    return false;
   }
 
   /**
@@ -72,7 +95,7 @@ export class CommandContext {
    */
   private listenToAllUndo(listener: () => void): () => void {
     const unsubLocal = this.actions.subscribeUndo(listener);
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       const unsubParent = this.parent.listenToAllUndo(listener);
       return () => {
         unsubLocal();
@@ -129,7 +152,7 @@ export class CommandContext {
     }
     //if we have a parent, and we had no
     //undo, propogate it up
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       return await this.parent.undo();
     }
     return false;
@@ -147,7 +170,7 @@ export class CommandContext {
     }
     //if we have a parent, and we had no
     //redo, propogate it up
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       return await this.parent.redo();
     }
     return false;
@@ -160,7 +183,7 @@ export class CommandContext {
     if (this.actions.canUndo()) {
       return true;
     }
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       return this.parent.canUndo();
     }
     return false;
@@ -174,7 +197,7 @@ export class CommandContext {
     if (this.actions.canRedo()) {
       return true;
     }
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       return this.parent.canRedo();
     }
     return false;
@@ -202,7 +225,7 @@ export class CommandContext {
    */
   public subscribeActions(listener: ActionListener): () => void {
     const unsub = this.actions.subscribeActions(listener);
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       //subscribe recursively and curry the unsubscribes
       const parentUnsub = this.parent.subscribeActions(listener);
       return () => {
@@ -221,7 +244,9 @@ export class CommandContext {
 
   private resetKeyState() {
     this.keys.resetKeyState();
-    this.parent?.resetKeyState();
+    if (this.parent && this.propagate) {
+      this.parent.resetKeyState();
+    }
   }
 
   /**
@@ -233,7 +258,7 @@ export class CommandContext {
   public handleKeyDown(event: KeyboardEvent): KeyMatchState {
     let match = this.keys.match(event);
     //key not handled locally, check the parent context(s)
-    if (!match.full && this.parent) {
+    if (!match.full && this.parent && this.propagate) {
       match = this.parent.handleKeyDown(event);
     }
     //on a full match or no match, clear any in progress key sequences
@@ -276,7 +301,7 @@ export class CommandContext {
    */
   public subscribeCommands(listener: () => void): () => void {
     const unsubLocal = this.commands.addListener(listener);
-    if (this.parent) {
+    if (this.parent && this.propagate) {
       const unsubParent = this.parent.subscribeCommands(listener);
       return () => {
         unsubLocal();
@@ -305,7 +330,12 @@ export class CommandContext {
     if (command) {
       return command;
     }
-    return this.parent?.getCommand(id);
+    if (this.parent && this.propagate) {
+      if (this.parent && this.propagate) {
+        return this.parent.getCommand(id);
+      }
+    }
+    return undefined;
   }
 
   /**

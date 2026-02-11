@@ -37,43 +37,17 @@ export type CommandContextListener = (newId: string) => void;
  */
 export class CommandContextManager {
   private defaultContext = new CommandContext(KnownContexts.Default);
-  private contextStack = new Array<CommandContext>();
   private static _instance: CommandContextManager | undefined;
   private listeners = new Set<CommandContextListener>();
   private contexts = new Map<string, CommandContext>();
+  private activeContext: CommandContext;
 
   constructor() {
-    this.contextStack.push(this.defaultContext);
-    if (document) {
+    this.activeContext = this.defaultContext;
+    this.contexts.set(this.defaultContext.id, this.defaultContext);
+    if (typeof document !== "undefined") {
       document.addEventListener("keydown", this.handleKeyDown.bind(this));
     }
-    this.defaultContext.registerCommand(
-      KnownCommands.Undo,
-      async () => {
-        await this.getActiveContext().undo();
-      },
-      () => {
-        return this.getActiveContext().canUndo();
-      },
-      "Undo",
-      "Undoes the previous command."
-    );
-    this.defaultContext.bindKey("ctrl+z", KnownCommands.Undo);
-    this.defaultContext.bindKey("meta+z", KnownCommands.Undo);
-    this.defaultContext.registerCommand(
-      KnownCommands.Redo,
-      async () => {
-        await this.getActiveContext().redo();
-      },
-      () => {
-        return this.getActiveContext().canRedo();
-      },
-      "Redo",
-      "Redoes a previously undone command."
-    );
-    this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
-    this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
-    this.defaultContext.bindKey("meta+shift+z", KnownCommands.Redo);
   }
   /**
    * @returns the single instance of this manager
@@ -94,17 +68,18 @@ export class CommandContextManager {
    */
   public createCommandContext(
     id: string,
-    inheritCurrent: boolean
+    parentId: string,
+    propagate: boolean
   ): CommandContext {
     if (this.contexts.has(id)) {
       throw new Error(`The command context ${id} already exists.`);
     }
-    const newContext = new CommandContext(
-      id,
-      inheritCurrent
-        ? this.contextStack[this.contextStack.length - 1]
-        : undefined
-    );
+
+    const parent: CommandContext | undefined = this.contexts.get(parentId);
+    if (!parent) {
+      throw new Error(`The parent command context ${parentId} does not exist.`);
+    }
+    const newContext = new CommandContext(id, parent, propagate);
     this.contexts.set(id, newContext);
     return newContext;
   }
@@ -122,6 +97,9 @@ export class CommandContextManager {
    * @param id The context id
    */
   public deleteContext(id: string) {
+    if (this.activeContext.id === id) {
+      this.deactivateContext(id);
+    }
     this.contexts.delete(id);
   }
   /**
@@ -129,53 +107,62 @@ export class CommandContextManager {
    * @returns the current command context
    */
   public getActiveContext(): CommandContext {
-    return this.contextStack[this.contextStack.length - 1];
+    return this.activeContext;
   }
 
   /**
-   * Pushes a context on to the stack, making it the active context.
-   * When it is no longer needed to be active, pop it. @see this.popExecutionContext
-   * @param context The context to activate
+   * Activates the given context.
+   * @param id The id of the context to activate
    */
-  public pushContext(context: CommandContext): void {
-    this.contextStack.push(context);
-    context.activate();
+  public activateContext(id: string): void {
+    const context = this.contexts.get(id);
+    if (!context) {
+      throw new Error(`The command context ${id} does not exist.`);
+    }
+    //Don't let parent contexts activate over their children
+    //This is to prevent the parent from stealing focus from its children
+    //during rerendering of the parent
+    if (this.activeContext.isDescendantOf(context)) {
+      return;
+    }
+
+    if (this.activeContext === context) {
+      return;
+    }
+    this.activeContext.deactivate();
+    this.activeContext = context;
+    this.activeContext.activate();
     this.fireListeners();
   }
 
   /**
-   * Pops the current command context if it is not the
+   * Deactivates the current command context if it is not the
    * base context.  Will never result in no context being
    * available.
    */
-  public popContext(expectedId?: string): void {
-    //do not pop the base/default context
-    if (this.contextStack.length > 1) {
-      const popped = this.contextStack.pop();
-      if (expectedId) {
-        if (expectedId !== popped?.id) {
-          console.warn(
-            `The CommandContext that was popped was not the expected context: ${expectedId}`
-          );
-        }
-      }
-      popped?.deactivate();
-      this.fireListeners();
+  public deactivateContext(expectedId?: string): void {
+    if (expectedId && this.activeContext.id !== expectedId) {
+      throw new Error(
+        `The command context ${expectedId} does not match the active context ${this.activeContext.id}.`
+      );
     }
+    this.activeContext.deactivate();
+    this.activeContext = this.activeContext.getParent() || this.defaultContext;
+    this.activeContext.activate();
+    this.fireListeners();
   }
 
   /**
    * clears all contexts except the default context
    */
   public toDefault(): void {
-    let changed = false;
-    while (this.contextStack.length > 1) {
-      this.contextStack.pop()?.deactivate();
-      changed = true;
+    if (this.activeContext.id === this.defaultContext.id) {
+      return;
     }
-    if (changed) {
-      this.fireListeners();
-    }
+    this.activeContext.deactivate();
+    this.activeContext = this.defaultContext;
+    this.activeContext.activate();
+    this.fireListeners();
   }
 
   /**
@@ -184,9 +171,11 @@ export class CommandContextManager {
    */
   public reset(): void {
     this.defaultContext = new CommandContext(KnownContexts.Default);
-    this.contextStack = [this.defaultContext];
+    this.activeContext = this.defaultContext;
+    this.defaultContext.activate();
     this.listeners.clear();
     this.contexts.clear();
+    this.contexts.set(this.defaultContext.id, this.defaultContext);
   }
 
   /**
@@ -215,7 +204,7 @@ export class CommandContextManager {
    */
   private fireListeners() {
     this.listeners.forEach((listener) => {
-      listener(this.contextStack[this.contextStack.length - 1].id);
+      listener(this.activeContext.id);
     });
   }
 
@@ -236,9 +225,9 @@ export class CommandContextManager {
     ) {
       return;
     }
-    const match = this.getActiveContext().handleKeyDown(event);
+    const match = this.activeContext.handleKeyDown(event);
     if (match.full) {
-      await this.getActiveContext().executeCommand(match.full);
+      await this.activeContext.executeCommand(match.full);
       event.stopPropagation();
       event.preventDefault();
     }
@@ -248,6 +237,6 @@ export class CommandContextManager {
    * and parent(s) if it is inherited
    */
   public clearUndoRedoStack() {
-    this.getActiveContext().clearUndoRedoStack();
+    this.activeContext.clearUndoRedoStack();
   }
 }

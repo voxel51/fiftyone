@@ -1,45 +1,97 @@
-import { useCallback, useEffect, useMemo } from "react";
-import { CommandContext, CommandContextManager } from "../context";
-import { resolveContext } from "./utils";
+import {
+  useCallback,
+  useState,
+  useEffect,
+  createContext,
+  useContext,
+} from "react";
+import {
+  CommandContext,
+  CommandContextManager,
+  KnownContexts,
+} from "../context";
+
+const ReactCommandContext = createContext<CommandContext | undefined>(
+  undefined
+);
 
 /**
- * Hook to create or bind to an existing context.  Used with useCommand, useKeyBinding to
- * contextualize execution.
- * If the context is created, it will be destroyed on unmount.
- * If the context already existed, it will not be destroyed, as someone else owns it's lifecycle.
- * A context contains the state of the command system for a particular workflow,
- * including registered commands, keybindings and the undo/redo stack.
- * @param context The context or id of an existing context to use
- * @param inheritCurrent If the context is new, true to inherit the parent context
- * @returns The context, and an activate/deactive method to use it.
+ * Hook to create and manage the lifecycle of a new `CommandContext`.
+ *
+ * This hook creates a new context with the given `contextId` on mount and removes it on unmount.
+ * It is designed for components that need to establish their own command scope.
+ *
+ * Behavior:
+ * - **Creation**: A new `CommandContext` is created in the `CommandContextManager`.
+ * - **Parent Resolution**:
+ *   1. If `parent` param is provided, it uses that ID.
+ *   2. If not, it looks for a parent `CommandContext` provided via React Context (implicit nesting).
+ *   3. Defaults to `KnownContexts.Default`.
+ * - **Cleanup**: The context is deleted from the manager when the component unmounts.
+ *
+ * @param contextId - Unique identifier for the new context. Must be unique within the manager.
+ * @param parent - Optional ID of the parent context. If omitted, it is inferred from React Context.
+ * @param propagate - Whether unhandled commands/events should propagate to the parent context. Defaults to `true`.
+ *
+ * @returns An object containing:
+ * - `context`: The created `CommandContext` instance.
+ * - `activate`: Function to make this context the active one in the manager.
+ * - `deactivate`: Function to deactivate this context (if active) and restore the parent.
+ * - `Provider`: A React Context Provider to wrap children, enabling recursive parent inference.
  */
 export const useCommandContext = (
-  context?: CommandContext | string,
-  inheritCurrent?: boolean
+  contextId: string,
+  parent?: string,
+  propagate = true
 ): {
-  context: CommandContext;
+  context: CommandContext | undefined;
   activate: () => void;
   deactivate: () => void;
+  Provider: React.Provider<CommandContext | undefined>;
 } => {
-  const boundContext = useMemo(() => {
-    return resolveContext(context, inheritCurrent);
-  }, [context, inheritCurrent]);
+  const mgr = CommandContextManager.instance();
+  const parentCtx = useContext(ReactCommandContext);
+  const resolvedParent = parent || parentCtx?.id || KnownContexts.Default;
+
+  const [context] = useState(() => {
+    // Synchronously create or retrieve the context on first render
+    const existing = mgr.getCommandContext(contextId);
+    if (existing) {
+      return existing;
+    }
+    return mgr.createCommandContext(contextId, resolvedParent, propagate);
+  });
 
   useEffect(() => {
+    // The context is created synchronously above.
+    // This effect manages the deletion of the context on unmount.
     return () => {
-      if (!boundContext.existed) {
-        CommandContextManager.instance().deleteContext(boundContext.context.id);
+      // In Strict Mode, this cleanup runs, deleting the context.
+      // The next time the component renders (after the remount), a new
+      // context will be created synchronously in the useState initializer.
+      if (mgr.getCommandContext(contextId)) {
+        mgr.deleteContext(contextId);
       }
     };
-  }, [boundContext]);
+  }, [contextId, mgr]);
 
-  const activate = useCallback(() => {
-    CommandContextManager.instance().pushContext(boundContext.context);
-  }, [boundContext.context]);
-
-  const deactivate = useCallback(() => {
-    CommandContextManager.instance().popContext(boundContext.context.id);
-  }, [boundContext.context.id]);
-
-  return { context: boundContext.context, activate, deactivate };
+  // We return undefined initially if not yet created.
+  // Consumers must handle context potentially being undefined on first render.
+  return {
+    context:
+      context && mgr.getCommandContext(contextId) === context
+        ? context
+        : undefined,
+    activate: useCallback(() => {
+      CommandContextManager.instance().activateContext(contextId);
+    }, [contextId]),
+    deactivate: useCallback(() => {
+      const mgr = CommandContextManager.instance();
+      const ctx = mgr.getCommandContext(contextId);
+      if (ctx && mgr.getActiveContext().id === ctx.id) {
+        mgr.deactivateContext(ctx.id);
+      }
+    }, [contextId]),
+    Provider: ReactCommandContext.Provider,
+  };
 };
