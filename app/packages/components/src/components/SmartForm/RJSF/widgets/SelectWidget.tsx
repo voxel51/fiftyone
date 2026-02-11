@@ -12,6 +12,8 @@ function computeSelectChangeValue(
   multiple: boolean,
   enumValues: unknown[]
 ): unknown {
+  // Select uses string IDs for options; resolve back to the schema's original enum
+  // value so we preserve type (e.g. number or boolean) for validation and downstream use.
   const resolveToEnumValue = (s: string) => {
     const original = enumValues.find((v) => String(v) === s);
     return original !== undefined ? original : s;
