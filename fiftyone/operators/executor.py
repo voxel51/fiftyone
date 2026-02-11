@@ -498,6 +498,9 @@ async def do_execute_pipeline(pipeline, ctx):
                     ctx.pipeline.curr_stage_index = idx
                     operator_uri = stage.operator_uri
                     params = stage.params or {}
+                    ctx.request_params.update(
+                        stage.request_params_overrides or {}
+                    )
                     ctx.request_params["params"] = params
                     stage_operator = registry.get_operator(operator_uri)
                     if not stage_operator:

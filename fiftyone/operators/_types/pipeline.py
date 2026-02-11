@@ -5,6 +5,7 @@ FiftyOne pipeline operator types.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import dataclasses
 from typing import Any, List, Mapping, Optional
 
@@ -35,6 +36,20 @@ class PipelineStage:
     rerunnable: Optional[bool] = None
     """Whether the stage is rerunnable, defaults to operator config"""
 
+    request_params_overrides: Optional[Mapping[str, Any]] = None
+    """Optional dict of request parameter overrides for the execution context.
+    
+    This allows stages to override any ExecutionContext request parameter such as:
+    - `view`: List of view stages to apply
+    - `view_name`: Name of a saved view to use
+    - `filters`: Dictionary of filters to apply
+    - `dataset_name`: Name of the dataset to use
+    - Any other valid ExecutionContext request parameter
+    
+    Note: The `params` field should not be included in `request_params_overrides`.
+    Use the `params` field directly for operator parameters.
+    """
+
     # ADD A CUSTOM __init__ METHOD TO ACCEPT AND DISCARD UNUSED KWARGS
     def __init__(
         self,
@@ -44,6 +59,7 @@ class PipelineStage:
         num_distributed_tasks: Optional[int] = None,
         params: Optional[Mapping[str, Any]] = None,
         rerunnable: Optional[bool] = None,
+        request_params_overrides: Optional[Mapping[str, Any]] = None,
         **_,
     ):
         # Call the default dataclass initialization for the defined fields
@@ -53,6 +69,7 @@ class PipelineStage:
         self.num_distributed_tasks = num_distributed_tasks
         self.params = params
         self.rerunnable = rerunnable
+        self.request_params_overrides = request_params_overrides
         self.__post_init__()
 
     def __post_init__(self):
@@ -103,6 +120,7 @@ class Pipeline:
         num_distributed_tasks=None,
         params=None,
         rerunnable=None,
+        request_params_overrides=None,
         # kwargs accepted for forward compatibility
         **kwargs,
     ):
@@ -118,6 +136,9 @@ class Pipeline:
                 for the stage, optional
             params: optional parameters to pass to the operator
             rerunnable: whether the stage is rerunnable
+            request_params_overrides: optional dict of request parameter
+                overrides for the execution context. Allows overriding fields
+                like `view`, `view_name`, `filters`, `dataset_name`, etc.
             **kwargs: reserved for future use
 
         Returns:
@@ -130,6 +151,7 @@ class Pipeline:
             num_distributed_tasks=num_distributed_tasks,
             params=params,
             rerunnable=rerunnable,
+            request_params_overrides=request_params_overrides,
             **kwargs,
         )
         self.stages.append(stage)
@@ -143,7 +165,13 @@ class Pipeline:
 
             {
                 "stages": [
-                    {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                    {
+                        "operator_uri": "@voxel51/test/blah",
+                        "name": "my_stage",
+                        "request_params_overrides": {
+                            "view_name": "filtered_view"
+                        }
+                    },
                     ...,
                 ]
             }
@@ -168,7 +196,13 @@ class Pipeline:
 
             {
                 "stages": [
-                    {"operator_uri": "@voxel51/test/blah", "name": "my_stage"},
+                    {
+                        "operator_uri": "@voxel51/test/blah",
+                        "name": "my_stage",
+                        "request_params_overrides": {
+                            "view_name": "filtered_view"
+                        }
+                    },
                     ...,
                 ]
             }
