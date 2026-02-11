@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
@@ -15,6 +15,16 @@ const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
 const id = "000000000000000000000000";
 const videoId = "000000000000000000000001";
 const groupVideoId = "000000000000000000000003";
+
+const classificationFieldName = "animal_type_field";
+const classificationClasses = ["dog", "cat"];
+const primitiveFieldName = "test_float_field";
+const sliderRange = { min: "0", max: "100" };
+const detectionFieldName = "test_detection_field";
+const detectionAttribute = {
+  name: "sensor",
+  values: ["nikon", "sony", "zeiss"],
+};
 
 const test = base.extend<{
   grid: GridPom;
@@ -291,5 +301,130 @@ test.describe.serial("schema manager", () => {
       "has no slices that support annotation"
     );
     await schemaManager.assert.isDisabled();
+  });
+
+  test("add new classification field", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create a new classification field with classes
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(classificationFieldName);
+    await schemaManager.selectType("Classification");
+    for (const cls of classificationClasses) {
+      await schemaManager.addClass(cls);
+    }
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: classificationFieldName, type: "Classification" },
+    ]);
+
+    // Close schema manager and return to annotation sidebar
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Create a new classification annotation, select field, and verify classes
+    await modal.sidebar.clickCreateClassification();
+    await modal.sidebar.assert.hasFieldOption(classificationFieldName);
+    await modal.sidebar.selectField(classificationFieldName);
+    await modal.sidebar.assert.hasRadioOptions(classificationClasses);
+  });
+
+  test("add new primitive slider field", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Open schema manager via Schema button (active schemas exist from previous test)
+    await modal.sidebar.clickSchemaButton();
+    await schemaManager.assert.isOpen();
+
+    // Create a new primitive slider field
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(primitiveFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Float");
+    await schemaManager.selectComponentType("slider");
+    await schemaManager.fillRange(sliderRange.min, sliderRange.max);
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: primitiveFieldName, type: "Float" },
+    ]);
+
+    // Open the field's edit view to verify slider configuration
+    const row = schemaManager.getFieldRow(primitiveFieldName);
+    await row.assert.hasRangeConfig(sliderRange.min, sliderRange.max);
+
+    // Close schema manager
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+  });
+
+  test("add new detection field with attribute", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Open schema manager via Schema button (active schemas exist from previous tests)
+    await modal.sidebar.clickSchemaButton();
+    await schemaManager.assert.isOpen();
+
+    // Create a new detection field with an attribute
+    // Default label type is already "Detections", no need to select it
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(detectionFieldName);
+
+    // Add "sensor" attribute: String type, Radio component, with values
+    await schemaManager.clickAddAttribute();
+    await schemaManager.fillAttributeName(detectionAttribute.name);
+    await schemaManager.selectComponentType("radio");
+    for (const value of detectionAttribute.values) {
+      await schemaManager.addAttributeValue(value);
+    }
+    await schemaManager.saveAttribute();
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: detectionFieldName, type: "Detections" },
+    ]);
+
+    // Close schema manager and return to annotation sidebar
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Create a new detection annotation, select field, and verify attribute radio options
+    await modal.sidebar.clickCreateDetection();
+    await modal.sidebar.assert.hasFieldOption(detectionFieldName);
+    await modal.sidebar.selectField(detectionFieldName);
+    await modal.sidebar.assert.hasRadioOptions(detectionAttribute.values);
   });
 });
