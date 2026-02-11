@@ -9,7 +9,7 @@ import {
   queryPerformanceMaxSearch,
   useNotification,
 } from "@fiftyone/state";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -40,6 +40,7 @@ import {
   selectedHiddenFields,
   sortedInactivePaths,
 } from "./state";
+import { PRIMITIVE_FIELD_TYPES } from "./constants";
 
 // =============================================================================
 // Current Field Hooks
@@ -213,6 +214,48 @@ export const useFieldType = (field: string) => {
 };
 
 /**
+ * Helper atom to dynamically get field type.
+ */
+const getFieldTypeAtom = atom(null, (get, _set, field: string) =>
+  get(fieldType(field))
+);
+
+/**
+ * Hook which returns a callback to dynamically get the field type for a path.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const getFieldType = useGetFieldType();
+ *   const fieldType = getFieldType(field);
+ * }
+ * ```
+ */
+export const useGetFieldType = () => useSetAtom(getFieldTypeAtom);
+
+/**
+ * Hook which returns a callback to check whether a field is a primitive type.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isPrimitiveField = useIsPrimitiveField();
+ *   if (isPrimitiveField(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsPrimitiveField = () => {
+  const getFieldType = useGetFieldType();
+
+  return useCallback(
+    (field: string) => PRIMITIVE_FIELD_TYPES.has(getFieldType(field)),
+    [getFieldType]
+  );
+};
+
+/**
  * Hook to get a field's schema data
  */
 export const useFieldSchemaData = (field: string) => {
@@ -225,6 +268,28 @@ export const useFieldSchemaData = (field: string) => {
 export const useFieldIsReadOnly = (field: string) => {
   return useAtomValue(fieldIsReadOnly(field));
 };
+
+/**
+ * Helper atom to dynamically get read-only status.
+ */
+const getIsReadOnlyAtom = atom(null, (get, _set, field: string) =>
+  get(fieldIsReadOnly(field))
+);
+
+/**
+ * Hook which returns a callback to check whether a field is read-only.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isFieldReadOnly = useIsFieldReadOnly();
+ *   if (isFieldReadOnly(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsFieldReadOnly = () => useSetAtom(getIsReadOnlyAtom);
 
 /**
  * Hook to check if a field has schema configured

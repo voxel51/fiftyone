@@ -21,6 +21,7 @@ import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
+import { QuickEditEntry } from "@fiftyone/annotation";
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",
@@ -64,11 +65,13 @@ const ScalarDiv = styled.div`
 
 const ScalarValueEntry = ({
   entryKey,
+  hovering,
   path,
   trigger,
   slices,
 }: {
   entryKey: string;
+  hovering?: boolean;
   path: string;
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -108,7 +111,9 @@ const ScalarValueEntry = ({
           template={({ label, hoverTarget }) => (
             <TitleDiv>
               <span onClick={(e) => e.stopPropagation()} ref={hoverTarget}>
-                {label}
+                <QuickEditEntry enabled={hovering} path={path}>
+                  {label}
+                </QuickEditEntry>
               </span>
             </TitleDiv>
           )}
@@ -136,11 +141,13 @@ const ListContainer = styled(ScalarDiv)`
 
 const ListValueEntry = ({
   entryKey,
+  hovering,
   path,
   trigger,
   slices,
 }: {
   entryKey: string;
+  hovering?: boolean;
   path: string;
   trigger: (
     event: React.MouseEvent<HTMLDivElement>,
@@ -181,7 +188,9 @@ const ListValueEntry = ({
             color={color}
             template={({ label, hoverTarget }) => (
               <span onClick={(e) => e.stopPropagation()} ref={hoverTarget}>
-                {label}
+                <QuickEditEntry enabled={hovering} path={path}>
+                  {label}
+                </QuickEditEntry>
               </span>
             )}
           />
@@ -450,25 +459,35 @@ const PathValueEntry = ({
     cb: () => void
   ) => void;
 }) => {
+  const [hovering, setHovering] = useState<boolean>(false);
   const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
   const active3dSlices = useRecoilValue(fos.active3dSlices);
   const slices = Boolean(pinned3DSample) && (active3dSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
-  return isScalar ? (
-    <ScalarValueEntry
-      entryKey={entryKey}
-      path={path}
-      trigger={trigger}
-      slices={slices}
-    />
-  ) : (
-    <ListValueEntry
-      entryKey={entryKey}
-      path={path}
-      trigger={trigger}
-      slices={slices}
-    />
+  return (
+    <div
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
+      {isScalar ? (
+        <ScalarValueEntry
+          entryKey={entryKey}
+          hovering={hovering}
+          path={path}
+          trigger={trigger}
+          slices={slices}
+        />
+      ) : (
+        <ListValueEntry
+          entryKey={entryKey}
+          hovering={hovering}
+          path={path}
+          trigger={trigger}
+          slices={slices}
+        />
+      )}
+    </div>
   );
 };
 
