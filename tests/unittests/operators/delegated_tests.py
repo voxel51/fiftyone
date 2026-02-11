@@ -1579,3 +1579,839 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
+        self.assertEqual(states, [ExecutionRunState.COMPLETED] * 25)
+
+        docs = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/test_3",
+            paging=DelegatedOperationPagingParams(skip=0, limit=100),
+        )
+        self.assertEqual(len(docs), 25)
+        states = [doc.run_state for doc in docs]
+        self.assertEqual(states, [ExecutionRunState.FAILED] * 25)
+
+        # test paging - page through all the queued ops
+        docs = [0]
+        pages = 0
+        limit = 7
+        total = 0
+        while len(docs) > 0:
+            docs = self.svc.list_operations(
+                dataset_name=dataset_name,
+                run_state=ExecutionRunState.QUEUED,
+                paging=DelegatedOperationPagingParams(
+                    skip=pages * limit,
+                    limit=limit,
+                    sort_by=SortByField.QUEUED_AT,
+                    sort_direction=SortDirection.DESCENDING,
+                ),
+            )
+            total += len(docs)
+            if len(docs) > 0:
+                pages += 1
+
+        self.assertEqual(pages, 4)
+        self.assertEqual(total, 25)
+        dataset.delete()
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_gets_dataset_id_from_name(
+        self, mock_load_dataset, mock_get_operator, *args
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar", "dataset_name": dataset_name}
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+
+        self.docs_to_delete.append(doc)
+
+        self.assertEqual(doc.dataset_id, dataset_id)
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_deletes_by_dataset_id(self, mock_load_dataset, mock_get_operator):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        # create 25 docs
+        operator = f"{TEST_DO_PREFIX}/operator/test_{ObjectId}"
+        for i in range(25):
+            doc = self.svc.queue_operation(
+                operator=operator,
+                label=mock_get_operator.return_value.name,
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name,
+                    }
+                ),
+            )
+            self.docs_to_delete.append(doc)
+
+        # Initial check
+        ops = self.svc.list_operations(dataset_name=dataset_name)
+        self.assertEqual(len(ops), 25)
+
+        self.svc.delete_for_dataset(dataset_id=dataset_id)
+
+        ops = self.svc.list_operations(
+            dataset_name=dataset_name, include_archived=True
+        )
+        self.assertEqual(len(ops), 0)
+
+    def test_archive_operation(self, mock_get_operator):
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
+            label="archive_test",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+        self.docs_to_delete.append(doc)
+
+        # Archive it
+        self.svc.archive_operation(doc.id)
+
+        # Check hidden
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test"
+        )
+        self.assertEqual(len(ops), 0)
+
+        # Check visible
+        ops = self.svc.list_operations(
+            operator=f"{TEST_DO_PREFIX}/operator/archive_test",
+            include_archived=True,
+        )
+        self.assertEqual(len(ops), 1)
+        self.assertTrue(ops[0].archived)
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_search(self, mock_load_dataset, mock_get_operator):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        delegation_target = f"delegation_target{ObjectId()}"
+        for i in range(4):
+            operator = f"{TEST_DO_PREFIX}/operator/test_{i}"
+            for j in range(25):
+                doc = self.svc.queue_operation(
+                    operator=operator,
+                    label=f"test_{i}_{j}",
+                    delegation_target=delegation_target,
+                    context=ExecutionContext(
+                        request_params={
+                            "foo": "bar",
+                            "dataset_name": dataset_name,
+                        }
+                    ),
+                )
+                time.sleep(
+                    0.01
+                )  # ensure that the queued_at times are different
+                self.docs_to_delete.append(doc)
+
+        paging = DelegatedOperationPagingParams(
+            skip=0,
+            limit=5000,
+            sort_by=SortByField.QUEUED_AT,
+            sort_direction=SortDirection.ASCENDING,
+        )
+
+        # test paging - get a page of everything
+        docs = self.svc.list_operations(
+            search={"operator/test": {"operator"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 100)
+
+        docs = self.svc.list_operations(
+            search={"test_0": {"operator"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 25)
+
+        docs = self.svc.list_operations(
+            search={"test_0": {"operator", "label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 25)
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/test/foo_baz",
+            label=f"I am a label",
+            delegation_target=delegation_target,
+            context=ExecutionContext(
+                request_params={
+                    "foo": "bar",
+                    "dataset_name": dataset_name,
+                }
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/test/operator",
+            label=f"foo_baz",
+            delegation_target=delegation_target,
+            context=ExecutionContext(
+                request_params={
+                    "foo": "bar",
+                    "dataset_name": dataset_name,
+                }
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"operator", "label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 2)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 1)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"operator"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 1)
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_count(self, mock_load_dataset, mock_get_operator):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        mock_get_operator.return_value = MockOperator()
+
+        delegation_target = f"delegation_target{ObjectId()}"
+        for i in range(4):
+            operator = f"{TEST_DO_PREFIX}/operator/test_{i}"
+            for j in range(25):
+                doc = self.svc.queue_operation(
+                    operator=operator,
+                    delegation_target=delegation_target,
+                    label=mock_get_operator.return_value.name,
+                    context=ExecutionContext(
+                        request_params={
+                            "foo": "bar",
+                            "dataset_name": dataset_name,
+                        }
+                    ),
+                )
+                time.sleep(
+                    0.01
+                )  # ensure that the queued_at times are different
+                self.docs_to_delete.append(doc)
+
+        # test paging - get a page of everything
+        docs = self.svc.count(
+            search={"operator/test": {"operator"}},
+        )
+
+        self.assertEqual(docs, 100)
+
+        docs = self.svc.count(
+            search={"test_0": {"operator"}},
+        )
+
+        self.assertEqual(docs, 25)
+
+        docs = self.svc.count(
+            filters={"operator": f"{TEST_DO_PREFIX}/operator/test_0"},
+        )
+        self.assertEqual(docs, 25)
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_rename_operation(self, mock_load_dataset, mock_get_operator):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        self.assertEqual(doc.label, mock_get_operator.return_value.name)
+
+        self.docs_to_delete.append(doc)
+
+        doc = self.svc.set_label(doc.id, "this is my delegated operation run.")
+        self.assertEqual(doc.label, "this is my delegated operation run.")
+
+        doc = self.svc.get(doc.id)
+        self.assertEqual(doc.label, "this is my delegated operation run.")
+
+    def test_queue_op_remote_service(self, mock_get_operator):
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        self.assertTrue(db.is_remote)
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar"}
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx.serialize(),
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    def test_set_queue_remote_service(self, mock_get_operator):
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        self.assertTrue(db.is_remote)
+        dos = DelegatedOperationService(repo=db)
+
+        op_id = bson.ObjectId()
+
+        #####
+        self.assertRaises(PermissionError, dos.set_queued, op_id)
+        #####
+
+    def test_queue_panel_delegated_op(self, mock_get_operator):
+        """Queue DO that comes from a panel"""
+        self.mock_is_remote_service.return_value = True
+        db = delegated_operation.MongoDelegatedOperationRepo()
+        dos = DelegatedOperationService(repo=db)
+        ctx = ExecutionContext(
+            request_params={
+                "params": {
+                    "panel_id": bson.ObjectId(),
+                    "panel_state": {"foo2": "bar2"},
+                }
+            }
+        )
+        ctx.request_params = {"foo": "bar"}
+        ctx.params = {
+            "panel_id": bson.ObjectId(),
+            "panel_state": {"foo2": "bar2"},
+        }
+
+        #####
+        doc = dos.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.name,
+            delegation_target="test_target",
+            context=ctx,
+        )
+        #####
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.SCHEDULED)
+
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_failed_exec_adds_child_error_to_parent(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(operator_uri="@test/op1", name="one"),
+                PipelineStage(name="two", operator_uri="@test/op2"),
+                PipelineStage(name="three", operator_uri="@test/op3"),
+            ]
+        )
+        parent_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+        self.docs_to_delete.append(parent_doc)
+
+        #####
+        child_doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/operator/foo",
+            label=mock_get_operator.return_value.config.label,
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(child_doc)
+        child_doc.parent_id = parent_doc.id
+        self.svc.execute_operation(child_doc)
+        #####
+
+        updated_parent_do = self.svc.get(parent_doc.id)
+        self.assertIn(
+            str(child_doc.id), updated_parent_do.pipeline_run_info.child_errors
+        )
+        self.assertIn(
+            "MockOperator failed",
+            updated_parent_do.pipeline_run_info.child_errors[
+                str(child_doc.id)
+            ],
+        )
+
+
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.get_operator",
+    return_value=MockOperator(),
+)
+class TestPipelineRequestParamsOverrides(unittest.TestCase):
+    """Tests for the request_params_overrides feature in pipelines."""
+
+    def setUp(self):
+        self.mock_is_remote_service = patch.object(
+            delegated_operation,
+            "is_remote_service",
+            return_value=False,
+        ).start()
+
+        self.mock_operator_exists = patch(
+            "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+            return_value=True,
+        ).start()
+        self.docs_to_delete = []
+        self.svc = DelegatedOperationService()
+
+    def tearDown(self):
+        self.delete_test_data()
+        patch.stopall()
+
+    def delete_test_data(self):
+        self.svc._repo._collection.delete_many(
+            {"operator": {"$regex": TEST_DO_PREFIX}}
+        )
+
+    def test_pipeline_stage_overrides_view_name(self, mock_get_operator):
+        """Test that request_params_overrides correctly overrides view_name."""
+        from fiftyone.operators import executor as exec_module
+
+        # Track the contexts seen during execution
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            # Capture the context at this point
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        request_params_overrides={
+                            "view_name": "filtered_view"
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        request_params_overrides={"view_name": "other_view"},
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "original_view",
+                }
+            )
+
+            # Execute the pipeline
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        # Verify we executed both stages
+        self.assertEqual(len(contexts_seen), 2)
+
+        # First stage should have view_name overridden to "filtered_view"
+        self.assertEqual(contexts_seen[0].get("view_name"), "filtered_view")
+
+        # Second stage should have view_name overridden to "other_view"
+        self.assertEqual(contexts_seen[1].get("view_name"), "other_view")
+
+    def test_pipeline_stage_overrides_multiple_params(self, mock_get_operator):
+        """Test that request_params_overrides can override multiple parameters."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"stage_param": "value1"},
+                        request_params_overrides={
+                            "view_name": "special_view",
+                            "filters": {"field": "value"},
+                            "custom_field": "custom_value",
+                        },
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "default_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify overrides were applied
+        self.assertEqual(contexts_seen[0].get("view_name"), "special_view")
+        self.assertEqual(contexts_seen[0].get("filters"), {"field": "value"})
+        self.assertEqual(contexts_seen[0].get("custom_field"), "custom_value")
+
+        # Verify params were set correctly (not overridden by request_params_overrides)
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"stage_param": "value1"}
+        )
+
+    def test_pipeline_stage_without_overrides(self, mock_get_operator):
+        """Test that stages without overrides work normally."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"stage_param": "value1"}
+                        # No request_params_overrides
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "default_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify original request params were preserved
+        self.assertEqual(contexts_seen[0].get("view_name"), "default_view")
+        self.assertEqual(contexts_seen[0].get("dataset_name"), "test_dataset")
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"stage_param": "value1"}
+        )
+
+    def test_pipeline_stage_overrides_dont_affect_params(
+        self, mock_get_operator
+    ):
+        """Test that request_params_overrides doesn't override the params field."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"correct_param": "correct_value"},
+                        request_params_overrides={
+                            "params": {
+                                "wrong_param": "wrong_value"
+                            },  # Should be ignored
+                            "view_name": "special_view",
+                        },
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 1)
+
+        # Verify params came from stage.params, not from overrides
+        # The implementation applies request_params_overrides first, then sets params from stage.params
+        # So the final params should be from stage.params
+        self.assertEqual(
+            contexts_seen[0].get("params"), {"correct_param": "correct_value"}
+        )
+
+        # But view_name should still be overridden
+        self.assertEqual(contexts_seen[0].get("view_name"), "special_view")
+
+    def test_pipeline_stage_overrides_accumulate_across_stages(
+        self, mock_get_operator
+    ):
+        """Test that overrides from one stage carry forward to the next."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        request_params_overrides={
+                            "view_name": "view_from_stage1",
+                            "field1": "value1",
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        request_params_overrides={"field2": "value2"}
+                        # view_name should carry forward from stage 1
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        # Should be called twice (once per stage)
+        self.assertEqual(len(contexts_seen), 2)
+
+        # First stage should have its overrides
+        self.assertEqual(contexts_seen[0].get("view_name"), "view_from_stage1")
+        self.assertEqual(contexts_seen[0].get("field1"), "value1")
+
+        # Second stage should have accumulated overrides
+        self.assertEqual(contexts_seen[1].get("view_name"), "view_from_stage1")
+        self.assertEqual(contexts_seen[1].get("field1"), "value1")
+        self.assertEqual(contexts_seen[1].get("field2"), "value2")
+
+    def test_pipeline_stage_serialization_with_overrides(
+        self, mock_get_operator
+    ):
+        """Test that request_params_overrides serializes and deserializes correctly."""
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    operator_uri="@test/op1",
+                    name="stage_one",
+                    params={"param1": "value1"},
+                    request_params_overrides={
+                        "view_name": "filtered_view",
+                        "filters": {"field": "value"},
+                    },
+                ),
+                PipelineStage(
+                    operator_uri="@test/op2",
+                    name="stage_two",
+                    # No overrides
+                ),
+            ]
+        )
+
+        # Serialize to JSON
+        json_repr = pipeline.to_json()
+
+        # Verify structure
+        self.assertEqual(len(json_repr["stages"]), 2)
+        self.assertEqual(
+            json_repr["stages"][0]["request_params_overrides"],
+            {"view_name": "filtered_view", "filters": {"field": "value"}},
+        )
+        self.assertIsNone(
+            json_repr["stages"][1].get("request_params_overrides")
+        )
+
+        # Deserialize from JSON
+        restored_pipeline = Pipeline.from_json(json_repr)
+
+        # Verify restoration
+        self.assertEqual(len(restored_pipeline.stages), 2)
+        self.assertEqual(
+            restored_pipeline.stages[0].request_params_overrides,
+            {"view_name": "filtered_view", "filters": {"field": "value"}},
+        )
+        self.assertIsNone(restored_pipeline.stages[1].request_params_overrides)
+
+    def test_pipeline_stage_creation_with_overrides(self, mock_get_operator):
+        """Test creating pipeline stages with request_params_overrides."""
+        # Test using stage() method
+        pipeline = Pipeline()
+        stage1 = pipeline.stage(
+            operator_uri="@test/op1",
+            name="stage_one",
+            params={"param1": "value1"},
+            request_params_overrides={"view_name": "custom_view"},
+        )
+
+        self.assertEqual(
+            stage1.request_params_overrides, {"view_name": "custom_view"}
+        )
+        self.assertEqual(
+            pipeline.stages[0].request_params_overrides,
+            {"view_name": "custom_view"},
+        )
+
+    def test_pipeline_stage_accepts_extra_kwargs(self, mock_get_operator):
+        """Test that PipelineStage accepts and discards extra kwargs for forward compatibility."""
+        # This should not raise an error
+        stage = PipelineStage(
+            operator_uri="@test/op1",
+            name="test_stage",
+            unknown_future_field="some_value",
+            another_unknown_field={"nested": "data"},
+        )
+
+        self.assertEqual(stage.operator_uri, "@test/op1")
+        self.assertEqual(stage.name, "test_stage")
+        # Unknown fields should be silently discarded
+        self.assertFalse(hasattr(stage, "unknown_future_field"))
+
+    def test_pipeline_accepts_extra_kwargs(self, mock_get_operator):
+        """Test that Pipeline accepts and discards extra kwargs for forward compatibility."""
+        # This should not raise an error
+        pipeline = Pipeline(
+            stages=[PipelineStage(operator_uri="@test/op1")],
+            unknown_future_field="some_value",
+        )
+
+        self.assertEqual(len(pipeline.stages), 1)
+        # Unknown fields should be silently discarded
+        self.assertFalse(hasattr(pipeline, "unknown_future_field"))
+
+    @patch("fiftyone.core.odm.load_dataset")
+    def test_queue_operation_with_pipeline_overrides(
+        self, mock_load_dataset, mock_get_operator
+    ):
+        """Test that queuing an operation with a pipeline containing overrides works."""
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        pipeline = Pipeline(
+            [
+                PipelineStage(
+                    name="filter_stage",
+                    operator_uri="@test/filter_op",
+                    params={"threshold": 0.5},
+                    request_params_overrides={"view_name": "filtered_samples"},
+                ),
+                PipelineStage(
+                    name="export_stage",
+                    operator_uri="@test/export_op",
+                    params={"format": "json"},
+                    request_params_overrides={
+                        "dataset_name": "export_dataset"
+                    },
+                ),
+            ]
+        )
+
+        doc = self.svc.queue_operation(
+            operator=f"{TEST_DO_PREFIX}/pipeline/with_overrides",
+            label="Pipeline with Request Overrides",
+            delegation_target="test_target",
+            context=ExecutionContext(
+                request_params={"dataset_name": dataset_name},
+            ),
+            pipeline=pipeline,
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertIsNotNone(doc.pipeline)
+        self.assertEqual(len(doc.pipeline.stages), 2)
+
+        # Verify first stage overrides
+        self.assertEqual(
+            doc.pipeline.stages[0].request_params_overrides,
+            {"view_name": "filtered_samples"},
+        )
+
+        # Verify second stage overrides
+        self.assertEqual(
+            doc.pipeline.stages[1].request_params_overrides,
+            {"dataset_name": "export_dataset"},
+        )
