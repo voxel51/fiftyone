@@ -98,10 +98,10 @@ export class SchemaManagerPom {
   }
 
   /**
-   * The field type combobox locator
+   * The field type select dropdown
    */
   get typeSelect() {
-    return this.locator.getByRole("combobox");
+    return this.locator.getByTestId("field-type-select");
   }
 
   /**

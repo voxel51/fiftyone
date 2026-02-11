@@ -1,8 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { Duration } from "src/oss/utils";
 
-const MODAL_LOCATOR = "[data-cy=modal]";
-
 export class ModalSidebarPom {
   readonly page: Page;
   readonly locator: Locator;
@@ -93,7 +91,7 @@ export class ModalSidebarPom {
    * The modal locator (parent of sidebar)
    */
   get modal() {
-    return this.page.locator(MODAL_LOCATOR);
+    return this.page.getByTestId("modal");
   }
 
   /**

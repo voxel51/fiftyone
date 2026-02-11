@@ -340,6 +340,7 @@ const NewFieldSchema = () => {
             label={category === "label" ? "Label type" : "Primitive type"}
             control={
               <Select
+                data-cy="field-type-select"
                 exclusive
                 portal
                 value={category === "label" ? labelType : primitiveType}
