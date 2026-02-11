@@ -4,7 +4,9 @@ import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
+import { useTransientPolyline } from "../annotation/store";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
+import { FO_USER_DATA } from "../constants";
 import { hoveredLabelAtom, selectedLabelForAnnotationAtom } from "../state";
 import { useSetCurrent3dAnnotationMode } from "../state/accessors";
 import {
@@ -70,7 +72,7 @@ export const Polyline = ({
     centroid,
     transformControlsRef,
     contentRef,
-    effectivePoints3d,
+    linesPoints3d,
     markers,
     previewLines,
     handleTransformStart,
@@ -90,7 +92,7 @@ export const Polyline = ({
   });
 
   const lines = useMemo(() => {
-    const lineElements = effectivePoints3d
+    const lineElements = linesPoints3d
       .map((pts, i) => {
         if (!pts || !Array.isArray(pts) || pts.length === 0) {
           console.warn(`Invalid points array for polyline segment ${i}:`, pts);
@@ -123,7 +125,7 @@ export const Polyline = ({
 
     // If closed, add exactly one closing line per segment
     if (closed) {
-      const closingLines = effectivePoints3d
+      const closingLines = linesPoints3d
         .map((pts, i) => {
           if (!pts || !Array.isArray(pts) || pts.length < 2) {
             return null;
@@ -158,7 +160,7 @@ export const Polyline = ({
 
     return lineElements;
   }, [
-    effectivePoints3d,
+    linesPoints3d,
     closed,
     strokeAndFillColor,
     lineWidth,
@@ -185,7 +187,7 @@ export const Polyline = ({
   const filledMeshes = useMemo(() => {
     if (!filled || !material) return null;
 
-    const validPoints3d = validatePoints3dArray(effectivePoints3d);
+    const validPoints3d = validatePoints3dArray(linesPoints3d);
 
     if (validPoints3d.length === 0) {
       console.warn("No valid points found for filled polygon meshes");
@@ -203,13 +205,13 @@ export const Polyline = ({
         rotation={rotation as unknown as THREE.Euler}
       />
     ));
-  }, [filled, effectivePoints3d, rotation, material, label._id]);
+  }, [filled, linesPoints3d, rotation, material, label._id]);
 
   useEffect(() => {
     const currentMeshes = meshesRef.current;
 
     if (filled && material) {
-      const validPoints3d = validatePoints3dArray(effectivePoints3d);
+      const validPoints3d = validatePoints3dArray(linesPoints3d);
 
       const meshes =
         validPoints3d.length > 0
@@ -228,7 +230,7 @@ export const Polyline = ({
         }
       });
     };
-  }, [filled, effectivePoints3d, material]);
+  }, [filled, linesPoints3d, material]);
 
   // Cleanup material when it changes or component unmounts
   useEffect(() => {
@@ -238,6 +240,12 @@ export const Polyline = ({
       }
     };
   }, [material]);
+
+  const transientPolyline = useTransientPolyline(label._id);
+  const centroidDragPosition = useMemo<THREE.Vector3Tuple>(
+    () => transientPolyline?.positionDelta ?? [0, 0, 0],
+    [transientPolyline]
+  );
 
   const content = (
     <>
@@ -257,7 +265,11 @@ export const Polyline = ({
       onTransformChange={handleTransformChange}
       explicitObjectRef={contentRef}
     >
-      <group ref={contentRef}>
+      <group
+        ref={contentRef}
+        position={centroidDragPosition}
+        userData={{ [FO_USER_DATA.LABEL_ID]: label._id }}
+      >
         {markers}
         {previewLines}
         <group

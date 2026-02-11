@@ -74,9 +74,6 @@ const PlyWithPointsMaterial = ({
     geometry,
     assetName: name,
     shadingMode,
-    position,
-    quaternion,
-    scale,
     pointsRef: pointsContainerRef,
   });
 

@@ -2803,7 +2803,7 @@ __metadata:
     react-color: "npm:^2.19.3"
     rollup-plugin-external-globals: "npm:^0.6.1"
     styled-components: "npm:^6.1.18"
-    three: "npm:^0.175.0"
+    three: "npm:^0.182.0"
     tunnel-rat: "npm:^0.1.2"
     typescript: "npm:^5.4.5"
     vite: "npm:^5.4.21"
@@ -9237,7 +9237,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"csstype@npm:3.1.3, csstype@npm:^3.0.10, csstype@npm:^3.0.2, csstype@npm:^3.1.2, csstype@npm:^3.1.3":
+"csstype@npm:3.1.3, csstype@npm:^3.0.2, csstype@npm:^3.1.2, csstype@npm:^3.1.3":
   version: 3.1.3
   resolution: "csstype@npm:3.1.3"
   checksum: 10/f593cce41ff5ade23f44e77521e3a1bcc2c64107041e1bf6c3c32adc5187d0d60983292fda326154d20b01079e24931aa5b08e4467cc488b60bb1e7f6d478ade
@@ -9248,6 +9248,13 @@ __metadata:
   version: 2.6.21
   resolution: "csstype@npm:2.6.21"
   checksum: 10/bf9072344fac1b56dc390fbc410b411bbc2a03fa9c3d243a74ff5687f94777f9da03a5681ac01efc2e68b51055e2c7d6a489185a85a8f01c976a85f9eec3b75e
+  languageName: node
+  linkType: hard
+
+"csstype@npm:^3.0.10":
+  version: 3.2.3
+  resolution: "csstype@npm:3.2.3"
+  checksum: 10/ad41baf7e2ffac65ab544d79107bf7cd1a4bb9bab9ac3302f59ab4ba655d5e30942a8ae46e10ba160c6f4ecea464cc95b975ca2fefbdeeacd6ac63f12f99fe1f
   languageName: node
   linkType: hard
 
@@ -19374,9 +19381,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three-stdlib@npm:^2.29.4":
-  version: 2.29.5
-  resolution: "three-stdlib@npm:2.29.5"
+"three-stdlib@npm:^2.36.1":
+  version: 2.36.1
+  resolution: "three-stdlib@npm:2.36.1"
   dependencies:
     "@types/draco3d": "npm:^1.4.0"
     "@types/offscreencanvas": "npm:^2019.6.4"
@@ -19386,23 +19393,7 @@ __metadata:
     potpack: "npm:^1.0.1"
   peerDependencies:
     three: ">=0.128.0"
-  checksum: 10/70c8ab5a28ae4b2db2f61c15f6819757a64919c4fa1459611c843783fd451c89ca1cc59afba1055dfe7236aa69b9b660f3ff0be471c57b8048477f1b79953915
-  languageName: node
-  linkType: hard
-
-"three-stdlib@npm:^2.35.6":
-  version: 2.35.14
-  resolution: "three-stdlib@npm:2.35.14"
-  dependencies:
-    "@types/draco3d": "npm:^1.4.0"
-    "@types/offscreencanvas": "npm:^2019.6.4"
-    "@types/webxr": "npm:^0.5.2"
-    draco3d: "npm:^1.4.1"
-    fflate: "npm:^0.6.9"
-    potpack: "npm:^1.0.1"
-  peerDependencies:
-    three: ">=0.128.0"
-  checksum: 10/7df4d53d3adec7e22550c11562000957fbedbe57dbce158e870c6ced9cb9a4568f10a1912a02a3187cf7a1cc3b21d0f3e6b425e7f177f9b7d6b3581bd2586946
+  checksum: 10/0bb5de1a24d5ec32de533e21b697bd9bd5bfbac4282557fe8bb36442e67c40e82476fb8799410733a2fa6108c9f2a5e5233a22d13272ebb2e81339987c5a16cc
   languageName: node
   linkType: hard
 
@@ -19413,10 +19404,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.175.0":
-  version: 0.175.0
-  resolution: "three@npm:0.175.0"
-  checksum: 10/f458e3e41e7171811c66702fa544e559d8863e1a7e2338f137b445fe95e22c41307d58fa973b98ee22ab5281c064f73a4f520b75c1d2e367a8d94c2bd9473c20
+"three@npm:^0.182.0":
+  version: 0.182.0
+  resolution: "three@npm:0.182.0"
+  checksum: 10/37bbc10cea96e001ca7485cfe120e1bc8bcff0c448c492140ce9db8bd113efb6972d6cc71f8426a257eb569bf9aa136fd8887f803435d057ea963c815fe9248a
   languageName: node
   linkType: hard
 

@@ -71,6 +71,11 @@ export interface SegmentState {
   vertices: [number, number, number][];
 }
 
+export interface PolylineTransformData {
+  points3d: [number, number, number][][];
+  closed?: boolean;
+}
+
 export interface CuboidTransformData {
   location: [number, number, number];
   dimensions: [number, number, number];
@@ -112,12 +117,11 @@ export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
  * This represents the authoritative state of a 3D polyline that will be rendered.
  */
 export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
-  ReconciledLabelBase3D & {
+  ReconciledLabelBase3D &
+  PolylineTransformData & {
     _cls: "Polyline";
     _id: string;
     path: string;
-    points3d: [number, number, number][][];
-    filled?: boolean;
     closed?: boolean;
   } & Record<string, unknown>;
 

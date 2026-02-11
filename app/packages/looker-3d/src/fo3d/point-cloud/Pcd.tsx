@@ -70,9 +70,6 @@ export const Pcd = ({
     geometry: points.geometry,
     assetName: name,
     shadingMode,
-    position,
-    quaternion,
-    scale,
     pointsRef: pcdContainerRef,
   });
 

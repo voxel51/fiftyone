@@ -9,7 +9,7 @@ import { PANEL_ORDER_SCENE_CONTROLS } from "../../constants";
 import { FoScene } from "../../hooks";
 import { avoidZFightingAtom } from "../../state";
 import { useFo3dContext } from "../context";
-import { getCameraPositionKey, getOrthonormalAxis } from "../utils";
+import { getOrthonormalAxis, saveCameraState } from "../utils";
 import { Lights } from "./lights/Lights";
 
 export const SceneControls = ({
@@ -55,13 +55,10 @@ export const SceneControls = ({
       cameraControls &&
       now - lastCameraUpdateRef.current > CAMERA_UPDATE_INTERVAL
     ) {
-      const cameraState = {
-        position: state.camera.position.toArray(),
-        target: cameraControls.getTarget(new Vector3()).toArray(),
-      };
-      window?.localStorage.setItem(
-        getCameraPositionKey(datasetName),
-        JSON.stringify(cameraState)
+      saveCameraState(
+        datasetName,
+        state.camera.position.toArray(),
+        cameraControls.getTarget(new Vector3()).toArray()
       );
       lastCameraUpdateRef.current = now;
     }

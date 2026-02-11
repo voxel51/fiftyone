@@ -1,5 +1,9 @@
 import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
-import { current3dAnnotationModeAtom } from "./recoil";
+import {
+  current3dAnnotationModeAtom,
+  hoveredLabelAtom,
+  selectedLabelForAnnotationAtom,
+} from "./recoil";
 
 /**
  * Hook to retrieve the current 3D annotation mode.
@@ -34,4 +38,22 @@ export const useReset3dAnnotationMode = () => {
   );
 
   return reset3dAnnotationMode;
+};
+
+/**
+ * Hook to retrieve the label currently selected for 3D annotation.
+ *
+ * @returns The selected label, or null if nothing is selected
+ */
+export const useCurrentSelected3dAnnotationLabel = () => {
+  return useRecoilValue(selectedLabelForAnnotationAtom);
+};
+
+/**
+ * Hook to retrieve the currently hovered 3D label in annotation mode.
+ *
+ * @returns The hovered label identifier (`{ id }`) or null if no label is hovered
+ */
+export const useHoveredLabel3d = () => {
+  return useRecoilValue(hoveredLabelAtom);
 };
