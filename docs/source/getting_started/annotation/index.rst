@@ -98,23 +98,18 @@ What You'll Learn
 When to Use In-App Annotation
 -----------------------------
 
-**Good fit:**
+**Ideal for:**
 
-- Small to medium annotation tasks (tens to hundreds of samples)
-- Quick corrections and QA passes
-- Prototyping label schemas before scaling
-- Single annotator or small team workflows
-- Multimodal data with linked 2D/3D views
-- Tight feedback loops between labeling and model evaluation
+- Rapid prototyping and schema iteration
+- Model-in-the-loop correction workflows
+- QA passes and targeted refinement
+- Single annotator or small team projects
+- Multimodal data with synchronized 2D/3D views
+- Tight feedback loops between labeling and evaluation
 
-**Consider external tools (CVAT, Label Studio) when:**
-
-- High-volume annotation with multiple annotators
-- Complex role-based review and approval workflows
-- Annotation task management and assignment
-- You need audit trails and annotator agreement metrics
-
-FiftyOne integrates with external annotation tools via the :ref:`annotation API <fiftyone-annotation>`.
+**For large-scale annotation projects**, FiftyOne's :ref:`annotation API <fiftyone-annotation>`
+lets you orchestrate external annotation services while keeping FiftyOne as your
+central data hub for curation, QA, and model evaluation.
 
 .. _annotation-dataset:
 
