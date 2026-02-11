@@ -1,0 +1,28 @@
+{
+    "name": "@fiftyone/upload",
+    "private": true,
+    "version": "0.0.1",
+    "author": "Voxel51, Inc.",
+    "description": "File upload components and hooks for the FiftyOne App",
+    "license": "Apache-2.0",
+    "main": "./src/index.ts",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "vitest"
+    },
+    "devDependencies": {
+        "@testing-library/dom": "^10.4.0",
+        "@testing-library/react": "^16.2.0",
+        "jsdom": "^26.0.0",
+        "typescript": "^5.5.4",
+        "vite": "^5.4.21",
+        "vitest": "^1.6.0"
+    },
+    "peerDependencies": {
+        "react": "*",
+        "react-dom": "*"
+    },
+    "packageManager": "yarn@4.9.1"
+}
