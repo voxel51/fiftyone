@@ -3,7 +3,7 @@ import validator from "@rjsf/validator-ajv8";
 import React, { useEffect, useRef } from "react";
 
 import { translateSchema } from "./translators";
-import { filterEmptyArrays } from "./utils";
+import { filterEmptyArrays, transformErrors } from "./utils";
 
 import templates from "./templates";
 import widgets from "./widgets";
@@ -78,6 +78,7 @@ export default function RJSF(props: SmartFormProps) {
       onChange={handleChange}
       onSubmit={handleSubmit}
       showErrorList={false}
+      transformErrors={transformErrors}
       {...props.formProps}
     />
   );
