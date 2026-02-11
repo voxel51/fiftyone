@@ -158,7 +158,7 @@ const ActiveFieldsSection = () => {
 
   if (!fields?.length) {
     return (
-      <>
+      <div style={{ marginTop: "0.5rem" }}>
         <GUISectionHeader>
           <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
             Active fields
@@ -187,7 +187,7 @@ const ActiveFieldsSection = () => {
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
-      </>
+      </div>
     );
   }
 

@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import { ContentArea } from "../styled";
 
 const SCHEMA_JSON_DOC_URL =
-  "https://docs.voxel51.com/user_guide/annotation.html";
+  "https://docs.voxel51.com/api/fiftyone.core.annotation.generate_label_schemas.html#module-fiftyone.core.annotation.generate_label_schemas";
 
 type JSONValue =
   | string
@@ -88,22 +88,15 @@ const JSONEditor = ({
           width={"100%"}
         />
       </ContentArea>
-      <Text
-        color={TextColor.Secondary}
-        variant={TextVariant.Md}
-        style={{ marginTop: "0.5rem" }}
-      >
-        Learn how to configure schema JSON in the{" "}
-        <a
-          href={SCHEMA_JSON_DOC_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: "var(--fo-palette-primary-main)" }}
+      <a href={SCHEMA_JSON_DOC_URL} target="_blank" rel="noopener noreferrer">
+        <Text
+          color={TextColor.Primary}
+          variant={TextVariant.Md}
+          style={{ marginTop: "0.5rem", textDecoration: "underline" }}
         >
-          documentation
-        </a>
-        .
-      </Text>
+          Learn more about the label schema format in our documentation.
+        </Text>
+      </a>
     </>
   );
 };

@@ -80,7 +80,7 @@ const Subheading = () => {
   }
 
   return (
-    <Text color={TextColor.Secondary} style={{ padding: "1rem 0" }}>
+    <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
       Manage your label schemas
     </Text>
   );
