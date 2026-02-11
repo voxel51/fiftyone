@@ -99,9 +99,13 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: string[]) => {
+export const createRadio = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
       name: "RadioGroup",
       label: name,
@@ -134,9 +138,13 @@ export const createTags = (name: string, choices: string[]) => {
   };
 };
 
-export const createSelect = (name: string, choices: string[]) => {
+export const createSelect = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
       name: "SelectWidget",
       label: name,
@@ -245,9 +253,9 @@ export function generatePrimitiveSchema(
     if (schema.component === "slider" && schema.range) {
       return createSlider(name, schema.range);
     } else if (schema.component === "dropdown") {
-      return createSelect(name, schema.values || []);
+      return createSelect(name, schema.values || [], "number");
     } else if (schema.component === "radio") {
-      return createRadio(name, schema.values || []);
+      return createRadio(name, schema.values || [], "number");
     }
     return createText(name, "number");
   }
