@@ -88,6 +88,11 @@ export type AssetLoadingLog = {
   status: "info" | "success" | "error";
 };
 
+export interface SavedCameraState {
+  position: number[];
+  target: number[];
+}
+
 /**
  * Comprehensive loading status enum based on Three.js LoadingManager events
  * Covers all possible states during asset loading lifecycle

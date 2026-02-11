@@ -64,10 +64,10 @@ import { Fo3dSceneContent } from "./Fo3dCanvas";
 import HoverMetadataHUD from "./HoverMetadataHUD";
 import { DEFAULT_RAYCAST_PRECISION, Fo3dSceneContext } from "./context";
 import {
-  getCameraPositionKey,
   getFo3dRoot,
   getMediaPathForFo3dSample,
   getOrthonormalAxis,
+  getSavedCameraState,
 } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -316,13 +316,10 @@ export const MediaTypeFo3dComponent = () => {
 
   const overriddenCameraPosition = useRecoilValue(cameraPositionAtom);
 
-  const lastSavedCameraPosition = useMemo(() => {
-    const lastSavedCameraPosition = window?.localStorage.getItem(
-      getCameraPositionKey(datasetName)
-    );
-
-    return lastSavedCameraPosition ? JSON.parse(lastSavedCameraPosition) : null;
-  }, [datasetName]);
+  const lastSavedCameraState = useMemo(
+    () => getSavedCameraState(datasetName),
+    [datasetName]
+  );
 
   const getDefaultCameraPosition = useCallback(
     (ignoreLastSavedCameraPosition = false) => {
@@ -358,15 +355,11 @@ export const MediaTypeFo3dComponent = () => {
         );
       }
 
-      if (
-        !ignoreLastSavedCameraPosition &&
-        lastSavedCameraPosition &&
-        lastSavedCameraPosition.length === 3
-      ) {
+      if (!ignoreLastSavedCameraPosition && lastSavedCameraState) {
         return new Vector3(
-          lastSavedCameraPosition[0],
-          lastSavedCameraPosition[1],
-          lastSavedCameraPosition[2]
+          lastSavedCameraState.position[0],
+          lastSavedCameraState.position[1],
+          lastSavedCameraState.position[2]
         );
       }
 
@@ -403,7 +396,7 @@ export const MediaTypeFo3dComponent = () => {
       foScene,
       effectiveSceneBoundingBox,
       upVector,
-      lastSavedCameraPosition,
+      lastSavedCameraState,
     ]
   );
 
@@ -555,72 +548,68 @@ export const MediaTypeFo3dComponent = () => {
 
   fos.useEventHandler(window, SET_ZOOM_TO_SELECTED_EVENT, handleZoomToSelected);
 
-  // this effect sets the appropriate lookAt and camera position
-  // and marks the scene as initialized
+  // Restore camera from localStorage or scene config as soon as controls are available.
+  // This does not depend on bounding box.
+  useEffect(() => {
+    if (!cameraControlsRef.current || !cameraRef.current || !foScene) {
+      return;
+    }
+
+    // try restoring from saved state first
+    if (lastSavedCameraState) {
+      cameraControlsRef.current.setLookAt(
+        lastSavedCameraState.position[0],
+        lastSavedCameraState.position[1],
+        lastSavedCameraState.position[2],
+        lastSavedCameraState.target[0],
+        lastSavedCameraState.target[1],
+        lastSavedCameraState.target[2],
+        false
+      );
+      setSceneInitialized(true);
+      return;
+    }
+
+    // try restoring from scene-defined lookAt
+    if (foScene.cameraProps.lookAt?.length === 3) {
+      cameraControlsRef.current.setTarget(
+        foScene.cameraProps.lookAt[0],
+        foScene.cameraProps.lookAt[1],
+        foScene.cameraProps.lookAt[2],
+        false
+      );
+      setSceneInitialized(true);
+      return;
+    }
+
+    // no saved state and no scene config — fall through to bbox-dependent effect below
+  }, [foScene, lastSavedCameraState, cameraControlsRef, cameraRef]);
+
+  // Fallback: position camera based on bounding box when no saved state is available.
+  // This only runs when we have no localStorage/scene-config camera AND bbox is ready.
   useEffect(() => {
     if (
       !cameraControlsRef.current ||
       !cameraRef.current ||
-      isComputingSceneBoundingBox
+      isComputingSceneBoundingBox ||
+      isSceneInitialized
     ) {
       return;
     }
 
-    // restore camera position and target from localStorage if it exists
-    const lastSavedCameraState = window?.localStorage.getItem(
-      getCameraPositionKey(datasetName)
-    );
-    let restored = false;
-    if (lastSavedCameraState) {
-      try {
-        const parsed = JSON.parse(lastSavedCameraState);
-        if (
-          parsed &&
-          Array.isArray(parsed.position) &&
-          parsed.position.length === 3 &&
-          Array.isArray(parsed.target) &&
-          parsed.target.length === 3
-        ) {
-          cameraControlsRef.current.setLookAt(
-            parsed.position[0],
-            parsed.position[1],
-            parsed.position[2],
-            parsed.target[0],
-            parsed.target[1],
-            parsed.target[2],
-            false
-          );
-          setSceneInitialized(true);
-          restored = true;
-        }
-      } catch {}
-    }
-
-    if (!restored) {
-      if (foScene?.cameraProps.lookAt?.length === 3) {
-        cameraControlsRef.current.setTarget(
-          foScene.cameraProps.lookAt[0],
-          foScene.cameraProps.lookAt[1],
-          foScene.cameraProps.lookAt[2],
-          false
-        );
-        setSceneInitialized(true);
-        return;
-      } else {
-        onChangeView("top", {
-          useAnimation: false,
-          ignoreLastSavedCameraPosition: false,
-          isFirstTime: true,
-        });
-        setSceneInitialized(true);
-      }
-    }
+    // only reach here if the first effect didn't initialize (no saved state, no scene lookAt)
+    onChangeView("top", {
+      useAnimation: false,
+      ignoreLastSavedCameraPosition: false,
+      isFirstTime: true,
+    });
+    setSceneInitialized(true);
   }, [
-    foScene,
     onChangeView,
     cameraControlsRef,
     cameraRef,
     isComputingSceneBoundingBox,
+    isSceneInitialized,
   ]);
 
   useTrackStatus();
