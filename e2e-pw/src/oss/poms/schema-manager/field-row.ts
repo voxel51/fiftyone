@@ -162,4 +162,12 @@ class FieldRowAsserter {
     await this.fieldRowPom.edit();
     await this.fieldRowPom.schemaManager.assert.hasRangeValues(min, max);
   }
+
+  /**
+   * Open the field's edit view and verify the selected component type
+   */
+  async hasComponentType(id: string) {
+    await this.fieldRowPom.edit();
+    await this.fieldRowPom.schemaManager.assert.hasSelectedComponentType(id);
+  }
 }

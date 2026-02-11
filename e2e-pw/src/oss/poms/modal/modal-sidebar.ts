@@ -125,6 +125,13 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Select an option from an MUI Autocomplete dropdown in the modal
+   */
+  async selectAutocompleteOption(label: string) {
+    await this.page.getByRole("option", { name: label }).click();
+  }
+
+  /**
    * The field dropdown (MUI Select) in the annotation editing view
    */
   get fieldDropdown() {
@@ -283,5 +290,34 @@ class SidebarAsserter {
     await expect(slider).toBeVisible();
     await expect(slider).toHaveAttribute("aria-valuemin", min);
     await expect(slider).toHaveAttribute("aria-valuemax", max);
+  }
+
+  /**
+   * Assert that a date picker is visible in the modal
+   */
+  async hasDatePicker() {
+    await expect(
+      this.modalSidebarPom.modal.locator(".react-datepicker-wrapper")
+    ).toBeVisible();
+  }
+
+  /**
+   * Assert that a toggle switch is visible in the modal
+   */
+  async hasToggle() {
+    await expect(this.modalSidebarPom.modal.getByRole("switch")).toBeVisible();
+  }
+
+  /**
+   * Assert that MUI Autocomplete chips/tags with the given labels are visible
+   */
+  async hasSelectedTags(labels: string[]) {
+    for (const label of labels) {
+      await expect(
+        this.modalSidebarPom.modal
+          .locator('[data-cy="selected-tag"]')
+          .filter({ hasText: label })
+      ).toBeVisible();
+    }
   }
 }

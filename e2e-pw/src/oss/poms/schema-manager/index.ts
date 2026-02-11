@@ -293,6 +293,15 @@ class SchemaManagerAsserter {
   }
 
   /**
+   * Verify a component type button is selected in the edit view
+   */
+  async hasSelectedComponentType(id: string) {
+    await expect(
+      this.schemaManagerPom.getComponentTypeButton(id)
+    ).toHaveAttribute("data-selected", "true");
+  }
+
+  /**
    * Is the field row in the hidden fields section
    *
    * @param field the field name

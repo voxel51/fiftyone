@@ -32,7 +32,11 @@ const ComponentTypeButton = ({
   const theme = useTheme();
 
   return (
-    <div style={{ flex: 1 }} data-cy={dataCy}>
+    <div
+      style={{ flex: 1 }}
+      data-cy={dataCy}
+      data-selected={isSelected || undefined}
+    >
       <Clickable onClick={onClick}>
         <div
           style={{
