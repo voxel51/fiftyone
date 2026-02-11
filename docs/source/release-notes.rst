@@ -3,6 +3,91 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.0
+--------------------------
+*Released February 12, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.0 <release-notes-v1.13.0>`, plus:
+
+Cloud Media
+
+- New Feature: Scoped Cloud Credentials. Cloud credentials for accessing cloud
+  media can now be assigned to one of three different scopes: per-user,
+  per-user-group, and (as always) globally. All scopes of credentials support
+  being further scoped by bucket-name filters, restricting their use to
+  matching bucket names. Via the Settings / Cloud Credentials page, admins can
+  manage all scopes of credentials, while any user can manage their own
+  credentials. Scoped cloud credentials can also be managed using
+  :func:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
+  and 
+  :func:`delete_cloud_credentials() <fiftyone.management.cloud_credentials.delete_cloud_credentials>`.
+
+Plugins and Operators
+
+- Disabled the plugins cache (`plugins_cache_enabled=False`) by default when
+  launching the Enterprise App locally.
+- Exposed the :ref:`Data Quality panel's <data-quality>` underlying operators
+  for direct invocation by users if desired.
+
+App
+
+- Fixed a bug on the Runs page, where filtering would incorrectly filter out
+  certain runs.
+
+Security
+
+- Updated a number of dependencies in order to resolve security
+  vulnerabilities: `azure-core`, `eslint`, `js-yaml`, `tar`, and `wheel`
+
+
+.. _release-notes-v1.13.0:
+
+FiftyOne 1.13.0
+---------------
+*Released February 12, 2026*
+
+App
+
+- New Feature: :ref:`Human Annotation! <fiftyone-annotation>` Create, edit, and
+  delete classification and detection labels on images, as well as cuboid and
+  3d polylines on 3d datasets. Dataset managers can define an annotation schema
+  to constrain all metadata edits, either manually or by scanning an existing
+  dataset. But, when no schema exists, labelers can choose to bypass a schema
+  and quick-edit right away.
+- New Feature: 3D → 2D projection overlays for cuboids and polylines on image
+  slices, including crosshair with coordinate tooltip.
+  `#6935 <https://github.com/voxel51/fiftyone/pull/6935>`_
+- Improved cursor tracking and raycasting logic for 3D multi-panel
+  visualizations. `#6886 <https://github.com/voxel51/fiftyone/pull/6886>`_,
+  `#6921 <https://github.com/voxel51/fiftyone/pull/6921>`_
+- Optimization: Significantly reduced time to fetch data to populate the grid
+  for datasets with many label fields.
+  `#6934 <https://github.com/voxel51/fiftyone/pull/6934>`_
+- Fixed a bug where RGB segmentation masks stored directly in MongoDB as
+  3-channel arrays were not rendering correctly.
+  `#6805 <https://github.com/voxel51/fiftyone/pull/6805>`_
+- Fixed a bug where img icons for plugins were not sized correctly.
+  `#6937 <https://github.com/voxel51/fiftyone/pull/6937>`_
+
+
+Core
+
+- Fix file descriptor leak when loading images during model inference.
+  `#6773 <https://github.com/voxel51/fiftyone/pull/6773>`_
+
+Models
+
+- Pinned `timm<1.0.24` for omdet-turbo-swin-tiny-torch to fix inference
+  failure. `#6891 <https://github.com/voxel51/fiftyone/pull/6891>`_
+
+CLI
+
+- Added a `fiftyone app debug` command that launches the App in debug mode. In
+  debug mode, server logs are printed to the shell, which is useful, eg, when
+  developing plugins. `#6848 <https://github.com/voxel51/fiftyone/pull/6848>`_
+
+
+
 FiftyOne Enterprise 2.15.0
 --------------------------
 *Released February 4, 2026*
