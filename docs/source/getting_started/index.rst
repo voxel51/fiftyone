@@ -44,7 +44,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
 .. customcarditem::
     :header: Human Annotation Guide
     :description: Master the data-centric annotation loop with coverage-based selection, human-in-the-loop labeling, and iterative model improvement. Learn to label smarter, not harder.
-    :link: human_annotation/index.html
+    :link: annotation/index.html
     :image: https://cdn.voxel51.com/getting_started_human_annotation/tile/human_annotation_guide.webp
     :tags: Core-Fiftyone,Annotation,Human-in-the-Loop
 
@@ -131,7 +131,7 @@ Each guide is designed as a sequential learning experience with navigation betwe
    :hidden:
 
    Auto Labeling Guide <auto_labeling/index>
-   Human Annotation Guide <human_annotation/index>
+   Human Annotation Guide <annotation/index>
    Object Detection Guide <object_detection/index>
    Medical Imaging Guide <medical_imaging/index>
    Self-Driving Guide <self_driving/index>

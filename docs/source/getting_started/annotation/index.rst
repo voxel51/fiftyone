@@ -1,4 +1,4 @@
-.. _human_annotation_guide:
+.. _annotation_guide:
 
 Human Annotation Guide
 ======================
@@ -9,7 +9,7 @@ Human Annotation Guide
 
 FiftyOne's in-app annotation lets you create and edit labels directly in the App—no external tools required. This guide offers two tracks depending on your goals.
 
-.. _human_annotation-tracks:
+.. _annotation-tracks:
 
 Choose Your Track
 -----------------
@@ -35,7 +35,7 @@ Choose Your Track
 
    **These tracks are independent.** Quickstart uses dataset ``my_annotation_project``, Full Loop uses ``annotation_tutorial``. You can do both without conflict.
 
-.. _human_annotation-quickstart:
+.. _annotation-quickstart:
 
 Quickstart Track
 ----------------
@@ -48,7 +48,7 @@ Jump straight to labeling:
 
 If in-app annotation fits your needs, check out the Full Loop for production workflows.
 
-.. _human_annotation-full-loop:
+.. _annotation-full-loop:
 
 Full Loop Track
 ---------------
@@ -70,7 +70,7 @@ A complete data-centric detection workflow. You should be comfortable with:
 5. :doc:`05_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
 6. :doc:`06_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
 
-.. _human_annotation-what-you-learn:
+.. _annotation-what-you-learn:
 
 What You'll Learn
 -----------------
@@ -90,7 +90,7 @@ What You'll Learn
 - Failure analysis to drive the next labeling batch
 - Iterative improvement without test set contamination
 
-.. _human_annotation-when-to-use:
+.. _annotation-when-to-use:
 
 When to Use In-App Annotation
 -----------------------------
@@ -112,14 +112,14 @@ When to Use In-App Annotation
 
 FiftyOne integrates with external annotation tools via the :ref:`annotation API <fiftyone-annotation>`.
 
-.. _human_annotation-dataset:
+.. _annotation-dataset:
 
 Dataset
 -------
 
 Both tracks use FiftyOne's `quickstart` dataset (200 images from COCO with detection annotations). It downloads automatically when you run the notebooks.
 
-.. _human_annotation-start:
+.. _annotation-start:
 
 Ready to Begin?
 ---------------
