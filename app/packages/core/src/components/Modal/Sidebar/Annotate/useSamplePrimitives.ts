@@ -1,7 +1,6 @@
 import { Sample, State, fieldPaths } from "@fiftyone/state";
 import { DICT_FIELD, VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { useAtomValue } from "jotai";
-import { get } from "lodash";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas } from "./state";
 
@@ -18,11 +17,11 @@ const useSamplePrimitives = (currentSample: Sample): string[] => {
     return [];
   }
 
-  // only top level primitives that exist - we want to keep null
-  // values it just means the value has not been set yet
-  const validPrimitivePaths = primitivePaths
-    .filter((path) => get(currentSample, path) !== undefined)
-    .filter((path) => activeFields.includes(path));
+  // Show all active primitive fields, even if the sample doesn't
+  // have a value yet (e.g. newly created fields via schema manager)
+  const validPrimitivePaths = primitivePaths.filter((path) =>
+    activeFields.includes(path)
+  );
 
   return validPrimitivePaths;
 };
