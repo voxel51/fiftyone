@@ -197,34 +197,27 @@ const Modal = () => {
   );
 
   const {
-    activate: activateCommandContext,
-    deactivate: deactivateCommandContext,
+    activate: activateModalCommandContext,
+    deactivate: deactivateModalCommandContext,
   } = useCommandContext(KnownContexts.Modal, true);
-
-  const {
-    activate: activateAnnotateCommandContext,
-    deactivate: deactivateAnnotateCommandContext,
-  } = useCommandContext(KnownContexts.ModalAnnotate, true);
 
   const isSidebarVisibleValue = useRecoilValue(fos.sidebarVisible(true));
 
   /**
-   * TODO: Fix this to not depend on sidebar visibility
+   * TODO: Ductape solution. Please fix this. None of this should depend on sidebar visibility.
    */
   useEffect(() => {
-    activateCommandContext();
-    activateAnnotateCommandContext();
+    setTimeout(() => {
+      activateModalCommandContext();
+    }, 0);
 
     return () => {
-      deactivateCommandContext();
-      deactivateAnnotateCommandContext();
+      deactivateModalCommandContext();
     };
   }, [
     isSidebarVisibleValue,
-    activateCommandContext,
-    deactivateCommandContext,
-    activateAnnotateCommandContext,
-    deactivateAnnotateCommandContext,
+    activateModalCommandContext,
+    deactivateModalCommandContext,
   ]);
 
   useKeyBindings(KnownContexts.Modal, [
