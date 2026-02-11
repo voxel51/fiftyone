@@ -39,7 +39,6 @@
         "styled-components": "*"
     },
     "dependencies": {
-        "@voxel51/voodo": "0.0.17",
         "@emotion/react": "^11.10.4",
         "@emotion/styled": "^11.10.4",
         "@fiftyone/commands": "workspace:^",

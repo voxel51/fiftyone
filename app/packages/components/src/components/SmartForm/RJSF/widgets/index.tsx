@@ -12,7 +12,6 @@ export default {
   AutoComplete,
   Dropdown,
   LabelValueWidget,
-  Select: SelectWidget,
   SelectWidget,
   RangeWidget: SliderWidget,
   TextWidget,
