@@ -2012,7 +2012,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         )
 
     def test_pipeline_stage_overrides_view_name(self, mock_get_operator):
-        """Test that request_params_overrides correctly overrides view_name."""
+        """Test that request_params_overrides correctly overrides view_name per stage."""
         from fiftyone.operators import executor as exec_module
 
         # Track the contexts seen during execution
@@ -2212,10 +2212,10 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         # But view_name should still be overridden
         self.assertEqual(contexts_seen[0].get("view_name"), "special_view")
 
-    def test_pipeline_stage_overrides_accumulate_across_stages(
+    def test_pipeline_stage_overrides_are_not_cumulative(
         self, mock_get_operator
     ):
-        """Test that overrides from one stage carry forward to the next."""
+        """Test that overrides from one stage do NOT carry forward to the next stage."""
         from fiftyone.operators import executor as exec_module
 
         contexts_seen = []
@@ -2243,7 +2243,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
                         operator_uri="@test/op2",
                         name="stage_two",
                         request_params_overrides={"field2": "value2"}
-                        # view_name should carry forward from stage 1
+                        # view_name should NOT carry forward from stage 1
                     ),
                 ]
             )
@@ -2251,6 +2251,7 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
             ctx = ExecutionContext(
                 request_params={
                     "dataset_name": "test_dataset",
+                    "view_name": "original_view",
                 }
             )
 
@@ -2259,14 +2260,93 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         # Should be called twice (once per stage)
         self.assertEqual(len(contexts_seen), 2)
 
-        # First stage should have its overrides
+        # First stage should have its overrides applied to the base params
         self.assertEqual(contexts_seen[0].get("view_name"), "view_from_stage1")
         self.assertEqual(contexts_seen[0].get("field1"), "value1")
+        self.assertIsNone(contexts_seen[0].get("field2"))
 
-        # Second stage should have accumulated overrides
-        self.assertEqual(contexts_seen[1].get("view_name"), "view_from_stage1")
-        self.assertEqual(contexts_seen[1].get("field1"), "value1")
+        # Second stage should start fresh from base params, NOT accumulate stage 1's overrides
+        self.assertEqual(
+            contexts_seen[1].get("view_name"), "original_view"
+        )  # Back to original!
+        self.assertIsNone(
+            contexts_seen[1].get("field1")
+        )  # Stage 1's override NOT carried over
         self.assertEqual(contexts_seen[1].get("field2"), "value2")
+
+    def test_pipeline_stage_overrides_reset_each_stage(
+        self, mock_get_operator
+    ):
+        """Test that each stage starts with the original base request params."""
+        from fiftyone.operators import executor as exec_module
+
+        contexts_seen = []
+
+        async def mock_do_execute_operator(operator, ctx, exhaust=False):
+            contexts_seen.append(copy.deepcopy(ctx.request_params))
+            return None
+
+        with patch.object(
+            exec_module,
+            "do_execute_operator",
+            side_effect=mock_do_execute_operator,
+        ):
+            pipeline = Pipeline(
+                [
+                    PipelineStage(
+                        operator_uri="@test/op1",
+                        name="stage_one",
+                        params={"param1": "value1"},
+                        request_params_overrides={
+                            "view_name": "custom_view_1",
+                            "custom_field": "custom_1",
+                        },
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op2",
+                        name="stage_two",
+                        params={"param2": "value2"},
+                        request_params_overrides={
+                            "view_name": "custom_view_2",
+                        }
+                        # custom_field should NOT be present here
+                    ),
+                    PipelineStage(
+                        operator_uri="@test/op3",
+                        name="stage_three",
+                        params={"param3": "value3"},
+                        # No overrides - should get original base params
+                    ),
+                ]
+            )
+
+            ctx = ExecutionContext(
+                request_params={
+                    "dataset_name": "test_dataset",
+                    "view_name": "original_view",
+                }
+            )
+
+            asyncio.run(exec_module.do_execute_pipeline(pipeline, ctx))
+
+        self.assertEqual(len(contexts_seen), 3)
+
+        # Stage 1: has its own overrides
+        self.assertEqual(contexts_seen[0].get("view_name"), "custom_view_1")
+        self.assertEqual(contexts_seen[0].get("custom_field"), "custom_1")
+        self.assertEqual(contexts_seen[0].get("params"), {"param1": "value1"})
+
+        # Stage 2: starts fresh, only has its own overrides
+        self.assertEqual(contexts_seen[1].get("view_name"), "custom_view_2")
+        self.assertIsNone(
+            contexts_seen[1].get("custom_field")
+        )  # NOT carried over from stage 1
+        self.assertEqual(contexts_seen[1].get("params"), {"param2": "value2"})
+
+        # Stage 3: no overrides, gets original base params
+        self.assertEqual(contexts_seen[2].get("view_name"), "original_view")
+        self.assertIsNone(contexts_seen[2].get("custom_field"))
+        self.assertEqual(contexts_seen[2].get("params"), {"param3": "value3"})
 
     def test_pipeline_stage_serialization_with_overrides(
         self, mock_get_operator
