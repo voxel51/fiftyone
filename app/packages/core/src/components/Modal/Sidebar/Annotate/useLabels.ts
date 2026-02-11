@@ -355,10 +355,16 @@ export default function useLabels() {
   }, [
     active,
     addLabelToRenderer,
+    addLabelToStore,
+    createLabel,
     getFieldType,
     loadingState,
     modalSample?.sample,
     paths,
+    scene,
+    setLabels,
+    setLoading,
+    updateLabelAtom,
   ]);
 
   useEffect(() => {
