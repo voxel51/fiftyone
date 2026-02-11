@@ -1,6 +1,5 @@
-import useConfirmExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Confirmation/useConfirmExit";
 import { editing as editingAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit";
-import * as fos from "@fiftyone/state";
+import useExit from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useExit";
 import { Close, Delete, Edit, OpenWith, Straighten } from "@mui/icons-material";
 import AddBoxIcon from "@mui/icons-material/AddBox";
 import RectangleIcon from "@mui/icons-material/Rectangle";
@@ -8,16 +7,14 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ThreeSixtyIcon from "@mui/icons-material/ThreeSixty";
 import PolylineIcon from "@mui/icons-material/Timeline";
 import { Typography } from "@mui/material";
-import { useAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
 import { useFo3dContext } from "../../fo3d/context";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
-  current3dAnnotationModeAtom,
-  currentActiveAnnotationField3dAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
@@ -25,10 +22,15 @@ import {
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
   snapCloseAutomaticallyAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
   transformModeAtom,
 } from "../../state";
+import { useCurrent3dAnnotationMode } from "../../state/accessors";
+import { isDetection3dOverlay, isPolyline3dOverlay } from "../../types";
+import {
+  useCuboidOperations,
+  usePolylineOperations,
+  useWorkingDoc,
+} from "../store";
 import type {
   AnnotationAction,
   AnnotationActionGroup,
@@ -42,10 +44,9 @@ import {
 import { FieldSelection } from "./FieldSelection";
 
 export const useAnnotationActions = () => {
-  const currentSampleId = useRecoilValue(fos.currentSampleId);
-  const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
-  const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
-    useRecoilState(selectedLabelForAnnotationAtom);
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
   const [
     currentArchetypeSelectedForTransform,
     setCurrentArchetypeSelectedForTransform,
@@ -55,7 +56,7 @@ export const useAnnotationActions = () => {
     selectedPolylineVertexAtom
   );
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const [isCreatingCuboid, setIsCreatingCuboid] =
@@ -66,18 +67,15 @@ export const useAnnotationActions = () => {
   const [snapCloseAutomatically, setSnapCloseAutomatically] = useRecoilState(
     snapCloseAutomaticallyAtom
   );
-  const [editing, setEditing] = useAtom(editingAtom);
+  const editing = useAtomValue(editingAtom);
   const [editSegmentsMode, setEditSegmentsMode] =
     useRecoilState(editSegmentsModeAtom);
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
-  );
   const [annotationPlane, setAnnotationPlane] =
     useRecoilState(annotationPlaneAtom);
   const { sceneBoundingBox, upVector } = useFo3dContext();
+  const { deleteCuboid } = useCuboidOperations();
+  const { deletePolyline, updatePolylinePoints } = usePolylineOperations();
+  const workingDoc = useWorkingDoc();
 
   const handleTransformModeChange = useCallback(
     (mode: TransformMode) => {
@@ -109,53 +107,40 @@ export const useAnnotationActions = () => {
 
     const { labelId, segmentIndex, pointIndex } = selectedPoint;
 
-    setStagedPolylineTransforms((prev) => {
-      const currentData = prev[labelId];
-      if (!currentData) return prev;
+    const workingLabel = workingDoc.labelsById[labelId];
+    if (!workingLabel || !isPolyline3dOverlay(workingLabel)) return;
 
-      const currentSegments = currentData.segments || [];
+    const points3d = workingLabel.points3d;
+    if (!points3d) return;
 
-      // If the segment doesn't exist or the point doesn't exist, return unchanged
-      if (
-        segmentIndex >= currentSegments.length ||
-        pointIndex >= currentSegments[segmentIndex]?.points.length
-      ) {
-        return prev;
-      }
+    // If the segment doesn't exist or the point doesn't exist, return
+    if (
+      segmentIndex >= points3d.length ||
+      pointIndex >= points3d[segmentIndex]?.length
+    ) {
+      return;
+    }
 
-      // Create new segments array with the point removed
-      const newSegments = currentSegments.map((segment, segIdx) => {
+    // Create new points3d array with the point removed
+    const newPoints3d = points3d
+      .map((segment, segIdx) => {
         if (segIdx === segmentIndex) {
           // Remove the point from this segment
-          const newPoints = segment.points.filter(
-            (_, ptIdx) => ptIdx !== pointIndex
-          );
-          return { points: newPoints };
+          return segment.filter((_, ptIdx) => ptIdx !== pointIndex);
         }
         return segment;
-      });
-
+      })
       // Remove empty segments
-      const filteredSegments = newSegments.filter(
-        (segment) => segment.points.length > 0
-      );
+      .filter((segment) => segment.length > 0);
 
-      return {
-        ...prev,
-        [labelId]: {
-          ...currentData,
-          segments: filteredSegments,
-        },
-      };
-    });
+    updatePolylinePoints(labelId, newPoints3d);
 
     setSelectedPoint(null);
     setCurrentArchetypeSelectedForTransform(null);
   }, [
-    currentSampleId,
-    currentActiveField,
     selectedPoint,
-    setStagedPolylineTransforms,
+    workingDoc,
+    updatePolylinePoints,
     setSelectedPoint,
     setCurrentArchetypeSelectedForTransform,
   ]);
@@ -163,14 +148,20 @@ export const useAnnotationActions = () => {
   const handleContextualDelete = useCallback(() => {
     if (selectedPoint) {
       handleDeleteSelectedPoint();
-    } else if (
-      selectedLabelForAnnotation &&
-      selectedLabelForAnnotation._cls === "Polyline"
-    ) {
-      // Note: we're disabling this for now until auto-save
-      // handleDeleteEntireTransform();
+    } else if (selectedLabelForAnnotation) {
+      if (isPolyline3dOverlay(selectedLabelForAnnotation)) {
+        deletePolyline(selectedLabelForAnnotation._id);
+      } else if (isDetection3dOverlay(selectedLabelForAnnotation)) {
+        deleteCuboid(selectedLabelForAnnotation._id);
+      }
     }
-  }, [selectedPoint, handleDeleteSelectedPoint, selectedLabelForAnnotation]);
+  }, [
+    selectedPoint,
+    handleDeleteSelectedPoint,
+    selectedLabelForAnnotation,
+    deletePolyline,
+    deleteCuboid,
+  ]);
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -253,29 +244,7 @@ export const useAnnotationActions = () => {
     setIsCreatingCuboid(!isCreatingCuboid);
   }, [isCreatingCuboid, setIsCreatingCuboid]);
 
-  // Custom exit function that also clears polyline and cuboid transforms
-  const customExit = useCallback(() => {
-    setStagedPolylineTransforms({});
-    setStagedCuboidTransforms({});
-    setSelectedLabelForAnnotation(null);
-    setEditing(null);
-    setEditSegmentsMode(false);
-  }, [
-    setStagedPolylineTransforms,
-    setStagedCuboidTransforms,
-    setSelectedLabelForAnnotation,
-    setEditing,
-    setEditSegmentsMode,
-  ]);
-
-  // Use confirm exit hook with custom exit function
-  const { confirmExit } = useConfirmExit(customExit);
-
-  const handleDeselectLabel = useCallback(() => {
-    confirmExit(() => {
-      // Callback after exit is confirmed, no-op for now
-    });
-  }, [confirmExit]);
+  const onExit = useExit();
 
   const actions: AnnotationActionGroup[] = useMemo(() => {
     const baseActions: AnnotationActionGroup[] = [
@@ -302,7 +271,7 @@ export const useAnnotationActions = () => {
             tooltip: "Exit edit mode and deselect label",
             isActive: false,
             isVisible: selectedLabelForAnnotation !== null || editing !== null,
-            onClick: handleDeselectLabel,
+            onClick: onExit,
           },
         ],
       },
@@ -371,11 +340,14 @@ export const useAnnotationActions = () => {
             label: "Delete",
             icon: <Delete />,
             shortcut: "Delete",
-            tooltip: "Delete selected polyline point",
+            tooltip: selectedPoint
+              ? "Delete selected polyline point"
+              : "Delete selected label",
             isActive: false,
             isVisible:
-              currentArchetypeSelectedForTransform === "point" &&
-              selectedPoint !== null,
+              (currentArchetypeSelectedForTransform === "point" &&
+                selectedPoint !== null) ||
+              selectedLabelForAnnotation !== null,
             onClick: handleContextualDelete,
           },
           {
@@ -474,9 +446,9 @@ export const useAnnotationActions = () => {
     editSegmentsMode,
     handleToggleEditSegmentsMode,
     editing,
-    handleDeselectLabel,
     isPolylineAnnotateActive,
     isCuboidAnnotateActive,
+    onExit,
   ]);
 
   return {

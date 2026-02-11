@@ -66,6 +66,7 @@ const getIndexIdFromInstanceIdForLabel = (
 };
 
 export interface DetectionLabel extends RegularLabel {
+  _cls: "Detection";
   mask?: LabelMask;
   mask_path?: string;
   bounding_box?: BoundingBox;

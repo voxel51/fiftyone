@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.12.0"
+VERSION = "1.13.0"
 
 
 def get_version():
@@ -77,9 +77,9 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     "pydash",
     # internal packages
-    "fiftyone-brain>=0.21.4,<0.22",
+    "fiftyone-brain>=0.21.5,<0.22",
     "fiftyone-db>=0.4,<2.0",
-    "voxel51-eta>=0.15.1,<0.16",
+    "voxel51-eta>=0.15.3,<0.16",
 ]
 
 

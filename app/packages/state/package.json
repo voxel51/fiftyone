@@ -18,6 +18,7 @@
         "README.md"
     ],
     "peerDependencies": {
+        "@voxel51/voodo": "*",
         "react": "*",
         "react-error-boundary": "*",
         "react-relay": "*",
@@ -37,6 +38,6 @@
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "^2.0.1",
         "html2canvas": "1.0.0-rc.7",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.23"
     }
 }

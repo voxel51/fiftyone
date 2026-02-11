@@ -132,14 +132,15 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schemas(dataset, "detection_field"),
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "type": "id",
                         "component": "text",
                         "read_only": True,
                     },
-                    "tags": {"type": "list<str>", "component": "text"},
-                },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
                 "classes": ["test"],
                 "component": "radio",
                 "type": "detection",
@@ -153,6 +154,43 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(
                 filepath="image.png",
                 detections_field=fo.Detections(
+                    detections=[
+                        fo.Detection(
+                            label="test",
+                            # 'attributes' is ignored
+                            attributes={"ignore": fo.Attribute()},
+                        )
+                    ]
+                ),
+            )
+        )
+        self.assertEqual(
+            generate_label_schemas(dataset, "detections_field"),
+            {
+                "attributes": [
+                    {
+                        "name": "id",
+                        "type": "id",
+                        "component": "text",
+                        "read_only": True,
+                    },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
+                "classes": ["test"],
+                "component": "radio",
+                "type": "detections",
+            },
+        )
+
+    @drop_datasets
+    def test_generate_group_detections_field_label_schema(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group", default="slice")
+        dataset.add_sample(
+            fo.Sample(
+                filepath="image.png",
+                group=fo.Group().element("slice"),
+                detections_field=fo.Detections(
                     detections=[fo.Detection(label="test")]
                 ),
             )
@@ -160,14 +198,15 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schemas(dataset, "detections_field"),
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "type": "id",
                         "component": "text",
                         "read_only": True,
                     },
-                    "tags": {"type": "list<str>", "component": "text"},
-                },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
                 "classes": ["test"],
                 "component": "radio",
                 "type": "detections",

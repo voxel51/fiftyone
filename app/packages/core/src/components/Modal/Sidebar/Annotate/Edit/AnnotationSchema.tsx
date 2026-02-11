@@ -1,20 +1,13 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import type {
-  NumberSchemaType,
-  SchemaType,
-} from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { expandPath, field } from "@fiftyone/state";
-import {
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
-} from "@fiftyone/utilities";
+import { FLOAT_FIELD, INT_FIELD } from "@fiftyone/utilities";
 import { useAtom, useAtomValue } from "jotai";
 import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
+import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
   currentField,
@@ -22,120 +15,35 @@ import {
   currentSchema,
 } from "./state";
 
-const getLabel = (value) => {
-  if (typeof value === "boolean") {
-    return value ? "True" : "False";
-  }
-
-  if (value === null || value === undefined) {
-    return "None";
-  }
-
-  return value;
-};
-
-const createInput = (
-  name: string,
-  { ftype, multipleOf }: { ftype: string; multipleOf: number }
-): SchemaType => {
-  const type =
-    ftype === STRING_FIELD
-      ? "string"
-      : ftype === BOOLEAN_FIELD
-      ? "boolean"
-      : "number";
-
-  const schema: SchemaType = {
-    type,
-    view: {
-      name: "PrimitiveView",
-      label: name,
-      component: "PrimitiveView",
-    },
-  };
-
-  if (typeof multipleOf === "number" && type === "number") {
-    (schema as NumberSchemaType).multipleOf = multipleOf;
-  }
-
-  return schema;
-};
-
-const createRadio = (name: string, choices) => {
-  return {
-    type: "string",
-    view: {
-      name: "RadioGroup",
-      label: name,
-      component: "RadioView",
-      choices: choices.map((choice) => ({
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-  };
-};
-
-const createTags = (name: string, choices: string[]) => {
-  return {
-    type: "array",
-    view: {
-      name: "AutocompleteView",
-      label: name,
-      component: "AutocompleteView",
-      allow_user_input: false,
-      choices: choices.map((choice) => ({
-        name: "Choice",
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-    required: true,
-  };
-};
-
-const createSelect = (name: string, choices: string[]) => {
-  return {
-    type: "string",
-    view: {
-      name: "DropdownView",
-      label: name,
-      component: "DropdownView",
-      choices: choices.map((choice) => ({
-        name: "Choice",
-        label: getLabel(choice),
-        value: choice,
-      })),
-    },
-  };
-};
-
-const useSchema = () => {
+const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
+  const isLabelReadOnly = config?.read_only;
+  // respect either the field OR the parent schema's readOnly flag
+  const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-    const properties: Record<string, any> = {};
-
-    const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? []);
-
-    for (const attr in attributes) {
-      if (attr === "id") {
-        continue;
-      }
-
-      if (attributes[attr].component === "text") {
-        properties[attr] = createInput(attr, attributes[attr]);
-      }
-
-      if (attributes[attr].component === "radio") {
-        properties[attr] = createRadio(attr, attributes[attr].values);
-      }
-
-      if (attributes[attr].component === "dropdown") {
-        properties[attr] = createTags(attr, attributes[attr].values);
-      }
-    }
+    const attributes = Array.isArray(config?.attributes)
+      ? config.attributes
+      : [];
+    const properties = attributes
+      .filter(({ name }) => name && !["id", "attributes"].includes(name))
+      .reduce(
+        (schema: SchemaType, value: SchemaType) => ({
+          ...schema,
+          [value.name!]: generatePrimitiveSchema(value.name!, {
+            ...value,
+            readOnly: effectiveReadOnly || value.read_only,
+          }),
+        }),
+        {
+          label: generatePrimitiveSchema("label", {
+            type: "str",
+            component: config?.component || "dropdown",
+            values: config?.classes || [],
+            readOnly: effectiveReadOnly,
+          }),
+        }
+      );
 
     return {
       type: "object",
@@ -144,7 +52,7 @@ const useSchema = () => {
       },
       properties,
     };
-  }, [config]);
+  }, [config, effectiveReadOnly]);
 };
 
 const useHandleChanges = () => {
@@ -174,8 +82,12 @@ const useHandleChanges = () => {
   );
 };
 
-const AnnotationSchema = () => {
-  const schema = useSchema();
+export interface AnnotationSchemaProps {
+  readOnly?: boolean;
+}
+
+const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
+  const schema = useSchema(readOnly);
   const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
@@ -190,14 +102,33 @@ const AnnotationSchema = () => {
     throw new Error("no overlay");
   }
 
+  // Transform data for read-only display: convert arrays to comma-separated strings
+  const displayData = useMemo(() => {
+    if (!readOnly) {
+      return data;
+    }
+
+    return Object.fromEntries(
+      Object.entries(data || {}).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.join(", ") : value,
+      ])
+    );
+  }, [data, readOnly]);
+
   return (
     <div>
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
+        smartFormProps={{
+          liveValidate: "onChange",
+        }}
         schema={schema}
-        data={data}
+        data={displayData}
         onChange={async (changes) => {
+          if (readOnly) return;
+
           const result = Object.fromEntries(
             await Promise.all(
               Object.entries(changes).map(async ([key, value]) => [

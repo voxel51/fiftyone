@@ -1,52 +1,47 @@
-import { MuiButton, MuiIconFont } from "@fiftyone/components";
-import { ArrowForward } from "@mui/icons-material";
-import { Typography } from "@mui/material";
-import { useSetAtom } from "jotai";
-import React from "react";
-import styled from "styled-components";
-import { activeSchemaTab } from "../state";
-
-const Container = styled.div`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-  margin: -2rem;
-  overflow: scroll;
-  position: relative;
-  & * {
-    max-width: 200px;
-  }
-`;
+import {
+  Button,
+  Icon,
+  IconName,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
+import { useSetSchemaEditorGUIJSONToggle } from "./hooks";
+import { CenteredEmptyState } from "./styled";
 
 const NoActiveSchema = () => {
-  const setTab = useSetAtom(activeSchemaTab);
+  const setTab = useSetSchemaEditorGUIJSONToggle();
   return (
-    <Container>
-      <MuiIconFont
-        sx={{
-          fontSize: 64,
-          color: "#FF9950",
-          marginBottom: 2,
-        }}
-        name={"draw"}
+    <CenteredEmptyState>
+      <Icon
+        name={IconName.Edit}
+        size={Size.Xl}
+        style={{ color: "var(--color-brand-accent)", marginBottom: 16 }}
       />
-      <Typography variant="h6" textAlign="center">
+      <Text variant={TextVariant.Lg} style={{ textAlign: "center" }}>
         No active schemas yet
-      </Typography>
-      <Typography color="secondary" textAlign="center" sx={{ marginBottom: 2 }}>
-        Select fields that you’d like to add schemas to for annotation
-      </Typography>
-      <MuiButton
-        variant="contained"
-        color="primary"
+      </Text>
+      <Text
+        color={TextColor.Secondary}
+        style={{ textAlign: "center", marginBottom: 16 }}
+      >
+        Select fields that you'd like to add schemas to for annotation
+      </Text>
+      <Button
+        size={Size.Md}
+        variant={Variant.Primary}
         onClick={() => setTab("other")}
       >
-        Select fields to import <ArrowForward />
-      </MuiButton>
-    </Container>
+        Select fields to import{" "}
+        <Icon
+          name={IconName.ArrowRight}
+          size={Size.Md}
+          style={{ marginLeft: 4 }}
+        />
+      </Button>
+    </CenteredEmptyState>
   );
 };
 

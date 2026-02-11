@@ -1,74 +1,174 @@
-import { Sync } from "@mui/icons-material";
-import { Box, Button, Switch, Typography } from "@mui/material";
+import { scrollable } from "@fiftyone/components";
+import {
+  Anchor,
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Text,
+  TextColor,
+  TextVariant,
+  Toggle,
+  ToggleSwitch,
+  Tooltip,
+  Variant,
+} from "@voxel51/voodo";
+import { useCallback, useState } from "react";
+import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import Footer from "../Footer";
-import { EditContainer, Label, SchemaSection, TabsRow } from "../styled";
+import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
+import { EditContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
+import GUIContent from "./GUIContent";
+import Header from "./Header";
 import JSONEditor from "./JSONEditor";
 import useLabelSchema from "./useLabelSchema";
 
 const EditFieldLabelSchema = ({ field }: { field: string }) => {
   const labelSchema = useLabelSchema(field);
+  const hasSavedSchema = !!labelSchema.savedLabelSchema;
+  const [activeTab, setActiveTab] = useState<TabId>(TAB_GUI);
+  const { isActive: isFieldVisible, toggle: handleToggleVisibility } =
+    useToggleFieldVisibility(field);
+  const { isLargeDataset, scanLimit } = useIsLargeDataset();
+
+  const handleTabChange = useCallback(
+    (index: number) => {
+      setActiveTab(TAB_IDS[index]);
+      labelSchema.resetErrors();
+    },
+    [labelSchema.resetErrors]
+  );
+
   return (
-    <EditContainer>
-      {/* Read-only toggle */}
-      <Box my={2}>
-        <Typography fontWeight={500}>Read-only</Typography>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="body2" color="secondary">
-            When enabled, annotators can view this field but can't edit its
-            values.
-          </Typography>
-          <Switch
-            key={labelSchema.isReadOnly}
+    <EditContainer className={scrollable}>
+      <Header field={field} />
+
+      <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "0.25rem",
+          }}
+        >
+          <Text variant={TextVariant.Lg}>Read-only</Text>
+          <Toggle
+            size={Size.Md}
             disabled={labelSchema.isReadOnlyRequired}
             checked={labelSchema.isReadOnly}
             onChange={labelSchema.toggleReadOnly}
           />
-        </Box>
-      </Box>
+        </div>
+        <Text variant={TextVariant.Lg} color={TextColor.Secondary}>
+          When enabled, annotators can view this field but can't edit its
+          values.
+        </Text>
+      </div>
 
-      {/* Schema section */}
+      <div
+        style={{
+          borderTop: "1px solid var(--fo-palette-divider)",
+          marginBottom: "1rem",
+        }}
+      />
+
       <SchemaSection>
-        <Label variant="body2">Schema</Label>
-        <TabsRow>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Sync fontSize="small" />}
-            onClick={labelSchema.scan}
-            sx={{
-              color: "text.primary",
-              borderColor: "divider",
-              textTransform: "none",
-              "&:hover": {
-                borderColor: "action.active",
-              },
-              "&:active": {
-                borderColor: "action.active",
-              },
-            }}
-          >
-            Scan
-          </Button>
-        </TabsRow>
-
-        <JSONEditor
-          errors={!!labelSchema.errors.length}
-          data={JSON.stringify(
-            labelSchema.currentLabelSchema ?? labelSchema.defaultLabelSchema,
-            undefined,
-            2
-          )}
-          onChange={(value) => {
-            labelSchema.validate(value);
+        <Text variant={TextVariant.Lg} style={{ marginBottom: "0.5rem" }}>
+          Schema
+        </Text>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem",
           }}
-          scanning={labelSchema.isScanning}
-        />
+        >
+          <ToggleSwitch
+            size={Size.Md}
+            defaultIndex={0}
+            onChange={handleTabChange}
+            tabs={[
+              { id: TAB_GUI, data: { label: "GUI" } },
+              { id: TAB_JSON, data: { label: "JSON" } },
+            ]}
+          />
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Button
+              data-cy={"scan"}
+              size={Size.Md}
+              variant={Variant.Secondary}
+              onClick={labelSchema.scan}
+            >
+              <Icon
+                name={IconName.Refresh}
+                size={Size.Md}
+                style={{ marginRight: 4 }}
+              />
+              Scan
+            </Button>
+            {isLargeDataset && (
+              <Tooltip
+                content={
+                  <Text>
+                    Auto-scanning will run on the first{" "}
+                    {scanLimit.toLocaleString()} samples
+                  </Text>
+                }
+                anchor={Anchor.Bottom}
+                portal
+              >
+                <Icon name={IconName.Info} size={Size.Md} />
+              </Tooltip>
+            )}
+          </span>
+        </div>
+
+        {activeTab === TAB_GUI ? (
+          <GUIContent
+            field={field}
+            config={labelSchema.currentLabelSchema}
+            scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
+            onConfigChange={labelSchema.updateConfig}
+          />
+        ) : (
+          <JSONEditor
+            key={labelSchema.editorKey}
+            errors={!!labelSchema.errors.length}
+            data={labelSchema.currentLabelSchema}
+            onChange={labelSchema.validate}
+            scanning={labelSchema.isScanning}
+            onCancelScan={labelSchema.cancelScan}
+          />
+        )}
       </SchemaSection>
 
       <Errors errors={labelSchema.errors} />
 
       <Footer
+        leftContent={
+          hasSavedSchema ? (
+            <Stack
+              orientation={Orientation.Row}
+              spacing={Spacing.Sm}
+              style={{ alignItems: "center" }}
+            >
+              <Toggle
+                data-cy={"toggle-visibility"}
+                size={Size.Md}
+                checked={isFieldVisible}
+                onChange={handleToggleVisibility}
+              />
+              <Text variant={TextVariant.Lg}>Visible field</Text>
+            </Stack>
+          ) : undefined
+        }
         secondaryButton={{
           onClick: labelSchema.discard,
           disabled: !labelSchema.hasChanges,
@@ -81,7 +181,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
             labelSchema.isValidating ||
             !labelSchema.isValid ||
             !labelSchema.hasChanges,
-          text: labelSchema.isScanning ? "Saving..." : "Save",
+          text: labelSchema.isSaving ? "Saving..." : "Save",
         }}
       />
     </EditContainer>

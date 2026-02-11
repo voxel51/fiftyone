@@ -9,7 +9,6 @@ import {
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import type { Command } from "../commands/Command";
 import {
   MoveOverlayCommand,
   type Movable,
@@ -19,7 +18,6 @@ import {
   TransformOverlayCommand,
   type TransformOptions,
 } from "../commands/TransformOverlayCommand";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
 import type { InteractionHandler } from "../interaction/InteractionManager";
@@ -51,6 +49,7 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
+import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
   isHoverable: (
@@ -156,7 +155,6 @@ export class Scene2D {
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
-  private undoRedo = new UndoRedoManager();
   private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
@@ -168,6 +166,9 @@ export class Scene2D {
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+  private readonly eventChannel: string = Math.random()
+    .toString(36)
+    .substring(2, 9);
 
   private _isDestroyed = false;
 
@@ -176,16 +177,15 @@ export class Scene2D {
     this.sceneId = config.sceneId;
 
     this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager(this.sceneId);
+    this.selectionManager = new SelectionManager(this.eventChannel);
     this.interactionManager = new InteractionManager(
       config.canvas,
-      this.undoRedo,
       this.selectionManager,
       config.renderer,
-      this.sceneId
+      this.eventChannel
     );
 
-    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -236,8 +236,7 @@ export class Scene2D {
           absoluteBounds,
           relativeBounds
         );
-
-        this.undoRedo.push(addCommand);
+        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
       }
     });
 
@@ -257,7 +256,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          this.undoRedo.push(moveCommand);
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
       }
     });
@@ -280,7 +279,7 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          this.undoRedo.push(moveCommand);
+          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
         }
       }
     });
@@ -707,7 +706,7 @@ export class Scene2D {
    * Recalculates the overlay rendering order based on activePaths and interactive state.
    */
   private recalculateOverlayOrder() {
-    const { activePaths, showOverlays, alpha } = this.sceneOptions || {};
+    const { activePaths } = this.sceneOptions || {};
     const pixelCoordinates = this.interactionManager.getPixelCoordinates();
 
     if (!pixelCoordinates) {
@@ -978,7 +977,7 @@ export class Scene2D {
     // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
-    overlay.setSceneId(this.sceneId);
+    overlay.setEventChannel(this.eventChannel);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -1089,7 +1088,7 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  transformOverlay(id: string, options: TransformOptions): boolean {
+  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1128,7 +1127,7 @@ export class Scene2D {
       newBounds
     );
 
-    this.executeCommand(command);
+    await this.executeCommand(command);
 
     return true;
   }
@@ -1185,54 +1184,13 @@ export class Scene2D {
    * @param command - The command to execute.
    * @param isUndoable - Whether the command is undoable.
    */
-  executeCommand(command: Command, isUndoable = true): void {
-    command.execute();
-
-    if (isUndoable) {
-      this.undoRedo.push(command);
-    }
-
+  async executeCommand(command: Action, isUndoable = true): Promise<void> {
+    await CommandContextManager.instance().getActiveContext().executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
       command,
     });
-  }
-
-  /**
-   * Undoes the last command.
-   */
-  undo(): void {
-    const command = this.undoRedo.undo();
-    if (command) {
-      this.eventBus.dispatch("lighter:undo", { commandId: command.id });
-    }
-  }
-
-  /**
-   * Redoes the last undone command.
-   */
-  redo(): void {
-    const command = this.undoRedo.redo();
-    if (command) {
-      this.eventBus.dispatch("lighter:redo", { commandId: command.id });
-    }
-  }
-
-  /**
-   * Checks if undo is available.
-   * @returns True if undo is available.
-   */
-  canUndo(): boolean {
-    return this.undoRedo.canUndo();
-  }
-
-  /**
-   * Checks if redo is available.
-   * @returns True if redo is available.
-   */
-  canRedo(): boolean {
-    return this.undoRedo.canRedo();
   }
 
   /**
@@ -1256,13 +1214,6 @@ export class Scene2D {
     this.eventBus.dispatch("lighter:selection-cleared", {
       previouslySelectedIds: [],
     });
-  }
-
-  /**
-   * Clears the undo/redo stack
-   */
-  clearUndoRedoStack() {
-    this.undoRedo.clear();
   }
 
   /**
@@ -1301,13 +1252,12 @@ export class Scene2D {
     // Destroy managers
     this.interactionManager.destroy();
     this.selectionManager.destroy();
-    this.undoRedo.clear();
 
     // Remove event listeners by aborting the abort controller
     this.abortController.abort();
 
     // Clear all event handlers for this scene's channel and remove from registry
-    clearChannel(this.sceneId);
+    clearChannel(this.eventChannel);
 
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
@@ -1776,5 +1726,13 @@ export class Scene2D {
    */
   public getSceneId(): string | undefined {
     return this.sceneId;
+  }
+
+  /**
+   * Gets the event channel for this instance.
+   * @returns Event channel.
+   */
+  public getEventChannel(): string {
+    return this.eventChannel;
   }
 }

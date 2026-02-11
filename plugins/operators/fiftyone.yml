@@ -52,9 +52,12 @@ operators:
 
   # annotation
   - activate_label_schemas
+  - create_and_activate_field
   - deactivate_label_schemas
   - delete_label_schemas
   - get_label_schemas
   - generate_label_schemas
+  - list_valid_annotation_fields
+  - set_active_label_schemas
   - update_label_schema
   - validate_label_schemas

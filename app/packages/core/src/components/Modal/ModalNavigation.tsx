@@ -7,10 +7,15 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+  useUndoRedo,
+} from "@fiftyone/commands";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -56,7 +61,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
-
+  const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
@@ -84,6 +89,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
+            clearUndo();
             return await navigation.next(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
               setModal(s);
@@ -93,7 +99,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, clearUndo]
   );
 
   const previousNavigator = useMemo(
@@ -103,6 +109,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
+            clearUndo();
             return await navigation.previous(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
               setModal(s);
@@ -112,7 +119,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, clearUndo]
   );
 
   useEffect(() => {
@@ -121,45 +128,36 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
       previousNavigator.cleanup();
     };
   }, [nextNavigator, previousNavigator]);
+  const onExit = useExit();
+  const onSave = useSave();
+  const next = useCallback(async () => {
+    onSave();
+    onExit();
+    nextNavigator.navigate();
+  }, [nextNavigator, onExit, onSave]);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
+  const previous = useCallback(async () => {
+    onSave();
+    onExit();
+    previousNavigator.navigate();
+  }, [previousNavigator, onSave, onExit]);
 
-      // Prevent navigation when interacting with any form field
-      if (
-        active?.tagName === "INPUT" ||
-        active?.tagName === "TEXTAREA" ||
-        active?.tagName === "SELECT"
-      ) {
-        return;
-      }
-
-      if (e.altKey || e.ctrlKey || e.metaKey) {
-        return;
-      }
-
-      if (e.key === "ArrowLeft") {
-        previousNavigator.navigate();
-      } else if (e.key === "ArrowRight") {
-        nextNavigator.navigate();
-      }
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalPreviousSample,
+      sequence: "ArrowLeft",
+      handler: previous,
+      label: "Previous",
+      description: "Previous Sample",
     },
-    [nextNavigator, previousNavigator]
-  );
-
-  fos.useEventHandler(document, "keyup", keyboardHandler);
-  const { confirmExit } = useConfirmExit(useExit(), useSave());
-
-  const next = useCallback(
-    () => confirmExit(nextNavigator.navigate),
-    [confirmExit, nextNavigator]
-  );
-
-  const previous = useCallback(
-    () => confirmExit(previousNavigator.navigate),
-    [confirmExit, previousNavigator]
-  );
+    {
+      commandId: KnownCommands.ModalNextSample,
+      sequence: "ArrowRight",
+      handler: next,
+      label: "Next",
+      description: "Next Sample",
+    },
+  ]);
 
   if (!modal) {
     return null;

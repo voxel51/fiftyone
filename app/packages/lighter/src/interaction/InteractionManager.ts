@@ -2,8 +2,8 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { quickDrawBridge } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/bridgeQuickDraw";
 import { EventDispatcher, getEventBus } from "@fiftyone/events";
-import { UndoRedoManager } from "../commands/UndoRedoManager";
 import { TypeGuards } from "../core/Scene2D";
 import type { LighterEventGroup } from "../events";
 import {
@@ -203,15 +203,13 @@ export class InteractionManager {
 
   private currentPixelCoordinates?: Point;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
-
   constructor(
     private canvas: HTMLCanvasElement,
-    private undoRedoManager: UndoRedoManager,
     private selectionManager: SelectionManager,
     private renderer: Renderer2D,
-    sceneId: string
+    eventChannel: string
   ) {
-    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(eventChannel);
     this.setupEventListeners();
   }
 
@@ -256,13 +254,32 @@ export class InteractionManager {
 
     let handler: InteractionHandler | undefined = undefined;
 
-    const interactiveHandler = this.getInteractiveHandler();
+    let interactiveHandler = this.getInteractiveHandler();
 
     if (interactiveHandler) {
       handler = interactiveHandler.getOverlay();
       this.selectionManager.select(handler.id);
     } else {
       handler = this.findHandlerAtPoint(point);
+
+      // QuickDraw: clicking outside the selected overlay starts a new detection.
+      if (quickDrawBridge.isQuickDrawActive()) {
+        const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
+        const isUnselectedOverlay =
+          !!handler &&
+          TypeGuards.isSelectable(handler) &&
+          !this.selectionManager.isSelected(handler.id);
+
+        if (isNonOverlay || isUnselectedOverlay) {
+          this.selectionManager.clearSelection();
+
+          interactiveHandler = this.getInteractiveHandler();
+          if (interactiveHandler) {
+            handler = interactiveHandler.getOverlay();
+            this.selectionManager.select(handler.id);
+          }
+        }
+      }
     }
 
     if (handler?.onPointerDown?.(point, worldPoint, event, scale)) {
@@ -289,6 +306,23 @@ export class InteractionManager {
       event.preventDefault();
     }
   };
+
+  private configureCursorStyle(
+    handler: InteractionHandler,
+    worldPoint: Point,
+    scale: number
+  ): void {
+    if (
+      quickDrawBridge.isQuickDrawActive() &&
+      handler &&
+      TypeGuards.isSelectable(handler) &&
+      !handler.isSelected()
+    ) {
+      this.canvas.style.cursor = "crosshair";
+    } else if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
+      this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
+    }
+  }
 
   private handlePointerMove = (event: PointerEvent): void => {
     const point = this.getCanvasPoint(event);
@@ -345,11 +379,9 @@ export class InteractionManager {
 
         event.preventDefault();
       }
-
-      // Update cursor
-      if (TypeGuards.isInteractionHandler(handler) && handler.getCursor) {
-        this.canvas.style.cursor = handler.getCursor(worldPoint, scale);
-      }
+      this.configureCursorStyle(handler, worldPoint, scale);
+    } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
+      this.canvas.style.cursor = "crosshair";
     }
   };
 
@@ -382,9 +414,6 @@ export class InteractionManager {
         // The overlay will be managed by its own handler
         this.removeHandler(interactiveHandler);
       }
-
-      this.canvas.style.cursor =
-        handler.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
 
       // Emit move end event with bounds information
       if (TypeGuards.isSpatial(handler) && startBounds && startPosition) {
@@ -468,7 +497,7 @@ export class InteractionManager {
    * Handles keyboard events for undo/redo shortcuts and shift modifier to maintain aspect ratio.
    * @param event - The keyboard event.
    */
-  private handleKeyDown = (event: KeyboardEvent): void => {
+  private handleKeyDown = async (event: KeyboardEvent): Promise<void> => {
     // Check if we're in an input field - don't handle shortcuts there
     const activeElement = document.activeElement;
     if (
@@ -479,31 +508,6 @@ export class InteractionManager {
     ) {
       return;
     }
-
-    // Handle undo: Ctrl+Z (or Cmd+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key === "z" &&
-      !event.shiftKey
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.undoRedoManager.undo();
-      return;
-    }
-
-    // Handle redo: Ctrl+Y or Ctrl+Shift+Z (or Cmd+Y/Cmd+Shift+Z on Mac)
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      ((event.key === "y" && !event.shiftKey) ||
-        (event.key === "z" && event.shiftKey))
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      this.undoRedoManager.redo();
-      return;
-    }
-
     if (event.shiftKey) {
       this.maintainAspectRatio = event.shiftKey;
       return;
@@ -649,6 +653,7 @@ export class InteractionManager {
 
     // Update the hovered handler
     this.hoveredHandler = handler;
+    this.configureCursorStyle(handler, worldPoint, scale);
   }
 
   private handleZoomed = (

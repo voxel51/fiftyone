@@ -10,16 +10,17 @@ export const DENSE_LABEL_EMBEDDED_DOC_TYPES = [
 ];
 
 export interface Field {
-  ftype: string;
   dbField: string | null;
   description: string | null;
+  embeddedDocType: string | null;
+  fields?: Schema;
+  ftype: string;
   info: object | null;
   name: string;
-  embeddedDocType: string | null;
-  subfield: string | null;
   path: string;
-  fields?: Schema;
   pathWithDbField?: string | null;
+  readOnly?: boolean;
+  subfield: string | null;
 }
 
 export interface StrictField extends Omit<Field, "fields"> {

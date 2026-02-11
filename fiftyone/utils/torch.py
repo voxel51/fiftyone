@@ -1812,10 +1812,7 @@ def recommend_num_workers(num_workers=None):
         # https://stackoverflow.com/q/20222534
         return 0
 
-    try:
-        default = multiprocessing.cpu_count() // 2
-    except Exception:
-        default = 4
+    default = fou.get_cpu_count() // 2
 
     return fou.recommend_process_pool_workers(
         num_workers, default_num_workers=default
@@ -2631,15 +2628,18 @@ def from_image_classification_dir_tree(dataset_dir):
 
 def _load_image(image_path, use_numpy, force_rgb):
     if use_numpy:
-        # pylint: disable=no-member
-        flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
-        return foui.read(image_path, flag=flag)
+        if force_rgb:
+            img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
 
-    img = Image.open(image_path)
-    if force_rgb:
-        img = img.convert("RGB")
-
-    return img
+    # Use context manager to prevent leaked file descriptors
+    with open(image_path, "rb") as f:
+        img = Image.open(f)
+        if force_rgb:
+            return img.convert("RGB")
+        img.load()
+        return img
 
 
 # taken from https://github.com/ppwwyyxx/RAM-multiprocess-dataloader/blob/795868a37446d61412b9a58dbb1b7c76e75d39c4/serialize.py#L19

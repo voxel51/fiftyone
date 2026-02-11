@@ -41,7 +41,7 @@ jobs:
           pip install -r requirements/github.txt
       - name: Install fiftyone
         run: |
-          pip install .
+          pip install . -r requirements/github.txt
       - name: Configure
         id: test_config
         run: |

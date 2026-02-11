@@ -1,17 +1,31 @@
+import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { TransformControlsProps } from "@react-three/drei";
 import type { RefObject } from "react";
 import * as THREE from "three";
+import type {
+  ReconciledDetection3D,
+  ReconciledPolyline3D,
+} from "./annotation/types";
 import type {
   ACTION_SET_PCDS,
   ACTION_SET_POINT_SIZE,
   ACTION_SHADE_BY,
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
+  PANEL_ID_MAIN,
+  PANEL_ID_SIDE_BOTTOM,
+  PANEL_ID_SIDE_TOP,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
   SHADE_BY_NONE,
   SHADE_BY_RGB,
+  VIEW_TYPE_BACK,
+  VIEW_TYPE_BOTTOM,
+  VIEW_TYPE_FRONT,
+  VIEW_TYPE_LEFT,
+  VIEW_TYPE_RIGHT,
+  VIEW_TYPE_TOP,
 } from "./constants";
 import { OverlayLabel } from "./labels/loader";
 
@@ -21,6 +35,33 @@ export type Actions =
   | typeof ACTION_SET_PCDS
   | typeof ACTION_VIEW_JSON
   | typeof ACTION_VIEW_HELP;
+
+/**
+ * Panel identifiers.
+ * - 'main': The primary 3D view panel (perspective)
+ * - 'side-top': The top side panel (orthographic view)
+ * - 'side-bottom': The bottom side panel (orthographic view)
+ */
+export type PanelId =
+  | typeof PANEL_ID_MAIN
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
+
+/**
+ * Side panel identifiers.
+ */
+export type SidePanelId =
+  | typeof PANEL_ID_SIDE_TOP
+  | typeof PANEL_ID_SIDE_BOTTOM;
+
+export type SidePanelViewType =
+  | typeof VIEW_TYPE_TOP
+  | typeof VIEW_TYPE_BOTTOM
+  | typeof VIEW_TYPE_LEFT
+  | typeof VIEW_TYPE_RIGHT
+  | typeof VIEW_TYPE_FRONT
+  | typeof VIEW_TYPE_BACK
+  | string;
 
 export type ShadeBy =
   | typeof SHADE_BY_INTENSITY
@@ -46,6 +87,11 @@ export type AssetLoadingLog = {
   message: string;
   status: "info" | "success" | "error";
 };
+
+export interface SavedCameraState {
+  position: number[];
+  target: number[];
+}
 
 /**
  * Comprehensive loading status enum based on Three.js LoadingManager events
@@ -116,3 +162,93 @@ export interface EventHandlers {
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";
+
+/**
+ * Rich raycast result for centralized raycasting service.
+ */
+export interface RaycastResult {
+  sourcePanel: PanelId | null;
+  worldPosition: [number, number, number] | null;
+  intersectedObjectUuid: string | null;
+  pointIndex: number | null;
+  distance: number | null;
+  timestamp: number;
+}
+
+/**
+ * State for tracking cuboid creation with 3-click interaction.
+ * Step 0: waiting for first click (center position)
+ * Step 1: waiting for second click (orientation/yaw and length)
+ * Step 2: waiting for third click (width)
+ */
+export interface CuboidCreationState {
+  step: 0 | 1 | 2;
+  centerPosition: [number, number, number] | null;
+  orientationPoint: [number, number, number] | null;
+  currentPosition: [number, number, number] | null;
+}
+
+// =============================================================================
+// TYPE GUARDS
+// =============================================================================
+
+/**
+ * Type guard to check if an overlay is a Detection overlay (3D).
+ */
+export function isDetection3dOverlay(
+  overlay: unknown
+): overlay is OverlayLabel & {
+  _cls: "Detection";
+  dimensions: THREE.Vector3Tuple;
+  location: THREE.Vector3Tuple;
+  rotation?: THREE.Vector3Tuple;
+  quaternion?: THREE.Vector4Tuple;
+} & Record<string, unknown> {
+  return (
+    overlay &&
+    typeof overlay === "object" &&
+    "_cls" in overlay &&
+    overlay._cls === DETECTION &&
+    "dimensions" in overlay &&
+    "location" in overlay &&
+    overlay.dimensions != null &&
+    overlay.location != null
+  );
+}
+
+/**
+ * Type guard to check if an overlay is a Polyline overlay (3D).
+ */
+export function isPolyline3dOverlay(
+  overlay: unknown
+): overlay is OverlayLabel & {
+  _cls: "Polyline";
+  points3d: THREE.Vector3Tuple[][];
+} & Record<string, unknown> {
+  return (
+    overlay &&
+    typeof overlay === "object" &&
+    "_cls" in overlay &&
+    overlay._cls === POLYLINE &&
+    "points3d" in overlay &&
+    overlay.points3d != null
+  );
+}
+
+/**
+ * Type guard to check if a reconciled label is a Detection.
+ */
+export function isDetection(
+  label: ReconciledDetection3D | ReconciledPolyline3D
+): label is ReconciledDetection3D {
+  return label._cls === "Detection";
+}
+
+/**
+ * Type guard to check if a reconciled label is a Polyline.
+ */
+export function isPolyline(
+  label: ReconciledDetection3D | ReconciledPolyline3D
+): label is ReconciledPolyline3D {
+  return label._cls === "Polyline";
+}

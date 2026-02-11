@@ -1,6 +1,6 @@
 import type { UiSchema } from "@rjsf/utils";
-import { addWarning, type TranslationContext } from "./utils";
 import { SmartFormComponents } from "../../types";
+import { addWarning, type TranslationContext } from "./utils";
 
 /**
  * Translates SchemaIO view to UI Schema
@@ -26,8 +26,17 @@ export function translateToUISchema(
       // i.e. uiSchema["ui:placeholder"] = view.placeholder;
       break;
 
+    case SmartFormComponents.LabelValueView:
+      // Read-only text display, no input
+      uiSchema["ui:widget"] = "LabelValueWidget";
+      break;
+
     case SmartFormComponents.CheckboxView:
       uiSchema["ui:widget"] = "checkbox";
+      break;
+
+    case SmartFormComponents.ToggleView:
+      uiSchema["ui:widget"] = "BooleanWidget";
       break;
 
     case SmartFormComponents.DropdownView:
@@ -52,6 +61,16 @@ export function translateToUISchema(
         freeSolo: view.allow_user_input ?? true,
         allowClear: view.allow_clearing ?? true,
         allowDuplicates: view.allow_duplicates ?? false, // AutocompleteView creates a Material UI error if true
+      };
+      break;
+
+    case SmartFormComponents.SliderView:
+      uiSchema["ui:widget"] = "RangeWidget";
+      uiSchema["ui:options"] = {
+        bare: view.bare,
+        labeled: view.labeled,
+        minLabel: view.minLabel,
+        maxLabel: view.maxLabel,
       };
       break;
 

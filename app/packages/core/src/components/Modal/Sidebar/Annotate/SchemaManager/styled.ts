@@ -12,11 +12,13 @@ export const Section = styled.div`
 
 export const ListContainer = styled.div`
   padding: 1rem;
+  overflow-y: auto;
+  flex: 1;
 `;
 
 export const EmptyStateBox = styled(Box)`
   background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 2rem;
   display: flex;
   justify-content: center;
@@ -75,14 +77,14 @@ export const ContentArea = styled.div`
   flex: 1;
   overflow: auto;
   border: 1px solid ${({ theme }) => theme.divider};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
 `;
 
 export const ItemRow = styled.div`
   display: flex;
   align-items: center;
   background: ${({ theme }) => theme.background.level1};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   margin-bottom: 0.5rem;
   gap: 0.75rem;
@@ -160,8 +162,8 @@ export const editTabsStyles = {
 export const GUISectionHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0;
+  gap: 0.8rem;
+  padding: 1rem 0;
 `;
 
 export const CollapsibleHeader = styled(GUISectionHeader)`
@@ -197,7 +199,7 @@ export const ModalContainer = styled.div`
   padding: 2rem 2rem 3rem 2rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: space-between;
   flex-direction: column;
@@ -211,29 +213,24 @@ export const ModalHeader = styled.div`
   height: 36px;
 `;
 
-const IconButton = styled.div`
+export const BackButton = styled(BackIcon)`
   cursor: pointer;
-  height: 3rem;
-  padding: 0.5rem;
-  width: 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 1.5rem !important;
+  margin-right: 0.75rem;
 
   &:hover {
-    background: ${({ theme }) => theme.background.level1};
-    border-radius: 1.5rem;
-    color: ${({ theme }) => theme.text.primary};
+    opacity: 0.7;
   }
 `;
 
-export const BackButton = styled(IconButton).attrs({
-  as: BackIcon,
-})``;
+export const CloseButton = styled(CloseIcon)`
+  cursor: pointer;
+  font-size: 1.5rem !important;
 
-export const CloseButton = styled(IconButton).attrs({
-  as: CloseIcon,
-})``;
+  &:hover {
+    opacity: 0.7;
+  }
+`;
 
 export const ModalFooter = styled.div`
   display: flex;
@@ -248,14 +245,107 @@ export const ModalFooter = styled.div`
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder};
 `;
 
-export const FooterLeft = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+export const EditFieldFooter = styled(ModalFooter)`
+  height: 64px;
+  padding: 0 2rem;
+  border-top: 1px solid ${({ theme }) => theme.divider};
 `;
 
-export const FooterRight = styled.div`
+// ============================================
+// Empty State Components
+// ============================================
+
+export const CenteredEmptyState = styled.div`
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 0.75rem;
+  padding: 1rem;
+  margin: -2rem;
+  overflow: scroll;
+  position: relative;
+  & * {
+    max-width: 200px;
+  }
+`;
+
+// ============================================
+// Error Components
+// ============================================
+
+export const ErrorContainer = styled.div`
+  align-items: flex-start;
+  align-self: stretch;
+  background: color-mix(
+    in srgb,
+    var(--color-semantic-destructive) 15%,
+    transparent
+  );
+  box-shadow: 0 1px 2px 0 rgba(16, 24, 40, 0.05);
+  border: 1px solid
+    color-mix(in srgb, var(--color-semantic-destructive) 40%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--color-semantic-destructive);
+  display: flex;
+  flex-direction: column;
+  font-weight: bold;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 1rem;
+  max-height: 300px;
+`;
+
+// ============================================
+// Edit Card Components (for inline editing)
+// ============================================
+
+export const EditCardContainer = styled.div`
+  background: ${({ theme }) => theme.background.level1};
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+`;
+
+export const EditCardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+`;
+
+export const EditCardField = styled.div`
+  margin-bottom: 1rem;
+`;
+
+// ============================================
+// Scrollable Container Components
+// ============================================
+
+export const ScrollableContainer = styled.div`
+  flex: 1;
+  margin: 0 -2rem;
+  margin-bottom: 34px;
+  overflow-y: auto;
+  padding: 0 2rem;
+  position: relative;
+`;
+
+export const FieldItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  background: ${({ theme }) => theme.background.body};
+  border-radius: var(--radius-sm);
+  height: 48px;
+  margin: 1rem 0;
+  padding: 0 1rem;
+  align-items: center;
+`;
+
+export const MutedFieldItem = styled(FieldItem)`
+  opacity: 0.9;
+  text-align: center;
+  color: ${({ theme }) => theme.text.secondary};
+  justify-content: center;
 `;

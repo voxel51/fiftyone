@@ -17,16 +17,14 @@ import fiftyone as fo
 import fiftyone.core.fields as fof
 from fiftyone.core.camera import (
     CAMERA_CONVENTION_OPENGL,
-    CameraExtrinsics,
-    CameraExtrinsicsRef,
     CameraIntrinsics,
     CameraIntrinsicsRef,
     CameraProjector,
     OpenCVCameraIntrinsics,
     OpenCVFisheyeCameraIntrinsics,
     PinholeCameraIntrinsics,
-    SensorExtrinsics,
-    SensorExtrinsicsRef,
+    StaticTransform,
+    StaticTransformRef,
 )
 
 
@@ -171,12 +169,12 @@ class CameraIntrinsicsTests(unittest.TestCase):
         self.assertEqual(intrinsics2.k2, intrinsics.k2)
 
 
-class SensorExtrinsicsTests(unittest.TestCase):
-    """Tests for SensorExtrinsics class."""
+class StaticTransformTests(unittest.TestCase):
+    """Tests for StaticTransform class."""
 
     def test_extrinsics_creation(self):
         """Test creating sensor extrinsics."""
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -190,7 +188,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
     def test_extrinsics_default_values(self):
         """Test that translation and quaternion have sensible defaults."""
-        extrinsics = SensorExtrinsics(source_frame="camera")
+        extrinsics = StaticTransform(source_frame="camera")
 
         # translation defaults to zero
         self.assertEqual(extrinsics.translation, [0.0, 0.0, 0.0])
@@ -200,7 +198,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
     def test_extrinsics_source_frame_required(self):
         """Test that source_frame is required at construction."""
         with self.assertRaises(ValueError) as cm:
-            SensorExtrinsics()
+            StaticTransform()
 
         self.assertIn("source_frame", str(cm.exception))
         self.assertIn("required", str(cm.exception))
@@ -211,13 +209,13 @@ class SensorExtrinsicsTests(unittest.TestCase):
         matrix[:3, 3] = [1.0, 2.0, 3.0]
 
         with self.assertRaises(ValueError) as cm:
-            SensorExtrinsics.from_matrix(matrix)
+            StaticTransform.from_matrix(matrix)
 
         self.assertIn("source_frame", str(cm.exception))
 
     def test_rotation_matrix_identity(self):
         """Test rotation matrix for identity quaternion."""
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             source_frame="sensor",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -232,7 +230,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         sin45 = np.sin(np.pi / 4)
         cos45 = np.cos(np.pi / 4)
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             source_frame="sensor",
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, sin45, cos45],
@@ -250,15 +248,15 @@ class SensorExtrinsicsTests(unittest.TestCase):
         )
         nptest.assert_array_almost_equal(R, expected)
 
-    def test_extrinsic_matrix(self):
+    def test_transform_matrix(self):
         """Test the 4x4 extrinsic matrix."""
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             source_frame="sensor",
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
-        T = extrinsics.extrinsic_matrix
+        T = extrinsics.transform_matrix
         self.assertEqual(T.shape, (4, 4))
 
         expected = np.eye(4)
@@ -275,7 +273,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
             ]
         )
 
-        extrinsics = SensorExtrinsics.from_matrix(
+        extrinsics = StaticTransform.from_matrix(
             matrix,
             source_frame="camera",
             target_frame="world",
@@ -295,9 +293,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         matrix = np.eye(4)
         matrix[:3, 3] = [1.0, 2.0, 3.0]
 
-        extrinsics = SensorExtrinsics.from_matrix(
-            matrix, source_frame="sensor"
-        )
+        extrinsics = StaticTransform.from_matrix(matrix, source_frame="sensor")
 
         nptest.assert_array_almost_equal(
             extrinsics.translation, [1.0, 2.0, 3.0]
@@ -306,7 +302,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
     def test_inverse(self):
         """Test inverse transformation."""
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -320,14 +316,14 @@ class SensorExtrinsicsTests(unittest.TestCase):
         nptest.assert_array_almost_equal(inv.translation, [-1.0, 0.0, 0.0])
 
         # T @ T_inv should be identity
-        T = extrinsics.extrinsic_matrix
-        T_inv = inv.extrinsic_matrix
+        T = extrinsics.transform_matrix
+        T_inv = inv.transform_matrix
         nptest.assert_array_almost_equal(T @ T_inv, np.eye(4))
 
     def test_compose(self):
         """Test composition of transformations."""
         # T1: A->B, translate by [1, 0, 0]
-        t1 = SensorExtrinsics(
+        t1 = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="A",
@@ -335,7 +331,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         )
 
         # T2: B->C, translate by [0, 2, 0]
-        t2 = SensorExtrinsics(
+        t2 = StaticTransform(
             translation=[0.0, 2.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="B",
@@ -352,24 +348,24 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         # Check transformation matrix: T_AC = T_BC @ T_AB
         # T_AB
-        T1 = t1.extrinsic_matrix
+        T1 = t1.transform_matrix
         # T_BC
-        T2 = t2.extrinsic_matrix
+        T2 = t2.transform_matrix
         # T_AC
         expected = T2 @ T1
-        nptest.assert_array_almost_equal(composed.extrinsic_matrix, expected)
+        nptest.assert_array_almost_equal(composed.transform_matrix, expected)
 
         # Verify the composed transform does the right thing:
         # A point at origin in frame A should end up at [1, 2, 0] in frame C
         point_A = np.array([0, 0, 0, 1])
-        point_C = composed.extrinsic_matrix @ point_A
+        point_C = composed.transform_matrix @ point_A
         nptest.assert_array_almost_equal(point_C[:3], [1.0, 2.0, 0.0])
 
     def test_extrinsics_serialization(self):
         """Test serialization and deserialization of extrinsics."""
         # Use exact unit quaternion: [0, 0, sin(45°), cos(45°)]
         sqrt2_2 = 0.7071067811865476
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],
             source_frame="camera",
@@ -378,7 +374,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         )
 
         d = extrinsics.to_dict()
-        extrinsics2 = SensorExtrinsics.from_dict(d)
+        extrinsics2 = StaticTransform.from_dict(d)
 
         nptest.assert_array_almost_equal(
             extrinsics2.translation, extrinsics.translation
@@ -390,15 +386,11 @@ class SensorExtrinsicsTests(unittest.TestCase):
         self.assertEqual(extrinsics2.target_frame, extrinsics.target_frame)
         self.assertEqual(extrinsics2.timestamp, extrinsics.timestamp)
 
-    def test_camera_extrinsics_alias(self):
-        """Test that CameraExtrinsics is an alias for SensorExtrinsics."""
-        self.assertIs(CameraExtrinsics, SensorExtrinsics)
-
     def test_compose_with_rotation(self):
         """Test composition with rotations, not just translations."""
         # T1: A->B, 90 degree rotation around z-axis
         sqrt2_2 = 0.7071067811865476
-        t1 = SensorExtrinsics(
+        t1 = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],  # 90 deg around z
             source_frame="A",
@@ -406,7 +398,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         )
 
         # T2: B->C, translation only
-        t2 = SensorExtrinsics(
+        t2 = StaticTransform(
             translation=[0.0, 1.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="B",
@@ -420,21 +412,21 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         # Verify a point transform: point at origin in A
         point_A = np.array([0, 0, 0, 1])
-        point_C = composed.extrinsic_matrix @ point_A
+        point_C = composed.transform_matrix @ point_A
         # First rotate 90deg (x->y, y->-x) then translate by [1,0,0] -> [1,0,0]
         # Then translate by [0,1,0] in B frame -> [1,1,0]
         nptest.assert_array_almost_equal(point_C[:3], [1.0, 1.0, 0.0])
 
     def test_compose_frame_mismatch_raises(self):
         """Test that composing mismatched frames raises ValueError."""
-        t1 = SensorExtrinsics(
+        t1 = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="A",
             target_frame="B",
         )
 
-        t2 = SensorExtrinsics(
+        t2 = StaticTransform(
             translation=[0.0, 1.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="C",  # Mismatch! Should be "B"
@@ -448,13 +440,13 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
     def test_compose_unspecified_target_frame_allowed(self):
         """Test that composition works when target_frame is unspecified."""
-        t1 = SensorExtrinsics(
+        t1 = StaticTransform(
             source_frame="A",
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
         )
 
-        t2 = SensorExtrinsics(
+        t2 = StaticTransform(
             source_frame="B",
             translation=[0.0, 1.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -466,7 +458,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
     def test_covariance_validation(self):
         """Test that covariance must have 6 elements."""
-        SensorExtrinsics(
+        StaticTransform(
             source_frame="sensor",
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -474,7 +466,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError):
-            SensorExtrinsics(
+            StaticTransform(
                 source_frame="sensor",
                 translation=[1.0, 0.0, 0.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
@@ -499,7 +491,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            SensorExtrinsics.from_matrix(matrix, source_frame="sensor")
+            StaticTransform.from_matrix(matrix, source_frame="sensor")
             # No warning should be raised for orthogonal matrix
             orthogonality_warnings = [
                 x for x in w if "orthogonal" in str(x.message).lower()
@@ -524,7 +516,7 @@ class SensorExtrinsicsTests(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            SensorExtrinsics.from_matrix(matrix, source_frame="sensor")
+            StaticTransform.from_matrix(matrix, source_frame="sensor")
             # Warning should be raised for non-orthogonal matrix
             orthogonality_warnings = [
                 x for x in w if "orthogonal" in str(x.message).lower()
@@ -639,7 +631,7 @@ class CameraProjectorTests(unittest.TestCase):
 
         # Camera is at (0, 0, 0) looking down positive z
         # camera_to_reference: camera frame to world frame
-        cam_to_world = SensorExtrinsics(
+        cam_to_world = StaticTransform(
             source_frame="camera",
             target_frame="world",
             translation=[0.0, 0.0, 0.0],
@@ -796,7 +788,7 @@ class CameraProjectorTests(unittest.TestCase):
 
         # Camera-to-world: camera is at (0, 0, -5) in world, looking at +z
         # (no rotation - identity quaternion)
-        cam_to_world = SensorExtrinsics(
+        cam_to_world = StaticTransform(
             translation=[0.0, 0.0, -5.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -836,7 +828,7 @@ class CameraProjectorTests(unittest.TestCase):
 
         # Create world-to-camera extrinsics (the "inverted" direction)
         # Camera at world (0, 0, -5), so world-to-camera adds 5 to z
-        world_to_cam = SensorExtrinsics(
+        world_to_cam = StaticTransform(
             translation=[0.0, 0.0, 5.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="world",
@@ -894,7 +886,7 @@ class CameraProjectorTests(unittest.TestCase):
         )
 
         # Camera at origin, identity rotation
-        cam_to_world = SensorExtrinsics(
+        cam_to_world = StaticTransform(
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -929,7 +921,7 @@ class CameraProjectorTests(unittest.TestCase):
 
 
 class ReferenceTests(unittest.TestCase):
-    """Tests for CameraIntrinsicsRef and SensorExtrinsicsRef."""
+    """Tests for CameraIntrinsicsRef and StaticTransformRef."""
 
     def test_intrinsics_ref_creation(self):
         """Test creating an intrinsics reference."""
@@ -938,12 +930,8 @@ class ReferenceTests(unittest.TestCase):
 
     def test_extrinsics_ref_creation(self):
         """Test creating an extrinsics reference."""
-        ref = SensorExtrinsicsRef(ref="camera_front::ego")
+        ref = StaticTransformRef(ref="camera_front::ego")
         self.assertEqual(ref.ref, "camera_front::ego")
-
-    def test_extrinsics_ref_alias(self):
-        """Test that CameraExtrinsicsRef is an alias."""
-        self.assertIs(CameraExtrinsicsRef, SensorExtrinsicsRef)
 
     def test_ref_serialization(self):
         """Test serialization of references."""
@@ -975,21 +963,21 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(retrieved.fx, 1000.0)
 
     @drop_datasets
-    def test_dataset_sensor_extrinsics_property(self):
+    def test_dataset_static_transforms_property(self):
         """Test setting and getting sensor extrinsics on a dataset."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
 
-        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+        dataset.static_transforms = {"camera_front::ego": extrinsics}
 
-        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
-        retrieved = dataset.sensor_extrinsics["camera_front::ego"]
+        self.assertIn("camera_front::ego", dataset.static_transforms)
+        retrieved = dataset.static_transforms["camera_front::ego"]
         self.assertEqual(retrieved.source_frame, "camera_front")
         self.assertEqual(retrieved.target_frame, "ego")
 
@@ -1009,7 +997,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
         # Use exact unit quaternion: [0, 0, sin(45°), cos(45°)]
         sqrt2_2 = 0.7071067811865476
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, sqrt2_2, sqrt2_2],
             source_frame="camera",
@@ -1017,19 +1005,19 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
         dataset.camera_intrinsics = {"camera": intrinsics}
-        dataset.sensor_extrinsics = {"camera": extrinsics}
+        dataset.static_transforms = {"camera": extrinsics}
         dataset.save()
 
         dataset2 = fo.load_dataset(name)
 
         self.assertIn("camera", dataset2.camera_intrinsics)
-        self.assertIn("camera", dataset2.sensor_extrinsics)
+        self.assertIn("camera", dataset2.static_transforms)
 
         retrieved_intrinsics = dataset2.camera_intrinsics["camera"]
         self.assertAlmostEqual(retrieved_intrinsics.fx, 1000.0)
         self.assertAlmostEqual(retrieved_intrinsics.k1, -0.1)
 
-        retrieved_extrinsics = dataset2.sensor_extrinsics["camera"]
+        retrieved_extrinsics = dataset2.static_transforms["camera"]
         nptest.assert_array_almost_equal(
             retrieved_extrinsics.translation, [1.0, 2.0, 3.0]
         )
@@ -1087,40 +1075,42 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved.fx, 1200.0)
 
     @drop_datasets
-    def test_resolve_extrinsics(self):
+    def test_resolve_transformation(self):
         """Test resolving extrinsics from dataset-level storage."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+        dataset.static_transforms = {"camera_front::ego": extrinsics}
 
         sample = fo.Sample(filepath="test.jpg")
         dataset.add_sample(sample)
 
-        resolved = dataset.resolve_extrinsics(sample, "camera_front", "ego")
+        resolved = dataset.resolve_transformation(
+            sample, "camera_front", "ego"
+        )
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved.source_frame, "camera_front")
         self.assertEqual(resolved.target_frame, "ego")
 
     @drop_datasets
-    def test_resolve_extrinsics_sample_override(self):
+    def test_resolve_transformation_sample_override(self):
         """Test that sample-level extrinsics override dataset-level."""
         dataset = fo.Dataset()
 
-        dataset_extrinsics = SensorExtrinsics(
+        dataset_extrinsics = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera_front::ego": dataset_extrinsics}
+        dataset.static_transforms = {"camera_front::ego": dataset_extrinsics}
 
-        sample_extrinsics = SensorExtrinsics(
+        sample_extrinsics = StaticTransform(
             translation=[99.0, 88.0, 77.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
@@ -1128,10 +1118,12 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
         sample = fo.Sample(filepath="test.jpg")
-        sample["sensor_extrinsics"] = sample_extrinsics
+        sample["static_transforms"] = sample_extrinsics
         dataset.add_sample(sample)
 
-        resolved = dataset.resolve_extrinsics(sample, "camera_front", "ego")
+        resolved = dataset.resolve_transformation(
+            sample, "camera_front", "ego"
+        )
         self.assertIsNotNone(resolved)
         # Sample-level should take precedence over dataset-level
         nptest.assert_array_almost_equal(
@@ -1139,22 +1131,22 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_resolve_extrinsics_sample_override_in_group(self):
+    def test_resolve_transformation_sample_override_in_group(self):
         """Test that sample-level extrinsics override dataset-level in grouped datasets."""
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="camera_front")
 
         # Dataset-level extrinsics keyed by slice name (group inference would find this)
-        dataset_extrinsics = SensorExtrinsics(
+        dataset_extrinsics = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {"camera_front": dataset_extrinsics}
+        dataset.static_transforms = {"camera_front": dataset_extrinsics}
 
         # Sample-level extrinsics should take precedence
-        sample_extrinsics = SensorExtrinsics(
+        sample_extrinsics = StaticTransform(
             translation=[99.0, 88.0, 77.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
@@ -1166,7 +1158,7 @@ class DatasetIntegrationTests(unittest.TestCase):
             filepath="front.jpg",
             group=group.element("camera_front"),
         )
-        sample["sensor_extrinsics"] = sample_extrinsics
+        sample["static_transforms"] = sample_extrinsics
         dataset.add_sample(sample)
 
         dataset.group_slice = "camera_front"
@@ -1174,7 +1166,7 @@ class DatasetIntegrationTests(unittest.TestCase):
 
         # Even without specifying source_frame (letting it infer from group),
         # sample-level extrinsics should take precedence
-        resolved = dataset.resolve_extrinsics(sample_front)
+        resolved = dataset.resolve_transformation(sample_front)
         self.assertIsNotNone(resolved)
         # Sample-level should take precedence over dataset-level/group inference
         nptest.assert_array_almost_equal(
@@ -1182,25 +1174,25 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_resolve_extrinsics_implied_world(self):
+    def test_resolve_transformation_implied_world(self):
         """Test resolving extrinsics with implied world target."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[0.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="lidar",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {"lidar": extrinsics}
+        dataset.static_transforms = {"lidar": extrinsics}
 
         sample = fo.Sample(filepath="test.pcd")
         dataset.add_sample(sample)
 
-        resolved = dataset.resolve_extrinsics(sample, "lidar", "world")
+        resolved = dataset.resolve_transformation(sample, "lidar", "world")
         self.assertIsNotNone(resolved)
 
-        resolved2 = dataset.resolve_extrinsics(sample, "lidar")
+        resolved2 = dataset.resolve_transformation(sample, "lidar")
         self.assertIsNotNone(resolved2)
 
     @drop_datasets
@@ -1209,21 +1201,21 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         # camera -> ego
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
         # ego -> world
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[0.0, 10.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
             target_frame="world",
         )
 
-        dataset.sensor_extrinsics = {
+        dataset.static_transforms = {
             "camera::ego": cam_to_ego,
             "ego::world": ego_to_world,
         }
@@ -1235,7 +1227,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(transform)
 
         # The composed transform should be translation [1, 10, 0]
-        T = transform.extrinsic_matrix
+        T = transform.transform_matrix
         nptest.assert_array_almost_equal(T[:3, 3], [1.0, 10.0, 0.0])
 
     @drop_datasets
@@ -1247,26 +1239,26 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIsNone(result)
 
     @drop_datasets
-    def test_resolve_extrinsics_chain_via_dataset_level(self):
-        """Test resolve_extrinsics with chain_via using dataset-level transforms."""
+    def test_resolve_transformation_chain_via_dataset_level(self):
+        """Test resolve_transformation with chain_via using dataset-level transforms."""
         dataset = fo.Dataset()
 
         # camera -> ego (dataset level)
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
         # ego -> world (dataset level)
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[0.0, 10.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
             target_frame="world",
         )
 
-        dataset.sensor_extrinsics = {
+        dataset.static_transforms = {
             "camera::ego": cam_to_ego,
             "ego::world": ego_to_world,
         }
@@ -1275,11 +1267,13 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # Direct lookup should fail (no camera::world)
-        resolved_direct = dataset.resolve_extrinsics(sample, "camera", "world")
+        resolved_direct = dataset.resolve_transformation(
+            sample, "camera", "world"
+        )
         self.assertIsNone(resolved_direct)
 
         # Chain via ego should work
-        resolved_chain = dataset.resolve_extrinsics(
+        resolved_chain = dataset.resolve_transformation(
             sample, "camera", "world", chain_via=["ego"]
         )
         self.assertIsNotNone(resolved_chain)
@@ -1292,21 +1286,21 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertEqual(resolved_chain.target_frame, "world")
 
     @drop_datasets
-    def test_resolve_extrinsics_chain_via_mixed_levels(self):
-        """Test resolve_extrinsics with chain_via mixing sample and dataset levels."""
+    def test_resolve_transformation_chain_via_mixed_levels(self):
+        """Test resolve_transformation with chain_via mixing sample and dataset levels."""
         dataset = fo.Dataset()
 
         # camera -> ego (dataset level, static calibration)
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
+        dataset.static_transforms = {"camera::ego": cam_to_ego}
 
         # ego -> world (sample level, dynamic pose)
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[100.0, 50.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
@@ -1318,7 +1312,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # Chain via ego: dataset-level camera->ego + sample-level ego->world
-        resolved = dataset.resolve_extrinsics(
+        resolved = dataset.resolve_transformation(
             sample, "camera", "world", chain_via=["ego"]
         )
         self.assertIsNotNone(resolved)
@@ -1329,45 +1323,45 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_resolve_extrinsics_chain_via_missing_hop(self):
+    def test_resolve_transformation_chain_via_missing_hop(self):
         """Test that chain_via returns None if any hop is missing."""
         dataset = fo.Dataset()
 
         # Only camera -> ego, missing ego -> world
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
+        dataset.static_transforms = {"camera::ego": cam_to_ego}
 
         sample = fo.Sample(filepath="test.jpg")
         dataset.add_sample(sample)
 
         # Chain should fail because ego->world is missing
-        resolved = dataset.resolve_extrinsics(
+        resolved = dataset.resolve_transformation(
             sample, "camera", "world", chain_via=["ego"]
         )
         self.assertIsNone(resolved)
 
     @drop_datasets
-    def test_resolve_extrinsics_chain_via_in_group(self):
-        """Test resolve_extrinsics with chain_via in a grouped dataset."""
+    def test_resolve_transformation_chain_via_in_group(self):
+        """Test resolve_transformation with chain_via in a grouped dataset."""
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="left")
 
         # left -> ego (dataset level, static calibration)
-        left_to_ego = SensorExtrinsics(
+        left_to_ego = StaticTransform(
             translation=[1.5, 0.5, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="left",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"left::ego": left_to_ego}
+        dataset.static_transforms = {"left::ego": left_to_ego}
 
         # ego -> world (sample level, dynamic pose)
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[100.0, 50.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
@@ -1386,7 +1380,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         sample_left = dataset.first()
 
         # Without source_frame (inferred from group slice), chain via ego
-        resolved = dataset.resolve_extrinsics(
+        resolved = dataset.resolve_transformation(
             sample_left, target_frame="world", chain_via=["ego"]
         )
         self.assertIsNotNone(resolved)
@@ -1397,32 +1391,32 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_resolve_extrinsics_direct_takes_priority_over_chain(self):
+    def test_resolve_transformation_direct_takes_priority_over_chain(self):
         """Test that direct match is returned even when chain_via is provided."""
         dataset = fo.Dataset()
 
         # Direct camera -> world
-        cam_to_world_direct = SensorExtrinsics(
+        cam_to_world_direct = StaticTransform(
             translation=[999.0, 888.0, 777.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
         # Also have camera -> ego -> world path
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[0.0, 10.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
             target_frame="world",
         )
 
-        dataset.sensor_extrinsics = {
+        dataset.static_transforms = {
             "camera::world": cam_to_world_direct,
             "camera::ego": cam_to_ego,
             "ego::world": ego_to_world,
@@ -1432,7 +1426,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.add_sample(sample)
 
         # Even with chain_via, direct match should be returned
-        resolved = dataset.resolve_extrinsics(
+        resolved = dataset.resolve_transformation(
             sample, "camera", "world", chain_via=["ego"]
         )
         self.assertIsNotNone(resolved)
@@ -1447,7 +1441,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         """Test sample with multiple extrinsics references."""
         dataset = fo.Dataset()
 
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
@@ -1455,31 +1449,31 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
         # Use exact unit quaternion for small rotation around z-axis
         norm = math.sqrt(0.1**2 + 0.995**2)
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[100.0, 200.0, 0.0],
             quaternion=[0.0, 0.0, 0.1 / norm, 0.995 / norm],
             source_frame="ego",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {
+        dataset.static_transforms = {
             "camera::ego": cam_to_ego,
             "ego::world": ego_to_world,
         }
 
         sample = fo.Sample(filepath="test.jpg")
-        sample["sensor_extrinsics"] = [
-            SensorExtrinsicsRef(ref="camera::ego"),
-            SensorExtrinsicsRef(ref="ego::world"),
+        sample["static_transforms"] = [
+            StaticTransformRef(ref="camera::ego"),
+            StaticTransformRef(ref="ego::world"),
         ]
         dataset.add_sample(sample)
 
-        resolved_cam = dataset.resolve_extrinsics(sample, "camera", "ego")
+        resolved_cam = dataset.resolve_transformation(sample, "camera", "ego")
         self.assertIsNotNone(resolved_cam)
         nptest.assert_array_almost_equal(
             resolved_cam.translation, [1.0, 0.0, 0.0]
         )
 
-        resolved_ego = dataset.resolve_extrinsics(sample, "ego", "world")
+        resolved_ego = dataset.resolve_transformation(sample, "ego", "world")
         self.assertIsNotNone(resolved_ego)
         nptest.assert_array_almost_equal(
             resolved_ego.translation, [100.0, 200.0, 0.0]
@@ -1491,17 +1485,17 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset = fo.Dataset()
 
         # Store static transform at dataset level
-        cam_to_ego = SensorExtrinsics(
+        cam_to_ego = StaticTransform(
             translation=[1.0, 0.0, 0.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
-        dataset.sensor_extrinsics = {"camera::ego": cam_to_ego}
+        dataset.static_transforms = {"camera::ego": cam_to_ego}
 
         # Dynamic ego to world pose stored inline on sample
         norm = math.sqrt(0.1**2 + 0.995**2)
-        ego_to_world = SensorExtrinsics(
+        ego_to_world = StaticTransform(
             translation=[100.0, 200.0, 0.0],
             quaternion=[0.0, 0.0, 0.1 / norm, 0.995 / norm],
             source_frame="ego",
@@ -1509,13 +1503,13 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
         sample = fo.Sample(filepath="test.jpg")
-        sample["sensor_extrinsics"] = [ego_to_world]
+        sample["static_transforms"] = [ego_to_world]
         dataset.add_sample(sample)
 
-        resolved_cam = dataset.resolve_extrinsics(sample, "camera", "ego")
+        resolved_cam = dataset.resolve_transformation(sample, "camera", "ego")
         self.assertIsNotNone(resolved_cam)
 
-        resolved_ego = dataset.resolve_extrinsics(sample, "ego", "world")
+        resolved_ego = dataset.resolve_transformation(sample, "ego", "world")
         self.assertIsNotNone(resolved_ego)
         nptest.assert_array_almost_equal(
             resolved_ego.translation, [100.0, 200.0, 0.0]
@@ -1598,25 +1592,25 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIsNone(resolved)
 
     @drop_datasets
-    def test_resolve_extrinsics_from_group_slice(self):
+    def test_resolve_transformation_from_group_slice(self):
         """Test resolving extrinsics by inferring source_frame from group slice name."""
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="camera_front")
 
         # Set up extrinsics keyed by slice names
-        extrinsics_front = SensorExtrinsics(
+        extrinsics_front = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="world",
         )
-        extrinsics_rear = SensorExtrinsics(
+        extrinsics_rear = StaticTransform(
             translation=[-1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 1.0, 0.0],
             source_frame="camera_rear",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {
+        dataset.static_transforms = {
             "camera_front": extrinsics_front,
             "camera_rear": extrinsics_rear,
         }
@@ -1637,30 +1631,30 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.group_slice = "camera_front"
         sample_front = dataset.first()
 
-        resolved_front = dataset.resolve_extrinsics(sample_front)
+        resolved_front = dataset.resolve_transformation(sample_front)
         self.assertIsNotNone(resolved_front)
         self.assertEqual(resolved_front.translation[0], 1.0)
 
         dataset.group_slice = "camera_rear"
         sample_rear = dataset.first()
 
-        resolved_rear = dataset.resolve_extrinsics(sample_rear)
+        resolved_rear = dataset.resolve_transformation(sample_rear)
         self.assertIsNotNone(resolved_rear)
         self.assertEqual(resolved_rear.translation[0], -1.0)
 
     @drop_datasets
-    def test_resolve_extrinsics_group_slice_not_found(self):
-        """Test that resolve_extrinsics returns None if slice not in extrinsics."""
+    def test_resolve_transformation_group_slice_not_found(self):
+        """Test that resolve_transformation returns None if slice not in extrinsics."""
         dataset = fo.Dataset()
         dataset.add_group_field("group", default="camera_front")
 
-        extrinsics_front = SensorExtrinsics(
+        extrinsics_front = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {"camera_front": extrinsics_front}
+        dataset.static_transforms = {"camera_front": extrinsics_front}
 
         group = fo.Group()
         samples = [
@@ -1678,7 +1672,7 @@ class DatasetIntegrationTests(unittest.TestCase):
         dataset.group_slice = "camera_side"
         sample_side = dataset.first()
 
-        resolved = dataset.resolve_extrinsics(sample_side)
+        resolved = dataset.resolve_transformation(sample_side)
         self.assertIsNone(resolved)
 
     @drop_datasets
@@ -1727,21 +1721,21 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIn("CameraIntrinsics", str(cm.exception))
 
     @drop_datasets
-    def test_add_extrinsics_with_frames_in_object(self):
+    def test_add_static_transform_with_frames_in_object(self):
         """Test adding extrinsics with source/target frames in the object."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
-        dataset.add_extrinsics(extrinsics)
+        dataset.add_static_transform(extrinsics)
 
         # Key should be auto-generated
-        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
-        retrieved = dataset.sensor_extrinsics["camera_front::ego"]
+        self.assertIn("camera_front::ego", dataset.static_transforms)
+        retrieved = dataset.static_transforms["camera_front::ego"]
         self.assertEqual(retrieved.source_frame, "camera_front")
         self.assertEqual(retrieved.target_frame, "ego")
         nptest.assert_array_almost_equal(
@@ -1749,71 +1743,71 @@ class DatasetIntegrationTests(unittest.TestCase):
         )
 
     @drop_datasets
-    def test_add_extrinsics_with_both_frames(self):
+    def test_add_static_transform_with_both_frames(self):
         """Test adding extrinsics with both source and target frames set."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[0.0, 0.0, 2.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="lidar",
             target_frame="ego",
         )
-        dataset.add_extrinsics(extrinsics)
+        dataset.add_static_transform(extrinsics)
 
-        self.assertIn("lidar::ego", dataset.sensor_extrinsics)
-        retrieved = dataset.sensor_extrinsics["lidar::ego"]
+        self.assertIn("lidar::ego", dataset.static_transforms)
+        retrieved = dataset.static_transforms["lidar::ego"]
         self.assertEqual(retrieved.source_frame, "lidar")
         self.assertEqual(retrieved.target_frame, "ego")
 
     @drop_datasets
-    def test_add_extrinsics_default_target_frame(self):
+    def test_add_static_transform_default_target_frame(self):
         """Test that target_frame defaults to 'world' if not specified."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="sensor",
         )
-        dataset.add_extrinsics(extrinsics)
+        dataset.add_static_transform(extrinsics)
 
         # Key should use "world" as default target
-        self.assertIn("sensor::world", dataset.sensor_extrinsics)
-        retrieved = dataset.sensor_extrinsics["sensor::world"]
+        self.assertIn("sensor::world", dataset.static_transforms)
+        retrieved = dataset.static_transforms["sensor::world"]
         self.assertEqual(retrieved.target_frame, "world")
 
     @drop_datasets
-    def test_add_extrinsics_multiple(self):
+    def test_add_static_transform_multiple(self):
         """Test adding multiple extrinsics incrementally."""
         dataset = fo.Dataset()
 
         # Add first extrinsics
-        ext1 = SensorExtrinsics(
+        ext1 = StaticTransform(
             translation=[1.0, 0.0, 1.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="ego",
         )
-        dataset.add_extrinsics(ext1)
+        dataset.add_static_transform(ext1)
 
         # Add second extrinsics
-        ext2 = SensorExtrinsics(
+        ext2 = StaticTransform(
             translation=[0.0, 0.0, 0.5],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="ego",
             target_frame="world",
         )
-        dataset.add_extrinsics(ext2)
+        dataset.add_static_transform(ext2)
 
         # Both should exist
-        self.assertIn("camera::ego", dataset.sensor_extrinsics)
-        self.assertIn("ego::world", dataset.sensor_extrinsics)
+        self.assertIn("camera::ego", dataset.static_transforms)
+        self.assertIn("ego::world", dataset.static_transforms)
 
-    def test_sensor_extrinsics_requires_source_frame(self):
-        """Test that SensorExtrinsics constructor requires source_frame."""
+    def test_static_transforms_requires_source_frame(self):
+        """Test that StaticTransform constructor requires source_frame."""
         with self.assertRaises(ValueError) as cm:
-            SensorExtrinsics(
+            StaticTransform(
                 translation=[1.0, 0.0, 1.5],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
             )
@@ -1822,56 +1816,56 @@ class DatasetIntegrationTests(unittest.TestCase):
         self.assertIn("required", str(cm.exception))
 
     @drop_datasets
-    def test_add_extrinsics_type_error(self):
-        """Test that add_extrinsics raises TypeError for invalid input."""
+    def test_add_static_transform_type_error(self):
+        """Test that add_static_transform raises TypeError for invalid input."""
         dataset = fo.Dataset()
 
         with self.assertRaises(TypeError) as cm:
-            dataset.add_extrinsics({"translation": [1.0, 0.0, 1.5]})
+            dataset.add_static_transform({"translation": [1.0, 0.0, 1.5]})
 
-        self.assertIn("SensorExtrinsics", str(cm.exception))
+        self.assertIn("StaticTransform", str(cm.exception))
 
 
-class SensorExtrinsicsValidationTests(unittest.TestCase):
-    """Tests for sensor_extrinsics key/field validation."""
+class StaticTransformValidationTests(unittest.TestCase):
+    """Tests for static_transforms key/field validation."""
 
     @drop_datasets
-    def test_sensor_extrinsics_valid_matching_key_and_fields(self):
+    def test_static_transforms_valid_matching_key_and_fields(self):
         """Test that valid extrinsics with matching key and fields passes."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
             target_frame="ego",
         )
 
-        dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+        dataset.static_transforms = {"camera_front::ego": extrinsics}
 
-        self.assertIn("camera_front::ego", dataset.sensor_extrinsics)
+        self.assertIn("camera_front::ego", dataset.static_transforms)
 
     @drop_datasets
-    def test_sensor_extrinsics_valid_implied_world_target(self):
+    def test_static_transforms_valid_implied_world_target(self):
         """Test that key without :: implies world target."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[0.0, 0.0, 2.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="lidar",
             target_frame="world",
         )
 
-        dataset.sensor_extrinsics = {"lidar": extrinsics}
+        dataset.static_transforms = {"lidar": extrinsics}
 
-        self.assertIn("lidar", dataset.sensor_extrinsics)
+        self.assertIn("lidar", dataset.static_transforms)
 
-    def test_sensor_extrinsics_missing_source_frame_raises(self):
-        """Test that SensorExtrinsics with None source_frame raises ValueError at construction."""
+    def test_static_transforms_missing_source_frame_raises(self):
+        """Test that StaticTransform with None source_frame raises ValueError at construction."""
         # source_frame is required at construction time
         with self.assertRaises(ValueError) as cm:
-            SensorExtrinsics(
+            StaticTransform(
                 translation=[1.5, 0.0, 1.2],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 # source_frame is None (required)
@@ -1880,11 +1874,11 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         self.assertIn("source_frame", str(cm.exception))
 
     @drop_datasets
-    def test_sensor_extrinsics_mismatched_source_frame(self):
+    def test_static_transforms_mismatched_source_frame(self):
         """Test that mismatched source_frame raises ValueError."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="wrong_source",  # Doesn't match key
@@ -1892,18 +1886,18 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError) as cm:
-            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+            dataset.static_transforms = {"camera_front::ego": extrinsics}
 
         self.assertIn("source_frame", str(cm.exception))
         self.assertIn("camera_front", str(cm.exception))
         self.assertIn("wrong_source", str(cm.exception))
 
     @drop_datasets
-    def test_sensor_extrinsics_mismatched_target_frame(self):
+    def test_static_transforms_mismatched_target_frame(self):
         """Test that mismatched target_frame raises ValueError."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
@@ -1911,18 +1905,18 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError) as cm:
-            dataset.sensor_extrinsics = {"camera_front::ego": extrinsics}
+            dataset.static_transforms = {"camera_front::ego": extrinsics}
 
         self.assertIn("target_frame", str(cm.exception))
         self.assertIn("ego", str(cm.exception))
         self.assertIn("wrong_target", str(cm.exception))
 
     @drop_datasets
-    def test_sensor_extrinsics_mismatched_implied_world(self):
+    def test_static_transforms_mismatched_implied_world(self):
         """Test that mismatched target_frame with implied world raises."""
         dataset = fo.Dataset()
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[0.0, 0.0, 2.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="lidar",
@@ -1931,31 +1925,31 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         )
 
         with self.assertRaises(ValueError) as cm:
-            dataset.sensor_extrinsics = {"lidar": extrinsics}
+            dataset.static_transforms = {"lidar": extrinsics}
 
         self.assertIn("target_frame", str(cm.exception))
         self.assertIn("world", str(cm.exception))
         self.assertIn("ego", str(cm.exception))
 
     @drop_datasets
-    def test_sensor_extrinsics_multiple_valid(self):
+    def test_static_transforms_multiple_valid(self):
         """Test multiple valid extrinsics in one assignment."""
         dataset = fo.Dataset()
 
         extrinsics_dict = {
-            "camera_front::ego": SensorExtrinsics(
+            "camera_front::ego": StaticTransform(
                 translation=[1.5, 0.0, 1.2],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 source_frame="camera_front",
                 target_frame="ego",
             ),
-            "lidar::ego": SensorExtrinsics(
+            "lidar::ego": StaticTransform(
                 translation=[0.0, 0.0, 2.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 source_frame="lidar",
                 target_frame="ego",
             ),
-            "ego": SensorExtrinsics(
+            "ego": StaticTransform(
                 translation=[100.0, 200.0, 0.0],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 source_frame="ego",
@@ -1963,17 +1957,17 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
             ),
         }
 
-        dataset.sensor_extrinsics = extrinsics_dict
+        dataset.static_transforms = extrinsics_dict
 
-        self.assertEqual(len(dataset.sensor_extrinsics), 3)
+        self.assertEqual(len(dataset.static_transforms), 3)
 
     @drop_datasets
-    def test_sensor_extrinsics_partial_fields_source_only(self):
+    def test_static_transforms_partial_fields_source_only(self):
         """Test validation with only source_frame set (target_frame=None implies world)."""
         dataset = fo.Dataset()
 
         # source_frame matches (required), target_frame is None (implies "world")
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.5, 0.0, 1.2],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera_front",
@@ -1981,15 +1975,15 @@ class SensorExtrinsicsValidationTests(unittest.TestCase):
         )
 
         # Key uses implied "world" target (no ::target suffix)
-        dataset.sensor_extrinsics = {"camera_front": extrinsics}
-        self.assertIn("camera_front", dataset.sensor_extrinsics)
+        dataset.static_transforms = {"camera_front": extrinsics}
+        self.assertIn("camera_front", dataset.static_transforms)
 
-    def test_sensor_extrinsics_partial_fields_target_only_raises(self):
+    def test_static_transforms_partial_fields_target_only_raises(self):
         """Test that missing source_frame raises ValueError at construction even if target_frame is set."""
         # source_frame is None (required), target_frame matches
         # Validation happens at construction time, not at dataset assignment
         with self.assertRaises(ValueError) as cm:
-            SensorExtrinsics(
+            StaticTransform(
                 translation=[1.5, 0.0, 1.2],
                 quaternion=[0.0, 0.0, 0.0, 1.0],
                 # source_frame is None
@@ -2040,7 +2034,7 @@ class PolymorphicIntrinsicsTests(unittest.TestCase):
 
 
 class CustomDerivationTests(unittest.TestCase):
-    """Tests for custom classes derived from CameraIntrinsics and CameraExtrinsics."""
+    """Tests for custom classes derived from CameraIntrinsics and StaticTransform."""
 
     def test_custom_camera_intrinsics_derivation(self):
         """Test that customers can derive custom classes from CameraIntrinsics."""
@@ -2086,9 +2080,9 @@ class CustomDerivationTests(unittest.TestCase):
         self.assertEqual(intrinsics2.custom_field, "test")
 
     def test_custom_camera_extrinsics_derivation(self):
-        """Test that customers can derive custom classes from CameraExtrinsics."""
+        """Test that customers can derive custom classes from StaticTransform."""
 
-        class CustomExtrinsics(SensorExtrinsics):
+        class CustomExtrinsics(StaticTransform):
             """Custom extrinsics with additional field."""
 
             custom_field = fof.StringField(default="custom_value")
@@ -2107,13 +2101,13 @@ class CustomDerivationTests(unittest.TestCase):
         R = extrinsics.rotation_matrix
         nptest.assert_array_almost_equal(R, np.eye(3))
 
-        T = extrinsics.extrinsic_matrix
+        T = extrinsics.transform_matrix
         self.assertEqual(T.shape, (4, 4))
 
     def test_custom_camera_extrinsics_alias_derivation(self):
-        """Test that customers can derive from CameraExtrinsics alias."""
+        """Test that customers can derive from StaticTransform alias."""
 
-        class CustomExtrinsics(CameraExtrinsics):
+        class CustomExtrinsics(StaticTransform):
             custom_field = fof.StringField(default="default")
 
         extrinsics = CustomExtrinsics(
@@ -2127,9 +2121,9 @@ class CustomDerivationTests(unittest.TestCase):
         self.assertEqual(extrinsics.custom_field, "test")
 
     def test_custom_extrinsics_serialization(self):
-        """Test serialization of custom CameraExtrinsics subclass."""
+        """Test serialization of custom StaticTransform subclass."""
 
-        class CustomExtrinsics(SensorExtrinsics):
+        class CustomExtrinsics(StaticTransform):
             custom_field = fof.StringField(default="default")
 
         extrinsics = CustomExtrinsics(
@@ -2173,9 +2167,9 @@ class CustomDerivationTests(unittest.TestCase):
 
     @drop_datasets
     def test_custom_extrinsics_with_dataset(self):
-        """Test using custom CameraExtrinsics subclass with dataset."""
+        """Test using custom StaticTransform subclass with dataset."""
 
-        class CustomExtrinsics(SensorExtrinsics):
+        class CustomExtrinsics(StaticTransform):
             sensor_id = fof.StringField(default="unknown")
 
         dataset = fo.Dataset()
@@ -2188,9 +2182,9 @@ class CustomDerivationTests(unittest.TestCase):
             sensor_id="camera_001",
         )
 
-        dataset.sensor_extrinsics = {"camera::ego": extrinsics}
+        dataset.static_transforms = {"camera::ego": extrinsics}
 
-        retrieved = dataset.sensor_extrinsics["camera::ego"]
+        retrieved = dataset.static_transforms["camera::ego"]
         self.assertIsInstance(retrieved, CustomExtrinsics)
         self.assertEqual(retrieved.source_frame, "camera")
         self.assertEqual(retrieved.sensor_id, "camera_001")
@@ -2214,7 +2208,7 @@ class CustomDerivationTests(unittest.TestCase):
 class CameraPersistenceTests(unittest.TestCase):
     """Tests for camera data model persistence through database round-trips.
 
-    These tests verify that camera_intrinsics and sensor_extrinsics are
+    These tests verify that camera_intrinsics and static_transforms are
     properly re-instantiated as their correct class types
     after loading a dataset from the database.
     """
@@ -2285,25 +2279,25 @@ class CameraPersistenceTests(unittest.TestCase):
 
     @drop_datasets
     def test_extrinsics_type_preserved_after_reload(self):
-        """Test that sensor_extrinsics values are SensorExtrinsics instances after reload."""
+        """Test that static_transforms values are StaticTransform instances after reload."""
         dataset = fo.Dataset()
         dataset.persistent = True
         name = dataset.name
 
-        extrinsics = SensorExtrinsics(
+        extrinsics = StaticTransform(
             translation=[1.0, 2.0, 3.0],
             quaternion=[0.0, 0.0, 0.0, 1.0],
             source_frame="camera",
             target_frame="world",
         )
-        dataset.sensor_extrinsics = {"camera": extrinsics}
+        dataset.static_transforms = {"camera": extrinsics}
         dataset.save()
 
         dataset2 = fo.load_dataset(name)
 
-        retrieved = dataset2.sensor_extrinsics["camera"]
+        retrieved = dataset2.static_transforms["camera"]
 
-        self.assertIsInstance(retrieved, SensorExtrinsics)
+        self.assertIsInstance(retrieved, StaticTransform)
         self.assertNotIsInstance(retrieved, dict)
 
         dataset2.delete()

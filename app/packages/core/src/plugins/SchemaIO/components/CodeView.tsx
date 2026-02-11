@@ -1,13 +1,11 @@
-import Editor from "@monaco-editor/react";
-import { Box, useColorScheme } from "@mui/material";
-import React from "react";
-import HeaderView from "./HeaderView";
-import autoFocus from "../utils/auto-focus";
-import { getComponentProps } from "../utils";
+import { Code } from "@fiftyone/components";
+import { Box } from "@mui/material";
 import { useKey } from "../hooks";
+import { getComponentProps } from "../utils";
+import autoFocus from "../utils/auto-focus";
+import HeaderView from "./HeaderView";
 
 export default function CodeView(props) {
-  const { mode } = useColorScheme();
   const { onChange, path, schema, data } = props;
   const { view = {} } = schema;
   const { language, readOnly } = view;
@@ -23,6 +21,7 @@ export default function CodeView(props) {
 
   return (
     <Box
+      data-cy="json-editor"
       sx={{
         ...(readOnly
           ? {
@@ -35,10 +34,9 @@ export default function CodeView(props) {
       {...getComponentProps(props, "container")}
     >
       <HeaderView {...props} nested />
-      <Editor
+      <Code
         key={key}
         height={height}
-        theme={mode === "dark" ? "vs-dark" : "light"}
         value={data}
         defaultValue={src}
         onChange={(value) => {
@@ -46,7 +44,7 @@ export default function CodeView(props) {
           setUserChanged();
         }}
         language={language}
-        options={{ readOnly }}
+        readOnly={readOnly}
         onMount={(editor) => {
           if (autoFocus(props)) {
             editor.focus();

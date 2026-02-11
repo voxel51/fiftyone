@@ -1,10 +1,10 @@
-import { use3dAnnotation } from "../hooks/use-3d-annotation";
+import { use3dAnnotationEventHandlers } from "../hooks/use3dAnnotationEventHandlers";
 
 /**
- * Placeholder component that initializes 3D annotation.
+ * Component that registers 3D annotation event handlers.
  */
 export const Annotation3d = () => {
-  use3dAnnotation();
+  use3dAnnotationEventHandlers();
 
   return null;
 };

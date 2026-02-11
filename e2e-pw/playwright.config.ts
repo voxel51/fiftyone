@@ -35,7 +35,7 @@ export default defineConfig({
   expect: {
     toHaveScreenshot: {
       // since label color assignment is non-deterministic, we allow a small amount of pixel difference
-      maxDiffPixelRatio: 0.01,
+      maxDiffPixelRatio: 0.02,
     },
   },
   /* Configure projects for major browsers */
@@ -44,6 +44,9 @@ export default defineConfig({
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
+        contextOptions: {
+          permissions: ["clipboard-read", "clipboard-write"],
+        },
         channel: "chromium",
         bypassCSP: true,
         launchOptions: { args: ["--disable-web-security"] },

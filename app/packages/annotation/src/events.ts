@@ -1,5 +1,6 @@
 import { Archetype3d, Looker3dOverlayLabel } from "@fiftyone/looker-3d";
 import { AnnotationLabel } from "@fiftyone/state";
+import { BoundingBoxOverlay } from "@fiftyone/lighter";
 
 export const AnnotationChannelId = "default";
 
@@ -15,6 +16,22 @@ type MutationSuccess<T> = {
 };
 
 export type AnnotationEventGroup = {
+  /**
+   * Notification event emitted when aggregate annotation persistence is requested.
+   */
+  "annotation:persistenceRequested": void;
+  /**
+   * Notification event emitted when a persistence request is in flight.
+   */
+  "annotation:persistenceInFlight": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is successful.
+   */
+  "annotation:persistenceSuccess": void;
+  /**
+   * Notification event emitted when aggregate annotation persistence is unsuccessful.
+   */
+  "annotation:persistenceError": { error?: Error };
   /**
    * Notification event emitted when a label is upserted successfully.
    */
@@ -61,6 +78,13 @@ export type AnnotationEventGroup = {
     id: string;
   };
   /**
+   * Notification event emitted when a canvas overlay is established.
+   */
+  "annotation:canvasDetectionOverlayEstablish": {
+    id: string;
+    overlay: BoundingBoxOverlay;
+  };
+  /**
    * Notification event emitted when a canvas overlay is hovered.
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
@@ -96,4 +120,17 @@ export type AnnotationEventGroup = {
   "annotation:cuboidCreationStarted": {
     position: [number, number, number];
   };
+
+  /**
+   * Notification event emitted when entering annotation mode.
+   */
+  "annotation:enterAnnotationMode": {
+    path?: string;
+    labelId?: string;
+  };
+
+  /**
+   * Notification event emitted when exiting annotation mode.
+   */
+  "annotation:exitAnnotationMode": void;
 };

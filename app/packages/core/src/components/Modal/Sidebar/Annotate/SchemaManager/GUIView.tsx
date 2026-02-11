@@ -1,219 +1,132 @@
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { useNotification } from "@fiftyone/state";
-import { ExpandLess, ExpandMore, InfoOutlined } from "@mui/icons-material";
-import { Chip, Collapse, Tooltip, Typography } from "@mui/material";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
-import { atomFamily } from "jotai/utils";
-import { useCallback, useState } from "react";
-import {
-  activeLabelSchemas,
-  addToActiveSchemas,
-  inactiveLabelSchemas,
-  labelSchemaData,
-  removeFromActiveSchemas,
-} from "../state";
+/**
+ * GUIView Component
+ *
+ * Main view for the Schema Manager with GUI and JSON tabs.
+ */
+
+import { Code, scrollable } from "@fiftyone/components";
+import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
+import { useCallback } from "react";
+import ActiveFieldsSection from "./ActiveFieldsSection";
 import { Container, Item } from "./Components";
-import FieldRow from "./FieldRow";
-import { CollapsibleHeader, GUISectionHeader } from "./styled";
+import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
+import HiddenFieldsSection from "./HiddenFieldsSection";
+import {
+  useFullSchemaEditor,
+  useLabelSchemasData,
+  useSchemaEditorGUIJSONToggle,
+  useSelectionCleanup,
+} from "./hooks";
+import { ContentArea } from "./styled";
 
-// Selection state for active fields
-export const selectedActiveFields = atom(new Set<string>());
-export const isActiveFieldSelected = atomFamily((path: string) =>
-  atom(
-    (get) => get(selectedActiveFields).has(path),
-    (get, set, toggle: boolean) => {
-      const selected = new Set(get(selectedActiveFields));
-      toggle ? selected.add(path) : selected.delete(path);
-      set(selectedActiveFields, selected);
-      // Clear hidden fields selection when selecting active fields
-      if (toggle) {
-        set(selectedHiddenFields, new Set());
-      }
-    }
-  )
-);
+// =============================================================================
+// Re-exports for backwards compatibility
+// =============================================================================
 
-// Selection state for hidden fields
-export const selectedHiddenFields = atom(new Set<string>());
-export const isHiddenFieldSelected = atomFamily((path: string) =>
-  atom(
-    (get) => get(selectedHiddenFields).has(path),
-    (get, set, toggle: boolean) => {
-      const selected = new Set(get(selectedHiddenFields));
-      toggle ? selected.add(path) : selected.delete(path);
-      set(selectedHiddenFields, selected);
-      // Clear active fields selection when selecting hidden fields
-      if (toggle) {
-        set(selectedActiveFields, new Set());
-      }
-    }
-  )
-);
+export { useActivateFields, useDeactivateFields } from "./hooks";
+export { selectedActiveFields, selectedHiddenFields } from "./state";
 
-// Check if a field has schema configured
-export const fieldHasSchema = atomFamily((path: string) =>
-  atom((get) => !!get(labelSchemaData(path)).label_schema)
-);
+// =============================================================================
+// Content Components
+// =============================================================================
 
-export const useActivateFields = () => {
-  const addToActiveSchema = useSetAtom(addToActiveSchemas);
-  const [selected, setSelected] = useAtom(selectedHiddenFields);
-  const activateFields = useOperatorExecutor("activate_label_schemas");
-  const setMessage = useNotification();
+/**
+ * GUI content - field list with drag-drop
+ */
+const GUIContent = () => {
+  // Reset selection when switching away from GUI tab
+  useSelectionCleanup();
 
-  return useCallback(() => {
-    addToActiveSchema(selected);
-    activateFields.execute({ fields: Array.from(selected) });
-    setSelected(new Set());
-    setMessage({
-      msg: `${selected.size} schema${
-        selected.size > 1 ? "s" : ""
-      } moved to active fields`,
-      variant: "success",
-    });
-  }, [activateFields, addToActiveSchema, selected, setSelected, setMessage]);
+  return (
+    <>
+      <ActiveFieldsSection />
+      <HiddenFieldsSection />
+    </>
+  );
 };
 
-export const useDeactivateFields = () => {
-  const removeFromActiveSchema = useSetAtom(removeFromActiveSchemas);
-  const [selected, setSelected] = useAtom(selectedActiveFields);
-  const deactivateFields = useOperatorExecutor("deactivate_label_schemas");
-  const setMessage = useNotification();
+/**
+ * JSON content - raw schema view (read-only)
+ */
+const JSONContent = () => {
+  const schemasData = useLabelSchemasData();
+  const { currentJson } = useFullSchemaEditor();
 
-  return useCallback(() => {
-    removeFromActiveSchema(selected);
-    deactivateFields.execute({ fields: Array.from(selected) });
-    setSelected(new Set());
-    setMessage({
-      msg: `${selected.size} schema${
-        selected.size > 1 ? "s" : ""
-      } moved to hidden fields`,
-      variant: "success",
-    });
-  }, [
-    deactivateFields,
-    removeFromActiveSchema,
-    selected,
-    setSelected,
-    setMessage,
-  ]);
-};
-
-const ActiveFieldsSection = () => {
-  const fields = useAtomValue(activeLabelSchemas);
-
-  if (!fields?.length) {
+  if (!schemasData) {
     return (
-      <>
-        <GUISectionHeader>
-          <Typography variant="body1" fontWeight={500}>
-            Active fields
-          </Typography>
-          <Tooltip title="Fields currently active and available for dataset annotation">
-            <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-          </Tooltip>
-          <Chip label="0" size="small" />
-        </GUISectionHeader>
-        <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-          <Typography color="secondary">No active fields</Typography>
-        </Item>
-      </>
+      <Item style={{ justifyContent: "center", opacity: 0.7 }}>
+        <Text color={TextColor.Secondary}>No schema data available</Text>
+      </Item>
     );
   }
 
   return (
-    <>
-      <GUISectionHeader>
-        <Typography variant="body1" fontWeight={500}>
-          Active fields
-        </Typography>
-        <Tooltip title="Fields currently active and available for dataset annotation">
-          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-        </Tooltip>
-        <Chip label={fields.length} size="small" />
-      </GUISectionHeader>
-      {fields.map((path) => (
-        <FieldRow
-          key={path}
-          path={path}
-          isSelected={isActiveFieldSelected(path)}
-          showDragHandle={true}
-          hasSchema={true}
-        />
-      ))}
-    </>
+    <ContentArea
+      className={scrollable}
+      style={{
+        position: "absolute",
+        top: "50px",
+        left: "2rem",
+        right: "2rem",
+        bottom: 0,
+      }}
+    >
+      <Code
+        value={currentJson}
+        language="json"
+        height="100%"
+        width="100%"
+        readOnly
+      />
+    </ContentArea>
   );
 };
 
-const HiddenFieldRow = ({ path }: { path: string }) => {
-  const hasSchema = useAtomValue(fieldHasSchema(path));
-
-  return (
-    <FieldRow
-      key={path}
-      path={path}
-      isSelected={hasSchema ? isHiddenFieldSelected(path) : undefined}
-      hasSchema={hasSchema}
-    />
-  );
-};
-
-// Atom to get sorted hidden fields: scanned (with schema) first, unscanned last
-const sortedInactivePaths = atom((get) => {
-  const fields = get(inactiveLabelSchemas);
-  const withSchema: string[] = [];
-  const withoutSchema: string[] = [];
-
-  for (const field of fields) {
-    if (get(fieldHasSchema(field))) {
-      withSchema.push(field);
-    } else {
-      withoutSchema.push(field);
-    }
-  }
-
-  return [...withSchema, ...withoutSchema];
-});
-
-const HiddenFieldsSection = () => {
-  const fields = useAtomValue(sortedInactivePaths);
-  const [expanded, setExpanded] = useState(true);
-
-  if (!fields.length) {
-    return null;
-  }
-
-  return (
-    <>
-      <GUISectionHeader>
-        <CollapsibleHeader
-          onClick={() => setExpanded(!expanded)}
-          style={{ padding: 0, flex: "none" }}
-        >
-          <Typography variant="body1" fontWeight={500}>
-            Hidden fields
-          </Typography>
-          {expanded ? <ExpandLess /> : <ExpandMore />}
-        </CollapsibleHeader>
-        <Tooltip title="Fields currently hidden and not available for dataset annotation">
-          <InfoOutlined fontSize="small" sx={{ color: "text.secondary" }} />
-        </Tooltip>
-        <Chip label={fields.length} size="small" />
-      </GUISectionHeader>
-      <Collapse in={expanded}>
-        {fields.map((path) => (
-          <HiddenFieldRow key={path} path={path} />
-        ))}
-      </Collapse>
-    </>
-  );
-};
+// =============================================================================
+// Main Component
+// =============================================================================
 
 const GUIView = () => {
+  const { tab: activeTab, setTab: setActiveTab } =
+    useSchemaEditorGUIJSONToggle();
+
+  // Guard against invalid activeTab values (indexOf returns -1 for unknown values)
+  const tabIndex = TAB_IDS.indexOf(activeTab);
+  const defaultIndex = tabIndex === -1 ? 0 : tabIndex;
+
+  const handleTabChange = useCallback(
+    (index: number) => {
+      const tabId = TAB_IDS[index];
+      if (tabId) {
+        setActiveTab(tabId);
+      }
+    },
+    [setActiveTab]
+  );
+
   return (
-    <Container style={{ marginBottom: "0.5rem" }}>
-      <ActiveFieldsSection />
-      <HiddenFieldsSection />
+    <Container className={scrollable} style={{ marginTop: "1.5rem" }}>
+      <ToggleSwitch
+        size={Size.Md}
+        defaultIndex={defaultIndex}
+        onChange={handleTabChange}
+        tabs={[
+          {
+            id: TAB_GUI,
+            data: {
+              label: "GUI",
+              content: <GUIContent />,
+            },
+          },
+          {
+            id: TAB_JSON,
+            data: {
+              label: "JSON",
+              content: <JSONContent />,
+            },
+          },
+        ]}
+      />
     </Container>
   );
 };

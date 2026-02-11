@@ -20,7 +20,12 @@ import {
   setSidebarGroups,
   sidebarGroupsFragment,
 } from "@fiftyone/relay";
-import type { Field, Schema, StrictField } from "@fiftyone/utilities";
+import type {
+  Field,
+  Primitive,
+  Schema,
+  StrictField,
+} from "@fiftyone/utilities";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -155,6 +160,14 @@ export type AnnotationLabel =
   | DetectionAnnotationLabel
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel;
+
+export type AnnotationLabelData = AnnotationLabel["data"];
+
+export interface PrimitiveValue {
+  type: "Primitive";
+  data: Primitive;
+  path: string;
+}
 
 export interface LabelEntry {
   kind: EntryKind.LABEL;

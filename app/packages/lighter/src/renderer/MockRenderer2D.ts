@@ -50,11 +50,15 @@ export class MockRenderer2D {
     });
   }
 
-  drawScrim(bounds: Rect, borderWidth: number, containerId: string): void {
+  drawScrim(
+    bounds: Rect,
+    canonicalMediaBounds: Rect,
+    containerId: string
+  ): void {
     this.containers.set(containerId, {
       type: "scrim",
       bounds,
-      borderWidth,
+      canonicalMediaBounds,
     });
   }
 

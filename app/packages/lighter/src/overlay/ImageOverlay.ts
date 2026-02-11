@@ -2,7 +2,7 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { getEventBus, type EventDispatcher } from "@fiftyone/events";
+import { type EventDispatcher, getEventBus } from "@fiftyone/events";
 import { getSampleSrc } from "@fiftyone/state";
 import type { LighterEventGroup } from "../events";
 import type { Renderer2D } from "../renderer/Renderer2D";
@@ -61,11 +61,11 @@ export class ImageOverlay
   }
 
   /**
-   * Sets the scene ID for this overlay and subscribes to viewport events.
-   * @param sceneId - The scene ID to use for the event bus channel.
+   * Sets the event channel for this overlay and subscribes to viewport events.
+   * @param eventChannel - The event channel to use.
    */
-  setSceneId(sceneId: string | undefined): void {
-    super.setSceneId(sceneId);
+  setEventChannel(eventChannel: string | undefined): void {
+    super.setEventChannel(eventChannel);
 
     // Clean up previous subscription
     if (this.viewportUnsubscribe) {
@@ -73,8 +73,8 @@ export class ImageOverlay
       this.viewportUnsubscribe = undefined;
     }
 
-    if (sceneId) {
-      this.sceneEventBus = getEventBus<LighterEventGroup>(sceneId);
+    if (eventChannel) {
+      this.sceneEventBus = getEventBus<LighterEventGroup>(eventChannel);
 
       // Subscribe to viewport-moved events to sync image transform
       this.viewportUnsubscribe = this.sceneEventBus.on(
@@ -217,15 +217,16 @@ export class ImageOverlay
     const bounds = this.currentBounds;
     if (!bounds) return;
 
+    // Set the base width/height (at scale = 1)
+    this.imgElement.style.width = `${bounds.width}px`;
+    this.imgElement.style.height = `${bounds.height}px`;
+
     // Calculate the transformed position based on viewport
     const transformedX = bounds.x * scale + viewportX;
     const transformedY = bounds.y * scale + viewportY;
-    const transformedWidth = bounds.width * scale;
-    const transformedHeight = bounds.height * scale;
 
-    this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px)`;
-    this.imgElement.style.width = `${transformedWidth}px`;
-    this.imgElement.style.height = `${transformedHeight}px`;
+    // Use CSS transform for both translation and scaling
+    this.imgElement.style.transform = `translate(${transformedX}px, ${transformedY}px) scale(${scale})`;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import { isHoveringAnyLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowDropDownIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
@@ -22,6 +23,17 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+} from "@voxel51/voodo";
+import { useAnnotationController } from "@fiftyone/annotation";
+import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -363,7 +375,7 @@ export const TooltipInfo = React.memo(() => {
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
-        <Header title={detail.field} />
+        <Header title={detail.field} labelId={detail.label.id} />
         <Border color={detail.color} id={detail.label.id} />
         <TooltipContentDiv>
           {detail.label.tags && detail.label.tags.length > 0 && (
@@ -505,11 +517,21 @@ const HiddenItemRow = ({
   );
 };
 
-const Header = ({ title }: { title: string }) => {
+const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
+
+const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
+  const { enterAnnotationMode } = useAnnotationController();
+  const canAnnotate = useCanAnnotateField(title);
+  const modalMode = useModalMode();
+
+  const closeTooltip = useCallback(() => {
+    setTooltipDetail(null);
+    setIsTooltipLocked(false);
+  }, [setIsTooltipLocked, setTooltipDetail]);
 
   return (
     <ContentHeader
@@ -519,15 +541,22 @@ const Header = ({ title }: { title: string }) => {
     >
       <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
-        <IconButton
-          size="small"
-          onClick={() => {
-            setTooltipDetail(null);
-            setIsTooltipLocked(false);
-          }}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+          {modalMode === ModalMode.EXPLORE && canAnnotate && (
+            <Button
+              leadingIcon={EditIcon}
+              size={Size.Xs}
+              onClick={() => {
+                enterAnnotationMode(title, labelId);
+                closeTooltip();
+              }}
+            ></Button>
+          )}
+
+          <IconButton size="small" onClick={closeTooltip}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Stack>
       ) : (
         <CtrlToLock />
       )}

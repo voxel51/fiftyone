@@ -1,40 +1,60 @@
-import { useOperatorExecutor } from "@fiftyone/operators";
-import { atom, useAtom, useAtomValue } from "jotai";
-import { atomFamily } from "jotai/utils";
-import { isEqual } from "lodash";
-import { useMemo, useState } from "react";
-import { labelSchemaData } from "../../state";
+/**
+ * Hook for managing label schema editing for a field
+ */
 
-const currentLabelSchema = atomFamily((field: string) => atom());
+import { useOperatorExecutor } from "@fiftyone/operators";
+import {
+  useNotification,
+  useQueryPerformanceSampleLimit,
+} from "@fiftyone/state";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { isEqual } from "lodash";
+import { useCallback, useMemo, useState } from "react";
+import {
+  addToActiveSchemas,
+  currentField,
+  labelSchemaData,
+  removeFromActiveSchemas,
+} from "../../state";
+import { currentLabelSchema } from "../state";
+import { reconcileComponent } from "../utils";
+
+// =============================================================================
+// Internal Hooks
+// =============================================================================
 
 const useCurrentLabelSchema = (field: string) => {
   const [current, setCurrent] = useAtom(currentLabelSchema(field));
   const defaultSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
-  return [current ?? saved ?? defaultSchema, setCurrent];
+  return [current ?? saved ?? defaultSchema, setCurrent] as const;
 };
 
 const useDefaultLabelSchema = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
-  return data.default_label_schema;
+  return data?.default_label_schema;
 };
 
-const useDiscard = (field: string) => {
-  const [currentLabelSchema, setCurrent] = useCurrentLabelSchema(field);
+const useDiscard = (field: string, reset: () => void) => {
+  const [inc, setInc] = useState(0);
+  const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
 
   return {
-    currentLabelSchema,
+    currentLabelSchema: currentSchema,
     defaultLabelSchema,
     discard: () => {
+      setInc(inc + 1);
       setCurrent(saved ?? defaultLabelSchema);
+      reset();
     },
+    editorKey: inc.toString(),
   };
 };
 
-const useHasChanges = (one, two) => {
+const useHasChanges = (one: unknown, two: unknown) => {
   return useMemo(() => {
     try {
       return !isEqual(one, two);
@@ -44,14 +64,30 @@ const useHasChanges = (one, two) => {
   }, [one, two]);
 };
 
-const useReadOnly = (field: string) => {
+export const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
   return {
-    isReadOnly: current.read_only,
-    isReadOnlyRequired: data.read_only,
+    isReadOnly: (current as { read_only?: boolean })?.read_only,
+    isReadOnlyRequired: data?.read_only,
     toggleReadOnly: () => {
-      setCurrent({ ...current, read_only: !current.read_only });
+      setCurrent({
+        ...(current as object),
+        read_only: !(current as { read_only?: boolean })?.read_only,
+      });
+    },
+  };
+};
+
+const useConfigUpdate = (field: string) => {
+  const [current, setCurrent] = useCurrentLabelSchema(field);
+  return {
+    updateClassOrder: (newOrder: string[]) => {
+      if (!current) return;
+      setCurrent({ ...(current as object), classes: newOrder });
+    },
+    updateConfig: (newConfig: object) => {
+      setCurrent(newConfig);
     },
   };
 };
@@ -59,32 +95,78 @@ const useReadOnly = (field: string) => {
 const useSavedLabelSchema = (field: string) => {
   const [data, setAtom] = useAtom(labelSchemaData(field));
   return [
-    data.label_schema,
-    (label_schema) => {
-      setAtom({ ...data, label_schema });
+    data?.label_schema,
+    (labelSchema: unknown) => {
+      setAtom({ ...data, label_schema: labelSchema });
     },
-  ];
+  ] as const;
 };
 
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
+  const activate = useOperatorExecutor("activate_label_schemas");
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
+  const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
     save: () => {
+      const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
-      update.execute(
-        { field, label_schema: current },
-        {
-          callback: () => {
-            setSaved(current);
-            setIsSaving(false);
-          },
-        }
-      );
+
+      const labelSchema = current ? reconcileComponent(current) : current;
+      const params: Record<string, unknown> = {
+        field,
+        label_schema: labelSchema,
+      };
+
+      update.execute(params, {
+        callback: (result) => {
+          // Always reset saving state
+          setIsSaving(false);
+          document.dispatchEvent(
+            new CustomEvent("schema-manager-save-complete")
+          );
+
+          // Check for errors in the result
+          if (result.error) {
+            console.error("Failed to save label schema:", result.error);
+            return;
+          }
+
+          // Only update state on success
+          setSaved(current);
+
+          // Auto-activate the field on first save
+          if (isFirstSave) {
+            const fieldSet = new Set([field]);
+            addToActive(fieldSet);
+            activate.execute(
+              { fields: [field] },
+              {
+                callback: (activateResult) => {
+                  if (activateResult.error) {
+                    removeFromActive(fieldSet);
+                    notify({
+                      msg: `Failed to activate field: ${
+                        activateResult.errorMessage || activateResult.error
+                      }`,
+                      variant: "error",
+                    });
+                  }
+                },
+              }
+            );
+          }
+
+          setCurrentField(null);
+        },
+      });
     },
     savedLabelSchema,
   };
@@ -92,24 +174,30 @@ const useSave = (field: string) => {
 
 const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+  const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
-
+  const limit = useQueryPerformanceSampleLimit();
   return {
     isScanning,
     scan: () => {
       setIsScanning(true);
       generate.execute(
-        { field },
+        { field, limit },
         {
           callback: (result) => {
             if (result.result) {
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);
+            document.dispatchEvent(
+              new CustomEvent("schema-manager-scan-complete")
+            );
           },
         }
       );
+    },
+    cancelScan: () => {
+      setIsScanning(false);
     },
   };
 };
@@ -118,13 +206,22 @@ const useValidate = (field: string) => {
   const [errors, setErrors] = useState<string[]>([]);
   const [isValid, setIsValid] = useState(true);
   const [isValidating, setIsValidating] = useState(false);
-  const [_, setCurrent] = useCurrentLabelSchema(field);
+
+  const [, setCurrent] = useCurrentLabelSchema(field);
+  const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
+  const resetErrors = useCallback(() => {
+    setErrors([]);
+    setIsValid(true);
+  }, []);
+
   return {
+    ...discard,
     errors,
     isValid,
     isValidating,
+    resetErrors,
     validate: (data: string) => {
       try {
         setIsValidating(true);
@@ -141,8 +238,14 @@ const useValidate = (field: string) => {
               if (!result.result.errors.length) {
                 setCurrent(parsed);
                 setIsValid(true);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-valid-json")
+                );
               } else {
                 setIsValid(false);
+                document.dispatchEvent(
+                  new CustomEvent("schema-manager-invalid-json")
+                );
               }
               setIsValidating(false);
             },
@@ -155,28 +258,31 @@ const useValidate = (field: string) => {
 
         setIsValidating(false);
         setIsValid(false);
-        return;
       }
     },
   };
 };
 
-export default function (field: string) {
-  const discard = useDiscard(field);
+// =============================================================================
+// Main Hook
+// =============================================================================
+
+export default function useLabelSchema(field: string) {
   const readOnly = useReadOnly(field);
+  const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
   const save = useSave(field);
   const validate = useValidate(field);
   const hasChanges = useHasChanges(
-    discard.currentLabelSchema,
+    validate.currentLabelSchema,
     save.savedLabelSchema
   );
 
   return {
-    hasChanges,
+    hasChanges: hasChanges || !!validate.errors.length,
 
-    ...discard,
     ...readOnly,
+    ...configUpdate,
     ...save,
     ...scan,
     ...validate,

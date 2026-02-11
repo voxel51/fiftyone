@@ -20,11 +20,11 @@
         "@react-three/fiber": "^8.18.0",
         "chroma-js": "^3.1.2",
         "leva": "^0.9.36",
-        "lodash": "^4.17.21",
+        "lodash": "^4.17.23",
         "r3f-perf": "^7.2.3",
         "react-color": "^2.19.3",
         "styled-components": "^6.1.18",
-        "three": "^0.175.0",
+        "three": "^0.182.0",
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {

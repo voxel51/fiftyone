@@ -31,7 +31,6 @@ TOGGLE = "toggle"
 
 
 BOOL = "bool"
-BOOL_LIST = "list<bool>"
 DATE = "date"
 DATETIME = "datetime"
 DICT = "dict"
@@ -51,6 +50,7 @@ ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
 DEFAULT = "default"
+NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
@@ -62,7 +62,6 @@ VALUES = "values"
 
 
 BOOL_COMPONENTS = {CHECKBOX, TOGGLE}
-BOOL_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN, TEXT}
 DATE_DATETIME_COMPONENTS = {DATEPICKER}
 DICT_COMPONENTS = {JSON}
 FLOAT_INT_COMPONENTS = {DROPDOWN, RADIO, SLIDER, TEXT}
@@ -77,7 +76,6 @@ STR_LIST_COMPONENTS = {CHECKBOXES, DROPDOWN, TEXT}
 
 ALL_TYPES_SETTINGS = {COMPONENT, READ_ONLY, TYPE}
 BOOL_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
-BOOL_LIST_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DATE_DATETIME_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 DICT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
 FLOAT_INT_SETTINGS = ALL_TYPES_SETTINGS.union({DEFAULT})
@@ -95,7 +93,6 @@ VALUES_COMPONENTS = {CHECKBOXES, DROPDOWN, RADIO}
 
 DEFAULT_COMPONENTS = {
     BOOL: TOGGLE,
-    BOOL_LIST: TEXT,
     DATE: DATEPICKER,
     DATETIME: DATEPICKER,
     DICT: JSON,
@@ -131,7 +128,6 @@ FIELD_TYPE_TO_TYPES = {
     fof.IntField: INT,
     fol.Label: LABEL,
     fof.ListField: {
-        fof.BooleanField: BOOL_LIST,
         fof.FloatField: FLOAT_LIST,
         fof.IntField: INT_LIST,
         fof.StringField: STR_LIST,
@@ -139,6 +135,26 @@ FIELD_TYPE_TO_TYPES = {
     fof.ObjectIdField: ID,
     fof.StringField: STR,
     fof.UUIDField: ID,
+}
+
+
+### Label schema type to field class
+
+
+# Maps schema type string to field class (for primitive field creation)
+# Note: List types map to their subfield class (e.g., FLOAT_LIST -> FloatField)
+TYPE_TO_FIELD = {
+    BOOL: fof.BooleanField,
+    DATE: fof.DateField,
+    DATETIME: fof.DateTimeField,
+    DICT: fof.DictField,
+    FLOAT: fof.FloatField,
+    FLOAT_LIST: fof.FloatField,
+    ID: fof.UUIDField,
+    INT: fof.IntField,
+    INT_LIST: fof.IntField,
+    STR: fof.StringField,
+    STR_LIST: fof.StringField,
 }
 
 
@@ -163,7 +179,7 @@ SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE = {
         fol.Detection,
         fol.Detections,
     },
-    fom.THREE_D: {fol.Polyline, fol.Polylines},
+    fom.THREE_D: {fol.Detection, fol.Detections, fol.Polyline, fol.Polylines},
 }
 SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.BooleanField,
@@ -171,7 +187,17 @@ SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.IntField,
     fof.StringField,
 )
-SUPPORTED_MEDIA_TYPES = {fom.IMAGE, fom.THREE_D}
+SUPPORTED_MEDIA_TYPES = {fom.GROUP, fom.IMAGE, fom.THREE_D}
+
+# Build LABEL_TYPE_TO_CLASS from supported label types
+_all_supported_labels = SUPPORTED_LABEL_TYPES.copy()
+for _types in SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE.values():
+    _all_supported_labels.update(_types)
+
+LABEL_TYPE_TO_CLASS = {
+    cls.__name__.lower(): cls for cls in _all_supported_labels
+}
+
 SUPPORTED_PRIMITIVES = (
     fof.BooleanField,
     fof.DateField,
@@ -184,7 +210,6 @@ SUPPORTED_PRIMITIVES = (
     fof.StringField,
     fof.UUIDField,
 )
-
 # label types whose subfields cannot yet be represented by a type/component in
 # annotation, e.g. the TemporalDetection.support field
 UNSUPPORTED_LABEL_TYPES = {

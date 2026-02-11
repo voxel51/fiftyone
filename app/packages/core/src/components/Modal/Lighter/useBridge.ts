@@ -2,13 +2,17 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import {
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import {
+  type LighterEventGroup,
+  type Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
-  type LighterEventGroup,
-  type Scene2D,
 } from "@fiftyone/lighter";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
@@ -24,10 +28,15 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  * 1. We listen to certain events from "FiftyOne state" world and react to them, or
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
-export const useBridge = (scene: Scene2D | null, sceneId: string) => {
-  useLighterTooltipEventHandler(scene, sceneId);
-  const eventBus = useLighterEventBus(sceneId);
-  const useEventHandler = useLighterEventHandler(sceneId);
+export const useBridge = (scene: Scene2D | null) => {
+  useLighterTooltipEventHandler(scene);
+  const annotationEventBus = useAnnotationEventBus();
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
   const save = useSetAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
 
@@ -83,6 +92,22 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
         });
       },
       [scene, eventBus]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-establish",
+    useCallback(
+      (payload) => {
+        annotationEventBus.dispatch(
+          "annotation:canvasDetectionOverlayEstablish",
+          {
+            id: payload.id,
+            overlay: payload.overlay.overlay,
+          }
+        );
+      },
+      [annotationEventBus]
     )
   );
 

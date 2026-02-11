@@ -2,70 +2,87 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Action } from "../actions";
+
+export type CommandFunction = () =>
+  | Action
+  | void
+  | undefined
+  | Promise<Action | void | undefined>;
+
 /**
- * Base Command abstract class.
- *
- * Commands express intent and carry data needed for execution.
- * The result type is inferred from the generic parameter via CommandResult<C>.
- *
- * Commands should extend this class rather than implementing it, so they
- * don't need to redeclare the `__result` property.
- *
- * @template Result - The type returned by the command handler
- *
- * @example
- * ```typescript
- * export class CreateUser extends Command<{ id: string }> {
- *   constructor(public readonly email: string) {
- *     super();
- *   }
- * }
- * ```
+ * Class to handle command style invocation.  It delegates
+ * execution, undo, and enablement to lambdas vs a subclass
+ * approach.
+ * Commands are registered in to the CommandRegistry for
+ * access from children, and unregistered on unmount.
  */
-export abstract class Command<Result = unknown> {
-  /** @internal Type marker for TypeScript's structural type system - never accessed at runtime.
-   * Example: enforces type safety for the .execute() method of the bus.
+export class Command {
+  //The current enabled state based on last evaluation
+  //Used to notify listeners on a change.
+  private _enabled = false;
+  private enablementListeners = new Set<() => void>();
+  constructor(
+    public readonly id: string,
+    private readonly executeFunc: CommandFunction,
+    private enablementFunc: () => boolean,
+    public readonly label?: string,
+    public readonly description?: string
+  ) {
+    //We don't fire listeners for initial
+    //enablement, assuming the call is in process
+    //of creating it and its local state is enough
+    this._enabled = this.enablementFunc();
+  }
+
+  /**
+   * Executes the executeFunc for this command.
    */
-  protected readonly __result?: Result;
+  public async execute(): Promise<Action | undefined | void> {
+    if (!this.enablementFunc()) {
+      return;
+    }
+    return await this.executeFunc();
+  }
+
+  /**
+   * Evaluates the enablement function and returns the result.
+   */
+  public isEnabled(): boolean {
+    const newEnabled = this.enablementFunc();
+    if (newEnabled !== this._enabled) {
+      this._enabled = newEnabled;
+      this.fireListeners();
+    }
+    return this._enabled;
+  }
+
+  /**
+   * Replaces the current enablement function and update the enablement
+   * @param func
+   */
+  public setEnablement(func: () => boolean) {
+    this.enablementFunc = func;
+    if (this._enabled !== this.enablementFunc()) {
+      this._enabled = !this._enabled;
+      this.fireListeners();
+    }
+  }
+
+  private fireListeners(): void {
+    this.enablementListeners.forEach((listener) => {
+      listener();
+    });
+  }
+  /**
+   * Subscribes to changes in the enabled state
+   * @param listener callback
+   * @returns A callback to unsubscribe
+   */
+  public subscribe(listener: () => void): () => void {
+    this.enablementListeners.add(listener);
+    return () => {
+      this.enablementListeners.delete(listener);
+    };
+  }
 }
-
-/**
- * Extracts the result type from a Command type.
- *
- * @template C - Command type
- * @returns The result type of the command
- *
- * @example
- * ```typescript
- * type Result = CommandResult<CreateUser>; // { id: string }
- * ```
- */
-export type CommandResult<C extends Command<any>> = C extends Command<infer R>
-  ? R
-  : never;
-
-/**
- * Constructor type for command classes.
- *
- * @template C - Command type
- */
-export type CommandCtor<C extends Command<any>> = new (...args: any[]) => C;
-
-/**
- * Handler function that processes a command and returns a result.
- *
- * @template C - Command type
- * @param cmd - Command instance to handle
- * @returns Promise resolving to the command's result type
- *
- * @example
- * ```typescript
- * const handler: CommandHandler<CreateUser> = async (cmd) => {
- *   const id = await userRepo.create({ email: cmd.email });
- *   return { id }; // Type: { id: string }
- * };
- * ```
- */
-export type CommandHandler<C extends Command<any>> = (
-  cmd: C
-) => Promise<CommandResult<C>>;

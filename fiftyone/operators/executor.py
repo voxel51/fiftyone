@@ -303,6 +303,17 @@ async def execute_or_delegate_operator(
                     raise TypeError(
                         "Pipeline stages must be of type PipelineStage"
                     )
+                registry = OperatorRegistry()
+                for stage in pipeline.stages:
+                    if stage.rerunnable is None:
+                        child = registry.get_operator(stage.operator_uri)
+                        if child:
+                            stage.rerunnable = child.config.rerunnable
+                        else:
+                            logger.warning(
+                                "Pipeline stage operator '%s' does not exist"
+                                % stage.operator_uri
+                            )
             except Exception as e:
                 return ExecutionResult(
                     executor=executor,

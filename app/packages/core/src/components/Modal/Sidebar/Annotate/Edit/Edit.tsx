@@ -5,19 +5,22 @@ import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import styled from "styled-components";
 import { isDetection3d } from "../../../../../utils/labels";
-import Confirmation from "../Confirmation";
-import useConfirmExit from "../Confirmation/useConfirmExit";
 import AnnotationSchema from "./AnnotationSchema";
 import Field from "./Field";
-import Footer from "./Footer";
 import Header from "./Header";
 import Id from "./Id";
 import { PolylineDetails } from "./PolylineDetails";
 import Position from "./Position";
 import Position3d from "./Position3d";
-import { currentField, currentOverlay, currentType } from "./state";
+import {
+  currentField,
+  currentFieldIsReadOnlyAtom,
+  currentOverlay,
+  currentType,
+} from "./state";
+import PrimitiveWrapper from "./PrimitiveWrapper";
+import useActivePrimitive from "./useActivePrimitive";
 import useExit from "./useExit";
-import useSave from "./useSave";
 
 const ContentContainer = styled.div`
   margin: 0.25rem 1rem;
@@ -29,7 +32,7 @@ const ContentContainer = styled.div`
 
 const Content = styled.div`
   background: ${({ theme }) => theme.neutral.softBg};
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   width: 100%;
   flex: 1;
   padding: 1rem;
@@ -43,14 +46,11 @@ export default function Edit() {
   const field = useAtomValue(currentField);
   const overlay = useAtomValue(currentOverlay);
   const type = useAtomValue(currentType);
+  const isReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
+  const [activePrimitivePath] = useActivePrimitive();
 
   const clear = useClearModal();
   const exit = useExit();
-
-  const { confirmExit } = useConfirmExit(() => {
-    clear();
-    exit();
-  }, useSave());
 
   useEffect(() => {
     const pointerDownHandler = (event: Event) => {
@@ -60,7 +60,8 @@ export default function Edit() {
     const clickHandler = (event: Event) => {
       if (event.target === el && pointerDownTarget === el) {
         event.stopImmediatePropagation();
-        confirmExit(clear);
+        clear();
+        exit();
       }
 
       pointerDownTarget = null;
@@ -76,25 +77,28 @@ export default function Edit() {
       el?.removeEventListener("pointerdown", pointerDownHandler, true);
       el?.removeEventListener("click", clickHandler, true);
     };
-  }, [confirmExit, clear]);
+  }, [exit, clear]);
 
   const is3dDetection =
     overlay && isDetection3d(overlay.label as DetectionLabel);
+  const primitiveEditingActive = activePrimitivePath !== null;
 
   return (
-    <Confirmation>
-      <ContentContainer>
-        <Header />
-        <Content>
-          <Id />
-          <Field />
-          {type === DETECTION && overlay && !is3dDetection && <Position />}
-          {type === DETECTION && overlay && is3dDetection && <Position3d />}
-          {type === POLYLINE && <PolylineDetails />}
-          {field && <AnnotationSchema />}
-        </Content>
-        <Footer />
-      </ContentContainer>
-    </Confirmation>
+    <ContentContainer>
+      <Header />
+      <Content>
+        <Id />
+        {!primitiveEditingActive && <Field />}
+        {primitiveEditingActive && <PrimitiveWrapper />}
+        {type === DETECTION && overlay && !is3dDetection && (
+          <Position readOnly={isReadOnly} />
+        )}
+        {type === DETECTION && overlay && is3dDetection && (
+          <Position3d readOnly={isReadOnly} />
+        )}
+        {type === POLYLINE && <PolylineDetails />}
+        {field && <AnnotationSchema readOnly={isReadOnly} />}
+      </Content>
+    </ContentContainer>
   );
 }

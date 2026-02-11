@@ -2,7 +2,7 @@ import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
-import React from "react";
+import React, { useEffect } from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -11,11 +11,16 @@ import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
+import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
 import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
+import { usePrimitivesCount } from "./usePrimitivesCount";
+import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import useDelete from "./Edit/useDelete";
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -29,11 +34,10 @@ const DISABLED_MESSAGES: Record<
       materialized views.
     </p>
   ),
-  groupedDataset: (
+  groupedDatasetNoSupportedSlices: (
     <p>
-      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-      you want to label.
+      This grouped dataset has no slices that support annotation. Only image and
+      3D slices can be annotated.
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
@@ -60,7 +64,7 @@ const Loading = () => {
 };
 
 const AnnotateSidebar = () => {
-  useLabels();
+  usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
   if (editing) return null;
@@ -90,6 +94,13 @@ const AnnotateSidebar = () => {
             };
           }
 
+          if (entry.kind === EntryKind.PATH) {
+            return {
+              children: <PrimitiveEntry path={entry.path} />,
+              disabled: false,
+            };
+          }
+
           throw new Error("unexpected");
         }}
         useEntries={useEntries}
@@ -108,6 +119,20 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
+  const contextManager = useAnnotationContextManager();
+  const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+
+  useLabels();
+  useDelete();
+
+  useEffect(() => {
+    contextManager.enter();
+
+    return () => {
+      contextManager.exit();
+      clearUndo();
+    };
+  }, []);
 
   const isDisabled = disabledReason !== null;
   const disabledMsg =
@@ -120,7 +145,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   return (
     <>
       {editing && <Edit key="edit" />}
-      {showImport ? (
+      {showImport || isDisabled ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}

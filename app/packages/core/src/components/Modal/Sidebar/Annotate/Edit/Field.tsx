@@ -1,17 +1,17 @@
+import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
+  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
-  isNew,
 } from "./state";
-import { useRecoilValue } from "recoil";
-import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
+import { useQuickDraw } from "./useQuickDraw";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -41,39 +41,37 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
+  const [currentLabel, setCurrent] = useAtom(current);
+  const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
   const schema = useMemo(
     () => createSchema(fields, disabled),
     [disabled, fields]
   );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
-  const isCreating = useAtomValue(isNew);
 
-  const polylinePointTransforms =
-    useRecoilValue(stagedPolylineTransformsAtom) ?? {};
-
-  if (!isCreating) {
-    return null;
-  }
-
-  // todo: temp: skip for 3d
-  if (Object.keys(polylinePointTransforms).length > 0) {
-    return null;
-  }
+  const is3DAnnotationStagingInitialized = useIsWorkingInitialized();
 
   return (
     <>
-      {!!fields.length && (
+      {/* Note: we don't allow field selection in 3D since it's handled in the "left" in-canvas sidebar */}
+      {!!fields.length && !is3DAnnotationStagingInitialized && (
         <div>
           <SchemaIOComponent
             schema={schema}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              setCurrentField(field);
+              if (quickDrawActive) {
+                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
+              } else {
+                setCurrentField(field);
+              }
             }}
           />
         </div>
       )}
+      {/* Means the user wants to create a label but no schema fields exist for that type.
+      Show AddSchema to let them create the required field. */}
       {typeof state === "string" && <AddSchema type={type} />}
     </>
   );

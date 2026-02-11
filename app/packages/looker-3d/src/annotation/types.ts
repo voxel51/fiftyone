@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import type { OverlayLabel } from "../labels/loader";
 
 export interface AnnotationAction {
   id: string;
@@ -70,6 +71,11 @@ export interface SegmentState {
   vertices: [number, number, number][];
 }
 
+export interface PolylineTransformData {
+  points3d: [number, number, number][][];
+  closed?: boolean;
+}
+
 export interface CuboidTransformData {
   location: [number, number, number];
   dimensions: [number, number, number];
@@ -84,4 +90,45 @@ export interface AnnotationPlaneState {
   showX: boolean;
   showY: boolean;
   showZ: boolean;
+}
+
+/**
+ * Base properties shared by all reconciled 3D labels.
+ */
+interface ReconciledLabelBase3D {
+  /** True if this label only exists in staged transforms (newly created) */
+  isNew?: boolean;
+}
+
+/**
+ * A reconciled detection that combines raw overlay data from sample with staged transforms.
+ * This represents the authoritative state of a 3D detection that will be rendered.
+ */
+export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
+  CuboidTransformData &
+  ReconciledLabelBase3D & {
+    _cls: "Detection";
+    _id: string;
+    path: string;
+  } & Record<string, unknown>;
+
+/**
+ * A reconciled polyline that combines raw overlay data from sample with staged transforms.
+ * This represents the authoritative state of a 3D polyline that will be rendered.
+ */
+export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
+  ReconciledLabelBase3D &
+  PolylineTransformData & {
+    _cls: "Polyline";
+    _id: string;
+    path: string;
+    closed?: boolean;
+  } & Record<string, unknown>;
+
+/**
+ * Container for reconciled 3D label data.
+ */
+export interface ReconciledLabels3D {
+  detections: ReconciledDetection3D[];
+  polylines: ReconciledPolyline3D[];
 }

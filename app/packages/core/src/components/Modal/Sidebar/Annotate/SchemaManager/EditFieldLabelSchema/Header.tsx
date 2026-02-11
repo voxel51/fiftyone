@@ -1,52 +1,31 @@
-import { MenuItem, Select, TextField } from "@mui/material";
-import { useAtomValue } from "jotai";
-import { useMemo } from "react";
-import { activeLabelSchemas, inactiveLabelSchemas } from "../../state";
+import { Input, Text, TextColor, TextVariant } from "@voxel51/voodo";
+import { useFieldType } from "../hooks";
+import { FieldColumn, FieldRow } from "../styled";
 
-import { FieldColumn, FieldRow, Label } from "../styled";
-
-export default function Header({
-  field,
-  setField,
-}: {
-  field: string;
-  setField: (field: string) => void;
-}) {
-  const activeFields = useAtomValue(activeLabelSchemas);
-  const hiddenFields = useAtomValue(inactiveLabelSchemas);
-
-  // All fields for the dropdown
-  const allFields = useMemo(
-    () => [...(activeFields ?? []), ...hiddenFields].sort(),
-    [activeFields, hiddenFields]
-  );
+export default function Header({ field }: { field: string }) {
+  const fType = useFieldType(field);
 
   return (
     <FieldRow style={{ marginTop: "1rem" }}>
       <FieldColumn>
-        <Label variant="body2">Field name</Label>
-        <Select
-          fullWidth
-          size="small"
-          value={field}
-          onChange={(e) => setField(e.target.value as string)}
+        <Text
+          variant={TextVariant.Lg}
+          color={TextColor.Primary}
+          className="mb-2 block"
         >
-          {allFields.map((field) => (
-            <MenuItem key={field} value={field}>
-              {field}
-            </MenuItem>
-          ))}
-        </Select>
+          Field name
+        </Text>
+        <Input value={field} disabled readOnly />
       </FieldColumn>
       <FieldColumn>
-        <Label variant="body2">Field type</Label>
-        <TextField
-          fullWidth
-          size="small"
-          value={""}
-          disabled
-          InputProps={{ readOnly: true }}
-        />
+        <Text
+          variant={TextVariant.Lg}
+          color={TextColor.Primary}
+          className="mb-2 block"
+        >
+          Field type
+        </Text>
+        <Input value={fType || ""} disabled readOnly />
       </FieldColumn>
     </FieldRow>
   );
