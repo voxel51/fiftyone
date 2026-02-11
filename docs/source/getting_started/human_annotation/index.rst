@@ -5,140 +5,135 @@ Human Annotation Guide
 
 .. default-role:: code
 
-**Use In-App Labeling Alongside a Complete Curate-Annotate-Train-Evaluate Loop**
+**In-App Labeling for Detection Datasets**
 
-**Level:** Intermediate | **Estimated Time:** 40-50 minutes | **Tags:** Annotation, Human-in-the-Loop, Detection, Embeddings, Active Learning, YOLOv8
+FiftyOne's in-app annotation lets you create and edit labels directly in the App—no external tools required. This guide offers two tracks depending on your goals.
 
-This step-by-step guide will walk you through a complete human annotation workflow using FiftyOne. You'll learn how to:
+.. _human_annotation-tracks:
 
-- Set up proper data splits for iterative annotation
-- Use embeddings and algorithmic sampling to intelligently select high-value samples for labeling
-- Annotate and QA labels directly in the FiftyOne App using patch views
-- Train a YOLOv8 detector and evaluate performance with detailed failure analysis
-- Iterate with a strategy that balances coverage and targeted fixes
+Choose Your Track
+-----------------
 
-.. _human_annotation-overview:
+.. list-table::
+   :widths: 20 15 25 40
+   :header-rows: 1
 
-Guide Overview
---------------
+   * - Track
+     - Level
+     - Time
+     - Best For
+   * - **Quickstart**
+     - Beginner
+     - 10-15 min
+     - "Does this work for me?" Try in-app labeling immediately.
+   * - **Full Loop**
+     - Intermediate
+     - 60-90 min
+     - Build a complete curate -> annotate -> train -> evaluate pipeline.
 
-This guide teaches you a **data-centric annotation loop**: instead of labeling randomly, you'll learn to label strategically by combining diversity-based selection (ZCore) with model-driven failure mining.
+.. note::
 
-The workflow is broken into five sequential steps:
+   **These tracks are independent.** Quickstart uses dataset ``my_annotation_project``, Full Loop uses ``annotation_tutorial``. You can do both without conflict.
 
-1. **Setup: Flatten Dataset and Create Splits** - Load KITTI-style grouped data, flatten to images, and establish frozen test, golden QA, and active pool splits
-2. **Bootstrap Selection: Embeddings + ZCore** - Compute embeddings and use zero-shot coreset selection to select a coverage-optimized initial batch for labeling
-3. **Human Annotation Pass and QA** - Annotate using patch views in the FiftyOne App with a disciplined QA workflow
-4. **Train Baseline and Evaluate** - Train YOLOv8 on your labels, evaluate with FiftyOne's detection evaluation, and analyze FP/FN failure modes
-5. **Iteration: Hybrid Acquisition Loop** - Select the next batch, then repeat
+.. _human_annotation-quickstart:
 
-.. _human_annotation-prerequisites:
+Quickstart Track
+----------------
 
-Prerequisites
--------------
+**Level:** Beginner | **Time:** 10-15 minutes
 
-**Who Is This Guide For**
+Jump straight to labeling:
 
-This guide is for ML engineers and data scientists who want to implement a rigorous human annotation workflow. You'll learn to avoid common pitfalls like test set contamination, failure-only sampling bias, and label drift. Whether you're building an annotation pipeline from scratch or improving an existing one, this guide intends to provide a battle-tested framework.
+1. :doc:`01_quickstart` - Load data, enter annotate mode, draw boxes, verify labels saved
 
-**Packages Used**
+If in-app annotation fits your needs, check out the Full Loop for production workflows.
 
-The notebooks will automatically install the required packages when you run them:
+.. _human_annotation-full-loop:
 
-- **fiftyone** - Core FiftyOne library for dataset management and visualization
-- **ultralytics** - YOLOv8 implementation for object detection training
-- **torch & torchvision** - PyTorch framework for deep learning
-- **numpy & pillow** - Image processing and numerical operations
+Full Loop Track
+---------------
 
-Each notebook contains the necessary `pip install` commands at the beginning.
+**Level:** Intermediate | **Time:** 60-90 minutes
 
-**System Requirements**
+A complete data-centric detection workflow. You should be comfortable with:
 
-- **Operating System:** Linux (Ubuntu 20.04+), macOS
-- **Python:** 3.9+
-- **Memory:** 16GB RAM recommended
-- **Storage:** 5GB free space for datasets and model checkpoints
-- **GPU:** Optional but recommended for training (CUDA-compatible)
-- **Notebook Environment:** Jupyter, Google Colab, VS Code notebooks
+- Basic Python and Jupyter notebooks
+- Train/val/test split concepts
+- What embeddings represent (conceptually)
+- Running a training loop (we use YOLOv8)
+
+**Steps:**
+
+2. :doc:`02_setup_splits` - Create frozen test, golden QA, and active pool splits
+3. :doc:`03_smart_selection` - Use diversity sampling to pick high-value samples
+4. :doc:`04_annotation_qa` - Annotate in the App with QA discipline
+5. :doc:`05_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
+6. :doc:`06_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
+
+.. _human_annotation-what-you-learn:
+
+What You'll Learn
+-----------------
+
+**Quickstart Track:**
+
+- How to enter Annotate mode in the FiftyOne App
+- Creating detection bounding boxes and classifications
+- Verifying annotations saved correctly
+- Exporting labeled data for training
+
+**Full Loop Track (adds):**
+
+- Split discipline: frozen test set, golden QA, active pool
+- Diversity-based sample selection for efficient labeling
+- QA workflows to catch label errors before training
+- Failure analysis to drive the next labeling batch
+- Iterative improvement without test set contamination
+
+.. _human_annotation-when-to-use:
+
+When to Use In-App Annotation
+-----------------------------
+
+**Good fit:**
+
+- Small to medium annotation tasks (tens to hundreds of samples)
+- Quick corrections and QA passes
+- Prototyping label schemas before scaling
+- Single annotator or small team workflows
+- Tight feedback loops between labeling and model evaluation
+
+**Consider external tools (CVAT, Label Studio) when:**
+
+- High-volume annotation with multiple annotators
+- Complex role-based review and approval workflows
+- Annotation task management and assignment
+- You need audit trails and annotator agreement metrics
+
+FiftyOne integrates with external annotation tools via the :ref:`annotation API <fiftyone-annotation>`.
 
 .. _human_annotation-dataset:
 
-The KITTI Dataset
--------------------------------------
+Dataset
+-------
 
-We use FiftyOne's `quickstart-groups` dataset, which contains 200 scenes from the KITTI autonomous driving benchmark. Each scene includes:
-
-- **Left and right camera images** - Stereo image pairs
-- **Point cloud data** - LiDAR scans
-- **2D bounding box annotations** - Object detections in image space
-- **3D cuboid annotations** - Object locations in 3D space
-
-This grouped, multi-modal dataset represents real-world complexity. However, as a learning exercise, we'll also flatten to a single camera slice for some tasks in this tutorial.
-
-.. _human_annotation-concepts:
-
-Key Concepts: The Data-Centric Loop
------------------------------------
-
-**Why Not Just Label Everything?**
-
-Labeling is expensive. Smart selection means you can achieve similar model performance with far fewer labels. This guide teaches you to:
-
-1. **Start with coverage**: Label diverse samples first, not random ones
-2. **Then chase failures**: After training, label where the model struggles
-3. **Keep a coverage budget**: Don't only fix failures or you'll overfit to edge cases
-
-**The Three Splits You Must Maintain**
-
-.. warning::
-
-    If you skip this, your "improvements" are lies.
-
-- **Frozen Test Set** - Never touched by active learning. This is your ground truth.
-- **Golden QA Set** - Small (20-30 samples), heavily reviewed. Detects label drift.
-- **Active Pool** - Everything else. The only place you sample new labels from.
-
-.. _human_annotation-workflow:
-
-Annotation Workflow Overview
-----------------------------
-
-.. code-block:: text
-
-    Iteration 0 (Bootstrap)
-    ========================
-    [Pool] --ZCore--> [Batch v0] --Annotate--> [human_labels_v0]
-                                                      |
-                                              Train YOLOv8 v0
-                                                      |
-                                              Evaluate on Val
-                                                      |
-                                              Analyze FP/FN slices
-
-    Iteration N (Repeat)
-    ====================
-    [Pool - already_labeled] --30% ZCore + 70% Failure Mining--> [Batch vN]
-                                                                      |
-                                                              Annotate + QA
-                                                                      |
-                                                              Retrain v(N+1)
-                                                                      |
-                                                      Compare: Val / Test / Golden
+Both tracks use FiftyOne's `quickstart` dataset (200 images from COCO with detection annotations). It downloads automatically when you run the notebooks.
 
 .. _human_annotation-start:
 
 Ready to Begin?
 ---------------
 
-Click **Next** to start with Step 1: Setting up your dataset with proper splits.
+Click **Next** to start with the Quickstart track, or jump directly to :doc:`02_setup_splits` for the Full Loop.
 
 .. toctree::
    :maxdepth: 1
    :hidden:
 
-   Setup: Flatten Dataset and Create Splits <01_setup_dataset.ipynb>
-   Bootstrap Selection: Embeddings + ZCore <02_bootstrap_selection.ipynb>
-   Human Annotation Pass + QA <03_human_annotation.ipynb>
-   Train Baseline + Evaluate <04_train_evaluate.ipynb>
-   Iteration: Hybrid Acquisition Loop <05_iteration_loop.ipynb>
+   Quickstart: In-App Labeling <01_quickstart.ipynb>
+   Setup: Data Splits <02_setup_splits.ipynb>
+   Smart Sample Selection <03_smart_selection.ipynb>
+   Annotation + QA <04_annotation_qa.ipynb>
+   Train + Evaluate <05_train_evaluate.ipynb>
+   Iteration Loop <06_iteration.ipynb>
    Guide Summary <summary>

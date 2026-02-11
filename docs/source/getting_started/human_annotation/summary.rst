@@ -3,197 +3,89 @@ Summary: What You've Learned
 
 .. default-role:: code
 
-Congratulations! You've completed the Human Annotation Guide. You now have a battle-tested framework for iterative annotation that actually works.
+You've completed the Human Annotation Guide. Here's what you can now do.
 
-.. _human_annotation-summary-recap:
+Quickstart Track
+----------------
 
-Step-by-Step Recap
-------------------
+You learned the basics of in-app annotation:
 
-**Step 1: Setup - Flatten Dataset and Create Splits**
+- Clone datasets to keep originals clean
+- Enter Annotate mode (sample modal -> Annotate tab)
+- Create label fields with enforced schemas
+- Draw bounding boxes and assign classes
+- Verify labels saved correctly
+- Export labeled data for training
 
-You established the foundation that makes iterative annotation trustworthy:
-
-- Flattened grouped KITTI data to a standard image dataset
-- Created three critical splits: frozen test (15%), golden QA (5%), active pool (80%)
-- Set up tracking fields for annotation status and provenance
-
-**Step 2: Bootstrap Selection - Embeddings + ZCore**
-
-You learned to select your first batch for coverage, not randomness:
-
-- Computed embeddings to understand dataset structure
-- Used uniqueness scoring to select diverse samples
-- Created Batch v0 with coverage-optimized selection
-
-**Step 3: Human Annotation Pass + QA**
-
-You implemented a disciplined annotation workflow:
-
-- Defined an annotation schema for consistency
-- Used patch views for efficient per-object annotation
-- Ran QA checks: missing labels, class distribution, bounding box sanity
-
-**Step 4: Train Baseline + Evaluate**
-
-You trained a model and learned to analyze failures:
-
-- Exported to YOLO format and trained YOLOv8
-- Evaluated with FiftyOne's detection evaluation
-- Analyzed FP/FN breakdowns and confusion matrices
-- Tagged failure cases for targeted selection
-
-**Step 5: Iteration - Hybrid Acquisition Loop**
-
-You implemented the complete iteration strategy:
-
-- 30% coverage refresh (ZCore) to avoid tunnel vision
-- 70% targeted mining: FN (35%), FP (21%), confusion (14%)
-- Embedding-based neighbor expansion around failures
-- The complete loop: Annotate → Train → Evaluate → Select → Repeat
-
-.. _human_annotation-summary-key-learnings:
-
-Key Learnings
--------------
-
-**The Three Splits Are Non-Negotiable**
-
-Without a frozen test set and golden QA set, your "improvements" are potentially lies. You'll contaminate your evaluation and build a model that only looks good on paper.
-
-**Coverage + Targeted > Either Alone**
-
-Only chasing failures creates a model that's great at edge cases and terrible at normal cases. The 30% coverage budget keeps you honest.
-
-**QA Is Not Optional**
-
-A 5-minute QA pass saves hours of debugging mysterious model failures. Check your labels before you trust them.
-
-**Understand Your Failures**
-
-Don't just look at mAP. The confusion matrix and per-sample FP/FN counts tell you what to label next.
-
-.. _human_annotation-summary-artifacts:
-
-Artifacts You Created
---------------------
-
-**Dataset**
-
-- `kitti_annotation_tutorial` - Your working dataset with all annotations and metadata
-
-**Fields**
-
-- `embeddings` - Image embeddings for similarity analysis
-- `uniqueness` / `uniqueness_v1` - Diversity scores for selection
-- `human_labels` - Human annotations (Batch v0)
-- `predictions_v0` - Model predictions
-- `annotation_status` - Tracking field
-
-**Tags**
-
-- `split:test`, `split:golden`, `split:pool` - Data splits
-- `batch:v0`, `batch:v1` - Annotation batches
-- `annotated:v0` - Completed annotations
-- `failure:high_fn`, `failure:high_fp` - Failure cases
-- `source:coverage_v1`, `source:fn_mining_v1`, etc. - Selection sources
-
-**Saved Views**
-
-- `test_set`, `golden_qa`, `active_pool` - Split views
-- `batch_v0_to_annotate`, `batch_v1_to_annotate` - Annotation queues
-- `eval_v0_failures` - Failure cases from evaluation
-
-**Models**
-
-- YOLOv8 checkpoint at `/tmp/yolo_runs/kitti_v0/weights/best.pt`
-
-.. _human_annotation-summary-exercises:
-
-Suggested Exercises
-------------------
-
-1. **Complete the Loop**: Annotate Batch v1, retrain, and compare metrics to v0. Did targeted selection help?
-
-2. **Try Different Budgets**: Experiment with 50/50 or 20/80 coverage/targeted splits. What happens?
-
-3. **Add More Failure Categories**: Implement class-specific mining (e.g., "only mine around Pedestrian failures")
-
-4. **Golden Set Regression Testing**: After each iteration, check if golden set metrics regress. This catches label drift.
-
-5. **Stopping Criteria**: Implement automatic stopping when gains per labeled sample drop below a threshold.
-
-.. _human_annotation-summary-resources:
-
-Resources and Further Reading
-----------------------------
-
-* `FiftyOne Documentation <https://docs.voxel51.com/>`_
-
-* `FiftyOne Brain - Embeddings <../../user_guide/brain.html#embeddings>`_
-
-* `FiftyOne Evaluation API <../../user_guide/evaluation.html>`_
-
-* `Detection Evaluation Tutorial <../../tutorials/evaluate_detections.html>`_
-
-* `YOLOv8 Documentation <https://docs.ultralytics.com/>`_
-
-* `KITTI Dataset <http://www.cvlibs.net/datasets/kitti/>`_
-
-* `Active Learning Best Practices <https://labelbox.com/blog/active-learning-for-machine-learning/>`_
-
-.. _human_annotation-summary-next-steps:
-
-What to Do Next
+Full Loop Track
 ---------------
 
-Now that you've mastered the human annotation loop:
+You built a complete data-centric annotation pipeline:
 
-* **Apply to Your Data** - Use this workflow on your production datasets
+**Step 2: Setup Splits**
+   Created test (frozen), val (iteration), golden (QA), and pool splits. These prevent evaluation contamination.
 
-* **Scale with Teams** - The schema and QA workflow supports multi-annotator setups
+**Step 3: Smart Selection**
+   Used ZCore diversity scoring to select high-coverage samples. Better than random.
 
-* **Integrate with Labeling Tools** - FiftyOne integrates with CVAT, Label Studio, and more for larger-scale annotation
+**Step 4: Annotation + QA**
+   Labeled samples with schema enforcement. Only samples with actual labels get marked as annotated.
 
-* **Explore 3D Annotation** - When grouped dataset support is available, apply similar workflows to 3D data
+**Step 5: Train + Evaluate**
+   Trained YOLOv8, evaluated on val set, tagged FP/FN failures for targeting.
 
-* **Automate the Pipeline** - Build scripts that run the iteration loop automatically
+**Step 6: Iteration**
+   Ran Golden QA check, then selected next batch using hybrid strategy: 30% coverage + 70% targeted.
 
-.. _human_annotation-summary-common-mistakes:
+Key Takeaways
+-------------
 
-Common Mistakes to Avoid
-------------------------
+1. **Splits are non-negotiable.** Without frozen test and golden QA, your metrics lie.
 
-.. warning::
+2. **Label smarter, not harder.** Diversity sampling + failure targeting beats random selection.
 
-    These mistakes will waste your time and money:
+3. **30% coverage budget matters.** Only chasing failures creates a model that fails on normal cases.
 
-1. **Using test set for selection** - Your metrics become meaningless
+4. **QA before training.** Golden QA checks catch annotation drift early.
 
-2. **Only labeling failures** - Model gets worse at normal cases
+5. **Understand your failures.** FP/FN analysis tells you what to label next.
 
-3. **Skipping QA** - Garbage labels → garbage model
+When to Use What
+----------------
 
-4. **Not tracking provenance** - Can't debug what you can't trace
+**In-app annotation is good for:**
 
-5. **Labeling randomly** - Wastes budget on redundant samples
+- Small to medium tasks (tens to hundreds of samples)
+- Quick corrections and QA passes
+- Prototyping label schemas
+- Single annotator workflows
+- Tight model-labeling feedback loops
 
-6. **Ignoring class imbalance** - Minority classes need targeted attention
+**Use external tools (CVAT, Label Studio) when:**
 
-7. **Changing schema mid-project** - Creates inconsistent labels
+- High-volume annotation with teams
+- Role-based review workflows
+- Audit trails and agreement metrics needed
 
-.. _human_annotation-summary-feedback:
+FiftyOne integrates with external tools via the :ref:`annotation API <fiftyone-annotation>`.
 
-We'd Love Your Feedback
------------------------
+What's Next
+-----------
 
-Your feedback helps us improve FiftyOne and create better learning experiences. Please let us know:
+- **Apply to your data** - Use this workflow on your production datasets
+- **Scale with teams** - The schema and QA workflow supports multiple annotators
+- **Explore plugins** - Check `@voxel51/brain` for advanced selection operators
 
-* What aspects of this guide were most helpful?
-* What could be improved or clarified?
-* What annotation workflows would you like to see covered?
-* Any issues or bugs you encountered?
+Resources
+---------
 
-You can reach us at `support@voxel51.com` or join our `Discord community <https://community.voxel51.com>`_.
+* `FiftyOne Brain - Embeddings <../../user_guide/brain.html>`_
+* `FiftyOne Evaluation API <../../user_guide/evaluation.html>`_
+* `External Annotation Integration <../../user_guide/annotation.html>`_
+* `ZCore Repository <https://github.com/voxel51/zcore>`_
+* `YOLOv8 Documentation <https://docs.ultralytics.com/>`_
 
-Thank you for completing the Human Annotation Guide! Go build models that work in the real world.
+Feedback
+--------
+
+Questions or suggestions? Reach us at `support@voxel51.com` or join our `Discord <https://community.voxel51.com>`_.
