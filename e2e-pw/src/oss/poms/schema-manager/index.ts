@@ -178,7 +178,7 @@ export class SchemaManagerPom {
    */
   async addClass(name: string) {
     await this.addClassButton.click();
-    await this.classNameInput.pressSequentially(name, { delay: 50 });
+    await this.classNameInput.fill(name);
     await this.classNameInput.press("Enter");
   }
 
