@@ -208,9 +208,12 @@ const Modal = () => {
 
   const isSidebarVisibleValue = useRecoilValue(fos.sidebarVisible(true));
 
+  /**
+   * TODO: Fix this to not depend on sidebar visibility
+   */
   useEffect(() => {
     activateCommandContext();
-    activateAnnotateCommandContext;
+    activateAnnotateCommandContext();
 
     return () => {
       deactivateCommandContext();
