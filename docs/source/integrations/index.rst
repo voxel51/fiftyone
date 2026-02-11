@@ -56,6 +56,13 @@ on the cards below to see how!
     :tags: Datasets,Model-Evaluation
 
 .. customcarditem::
+    :header: Integrating with Annotation Backends
+    :description: Use our annotation API to send and receive annotation jobs to/from a custom or broadly popular backend like CVAT.
+    :link: annotation.html
+    :image: ../_images/under_construction.png
+    :tags: Annotation
+
+.. customcarditem::
     :header: CVAT
     :description: Use our CVAT integration to easily annotate and edit your FiftyOne datasets.
     :link: cvat.html
@@ -216,6 +223,7 @@ on the cards below to see how!
     COCO <coco.rst>
     Open Images <open_images.rst>
     ActivityNet <activitynet.rst>
+    Annotation Backends <annotation.rst>
     CVAT <cvat.rst>
     Label Studio <labelstudio.rst>
     V7 <v7.rst>
