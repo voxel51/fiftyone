@@ -352,7 +352,14 @@ export default function useLabels() {
     return () => {
       stale = true;
     };
-  }, [active, getFieldType, loadingState, modalSample?.sample, paths]);
+  }, [
+    active,
+    addLabelToRenderer,
+    getFieldType,
+    loadingState,
+    modalSample?.sample,
+    paths,
+  ]);
 
   useEffect(() => {
     return () => {
