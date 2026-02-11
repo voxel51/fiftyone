@@ -431,6 +431,7 @@ export const SidePanel = ({
               <ThreeDLabels
                 sampleMap={{ fo3d: sample as any }}
                 globalOpacity={0.5}
+                isMainPanel={false}
               />
             )}
             <AnnotationPlane
