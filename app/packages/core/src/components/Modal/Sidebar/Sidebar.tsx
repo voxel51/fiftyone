@@ -71,7 +71,8 @@ const Sidebar = () => {
       ) : (
         <CommandContextActivator
           id={KnownContexts.ModalAnnotate}
-          inheritContext={true}
+          parent={KnownContexts.Modal}
+          propagate={true}
         >
           <Annotate disabledReason={disabledReason} />
         </CommandContextActivator>

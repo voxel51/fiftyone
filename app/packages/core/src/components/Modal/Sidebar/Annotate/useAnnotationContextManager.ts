@@ -206,10 +206,9 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
       saveChanges();
-      deactivateCommandContext();
       contextManager.exit();
     }
-  }, [contextManager, deactivateCommandContext, saveChanges]);
+  }, [contextManager, saveChanges]);
 
   return useMemo(
     () => ({
