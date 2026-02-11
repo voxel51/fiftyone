@@ -201,21 +201,23 @@ const Modal = () => {
     deactivate: deactivateModalCommandContext,
   } = useCommandContext(KnownContexts.Modal, true);
 
-  const isSidebarVisibleValue = useRecoilValue(fos.sidebarVisible(true));
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   /**
    * TODO: Ductape solution. Please fix this. None of this should depend on sidebar visibility.
    */
   useEffect(() => {
-    setTimeout(() => {
+    // Need a small delay here so ModalContext is activated after modal annotate context 🤷
+    const timeoutId = window.setTimeout(() => {
       activateModalCommandContext();
     }, 0);
 
     return () => {
+      window.clearTimeout(timeoutId);
       deactivateModalCommandContext();
     };
   }, [
-    isSidebarVisibleValue,
+    isSidebarVisible,
     activateModalCommandContext,
     deactivateModalCommandContext,
   ]);
@@ -294,8 +296,6 @@ const Modal = () => {
     },
     [onLookerSet]
   );
-
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   return ReactDOM.createPortal(
     <modalContext.Provider
