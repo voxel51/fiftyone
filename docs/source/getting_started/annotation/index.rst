@@ -1,13 +1,13 @@
 .. _annotation_guide:
 
-Human Annotation Guide
-======================
+Annotation Getting Started Guide
+================================
 
 .. default-role:: code
 
-**In-App Labeling for Detection Datasets**
+**Multimodal 2D/3D Annotation for Detection Datasets**
 
-FiftyOne's in-app annotation lets you create and edit labels directly in the App—no external tools required. This guide offers two tracks depending on your goals.
+FiftyOne's in-app annotation lets you create and edit labels directly in the App—including 2D bounding boxes on images and 3D cuboids on point clouds. This guide offers two tracks depending on your goals.
 
 .. _annotation-tracks:
 
@@ -24,27 +24,27 @@ Choose Your Track
      - Best For
    * - **Quickstart**
      - Beginner
-     - 10-15 min
-     - "Does this work for me?" Try in-app labeling immediately.
+     - 15-20 min
+     - "Does this work for me?" Try multimodal annotation immediately.
    * - **Full Loop**
      - Intermediate
-     - 60-90 min
-     - Build a complete curate -> annotate -> train -> evaluate pipeline.
+     - 90-120 min
+     - Build a complete curate → annotate → train → evaluate pipeline.
 
 .. note::
 
-   **These tracks are independent.** Quickstart uses dataset ``my_annotation_project``, Full Loop uses ``annotation_tutorial``. You can do both without conflict.
+   **These tracks are independent.** Quickstart uses the zoo dataset directly (ephemeral), Full Loop clones to ``annotation_tutorial`` (persistent). You can do both without conflict.
 
 .. _annotation-quickstart:
 
 Quickstart Track
 ----------------
 
-**Level:** Beginner | **Time:** 10-15 minutes
+**Level:** Beginner | **Time:** 15-20 minutes
 
-Jump straight to labeling:
+Jump straight to multimodal annotation:
 
-1. :doc:`01_quickstart` - Load data, enter annotate mode, draw boxes, verify labels saved
+1. :doc:`01_quickstart` - Load grouped data, explore 2D/3D views, draw boxes
 
 If in-app annotation fits your needs, check out the Full Loop for production workflows.
 
@@ -53,9 +53,9 @@ If in-app annotation fits your needs, check out the Full Loop for production wor
 Full Loop Track
 ---------------
 
-**Level:** Intermediate | **Time:** 60-90 minutes
+**Level:** Intermediate | **Time:** 90-120 minutes
 
-A complete data-centric detection workflow. You should be comfortable with:
+A complete data-centric detection workflow with multimodal data. You should be comfortable with:
 
 - Basic Python and Jupyter notebooks
 - Train/val/test split concepts
@@ -64,11 +64,12 @@ A complete data-centric detection workflow. You should be comfortable with:
 
 **Steps:**
 
-2. :doc:`02_setup_splits` - Create frozen test, golden QA, and active pool splits
-3. :doc:`03_smart_selection` - Use diversity sampling to pick high-value samples
-4. :doc:`04_annotation_qa` - Annotate in the App with QA discipline
-5. :doc:`05_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
-6. :doc:`06_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
+2. :doc:`02_setup_splits` - Clone dataset, create group-level splits (test, val, golden, pool)
+3. :doc:`03_smart_selection` - Use diversity sampling to pick high-value scenes
+4. :doc:`04_annotation_2d` - Annotate 2D detections on camera images with QA discipline
+5. :doc:`05_annotation_3d` - Annotate 3D cuboids on point clouds
+6. :doc:`06_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
+7. :doc:`07_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
 
 .. _annotation-what-you-learn:
 
@@ -77,16 +78,18 @@ What You'll Learn
 
 **Quickstart Track:**
 
-- How to enter Annotate mode in the FiftyOne App
-- Creating detection bounding boxes and classifications
-- Verifying annotations saved correctly
-- Exporting labeled data for training
+- What grouped datasets are (synchronized multi-sensor data)
+- Switching between 2D images and 3D point clouds
+- Creating detection bounding boxes in Annotate mode
+- Exploring 3D point cloud data
 
 **Full Loop Track (adds):**
 
-- Split discipline: frozen test set, golden QA, active pool
+- Group-level split discipline: frozen test set, golden QA, active pool
 - Diversity-based sample selection for efficient labeling
-- QA workflows to catch label errors before training
+- 2D annotation on camera images with QA workflows
+- 3D cuboid annotation on point clouds
+- Camera projections: seeing 3D labels on 2D images
 - Failure analysis to drive the next labeling batch
 - Iterative improvement without test set contamination
 
@@ -101,6 +104,7 @@ When to Use In-App Annotation
 - Quick corrections and QA passes
 - Prototyping label schemas before scaling
 - Single annotator or small team workflows
+- Multimodal data with linked 2D/3D views
 - Tight feedback loops between labeling and model evaluation
 
 **Consider external tools (CVAT, Label Studio) when:**
@@ -117,7 +121,21 @@ FiftyOne integrates with external annotation tools via the :ref:`annotation API 
 Dataset
 -------
 
-Both tracks use FiftyOne's `quickstart` dataset (200 images from COCO with detection annotations). It downloads automatically when you run the notebooks.
+Both tracks use the ``quickstart-groups`` dataset—a subset of KITTI with:
+
+- **Left/right camera images** (2D)
+- **Point cloud data** (3D LiDAR)
+- **200 scenes** with synchronized multi-sensor data
+
+The dataset downloads automatically when you run the notebooks.
+
+.. code-block:: python
+
+   import fiftyone as fo
+   import fiftyone.zoo as foz
+
+   dataset = foz.load_zoo_dataset("quickstart-groups")
+   session = fo.launch_app(dataset)
 
 .. _annotation-start:
 
@@ -130,10 +148,11 @@ Click **Next** to start with the Quickstart track, or jump directly to :doc:`02_
    :maxdepth: 1
    :hidden:
 
-   Quickstart: In-App Labeling <01_quickstart.ipynb>
+   Quickstart: Multimodal Annotation <01_quickstart.ipynb>
    Setup: Data Splits <02_setup_splits.ipynb>
    Smart Sample Selection <03_smart_selection.ipynb>
-   Annotation + QA <04_annotation_qa.ipynb>
-   Train + Evaluate <05_train_evaluate.ipynb>
-   Iteration Loop <06_iteration.ipynb>
+   2D Annotation + QA <04_annotation_2d.ipynb>
+   3D Annotation <05_annotation_3d.ipynb>
+   Train + Evaluate <06_train_evaluate.ipynb>
+   Iteration Loop <07_iteration.ipynb>
    Guide Summary <summary>
