@@ -26,9 +26,11 @@ export function useAnnotationTracking() {
     "annotation:deleteSuccess",
     useCallback(
       (payload) => {
-        trackEvent("ha_label_deleted", {
-          label_type: payload.labelType,
-        });
+        if (payload.labelType) {
+          trackEvent("ha_label_deleted", { label_type: payload.labelType });
+        } else {
+          trackEvent("ha_label_deleted");
+        }
       },
       [trackEvent]
     )
