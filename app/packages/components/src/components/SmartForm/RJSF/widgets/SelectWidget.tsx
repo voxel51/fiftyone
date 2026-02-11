@@ -9,15 +9,20 @@ import React, { useCallback, useMemo } from "react";
 
 function computeSelectChangeValue(
   newValue: string | string[],
-  multiple: boolean
-): string | string[] {
+  multiple: boolean,
+  enumValues: unknown[]
+): unknown {
+  const resolveToEnumValue = (s: string) => {
+    const original = enumValues.find((v) => String(v) === s);
+    return original !== undefined ? original : s;
+  };
   if (multiple) {
-    return Array.isArray(newValue) ? newValue : [newValue];
+    const arr = Array.isArray(newValue) ? newValue : [newValue];
+    return arr.map(resolveToEnumValue);
   }
-  if (typeof newValue === "string") {
-    return newValue;
-  }
-  return newValue[0] ?? "";
+  return resolveToEnumValue(
+    typeof newValue === "string" ? newValue : newValue[0] ?? ""
+  );
 }
 
 export default function SelectWidget(props: WidgetProps) {
@@ -52,14 +57,13 @@ export default function SelectWidget(props: WidgetProps) {
 
   const handleChange = useCallback(
     (newValue: string | string[] | null) => {
-      console.log("newValue", newValue);
       if (newValue == null) {
         // no op, don't update select value
         return;
       }
-      onChange(computeSelectChangeValue(newValue, multiple));
+      onChange(computeSelectChangeValue(newValue, multiple, enumValues));
     },
-    [onChange, multiple]
+    [onChange, multiple, enumValues]
   );
 
   return (
