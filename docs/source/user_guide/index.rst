@@ -111,7 +111,6 @@ on your data quickly and easily.
     Using the App <app>
     Dataset views <using_views>
     Grouped datasets <groups>
-    Annotating datasets <annotation>
     Evaluating models __SUB_NEW__ <evaluation>
     Using aggregations <using_aggregations>
     Interactive plots <plots>
