@@ -12,6 +12,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import useSave from "./Edit/useSave";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
+import { useSampleMutationManager } from "@fiftyone/annotation";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -98,6 +99,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const sampleScanLimit = useQueryPerformanceSampleLimit();
   const canManageSchema = useCanManageSchema();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
+  const { reset: clearStaleMutations } = useSampleMutationManager();
 
   const initializeFieldSchema = useCallback(
     async (field: string) => {
@@ -218,9 +220,15 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     if (contextManager.isActive()) {
       saveChanges();
       deactivateCommandContext();
+      clearStaleMutations();
       contextManager.exit();
     }
-  }, [contextManager, deactivateCommandContext, saveChanges]);
+  }, [
+    clearStaleMutations,
+    contextManager,
+    deactivateCommandContext,
+    saveChanges,
+  ]);
 
   return useMemo(
     () => ({
