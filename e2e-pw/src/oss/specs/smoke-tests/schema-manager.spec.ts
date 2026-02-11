@@ -556,7 +556,7 @@ test.describe.serial("schema manager", () => {
 
     // Verify toggle renders in annotation sidebar
     await modal.sidebar.clickPrimitiveEntry(boolFieldName);
-    await modal.sidebar.assert.hasToggle();
+    await modal.sidebar.assert.hasBooleanToggle();
   });
 
   test("add new dictionary field with json editor", async ({

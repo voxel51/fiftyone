@@ -178,7 +178,8 @@ export class SchemaManagerPom {
    */
   async addClass(name: string) {
     await this.addClassButton.click();
-    await this.classNameInput.pressSequentially(name, { delay: 50 });
+    // force: true needed because input is inside RichList item with aria-disabled
+    await this.classNameInput.fill(name, { force: true });
     await this.classNameInput.press("Enter");
   }
 
@@ -201,8 +202,9 @@ export class SchemaManagerPom {
    * Fill the min/max range inputs
    */
   async fillRange(min: string, max: string) {
-    await this.rangeMinInput.fill(min);
-    await this.rangeMaxInput.fill(max);
+    // force: true needed because voodo Input wraps Headless UI Field
+    await this.rangeMinInput.fill(min, { force: true });
+    await this.rangeMaxInput.fill(max, { force: true });
   }
 
   /**
@@ -255,14 +257,16 @@ export class SchemaManagerPom {
    * Fill the attribute name input
    */
   async fillAttributeName(name: string) {
-    await this.attributeNameInput.pressSequentially(name, { delay: 50 });
+    // force: true needed because input is inside RichList item with aria-disabled
+    await this.attributeNameInput.fill(name, { force: true });
   }
 
   /**
    * Add a value to the attribute values list
    */
   async addAttributeValue(value: string) {
-    await this.valueInput.pressSequentially(value, { delay: 50 });
+    // force: true needed because input is inside RichList item with aria-disabled
+    await this.valueInput.fill(value, { force: true });
     await this.valueInput.press("Enter");
   }
 
