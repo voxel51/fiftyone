@@ -46,6 +46,26 @@ export class PatchApplicationError extends Error {
   }
 }
 
+/**
+ * Error resulting from a version mismatch.
+ *
+ * When attempting to patch a sample, the server validates the provided version
+ * token and rejects the update if there is a version mismatch.
+ *
+ * The updated sample data is provided in the response body, and a current
+ * version token is provided in the ETag header.
+ */
+export class VersionMismatchError extends Error {
+  constructor(
+    message?: string,
+    readonly responseBody?: Record<string, unknown>,
+    readonly versionToken?: string
+  ) {
+    super(message);
+    this.name = "Version Mismatch Error";
+  }
+}
+
 const handleErrorResponse = async (response: Response) => {
   if (response.status === 400) {
     // either a malformed request, or a list of errors from applying the patch
@@ -67,6 +87,12 @@ const handleErrorResponse = async (response: Response) => {
     throw new MalformedRequestError();
   } else if (response.status === 404) {
     throw new NotFoundError({ path: "sample" });
+  } else if (response.status === 412) {
+    throw new VersionMismatchError(
+      "Invalid version token",
+      await response.json(),
+      parseETag(response.headers.get("ETag"))
+    );
   }
 };
 

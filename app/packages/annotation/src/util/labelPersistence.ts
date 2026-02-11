@@ -1,6 +1,11 @@
 import type { Sample } from "@fiftyone/looker";
 import type { Field } from "@fiftyone/utilities";
-import { type JSONDeltas, patchSample } from "@fiftyone/core/src/client";
+import {
+  type JSONDeltas,
+  patchSample,
+  transformSampleData,
+  VersionMismatchError,
+} from "@fiftyone/core/src/client";
 import {
   buildJsonPath,
   buildLabelDeltas,
@@ -8,7 +13,6 @@ import {
   type OpType,
 } from "../deltas";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
-import { transformSampleData } from "@fiftyone/core/src/client/transformer";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;
@@ -20,6 +24,8 @@ export type DoPatchSampleArgs = {
 
 /**
  * Apply a patch of JSON deltas to a sample.
+ *
+ * Any HTTP errors will be thrown and should be handled by the caller.
  *
  * @param sample Sample to apply patch against
  * @param datasetId Dataset ID for the sample
@@ -34,25 +40,42 @@ export const doPatchSample = async ({
   refreshSample,
   sampleDeltas,
 }: DoPatchSampleArgs): Promise<boolean> => {
-  // The annotation endpoint requires a version token in order to execute
-  // mutations.
+  // The annotation endpoint implements a CRDT via a version token
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
     return false;
   }
 
+  let caughtErr: Error;
+
   if (sampleDeltas.length > 0) {
     try {
-      const response = await patchSample({
-        datasetId,
-        sampleId: sample._id,
-        deltas: sampleDeltas,
-        versionToken,
-      });
+      let updatedSample: Sample;
+
+      try {
+        const response = await patchSample({
+          datasetId,
+          sampleId: sample._id,
+          deltas: sampleDeltas,
+          versionToken,
+        });
+        updatedSample = response.sample;
+      } catch (err) {
+        // catch and defer any HTTP errors
+        caughtErr = err;
+
+        // In the case of a version mismatch,
+        // the updated sample data is returned in the response body.
+        // We use this to refresh the app's sample data,
+        // and any pending changes will be re-attempted on the next patch
+        if (err instanceof VersionMismatchError) {
+          updatedSample = err.responseBody as Sample;
+        }
+      }
 
       // transform response data to match the graphql sample format
-      const cleanedSample = transformSampleData(response.sample);
+      const cleanedSample = transformSampleData(updatedSample);
       if (isSampleIsh(cleanedSample)) {
         refreshSample(cleanedSample as Sample);
       } else {
@@ -66,6 +89,11 @@ export const doPatchSample = async ({
 
       return false;
     }
+  }
+
+  // raise HTTP errors to the caller
+  if (caughtErr) {
+    throw caughtErr;
   }
 
   return true;
