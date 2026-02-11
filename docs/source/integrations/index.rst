@@ -59,7 +59,7 @@ on the cards below to see how!
     :header: Integrating with Annotation Backends
     :description: Use our annotation API to send and receive annotation jobs to/from a custom or broadly popular backend like CVAT.
     :link: annotation.html
-    :image: ../_images/under_construction.png
+    :image: ../_static/images/integrations/annotation.png
     :tags: Annotation
 
 .. customcarditem::
