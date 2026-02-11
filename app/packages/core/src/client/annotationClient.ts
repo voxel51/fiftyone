@@ -66,8 +66,16 @@ export class VersionMismatchError extends Error {
   }
 }
 
-const handleErrorResponse = async (response: Response) => {
-  if (response.status === 400) {
+/**
+ * Mapping of response code => error handler.
+ *
+ * These handlers are intended to be specific to known domain errors for the
+ * annotation endpoints. For all other response codes, default error handling
+ * is sufficient.
+ */
+const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
+  // bad request
+  400: async (response) => {
     // either a malformed request, or a list of errors from applying the patch
     let errorResponse: ErrorResponse | undefined;
     try {
@@ -85,15 +93,29 @@ const handleErrorResponse = async (response: Response) => {
     }
 
     throw new MalformedRequestError();
-  } else if (response.status === 404) {
+  },
+
+  // sample not found
+  404: async () => {
     throw new NotFoundError({ path: "sample" });
-  } else if (response.status === 412) {
+  },
+
+  // version token mismatch
+  412: async (response) => {
+    let responseBody: Record<string, unknown>;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      // JSON parsing error
+      console.warn("error parsing response body", err);
+    }
+
     throw new VersionMismatchError(
       "Invalid version token",
-      await response.json(),
+      responseBody,
       parseETag(response.headers.get("ETag"))
     );
-  }
+  },
 };
 
 /**
@@ -102,10 +124,10 @@ const handleErrorResponse = async (response: Response) => {
  * @param config fetch configuration
  */
 const doFetch = <A, R>(
-  config: FetchFunctionConfig<A>
+  config: Omit<FetchFunctionConfig<A>, "errorHandler">
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()({
-    errorHandler: handleErrorResponse,
+    errorHandler: (response) => errorHandlers[response.status]?.(response),
     ...config,
   });
 };
