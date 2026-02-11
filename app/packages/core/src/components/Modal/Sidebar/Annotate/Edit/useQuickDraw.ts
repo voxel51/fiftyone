@@ -3,7 +3,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
-import { fieldType, labelSchemaData } from "../state";
+import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import { BaseOverlay, useLighter } from "@fiftyone/lighter";
@@ -118,7 +118,7 @@ export const useQuickDraw = () => {
 
         if (lastField) {
           const schema = get(labelSchemaData(lastField));
-          if (!schema?.read_only) {
+          if (!isFieldReadOnly(schema)) {
             return lastField;
           }
         }
@@ -132,7 +132,7 @@ export const useQuickDraw = () => {
 
           if (
             detectionTypes.has(typeStr || "") &&
-            !schema?.read_only &&
+            !isFieldReadOnly(schema) &&
             fieldLabels.length > maxCount
           ) {
             maxCount = fieldLabels.length;

@@ -16,7 +16,7 @@ import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
-import { labelSchemaData } from "../state";
+import { isFieldReadOnly, labelSchemaData } from "../state";
 import { useQuickDraw } from "./useQuickDraw";
 import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 
@@ -78,7 +78,7 @@ const useCreateAnnotationLabel = () => {
         data["_cls"] = "Detection";
 
         const fieldSchema = store.get(labelSchemaData(field));
-        const isReadOnly = !!fieldSchema?.read_only;
+        const readOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
@@ -87,8 +87,8 @@ const useCreateAnnotationLabel = () => {
           field,
           id,
           label: data as DetectionLabel,
-          draggable: !isReadOnly,
-          resizeable: !isReadOnly,
+          draggable: !readOnly,
+          resizeable: !readOnly,
         });
         addOverlay(overlay);
 

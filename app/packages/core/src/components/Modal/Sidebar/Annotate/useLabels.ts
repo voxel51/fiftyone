@@ -1,4 +1,4 @@
-import { useLighter } from "@fiftyone/lighter";
+import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
   AnnotationLabel,
@@ -8,13 +8,18 @@ import {
   ModalSample,
   useModalSample,
 } from "@fiftyone/state";
+import { DETECTION } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import { activeLabelSchemas } from "./state";
+import {
+  activeLabelSchemas,
+  isFieldReadOnly,
+  labelSchemasData,
+} from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
@@ -238,6 +243,30 @@ export const useLabelsContext = (): LabelsContext => {
   );
 };
 
+/**
+ * Syncs overlay draggable/resizeable flags when label schema read-only state
+ * changes (e.g. user toggles read-only in Schema Manager).
+ */
+const useSyncOverlayReadOnly = () => {
+  const currentLabels = useAtomValue(labels);
+  const schemas = useAtomValue(labelSchemasData);
+
+  useEffect(() => {
+    if (!schemas) return;
+
+    for (const label of currentLabels) {
+      if (label.type !== DETECTION) continue;
+
+      const overlay = label.overlay;
+      if (!(overlay instanceof BoundingBoxOverlay)) continue;
+
+      const readOnly = isFieldReadOnly(schemas[label.path]);
+      overlay.setDraggable(!readOnly);
+      overlay.setResizeable(!readOnly);
+    }
+  }, [currentLabels, schemas]);
+};
+
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
@@ -335,6 +364,7 @@ export default function useLabels() {
     };
   }, [scene]);
 
+  useSyncOverlayReadOnly();
   useHover();
   useFocus();
 }

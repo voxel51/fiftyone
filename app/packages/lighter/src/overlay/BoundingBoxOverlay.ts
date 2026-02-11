@@ -653,7 +653,10 @@ export class BoundingBoxOverlay
    * @param draggable - Whether the overlay should be draggable.
    */
   setDraggable(draggable: boolean): void {
-    this.isDraggable = draggable;
+    if (this.isDraggable !== draggable) {
+      this.isDraggable = draggable;
+      this.markDirty();
+    }
   }
 
   /**
@@ -669,7 +672,10 @@ export class BoundingBoxOverlay
    * @param resizeable - Whether the overlay should be resizeable.
    */
   setResizeable(resizeable: boolean): void {
-    this.isResizeable = resizeable;
+    if (this.isResizeable !== resizeable) {
+      this.isResizeable = resizeable;
+      this.markDirty();
+    }
   }
 
   /**
