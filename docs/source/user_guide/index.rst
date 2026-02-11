@@ -51,12 +51,6 @@ on your data quickly and easily.
     :button_link: groups.html
 
 .. customcalloutitem::
-    :header: Annotating datasets
-    :description: Use builtin or custom integrations to add or edit labels on your FiftyOne datasets.
-    :button_text: Learn more about annotations
-    :button_link: annotation.html
-
-.. customcalloutitem::
     :header: Evaluating models  __SUB_NEW__
     :description: Use FiftyOne's builtin methods to evaluate your models and analyze their strengths and weaknesses.
     :button_text: Learn more about evaluating models
