@@ -13,7 +13,7 @@ type MutationError<T> = {
 type MutationSuccess<T> = {
   labelId: string;
   type: T;
-  labelType?: string;
+  labelType?: AnnotationLabel["type"];
 };
 
 export type AnnotationEventGroup = {
