@@ -173,7 +173,16 @@ const pathMap = selector<{ [key: string]: string }>({
 });
 
 /**
- * Hook which provides a method for updating data in a label atom.
+ * Returns a callback that updates the {@link AnnotationLabelData} for a label
+ * identified by its overlay ID.
+ *
+ * The callback looks up the label's individual atom in the {@link labelMap},
+ * replaces its `data` field, and returns whether the update succeeded.
+ *
+ * @returns A callback with signature
+ *   `(id: string, data: AnnotationLabelData) => boolean` that returns `true`
+ *   if the label was found and updated, or `false` if no label with the given
+ *   ID exists.
  */
 const useUpdateLabelAtom = () => {
   return useAtomCallback(
@@ -295,6 +304,8 @@ export default function useLabels() {
   }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
+    // Flipped to `true` by the cleanup function so in-flight async work
+    // from a superseded effect invocation can bail out before mutating state.
     let stale = false;
 
     if (modalSample?.sample && active) {
@@ -339,7 +350,7 @@ export default function useLabels() {
               annotationLabel.data
             );
 
-            // new label
+            // new label, add it
             if (!updated) {
               addLabelToStore(annotationLabel);
               addLabelToRenderer(annotationLabel);
