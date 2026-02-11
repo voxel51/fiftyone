@@ -1,8 +1,8 @@
-import { Clickable, Icon, IconName, Size } from "@voxel51/voodo";
+import { useAnnotationController } from "@fiftyone/annotation";
 import { Stack } from "@mui/material";
+import { Clickable, Icon, IconName, Size } from "@voxel51/voodo";
 import { FC, ReactNode } from "react";
-import { useAnnotationController } from "../hooks";
-import { useCanAnnotateField } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotateField";
+import { useCanAnnotateField } from "./useCanAnnotateField";
 
 type QuickEditEntryProps = {
   children: ReactNode;

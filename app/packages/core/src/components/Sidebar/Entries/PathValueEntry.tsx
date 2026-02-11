@@ -21,7 +21,7 @@ import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
-import { QuickEditEntry } from "@fiftyone/annotation";
+import { QuickEditEntry } from "../../Modal/Sidebar/Annotate";
 
 const expandedPathValueEntry = atomFamily<boolean, string>({
   key: "expandedPathValueEntry",

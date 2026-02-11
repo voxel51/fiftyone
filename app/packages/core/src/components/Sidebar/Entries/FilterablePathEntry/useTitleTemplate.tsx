@@ -11,7 +11,7 @@ import {
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
-import { QuickEditEntry } from "@fiftyone/annotation";
+import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
