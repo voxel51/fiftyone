@@ -114,11 +114,6 @@ const HiddenFieldsSection = () => {
         const hasSchema = fieldHasSchemaStates[path];
         const canSelect = hasSchema && !isSystemReadOnly;
 
-        // Add left padding when no checkbox is shown to maintain alignment
-        const paddingStyle = !canSelect
-          ? { paddingLeft: "0.25rem" }
-          : undefined;
-
         return {
           id: path,
           data: {
