@@ -24,8 +24,6 @@ import {
   ToggleSwitch,
 } from "@voxel51/voodo";
 
-import { addToActiveSchemas } from "../../state";
-
 import {
   useExitNewFieldMode,
   useLabelSchemasData,
@@ -81,7 +79,6 @@ const NewFieldSchema = () => {
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
 
-  const addToActiveSchema = useSetAtom(addToActiveSchemas);
   const notify = useNotification();
   const refreshSchema = useRefresh();
 

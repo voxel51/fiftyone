@@ -1,3 +1,4 @@
+import { DetectionLabel } from "@fiftyone/looker";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { ColorscaleInput } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
@@ -332,7 +333,7 @@ export const raycastResultAtom = atom<RaycastResult>({
  * Used to track which label is being actively edited or manipulated.
  */
 export const selectedLabelForAnnotationAtom = atom<
-  (Partial<PolylineLabel> & { _id: string }) | null
+  (Partial<PolylineLabel | DetectionLabel> & { _id: string }) | null
 >({
   key: "fo3d-selectedLabelForAnnotation",
   default: null,
@@ -502,24 +503,6 @@ export const currentArchetypeSelectedForTransformAtom =
 export const isCurrentlyTransformingAtom = atom<boolean>({
   key: "fo3d-isCurrentlyTransformingAtom",
   default: false,
-});
-
-/**
- * Temporary transform data for vertices during manipulation.
- * Stores the position offset (delta) for polyline vertices before they are committed.
- * Keyed by vertex ID in format: `${labelId}-${segmentIndex}-${pointIndex}`.
- *
- * Note: it's different than transient store. We store per-point vertex
- * transformations for performance reasons.
- */
-export const tempVertexTransformsAtom = atomFamily<
-  {
-    position: [number, number, number];
-  } | null,
-  string
->({
-  key: "fo3d-tempVertexTransforms",
-  default: null,
 });
 
 /**

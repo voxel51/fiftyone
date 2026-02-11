@@ -3,12 +3,21 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useQueryPerformanceSampleLimit } from "@fiftyone/state";
+import {
+  useNotification,
+  useQueryPerformanceSampleLimit,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
-import { currentField, labelSchemaData } from "../../state";
+import {
+  addToActiveSchemas,
+  currentField,
+  labelSchemaData,
+  removeFromActiveSchemas,
+} from "../../state";
 import { currentLabelSchema } from "../state";
+import { reconcileComponent } from "../utils";
 
 // =============================================================================
 // Internal Hooks
@@ -97,15 +106,24 @@ const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
+  const activate = useOperatorExecutor("activate_label_schemas");
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
     save: () => {
+      const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
 
-      const params: Record<string, unknown> = { field, label_schema: current };
+      const labelSchema = current ? reconcileComponent(current) : current;
+      const params: Record<string, unknown> = {
+        field,
+        label_schema: labelSchema,
+      };
 
       update.execute(params, {
         callback: (result) => {
@@ -123,6 +141,29 @@ const useSave = (field: string) => {
 
           // Only update state on success
           setSaved(current);
+
+          // Auto-activate the field on first save
+          if (isFirstSave) {
+            const fieldSet = new Set([field]);
+            addToActive(fieldSet);
+            activate.execute(
+              { fields: [field] },
+              {
+                callback: (activateResult) => {
+                  if (activateResult.error) {
+                    removeFromActive(fieldSet);
+                    notify({
+                      msg: `Failed to activate field: ${
+                        activateResult.errorMessage || activateResult.error
+                      }`,
+                      variant: "error",
+                    });
+                  }
+                },
+              }
+            );
+          }
+
           setCurrentField(null);
         },
       });

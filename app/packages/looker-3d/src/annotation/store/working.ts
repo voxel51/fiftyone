@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/state";
+import { isEqual } from "lodash";
 import { useEffect, useRef } from "react";
 import {
   atomFamily,
@@ -232,9 +233,9 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
     []
   );
 
-  // Patch the working store whenever rawOverlays gets a new reference
+  // Patch the working store whenever rawOverlays changes
   useEffect(() => {
-    if (prevRawRef.current === rawOverlays) return;
+    if (isEqual(prevRawRef.current, rawOverlays)) return;
     prevRawRef.current = rawOverlays;
     patchWorking(rawOverlays);
   }, [rawOverlays, patchWorking]);

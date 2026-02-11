@@ -12,7 +12,6 @@ import shutil
 import struct
 import typing as t
 
-from functools import reduce
 from pydash import get
 
 import asyncio
@@ -59,6 +58,8 @@ async def get_metadata(
     media_type: str,
     metadata_cache: t.Dict[str, t.Dict[str, str]],
     url_cache: t.Dict[str, str],
+    *,
+    additional_media_fields: t.Optional[t.Tuple] = None,
 ):
     """Gets the metadata for the given local media file.
 
@@ -66,6 +67,9 @@ async def get_metadata(
         filepath: the path to the file
         media_type: the file's media type
         metadata (None): a pre-existing metadata dict to use if possible
+        additional_media_fields: pre-computed result of
+            ``_get_additional_media_fields(collection)``. If None, will be
+            computed (expensive — prefer passing it in).
 
     Returns:
         metadata dict
@@ -77,7 +81,7 @@ async def get_metadata(
         opm_field,
         detections_fields,
         additional_fields,
-    ) = _get_additional_media_fields(collection)
+    ) = additional_media_fields if additional_media_fields is not None else _get_additional_media_fields(collection)
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -468,10 +472,9 @@ def _get_additional_media_fields(
     opm_field = None
     detections_fields = None
 
+    schema = collection.get_field_schema(flat=True)
     for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
-        for field_name, field in collection.get_field_schema(
-            flat=True
-        ).items():
+        for field_name, field in schema.items():
             if not isinstance(field, fof.EmbeddedDocumentField) or (
                 cls != field.document_type
             ):

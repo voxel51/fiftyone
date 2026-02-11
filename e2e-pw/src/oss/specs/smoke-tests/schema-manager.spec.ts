@@ -191,13 +191,10 @@ test.describe.serial("schema manager", () => {
     });
 
     // Save (automatically navigates back to field list)
+    // First save auto-activates the field
     await jsonEditor.save();
 
-    // Activate
-    await row.assert.hasCheckbox();
-    await row.clickCheckbox();
-    await row.assert.isChecked(true);
-    await schemaManager.moveFields();
+    // Field should already be active after first save
     await schemaManager.assert.hasActiveFieldRows([
       { name: "classification", type: "Classification" },
     ]);

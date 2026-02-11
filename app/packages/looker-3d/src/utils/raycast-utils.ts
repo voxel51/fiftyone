@@ -28,32 +28,34 @@ const EXCLUDED_USER_DATA_KEYS = [
 ];
 
 /**
- * Check if an object should be included in raycasting.
+ * Check if an object (and its entire subtree) should be excluded from raycasting.
+ * When true, neither the object nor any of its descendants will be raycast.
  */
-export function isRaycastable(object: THREE.Object3D): boolean {
-  if (!object.visible) return false;
+function isSubtreeExcluded(object: THREE.Object3D): boolean {
+  if (!object.visible) return true;
 
-  if (EXCLUDED_OBJECT_TYPES.has(object.type)) return false;
+  if (EXCLUDED_OBJECT_TYPES.has(object.type)) return true;
   if (object.constructor && EXCLUDED_OBJECT_TYPES.has(object.constructor.name))
-    return false;
+    return true;
 
   for (const key of EXCLUDED_USER_DATA_KEYS) {
-    if (object.userData[key]) return false;
+    if (object.userData[key]) return true;
   }
 
-  // Exclude objects without geometry (groups, empty objects)
-  // But allow Points, Lines, and Meshes
-  if (
-    !(object instanceof THREE.Mesh) &&
-    !(object instanceof THREE.Points) &&
-    !(object instanceof THREE.Line) &&
-    !(object instanceof THREE.LineSegments) &&
-    !(object instanceof THREE.Sprite)
-  ) {
-    return false;
-  }
+  return false;
+}
 
-  return true;
+/**
+ * Check if an individual object is a raycastable geometry.
+ */
+function isRaycastableGeometry(object: THREE.Object3D): boolean {
+  return (
+    object instanceof THREE.Mesh ||
+    object instanceof THREE.Points ||
+    object instanceof THREE.Line ||
+    object instanceof THREE.LineSegments ||
+    object instanceof THREE.Sprite
+  );
 }
 
 /**
@@ -63,7 +65,9 @@ export function getRaycastableObjects(scene: THREE.Scene): THREE.Object3D[] {
   const objects: THREE.Object3D[] = [];
 
   function traverse(object: THREE.Object3D) {
-    if (isRaycastable(object)) {
+    if (isSubtreeExcluded(object)) return;
+
+    if (isRaycastableGeometry(object)) {
       objects.push(object);
     }
 

@@ -10,6 +10,7 @@ import {
   useEndDrag,
   usePolylineOperations,
   useStartDrag,
+  useTransientPolyline,
   useUpdateTransient,
   useWorkingLabel,
 } from "../annotation/store";
@@ -18,7 +19,6 @@ import {
   editSegmentsModeAtom,
   hoveredLabelAtom,
   selectedPolylineVertexAtom,
-  tempVertexTransformsAtom,
 } from "../state";
 import { PolylinePointMarker } from "./PolylinePointMarker";
 import {
@@ -308,29 +308,43 @@ export const usePolylineAnnotation = ({
     ]
   );
 
-  // Get temp transforms for the selected vertex if it belongs to this label
-  // Always call the hook, but use a dummy key if no vertex is selected
-  const vertexKey =
-    selectedPoint && selectedPoint.labelId === labelId
-      ? `${labelId}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
-      : // Dummy key that won't match any real vertex
-        `${labelId}--1--1`;
+  const transientPolyline = useTransientPolyline(labelId);
 
-  const tempTransforms = useRecoilValue(tempVertexTransformsAtom(vertexKey));
+  // Points with vertex deltas applied — used for rendering lines so that
+  // side panels (which have their own Polyline instances not moved by
+  // TransformControls) see the dragged vertex in its transient position.
+  // We intentionally exclude positionDelta here because the centroid drag
+  // already moves the contentRef group via TransformControls.
+  const linesPoints3d = useMemo(() => {
+    const vertexDeltas = transientPolyline?.vertexDeltas;
+    if (!vertexDeltas) return effectivePoints3d;
 
-  // Only use temp transforms if they actually belong to the selected vertex
-  const relevantTempTransforms =
-    selectedPoint && selectedPoint.labelId === labelId && tempTransforms
-      ? tempTransforms
-      : null;
+    return effectivePoints3d.map((segment, segIdx) =>
+      segment.map((point, ptIdx) => {
+        const key = `${segIdx}-${ptIdx}`;
+        const delta = vertexDeltas[key];
+        if (delta) {
+          return [
+            point[0] + delta[0],
+            point[1] + delta[1],
+            point[2] + delta[2],
+          ] as Vector3Tuple;
+        }
+        return point;
+      })
+    );
+  }, [effectivePoints3d, transientPolyline?.vertexDeltas]);
 
   // Render preview lines when a vertex is being transformed
   const previewLines = useMemo(() => {
     if (!isAnnotateMode || !isSelectedForAnnotation) return null;
     if (!selectedPoint || selectedPoint.labelId !== labelId) return null;
-    if (!relevantTempTransforms?.position) return null;
 
     const { segmentIndex, pointIndex } = selectedPoint;
+    const vertexDelta =
+      transientPolyline?.vertexDeltas?.[`${segmentIndex}-${pointIndex}`];
+
+    if (!vertexDelta) return null;
 
     const segmentData = effectivePoints3d[segmentIndex];
 
@@ -340,16 +354,16 @@ export const usePolylineAnnotation = ({
 
     if (!segmentPoints || segmentPoints.length === 0) return null;
 
-    // tempVertexTransforms.position is an offset from the original position
+    // vertexDelta is an offset from the original position
     // We need to add it to the original position to get the actual world position
     const originalPosition = effectivePoints3d[segmentIndex][pointIndex];
-    const tempOffset = relevantTempTransforms.position;
     const tempPosition: Vector3Tuple = [
-      originalPosition[0] + tempOffset[0],
-      originalPosition[1] + tempOffset[1],
-      originalPosition[2] + tempOffset[2],
+      originalPosition[0] + vertexDelta[0],
+      originalPosition[1] + vertexDelta[1],
+      originalPosition[2] + vertexDelta[2],
     ];
 
+    const vertexKey = `${segmentIndex}-${pointIndex}`;
     const previewLinesArray = [];
 
     // Line from previous vertex (old vertex) to temp position (currently-being-transformed vertex)
@@ -391,8 +405,7 @@ export const usePolylineAnnotation = ({
     selectedPoint,
     labelId,
     effectivePoints3d,
-    relevantTempTransforms,
-    vertexKey,
+    transientPolyline,
   ]);
 
   const markers = useMemo(() => {
@@ -412,6 +425,7 @@ export const usePolylineAnnotation = ({
     isAnnotateMode,
     isSelectedForAnnotation,
     effectivePoints3d,
+    linesPoints3d,
 
     // Refs
     transformControlsRef,
