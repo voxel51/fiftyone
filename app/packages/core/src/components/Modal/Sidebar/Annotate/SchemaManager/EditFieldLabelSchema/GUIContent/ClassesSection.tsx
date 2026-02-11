@@ -206,6 +206,7 @@ const ClassesSection = ({
           variant={Variant.Secondary}
           onClick={() => setIsAdding(true)}
           disabled={isAdding || editingClass !== null}
+          data-cy="add-class-button"
         >
           + Add class
         </Button>

@@ -180,6 +180,7 @@ const ActiveFieldsSection = () => {
             size={Size.Md}
             variant={Variant.Primary}
             onClick={handleNewField}
+            data-cy="new-field-button"
           >
             New field
           </Button>
@@ -214,6 +215,7 @@ const ActiveFieldsSection = () => {
           size={Size.Md}
           variant={Variant.Primary}
           onClick={handleNewField}
+          data-cy="new-field-button"
         >
           New field
         </Button>

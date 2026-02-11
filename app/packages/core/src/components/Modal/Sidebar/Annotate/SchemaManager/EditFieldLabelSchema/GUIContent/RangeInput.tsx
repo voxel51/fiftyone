@@ -47,6 +47,7 @@ const RangeInput = ({
             Min
           </Text>
           <Input
+            data-cy="range-min"
             type="number"
             value={min}
             onChange={(e) => onRangeChange({ min: e.target.value, max })}
@@ -63,6 +64,7 @@ const RangeInput = ({
             Max
           </Text>
           <Input
+            data-cy="range-max"
             type="number"
             value={max}
             onChange={(e) => onRangeChange({ min, max: e.target.value })}

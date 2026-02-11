@@ -66,6 +66,7 @@ const AddClassCard = ({
       <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
         <div>
           <Input
+            data-cy="class-name-input"
             value={name}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
