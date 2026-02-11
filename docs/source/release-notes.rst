@@ -50,10 +50,10 @@ App
 
 - New Feature: :ref:`Human Annotation! <fiftyone-annotation>` Create, edit, and
   delete classification and detection labels on images, as well as cuboid and
-  3d polylines on 3d datasets. Dataset managers can define an annotation schema
-  to constrain all metadata edits, either manually or by scanning an existing
-  dataset. But, when no schema exists, labelers can choose to bypass a schema
-  and quick-edit right away.
+  3d polylines on 3d datasets. :ref:`Dataset Managers <enterprise-can-edit>`
+  can define an annotation schema to constrain all metadata edits, either
+  manually or by scanning an existing dataset. But, when no schema exists,
+  labelers can choose to bypass a schema and quick-edit right away.
 - New Feature: 3D → 2D projection overlays for cuboids and polylines on image
   slices, including crosshair with coordinate tooltip.
   `#6935 <https://github.com/voxel51/fiftyone/pull/6935>`_
