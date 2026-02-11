@@ -1,6 +1,6 @@
 import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { translateSchema } from "./translators";
 import { filterEmptyArrays } from "./utils";
@@ -13,12 +13,21 @@ export { isJSONSchema, isSchemaIOSchema } from "./translators";
 import type { IChangeEvent } from "@rjsf/core";
 import { isObject, type RJSFSchema } from "@rjsf/utils";
 import { SmartFormProps } from "../types";
+import { isNullish } from "@fiftyone/utilities";
 
 export default function RJSF(props: SmartFormProps) {
   const { formProps } = props;
   const formRef = useRef<{ validateForm: () => boolean } | null>(null);
+  const [revision, setRevision] = useState(0);
 
+  const data = props.data;
   const { liveValidate } = formProps || {};
+
+  useEffect(() => {
+    if (isNullish(data)) {
+      setRevision((r) => r + 1);
+    }
+  }, [data]);
 
   useEffect(() => {
     if (formRef.current && liveValidate) {
@@ -68,13 +77,14 @@ export default function RJSF(props: SmartFormProps) {
 
   return (
     <Form
+      key={revision}
       ref={formRef}
       schema={schema as RJSFSchema}
       uiSchema={uiSchema}
       validator={validator}
       widgets={widgets}
       templates={templates}
-      formData={props.data}
+      formData={data}
       onChange={handleChange}
       onSubmit={handleSubmit}
       showErrorList={false}

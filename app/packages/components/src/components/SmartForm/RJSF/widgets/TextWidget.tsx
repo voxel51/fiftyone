@@ -16,7 +16,6 @@ export default function TextWidget(props: WidgetProps) {
     onChange = () => {},
     placeholder,
     schema,
-    rawErrors = [],
   } = props;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {

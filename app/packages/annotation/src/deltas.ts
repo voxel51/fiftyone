@@ -15,6 +15,7 @@ import {
 } from "@fiftyone/state";
 import { Field, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
+import type { OpType } from "./types";
 import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
@@ -37,11 +38,6 @@ type DetectionsParent = {
 type ClassificationsParent = {
   classifications: ClassificationLabel[];
 };
-
-/**
- * Operation type.
- */
-export type OpType = "mutate" | "delete";
 
 /**
  * Types of "native" labels which support delta calculation.
@@ -158,7 +154,8 @@ export const buildMutationDeltas = (
     return buildPrimitiveMutationDelta(
       sample,
       label.path,
-      (label as PrimitiveValue).data
+      (label as PrimitiveValue).data,
+      label.op
     );
   }
 
@@ -276,7 +273,8 @@ const buildSingleMutationDelta = <
 const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
-  data: Primitive
+  data: Primitive,
+  op?: OpType
 ): JSONDeltas => {
   const existingValue = get(sample, path) as Primitive;
 
@@ -285,8 +283,17 @@ const buildPrimitiveMutationDelta = (
     return [];
   }
 
+  const delta = { op: "replace", path: "", value: data };
+
+  if (op === "delete") {
+    delta.op = "remove";
+    delete delta.value;
+  } else if (op === "add") {
+    delta.op = "add";
+  }
+
   // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [{ op: "replace", path: "", value: data }];
+  return [delta];
 };
 
 /**
