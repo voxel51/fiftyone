@@ -8,7 +8,7 @@ FiftyOne Server mutation endpoint unit tests.
 import datetime
 
 # pylint: disable=no-value-for-parameter
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock, patch
 import json
 
 from bson import ObjectId, json_util
@@ -1537,3 +1537,61 @@ class TestRootDeleteError:
         result = fors.handle_json_patch(target, operations)
 
         assert result.label == "dog"
+
+
+class TestEnsureSampleField:
+    """Tests for the ensure_sample_field function."""
+
+    @pytest.fixture(name="sample")
+    def fixture_sample(self, dataset):
+        sample = fo.Sample(filepath="/tmp/test_ensure_field.jpg")
+        dataset.add_sample(sample)
+        sample.reload()
+        return sample
+
+    def test_initializes_unset_detections_field(self, dataset, sample):
+        """Tests that ensure_sample_field initializes a Detections field that
+        exists in the dataset schema but has no value on the sample."""
+        dataset.add_sample_field(
+            "uninit_dets", fo.EmbeddedDocumentField, fol.Detections
+        )
+        sample.reload()
+
+        assert sample.get_field("uninit_dets") is None
+
+        fors.ensure_sample_field(sample, "uninit_dets.detections.0")
+
+        val = sample.get_field("uninit_dets")
+        assert isinstance(val, fol.Detections)
+        assert val.detections == []
+
+    def test_initializes_field_when_getitem_raises(self, dataset, sample):
+        dataset.add_sample_field(
+            "stale_dets", fo.EmbeddedDocumentField, fol.Detections
+        )
+        sample.reload()
+
+        original_getitem = type(sample).__getitem__
+        getitem_call_count = [0]
+
+        def mock_getitem(self_inner, key):
+            if key == "stale_dets":
+                getitem_call_count[0] += 1
+                if getitem_call_count[0] == 1:
+                    raise KeyError("Sample has no field 'stale_dets'")
+            return original_getitem(self_inner, key)
+
+        with patch.object(type(sample), "__getitem__", mock_getitem):
+            fors.ensure_sample_field(sample, "stale_dets.detections.0")
+
+        val = sample.get_field("stale_dets")
+        assert isinstance(val, fol.Detections)
+        assert val.detections == []
+
+    def test_no_schema_field_is_noop(self, sample):
+        """Tests that ensure_sample_field is a no-op when the field is not in
+        the dataset schema (no type info available to create it)."""
+        fors.ensure_sample_field(sample, "nonexistent.detections.0")
+
+        with pytest.raises(AttributeError):
+            sample.get_field("nonexistent")
