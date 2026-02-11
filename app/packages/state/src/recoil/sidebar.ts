@@ -84,6 +84,7 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -167,6 +168,7 @@ export interface PrimitiveValue {
   type: "Primitive";
   data: Primitive;
   path: string;
+  op?: OpType;
 }
 
 export interface LabelEntry {
