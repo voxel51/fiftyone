@@ -178,20 +178,30 @@ const pathMap = selector<{ [key: string]: string }>({
 });
 
 /**
- * Hook which provides a method for updating data in a label atom.
+ * Returns a callback that updates the {@link AnnotationLabelData} for a label
+ * identified by its overlay ID.
+ *
+ * The callback looks up the label's individual atom in the {@link labelMap},
+ * replaces its `data` field, and returns whether the update succeeded.
+ *
+ * @returns A callback with signature
+ *   `(id: string, data: AnnotationLabelData) => boolean` that returns `true`
+ *   if the label was found and updated, or `false` if no label with the given
+ *   ID exists.
  */
 const useUpdateLabelAtom = () => {
   return useAtomCallback(
-    useCallback((get, set, id: string, data: AnnotationLabelData) => {
+    useCallback((get, set, id: string, data: AnnotationLabelData): boolean => {
       const labelMapValue = get(labelMap);
       const targetAtom = labelMapValue[id];
 
       if (targetAtom) {
         const currentValue = get(targetAtom);
         set(targetAtom, { ...currentValue, data });
-      } else {
-        console.warn(`Unknown label id ${id}`);
+        return true;
       }
+
+      return false;
     }, [])
   );
 };
@@ -274,7 +284,8 @@ export default function useLabels() {
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
-  const addLabel = useAddAnnotationLabelToRenderer();
+  const addLabelToRenderer = useAddAnnotationLabelToRenderer();
+  const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
@@ -322,6 +333,10 @@ export default function useLabels() {
   }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
+    // Flipped to `true` by the cleanup function so in-flight async work
+    // from a superseded effect invocation can bail out before mutating state.
+    let stale = false;
+
     if (modalSample?.sample && active) {
       const getLabelsFromSample = () =>
         handleSample({
@@ -335,13 +350,22 @@ export default function useLabels() {
       if (loadingState === LabelsState.UNSET) {
         setLoading(LabelsState.LOADING);
         getLabelsFromSample().then((result) => {
+          if (stale) {
+            setLoading(LabelsState.UNSET);
+            return;
+          }
+
           setLabels(result);
-          result.forEach((annotationLabel) => addLabel(annotationLabel));
+          result.forEach((annotationLabel) =>
+            addLabelToRenderer(annotationLabel)
+          );
           setLoading(LabelsState.COMPLETE);
         });
       } else if (loadingState === LabelsState.COMPLETE) {
         // refresh label data
         getLabelsFromSample().then((result) => {
+          if (stale) return;
+
           result.forEach((annotationLabel) => {
             // update overlays
             if (scene?.hasOverlay(annotationLabel.data._id)) {
@@ -349,13 +373,39 @@ export default function useLabels() {
                 annotationLabel.data;
             }
 
-            // update sidebar
-            updateLabelAtom(annotationLabel.data._id, annotationLabel.data);
+            // update sidebar, or add if this is a new label
+            const updated = updateLabelAtom(
+              annotationLabel.data._id,
+              annotationLabel.data
+            );
+
+            // new label, add it
+            if (!updated) {
+              addLabelToStore(annotationLabel);
+              addLabelToRenderer(annotationLabel);
+            }
           });
         });
       }
     }
-  }, [active, getFieldType, loadingState, modalSample?.sample, paths]);
+
+    return () => {
+      stale = true;
+    };
+  }, [
+    active,
+    addLabelToRenderer,
+    addLabelToStore,
+    createLabel,
+    getFieldType,
+    loadingState,
+    modalSample?.sample,
+    paths,
+    scene,
+    setLabels,
+    setLoading,
+    updateLabelAtom,
+  ]);
 
   useEffect(() => {
     return () => {
