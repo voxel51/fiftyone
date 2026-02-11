@@ -47,7 +47,8 @@ When you make changes to sample metadata with FiftyOne's in-App annotation, your
 
 You can tell whether your changes are saved or are in the process of being saved thanks to this indicator:
 
-.. todo:: Screenshot needed
+.. image:: /_static/images/annotation/auto_save.png
+   :alt: Auto-save indicator
 
 Undo/Redo
 ^^^^^^^^^
@@ -296,6 +297,9 @@ Attributes
 
 The editing panel also enables editing the label, tags, confidence, and index properties.
 
+.. image:: /_static/images/annotation/editing_panel.png
+   :alt: Editing panel
+
 ----
 
 Working with 3D
@@ -410,10 +414,10 @@ To begin creating and editing 3D cuboids, enter polyline annotation mode by clic
 Creating 3D Cuboids
 ^^^^^^^^^^^^^^^^^^^
 
+After entering cuboid annotation mode, create a new 3D cuboid by clicking on the cuboid icon in the cuboid toolbar on the left side, then click the 3D scene to place the first corner of the cuboid. Click a second time to define the opposite corner of the base (XY plane) of the cuboid. This second click finishes the creation of the cuboid, always defaulting to a height of 1.0 in the lz direction.
+
 .. image:: /_static/images/annotation/image21.gif
    :alt: Creating a 3D cuboid
-
-After entering cuboid annotation mode, create a new 3D cuboid by clicking on the cuboid icon in the cuboid toolbar on the left side, then click the 3D scene to place the first corner of the cuboid. Click a second time to define the opposite corner of the base (XY plane) of the cuboid. This second click finishes the creation of the cuboid, always defaulting to a height of 1.0 in the lz direction.
 
 Newly created cuboids are oriented based on the current annotation plane. The depth of the first two clicks in the 3D scene is dictated by the location of the annotation plane which is described above (defaulting to the XY plane).
 
@@ -543,10 +547,12 @@ In addition to custom attributes, the attribute sidebar for 3D polylines also sh
 .. image:: /_static/images/annotation/image37.png
    :alt: Closed and filled polyline
 
+
+Additionally, you can select the icon to the left to enter a mode that will automatically close the polyline when the annotation canvas is double clicked.
+
 .. image:: /_static/images/annotation/image38.png
    :alt: Auto-close mode icon
 
-Additionally, you can select the icon to the left to enter a mode that will automatically close the polyline when the annotation canvas is double clicked.
 
 ----
 

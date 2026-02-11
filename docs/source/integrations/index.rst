@@ -223,7 +223,7 @@ on the cards below to see how!
     COCO <coco.rst>
     Open Images <open_images.rst>
     ActivityNet <activitynet.rst>
-    Annotation Backends <annotation.rst>
+    In App Annotation <annotation.rst>
     CVAT <cvat.rst>
     Label Studio <labelstudio.rst>
     V7 <v7.rst>
