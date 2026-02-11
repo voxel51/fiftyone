@@ -88,15 +88,19 @@ const JSONEditor = ({
           width={"100%"}
         />
       </ContentArea>
-      <a href={SCHEMA_JSON_DOC_URL} target="_blank" rel="noopener noreferrer">
-        <Text
-          color={TextColor.Primary}
-          variant={TextVariant.Md}
-          style={{ marginTop: "0.5rem", textDecoration: "underline" }}
-        >
-          Learn more about the label schema format in our documentation.
-        </Text>
-      </a>
+
+      <Text
+        color={TextColor.Primary}
+        variant={TextVariant.Md}
+        style={{ marginTop: "0.5rem" }}
+      >
+        Learn more about the label schema format{" "}
+        <a href={SCHEMA_JSON_DOC_URL} target="_blank" rel="noopener noreferrer">
+          <Text style={{ textDecoration: "underline" }}>
+            in our documentation.
+          </Text>
+        </a>
+      </Text>
     </>
   );
 };
