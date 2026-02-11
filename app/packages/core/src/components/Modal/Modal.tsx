@@ -7,7 +7,6 @@ import {
 import {
   KnownCommands,
   KnownContexts,
-  useCommandContext,
   useKeyBindings,
 } from "@fiftyone/commands";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
@@ -19,13 +18,7 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from "react";
+import React, { Fragment, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -196,31 +189,7 @@ const Modal = () => {
     [modalCloseHandler]
   );
 
-  const {
-    activate: activateModalCommandContext,
-    deactivate: deactivateModalCommandContext,
-  } = useCommandContext(KnownContexts.Modal, true);
-
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
-
-  /**
-   * TODO: Ductape solution. Please fix this. None of this should depend on sidebar visibility.
-   */
-  useEffect(() => {
-    // Need a small delay here so ModalContext is activated after modal annotate context 🤷
-    const timeoutId = window.setTimeout(() => {
-      activateModalCommandContext();
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      deactivateModalCommandContext();
-    };
-  }, [
-    isSidebarVisible,
-    activateModalCommandContext,
-    deactivateModalCommandContext,
-  ]);
 
   useKeyBindings(KnownContexts.Modal, [
     {
