@@ -55,7 +55,12 @@ export const useBridge = (scene: Scene2D | null) => {
         }
 
         scene.executeCommand(
-          new UpdateLabelCommand(overlay, payload.currentLabel, payload.value)
+          new UpdateLabelCommand(
+            overlay,
+            payload.currentLabel,
+            payload.value,
+            eventBus
+          )
         );
       },
       [scene]
