@@ -9,7 +9,7 @@ import {
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -282,7 +282,7 @@ export default function useLabels() {
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
   const setLabels = useSetAtom(labels);
-  const [loadingState, setLoading] = useAtom(labelsState);
+  const setLoading = useSetAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const addLabelToStore = useSetAtom(addLabel);
@@ -291,6 +291,13 @@ export default function useLabels() {
   const currentSlice = useRecoilValue(modalGroupSlice);
   const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
+
+  // Use a ref for the loading state machine to avoid having it as an effect
+  // dependency. When loadingState was both a dep and mutated inside the effect,
+  // the UNSET→LOADING state change triggered a re-render whose cleanup set
+  // stale=true, causing the async result to be discarded and the state reset
+  // to UNSET — an infinite loop that prevented labels from ever loading.
+  const loadingRef = useRef(LabelsState.UNSET);
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) => async (path: string) => {
@@ -314,9 +321,10 @@ export default function useLabels() {
     if (prevSliceRef.current !== currentSlice && currentSlice) {
       prevSliceRef.current = currentSlice;
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     }
-  }, [currentSlice]);
+  }, [currentSlice, setLabels, setLoading]);
 
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
@@ -326,6 +334,7 @@ export default function useLabels() {
       });
 
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
 
@@ -347,11 +356,12 @@ export default function useLabels() {
           schemas: active,
         });
 
-      if (loadingState === LabelsState.UNSET) {
+      if (loadingRef.current === LabelsState.UNSET) {
+        loadingRef.current = LabelsState.LOADING;
         setLoading(LabelsState.LOADING);
         getLabelsFromSample().then((result) => {
           if (stale) {
-            setLoading(LabelsState.UNSET);
+            loadingRef.current = LabelsState.UNSET;
             return;
           }
 
@@ -359,9 +369,10 @@ export default function useLabels() {
           result.forEach((annotationLabel) =>
             addLabelToRenderer(annotationLabel)
           );
+          loadingRef.current = LabelsState.COMPLETE;
           setLoading(LabelsState.COMPLETE);
         });
-      } else if (loadingState === LabelsState.COMPLETE) {
+      } else if (loadingRef.current === LabelsState.COMPLETE) {
         // refresh label data
         getLabelsFromSample().then((result) => {
           if (stale) return;
@@ -398,7 +409,6 @@ export default function useLabels() {
     addLabelToStore,
     createLabel,
     getFieldType,
-    loadingState,
     modalSample?.sample,
     paths,
     scene,
@@ -410,9 +420,10 @@ export default function useLabels() {
   useEffect(() => {
     return () => {
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [scene]);
+  }, [scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
