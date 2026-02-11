@@ -123,6 +123,13 @@ export class ModalSidebarPom {
   }
 
   /**
+   * Open the MUI Autocomplete dropdown in the modal by clicking its input
+   */
+  async openAutocomplete() {
+    await this.modal.getByRole("combobox").click();
+  }
+
+  /**
    * Select an option from an MUI Autocomplete dropdown in the modal
    */
   async selectAutocompleteOption(label: string) {

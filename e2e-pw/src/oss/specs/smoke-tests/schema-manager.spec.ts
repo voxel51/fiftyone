@@ -638,6 +638,7 @@ test.describe.serial("schema manager", () => {
     // Verify in annotation sidebar — renders as autocomplete with configured choices
     await modal.sidebar.clickPrimitiveEntry(stringListFieldName);
     for (const value of stringListSelections) {
+      await modal.sidebar.openAutocomplete();
       await modal.sidebar.selectAutocompleteOption(value);
     }
     await modal.sidebar.assert.hasSelectedTags(stringListSelections);
