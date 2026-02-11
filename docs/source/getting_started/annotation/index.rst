@@ -1,7 +1,7 @@
 .. _annotation_guide:
 
-Annotation Getting Started Guide
-================================
+Annotation Guide
+================
 
 .. default-role:: code
 
