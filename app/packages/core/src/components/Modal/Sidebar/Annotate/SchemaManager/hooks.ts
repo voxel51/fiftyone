@@ -9,7 +9,8 @@ import {
   queryPerformanceMaxSearch,
   useNotification,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -214,13 +215,6 @@ export const useFieldType = (field: string) => {
 };
 
 /**
- * Helper atom to dynamically get field type.
- */
-const getFieldTypeAtom = atom(null, (get, _set, field: string) =>
-  get(fieldType(field))
-);
-
-/**
  * Hook which returns a callback to dynamically get the field type for a path.
  *
  * @example
@@ -231,7 +225,10 @@ const getFieldTypeAtom = atom(null, (get, _set, field: string) =>
  * }
  * ```
  */
-export const useGetFieldType = () => useSetAtom(getFieldTypeAtom);
+export const useGetFieldType = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldType(field)), [])
+  );
 
 /**
  * Hook which returns a callback to check whether a field is a primitive type.
@@ -270,13 +267,6 @@ export const useFieldIsReadOnly = (field: string) => {
 };
 
 /**
- * Helper atom to dynamically get read-only status.
- */
-const getIsReadOnlyAtom = atom(null, (get, _set, field: string) =>
-  get(fieldIsReadOnly(field))
-);
-
-/**
  * Hook which returns a callback to check whether a field is read-only.
  *
  * @example
@@ -289,7 +279,10 @@ const getIsReadOnlyAtom = atom(null, (get, _set, field: string) =>
  * };
  * ```
  */
-export const useIsFieldReadOnly = () => useSetAtom(getIsReadOnlyAtom);
+export const useIsFieldReadOnly = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldIsReadOnly(field)), [])
+  );
 
 /**
  * Hook to check if a field has schema configured
