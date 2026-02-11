@@ -138,9 +138,9 @@ export const createSelect = (name: string, choices: string[]) => {
   return {
     type: "string",
     view: {
-      name: "DropdownView",
+      name: "SelectWidget",
       label: name,
-      component: "DropdownView",
+      component: "SelectWidget",
       choices: choices.map((choice) => ({
         name: "Choice",
         label: getLabel(choice),
