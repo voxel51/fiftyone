@@ -27,6 +27,7 @@ export const useRegisterAnnotationCommandHandlers = () => {
             eventBus.dispatch("annotation:deleteSuccess", {
               labelId,
               type: "delete",
+              labelType: cmd.label.type,
             });
           } else {
             eventBus.dispatch("annotation:deleteError", {

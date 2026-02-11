@@ -21,6 +21,7 @@ import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
+import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
@@ -67,6 +68,7 @@ const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
   useRegisterRendererEventHandlers();
+  useAnnotationTracking();
 
   const modalMode = useModalMode();
 
