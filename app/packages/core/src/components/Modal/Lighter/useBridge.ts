@@ -3,6 +3,7 @@
  */
 
 import {
+  AnnotationEventGroup,
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
@@ -14,10 +15,10 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
-import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
+import { currentData } from "../Sidebar/Annotate/Edit/state";
+import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -38,7 +39,7 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { updateLabelData } = useLabelsContext();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -59,11 +60,11 @@ export const useBridge = (scene: Scene2D | null) => {
             overlay,
             payload.currentLabel,
             payload.value,
-            eventBus
+            annotationEventBus
           )
         );
       },
-      [scene]
+      [annotationEventBus, scene]
     )
   );
 
@@ -116,27 +117,25 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
-  const handleCommandEvent = useCallback(
+  const handleUndoRedo = useCallback(
     (
       payload:
-        | LighterEventGroup["lighter:command-executed"]
-        | LighterEventGroup["lighter:undo"]
-        | LighterEventGroup["lighter:redo"]
+        | AnnotationEventGroup["annotation:labelEdit"]
+        | AnnotationEventGroup["annotation:undoLabelEdit"]
     ) => {
-      // Here, this would be true for `undo` or `redo`
-      if (
-        !("command" in payload) ||
-        !(payload.command instanceof UpdateLabelCommand)
-      ) {
-        const label = overlay?.label;
-
-        if (label) {
-          save(label);
-        }
-
-        return;
+      // sync data with the sidebar
+      if (payload.label) {
+        updateLabelData(payload.label._id ?? payload.label.id, payload.label);
       }
+    },
+    [updateLabelData]
+  );
 
+  useAnnotationEventHandler("annotation:labelEdit", handleUndoRedo);
+  useAnnotationEventHandler("annotation:undoLabelEdit", handleUndoRedo);
+
+  const handleCommandEvent = useCallback(
+    (payload: LighterEventGroup["lighter:command-executed"]) => {
       if (!payload.command.nextLabel) {
         return;
       }
@@ -149,12 +148,10 @@ export const useBridge = (scene: Scene2D | null) => {
         save(newLabel);
       }
     },
-    [overlay, save]
+    [save]
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
-  useEventHandler("lighter:redo", handleCommandEvent);
-  useEventHandler("lighter:undo", handleCommandEvent);
 
   const context = useColorMappingContext();
 

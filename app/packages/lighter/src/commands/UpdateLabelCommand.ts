@@ -6,7 +6,7 @@ import { Undoable } from "@fiftyone/commands";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import type { RawLookerLabel } from "../types";
 import { EventDispatcher } from "@fiftyone/events";
-import { LighterEventGroup } from "../events";
+import { AnnotationEventGroup } from "@fiftyone/annotation";
 
 /**
  * Command for transforming an overlay with undo/redo support.
@@ -21,7 +21,7 @@ export class UpdateLabelCommand implements Undoable {
     private overlay: BaseOverlay,
     private currentLabel: RawLookerLabel,
     nextLabel: RawLookerLabel,
-    private readonly eventBus: EventDispatcher<LighterEventGroup>
+    private readonly eventBus: EventDispatcher<AnnotationEventGroup>
   ) {
     this.id = `update-label-${overlay.id}-${Date.now()}`;
     this.description = `Update label ${overlay.id}`;
@@ -32,7 +32,9 @@ export class UpdateLabelCommand implements Undoable {
     update(this.overlay, this.nextLabel);
 
     if (this.hasExecuted) {
-      this.eventBus.dispatch("lighter:redo", { commandId: this.id });
+      this.eventBus.dispatch("annotation:labelEdit", {
+        label: this.nextLabel!,
+      });
     } else {
       this.hasExecuted = true;
     }
@@ -41,7 +43,9 @@ export class UpdateLabelCommand implements Undoable {
   undo(): void {
     update(this.overlay, this.currentLabel);
 
-    this.eventBus.dispatch("lighter:undo", { commandId: this.id });
+    this.eventBus.dispatch("annotation:undoLabelEdit", {
+      label: this.currentLabel!,
+    });
   }
 }
 
