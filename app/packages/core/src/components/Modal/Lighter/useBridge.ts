@@ -142,6 +142,20 @@ export const useBridge = (scene: Scene2D | null) => {
     }, [annotationEventBus])
   );
 
+  useAnnotationEventHandler(
+    "annotation:sidebarLabelSelected",
+    useCallback(
+      (payload) => {
+        if (!scene) {
+          return;
+        }
+
+        scene.selectOverlay(payload.id, { ignoreSideEffects: true });
+      },
+      [scene]
+    )
+  );
+
   const handleUndoRedo = useCallback(
     (
       payload:

@@ -1,8 +1,13 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
+import { useAnnotationEventBus } from "./useAnnotationEventBus";
 import { useActivityToast, type AnnotationLabel } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
-import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import {
+  useLabelsContext,
+  labels,
+  labelMap,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
 import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
 import { getDefaultStore } from "jotai";
@@ -12,6 +17,13 @@ import { _dangerousQuickDrawActiveAtom } from "@fiftyone/core/src/components/Mod
 const STORE = getDefaultStore();
 
 /**
+ * Overlay IDs created during annotation (via the establish event).
+ * Used to distinguish freshly-drawn Quick Draw labels from pre-existing
+ * sample labels when selecting the previous overlay after undo.
+ */
+const sessionOverlayIds = new Set<string>();
+
+/**
  * Hook which registers global annotation event handlers.
  * This should be called once in the composition root.
  */
@@ -19,6 +31,7 @@ export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
+  const annotationEventBus = useAnnotationEventBus();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
@@ -71,6 +84,7 @@ export const useRegisterAnnotationEventHandlers = () => {
     "annotation:canvasDetectionOverlayEstablish",
     useCallback(
       (payload) => {
+        sessionOverlayIds.add(payload.overlay.id);
         addLabelToSidebar({
           data: payload.overlay.label as DetectionLabel,
           overlay: payload.overlay,
@@ -87,15 +101,52 @@ export const useRegisterAnnotationEventHandlers = () => {
     useCallback(
       (payload) => {
         removeLabelFromSidebar(payload.id);
+        sessionOverlayIds.delete(payload.id);
 
-        // Clear editing state if the removed overlay was the one being edited.
-        const currentLabel = STORE.get(current) as AnnotationLabel | null;
-        if (currentLabel?.overlay?.id === payload.id) {
-          STORE.set(editing, null);
-          STORE.set(savedLabel, null);
+        const isQuickDraw = STORE.get(_dangerousQuickDrawActiveAtom);
+
+        if (isQuickDraw) {
+          // During Quick Draw, select the previous label after undo so the
+          // user sees resize handles / move cursor on the preceding box.
+          // Only consider overlays drawn in this session (sessionOverlayIds)
+          // to avoid selecting pre-existing sample labels.
+          const remainingLabels = STORE.get(labels);
+          const candidates = remainingLabels.filter((l) =>
+            sessionOverlayIds.has(l.overlay.id)
+          );
+          const prevLabel = candidates[candidates.length - 1];
+
+          if (prevLabel) {
+            const map = STORE.get(labelMap);
+            const prevAtom = map[prevLabel.overlay.id];
+            if (prevAtom) {
+              STORE.set(savedLabel, prevLabel.data);
+              STORE.set(editing, prevAtom);
+              annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
+                id: prevLabel.overlay.id,
+                type: prevLabel.type,
+              });
+            }
+          } else {
+            STORE.set(editing, null);
+            STORE.set(savedLabel, null);
+          }
+        } else {
+          // Not in Quick Draw — clear editing if the removed overlay was
+          // the one being edited.
+          const currentLabel = STORE.get(editing);
+          if (
+            currentLabel &&
+            typeof currentLabel !== "string" &&
+            (STORE.get(currentLabel) as AnnotationLabel | null)?.overlay?.id ===
+              payload.id
+          ) {
+            STORE.set(editing, null);
+            STORE.set(savedLabel, null);
+          }
         }
       },
-      [removeLabelFromSidebar]
+      [removeLabelFromSidebar, annotationEventBus]
     )
   );
 
@@ -110,6 +161,7 @@ export const useRegisterAnnotationEventHandlers = () => {
         STORE.set(savedLabel, null);
       }
       STORE.set(_dangerousQuickDrawActiveAtom, false);
+      sessionOverlayIds.clear();
     }, [])
   );
 };
