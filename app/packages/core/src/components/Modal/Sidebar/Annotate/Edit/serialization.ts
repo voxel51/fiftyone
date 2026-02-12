@@ -24,8 +24,7 @@ export function serializeDateValue(type: string, date: Date): string {
 }
 
 /**
- * Serialize a date value from the database back to an ISO string.
- * number back into a date string
+ * Serialize a date value from the database back to an ISO string
  * @param value - The value to serialize
  * @returns The serialized value
  */
