@@ -229,7 +229,7 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds, relativeBounds } = event;
+      const { overlay, absoluteBounds } = event;
 
       if (overlay) {
         const startsSession = this.nextOverlayStartsSession;
@@ -239,7 +239,6 @@ export class Scene2D {
           this,
           overlay,
           absoluteBounds,
-          relativeBounds,
           startsSession
         );
         CommandContextManager.instance()
@@ -971,12 +970,7 @@ export class Scene2D {
    */
   addOverlay(overlay: BaseOverlay, withUndo: boolean = false): void {
     if (withUndo) {
-      const command = new AddOverlayCommand(
-        this,
-        overlay,
-        undefined,
-        undefined
-      );
+      const command = new AddOverlayCommand(this, overlay);
       this.executeCommand(command);
       return;
     }
@@ -1765,6 +1759,49 @@ export class Scene2D {
     }
 
     this.eventBus.dispatch("lighter:drawing-session-ended", undefined as never);
+  }
+
+  /**
+   * Dispatches a `lighter:overlay-restored` event for the given overlay.
+   * Called by {@link AddOverlayCommand.execute} on redo so the annotation
+   * layer can re-add the label to the sidebar.
+   */
+  /**
+   * Converts absolute bounds to relative bounds using the scene's coordinate
+   * system.  Returns null when the coordinate system is not yet initialised.
+   */
+  public toRelativeBounds(absoluteBounds: Rect): Rect | null {
+    if (!this.canonicalMedia || !BaseOverlay.validBounds(absoluteBounds)) {
+      return null;
+    }
+    return this.coordinateSystem.absoluteToRelative(absoluteBounds);
+  }
+
+  public dispatchOverlayRestored(overlay: BaseOverlay): void {
+    this.eventBus.dispatch("lighter:overlay-restored", {
+      id: overlay.id,
+      overlay,
+    });
+
+    // Dispatch bounds-changed so the Position component updates the sidebar
+    // with the restored bounds. During normal drawing, the render loop fires
+    // this event, but on redo the coordinate update is already complete so
+    // the render loop skips it.
+    if (TypeGuards.isSpatial(overlay)) {
+      const absoluteBounds = overlay.getAbsoluteBounds();
+      const relativeBounds = overlay.getRelativeBounds();
+
+      if (
+        BaseOverlay.validBounds(absoluteBounds) &&
+        BaseOverlay.validBounds(relativeBounds)
+      ) {
+        this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+          id: overlay.id,
+          absoluteBounds,
+          relativeBounds,
+        });
+      }
+    }
   }
 
   /**

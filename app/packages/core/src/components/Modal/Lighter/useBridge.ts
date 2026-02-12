@@ -8,6 +8,7 @@ import {
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import {
+  BoundingBoxOverlay,
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -112,6 +113,24 @@ export const useBridge = (scene: Scene2D | null) => {
             overlay: payload.overlay.overlay,
           }
         );
+      },
+      [annotationEventBus]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-restored",
+    useCallback(
+      (payload) => {
+        if (payload.overlay instanceof BoundingBoxOverlay) {
+          annotationEventBus.dispatch(
+            "annotation:canvasDetectionOverlayEstablish",
+            {
+              id: payload.id,
+              overlay: payload.overlay,
+            }
+          );
+        }
       },
       [annotationEventBus]
     )

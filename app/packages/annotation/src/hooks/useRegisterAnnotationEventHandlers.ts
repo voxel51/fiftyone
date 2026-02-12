@@ -86,6 +86,13 @@ export const useRegisterAnnotationEventHandlers = () => {
     "annotation:canvasDetectionOverlayEstablish",
     useCallback(
       (payload) => {
+        // Guard against duplicates (e.g. redo dispatching establish for an
+        // overlay that is already in the sidebar).
+        const allLabels = STORE.get(labels);
+        if (allLabels.some((l) => l.overlay.id === payload.overlay.id)) {
+          return;
+        }
+
         sessionOverlayIds.add(payload.overlay.id);
         addLabelToSidebar({
           data: payload.overlay.label as DetectionLabel,

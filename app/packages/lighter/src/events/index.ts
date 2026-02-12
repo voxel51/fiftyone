@@ -167,6 +167,8 @@ export type LighterEventGroup = {
   "lighter:viewport-moved": { x: number; y: number; scale: number };
   /** Emitted when a drawing session ends (via undo of the first AddOverlayCommand in a session) */
   "lighter:drawing-session-ended": void;
+  /** Emitted when an overlay is restored via redo (AddOverlayCommand.execute) */
+  "lighter:overlay-restored": { id: string; overlay: BaseOverlay };
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS
