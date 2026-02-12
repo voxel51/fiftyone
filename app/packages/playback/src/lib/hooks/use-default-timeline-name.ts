@@ -2,21 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { GLOBAL_TIMELINE_ID } from "../constants";
-
-export const getTimelineNameFromSampleAndGroupId = (
-  sampleId?: string | null,
-  groupId?: string | null
-) => {
-  if (!sampleId && !groupId) {
-    return GLOBAL_TIMELINE_ID;
-  }
-
-  if (groupId) {
-    return `timeline-${groupId}`;
-  }
-
-  return `timeline-${sampleId}`;
-};
+import { getTimelineNameFromSampleAndGroupId } from "../utils";
 
 /**
  * This hook gives access to the default timeline name based on the current context.

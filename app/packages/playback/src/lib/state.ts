@@ -9,7 +9,6 @@ import {
   DEFAULT_SPEED,
   DEFAULT_TARGET_FRAME_RATE,
   DEFAULT_USE_TIME_INDICATOR,
-  MIN_LOAD_RANGE_SIZE,
   PLAYHEAD_STATE_PAUSED,
   PlayheadState,
 } from "./constants";
@@ -21,6 +20,7 @@ import type {
   TimelineName,
   TimelineSubscribersMap,
 } from "./types";
+import { getLoadRangeForFrameNumber } from "./utils";
 
 const _frameNumbers = atomFamily((_timelineName: TimelineName) =>
   atom<FrameNumber>(DEFAULT_FRAME_NUMBER)
@@ -340,52 +340,3 @@ export const getTimelineUpdateFreqAtom = atomFamily(
       return 1000 / (targetFrameRate * speed);
     })
 );
-
-/**
- * UTILS
- */
-export const getLoadRangeForFrameNumber = (
-  frameNumber: FrameNumber,
-  config: FoTimelineConfig
-): BufferRange => {
-  const { totalFrames, targetFrameRate, speed } = config;
-
-  // we'll keep behind-buffer size fixed
-  const behindBuffer = MIN_LOAD_RANGE_SIZE;
-  // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
-  // but scales with speed and target frame rate relative to a baseline
-
-  const baseAdaptiveBuffer =
-    MIN_LOAD_RANGE_SIZE *
-    (speed ?? 1) *
-    ((targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE) /
-      DEFAULT_TARGET_FRAME_RATE);
-
-  // use weight = 2% of totalFrames to gently extend the buffer on larger timelines.
-  const totalFramesFactor = Math.ceil(totalFrames * 0.02);
-
-  const adaptiveAheadBuffer = Math.max(
-    MIN_LOAD_RANGE_SIZE,
-    Math.ceil(baseAdaptiveBuffer + totalFramesFactor)
-  );
-
-  // initial range centered on the current frame.
-  let min = frameNumber - behindBuffer;
-  let max = frameNumber + adaptiveAheadBuffer;
-
-  // if the range exceeds totalFrames at the end,
-  // pull extra frames from behind to maintain overall buffer size.
-  if (max > totalFrames) {
-    const extra = max - totalFrames;
-    min = Math.max(1, min - extra);
-    max = totalFrames;
-  }
-  // similarly, if the range goes below 1, extend the ahead buffer.
-  if (min < 1) {
-    const extra = 1 - min;
-    max = Math.min(totalFrames, max + extra);
-    min = 1;
-  }
-
-  return [min, max] as const;
-};

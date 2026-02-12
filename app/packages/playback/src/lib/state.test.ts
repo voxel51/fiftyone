@@ -1,5 +1,5 @@
 import { describe, expect, it, vitest } from "vitest";
-import { getLoadRangeForFrameNumber } from "./state";
+import { getLoadRangeForFrameNumber } from "./utils";
 
 vitest.mock("./constants", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./constants")>();
