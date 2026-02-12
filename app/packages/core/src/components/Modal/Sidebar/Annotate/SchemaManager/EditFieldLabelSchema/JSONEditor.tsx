@@ -18,7 +18,7 @@ import { ContentArea } from "../styled";
 const SCHEMA_JSON_DOC_URL =
   "https://docs.voxel51.com/api/fiftyone.core.annotation.generate_label_schemas.html#module-fiftyone.core.annotation.generate_label_schemas";
 
-type JSONValue =
+export type JSONValue =
   | string
   | number
   | boolean
