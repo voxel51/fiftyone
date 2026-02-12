@@ -98,6 +98,11 @@ export class CommandContextManager {
     this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+shift+z", KnownCommands.Redo);
+
+    // activate all contexts
+    for (const ctx of this.contextStack) {
+      ctx.activate();
+    }
   }
   /**
    * @returns the single instance of this manager
@@ -193,6 +198,10 @@ export class CommandContextManager {
     this.contexts.set(KnownContexts.Default, this.defaultContext);
     this.contexts.set(KnownContexts.Modal, this.modalContext);
     this.contexts.set(KnownContexts.ModalAnnotate, this.modalAnnotateContext);
+
+    for (const ctx of this.contextStack) {
+      ctx.activate();
+    }
   }
 
   /**
