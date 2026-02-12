@@ -295,7 +295,7 @@ Within the editing panel the x/y coordinates, width, and height can be adjusted.
 Attributes
 ^^^^^^^^^^
 
-The editing panel also enables editing the label, tags, confidence, and index properties.
+The editing panel also enables editing the label, tags, confidence, index properties, and custom properties depending on the configured annotation schema.
 
 .. image:: /_static/images/annotation/editing_panel.png
    :alt: Editing panel
