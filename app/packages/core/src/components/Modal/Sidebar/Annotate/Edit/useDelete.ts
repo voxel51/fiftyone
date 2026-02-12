@@ -4,16 +4,16 @@ import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { current } from "./state";
 import useExit from "./useExit";
 import { useLabelsContext } from "../useLabels";
 import {
+  CommandContextManager,
   DelegatingUndoable,
   KnownCommands,
   KnownContexts,
-  useKeyBindings,
 } from "@fiftyone/commands";
 
 export default function useDelete() {
@@ -28,81 +28,119 @@ export default function useDelete() {
   const exit = useExit();
   const setNotification = fos.useNotification();
 
-  const undoable = useMemo(() => {
+  // Use refs to capture latest values without causing re-renders
+  const labelRef = useRef(label);
+  const schemaRef = useRef(schema);
+  const sceneRef = useRef(scene);
+  const commandBusRef = useRef(commandBus);
+  const removeLabelFromSidebarRef = useRef(removeLabelFromSidebar);
+  const removeOverlayRef = useRef(removeOverlay);
+  const setNotificationRef = useRef(setNotification);
+  const exitRef = useRef(exit);
+  const addLabelToSidebarRef = useRef(addLabelToSidebar);
+
+  // Update refs on every render
+  useEffect(() => {
+    labelRef.current = label;
+    schemaRef.current = schema;
+    sceneRef.current = scene;
+    commandBusRef.current = commandBus;
+    removeLabelFromSidebarRef.current = removeLabelFromSidebar;
+    removeOverlayRef.current = removeOverlay;
+    setNotificationRef.current = setNotification;
+    exitRef.current = exit;
+    addLabelToSidebarRef.current = addLabelToSidebar;
+  });
+
+  // Create stable command handler that uses refs
+  const commandHandler = useCallback(() => {
+    const currentLabel = labelRef.current;
+    if (!currentLabel) return;
+
     return new DelegatingUndoable(
       "delete.undoable",
       async () => {
-        if (!label) {
+        if (!currentLabel) {
           return;
         }
 
-        if (label.isNew) {
-          if (scene && !scene.isDestroyed && scene.renderLoopActive) {
-            scene?.exitInteractiveMode();
-            removeOverlay(label?.data._id, true);
+        if (currentLabel.isNew) {
+          if (
+            sceneRef.current &&
+            !sceneRef.current.isDestroyed &&
+            sceneRef.current.renderLoopActive
+          ) {
+            sceneRef.current?.exitInteractiveMode();
+            removeOverlayRef.current(currentLabel?.data._id, true);
           }
 
-          exit();
+          exitRef.current();
           return;
         }
 
         try {
-          const fieldSchema = getFieldSchema(schema, label?.path);
+          const fieldSchema = getFieldSchema(
+            schemaRef.current,
+            currentLabel?.path
+          );
 
           if (!fieldSchema) {
-            setNotification({
+            setNotificationRef.current({
               msg: `Unable to delete label: field schema not found for path "${
-                label?.path ?? "unknown"
+                currentLabel?.path ?? "unknown"
               }".`,
               variant: "error",
             });
             return;
           }
 
-          await commandBus.execute(
-            new DeleteAnnotationCommand(label, fieldSchema)
+          await commandBusRef.current.execute(
+            new DeleteAnnotationCommand(currentLabel, fieldSchema)
           );
 
-          removeLabelFromSidebar(label.data._id);
-          removeOverlay(label.overlay.id, false);
+          removeLabelFromSidebarRef.current(currentLabel.data._id);
+          removeOverlayRef.current(currentLabel.overlay.id, false);
 
-          setNotification({
-            msg: `Label "${label.data.label}" successfully deleted.`,
+          setNotificationRef.current({
+            msg: `Label "${currentLabel.data.label}" successfully deleted.`,
             variant: "success",
           });
 
-          exit();
+          exitRef.current();
         } catch (error) {
           console.error(error);
-          setNotification({
+          setNotificationRef.current({
             msg: `Label "${
-              label.data.label ?? "Label"
+              currentLabel.data.label ?? "Label"
             }" not successfully deleted. Try again.`,
             variant: "error",
           });
         }
       },
       async () => {
-        if (label) {
+        if (currentLabel) {
           try {
-            const fieldSchema = getFieldSchema(schema, label?.path);
+            const fieldSchema = getFieldSchema(
+              schemaRef.current,
+              currentLabel?.path
+            );
             if (!fieldSchema) {
-              setNotification({
+              setNotificationRef.current({
                 msg: `Error restoring deleted label. "${
-                  label?.path ?? "unknown"
+                  currentLabel?.path ?? "unknown"
                 }".`,
                 variant: "error",
               });
               return;
             }
 
-            scene?.addOverlay(label.overlay);
-            addLabelToSidebar(label);
+            sceneRef.current?.addOverlay(currentLabel.overlay);
+            addLabelToSidebarRef.current(currentLabel);
           } catch (error) {
             console.error(error);
-            setNotification({
+            setNotificationRef.current({
               msg: `Label "${
-                label.data.label ?? "Label"
+                currentLabel.data.label ?? "Label"
               }" not restored during undo. Try again.`,
               variant: "error",
             });
@@ -110,33 +148,32 @@ export default function useDelete() {
         }
       }
     );
-  }, [
-    commandBus,
-    exit,
-    label,
-    removeLabelFromSidebar,
-    removeOverlay,
-    scene,
-    schema,
-    setNotification,
-  ]);
+  }, []);
 
-  useKeyBindings(
-    KnownContexts.ModalAnnotate,
-    [
-      {
-        commandId: KnownCommands.ModalDeleteAnnotation,
-        handler: () => {
-          return undoable;
-        },
-        enablement: () => {
-          return !!label;
-        },
-        sequence: "Delete",
-        label: "Delete label",
-        description: "Delete label",
-      },
-    ],
-    [undoable]
-  );
+  // We have to register the command with the raw API because the new API hasn't merged yet.
+  // TODO: Remove this when the new API is merged.
+  useEffect(() => {
+    const ctx = CommandContextManager.instance().getCommandContext(
+      KnownContexts.ModalAnnotate
+    );
+
+    // Register the command
+    const cmd = ctx.registerCommand(
+      KnownCommands.ModalDeleteAnnotation,
+      commandHandler,
+      () => !!labelRef.current,
+      "Delete label",
+      "Delete label"
+    );
+
+    // Bind keys
+    ctx.bindKey("Delete", KnownCommands.ModalDeleteAnnotation);
+    ctx.bindKey("Backspace", KnownCommands.ModalDeleteAnnotation);
+
+    return () => {
+      ctx.unbindKey("Delete");
+      ctx.unbindKey("Backspace");
+      ctx.unregisterCommand(cmd.id);
+    };
+  }, [commandHandler]); // Only re-register if commandHandler changes (which it won't)
 }
