@@ -212,6 +212,7 @@ export const createJsonInput = (name: string): SchemaType => {
     view: {
       name: "JsonEditorView",
       component: "JsonEditorView",
+      height: 200,
       label: name,
     },
   };
@@ -294,6 +295,7 @@ export function generatePrimitiveSchema(
     return createDatePicker(name, false);
   }
 
+  console.log("schema.type", schema.type);
   if (schema.type === "dict") {
     return createJsonInput(name);
   }
