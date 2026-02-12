@@ -1,7 +1,7 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { activeFields, ANNOTATE, EXPLORE, modalMode } from "@fiftyone/state";
 import { useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import {
   activeLabelSchemas,
@@ -50,9 +50,10 @@ const useFieldActivationSync = () => {
   const initializedRef = useRef(false);
   const skipNextRecoilSyncRef = useRef(false);
 
-  const getSchemaFields = useCallback((): Set<string> => {
-    return new Set(Object.keys(schemasData ?? {}));
-  }, [schemasData]);
+  const schemaFields = useMemo(
+    () => new Set(Object.keys(schemasData ?? {})),
+    [schemasData]
+  );
 
   // Record initial Recoil state when schemas become available
   useEffect(() => {
@@ -78,7 +79,6 @@ const useFieldActivationSync = () => {
 
     if (!prev) return;
 
-    const schemaFields = getSchemaFields();
     const prevSet = new Set(prev.filter((f) => schemaFields.has(f)));
     const currSet = new Set(recoilFields.filter((f) => schemaFields.has(f)));
 
@@ -98,7 +98,7 @@ const useFieldActivationSync = () => {
   }, [
     recoilFields,
     schemasData,
-    getSchemaFields,
+    schemaFields,
     addSchemas,
     removeSchemas,
     activateOperator,
@@ -113,7 +113,6 @@ const useFieldActivationSync = () => {
     if (prevMode !== ANNOTATE || mode !== EXPLORE) return;
     if (!schemasData || jotaiSchemas === null) return;
 
-    const schemaFields = getSchemaFields();
     const jotaiActive = new Set(
       jotaiSchemas.filter((f) => schemaFields.has(f))
     );
@@ -134,7 +133,7 @@ const useFieldActivationSync = () => {
     schemasData,
     jotaiSchemas,
     recoilFields,
-    getSchemaFields,
+    schemaFields,
     setRecoilFields,
   ]);
 };
