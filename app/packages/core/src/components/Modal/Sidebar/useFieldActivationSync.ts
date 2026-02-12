@@ -44,6 +44,10 @@ const useFieldActivationSync = () => {
 
   const activateOperator = useOperatorExecutor("activate_label_schemas");
   const deactivateOperator = useOperatorExecutor("deactivate_label_schemas");
+  const activateOperatorRef = useRef(activateOperator);
+  const deactivateOperatorRef = useRef(deactivateOperator);
+  activateOperatorRef.current = activateOperator;
+  deactivateOperatorRef.current = deactivateOperator;
 
   const prevRecoilRef = useRef<string[] | null>(null);
   const prevModeRef = useRef(mode);
@@ -89,21 +93,13 @@ const useFieldActivationSync = () => {
 
     if (added.length > 0) {
       addSchemas(new Set(added));
-      activateOperator.execute({ fields: added });
+      activateOperatorRef.current.execute({ fields: added });
     }
     if (removed.length > 0) {
       removeSchemas(new Set(removed));
-      deactivateOperator.execute({ fields: removed });
+      deactivateOperatorRef.current.execute({ fields: removed });
     }
-  }, [
-    recoilFields,
-    schemasData,
-    schemaFields,
-    addSchemas,
-    removeSchemas,
-    activateOperator,
-    deactivateOperator,
-  ]);
+  }, [recoilFields, schemasData, schemaFields, addSchemas, removeSchemas]);
 
   // Jotai → Recoil sync (deferred to Annotate → Explore mode switch)
   useEffect(() => {
