@@ -9,6 +9,7 @@ import {
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
+import { EnterDrawingModeCommand } from "../commands/EnterDrawingModeCommand";
 import {
   MoveOverlayCommand,
   type Movable,
@@ -162,6 +163,7 @@ export class Scene2D {
   private rotation: number = 0;
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
+  private drawingSessionActive: boolean = false;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
@@ -1700,6 +1702,15 @@ export class Scene2D {
     }
     this.setCursor(handler.cursor || "default");
 
+    // Push a drawing-session command once per session so that the user can
+    // undo back past all drawn overlays to exit drawing mode entirely.
+    if (!this.drawingSessionActive) {
+      this.drawingSessionActive = true;
+      CommandContextManager.instance()
+        .getActiveContext()
+        .pushUndoable(new EnterDrawingModeCommand(this));
+    }
+
     this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
       interactiveMode: true,
     });
@@ -1726,6 +1737,32 @@ export class Scene2D {
     this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
       interactiveMode: false,
     });
+  }
+
+  /**
+   * Sets the drawing-session-active flag.
+   * Called by {@link EnterDrawingModeCommand.execute} on redo.
+   */
+  public setDrawingSessionActive(active: boolean): void {
+    this.drawingSessionActive = active;
+  }
+
+  /**
+   * Ends the current drawing session.
+   * Exits interactive mode if active, resets the session flag, and dispatches
+   * the `lighter:drawing-session-ended` event so the annotation layer can
+   * clean up editing state.
+   *
+   * Called by {@link EnterDrawingModeCommand.undo}.
+   */
+  public endDrawingSession(): void {
+    this.drawingSessionActive = false;
+
+    if (this.interactiveMode) {
+      this.exitInteractiveMode();
+    }
+
+    this.eventBus.dispatch("lighter:drawing-session-ended", undefined as never);
   }
 
   /**

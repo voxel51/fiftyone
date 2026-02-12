@@ -132,6 +132,16 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
+  useEventHandler(
+    "lighter:drawing-session-ended",
+    useCallback(() => {
+      annotationEventBus.dispatch(
+        "annotation:drawingSessionEnded",
+        undefined as never
+      );
+    }, [annotationEventBus])
+  );
+
   const handleUndoRedo = useCallback(
     (
       payload:

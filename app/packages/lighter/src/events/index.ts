@@ -165,6 +165,8 @@ export type LighterEventGroup = {
   "lighter:zoomed": { scale: number };
   /** Emitted when the viewport is panned/moved */
   "lighter:viewport-moved": { x: number; y: number; scale: number };
+  /** Emitted when a drawing session ends (via undo of EnterDrawingModeCommand) */
+  "lighter:drawing-session-ended": void;
 
   // ============================================================================
   // "DO" EVENTS USERS CAN EMIT TO FORCE STATE CHANGES OR ACTIONS

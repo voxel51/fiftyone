@@ -92,6 +92,11 @@ export type AnnotationEventGroup = {
     id: string;
   };
   /**
+   * Notification event emitted when a drawing session ends (undo of enter-drawing-mode).
+   * The annotation layer should clear editing state and exit Quick Draw mode.
+   */
+  "annotation:drawingSessionEnded": void;
+  /**
    * Notification event emitted when a canvas overlay is hovered.
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.

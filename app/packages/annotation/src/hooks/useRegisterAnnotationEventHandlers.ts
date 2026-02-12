@@ -88,16 +88,28 @@ export const useRegisterAnnotationEventHandlers = () => {
       (payload) => {
         removeLabelFromSidebar(payload.id);
 
-        // Clear editing state if the removed overlay was being edited
+        // Clear editing state if the removed overlay was the one being edited.
         const currentLabel = STORE.get(current) as AnnotationLabel | null;
         if (currentLabel?.overlay?.id === payload.id) {
           STORE.set(editing, null);
           STORE.set(savedLabel, null);
         }
-
-        STORE.set(_dangerousQuickDrawActiveAtom, false);
       },
       [removeLabelFromSidebar]
     )
+  );
+
+  // When the drawing session ends (undo of the enter-drawing-mode command),
+  // clean up all annotation editing state so the user is fully back to normal.
+  useAnnotationEventHandler(
+    "annotation:drawingSessionEnded",
+    useCallback(() => {
+      const currentLabel = STORE.get(current) as AnnotationLabel | null;
+      if (currentLabel?.isNew) {
+        STORE.set(editing, null);
+        STORE.set(savedLabel, null);
+      }
+      STORE.set(_dangerousQuickDrawActiveAtom, false);
+    }, [])
   );
 };
