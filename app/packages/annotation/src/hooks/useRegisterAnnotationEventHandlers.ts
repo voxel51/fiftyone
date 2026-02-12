@@ -1,10 +1,15 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
-import { useActivityToast } from "@fiftyone/state";
+import { useActivityToast, type AnnotationLabel } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
 import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
 import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
+import { getDefaultStore } from "jotai";
+import { current, editing, savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
+import { _dangerousQuickDrawActiveAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useQuickDraw";
+
+const STORE = getDefaultStore();
 
 /**
  * Hook which registers global annotation event handlers.
@@ -12,7 +17,7 @@ import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHa
  */
 export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
-  const { addLabelToSidebar } = useLabelsContext();
+  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
 
   useAnnotationEventHandler(
@@ -74,6 +79,25 @@ export const useRegisterAnnotationEventHandlers = () => {
         });
       },
       [addLabelToSidebar]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:canvasDetectionOverlayRemoved",
+    useCallback(
+      (payload) => {
+        removeLabelFromSidebar(payload.id);
+
+        // Clear editing state if the removed overlay was being edited
+        const currentLabel = STORE.get(current) as AnnotationLabel | null;
+        if (currentLabel?.overlay?.id === payload.id) {
+          STORE.set(editing, null);
+          STORE.set(savedLabel, null);
+        }
+
+        STORE.set(_dangerousQuickDrawActiveAtom, false);
+      },
+      [removeLabelFromSidebar]
     )
   );
 };

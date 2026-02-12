@@ -117,6 +117,21 @@ export const useBridge = (scene: Scene2D | null) => {
     )
   );
 
+  useEventHandler(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        annotationEventBus.dispatch(
+          "annotation:canvasDetectionOverlayRemoved",
+          {
+            id: payload.id,
+          }
+        );
+      },
+      [annotationEventBus]
+    )
+  );
+
   const handleUndoRedo = useCallback(
     (
       payload:

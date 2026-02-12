@@ -86,6 +86,12 @@ export type AnnotationEventGroup = {
     overlay: BoundingBoxOverlay;
   };
   /**
+   * Notification event emitted when a canvas overlay is removed (e.g. via undo).
+   */
+  "annotation:canvasDetectionOverlayRemoved": {
+    id: string;
+  };
+  /**
    * Notification event emitted when a canvas overlay is hovered.
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
