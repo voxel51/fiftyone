@@ -9,7 +9,6 @@ import {
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
-import { EnterDrawingModeCommand } from "../commands/EnterDrawingModeCommand";
 import {
   MoveOverlayCommand,
   type Movable,
@@ -164,6 +163,7 @@ export class Scene2D {
   private interactiveMode: boolean = false;
   private interactiveHandler?: InteractionHandler;
   private drawingSessionActive: boolean = false;
+  private nextOverlayStartsSession: boolean = false;
   private isRenderLoopActive: boolean = false;
   private abortController = new AbortController();
   private readonly sceneId: string;
@@ -232,11 +232,15 @@ export class Scene2D {
       const { overlay, absoluteBounds, relativeBounds } = event;
 
       if (overlay) {
+        const startsSession = this.nextOverlayStartsSession;
+        this.nextOverlayStartsSession = false;
+
         const addCommand = new AddOverlayCommand(
           this,
           overlay,
           absoluteBounds,
-          relativeBounds
+          relativeBounds,
+          startsSession
         );
         CommandContextManager.instance()
           .getActiveContext()
@@ -1702,13 +1706,11 @@ export class Scene2D {
     }
     this.setCursor(handler.cursor || "default");
 
-    // Push a drawing-session command once per session so that the user can
-    // undo back past all drawn overlays to exit drawing mode entirely.
+    // Mark the next overlay as the session starter so its AddOverlayCommand
+    // will also manage the drawing session lifecycle on undo/redo.
     if (!this.drawingSessionActive) {
       this.drawingSessionActive = true;
-      CommandContextManager.instance()
-        .getActiveContext()
-        .pushUndoable(new EnterDrawingModeCommand(this));
+      this.nextOverlayStartsSession = true;
     }
 
     this.eventBus.dispatch("lighter:scene-interactive-mode-changed", {
@@ -1741,7 +1743,7 @@ export class Scene2D {
 
   /**
    * Sets the drawing-session-active flag.
-   * Called by {@link EnterDrawingModeCommand.execute} on redo.
+   * Called by {@link AddOverlayCommand.execute} on redo when the command starts a session.
    */
   public setDrawingSessionActive(active: boolean): void {
     this.drawingSessionActive = active;
@@ -1753,7 +1755,7 @@ export class Scene2D {
    * the `lighter:drawing-session-ended` event so the annotation layer can
    * clean up editing state.
    *
-   * Called by {@link EnterDrawingModeCommand.undo}.
+   * Called by {@link AddOverlayCommand.undo} when the command starts a session.
    */
   public endDrawingSession(): void {
     this.drawingSessionActive = false;

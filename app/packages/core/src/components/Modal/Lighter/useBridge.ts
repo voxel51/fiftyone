@@ -143,17 +143,6 @@ export const useBridge = (scene: Scene2D | null) => {
   );
 
   useAnnotationEventHandler(
-    "annotation:requestEndDrawingSession",
-    useCallback(() => {
-      if (!scene) {
-        return;
-      }
-
-      scene.endDrawingSession();
-    }, [scene])
-  );
-
-  useAnnotationEventHandler(
     "annotation:sidebarLabelSelected",
     useCallback(
       (payload) => {

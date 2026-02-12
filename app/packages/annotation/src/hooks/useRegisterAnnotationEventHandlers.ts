@@ -10,6 +10,7 @@ import {
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
 import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
+import { pendingDeletionsAtom } from "../persistence/pendingDeletions";
 import { getDefaultStore } from "jotai";
 import { current, editing, savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import { _dangerousQuickDrawActiveAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useQuickDraw";
@@ -100,6 +101,23 @@ export const useRegisterAnnotationEventHandlers = () => {
     "annotation:canvasDetectionOverlayRemoved",
     useCallback(
       (payload) => {
+        // Capture label data before removal so we can queue a database
+        // deletion if the label was already persisted (auto-saved).
+        const allLabels = STORE.get(labels);
+        const labelToRemove = allLabels.find(
+          (l) => l.overlay.id === payload.id
+        );
+        if (labelToRemove) {
+          STORE.set(pendingDeletionsAtom, (prev) => [
+            ...prev,
+            {
+              type: labelToRemove.type,
+              data: labelToRemove.data,
+              path: labelToRemove.path,
+            },
+          ]);
+        }
+
         removeLabelFromSidebar(payload.id);
         sessionOverlayIds.delete(payload.id);
 
@@ -128,14 +146,11 @@ export const useRegisterAnnotationEventHandlers = () => {
               });
             }
           } else {
+            // Last session overlay undone — go back to baseline.
             STORE.set(editing, null);
             STORE.set(savedLabel, null);
-            // Last session overlay undone — ask the scene to end the drawing
-            // session so the user goes directly back to baseline.
-            annotationEventBus.dispatch(
-              "annotation:requestEndDrawingSession",
-              undefined as never
-            );
+            STORE.set(_dangerousQuickDrawActiveAtom, false);
+            sessionOverlayIds.clear();
           }
         } else {
           // Not in Quick Draw — clear editing if the removed overlay was
@@ -156,8 +171,8 @@ export const useRegisterAnnotationEventHandlers = () => {
     )
   );
 
-  // When the drawing session ends (undo of the enter-drawing-mode command),
-  // clean up all annotation editing state so the user is fully back to normal.
+  // When the drawing session ends (undo of the first AddOverlayCommand in a
+  // session), clean up annotation editing state so the user is back to normal.
   useAnnotationEventHandler(
     "annotation:drawingSessionEnded",
     useCallback(() => {

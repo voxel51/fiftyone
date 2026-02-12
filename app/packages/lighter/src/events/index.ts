@@ -165,7 +165,7 @@ export type LighterEventGroup = {
   "lighter:zoomed": { scale: number };
   /** Emitted when the viewport is panned/moved */
   "lighter:viewport-moved": { x: number; y: number; scale: number };
-  /** Emitted when a drawing session ends (via undo of EnterDrawingModeCommand) */
+  /** Emitted when a drawing session ends (via undo of the first AddOverlayCommand in a session) */
   "lighter:drawing-session-ended": void;
 
   // ============================================================================
