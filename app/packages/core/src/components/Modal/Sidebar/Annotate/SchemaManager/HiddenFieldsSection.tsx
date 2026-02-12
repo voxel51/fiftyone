@@ -27,6 +27,7 @@ import {
   useFieldIsReadOnly,
   useFieldSchemaData,
   useHiddenFieldsWithMetadata,
+  useSelectedActiveFields,
   useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
@@ -105,7 +106,8 @@ const HiddenFieldsSection = () => {
     hasSchemaStates: fieldHasSchemaStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
-  const { setSelected } = useSelectedHiddenFields();
+  const { selected, setSelected } = useSelectedHiddenFields();
+  const { setSelected: setActiveSelected } = useSelectedActiveFields();
 
   const listItems = useMemo(
     () =>
@@ -138,9 +140,12 @@ const HiddenFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setActiveSelected(new Set());
     },
-    [setSelected]
+    [setActiveSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields.length) {
     return null;
@@ -185,6 +190,7 @@ const HiddenFieldsSection = () => {
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}
+          selected={selectedList}
         />
       )}
     </>
