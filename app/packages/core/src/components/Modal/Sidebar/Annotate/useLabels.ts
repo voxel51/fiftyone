@@ -15,11 +15,7 @@ import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import {
-  activeLabelSchemas,
-  isFieldReadOnly,
-  labelSchemasData,
-} from "./state";
+import { activeLabelSchemas, isFieldReadOnly, labelSchemasData } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
@@ -289,7 +285,6 @@ export default function useLabels() {
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
-  const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
 
   // Use a ref for the loading state machine to avoid having it as an effect
@@ -300,31 +295,22 @@ export default function useLabels() {
   const loadingRef = useRef(LabelsState.UNSET);
 
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) => async (path: string) => {
-      const loadable = await snapshot.getLoadable(field(path));
-      const type = loadable
-        .getValue()
-        ?.embeddedDocType?.split(".")
-        .slice(-1)[0];
+    ({ snapshot }) =>
+      async (path: string) => {
+        const loadable = await snapshot.getLoadable(field(path));
+        const type = loadable
+          .getValue()
+          ?.embeddedDocType?.split(".")
+          .slice(-1)[0];
 
-      if (!type) {
-        throw new Error("no type");
-      }
+        if (!type) {
+          throw new Error("no type");
+        }
 
-      return type as LabelType;
-    },
+        return type as LabelType;
+      },
     []
   );
-
-  // This effect resets labels when the annotation slice changes for grouped datasets
-  useEffect(() => {
-    if (prevSliceRef.current !== currentSlice && currentSlice) {
-      prevSliceRef.current = currentSlice;
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    }
-  }, [currentSlice, setLabels, setLoading]);
 
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
@@ -417,13 +403,18 @@ export default function useLabels() {
     updateLabelAtom,
   ]);
 
+  /**
+   * This effect resets label state when the active slice, sample, or scene changes.
+   * Clears all labels and reverts loading state to UNSET so that the
+   * primary loading effect above can re-initialize for the new context.
+   */
   useEffect(() => {
     return () => {
       setLabels([]);
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [scene, setLabels, setLoading]);
+  }, [currentSlice, modalSample, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
