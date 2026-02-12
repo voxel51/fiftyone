@@ -270,6 +270,22 @@ const buildSingleMutationDelta = <
   return generateJsonPatch(existingLabel, data);
 };
 
+/**
+ * if input data is an object with a datetime key, convert it to a date string
+ * @param data - The data to process
+ * @returns The processed data,
+ */
+const processPrimitiveDate = (data: unknown): Primitive => {
+  // data is supposed to be a Primitive (ISO string) but is being passed
+  // an { _cls: "DateTime", datetime: 1234567890 } object. Parse the underlying
+  // number back into a date string
+  if (typeof data === "object" && data !== null && "datetime" in data) {
+    const dateNumber = data.datetime as unknown;
+    return new Date(dateNumber as number).toISOString();
+  }
+  return data as Primitive;
+};
+
 const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
@@ -283,7 +299,11 @@ const buildPrimitiveMutationDelta = (
     return [];
   }
 
-  const delta = { op: "replace", path: "", value: data };
+  // todo - HACK: Something is passing in an incorrect date object,
+  // fixing it here for now
+  const processedData = processPrimitiveDate(data);
+
+  const delta = { op: "replace", path: "", value: processedData };
 
   if (op === "delete") {
     delta.op = "remove";
