@@ -4,6 +4,11 @@ import {
   useRegisterAnnotationEventHandlers,
   useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -32,11 +37,6 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -212,6 +212,9 @@ const Modal = () => {
       },
     [modalCloseHandler]
   );
+
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
   useKeyBindings(KnownContexts.Modal, [
     {
       commandId: KnownCommands.ModalClose,
@@ -286,8 +289,6 @@ const Modal = () => {
     },
     [onLookerSet]
   );
-
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   return ReactDOM.createPortal(
     <modalContext.Provider

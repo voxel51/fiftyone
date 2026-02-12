@@ -1,18 +1,17 @@
-import { useSchemaManager } from "./useSchemaManager";
-import { useCallback, useMemo } from "react";
+import { useSampleMutationManager } from "@fiftyone/annotation";
 import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import useCanManageSchema from "./useCanManageSchema";
-import { useAnnotationSchemaContext } from "./state";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
-import useSave from "./Edit/useSave";
+import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
-import { useSampleMutationManager } from "@fiftyone/annotation";
+import useSave from "./Edit/useSave";
+import { useAnnotationSchemaContext } from "./state";
+import useCanManageSchema from "./useCanManageSchema";
+import { useSchemaManager } from "./useSchemaManager";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -87,11 +86,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
   const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
   const saveChanges = useSave();
-
-  const {
-    activate: activateCommandContext,
-    deactivate: deactivateCommandContext,
-  } = useCommandContext(KnownContexts.ModalAnnotate, true);
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
@@ -173,9 +167,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // enter annotation context
       contextManager.enter();
 
-      // activate command context
-      activateCommandContext();
-
       // register callback to restore active fields on context exit
       contextManager.registerExitCallback({
         callback: () => setActiveFields(activeFields),
@@ -205,7 +196,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
-      activateCommandContext,
       activeFields,
       contextManager,
       initializeFieldSchema,
@@ -219,16 +209,10 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
       saveChanges();
-      deactivateCommandContext();
       clearStaleMutations();
       contextManager.exit();
     }
-  }, [
-    clearStaleMutations,
-    contextManager,
-    deactivateCommandContext,
-    saveChanges,
-  ]);
+  }, [clearStaleMutations, contextManager, saveChanges]);
 
   return useMemo(
     () => ({
