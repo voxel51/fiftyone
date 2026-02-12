@@ -85,12 +85,18 @@ What's Next
 Resources
 ---------
 
-* `FiftyOne 3D Visualizer <../../user_guide/app.html#d-visualizer>`_
-* `FiftyOne Brain - Embeddings <../../user_guide/brain.html>`_
-* `FiftyOne Evaluation API <../../user_guide/evaluation.html>`_
-* `Annotation Integrations <../../integrations/index.html>`_
-* `Grouped Datasets <../../user_guide/groups.html>`_
+* :ref:`FiftyOne 3D Visualizer <app-3d-visualizer>`
+
+* :doc:`FiftyOne Brain - Embeddings </brain>`
+
+* :doc:`FiftyOne Evaluation API </user_guide/evaluation>`
+
+* :doc:`Annotation Integrations </integrations/index>`
+
+* :doc:`Grouped Datasets </user_guide/groups>`
+
 * `ZCore Repository <https://github.com/voxel51/zcore>`_
+
 * `YOLOv8 Documentation <https://docs.ultralytics.com/>`_
 
 Feedback

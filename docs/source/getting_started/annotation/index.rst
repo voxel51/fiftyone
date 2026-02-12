@@ -44,7 +44,7 @@ Quickstart Track
 
 Jump straight to multimodal annotation:
 
-1. :doc:`01_quickstart` - Load grouped data, explore 2D/3D views, draw boxes
+- :doc:`01_quickstart` - Load grouped data, explore 2D/3D views, draw boxes
 
 If in-app annotation fits your needs, check out the Full Loop for production workflows.
 
@@ -64,12 +64,12 @@ A complete data-centric detection workflow with multimodal data. You should be c
 
 **Steps:**
 
-2. :doc:`02_setup_splits` - Clone dataset, create group-level splits (test, val, golden, pool)
-3. :doc:`03_smart_selection` - Use diversity sampling to pick high-value scenes
-4. :doc:`04_annotation_2d` - Annotate 2D detections on camera images with QA discipline
-5. :doc:`05_annotation_3d` - Annotate 3D cuboids on point clouds
-6. :doc:`06_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
-7. :doc:`07_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
+- :doc:`02_setup_splits` - Clone dataset, create group-level splits (test, val, golden, pool)
+- :doc:`03_smart_selection` - Use diversity sampling to pick high-value scenes
+- :doc:`04_annotation_2d` - Annotate 2D detections on camera images with QA discipline
+- :doc:`05_annotation_3d` - Annotate 3D cuboids on point clouds
+- :doc:`06_train_evaluate` - Train YOLOv8, evaluate, analyze failure modes
+- :doc:`07_iteration` - Hybrid acquisition loop: coverage + targeted failure mining
 
 .. _annotation-what-you-learn:
 
@@ -144,7 +144,7 @@ Click **Next** to start with the Quickstart track, or jump directly to :doc:`02_
    :hidden:
 
    Quickstart: Multimodal Annotation <01_quickstart.ipynb>
-   Setup: Data Splits <02_setup_splits.ipynb>
+   Setup Data Splits <02_setup_splits.ipynb>
    Smart Sample Selection <03_smart_selection.ipynb>
    2D Annotation + QA <04_annotation_2d.ipynb>
    3D Annotation <05_annotation_3d.ipynb>
