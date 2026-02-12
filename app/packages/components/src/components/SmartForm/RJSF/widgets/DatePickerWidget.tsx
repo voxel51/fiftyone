@@ -1,9 +1,5 @@
-/**
- * Date/datetime input widget using native HTML5 date inputs
- */
-
 import { WidgetProps } from "@rjsf/utils";
-import { FormField, Input } from "@voxel51/voodo";
+import { DatePicker, FormField } from "@voxel51/voodo";
 import React from "react";
 
 export default function DatePickerWidget(props: WidgetProps) {
@@ -17,20 +13,21 @@ export default function DatePickerWidget(props: WidgetProps) {
     options,
   } = props;
 
-  const dateOnly = options?.dateOnly ?? false;
-  const inputType = dateOnly ? "date" : "datetime-local";
-
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(event.target.value || undefined);
-  };
+  const dateOnly = !!options?.dateOnly;
 
   const inputComponent = (
-    <Input
+    <DatePicker
       disabled={disabled || readonly}
       autoFocus={autofocus}
-      type={inputType}
-      value={value ?? ""}
-      onChange={handleChange}
+      selected={value}
+      showTimeSelect={!dateOnly}
+      onChange={(date: Date | null) => {
+        if (date && !Number.isNaN(date.getTime())) {
+          onChange(date.toISOString());
+        } else {
+          onChange(undefined);
+        }
+      }}
     />
   );
 

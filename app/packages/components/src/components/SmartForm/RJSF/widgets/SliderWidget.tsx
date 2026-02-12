@@ -44,6 +44,7 @@ export default function Slider(props: WidgetProps) {
       multi={isMulti}
       bare={bare}
       labeled={labeled}
+      knobLabel={false}
       minLabel={minLabel}
       maxLabel={maxLabel}
     />

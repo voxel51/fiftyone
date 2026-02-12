@@ -15,6 +15,34 @@ import { isObject, type RJSFSchema } from "@rjsf/utils";
 import { SmartFormProps } from "../types";
 import { isNullish } from "@fiftyone/utilities";
 
+/**
+ * Custom handler for deserializing server-side representations of data.
+ *
+ * @param data Data to deserialize
+ */
+const deserializeFormData = (data: unknown): unknown => {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+
+    // deserialize dates from {_cls: "DateTime": datetime: 12345...}
+    if (obj._cls === "DateTime" && typeof obj.datetime === "number") {
+      return new Date(obj.datetime).toISOString();
+    }
+
+    // recursively deserialize objects
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, deserializeFormData(v)])
+    );
+  }
+
+  // recursively deserialize lists
+  if (Array.isArray(data)) {
+    return data.map(deserializeFormData);
+  }
+
+  return data;
+};
+
 export default function RJSF(props: SmartFormProps) {
   const { formProps } = props;
   const formRef = useRef<{ validateForm: () => boolean } | null>(null);
@@ -84,7 +112,7 @@ export default function RJSF(props: SmartFormProps) {
       validator={validator}
       widgets={widgets}
       templates={templates}
-      formData={data}
+      formData={deserializeFormData(data)}
       onChange={handleChange}
       onSubmit={handleSubmit}
       showErrorList={false}
