@@ -10,6 +10,7 @@ import {
   fieldAttributeCount,
   fieldType,
   inactiveLabelSchemas,
+  isFieldReadOnly,
   labelSchemaData,
 } from "../state";
 import { isSystemReadOnlyField } from "./constants";
@@ -100,8 +101,7 @@ export const fieldHasSchema = atomFamily((path: string) =>
 export const fieldIsReadOnly = atomFamily((path: string) =>
   atom((get) => {
     const data = get(labelSchemaData(path));
-    // Check schema-level read_only first (user-configured), then field-level (system)
-    return data?.label_schema?.read_only || data?.read_only || false;
+    return isFieldReadOnly(data);
   })
 );
 

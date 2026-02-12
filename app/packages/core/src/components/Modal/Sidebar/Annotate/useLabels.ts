@@ -1,4 +1,4 @@
-import { useLighter } from "@fiftyone/lighter";
+import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
 import {
   activeFields,
   AnnotationLabel,
@@ -8,13 +8,18 @@ import {
   ModalSample,
   useModalSample,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { DETECTION } from "@fiftyone/utilities";
+import { atom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import { activeLabelSchemas } from "./state";
+import {
+  activeLabelSchemas,
+  isFieldReadOnly,
+  labelSchemasData,
+} from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
@@ -173,20 +178,30 @@ const pathMap = selector<{ [key: string]: string }>({
 });
 
 /**
- * Hook which provides a method for updating data in a label atom.
+ * Returns a callback that updates the {@link AnnotationLabelData} for a label
+ * identified by its overlay ID.
+ *
+ * The callback looks up the label's individual atom in the {@link labelMap},
+ * replaces its `data` field, and returns whether the update succeeded.
+ *
+ * @returns A callback with signature
+ *   `(id: string, data: AnnotationLabelData) => boolean` that returns `true`
+ *   if the label was found and updated, or `false` if no label with the given
+ *   ID exists.
  */
 const useUpdateLabelAtom = () => {
   return useAtomCallback(
-    useCallback((get, set, id: string, data: AnnotationLabelData) => {
+    useCallback((get, set, id: string, data: AnnotationLabelData): boolean => {
       const labelMapValue = get(labelMap);
       const targetAtom = labelMapValue[id];
 
       if (targetAtom) {
         const currentValue = get(targetAtom);
         set(targetAtom, { ...currentValue, data });
-      } else {
-        console.warn(`Unknown label id ${id}`);
+        return true;
       }
+
+      return false;
     }, [])
   );
 };
@@ -238,19 +253,51 @@ export const useLabelsContext = (): LabelsContext => {
   );
 };
 
+/**
+ * Syncs overlay draggable/resizeable flags when label schema read-only state
+ * changes (e.g. user toggles read-only in Schema Manager).
+ */
+const useSyncOverlayReadOnly = () => {
+  const currentLabels = useAtomValue(labels);
+  const schemas = useAtomValue(labelSchemasData);
+
+  useEffect(() => {
+    if (!schemas) return;
+
+    for (const label of currentLabels) {
+      if (label.type !== DETECTION) continue;
+
+      const overlay = label.overlay;
+      if (!(overlay instanceof BoundingBoxOverlay)) continue;
+
+      const readOnly = isFieldReadOnly(schemas[label.path]);
+      overlay.setDraggable(!readOnly);
+      overlay.setResizeable(!readOnly);
+    }
+  }, [currentLabels, schemas]);
+};
+
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
   const setLabels = useSetAtom(labels);
-  const [loadingState, setLoading] = useAtom(labelsState);
+  const setLoading = useSetAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
-  const addLabel = useAddAnnotationLabelToRenderer();
+  const addLabelToRenderer = useAddAnnotationLabelToRenderer();
+  const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
   const currentSlice = useRecoilValue(modalGroupSlice);
   const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
+
+  // Use a ref for the loading state machine to avoid having it as an effect
+  // dependency. When loadingState was both a dep and mutated inside the effect,
+  // the UNSET→LOADING state change triggered a re-render whose cleanup set
+  // stale=true, causing the async result to be discarded and the state reset
+  // to UNSET — an infinite loop that prevented labels from ever loading.
+  const loadingRef = useRef(LabelsState.UNSET);
 
   const getFieldType = useRecoilCallback(
     ({ snapshot }) => async (path: string) => {
@@ -274,9 +321,10 @@ export default function useLabels() {
     if (prevSliceRef.current !== currentSlice && currentSlice) {
       prevSliceRef.current = currentSlice;
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     }
-  }, [currentSlice]);
+  }, [currentSlice, setLabels, setLoading]);
 
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
@@ -286,6 +334,7 @@ export default function useLabels() {
       });
 
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
 
@@ -293,6 +342,10 @@ export default function useLabels() {
   }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
   useEffect(() => {
+    // Flipped to `true` by the cleanup function so in-flight async work
+    // from a superseded effect invocation can bail out before mutating state.
+    let stale = false;
+
     if (modalSample?.sample && active) {
       const getLabelsFromSample = () =>
         handleSample({
@@ -303,16 +356,27 @@ export default function useLabels() {
           schemas: active,
         });
 
-      if (loadingState === LabelsState.UNSET) {
+      if (loadingRef.current === LabelsState.UNSET) {
+        loadingRef.current = LabelsState.LOADING;
         setLoading(LabelsState.LOADING);
         getLabelsFromSample().then((result) => {
+          if (stale) {
+            loadingRef.current = LabelsState.UNSET;
+            return;
+          }
+
           setLabels(result);
-          result.forEach((annotationLabel) => addLabel(annotationLabel));
+          result.forEach((annotationLabel) =>
+            addLabelToRenderer(annotationLabel)
+          );
+          loadingRef.current = LabelsState.COMPLETE;
           setLoading(LabelsState.COMPLETE);
         });
-      } else if (loadingState === LabelsState.COMPLETE) {
+      } else if (loadingRef.current === LabelsState.COMPLETE) {
         // refresh label data
         getLabelsFromSample().then((result) => {
+          if (stale) return;
+
           result.forEach((annotationLabel) => {
             // update overlays
             if (scene?.hasOverlay(annotationLabel.data._id)) {
@@ -320,21 +384,48 @@ export default function useLabels() {
                 annotationLabel.data;
             }
 
-            // update sidebar
-            updateLabelAtom(annotationLabel.data._id, annotationLabel.data);
+            // update sidebar, or add if this is a new label
+            const updated = updateLabelAtom(
+              annotationLabel.data._id,
+              annotationLabel.data
+            );
+
+            // new label, add it
+            if (!updated) {
+              addLabelToStore(annotationLabel);
+              addLabelToRenderer(annotationLabel);
+            }
           });
         });
       }
     }
-  }, [active, getFieldType, loadingState, modalSample?.sample, paths]);
+
+    return () => {
+      stale = true;
+    };
+  }, [
+    active,
+    addLabelToRenderer,
+    addLabelToStore,
+    createLabel,
+    getFieldType,
+    modalSample?.sample,
+    paths,
+    scene,
+    setLabels,
+    setLoading,
+    updateLabelAtom,
+  ]);
 
   useEffect(() => {
     return () => {
       setLabels([]);
+      loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [scene]);
+  }, [scene, setLabels, setLoading]);
 
+  useSyncOverlayReadOnly();
   useHover();
   useFocus();
 }

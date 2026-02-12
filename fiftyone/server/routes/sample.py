@@ -276,24 +276,21 @@ def ensure_sample_field(sample: fo.Sample, field: str):
     field_parts = field.split(".")
     for idx, part in enumerate(field_parts):
         field_path = ".".join(field_parts[: idx + 1])
-        try:
-            sample.get_field(field_path)
-        except Exception as e:
-            # no information available to create the fields
-            logger.debug("Error getting field %s: %s", field_path, e)
-            break
 
         try:
             current_part = current[part]
-        except KeyError:
+        except (KeyError, TypeError, IndexError):
             current_part = None
 
         if current_part is None:
             # attempt to create the child field
             try:
                 field_type = get_embedded_field_type(schema, field_path)
-            except Exception:
+            except Exception as e:
                 # no schema available for this type
+                logger.debug(
+                    "Error getting field type for %s: %s", field_path, e
+                )
                 break
 
             if field_type is None:

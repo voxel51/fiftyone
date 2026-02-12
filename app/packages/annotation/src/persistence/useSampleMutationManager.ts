@@ -1,8 +1,9 @@
-import { atom, useAtom } from "jotai";
-import { Primitive } from "@fiftyone/utilities";
-import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
+import { Primitive } from "@fiftyone/utilities";
+import { atom, useAtom } from "jotai";
 import { get, isEqual } from "lodash";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { Mutation } from "../types";
 import {
   arePrimitivesEqual,
   getFieldSchema,
@@ -12,7 +13,7 @@ import {
 /**
  * Mapping of sample path to transient values.
  */
-export type MutationMap = Record<string, Primitive>;
+export type MutationMap = Record<string, Mutation>;
 
 /**
  * Centralized {@link MutationMap} for stability across hook instances.
@@ -49,7 +50,7 @@ export interface SampleMutationManager {
    * @param path Field path
    * @param data New value
    */
-  stageMutation(path: string, data: Primitive): void;
+  stageMutation(path: string, mutation: Mutation): void;
 }
 
 /**
@@ -65,7 +66,7 @@ export const useSampleMutationManager = (): SampleMutationManager => {
     (path: string) => {
       if (path in stagedMutations) {
         // return current value if mutated
-        return stagedMutations[path];
+        return stagedMutations[path].data as Primitive;
       } else if (modalSample?.sample) {
         // otherwise fall back to sample data
         return get(modalSample.sample, path) as Primitive;
@@ -77,10 +78,10 @@ export const useSampleMutationManager = (): SampleMutationManager => {
   );
 
   const stageMutation = useCallback(
-    (path: string, data: Primitive | null) => {
+    (path: string, mutation: Mutation) => {
       setStagedMutations((prev) => ({
         ...prev,
-        [path]: data,
+        [path]: mutation,
       }));
     },
     [setStagedMutations]
@@ -94,7 +95,8 @@ export const useSampleMutationManager = (): SampleMutationManager => {
     const keysToRemove: string[] = [];
 
     // find keys whose values are equal to the sample
-    Object.entries(stagedMutations).forEach(([path, data]) => {
+    Object.entries(stagedMutations).forEach(([path, mutation]) => {
+      const data = mutation.data as Primitive;
       // primitives require custom comparator to handle types like dates
       if (isPrimitiveFieldType(getFieldSchema(modalSampleSchema, path))) {
         if (

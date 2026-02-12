@@ -3,7 +3,7 @@ import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
-import { fieldType, labelSchemaData } from "../state";
+import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import { BaseOverlay, useLighter } from "@fiftyone/lighter";
@@ -117,7 +117,10 @@ export const useQuickDraw = () => {
         const lastField = get(lastUsedDetectionFieldAtom);
 
         if (lastField) {
-          return lastField;
+          const schema = get(labelSchemaData(lastField));
+          if (!isFieldReadOnly(schema)) {
+            return lastField;
+          }
         }
 
         let maxCount = 0;
@@ -125,9 +128,11 @@ export const useQuickDraw = () => {
 
         for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
           const typeStr = getFieldType(fieldPath);
+          const schema = getLabelSchema(fieldPath);
 
           if (
             detectionTypes.has(typeStr || "") &&
+            !isFieldReadOnly(schema) &&
             fieldLabels.length > maxCount
           ) {
             maxCount = fieldLabels.length;
@@ -142,7 +147,7 @@ export const useQuickDraw = () => {
         // Fallback to default detection field
         return defaultDetectionField;
       },
-      [defaultDetectionField, getFieldType, labelsMap]
+      [defaultDetectionField, getFieldType, getLabelSchema, labelsMap]
     )
   );
 

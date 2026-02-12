@@ -58,9 +58,6 @@ function getDisabledReason(
 export default function useCanAnnotate(): CanAnnotateResult {
   const isReadOnlySnapshot = useRecoilValue(readOnly);
   const { enabled: canAnnotateEnabled } = useRecoilValue(canAnnotate);
-  const { isEnabled: isAnnotationEnabled } = useFeature({
-    feature: FeatureFlag.EXPERIMENTAL_ANNOTATION,
-  });
   const currentMediaType = useRecoilValue(mediaType);
   const isGenerated = useRecoilValue(isGeneratedView);
   const isGroupedDataset = useRecoilValue(isGroup);
@@ -69,7 +66,7 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const hasSupportedSlices = supportedSlices.length > 0;
 
   // hide tab entirely if user lacks edit permission or feature disabled
-  if (isReadOnlySnapshot || !canAnnotateEnabled || !isAnnotationEnabled) {
+  if (isReadOnlySnapshot || !canAnnotateEnabled) {
     return {
       showAnnotationTab: false,
       disabledReason: null,
