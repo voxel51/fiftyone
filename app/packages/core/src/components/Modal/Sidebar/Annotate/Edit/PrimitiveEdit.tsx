@@ -82,9 +82,7 @@ export default function PrimitiveEdit({
           const hasOldValue = !isNullish(oldValue);
           let oldValueSerialized = oldValue;
           if (type === "date" || type === "datetime") {
-            oldValueSerialized = serializeDatabaseDateValue(
-              oldValue as { datetime: number }
-            );
+            oldValueSerialized = serializeDatabaseDateValue(oldValue);
           }
 
           sampleMutationManager.stageMutation(path, {
