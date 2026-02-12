@@ -18,6 +18,22 @@ export type DoPatchSampleArgs = {
   sampleDeltas: JSONDeltas;
 };
 
+// Tracks the last version token sent in a PATCH and the one received back.
+// When getVersionToken() still returns the sent token but the server responded
+// with a different one, React closures are stale (haven't re-rendered yet).
+// In that case we skip the save — the next auto-save after re-render will
+// pick up pending changes with correct deltas and version token.
+let _lastSent: string | null = null;
+let _lastReceived: string | null = null;
+let _lastSampleId: string | null = null;
+
+/** @internal - for testing only */
+export const _resetPatchState = () => {
+  _lastSent = null;
+  _lastReceived = null;
+  _lastSampleId = null;
+};
+
 /**
  * Apply a patch of JSON deltas to a sample.
  *
@@ -36,11 +52,31 @@ export const doPatchSample = async ({
   refreshSample,
   sampleDeltas,
 }: DoPatchSampleArgs): Promise<boolean> => {
+  // Reset tracking state when the sample changes (e.g. modal navigation)
+  if (sample?._id !== _lastSampleId) {
+    _lastSent = null;
+    _lastReceived = null;
+    _lastSampleId = sample?._id ?? null;
+  }
+
   // The annotation endpoint implements a CRDT via a version token
   const versionToken = getVersionToken();
 
   if (!datasetId || !sample?._id || !versionToken) {
     return false;
+  }
+
+  // Detect stale React closures: if getVersionToken() returns what we last
+  // sent but the server responded with a newer token, the hooks haven't
+  // re-rendered yet. Skip this save — both the version token and the deltas
+  // (computed from the same stale base sample) would be wrong.
+  if (
+    _lastSent &&
+    _lastReceived &&
+    versionToken === _lastSent &&
+    _lastReceived !== _lastSent
+  ) {
+    return true;
   }
 
   let caughtErr: Error;
@@ -50,6 +86,7 @@ export const doPatchSample = async ({
       let updatedSample: Sample;
 
       try {
+        _lastSent = versionToken;
         const response = await patchSample({
           datasetId,
           sampleId: sample._id,
@@ -57,6 +94,7 @@ export const doPatchSample = async ({
           versionToken,
         });
         updatedSample = response.sample;
+        _lastReceived = response.versionToken ?? versionToken;
       } catch (err) {
         // catch and defer any HTTP errors
         caughtErr = err;
@@ -67,6 +105,7 @@ export const doPatchSample = async ({
         // and any pending changes will be re-attempted on the next patch
         if (err instanceof VersionMismatchError) {
           updatedSample = err.responseBody as Sample;
+          _lastReceived = err.versionToken ?? versionToken;
         }
       }
 

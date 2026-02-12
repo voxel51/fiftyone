@@ -92,12 +92,14 @@ export const LighterSampleRenderer = ({
   }, [isReady, addOverlay, scene, sample.sample._id]);
 
   useEffect(() => {
-    // sceneId should be deterministic, but unique for a given sample snapshot
+    // sceneId should be deterministic and unique per sample. It must NOT
+    // include last_modified_at — every successful annotation PATCH changes
+    // that timestamp, which would destroy/recreate the entire scene (wiping
+    // all overlays, including in-progress bounding boxes). Overlay data
+    // updates are handled incrementally by useLabels instead.
     const sample = sampleRef.current;
-    setSceneId(
-      `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
-    );
-  }, [sample.sample._id, sample.sample.last_modified_at?.datetime]);
+    setSceneId(`${sample?.sample?._id}`);
+  }, [sample.sample._id]);
 
   return (
     <div
