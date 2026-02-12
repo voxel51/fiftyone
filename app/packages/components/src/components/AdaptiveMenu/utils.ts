@@ -15,7 +15,6 @@ export const hideOverflowingNodes = throttle(
     let availableWidth =
       containerWidth - SHOW_MORE_ACTIONS_BUTTON_WIDTH - ADAPTIVE_MENU_GAP;
     let hiddenItems = 0;
-    let lastRightEdge = 0;
     let lastVisibleItemId = "";
     let totalVisibleWidth = 0;
 
@@ -27,17 +26,16 @@ export const hideOverflowingNodes = throttle(
       if (overflown) {
         hiddenItems++;
       } else {
-        lastRightEdge = rightEdge;
         lastVisibleItemId = item.getAttribute("data-item-id") as string;
         totalVisibleWidth += itemWidth;
       }
     });
 
-    // If only one item would be hidden, check if we can fit it by not rendering the "More Items" button
+    // If only one item would be hidden, check if we can fit it by not rendering
+    // the "More Items" button
     if (hiddenItems === 1) {
       availableWidth = containerWidth;
       hiddenItems = 0;
-      lastRightEdge = 0;
       lastVisibleItemId = "";
       totalVisibleWidth = 0;
 
@@ -49,7 +47,6 @@ export const hideOverflowingNodes = throttle(
         if (overflown) {
           hiddenItems++;
         } else {
-          lastRightEdge = rightEdge;
           lastVisibleItemId = item.getAttribute("data-item-id") as string;
           totalVisibleWidth += itemWidth;
         }
