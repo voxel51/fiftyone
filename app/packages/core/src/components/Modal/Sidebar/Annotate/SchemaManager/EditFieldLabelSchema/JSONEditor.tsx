@@ -30,6 +30,7 @@ type JSONValue =
 const JSONEditor = ({
   data,
   errors = false,
+  showDocumentation = true,
   onChange,
   scanning,
   onCancelScan,
@@ -39,6 +40,7 @@ const JSONEditor = ({
   onChange: (value: string) => void;
   scanning: boolean;
   onCancelScan?: () => void;
+  showDocumentation: boolean;
 }) => {
   const [value, setValue] = useState("");
 
@@ -88,19 +90,24 @@ const JSONEditor = ({
           width={"100%"}
         />
       </ContentArea>
-
-      <Text
-        color={TextColor.Primary}
-        variant={TextVariant.Md}
-        style={{ marginTop: "0.5rem" }}
-      >
-        Learn more about the label schema format{" "}
-        <a href={SCHEMA_JSON_DOC_URL} target="_blank" rel="noopener noreferrer">
-          <Text style={{ textDecoration: "underline" }}>
-            in our documentation.
-          </Text>
-        </a>
-      </Text>
+      {showDocumentation && (
+        <Text
+          color={TextColor.Primary}
+          variant={TextVariant.Md}
+          style={{ marginTop: "0.5rem" }}
+        >
+          Learn more about the label schema format{" "}
+          <a
+            href={SCHEMA_JSON_DOC_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Text style={{ textDecoration: "underline" }}>
+              in our documentation.
+            </Text>
+          </a>
+        </Text>
+      )}
     </>
   );
 };

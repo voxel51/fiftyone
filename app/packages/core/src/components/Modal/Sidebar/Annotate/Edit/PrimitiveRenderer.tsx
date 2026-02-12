@@ -30,10 +30,11 @@ export default function PrimitiveRenderer({
     return (
       <EditorContainer>
         <JSONEditor
-          data={fieldValue as string}
+          data={(fieldValue as string) || {}}
           onChange={handleChange}
           errors={false}
           scanning={false}
+          showDocumentation={false}
         />
       </EditorContainer>
     );

@@ -91,11 +91,9 @@ export function parseDatabaseValue(
   if (type === "dict") {
     // If the value is null/undefined, initialize with empty JSON object
     if (value === null || value === undefined) {
-      return "{}";
+      return {} as Primitive;
     }
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
-    }
+    return value as Primitive;
   }
 
   /**
