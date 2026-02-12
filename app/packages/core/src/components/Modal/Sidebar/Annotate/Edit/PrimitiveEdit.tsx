@@ -12,7 +12,11 @@ import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PrimitiveRenderer from "./PrimitiveRenderer";
 import { generatePrimitiveSchema, PrimitiveSchema } from "./schemaHelpers";
-import { parseDatabaseValue, serializeFieldValue } from "./serialization";
+import {
+  parseDatabaseValue,
+  serializeDatabaseDateValue,
+  serializeFieldValue,
+} from "./serialization";
 
 interface PrimitiveEditProps {
   path: string;
@@ -76,8 +80,13 @@ export default function PrimitiveEdit({
         // restore original value on undo
         () => {
           const hasOldValue = !isNullish(oldValue);
+          let oldValueSerialized = oldValue;
+          if (type === "date" || type === "datetime") {
+            oldValueSerialized = serializeDatabaseDateValue(oldValue);
+          }
+
           sampleMutationManager.stageMutation(path, {
-            data: oldValue,
+            data: oldValueSerialized,
             op: isAddOperation && !hasOldValue ? "delete" : "mutate",
           });
         }
