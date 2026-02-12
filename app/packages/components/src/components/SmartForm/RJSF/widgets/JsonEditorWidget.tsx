@@ -56,7 +56,6 @@ export default function JsonEditorWidget(props: WidgetProps) {
     >
       <Code
         defaultValue={localValue}
-        value={localValue}
         onChange={handleEditorChange}
         language="json"
         height={`${height}px`}
