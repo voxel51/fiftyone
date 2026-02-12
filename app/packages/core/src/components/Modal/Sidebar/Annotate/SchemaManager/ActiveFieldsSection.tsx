@@ -29,6 +29,7 @@ import {
   useActiveFieldsList,
   useNewFieldMode,
   useSelectedActiveFields,
+  useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
 import SecondaryText from "./SecondaryText";
@@ -71,7 +72,8 @@ const ActiveFieldsSection = () => {
   }, [setNewFieldMode]);
 
   const { fields, setFields } = useActiveFieldsList();
-  const { setSelected } = useSelectedActiveFields();
+  const { selected, setSelected } = useSelectedActiveFields();
+  const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -152,9 +154,12 @@ const ActiveFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setHiddenSelected(new Set());
     },
-    [setSelected]
+    [setHiddenSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields?.length) {
     return (
@@ -232,6 +237,7 @@ const ActiveFieldsSection = () => {
         draggable={true}
         onOrderChange={handleOrderChange}
         onSelected={handleSelected}
+        selected={selectedList}
       />
     </>
   );
