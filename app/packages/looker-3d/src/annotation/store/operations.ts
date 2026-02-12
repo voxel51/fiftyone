@@ -21,6 +21,7 @@ import {
   workingAtom,
 } from "./working";
 import { quaternionToRadians } from "../../utils";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 
 // =============================================================================
 // CUBOID OPERATIONS
@@ -38,6 +39,7 @@ export function useCuboidOperations() {
   const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const eventBus = useAnnotationEventBus();
 
   /**
    * Updates cuboid properties.
@@ -81,10 +83,16 @@ export function useCuboidOperations() {
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
+          eventBus.dispatch("annotation:labelEdit", {
+            label: { id: labelId, ...roundedUpdates },
+          });
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
+          eventBus.dispatch("annotation:undoLabelEdit", {
+            label: { id: labelId, ...previousState },
+          });
         };
 
         createPushAndExec(`cuboid-update-${labelId}`, execFn, undoFn);
@@ -231,6 +239,7 @@ export function usePolylineOperations() {
   const restoreLabel = useRestoreWorkingLabel();
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
+  const eventBus = useAnnotationEventBus();
 
   /**
    * Updates polyline properties.
@@ -269,10 +278,16 @@ export function usePolylineOperations() {
 
         const execFn = () => {
           updateLabel(labelId, roundedUpdates);
+          eventBus.dispatch("annotation:labelEdit", {
+            label: { id: labelId, ...roundedUpdates },
+          });
         };
 
         const undoFn = () => {
           updateLabel(labelId, previousState);
+          eventBus.dispatch("annotation:undoLabelEdit", {
+            label: { id: labelId, ...previousState },
+          });
         };
 
         createPushAndExec(`polyline-update-${labelId}`, execFn, undoFn);
