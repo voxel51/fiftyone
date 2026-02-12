@@ -46,6 +46,8 @@ export enum SmartFormComponents {
   SliderView = "SliderView",
   ToggleView = "ToggleView",
   LabelValueView = "LabelValueView",
+  DatePickerView = "DatePickerView",
+  JsonEditorView = "JsonEditorView",
 }
 
 export interface SmartFormProps {
