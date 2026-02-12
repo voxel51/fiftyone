@@ -130,6 +130,12 @@ export const useRegisterAnnotationEventHandlers = () => {
           } else {
             STORE.set(editing, null);
             STORE.set(savedLabel, null);
+            // Last session overlay undone — ask the scene to end the drawing
+            // session so the user goes directly back to baseline.
+            annotationEventBus.dispatch(
+              "annotation:requestEndDrawingSession",
+              undefined as never
+            );
           }
         } else {
           // Not in Quick Draw — clear editing if the removed overlay was

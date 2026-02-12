@@ -97,6 +97,12 @@ export type AnnotationEventGroup = {
    */
   "annotation:drawingSessionEnded": void;
   /**
+   * Request the scene to end the current drawing session.
+   * Dispatched when the last session overlay is undone so the scene can
+   * clean up without a nested programmatic undo.
+   */
+  "annotation:requestEndDrawingSession": void;
+  /**
    * Notification event emitted when a canvas overlay is hovered.
    * TODO: FOR NOW THIS IS ONLY FOR 3D LABELS.
    * USE THIS FOR 2D ONCE WE GET RID OF LIGHTER HOVER EVENTS.
