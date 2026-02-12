@@ -48,7 +48,6 @@ import {
   OVERLAY_STATUS_PENDING,
   RenderingStateManager,
 } from "./RenderingStateManager";
-import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
 import { CommandContextManager, Action } from "@fiftyone/commands";
 
@@ -1090,10 +1089,6 @@ export class Scene2D {
    */
   getOverlay(id: string): BaseOverlay | undefined {
     return this.overlays.get(id);
-  }
-
-  getRenderer(): Renderer2D {
-    return this.config.renderer;
   }
 
   /**

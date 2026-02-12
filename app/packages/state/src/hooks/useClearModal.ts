@@ -1,7 +1,6 @@
-import { useSetAtom } from "jotai";
-import { useCallback } from "react";
 import { useRecoilCallback, useSetRecoilState } from "recoil";
-import { modalViewport } from "../jotai";
+
+import { useCallback } from "react";
 import * as fos from "../recoil";
 
 /**
@@ -22,7 +21,6 @@ import * as fos from "../recoil";
 
 export default () => {
   const setModal = useSetRecoilState(fos.modalSelector);
-  const setViewport = useSetAtom(modalViewport);
   const close = useRecoilCallback(
     ({ reset, set, snapshot }) =>
       async () => {
@@ -43,8 +41,7 @@ export default () => {
   );
 
   return useCallback(() => {
-    setViewport(null);
     close();
     setModal(null);
-  }, [close, setModal, setViewport]);
+  }, [close, setModal]);
 };

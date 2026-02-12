@@ -107,7 +107,7 @@ export abstract class AbstractLooker<
   private readonly ctx: CanvasRenderingContext2D;
   private previousState?: Readonly<State>;
   private readonly rootEvents: Events<State>;
-  private pendingReset = false;
+  private isSampleUpdating: boolean = false;
 
   protected readonly abortController: AbortController;
   protected currentOverlays: Overlay<State>[];
@@ -121,8 +121,6 @@ export abstract class AbstractLooker<
 
   /** @internal */
   state: State;
-
-  sample: S;
 
   sampleOverlays: Overlay<State>[];
   pluckedOverlays: Overlay<State>[];
@@ -139,7 +137,6 @@ export abstract class AbstractLooker<
     this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
-    this.sample = sample;
 
     this.loadSample(sample);
     this.state.options.mimetype = getMimeType(sample);
@@ -258,7 +255,6 @@ export abstract class AbstractLooker<
     }
 
     this.subscriptions[field].push(callback);
-    callback(this.state[field]);
 
     // return unsubscribe function
     return () => {
@@ -281,7 +277,7 @@ export abstract class AbstractLooker<
     this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
 
-  pluckOverlays(_state: Readonly<State>): Overlay<State>[] {
+  pluckOverlays(state: Readonly<State>): Overlay<State>[] {
     return this.sampleOverlays;
   }
 
@@ -421,22 +417,8 @@ export abstract class AbstractLooker<
           return;
         }
 
-        const oldScale = this.state.scale;
-        const oldPan = this.state.pan;
-
         this.pluckedOverlays = this.pluckOverlays(this.state);
         this.state = this.postProcess();
-
-        if (this.state.scale !== oldScale && this.subscriptions["scale"]) {
-          this.subscriptions["scale"].forEach((cb) => cb(this.state.scale));
-        }
-
-        if (
-          this.subscriptions["pan"] &&
-          (this.state.pan[0] !== oldPan[0] || this.state.pan[1] !== oldPan[1])
-        ) {
-          this.subscriptions["pan"].forEach((cb) => cb(this.state.pan));
-        }
 
         [this.currentOverlays, this.state.rotate] = processOverlays(
           this.state,
@@ -637,15 +619,6 @@ export abstract class AbstractLooker<
     });
   }
 
-  setCamera(scale: number, pan: [number, number]): void {
-    this.pendingReset = false;
-    this.updater({
-      scale,
-      pan: [...pan] as Coordinates,
-      setZoom: false,
-    });
-  }
-
   /**
    * Detaches the instance from the DOM
    */
@@ -664,17 +637,22 @@ export abstract class AbstractLooker<
     let timeoutId: ReturnType<typeof setTimeout>;
     return (sample: Sample) => {
       clearTimeout(timeoutId);
-      const resetZoom = this.pendingReset;
-      this.pendingReset = false;
-
       timeoutId = setTimeout(() => {
+        // todo: sometimes instance in spotlight?.updateItems() is defined but has no ref to sample
+        // this crashes the app. this is a bug and should be fixed
+        if (!this.sample) {
+          return;
+        }
+
+        if (this.isSampleUpdating) {
+          return;
+        }
+
+        this.isSampleUpdating = true;
         try {
-          this.loadSample(
-            sample,
-            retrieveTransferables(this.sampleOverlays),
-            resetZoom
-          );
+          this.loadSample(sample, retrieveTransferables(this.sampleOverlays));
         } catch (error) {
+          this.isSampleUpdating = false;
           console.error(error);
         }
       }, UPDATE_SAMPLE_DEBOUNCE_MS);
@@ -682,12 +660,6 @@ export abstract class AbstractLooker<
   })();
 
   updateSample(sample: Sample) {
-    if (
-      this.sample &&
-      (sample._id !== this.sample._id || sample.id !== this.sample.id)
-    ) {
-      this.pendingReset = true;
-    }
     this.updateSampleDebounced(sample);
   }
 
@@ -709,7 +681,7 @@ export abstract class AbstractLooker<
         labels: renderLabels,
       })
       .then(({ sample, coloring }) => {
-        this.sample = sample as S;
+        this.sample = sample;
         this.loadOverlays(sample);
 
         // to run looker reconciliation
@@ -911,17 +883,12 @@ export abstract class AbstractLooker<
   }
 
   protected hasResized(): boolean {
-    if (!this.previousState?.windowBBox || !this.state?.windowBBox) {
-      return false;
-    }
-
-    const [_, __, pw, ph] = this.previousState.windowBBox;
-    if (pw === 0 || ph === 0) {
-      return false;
-    }
-
-    return this.previousState.windowBBox.some(
-      (v, i) => v !== this.state.windowBBox[i]
+    return Boolean(
+      !this.previousState?.windowBBox ||
+        !this.state?.windowBBox ||
+        this.previousState.windowBBox.some(
+          (v, i) => v !== this.state.windowBBox[i]
+        )
     );
   }
 
@@ -931,13 +898,8 @@ export abstract class AbstractLooker<
     }
   }
 
-  private loadSample(
-    sample: Sample,
-    transfer: Transferable[] = [],
-    resetZoom = false
-  ) {
+  private loadSample(sample: Sample, transfer: Transferable[] = []) {
     const messageUUID = uuid();
-    const shouldReset = resetZoom;
 
     const labelsWorker = getLabelsWorker();
 
@@ -945,6 +907,7 @@ export abstract class AbstractLooker<
       if (uuid === messageUUID) {
         if (error) {
           console.warn(error);
+          this.isSampleUpdating = false;
           labelsWorker.removeEventListener("message", listener);
           return;
         }
@@ -952,14 +915,13 @@ export abstract class AbstractLooker<
         // we paint overlays again, so cleanup the old ones
         // this helps prevent memory leaks from, for instance, dangling ImageBitmaps
         this.cleanOverlays();
-        this.sample = sample as S;
+        this.sample = sample;
         this.loadOverlays(sample);
         this.updater((prev) => ({
           ...prev,
           overlaysPrepared: true,
           disabled: false,
           reloading: false,
-          setZoom: shouldReset || prev.setZoom,
           options: {
             ...prev.options,
             coloring,
@@ -967,6 +929,8 @@ export abstract class AbstractLooker<
         }));
 
         labelsWorker.removeEventListener("message", listener);
+
+        this.isSampleUpdating = false;
       }
     };
 
