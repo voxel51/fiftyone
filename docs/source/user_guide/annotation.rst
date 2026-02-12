@@ -1,6 +1,9 @@
-.. _fiftyone-annotation:
+.. _in-app-annotation:
+
 In-App Annotation
 ==================
+
+.. default-role:: code
 
 Overview
 --------
@@ -19,12 +22,12 @@ Supported Media and Label Types
 
 To perform in-App annotation, your dataset must contain at least one of the following media and label types:
 
-* `media_type <https://docs.voxel51.com/user_guide/using_datasets.html#media-type>`_
+* :ref:`media_type <dataset-media-type>`
 
   * ``image``
   * ``3D``
 
-* `Labels <https://docs.voxel51.com/user_guide/basics.html#labels>`_
+* :ref:`Labels <basics-labels>`
 
   * ``Classification``
   * ``Detections``
@@ -34,7 +37,7 @@ To perform in-App annotation, your dataset must contain at least one of the foll
 Annotation UI: Sample Visualizer
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-All in-App annotation controls now live in the `expanded view for samples <https://docs.voxel51.com/user_guide/app.html#viewing-a-sample>`_. Open a sample in the expanded view, and find the new "Annotate" tab in the right sidebar.
+All in-App annotation controls now live in the :ref:`expanded view for samples <app-sample-view>`. Open a sample in the expanded view, and find the new "Annotate" tab in the right sidebar.
 
 .. image:: /_static/images/annotation/image1.gif
    :alt: Annotate tab location
@@ -70,12 +73,12 @@ Schema Import / Management
 To perform in-App annotation, your dataset must first have an "Annotation Schema". For a field, attribute, or value to be available in in-App annotation, it must be present in the Annotation Schema. Currently, you may only have one Annotation Schema per dataset, and your Annotation Schema applies across all samples and views on the dataset.
 
 .. warning::
-   Only users with `"Can manage" access <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_ to a dataset may import and manage the Annotation Schema on that dataset.
+   Only users with :ref:`"Can manage" access <enterprise-can-manage>` to a dataset may import and manage the Annotation Schema on that dataset.
 
 .. image:: /_static/images/annotation/image3.png
    :alt: Create Annotation Schema button
 
-When accessing the "Annotate" tab in the expanded view on a dataset for the first time, you'll see a button to create the Annotation Schema. By default, **no** `fields in the dataset schema <https://docs.voxel51.com/user_guide/using_datasets.html#fields>`_ are included automatically in the Annotation Schema; you'll need to explicitly add fields, attributes, and values.
+When accessing the "Annotate" tab in the expanded view on a dataset for the first time, you'll see a button to create the Annotation Schema. By default, **no** :ref:`fields in the dataset schema <using-fields>` are included automatically in the Annotation Schema; you'll need to explicitly add fields, attributes, and values.
 
 Supported Field Types
 ^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +125,7 @@ The "Edit field schema" page includes two ways for you to configure the field's 
 Annotation Schema Format
 """"""""""""""""""""""""
 
-The in-App Annotation Schema format is borrowed from `FiftyOne's existing label_schema format <https://docs.voxel51.com/user_guide/annotation.html#label-schema>`_ (historically supported for requesting annotations from third-party backends).
+The in-App Annotation Schema format is borrowed from :ref:`FiftyOne's existing label_schema format <annotation-label-schema>` (historically supported for requesting annotations from third-party backends).
 
 For label-type fields, ``classes`` are a first-order list of classes available for selection on all instances of your label across samples in your dataset. Label-type fields also have ``attributes``, which are optional semantic properties whose values may also be edited across samples on your dataset.
 
@@ -190,9 +193,9 @@ Bypassing Schema Configuration
 If you do not see a field or its contents in the "Annotate" tab of the sample expanded view, and you don't want to go through the process of configuring a schema for the field and adding it to the Annotation Schema, you can bypass interacting with the Schema Manager altogether and ask the FiftyOne App to take the requisite steps on your behalf.
 
 .. warning::
-   Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with `"Can manage" access <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_ on a dataset.
+   Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with :ref:`"Can manage" access <enterprise-can-manage>` on a dataset.
 
-.. image:: /_static/images/annotation/quick_edit.png
+.. image:: /_static/images/annotation/quick_edit.gif
    :alt: Explore tab field selection
 
 While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
@@ -241,7 +244,7 @@ For label types with spatial properties (e.g., 2D bounding boxes), you'll notice
 List of Primitives
 ^^^^^^^^^^^^^^^^^^
 
-Labels are not the only type of metadata available for edits in FiftyOne's in-App annotation functionality. Primitive `fields <https://docs.voxel51.com/user_guide/basics.html#fields>`_ (e.g., ``StringField``\s or ``IntField``\s) on the dataset may also be made available in the Annotation Schema via :ref:`the Schema Manager interface <schema-import-management>`. When primitives exist in the Annotation Schema, you'll see a flattened list of all such fields under the "Primitives" header.
+Labels are not the only type of metadata available for edits in FiftyOne's in-App annotation functionality. Primitive :ref:`fields <basics-fields>` (e.g., ``StringField``\s or ``IntField``\s) on the dataset may also be made available in the Annotation Schema via :ref:`the Schema Manager interface <schema-import-management>`. When primitives exist in the Annotation Schema, you'll see a flattened list of all such fields under the "Primitives" header.
 
 ----
 
@@ -316,10 +319,10 @@ Working with 3D
 Supported 3D Datasets
 ^^^^^^^^^^^^^^^^^^^^^
 
-3D annotation mode is only supported for ``3d`` `type datasets <https://docs.voxel51.com/user_guide/using_datasets.html#d-datasets>`_ and dataset views, or grouped datasets with ``3d`` slices.
+3D annotation mode is only supported for ``3d`` :ref:`type datasets <3d-datasets>` and dataset views, or grouped datasets with ``3d`` slices.
 
 .. note::
-   ``point-cloud`` `type datasets <https://docs.voxel51.com/user_guide/using_datasets.html#point-cloud-datasets>`_ are deprecated and do not support annotation. We recommend converting them to ``3d`` type datasets.
+   ``point-cloud`` :ref:`type datasets <point-cloud-datasets>` are deprecated and do not support annotation. We recommend converting them to ``3d`` type datasets.
 
 For grouped datasets, you can use the slice selector within the Annotate tab to select the image or 3d slice you wish to annotate.
 
@@ -338,12 +341,12 @@ Projection surfaces allow you to flatten a 3D point cloud onto a 2D plane for ea
 
 **2D Image Projections**
 
-If your dataset contains `groups <https://docs.voxel51.com/user_guide/groups.html#overview>`_, where at least one group slice contains 2D images, you'll also see those slices available for visualization in the dropdown menu.
+If your dataset contains :ref:`groups <groups>`, where at least one group slice contains 2D images, you'll also see those slices available for visualization in the dropdown menu.
 
 .. image:: /_static/images/annotation/image13.png
    :alt: 2D image projections
 
-If you have defined the necessary `camera intrinsic and extrinsic parameters <https://docs.voxel51.com/user_guide/using_datasets.html#camera-intrinsics-and-extrinsics>`_, then you will also be able to project the 3D labels onto the 2D images in real time.
+If you have defined the necessary :ref:`camera intrinsic and extrinsic parameters <camera-intrinsics-extrinsics>`, then you will also be able to project the 3D labels onto the 2D images in real time.
 
 .. image:: /_static/images/annotation/projection.gif
    :alt: 3D image projections
@@ -488,7 +491,7 @@ Newly created vertices are placed at the location of the mouse pointer. The dept
 Polylines vs Segments
 ^^^^^^^^^^^^^^^^^^^^^
 
-The points of a single `Polyline in FiftyOne <https://docs.voxel51.com/user_guide/using_datasets.html#d-polylines>`_ are represented as a list of lists of vertices:
+The points of a single :ref:`Polyline in FiftyOne <3d-polylines>` are represented as a list of lists of vertices:
 
 .. code-block:: python
 
