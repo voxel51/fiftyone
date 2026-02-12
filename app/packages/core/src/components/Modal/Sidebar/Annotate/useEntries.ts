@@ -2,14 +2,14 @@ import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { getDefaultStore, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { LABELS_GROUP_NAME, labelsExpanded } from "./GroupEntry";
-import { visibleLabelSchemas } from "./state";
+import { activeLabelSchemas } from "./state";
 import { LabelsState, labelAtoms, labelsState } from "./useLabels";
 import usePrimitiveEntries from "./usePrimitiveEntries";
 const store = getDefaultStore();
 
 const useEntries = (): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
   const atoms = useAtomValue(labelAtoms);
-  const activeFields = useAtomValue(visibleLabelSchemas);
+  const activeFields = useAtomValue(activeLabelSchemas);
   const state = useAtomValue(labelsState);
   const primitiveEntries = usePrimitiveEntries(activeFields || []);
   const expanded = useAtomValue(labelsExpanded);

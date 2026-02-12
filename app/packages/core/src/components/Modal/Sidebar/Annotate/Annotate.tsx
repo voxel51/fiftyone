@@ -13,7 +13,7 @@ import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
-import { labelSchemasData, showModal, visibleLabelSchemas } from "./state";
+import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
@@ -22,7 +22,7 @@ import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 
-const showImportPage = atom((get) => !get(visibleLabelSchemas)?.length);
+const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
