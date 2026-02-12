@@ -82,6 +82,17 @@ export function translateToUISchema(
       };
       break;
 
+    case SmartFormComponents.DatePickerView:
+      uiSchema["ui:widget"] = "DatePickerWidget";
+      uiSchema["ui:options"] = {
+        dateOnly: view.date_only,
+      };
+      break;
+
+    case SmartFormComponents.JsonEditorView:
+      uiSchema["ui:widget"] = "JsonEditorWidget";
+      break;
+
     case SmartFormComponents.ColorView:
       uiSchema["ui:widget"] = "color";
       break;
