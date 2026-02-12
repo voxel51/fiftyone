@@ -11,10 +11,10 @@ import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
 import {
-  activeLabelSchemas,
   fieldType,
   isFieldReadOnly,
   labelSchemaData,
+  visibleLabelSchemas,
 } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
@@ -202,7 +202,7 @@ const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
 
-    for (const field of get(activeLabelSchemas) ?? []) {
+    for (const field of get(visibleLabelSchemas) ?? []) {
       if (type && IS[type].has(get(fieldType(field)))) {
         const fieldSchema = get(labelSchemaData(field));
         const fieldReadOnly = isFieldReadOnly(fieldSchema);

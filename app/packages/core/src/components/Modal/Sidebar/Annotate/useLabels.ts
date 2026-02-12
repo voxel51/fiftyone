@@ -16,9 +16,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import {
-  activeLabelSchemas,
   isFieldReadOnly,
   labelSchemasData,
+  visibleLabelSchemas,
 } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import useFocus from "./useFocus";
@@ -283,7 +283,7 @@ export default function useLabels() {
   const modalSample = useModalSample();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
-  const active = useAtomValue(activeLabelSchemas);
+  const active = useAtomValue(visibleLabelSchemas);
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
@@ -300,19 +300,20 @@ export default function useLabels() {
   const loadingRef = useRef(LabelsState.UNSET);
 
   const getFieldType = useRecoilCallback(
-    ({ snapshot }) => async (path: string) => {
-      const loadable = await snapshot.getLoadable(field(path));
-      const type = loadable
-        .getValue()
-        ?.embeddedDocType?.split(".")
-        .slice(-1)[0];
+    ({ snapshot }) =>
+      async (path: string) => {
+        const loadable = await snapshot.getLoadable(field(path));
+        const type = loadable
+          .getValue()
+          ?.embeddedDocType?.split(".")
+          .slice(-1)[0];
 
-      if (!type) {
-        throw new Error("no type");
-      }
+        if (!type) {
+          throw new Error("no type");
+        }
 
-      return type as LabelType;
-    },
+        return type as LabelType;
+      },
     []
   );
 
