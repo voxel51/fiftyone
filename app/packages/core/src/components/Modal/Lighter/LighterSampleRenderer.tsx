@@ -58,7 +58,9 @@ export const LighterSampleRenderer = ({
   const sampleRef = useRef(sample);
   sampleRef.current = sample;
 
-  // Load the sample and add overlays when the scene is ready
+  /**
+   * This effect is responsible for loading the sample and adding the overlays to the scene.
+   */
   useEffect(() => {
     if (!isReady || !scene) return;
 
@@ -76,20 +78,12 @@ export const LighterSampleRenderer = ({
           maintainAspectRatio: true,
         }
       );
-      addOverlay(mediaOverlay);
+      addOverlay(mediaOverlay, false);
 
       // Set the image overlay as canonical media for coordinate transformations
       scene.setCanonicalMedia(mediaOverlay);
-
-      // Apply viewport immediately after adding overlay to prevent initial flash
-      // This only runs once when the overlay is added, not on every viewport change
-      const renderer = scene.getRenderer();
-      const currentViewport = fos.jotaiStore.get(fos.modalViewport);
-      if (currentViewport && renderer.isReady()) {
-        renderer.setViewport(currentViewport.scale, currentViewport.pan);
-      }
     }
-  }, [isReady, addOverlay, scene, sample.sample._id]);
+  }, [isReady, addOverlay, scene]);
 
   useEffect(() => {
     // sceneId should be deterministic, but unique for a given sample snapshot
@@ -97,7 +91,7 @@ export const LighterSampleRenderer = ({
     setSceneId(
       `${sample?.sample?._id}-${sample?.sample?.last_modified_at?.datetime}`
     );
-  }, [sample.sample._id, sample.sample.last_modified_at?.datetime]);
+  }, []);
 
   return (
     <div
@@ -110,8 +104,6 @@ export const LighterSampleRenderer = ({
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        overflow: "hidden",
-        position: "relative",
       }}
     >
       {containerRef.current && sceneId && (
@@ -124,7 +116,7 @@ export const LighterSampleRenderer = ({
 const LighterSetupImpl = (props: {
   containerRef: React.RefObject<HTMLDivElement>;
   sceneId: string;
-}): React.ReactElement | null => {
+}) => {
   const { containerRef, sceneId } = props;
 
   const options = useRecoilValue(

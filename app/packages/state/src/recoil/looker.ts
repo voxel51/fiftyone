@@ -19,7 +19,7 @@ import skeletonFilter from "./skeletonFilter";
 import { State } from "./types";
 import * as viewAtoms from "./view";
 
-export type Lookers = FrameLooker | ImageLooker | VideoLooker;
+type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
 export const lookerOptions = selectorFamily<
   Partial<Omit<ReturnType<Lookers["getDefaultOptions"]>, "selected">>,

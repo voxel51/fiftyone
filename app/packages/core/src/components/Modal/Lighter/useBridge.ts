@@ -15,11 +15,10 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useSetAtom } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useSetAtom } from "jotai";
+import { useCallback, useEffect } from "react";
 import { currentData } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
-import * as fos from "@fiftyone/state";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -170,97 +169,4 @@ export const useBridge = (scene: Scene2D | null) => {
       overlay.markDirty();
     }
   }, [scene, context]);
-
-  const [viewport, setViewport] = useAtom(fos.modalViewport);
-  const viewportRef = useRef(viewport);
-  viewportRef.current = viewport;
-
-  const lastLighterViewport = useRef<{
-    scale: number;
-    pan: [number, number];
-  } | null>(null);
-
-  const [readyCount, setReadyCount] = useState(0);
-
-  // Reset lastLighterViewport when scene changes (e.g., switching modes)
-  // This prevents stale viewport data from being used
-  useEffect(() => {
-    lastLighterViewport.current = null;
-  }, [scene]);
-
-  useEventHandler(
-    "lighter:ready",
-    useCallback(() => {
-      setReadyCount((c: number) => c + 1);
-
-      // Apply viewport immediately when ready to prevent flash
-      if (scene && viewport) {
-        const renderer = scene.getRenderer();
-        if (renderer.isReady()) {
-          renderer.setViewport(viewport.scale, viewport.pan);
-        }
-      }
-    }, [scene])
-  );
-
-  useEventHandler(
-    "lighter:viewport-moved",
-    useCallback(
-      (payload) => {
-        lastLighterViewport.current = {
-          scale: payload.scale,
-          pan: [payload.x, payload.y],
-        };
-
-        // Only update the atom if the user is actively interacting
-        // This prevents initialization/auto-center events from overwriting
-        // the atom with stale data when switching back from Looker
-        if (!scene) return;
-        const renderer = scene.getRenderer();
-        if (!renderer.isReady() || !renderer.isInteracting()) {
-          return;
-        }
-
-        setViewport((prev: { scale: number; pan: [number, number] } | null) => {
-          if (
-            prev?.scale === payload.scale &&
-            prev?.pan[0] === payload.x &&
-            prev?.pan[1] === payload.y
-          ) {
-            return prev;
-          }
-          return { scale: payload.scale, pan: [payload.x, payload.y] };
-        });
-      },
-      [setViewport, scene]
-    )
-  );
-
-  useEffect(() => {
-    if (!scene) return;
-
-    const renderer = scene.getRenderer();
-    if (!renderer.isReady()) return;
-
-    // Don't update if user is currently interacting (to prevent snap-back)
-    if (renderer.isInteracting()) {
-      return;
-    }
-
-    // If we have a viewport in the atom, apply it
-    // This runs whenever Lighter becomes ready (readyCount changes)
-    if (viewport) {
-      const currentScale = renderer.getScale();
-      const currentPos = renderer.getViewportPosition();
-
-      // Apply viewport if it differs from Lighter's current state
-      if (
-        viewport.scale !== currentScale ||
-        viewport.pan[0] !== currentPos.x ||
-        viewport.pan[1] !== currentPos.y
-      ) {
-        renderer.setViewport(viewport.scale, viewport.pan);
-      }
-    }
-  }, [scene, readyCount, viewport]);
 };
