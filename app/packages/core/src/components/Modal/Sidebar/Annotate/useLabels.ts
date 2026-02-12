@@ -390,8 +390,13 @@ export default function useLabels() {
               annotationLabel.data
             );
 
-            // new label, add it
-            if (!updated) {
+            // New label from server — only add if it has a corresponding
+            // overlay in the scene.  Labels removed via undo are absent
+            // from the scene; their deletion will be persisted on the
+            // next auto-save cycle.  Without this guard, a save that was
+            // initiated *before* the undo can complete *after* the undo,
+            // and the stale server response would reintroduce the label.
+            if (!updated && scene?.hasOverlay(annotationLabel.data._id)) {
               addLabelToStore(annotationLabel);
               addLabelToRenderer(annotationLabel);
             }
