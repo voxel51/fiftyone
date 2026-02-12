@@ -3,18 +3,17 @@
  */
 
 import {
-  Clickable,
+  Button,
   Icon,
   IconName,
   Input,
-  Orientation,
   RichList,
   Size,
-  Spacing,
-  Stack,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
+  Variant,
 } from "@voxel51/voodo";
 import React, { useState } from "react";
 import {
@@ -86,9 +85,17 @@ const ValuesList = ({
       canDrag: true,
       primaryContent: value,
       actions: (
-        <Clickable onClick={() => handleDeleteValue(index)}>
-          <Icon name={IconName.Delete} size={Size.Md} />
-        </Clickable>
+        <Button
+          variant={Variant.Icon}
+          borderless
+          onClick={() => handleDeleteValue(index)}
+        >
+          <Icon
+            name={IconName.Delete}
+            size={Size.Md}
+            className={textColorClass(TextColor.Secondary)}
+          />
+        </Button>
       ),
     })
   );
@@ -112,20 +119,19 @@ const ValuesList = ({
       >
         <Text
           variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-          color={largeLabels ? TextColor.Primary : TextColor.Secondary}
+          color={TextColor.Primary}
         >
           Values
         </Text>
-        <Clickable onClick={handleAddValue}>
-          <Stack
-            orientation={Orientation.Row}
-            spacing={Spacing.Xs}
-            style={{ alignItems: "center" }}
-          >
-            <Icon name={IconName.Add} size={Size.Sm} />
-            <Text variant={TextVariant.Sm}>Add</Text>
-          </Stack>
-        </Clickable>
+        <Button
+          variant={Variant.Borderless}
+          onClick={handleAddValue}
+          leadingIcon={() => (
+            <Icon name={IconName.Add} size={Size.Sm} className="size-5" />
+          )}
+        >
+          Add
+        </Button>
       </div>
       <Input
         type={isNumeric ? "number" : "text"}

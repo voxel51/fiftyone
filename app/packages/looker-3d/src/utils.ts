@@ -260,6 +260,28 @@ export function toNDC(ev: PointerEvent, canvas: HTMLCanvasElement) {
 }
 
 /**
+ * Converts a pointer event to Normalized Device Coordinates (NDC) relative to
+ * a specific HTML element (e.g., a panel container).
+ *
+ * @param ev - The pointer event to convert
+ * @param element - The HTML element to compute NDC relative to
+ * @returns An object with x and y coordinates in NDC space
+ */
+export function toNDCForElement(
+  ev: PointerEvent,
+  element: HTMLElement
+): { x: number; y: number } {
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+/**
  * Calculates the intersection point between a ray and a plane.
  *
  * @param raycaster - The THREE.js raycaster instance
@@ -651,4 +673,27 @@ export const rad2deg = (radians: number): number => radians * (180 / Math.PI);
 export const formatDegrees = (radians: number | undefined): string => {
   if (radians === undefined || !Number.isFinite(radians)) return "";
   return Math.round(rad2deg(radians)).toString();
+};
+
+/**
+ * Converts raycast precision (1-10) to a raycaster threshold value.
+ * Higher precision values = smaller threshold (more precise).
+ *
+ * - Precision 1-5: linear from 2.0 to 1.0 (lenient range)
+ * - Precision 5-10: exponential from 1.0 to 0.001 (precise range)
+ *
+ * @param precision - Value from 1 to 10
+ * @returns Threshold value for raycaster.params.Points.threshold
+ */
+export const precisionToThreshold = (precision: number): number => {
+  const safePrecision = Number.isFinite(precision) ? precision : 5;
+  const clampedValue = Math.max(1, Math.min(10, safePrecision));
+
+  if (clampedValue <= 5) {
+    // Linear: precision 1 -> 2.0, precision 5 -> 1.0
+    return 2 - (clampedValue - 1) * 0.25;
+  }
+
+  // Exponential: precision 5 -> 1.0, precision 10 -> 0.01
+  return Math.pow(10, (5 - clampedValue) * 0.4);
 };

@@ -169,4 +169,13 @@ class SidebarAsserter {
       }
     );
   }
+
+  /**
+   * Assert that annotation is disabled with a specific message
+   */
+  async hasDisabledMessage(messageSubstring: string) {
+    await expect(
+      this.modalSidebarPom.locator.getByText(messageSubstring)
+    ).toBeVisible();
+  }
 }

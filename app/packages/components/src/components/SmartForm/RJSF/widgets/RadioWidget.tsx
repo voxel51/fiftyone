@@ -15,7 +15,6 @@ export default function RadioWidget(props: WidgetProps) {
     readonly,
     onChange = () => {},
     schema,
-    rawErrors = [],
     id,
   } = props;
 
@@ -75,11 +74,5 @@ export default function RadioWidget(props: WidgetProps) {
     </div>
   );
 
-  return (
-    <FormField
-      control={radioComponent}
-      error={rawErrors.length > 0 ? rawErrors[0] : undefined}
-      label={label}
-    />
-  );
+  return <FormField control={radioComponent} label={label} />;
 }

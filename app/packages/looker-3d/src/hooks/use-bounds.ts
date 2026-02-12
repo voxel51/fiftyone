@@ -3,16 +3,17 @@ import { Box3, Group } from "three";
 
 const DEFAULT_STABLE_SAMPLES = 3;
 const DEFAULT_EPSILON = 1e-4;
-const DEFAULT_HARD_TIMEOUT_MS = 5000;
+// 10 second hard timeout
+const DEFAULT_HARD_TIMEOUT_MS = 10000;
 
 type Options = {
   // If the number of primary assets is 0, we don't compute bounds
   numPrimaryAssets?: number;
-  // Consecutive identical reads required
+  // Consecutive identical reads required before considering stable
   stableSamples?: number;
-  // Equality tolerance
+  // Equality tolerance for box comparison
   epsilon?: number;
-  // Give up after this long
+  // Hard timeout after which to give up (ms)
   hardTimeoutMs?: number;
 };
 
@@ -34,16 +35,21 @@ const isFiniteBox = (b: Box3) =>
 
 /**
  * Compute a stable world-space bounding box for a Group.
- * Polls via rAF until N consecutive identical boxes or hard timeout.
+ *
+ * Polls via rAF until either:
+ * - N consecutive identical boxes (stability threshold)
+ * - Hard timeout is reached
+ *
+ *
+ * @param objectRef - Reference to the Three.js Group to measure
+ * @param isReady - Whether to start computing (e.g., foScene loaded && assets ready)
+ * @param opts - Configuration options
  */
 export function useFo3dBounds(
   objectRef: React.RefObject<Group>,
-  predicate?: () => boolean,
+  isReady: boolean = true,
   opts: Options = {}
 ) {
-  const predicateRef = useRef(predicate);
-  predicateRef.current = predicate;
-
   const {
     stableSamples = DEFAULT_STABLE_SAMPLES,
     epsilon = DEFAULT_EPSILON,
@@ -64,7 +70,6 @@ export function useFo3dBounds(
 
     // ensure transforms are up to date before measuring
     obj.updateWorldMatrix(true, true);
-
     const box = new Box3().setFromObject(obj);
     return isFiniteBox(box) ? box : null;
   }, [objectRef]);
@@ -79,16 +84,11 @@ export function useFo3dBounds(
     let rafId = 0;
 
     const tick = () => {
-      if (token !== runToken.current) return; // canceled
-      if (predicateRef.current && !predicateRef.current()) {
-        rafId = requestAnimationFrame(tick);
-        return;
-      }
+      if (token !== runToken.current) return;
 
       const box = computeOnce();
       if (!box) {
         if (performance.now() - start > hardTimeoutMs) {
-          // give up cleanly
           if (token === runToken.current) {
             setBoundingBox(null);
             setIsComputing(false);
@@ -125,23 +125,28 @@ export function useFo3dBounds(
   }, [computeOnce, hardTimeoutMs, epsilon, stableSamples]);
 
   const recomputeBounds = useCallback(() => {
-    if (skip) return;
-    // Invalidate current run; next startLoop will own a new token
+    if (skip || !isReady) {
+      runToken.current++;
+      setIsComputing(false);
+      return;
+    }
     runToken.current++;
     startLoop();
-  }, [startLoop, skip]);
+  }, [startLoop, skip, isReady]);
 
   useLayoutEffect(() => {
-    // Fast path: no assets means no bounds to compute
-    if (skip) return;
+    if (skip || !isReady) {
+      runToken.current++;
+      setIsComputing(false);
+      return;
+    }
 
     const cancel = startLoop();
     return () => {
-      // Cancel any in-flight loop
       runToken.current++;
       cancel?.();
     };
-  }, [startLoop, skip]);
+  }, [startLoop, skip, isReady]);
 
   return { boundingBox, recomputeBounds, isComputing };
 }

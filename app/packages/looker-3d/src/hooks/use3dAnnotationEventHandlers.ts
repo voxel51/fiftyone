@@ -1,5 +1,11 @@
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
-import { coerceStringBooleans } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
+import {
+  AnnotationEventGroup,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import {
+  coerceStringBooleans,
+  useLabelsContext,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate";
 import { useCallback } from "react";
 import { useRecoilCallback, useSetRecoilState } from "recoil";
 import {
@@ -19,6 +25,7 @@ export const use3dAnnotationEventHandlers = () => {
   const { updatePolyline } = usePolylineOperations();
   const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
   const select3DLabelForAnnotation = useSelect3DLabelForAnnotation();
+  const { updateLabelData } = useLabelsContext();
 
   const handleSidebarLabelSelected = useCallback(
     (payload) => {
@@ -77,4 +84,18 @@ export const use3dAnnotationEventHandlers = () => {
     "annotation:sidebarLabelUnhover",
     handleSidebarLabelUnhover
   );
+
+  const handleLabelEdit = useCallback(
+    (
+      payload:
+        | AnnotationEventGroup["annotation:labelEdit"]
+        | AnnotationEventGroup["annotation:undoLabelEdit"]
+    ) => {
+      updateLabelData(payload.label.id, payload.label);
+    },
+    [updateLabelData]
+  );
+
+  useAnnotationEventHandler("annotation:labelEdit", handleLabelEdit);
+  useAnnotationEventHandler("annotation:undoLabelEdit", handleLabelEdit);
 };

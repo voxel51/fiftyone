@@ -28,7 +28,9 @@ export default function FieldTemplate(props: FieldTemplateProps) {
     >
       {children}
       {Array.isArray(rawErrors) && rawErrors.length > 0 && (
-        <Text color={TextColor.Destructive}>{rawErrors.join(". ")}</Text>
+        <Text color={TextColor.Secondary} style={{ lineHeight: "normal" }}>
+          {rawErrors.join(". ")}
+        </Text>
       )}
       {help && (
         <Typography

@@ -13,6 +13,7 @@ type MutationError<T> = {
 type MutationSuccess<T> = {
   labelId: string;
   type: T;
+  labelType?: AnnotationLabel["type"];
 };
 
 export type AnnotationEventGroup = {
@@ -133,4 +134,14 @@ export type AnnotationEventGroup = {
    * Notification event emitted when exiting annotation mode.
    */
   "annotation:exitAnnotationMode": void;
+
+  /**
+   * Notification event emitted when a label edit occurs.
+   */
+  "annotation:labelEdit": { label: Partial<AnnotationLabel["data"]> };
+
+  /**
+   * Notification event emitted when a label edit is undone.
+   */
+  "annotation:undoLabelEdit": { label: Partial<AnnotationLabel["data"]> };
 };

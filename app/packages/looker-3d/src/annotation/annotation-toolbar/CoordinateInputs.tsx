@@ -5,11 +5,14 @@ import {
   annotationPlaneAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
-  tempVertexTransformsAtom,
 } from "../../state";
 import { isPolyline3dOverlay } from "../../types";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
-import { usePolylineOperations, useWorkingLabel } from "../store";
+import {
+  usePolylineOperations,
+  useTransientPolyline,
+  useWorkingLabel,
+} from "../store";
 import { updateVertexPosition } from "../utils/polyline-utils";
 
 interface CoordinateInputsProps {
@@ -227,12 +230,11 @@ export const VertexCoordinateInputs = ({
   const workingLabel = useWorkingLabel(selectedPoint?.labelId ?? "");
   const { updatePolylinePoints } = usePolylineOperations();
 
+  const transientPolyline = useTransientPolyline(selectedPoint?.labelId ?? "");
   const vertexKey = selectedPoint
-    ? `${selectedPoint.labelId}-${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
+    ? `${selectedPoint.segmentIndex}-${selectedPoint.pointIndex}`
     : "";
-  const tempVertexTransforms = useRecoilValue(
-    tempVertexTransformsAtom(vertexKey)
-  );
+  const vertexDelta = transientPolyline?.vertexDeltas?.[vertexKey] ?? null;
 
   const points3d = useMemo(() => {
     if (workingLabel && isPolyline3dOverlay(workingLabel)) {
@@ -261,17 +263,17 @@ export const VertexCoordinateInputs = ({
   const selectedPointPosition = useMemo(() => {
     if (!workingPointPosition) return null;
 
-    if (tempVertexTransforms?.position) {
+    if (vertexDelta) {
       // During drag, add the offset to get the live position
       return [
-        workingPointPosition[0] + tempVertexTransforms.position[0],
-        workingPointPosition[1] + tempVertexTransforms.position[1],
-        workingPointPosition[2] + tempVertexTransforms.position[2],
-      ];
+        workingPointPosition[0] + vertexDelta[0],
+        workingPointPosition[1] + vertexDelta[1],
+        workingPointPosition[2] + vertexDelta[2],
+      ] as [number, number, number];
     }
 
     return workingPointPosition;
-  }, [workingPointPosition, tempVertexTransforms]);
+  }, [workingPointPosition, vertexDelta]);
 
   const [x, setX] = useState<string>("0");
   const [y, setY] = useState<string>("0");

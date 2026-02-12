@@ -4,6 +4,7 @@
  */
 
 import {
+  FormFieldGroup,
   Orientation,
   Spacing,
   Stack,
@@ -202,11 +203,10 @@ const PrimitiveFieldContent = ({
     <Stack orientation={Orientation.Column} spacing={Spacing.Lg}>
       {/* Component type buttons */}
       {componentOptions.length > 0 && (
-        <div>
+        <FormFieldGroup orientation={Orientation.Column} spacing={Spacing.Sm}>
           <Text
             variant={largeLabels ? TextVariant.Lg : TextVariant.Md}
-            color={largeLabels ? TextColor.Primary : TextColor.Secondary}
-            style={{ marginBottom: "0.5rem" }}
+            color={TextColor.Primary}
           >
             Input type
           </Text>
@@ -222,7 +222,7 @@ const PrimitiveFieldContent = ({
               />
             ))}
           </div>
-        </div>
+        </FormFieldGroup>
       )}
 
       {/* Values list */}
