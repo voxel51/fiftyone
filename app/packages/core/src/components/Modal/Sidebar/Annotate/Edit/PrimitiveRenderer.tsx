@@ -45,7 +45,11 @@ export default function PrimitiveRenderer({
         selected={fieldValue as Date}
         showTimeSelect={type === "datetime"}
         onChange={(date: Date | null) => {
-          handleChange(date);
+          if (date && !Number.isNaN(date.getTime())) {
+            handleChange(date.toISOString());
+          } else {
+            handleChange(undefined);
+          }
         }}
       />
     );

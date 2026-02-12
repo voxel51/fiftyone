@@ -8,12 +8,14 @@ import {
   Stack,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
+import { TAB_JSON } from "./constants";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
 import GUIView from "./GUIView";
 import {
@@ -22,6 +24,8 @@ import {
   useCurrentFieldValue,
   useDeactivateFields,
   useNewFieldMode,
+  useSchemaEditorGUIJSONToggle,
+  useSchemaManagerCleanup,
   useSelectedFieldCounts,
   useShowSchemaManagerModal,
 } from "./hooks";
@@ -76,7 +80,7 @@ const Subheading = () => {
   }
 
   return (
-    <Text color={TextColor.Secondary} style={{ padding: "1rem 0" }}>
+    <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
       Manage your label schemas
     </Text>
   );
@@ -99,6 +103,7 @@ const Page = () => {
 
 const SchemaManagerFooter = () => {
   const field = useCurrentFieldValue();
+  const { tab } = useSchemaEditorGUIJSONToggle();
   const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
     useSelectedFieldCounts();
   const activateFields = useActivateFields();
@@ -106,6 +111,11 @@ const SchemaManagerFooter = () => {
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
+    return null;
+  }
+
+  // Don't show footer when in JSON tab
+  if (tab === TAB_JSON) {
     return null;
   }
 
@@ -157,6 +167,11 @@ const SchemaManagerFooter = () => {
 };
 
 const Modal = () => {
+  // Reset currentField on unmount.
+  // Note: Selection state is reset by useSelectionCleanup in GUIContent,
+  // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
+  useSchemaManagerCleanup();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
@@ -193,7 +208,7 @@ const Modal = () => {
             <Icon
               name={IconName.Close}
               size={Size.Lg}
-              color={TextColor.Secondary}
+              className={textColorClass(TextColor.Secondary)}
             />
           </Button>
         </ModalHeader>

@@ -1,4 +1,4 @@
-import { Primitive } from "@fiftyone/utilities";
+import { isNullish, Primitive } from "@fiftyone/utilities";
 
 /**
  * Problem: user is in EST, server is in UTC. User picks a
@@ -21,6 +21,29 @@ export function serializeDateValue(type: string, date: Date): string {
     return dateOnlyToUTC(date);
   }
   return date.toISOString();
+}
+
+/**
+ * Serialize a date value from the database back to an ISO string
+ * @param value - The value to serialize
+ * @returns The serialized value
+ */
+export function serializeDatabaseDateValue(
+  value: Primitive | { datetime: number }
+): Primitive {
+  if (!isDateInDatabaseFormat(value)) return value;
+  return new Date(value.datetime).toISOString();
+}
+
+/**
+ * Is input in format { _cls: "DateTime", datetime: number }?
+ * @param value - The value to check
+ * @returns True if the value is in the format { _cls: "DateTime", datetime: number }, false otherwise
+ */
+export function isDateInDatabaseFormat(
+  value: unknown
+): value is { datetime: number } {
+  return !isNullish(value) && typeof value === "object" && "datetime" in value;
 }
 
 /**

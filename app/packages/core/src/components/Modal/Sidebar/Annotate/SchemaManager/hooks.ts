@@ -3,11 +3,17 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { mediaType, useNotification } from "@fiftyone/state";
+import {
+  datasetSampleCount,
+  mediaType,
+  queryPerformanceMaxSearch,
+  useNotification,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
   activePaths,
@@ -35,6 +41,7 @@ import {
   selectedHiddenFields,
   sortedInactivePaths,
 } from "./state";
+import { PRIMITIVE_FIELD_TYPES } from "./constants";
 
 // =============================================================================
 // Current Field Hooks
@@ -208,6 +215,44 @@ export const useFieldType = (field: string) => {
 };
 
 /**
+ * Hook which returns a callback to dynamically get the field type for a path.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const getFieldType = useGetFieldType();
+ *   const fieldType = getFieldType(field);
+ * }
+ * ```
+ */
+export const useGetFieldType = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldType(field)), [])
+  );
+
+/**
+ * Hook which returns a callback to check whether a field is a primitive type.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isPrimitiveField = useIsPrimitiveField();
+ *   if (isPrimitiveField(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsPrimitiveField = () => {
+  const getFieldType = useGetFieldType();
+
+  return useCallback(
+    (field: string) => PRIMITIVE_FIELD_TYPES.has(getFieldType(field)),
+    [getFieldType]
+  );
+};
+
+/**
  * Hook to get a field's schema data
  */
 export const useFieldSchemaData = (field: string) => {
@@ -220,6 +265,24 @@ export const useFieldSchemaData = (field: string) => {
 export const useFieldIsReadOnly = (field: string) => {
   return useAtomValue(fieldIsReadOnly(field));
 };
+
+/**
+ * Hook which returns a callback to check whether a field is read-only.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isFieldReadOnly = useIsFieldReadOnly();
+ *   if (isFieldReadOnly(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsFieldReadOnly = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldIsReadOnly(field)), [])
+  );
 
 /**
  * Hook to check if a field has schema configured
@@ -387,6 +450,14 @@ export const useFullSchemaEditor = () => {
 
   const validate = useOperatorExecutor("validate_label_schemas");
   const updateSchema = useOperatorExecutor("update_label_schema");
+
+  // Reset JSON editor state on unmount
+  useEffect(() => {
+    return () => {
+      setDraftJson(null);
+      setErrors([]);
+    };
+  }, []);
 
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
@@ -556,4 +627,49 @@ export const useExitNewFieldMode = () => {
  */
 export const useMediaType = () => {
   return useRecoilValue(mediaType);
+};
+
+/**
+ * Hook to check if the dataset sample count exceeds the scan limit.
+ * Returns whether the dataset is large and the scan sample limit.
+ */
+export const useIsLargeDataset = () => {
+  const count = useRecoilValue(datasetSampleCount);
+  const maxSearch = useRecoilValue(queryPerformanceMaxSearch);
+  return { isLargeDataset: (count ?? 0) > maxSearch, scanLimit: maxSearch };
+};
+
+// =============================================================================
+// Cleanup Hook
+// =============================================================================
+
+/**
+ * Hook to reset SchemaManager state on unmount.
+ * Call this from the Modal component to clean up state when the modal closes.
+ */
+export const useSchemaManagerCleanup = () => {
+  const setCurrentFieldAtom = useSetAtom(currentField);
+
+  useEffect(() => {
+    return () => {
+      // Reset field editing state
+      setCurrentFieldAtom(null);
+    };
+  }, []);
+};
+
+/**
+ * Hook to reset field selection state on unmount.
+ * Call this from GUIContent to clear selection when switching to JSON tab.
+ */
+export const useSelectionCleanup = () => {
+  const setSelectedActive = useSetAtom(selectedActiveFields);
+  const setSelectedHidden = useSetAtom(selectedHiddenFields);
+
+  useEffect(() => {
+    return () => {
+      setSelectedActive(new Set());
+      setSelectedHidden(new Set());
+    };
+  }, []);
 };

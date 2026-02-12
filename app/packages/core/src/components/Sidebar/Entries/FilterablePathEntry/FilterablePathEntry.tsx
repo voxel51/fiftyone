@@ -10,7 +10,6 @@ import RegularEntry from "../RegularEntry";
 import FilterablePathEntries from "./FilterablePathEntries";
 import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
-import { useCanAnnotateField } from "../../../Modal/Sidebar/Annotate/useCanAnnotateField";
 
 const LABEL_TAGS = "_label_tags";
 
@@ -61,7 +60,6 @@ const FilterableEntry = ({
   const onClick = useOnClick({ modal, path });
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
-  const canAnnotate = useCanAnnotateField(path);
 
   return (
     <RegularEntry
@@ -98,7 +96,6 @@ const FilterableEntry = ({
               template={useTitleTemplate({
                 modal,
                 path,
-                canAnnotate: canAnnotate && path !== LABEL_TAGS,
               })}
             />
           }

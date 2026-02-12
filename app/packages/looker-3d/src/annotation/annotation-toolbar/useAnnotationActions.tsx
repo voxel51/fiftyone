@@ -15,7 +15,6 @@ import { useFo3dContext } from "../../fo3d/context";
 import {
   activeSegmentationStateAtom,
   annotationPlaneAtom,
-  current3dAnnotationModeAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   isActivelySegmentingSelector,
@@ -25,6 +24,7 @@ import {
   snapCloseAutomaticallyAtom,
   transformModeAtom,
 } from "../../state";
+import { useCurrent3dAnnotationMode } from "../../state/accessors";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "../../types";
 import {
   useCuboidOperations,
@@ -56,7 +56,7 @@ export const useAnnotationActions = () => {
     selectedPolylineVertexAtom
   );
   const isActivelySegmenting = useRecoilValue(isActivelySegmentingSelector);
-  const current3dAnnotationMode = useRecoilValue(current3dAnnotationModeAtom);
+  const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const isCuboidAnnotateActive = current3dAnnotationMode === "cuboid";
   const isPolylineAnnotateActive = current3dAnnotationMode === "polyline";
   const [isCreatingCuboid, setIsCreatingCuboid] =

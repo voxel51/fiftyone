@@ -29,9 +29,7 @@ export class JSONEditorPom {
    * The code editor's locator
    */
   get locator() {
-    return this.schemaManager.locator
-      .getByTestId("json-editor")
-      .locator(".monaco-editor");
+    return this.schemaManager.locator.locator(".monaco-editor");
   }
 
   /**
@@ -80,6 +78,13 @@ export class JSONEditorPom {
     );
     await this.selectAllJSON();
     await this.page.keyboard.press("ControlOrMeta+KeyV");
+  }
+
+  /**
+   * Switch to the JSON tab in the edit field schema view
+   */
+  async switchToJSONTab() {
+    await this.schemaManager.locator.getByText("JSON", { exact: true }).click();
   }
 
   /**

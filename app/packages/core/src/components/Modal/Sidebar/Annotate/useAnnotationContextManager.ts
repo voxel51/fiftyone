@@ -1,14 +1,17 @@
-import { useSchemaManager } from "./useSchemaManager";
-import { useCallback, useMemo } from "react";
+import { useSampleMutationManager } from "@fiftyone/annotation";
 import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
+  useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import useCanManageSchema from "./useCanManageSchema";
-import { useAnnotationSchemaContext } from "./state";
 import { atom, useAtom, useAtomValue } from "jotai";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
+import { useCallback, useMemo } from "react";
+import { usePrimitiveController } from "./Edit/useActivePrimitive";
+import useSave from "./Edit/useSave";
+import { useAnnotationSchemaContext } from "./state";
+import useCanManageSchema from "./useCanManageSchema";
+import { useSchemaManager } from "./useSchemaManager";
 
 /**
  * Status code when attempting to initialize annotation schema.
@@ -82,16 +85,15 @@ const activeLabelIdAtom = atom<string | null>(null);
 export const useAnnotationContextManager = (): AnnotationContextManager => {
   const contextManager = useAtomValue(contextManagerAtom);
   const [activeLabelId, setActiveLabelId] = useAtom(activeLabelIdAtom);
-
-  const {
-    activate: activateCommandContext,
-    deactivate: deactivateCommandContext,
-  } = useCommandContext(KnownContexts.ModalAnnotate, true);
+  const saveChanges = useSave();
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
   const schemaManager = useSchemaManager();
-  const { enabled: canManageSchema } = useCanManageSchema();
+  const sampleScanLimit = useQueryPerformanceSampleLimit();
+  const canManageSchema = useCanManageSchema();
+  const { isPrimitive, setActivePrimitive } = usePrimitiveController();
+  const { reset: clearStaleMutations } = useSampleMutationManager();
 
   const initializeFieldSchema = useCallback(
     async (field: string) => {
@@ -110,15 +112,22 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
         // if it doesn't exist, create it
         if (!listSchemaResponse.label_schemas[field]?.label_schema) {
           if (!canManageSchema) {
+            setLabelSchema(listSchemaResponse.label_schemas);
             return {
               status: InitializationStatus.InsufficientPermissions,
             };
           }
 
-          await schemaManager.initializeSchema({ field });
+          await schemaManager.initializeSchema({
+            field,
+            scan_samples: true,
+            limit: sampleScanLimit,
+          });
         }
 
-        await schemaManager.activateSchemas({ fields: [field] });
+        if (canManageSchema) {
+          await schemaManager.activateSchemas({ fields: [field] });
+        }
 
         // refresh annotation state
         listSchemaResponse = await schemaManager.listSchemas({});
@@ -138,6 +147,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     },
     [
       canManageSchema,
+      sampleScanLimit,
       schemaManager,
       setActiveFields,
       setActiveSchemaPaths,
@@ -157,9 +167,6 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // enter annotation context
       contextManager.enter();
 
-      // activate command context
-      activateCommandContext();
-
       // register callback to restore active fields on context exit
       contextManager.registerExitCallback({
         callback: () => setActiveFields(activeFields),
@@ -172,6 +179,14 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       // initialize and activate field schema if specified
       if (field) {
         result = await initializeFieldSchema(field);
+
+        // if the field is a primitive, activate it directly
+        if (
+          result.status === InitializationStatus.Success &&
+          isPrimitive(field)
+        ) {
+          setActivePrimitive(field);
+        }
       }
 
       if (labelId) {
@@ -181,21 +196,23 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
-      activateCommandContext,
       activeFields,
       contextManager,
       initializeFieldSchema,
+      isPrimitive,
       setActiveFields,
       setActiveLabelId,
+      setActivePrimitive,
     ]
   );
 
   const exit = useCallback(() => {
     if (contextManager.isActive()) {
-      deactivateCommandContext();
+      saveChanges();
+      clearStaleMutations();
       contextManager.exit();
     }
-  }, [contextManager, deactivateCommandContext]);
+  }, [clearStaleMutations, contextManager, saveChanges]);
 
   return useMemo(
     () => ({

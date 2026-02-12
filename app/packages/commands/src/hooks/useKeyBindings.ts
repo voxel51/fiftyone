@@ -4,7 +4,7 @@ import { CommandFunction } from "../types";
 
 export type KeyBinding = {
   commandId: string;
-  sequence: string;
+  sequence: string | string[];
   handler: CommandFunction;
   label: string;
   description?: string;
@@ -53,8 +53,16 @@ export const useKeyBindings = (
         description
       );
       registeredCommands.push(cmd.id);
-      context.bindKey(sequence, cmd.id);
-      registeredBindings.push(sequence);
+
+      if (Array.isArray(sequence)) {
+        sequence.forEach((s) => {
+          context.bindKey(s, cmd.id);
+        });
+        registeredBindings.push(...sequence);
+      } else {
+        context.bindKey(sequence, cmd.id);
+        registeredBindings.push(sequence);
+      }
     }
 
     return () => {

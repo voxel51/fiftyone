@@ -76,7 +76,11 @@ const AttributeCard = (props: AttributeCardProps) => {
   const listItem = createAttributeCardItem(props);
 
   return (
-    <Stack orientation={Orientation.Column} spacing={Spacing.Md}>
+    <Stack
+      orientation={Orientation.Column}
+      spacing={Spacing.Md}
+      style={{ marginBottom: "12px" }}
+    >
       <RichList listItems={[listItem]} draggable={false} />
     </Stack>
   );

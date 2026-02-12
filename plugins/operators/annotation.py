@@ -84,8 +84,13 @@ class GenerateLabelSchemas(foo.Operator):
 
     def execute(self, ctx):
         field = ctx.params.get("field", None)
+        limit = ctx.params.get("limit", None)
+        if limit:
+            view = ctx.dataset.limit(limit)
+        else:
+            view = ctx.dataset
         return {
-            "label_schema": ctx.dataset.generate_label_schemas(
+            "label_schema": view.generate_label_schemas(
                 fields=field, scan_samples=ctx.params.get("scan_samples", True)
             )
         }
@@ -153,7 +158,12 @@ class UpdateLabelSchema(foo.Operator):
         label_schema = ctx.params.get("label_schema", None)
 
         try:
-            ctx.dataset.update_label_schema(field, label_schema)
+            ctx.dataset.update_label_schema(
+                field,
+                label_schema,
+                allow_new_attrs=True,
+                allow_new_fields=True,
+            )
         except Exception as e:
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}
@@ -255,10 +265,13 @@ class CreateAndActivateField(foo.Operator):
         classes = label_schema_config.get("classes")
 
         # Determine component based on number of classes
-        if classes and len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
-            component = foac.DROPDOWN
+        if classes:
+            if len(classes) > foac.CHECKBOXES_OR_RADIO_THRESHOLD:
+                component = foac.DROPDOWN
+            else:
+                component = foac.RADIO
         else:
-            component = foac.RADIO
+            component = foac.TEXT
 
         # Build label schema
         return {

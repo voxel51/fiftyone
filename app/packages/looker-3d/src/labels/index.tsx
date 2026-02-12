@@ -18,18 +18,11 @@ import { folder, useControls } from "leva";
 import { get as _get } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import {
-  useInitializeWorking,
-  useIsWorkingInitialized,
-  useRenderModel,
-  useResetWorkingOnModeChange,
-  useTransientCleanup,
-} from "../annotation/store";
+import { useIsWorkingInitialized, useRenderModel } from "../annotation/store";
 import type {
   ReconciledDetection3D,
   ReconciledPolyline3D,
 } from "../annotation/types";
-import { useSyncWorkingToSidebar } from "../annotation/useSyncWorkingToSidebar";
 import {
   ANNOTATION_CUBOID,
   ANNOTATION_POLYLINE,
@@ -55,15 +48,18 @@ import { Cuboid, type CuboidProps } from "./cuboid";
 import { DragGate3D } from "./DragGate3D";
 import { type OverlayLabel, load3dOverlays } from "./loader";
 import { type PolyLineProps, Polyline } from "./polyline";
+import { WorkingStoreManager } from "./WorkingStoreManager";
 
 export interface ThreeDLabelsProps {
   sampleMap: { [sliceOrFilename: string]: fos.ModalSample } | fos.Sample[];
   globalOpacity?: number;
+  isMainPanel?: boolean;
 }
 
 export const ThreeDLabels = ({
   sampleMap,
   globalOpacity,
+  isMainPanel = true,
 }: ThreeDLabelsProps) => {
   const mode = fos.useModalMode();
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
@@ -236,17 +232,10 @@ export const ThreeDLabels = ({
     ]
   );
 
-  // Initialize working annotation store from baseline raw overlays
-  useInitializeWorking(rawOverlays);
-
-  // Reset annotation working store when leaving annotate mode
-  useResetWorkingOnModeChange();
-
-  // Sync authoritative working store changes to sidebar atoms
-  useSyncWorkingToSidebar();
-
-  // Ensure transient states like drag are properly cleaned up
-  useTransientCleanup();
+  // Working store management hooks run only in main panel
+  const workingStoreManager = isMainPanel ? (
+    <WorkingStoreManager rawOverlays={rawOverlays} />
+  ) : null;
 
   // Combine working store with transient overlays to get render view model
   const renderModel = useRenderModel();
@@ -382,6 +371,7 @@ export const ThreeDLabels = ({
 
   return (
     <group>
+      {workingStoreManager}
       <mesh rotation={overlayRotation}>{cuboidOverlays}</mesh>
       {polylineOverlays}
     </group>

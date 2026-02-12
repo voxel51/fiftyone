@@ -11,8 +11,16 @@ import {
 import type { Sample } from "@fiftyone/state";
 import * as fos from "@fiftyone/state";
 import { getSampleSrc } from "@fiftyone/state";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilValue } from "recoil";
+import { activeLabelSchemas } from "../Sidebar/Annotate/state";
 import { singletonCanvas } from "./SharedCanvas";
 import { useBridge } from "./useBridge";
 
@@ -115,9 +123,20 @@ const LighterSetupImpl = (props: {
     fos.lookerOptions({ modal: true, withFilter: false })
   );
 
+  // Read activePaths directly from Jotai to bypass Recoil's filterPaths,
+  // which strips newly created fields not yet in the GraphQL schema cache
+  const jotaiActivePaths = useAtomValue(activeLabelSchemas);
+  const mergedOptions = useMemo(
+    () => ({
+      ...options,
+      activePaths: jotaiActivePaths ?? options.activePaths,
+    }),
+    [options, jotaiActivePaths]
+  );
+
   const canvas = singletonCanvas.getCanvas(containerRef.current);
 
-  const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
+  const { scene } = useLighterSetupWithPixi(canvas, mergedOptions, sceneId);
 
   // This is the bridge between FiftyOne state management system and Lighter
   useBridge(scene);

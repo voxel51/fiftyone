@@ -6,21 +6,39 @@
  * - Primitive fields: configure component type, values, range
  */
 
+import { scrollable } from "@fiftyone/components";
+import { useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import { useOperatorExecutor } from "@fiftyone/operators";
+import { useNotification, useRefresh } from "@fiftyone/state";
 import { is3d } from "@fiftyone/utilities";
 import {
+  FormField,
   Input,
   Orientation,
   Select,
   Size,
   Spacing,
   Stack,
-  Text,
-  TextColor,
-  TextVariant,
   ToggleSwitch,
 } from "@voxel51/voodo";
-import { useCallback, useEffect, useMemo, useState } from "react";
+
+import {
+  useExitNewFieldMode,
+  useLabelSchemasData,
+  useMediaType,
+  useSetActiveLabelSchemas,
+  useSetLabelSchemasData,
+} from "../hooks";
+
+import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
+import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
+import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
+import Footer from "../Footer";
+import { ListContainer } from "../styled";
+import { getLabelTypeOptions, validateFieldName } from "../utils";
+
 import {
   ATTRIBUTE_TYPE_OPTIONS,
   CATEGORY_LABEL,
@@ -29,24 +47,8 @@ import {
   getDefaultComponent,
   toFieldType,
 } from "../constants";
-import {
-  getLabelTypeOptions,
-  validateFieldName,
-  type AttributeConfig,
-  type SchemaConfigType,
-} from "../utils";
-import {
-  useExitNewFieldMode,
-  useLabelSchemasData,
-  useMediaType,
-  useSetActiveLabelSchemas,
-  useSetLabelSchemasData,
-} from "../hooks";
-import AttributesSection from "../EditFieldLabelSchema/GUIContent/AttributesSection";
-import ClassesSection from "../EditFieldLabelSchema/GUIContent/ClassesSection";
-import PrimitiveFieldContent from "../EditFieldLabelSchema/GUIContent/PrimitiveFieldContent";
-import Footer from "../Footer";
-import { ListContainer } from "../styled";
+
+import type { AttributeConfig, SchemaConfigType } from "../utils";
 
 type FieldCategory = "label" | "primitive";
 
@@ -76,6 +78,9 @@ const NewFieldSchema = () => {
   const schemasData = useLabelSchemasData();
   const currentMediaType = useMediaType();
   const is3dMedia = !!(currentMediaType && is3d(currentMediaType));
+
+  const notify = useNotification();
+  const refreshSchema = useRefresh();
 
   // Initialize correct attributes for 3D media
   useEffect(() => {
@@ -221,8 +226,15 @@ const NewFieldSchema = () => {
     createField.execute(params, {
       callback: (createResult) => {
         if (createResult.error) {
+          const error = createResult.errorMessage || createResult.error;
+
+          console.error("Failed to create field:", error);
+          notify({
+            msg: `Failed to create field: ${error}`,
+            variant: "error",
+          });
+
           setIsCreating(false);
-          console.error("Failed to create field:", createResult.error);
           return;
         }
 
@@ -234,34 +246,37 @@ const NewFieldSchema = () => {
               setIsCreating(false);
 
               if (schemasResult.result) {
-                setLabelSchemasData(schemasResult.result.label_schemas);
-                setActiveLabelSchemas(
-                  schemasResult.result.active_label_schemas
-                );
-              }
+                const { active_label_schemas, label_schemas } =
+                  schemasResult.result;
 
-              // Go back to schema manager (both label and primitive are fully configured)
-              exitNewFieldMode();
+                setLabelSchemasData(label_schemas);
+                setActiveLabelSchemas(active_label_schemas);
+
+                refreshSchema();
+                exitNewFieldMode();
+              }
             },
           }
         );
       },
     });
   }, [
-    canCreate,
-    fieldName,
-    category,
-    labelType,
-    primitiveType,
-    primitiveConfig,
-    classes,
     attributes,
-    newAttributes,
+    canCreate,
+    category,
+    classes,
     createField,
-    getSchemas,
-    setLabelSchemasData,
-    setActiveLabelSchemas,
     exitNewFieldMode,
+    fieldName,
+    getSchemas,
+    labelType,
+    newAttributes,
+    notify,
+    primitiveConfig,
+    primitiveType,
+    refreshSchema,
+    setActiveLabelSchemas,
+    setLabelSchemasData,
   ]);
 
   const handleDiscard = useCallback(() => {
@@ -270,87 +285,80 @@ const NewFieldSchema = () => {
 
   return (
     <ListContainer style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ flex: 1, overflowY: "auto", paddingBottom: "1rem" }}>
+      <div
+        className={scrollable}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          paddingBottom: "1rem",
+          paddingRight: "1rem",
+        }}
+      >
         <Stack
           orientation={Orientation.Column}
           spacing={Spacing.Lg}
           style={{ width: "100%" }}
         >
           {/* Field name input */}
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              Field name
-            </Text>
-            <Input
-              value={fieldName}
-              onChange={(e) => setFieldName(e.target.value)}
-              placeholder="Enter field name"
-              error={!!fieldNameError}
-              autoFocus
-            />
-            {fieldNameError && (
-              <Text
-                variant={TextVariant.Sm}
-                color={TextColor.Destructive}
-                style={{ marginTop: "0.2rem" }}
-              >
-                {fieldNameError}
-              </Text>
-            )}
-          </div>
+          <FormField
+            label="Field name"
+            control={
+              <Input
+                value={fieldName}
+                onChange={(e) => setFieldName(e.target.value)}
+                placeholder="Enter field name"
+                error={!!fieldNameError}
+                autoFocus
+              />
+            }
+            error={fieldNameError || undefined}
+          />
 
           {/* Category toggle */}
-          <div style={{ width: "100%" }}>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              Field category
-            </Text>
-            <ToggleSwitch
-              size={Size.Md}
-              defaultIndex={CATEGORY_LABEL}
-              onChange={handleCategoryChange}
-              fullWidth
-              tabs={[
-                { id: "label", data: { label: "Label" } },
-                { id: "primitive", data: { label: "Primitive" } },
-              ]}
-            />
-          </div>
+          <FormField
+            label="Field category"
+            control={
+              <ToggleSwitch
+                size={Size.Md}
+                defaultIndex={CATEGORY_LABEL}
+                onChange={handleCategoryChange}
+                fullWidth
+                tabs={[
+                  { id: "label", data: { label: "Label", content: null } },
+                  {
+                    id: "primitive",
+                    data: { label: "Primitive", content: null },
+                  },
+                ]}
+              />
+            }
+          />
 
           {/* Type dropdown */}
-          <div>
-            <Text
-              variant={TextVariant.Md}
-              color={TextColor.Secondary}
-              style={{ marginBottom: "0.5rem" }}
-            >
-              {category === "label" ? "Label type" : "Primitive type"}
-            </Text>
-            <Select
-              exclusive
-              portal
-              value={category === "label" ? labelType : primitiveType}
-              onChange={(value) => {
-                if (typeof value === "string") {
-                  if (category === "label") {
-                    handleLabelTypeChange(value);
-                  } else {
-                    handlePrimitiveTypeChange(value);
+          <FormField
+            label={category === "label" ? "Label type" : "Primitive type"}
+            control={
+              <Select
+                exclusive
+                portal
+                value={category === "label" ? labelType : primitiveType}
+                onChange={(value) => {
+                  if (typeof value === "string") {
+                    if (category === "label") {
+                      handleLabelTypeChange(value);
+                    } else {
+                      handlePrimitiveTypeChange(value);
+                    }
                   }
+                }}
+                options={
+                  category === "label"
+                    ? labelTypeOptions
+                    : ATTRIBUTE_TYPE_OPTIONS
                 }
-              }}
-              options={
-                category === "label" ? labelTypeOptions : ATTRIBUTE_TYPE_OPTIONS
-              }
-            />
-          </div>
+              />
+            }
+          />
 
           {/* Primitive field config */}
           {category === "primitive" && (

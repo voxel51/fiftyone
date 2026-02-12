@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import * as THREE from "three";
+import { FO_USER_DATA } from "../constants";
 import { useFo3dContext } from "../fo3d/context";
 import { Transformable } from "../labels/shared/TransformControls";
 import {
@@ -303,6 +304,7 @@ export const AnnotationPlane = ({
           onPointerUp={handleMouseUp}
           onClick={handlePlaneClick}
           renderOrder={1000}
+          userData={{ [FO_USER_DATA.IS_ANNOTATION_PLANE]: true }}
         >
           <planeGeometry args={[planeSize, planeSize]} />
           <meshBasicMaterial
@@ -341,6 +343,7 @@ export const AnnotationPlane = ({
         onPointerMove={handleMouseMove}
         onPointerUp={handleMouseUp}
         onClick={handlePlaneClick}
+        userData={{ [FO_USER_DATA.IS_ANNOTATION_PLANE]: true }}
       >
         <Line
           ref={lineRef}

@@ -14,6 +14,8 @@ import {
   RichList,
   Size,
   Text,
+  TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
   Variant,
@@ -25,6 +27,7 @@ import {
   useFieldIsReadOnly,
   useFieldSchemaData,
   useHiddenFieldsWithMetadata,
+  useSelectedActiveFields,
   useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
@@ -72,7 +75,11 @@ const HiddenFieldActions = ({
                 data-cy={"edit"}
                 onClick={() => setField(path)}
               >
-                <Icon name={IconName.Edit} size={Size.Md} />
+                <Icon
+                  name={IconName.Edit}
+                  size={Size.Md}
+                  className={textColorClass(TextColor.Secondary)}
+                />
               </Button>
             </Tooltip>
           ) : (
@@ -82,7 +89,7 @@ const HiddenFieldActions = ({
               variant={Variant.Secondary}
               onClick={() => setField(path)}
             >
-              Scan
+              Setup
             </Button>
           )}
         </>
@@ -99,7 +106,8 @@ const HiddenFieldsSection = () => {
     hasSchemaStates: fieldHasSchemaStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
-  const { setSelected } = useSelectedHiddenFields();
+  const { selected, setSelected } = useSelectedHiddenFields();
+  const { setSelected: setActiveSelected } = useSelectedActiveFields();
 
   const listItems = useMemo(
     () =>
@@ -107,11 +115,6 @@ const HiddenFieldsSection = () => {
         const isSystemReadOnly = isSystemReadOnlyField(path);
         const hasSchema = fieldHasSchemaStates[path];
         const canSelect = hasSchema && !isSystemReadOnly;
-
-        // Add left padding when no checkbox is shown to maintain alignment
-        const paddingStyle = !canSelect
-          ? { paddingLeft: "0.25rem" }
-          : undefined;
 
         return {
           id: path,
@@ -137,9 +140,12 @@ const HiddenFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setActiveSelected(new Set());
     },
-    [setSelected]
+    [setActiveSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields.length) {
     return null;
@@ -152,7 +158,11 @@ const HiddenFieldsSection = () => {
           onClick={() => setExpanded((v) => !v)}
           style={{ padding: 0, flex: "none" }}
         >
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            color={TextColor.Secondary}
+            style={{ fontWeight: 500 }}
+          >
             Hidden fields
           </Text>
           {expanded ? (
@@ -180,6 +190,7 @@ const HiddenFieldsSection = () => {
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}
+          selected={selectedList}
         />
       )}
     </>
