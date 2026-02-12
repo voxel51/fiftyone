@@ -191,6 +191,32 @@ export const createText = (name: string, type: string): SchemaType => {
   };
 };
 
+export const createDatePicker = (
+  name: string,
+  dateOnly: boolean
+): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "DatePickerView",
+      component: "DatePickerView",
+      label: name,
+      date_only: dateOnly,
+    },
+  };
+};
+
+export const createJsonInput = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "JsonEditorView",
+      component: "JsonEditorView",
+      label: name,
+    },
+  };
+};
+
 /**
  * Creates an array schema for numeric lists: list<float> and list<int>
  */
@@ -258,6 +284,18 @@ export function generatePrimitiveSchema(
       return createRadio(name, schema.values || [], "number");
     }
     return createText(name, "number");
+  }
+
+  if (schema.type === "date") {
+    return createDatePicker(name, true);
+  }
+
+  if (schema.type === "datetime") {
+    return createDatePicker(name, false);
+  }
+
+  if (schema.type === "dict") {
+    return createJsonInput(name);
   }
 
   console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);
