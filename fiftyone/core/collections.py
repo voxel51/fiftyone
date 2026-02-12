@@ -3727,11 +3727,10 @@ class SampleCollection(object):
         type has a visual representation, that field is handled by the App's
         builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
         Primitive attributes of label types are configured via the
-        ``attributes`` setting.
+        ``attributes`` list.
 
         When a label is marked as ``read_only``, all its attributes inherit the
         setting as well.
-
 
         All :class:`fiftyone.core.labels.Label` types are resolved by this
         method except :class:`fiftyone.core.labels.GeoLocation`,
@@ -3764,84 +3763,96 @@ class SampleCollection(object):
             dataset = foz.load_zoo_dataset("quickstart")
             dataset.compute_metadata()
 
-            fo.pprint(dataset.generate_label_schemas(scan_samples=True))
+            fo.pprint(dataset.generate_label_schemas(scan_samples=False))
 
         Output::
 
             {
-                'created_at': {
-                    'type': 'datetime',
-                    'component': 'datepicker',
-                    'read_only': True,
+                "created_at": {
+                    "type": "datetime",
+                    "component": "datepicker",
+                    "read_only": True,
                 },
-                'filepath': {'type': 'str', 'component': 'text'},
-                'ground_truth': {
-                    'attributes': {
-                        'attributes': {'type': 'dict', 'component': 'json'},
-                        'confidence': {'type': 'float', 'component': 'text'},
-                        'id': {
-                            'type': 'id',
-                            'component': 'text',
-                            'read_only': True
+                "filepath": {"type": "str", "component": "text"},
+                "ground_truth": {
+                    "attributes": [
+                        {
+                            "name": "attributes",
+                            "type": "dict",
+                            "component": "json",
                         },
-                        'index': {'type': 'int', 'component': 'text'},
-                        'mask_path': {'type': 'str', 'component': 'text'},
-                        'tags': {'type': 'list<str>', 'component': 'text'},
-                    },
-                    'classes': [
-                        'airplane',
-                        '...',
-                        'zebra',
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
+                        },
+                        {
+                            "name": "id",
+                            "type": "id",
+                            "component": "text",
+                            "read_only": True,
+                        },
+                        {"name": "index", "type": "int", "component": "text"},
+                        {
+                            "name": "mask_path",
+                            "type": "str",
+                            "component": "text",
+                        },
+                        {
+                            "name": "tags",
+                            "type": "list<str>",
+                            "component": "text",
+                        },
                     ],
-                    'component': 'dropdown',
-                    'type': 'detections',
+                    "component": "text",
+                    "type": "detections",
                 },
-                'id': {'type': 'id', 'component': 'text', 'read_only': True},
-                'last_modified_at': {
-                    'type': 'datetime',
-                    'component': 'datepicker',
-                    'read_only': True,
+                "id": {"type": "id", "component": "text", "read_only": True},
+                "last_modified_at": {
+                    "type": "datetime",
+                    "component": "datepicker",
+                    "read_only": True,
                 },
-                'metadata.height': {'type': 'int', 'component': 'text'},
-                'metadata.mime_type': {'type': 'str', 'component': 'text'},
-                'metadata.num_channels': {'type': 'int', 'component': 'text'},
-                'metadata.size_bytes': {'type': 'int', 'component': 'text'},
-                'metadata.width': {'type': 'int', 'component': 'text'},
-                'predictions': {
-                    'attributes': {
-                        'attributes': {'type': 'dict', 'component': 'json'},
-                        'confidence': {
-                            'type': 'float',
-                            'component': 'slider',
-                            'range': [0.05003104358911514, 0.9999035596847534],
+                "metadata.height": {"type": "int", "component": "text"},
+                "metadata.mime_type": {"type": "str", "component": "text"},
+                "metadata.num_channels": {"type": "int", "component": "text"},
+                "metadata.size_bytes": {"type": "int", "component": "text"},
+                "metadata.width": {"type": "int", "component": "text"},
+                "predictions": {
+                    "attributes": [
+                        {
+                            "name": "attributes",
+                            "type": "dict",
+                            "component": "json",
                         },
-                        'id': {
-                            'type': 'id',
-                            'component': 'text',
-                            'read_only': True
+                        {
+                            "name": "confidence",
+                            "type": "float",
+                            "component": "text",
                         },
-                        'index': {'type': 'int', 'component': 'text'},
-                        'mask_path': {'type': 'str', 'component': 'text'},
-                        'tags': {'type': 'list<str>', 'component': 'text'},
-                    },
-                    'classes': [
-                        'airplane',
-                        '...',
-                        'zebra',
+                        {
+                            "name": "id",
+                            "type": "id",
+                            "component": "text",
+                            "read_only": True,
+                        },
+                        {"name": "index", "type": "int", "component": "text"},
+                        {
+                            "name": "mask_path",
+                            "type": "str",
+                            "component": "text",
+                        },
+                        {
+                            "name": "tags",
+                            "type": "list<str>",
+                            "component": "text",
+                        },
                     ],
-                    'component': 'dropdown',
-                    'type': 'detections',
+                    "component": "text",
+                    "type": "detections",
                 },
-                'tags': {
-                    'type': 'list<str>',
-                    'component': 'checkboxes',
-                    'values': ['validation'],
-                },
-                'uniqueness': {
-                    'type': 'float',
-                    'component': 'slider',
-                    'range': [0.15001302256126986, 1.0],
-                },
+                "tags": {"type": "list<str>", "component": "text"},
+                "uniqueness": {"type": "float", "component": "text"},
             }
 
         Args:
@@ -10948,7 +10959,15 @@ class SampleCollection(object):
             ):
                 raise ValueError(f"Cannot modify default index '{index_name}'")
 
+        #
         # Convert existing index to unique, if necessary
+        # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
+        #
+        # Although MongoDB documents this strategy for more efficently
+        # upgrading an existing index to unique on MongoDB 6+, it does not seem
+        # to work in all cases, so we gracefully fallback to the "delete and
+        # replace" strategy if necessary
+        #
         if convert_to_unique:
             logger.info(
                 f"Converting existing index '{index_name}' to unique "
@@ -10958,7 +10977,6 @@ class SampleCollection(object):
             db = foo.get_db_conn()
 
             try:
-                # https://www.mongodb.com/docs/manual/core/index-unique/convert-to-unique
                 db.command(
                     "collMod",
                     coll_name,
@@ -10971,21 +10989,33 @@ class SampleCollection(object):
                 )
 
                 return _existing_name
-            except:
-                if foo.get_db_version() < Version("6"):
-                    # index conversion was introduced in MongoDB 6
-                    replace_existing = True
-                else:
-                    db.command(
-                        "collMod",
-                        coll_name,
-                        index={
-                            "name": _existing_db_name,
-                            "prepareUnique": False,
-                        },
+            except Exception as e:
+                replace_existing = True
+
+                db_version = foo.get_db_version()
+                if db_version >= Version("6"):
+                    logger.debug(
+                        "Failed to convert existing index '%s' to unique via collMod on MongoDB %s. Reason: %s",
+                        index_name,
+                        db_version,
+                        e,
+                    )
+                    logger.debug(
+                        "Falling back to delete + recreate strategy for index '%s'",
+                        index_name,
                     )
 
-                    raise
+                    try:
+                        db.command(
+                            "collMod",
+                            coll_name,
+                            index={
+                                "name": _existing_db_name,
+                                "prepareUnique": False,
+                            },
+                        )
+                    except:
+                        pass
 
         # Drop existing index, if necessary
         if replace_existing:

@@ -71,6 +71,10 @@ export class ModalSidebarPom {
     return absPath;
   }
 
+  async switchMode(mode: "annotate" | "explore") {
+    await this.locator.getByTestId(mode).click();
+  }
+
   async toggleLabelCheckbox(field: string) {
     await this.locator.getByTestId(`checkbox-${field}`).click();
   }
@@ -164,5 +168,14 @@ class SidebarAsserter {
         timeout: Duration.Seconds(1),
       }
     );
+  }
+
+  /**
+   * Assert that annotation is disabled with a specific message
+   */
+  async hasDisabledMessage(messageSubstring: string) {
+    await expect(
+      this.modalSidebarPom.locator.getByText(messageSubstring)
+    ).toBeVisible();
   }
 }

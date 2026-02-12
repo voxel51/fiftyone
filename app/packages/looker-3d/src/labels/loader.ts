@@ -1,5 +1,5 @@
 import type * as fos from "@fiftyone/looker/src/state";
-import type { SampleData } from "@fiftyone/state";
+import type { ModalSample } from "@fiftyone/state";
 import { LABEL_LIST, type Schema, getCls } from "@fiftyone/utilities";
 
 const RENDERABLE = ["Detection", "Polyline"];
@@ -24,11 +24,11 @@ export type OverlayLabel = {
     _cls: "Instance";
     _id: string;
   };
-};
+} & Record<string, unknown>;
 
 export const load3dOverlayForSample = (
   sampleId: string,
-  samples: SampleData | fos.Sample[],
+  samples: fos.Sample | fos.Sample[],
   selectedLabels: Record<string, unknown>,
   currentPath: string[] = [],
   schema: Schema,
@@ -78,7 +78,7 @@ export const load3dOverlayForSample = (
 };
 
 export const load3dOverlays = (
-  samples: { [sliceOrFilename: string]: SampleData } | fos.Sample[],
+  samples: { [sliceOrFilename: string]: ModalSample } | fos.Sample[],
   selectedLabels: Record<string, unknown>,
   currentPath: string[] = [],
   schema: Schema

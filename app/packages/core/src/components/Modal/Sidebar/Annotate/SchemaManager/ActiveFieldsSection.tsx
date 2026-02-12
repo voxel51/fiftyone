@@ -4,63 +4,76 @@
  * Displays the list of active (visible) fields with drag-drop reordering.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { Typography } from "@mui/material";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
-  Clickable,
+  Button,
   Icon,
   IconName,
   Pill,
   RichList,
   Size,
+  Text,
+  TextColor,
+  textColorClass,
+  TextVariant,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
-import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import {
-  activeLabelSchemas,
-  activePaths,
-  fieldAttributeCount,
-  fieldType,
-} from "../state";
-import { currentField, fieldIsReadOnly, selectedActiveFields } from "./state";
-import { GUISectionHeader } from "./styled";
+import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
-import { buildFieldSecondaryContent } from "./utils";
+import {
+  useActiveFieldsList,
+  useNewFieldMode,
+  useSelectedActiveFields,
+  useSelectedHiddenFields,
+  useSetCurrentField,
+} from "./hooks";
+import SecondaryText from "./SecondaryText";
+import { fieldIsReadOnly } from "./state";
+import { GUISectionHeader } from "./styled";
 
 /**
  * Edit action button for field rows
  */
 const FieldActions = ({ path }: { path: string }) => {
-  const setField = useSetAtom(currentField);
+  const setField = useSetCurrentField();
 
   return (
     <Tooltip
-      content="Configure annotation schema"
+      content={<Text>Configure label schema</Text>}
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable onClick={() => setField(path)}>
-        <Icon name={IconName.Edit} size={Size.Md} />
-      </Clickable>
+      <Button
+        variant={Variant.Icon}
+        borderless
+        data-cy="edit"
+        onClick={() => setField(path)}
+      >
+        <Icon
+          name={IconName.Edit}
+          size={Size.Md}
+          className={textColorClass(TextColor.Secondary)}
+        />
+      </Button>
     </Tooltip>
   );
 };
 
 const ActiveFieldsSection = () => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
+  const { setIsNewField: setNewFieldMode } = useNewFieldMode();
 
-  // Support both atom systems
-  const [fieldsFromNew, setFieldsNew] = useAtom(activePaths);
-  const [fieldsFromLegacy, setFieldsLegacy] = useAtom(activeLabelSchemas);
-  const fields = fieldsFromNew?.length ? fieldsFromNew : fieldsFromLegacy ?? [];
+  const handleNewField = useCallback(() => {
+    setNewFieldMode(true);
+  }, [setNewFieldMode]);
 
-  const [, setSelected] = useAtom(selectedActiveFields);
+  const { fields, setFields } = useActiveFieldsList();
+  const { selected, setSelected } = useSelectedActiveFields();
+  const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -105,15 +118,18 @@ const ActiveFieldsSection = () => {
         data: {
           canSelect: true,
           canDrag: true,
+          "data-cy": `field-row-${path}`,
           primaryContent: path,
-          secondaryContent: buildFieldSecondaryContent(
-            fieldTypes[path],
-            fieldAttrCounts[path],
-            false
+          secondaryContent: (
+            <SecondaryText
+              fieldType={fieldTypes[path] ?? ""}
+              attrCount={fieldAttrCounts[path]}
+              isSystemReadOnly={false}
+            />
           ),
           actions: (
             <span className="flex items-center gap-2">
-              {isM4Enabled && fieldReadOnlyStates[path] && (
+              {fieldReadOnlyStates[path] && (
                 <Pill size={Size.Md}>Read-only</Pill>
               )}
               <FieldActions path={path} />
@@ -121,71 +137,107 @@ const ActiveFieldsSection = () => {
           ),
         } as ListItemProps,
       })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates, isM4Enabled]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
   );
 
   const handleOrderChange = useCallback(
     (newItems: { id: string; data: ListItemProps }[]) => {
       const newOrder = newItems.map((item) => item.id);
       // Update UI immediately
-      setFieldsNew(newOrder);
-      setFieldsLegacy(newOrder);
+      setFields(newOrder);
       // Persist to DB
       setActiveSchemas.execute({ fields: newOrder });
     },
-    [setFieldsNew, setFieldsLegacy, setActiveSchemas]
+    [setFields, setActiveSchemas]
   );
 
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setHiddenSelected(new Set());
     },
-    [setSelected]
+    [setHiddenSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields?.length) {
     return (
-      <>
+      <div style={{ marginTop: "0.5rem" }}>
         <GUISectionHeader>
-          <Typography variant="body1" fontWeight={500}>
+          <Text
+            variant={TextVariant.Lg}
+            style={{ fontWeight: 500 }}
+            color={TextColor.Secondary}
+          >
             Active fields
-          </Typography>
+          </Text>
           <Tooltip
-            content="Fields currently active and available for dataset annotation"
+            content={
+              <Text>
+                Fields currently active and available for dataset annotation
+              </Text>
+            }
             anchor={Anchor.Bottom}
             portal
           >
             <Icon name={IconName.Info} size={Size.Md} />
           </Tooltip>
           <Pill size={Size.Md}>0</Pill>
+          <div style={{ flex: 1 }} />
+          <Button
+            size={Size.Md}
+            variant={Variant.Primary}
+            onClick={handleNewField}
+          >
+            New field
+          </Button>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
-          <Typography color="secondary">No active fields</Typography>
+          <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
-      </>
+      </div>
     );
   }
 
   return (
     <>
       <GUISectionHeader>
-        <Typography variant="body1" fontWeight={500}>
+        <Text
+          variant={TextVariant.Lg}
+          style={{ fontWeight: 500 }}
+          color={TextColor.Secondary}
+        >
           Active fields
-        </Typography>
+        </Text>
         <Tooltip
-          content="Fields currently active and available for dataset annotation"
+          content={
+            <Text>
+              Fields currently active and available for dataset annotation
+            </Text>
+          }
           anchor={Anchor.Top}
           portal
         >
           <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
+        <div style={{ flex: 1 }} />
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={handleNewField}
+        >
+          New field
+        </Button>
       </GUISectionHeader>
       <RichList
+        data-cy={"active-fields"}
         listItems={listItems}
         draggable={true}
         onOrderChange={handleOrderChange}
         onSelected={handleSelected}
+        selected={selectedList}
       />
     </>
   );

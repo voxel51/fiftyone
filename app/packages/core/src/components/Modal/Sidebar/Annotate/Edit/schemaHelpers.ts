@@ -10,6 +10,7 @@ export interface PrimitiveSchema {
   choices?: unknown[];
   values?: string[];
   range?: [number, number];
+  readOnly?: boolean;
 }
 
 const getLabel = (value?: unknown): string => {
@@ -22,6 +23,21 @@ const getLabel = (value?: unknown): string => {
   }
 
   return value as string;
+};
+
+/**
+ * Creates a disabled text input for read-only fields.
+ * For array values, the data should be formatted as comma-separated before passing to the component.
+ */
+export const createReadOnly = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "LabelValueView",
+      label: name,
+      component: "LabelValueView",
+    },
+  };
 };
 
 export const createInput = (
@@ -83,9 +99,13 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: string[]) => {
+export const createRadio = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
       name: "RadioGroup",
       label: name,
@@ -118,13 +138,17 @@ export const createTags = (name: string, choices: string[]) => {
   };
 };
 
-export const createSelect = (name: string, choices: string[]) => {
+export const createSelect = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
-      name: "DropdownView",
+      name: "SelectWidget",
       label: name,
-      component: "DropdownView",
+      component: "SelectWidget",
       choices: choices.map((choice) => ({
         name: "Choice",
         label: getLabel(choice),
@@ -167,6 +191,32 @@ export const createText = (name: string, type: string): SchemaType => {
   };
 };
 
+export const createDatePicker = (
+  name: string,
+  dateOnly: boolean
+): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "DatePickerView",
+      component: "DatePickerView",
+      label: name,
+      date_only: dateOnly,
+    },
+  };
+};
+
+export const createJsonInput = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "JsonEditorView",
+      component: "JsonEditorView",
+      label: name,
+    },
+  };
+};
+
 /**
  * Creates an array schema for numeric lists: list<float> and list<int>
  */
@@ -197,8 +247,12 @@ export function generatePrimitiveSchema(
   name: string,
   schema: PrimitiveSchema
 ): SchemaType | undefined {
+  if (schema.readOnly) {
+    return createReadOnly(name);
+  }
+
   if (schema.type === "list<float>" || schema.type === "list<int>") {
-    return createNumericList(name, schema.values || []);
+    return createNumericList(name, schema?.values || []);
   }
 
   if (schema.type === "list<str>") {
@@ -222,10 +276,28 @@ export function generatePrimitiveSchema(
   }
 
   if (schema.type === "float" || schema.type === "int") {
-    if (schema.range) {
+    if (schema.component === "slider" && schema.range) {
       return createSlider(name, schema.range);
+    } else if (schema.component === "dropdown") {
+      return createSelect(name, schema.values || [], "number");
+    } else if (schema.component === "radio") {
+      return createRadio(name, schema.values || [], "number");
     }
     return createText(name, "number");
   }
-  return undefined;
+
+  if (schema.type === "date") {
+    return createDatePicker(name, true);
+  }
+
+  if (schema.type === "datetime") {
+    return createDatePicker(name, false);
+  }
+
+  if (schema.type === "dict") {
+    return createJsonInput(name);
+  }
+
+  console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);
+  return createReadOnly(name);
 }

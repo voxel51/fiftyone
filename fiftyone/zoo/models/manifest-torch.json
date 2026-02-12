@@ -3797,7 +3797,7 @@
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "transformers>=4.51"],
+                "packages": ["torch", "torchvision", "transformers>=4.51", "timm<1.0.24"],
                 "cpu": {
                     "support": true
                 },
@@ -9585,6 +9585,129 @@
             },
             "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
             "date_added": "2025-08-11 15:00:08"
+        },
+        {
+            "base_name": "qwen3-vl-2b-instruct-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Compact vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/Qwen/Qwen3-VL-2B-Instruct",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 4500000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_vl.Qwen3VLModel",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3-VL-2B-Instruct",
+                    "output_processor_cls": "fiftyone.utils.qwen3_vl.Qwen3VLOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-01-20 12:00:00"
+        },
+        {
+            "base_name": "qwen3-vl-4b-instruct-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/Qwen/Qwen3-VL-4B-Instruct",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 9000000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_vl.Qwen3VLModel",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3-VL-4B-Instruct",
+                    "output_processor_cls": "fiftyone.utils.qwen3_vl.Qwen3VLOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-01-20 12:00:00"
+        },
+        {
+            "base_name": "qwen3-vl-8b-instruct-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-quality vision-language model for object detection via 2D grounding",
+            "source": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 18000000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_vl.Qwen3VLModel",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3-VL-8B-Instruct",
+                    "output_processor_cls": "fiftyone.utils.qwen3_vl.Qwen3VLOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.51.0", "accelerate", "qwen-vl-utils"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "vlm", "torch", "transformer", "zero-shot"],
+            "training_data": [],
+            "date_added": "2026-01-20 12:00:00"
+        },
+        {
+            "base_name": "qwen3-vl-embedding-2b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Multimodal embedding model for image-text similarity and retrieval",
+            "source": "https://huggingface.co/Qwen/Qwen3-VL-Embedding-2B",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 4500000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_vl.Qwen3VLModel",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3-VL-Embedding-2B"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-22 12:00:00"
+        },
+        {
+            "base_name": "qwen3-vl-embedding-8b-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-quality multimodal embedding model for image-text similarity and retrieval",
+            "source": "https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B",
+            "author": "Qwen Team, Alibaba",
+            "license": "Apache 2.0",
+            "size_bytes": 18000000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.qwen3_vl.Qwen3VLModel",
+                "config": {
+                    "name_or_path": "Qwen/Qwen3-VL-Embedding-8B"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers>=4.57.0", "accelerate", "qwen-vl-utils"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["embeddings", "vlm", "torch", "transformer"],
+            "training_data": [],
+            "date_added": "2026-01-22 12:00:00"
         }
     ]
 }

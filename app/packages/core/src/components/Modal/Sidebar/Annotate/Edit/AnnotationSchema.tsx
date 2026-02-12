@@ -6,7 +6,8 @@ import { isEqual } from "lodash";
 import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { createSelect, generatePrimitiveSchema } from "./schemaHelpers";
+import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
   currentField,
@@ -14,25 +15,35 @@ import {
   currentSchema,
 } from "./state";
 
-const useSchema = () => {
+const useSchema = (readOnly: boolean) => {
   const config = useAtomValue(currentSchema);
+  const isLabelReadOnly = config?.read_only;
+  // respect either the field OR the parent schema's readOnly flag
+  const effectiveReadOnly = readOnly || isLabelReadOnly;
 
   return useMemo(() => {
-    const properties: Record<string, any> = {};
-
-    const attributes = config?.attributes;
-    properties.label = createSelect("label", config?.classes ?? []);
-
-    for (const attr in attributes) {
-      if (attr === "id") {
-        continue;
-      }
-
-      const schema = generatePrimitiveSchema(attr, attributes[attr]);
-      if (schema) {
-        properties[attr] = schema;
-      }
-    }
+    const attributes = Array.isArray(config?.attributes)
+      ? config.attributes
+      : [];
+    const properties = attributes
+      .filter(({ name }) => name && !["id", "attributes"].includes(name))
+      .reduce(
+        (schema: SchemaType, value: SchemaType) => ({
+          ...schema,
+          [value.name!]: generatePrimitiveSchema(value.name!, {
+            ...value,
+            readOnly: effectiveReadOnly || value.read_only,
+          }),
+        }),
+        {
+          label: generatePrimitiveSchema("label", {
+            type: "str",
+            component: config?.component || "dropdown",
+            values: config?.classes || [],
+            readOnly: effectiveReadOnly,
+          }),
+        }
+      );
 
     return {
       type: "object",
@@ -41,7 +52,7 @@ const useSchema = () => {
       },
       properties,
     };
-  }, [config]);
+  }, [config, effectiveReadOnly]);
 };
 
 const useHandleChanges = () => {
@@ -71,8 +82,12 @@ const useHandleChanges = () => {
   );
 };
 
-const AnnotationSchema = () => {
-  const schema = useSchema();
+export interface AnnotationSchemaProps {
+  readOnly?: boolean;
+}
+
+const AnnotationSchema = ({ readOnly = false }: AnnotationSchemaProps) => {
+  const schema = useSchema(readOnly);
   const [data, _save] = useAtom(currentData);
   const overlay = useAtomValue(currentOverlay);
   const eventBus = useAnnotationEventBus();
@@ -87,14 +102,33 @@ const AnnotationSchema = () => {
     throw new Error("no overlay");
   }
 
+  // Transform data for read-only display: convert arrays to comma-separated strings
+  const displayData = useMemo(() => {
+    if (!readOnly) {
+      return data;
+    }
+
+    return Object.fromEntries(
+      Object.entries(data || {}).map(([key, value]) => [
+        key,
+        Array.isArray(value) ? value.join(", ") : value,
+      ])
+    );
+  }, [data, readOnly]);
+
   return (
     <div>
       <SchemaIOComponent
         key={overlay.id}
         smartForm={true}
+        smartFormProps={{
+          liveValidate: "onChange",
+        }}
         schema={schema}
-        data={data}
+        data={displayData}
         onChange={async (changes) => {
+          if (readOnly) return;
+
           const result = Object.fromEntries(
             await Promise.all(
               Object.entries(changes).map(async ([key, value]) => [

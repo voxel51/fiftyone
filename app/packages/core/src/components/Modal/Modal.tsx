@@ -2,7 +2,13 @@ import {
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
+  useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
@@ -20,15 +26,10 @@ import Actions from "./Actions";
 import ModalNavigation from "./ModalNavigation";
 import { ModalSpace } from "./ModalSpace";
 import { Sidebar } from "./Sidebar";
+import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
-import {
-  KnownCommands,
-  KnownContexts,
-  useKeyBindings,
-} from "@fiftyone/commands";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -66,12 +67,12 @@ const SpacesContainer = styled.div`
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterRendererEventHandlers();
+  useAnnotationTracking();
+
   const modalMode = useModalMode();
 
-  const { isEnabled: enableAutoSave } = useFeature({
-    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
-  });
-  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+  useAutoSave(modalMode === ModalMode.ANNOTATE);
 
   return <Fragment />;
 };
@@ -189,6 +190,9 @@ const Modal = () => {
       },
     [modalCloseHandler]
   );
+
+  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
+
   useKeyBindings(KnownContexts.Modal, [
     {
       commandId: KnownCommands.ModalClose,
@@ -263,8 +267,6 @@ const Modal = () => {
     },
     [onLookerSet]
   );
-
-  const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
   return ReactDOM.createPortal(
     <modalContext.Provider

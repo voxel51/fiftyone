@@ -7,11 +7,15 @@ import {
   POLYLINE,
   POLYLINES,
 } from "@fiftyone/utilities";
-import type { PrimitiveAtom } from "jotai";
-import { atom } from "jotai";
+import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
-import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
+import {
+  activeLabelSchemas,
+  fieldType,
+  isFieldReadOnly,
+  labelSchemaData,
+} from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
 
@@ -113,6 +117,21 @@ export const currentField = atom(
   }
 );
 
+/**
+ * Atom that determines if the current field is read-only.
+ * Returns true if field is marked as read-only in the schema.
+ */
+export const currentFieldIsReadOnlyAtom = atom((get) => {
+  const field = get(currentField);
+
+  if (!field) {
+    return false;
+  }
+
+  const fieldSchema = get(labelSchemaData(field));
+  return isFieldReadOnly(fieldSchema);
+});
+
 export const currentOverlay = atom((get) => {
   return get(current)?.overlay;
 });
@@ -185,7 +204,12 @@ const fieldsOfType = atomFamily((type: LabelType) =>
 
     for (const field of get(activeLabelSchemas) ?? []) {
       if (type && IS[type].has(get(fieldType(field)))) {
-        fields.push(field);
+        const fieldSchema = get(labelSchemaData(field));
+        const fieldReadOnly = isFieldReadOnly(fieldSchema);
+
+        if (!fieldReadOnly) {
+          fields.push(field);
+        }
       }
     }
 
@@ -234,3 +258,22 @@ export const deleteValue = atom(null, (get, set) => {
   );
   set(editing, null);
 });
+
+/**
+ * Public API for interacting with the active annotation context.
+ */
+export interface AnnotationContext {
+  /**
+   * Currently-selected annotation label.
+   */
+  selectedLabel: AnnotationLabel | null;
+}
+
+/**
+ * Hook which returns the current {@link AnnotationContext}.
+ */
+export const useAnnotationContext = (): AnnotationContext => {
+  return {
+    selectedLabel: useAtomValue(current),
+  };
+};

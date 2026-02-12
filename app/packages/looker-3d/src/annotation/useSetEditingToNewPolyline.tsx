@@ -12,7 +12,6 @@ import {
   clearTransformStateSelector,
   currentActiveAnnotationField3dAtom,
   snapCloseAutomaticallyAtom,
-  stagedPolylineTransformsAtom,
 } from "../state";
 import { PolylinePointTransformData } from "./types";
 
@@ -31,9 +30,6 @@ export const useSetEditingToNewPolyline = () => {
 
   const setCurrentEditing = useSetAtom(currentEditingPolylineAtom);
   const currentAnnotationSidebar = useAtomValue(current);
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
 
   const clearTransformState = useSetRecoilState(clearTransformStateSelector);
 
@@ -52,7 +48,7 @@ export const useSetEditingToNewPolyline = () => {
         return;
 
       // If what we already have in sidebar is same as the new label, don't do anything
-      // Because it'll be handled by reverse sync and useSetEditingToExistingPolyline
+      // Because it'll be handled by reverse sync and useSetEditingToExisting3dLabel
       if (currentAnnotationSidebar?.data._id === labelId) {
         return;
       }
@@ -100,7 +96,6 @@ export const useSetEditingToNewPolyline = () => {
           setSelected: (selected: boolean) => {
             if (!selected) {
               clearTransformState({});
-              setStagedPolylineTransforms({});
             }
           },
         },

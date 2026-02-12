@@ -29,6 +29,7 @@ export default ({
 }) => {
   const handleAutosize = useSetRecoilState(fos.snackbarLink);
   const setRecommendedZoom = useSetRecoilState(recommendedGridZoom);
+
   useLayoutEffect(() => {
     if (resizing || !spotlight) {
       return undefined;

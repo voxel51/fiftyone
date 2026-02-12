@@ -1,13 +1,11 @@
-import { EntryKind, modalSample, type SidebarEntry } from "@fiftyone/state";
+import { EntryKind, type SidebarEntry } from "@fiftyone/state";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { useRecoilValue } from "recoil";
 import { primitivesExpanded } from "./GroupEntry";
 import useSamplePrimitives from "./useSamplePrimitives";
 
 const usePrimitiveEntries = (activeFields: string[]): SidebarEntry[] => {
-  const currentSample = useRecoilValue(modalSample).sample;
-  const samplePrimitives = useSamplePrimitives(currentSample);
+  const samplePrimitives = useSamplePrimitives();
   const primitivesExpandedState = useAtomValue(primitivesExpanded);
 
   const primitiveEntries: SidebarEntry[] = useMemo(() => {

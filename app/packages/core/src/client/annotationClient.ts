@@ -46,8 +46,36 @@ export class PatchApplicationError extends Error {
   }
 }
 
-const handleErrorResponse = async (response: Response) => {
-  if (response.status === 400) {
+/**
+ * Error resulting from a version mismatch.
+ *
+ * When attempting to patch a sample, the server validates the provided version
+ * token and rejects the update if there is a version mismatch.
+ *
+ * The updated sample data is provided in the response body, and a current
+ * version token is provided in the ETag header.
+ */
+export class VersionMismatchError extends Error {
+  constructor(
+    message?: string,
+    readonly responseBody?: Record<string, unknown>,
+    readonly versionToken?: string
+  ) {
+    super(message);
+    this.name = "Version Mismatch Error";
+  }
+}
+
+/**
+ * Mapping of response code => error handler.
+ *
+ * These handlers are intended to be specific to known domain errors for the
+ * annotation endpoints. For all other response codes, default error handling
+ * is sufficient.
+ */
+const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
+  // bad request
+  400: async (response) => {
     // either a malformed request, or a list of errors from applying the patch
     let errorResponse: ErrorResponse | undefined;
     try {
@@ -65,9 +93,29 @@ const handleErrorResponse = async (response: Response) => {
     }
 
     throw new MalformedRequestError();
-  } else if (response.status === 404) {
+  },
+
+  // sample not found
+  404: async () => {
     throw new NotFoundError({ path: "sample" });
-  }
+  },
+
+  // version token mismatch
+  412: async (response) => {
+    let responseBody: Record<string, unknown>;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      // JSON parsing error
+      console.warn("error parsing response body", err);
+    }
+
+    throw new VersionMismatchError(
+      "Invalid version token",
+      responseBody,
+      parseETag(response.headers.get("ETag"))
+    );
+  },
 };
 
 /**
@@ -76,10 +124,10 @@ const handleErrorResponse = async (response: Response) => {
  * @param config fetch configuration
  */
 const doFetch = <A, R>(
-  config: FetchFunctionConfig<A>
+  config: Omit<FetchFunctionConfig<A>, "errorHandler">
 ): Promise<FetchFunctionResult<R>> => {
   return getFetchFunctionExtended()({
-    errorHandler: handleErrorResponse,
+    errorHandler: (response) => errorHandlers[response.status]?.(response),
     ...config,
   });
 };

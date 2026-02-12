@@ -2085,7 +2085,7 @@ Tools for working with the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app [-h] [--all-help] {config,launch,view,connect} ...
+    fiftyone app [-h] [--all-help] {config,launch,debug,view,connect} ...
 
 **Arguments**
 
@@ -2099,6 +2099,7 @@ Tools for working with the FiftyOne App.
       {config,launch,view,connect}
         config              Tools for working with your App config.
         launch              Launch the FiftyOne App.
+        debug               Launch the FiftyOne App in debug mode.
         view                View datasets in the App without persisting them to the database.
         connect             Connect to a remote FiftyOne App.
 
@@ -2193,6 +2194,43 @@ Launch the FiftyOne App.
 
     # Launch an App session with a specific browser
     fiftyone app launch ... --browser <name>
+
+.. _cli-fiftyone-app-debug:
+
+Launch the App (debug mode)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Launch the FiftyOne App in debug mode.
+
+.. code-block:: text
+
+    fiftyone app debug [-h] [-p PORT] [-A ADDRESS]  [--headless] [NAME]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      NAME                  the name of a dataset to open
+
+    options:
+      -h, --help            show this help message and exit
+      -p PORT, --port PORT  the port number to use
+      -A ADDRESS, --address ADDRESS
+                            the address (server name) to use
+      --headless            don't open the browser
+
+**Examples**
+
+.. code-block:: shell
+
+    # Launch the App in debug mode
+    fiftyone app debug
+
+.. code-block:: shell
+
+    # Launch the App in debug mode with a given dataset loaded
+    fiftyone app debug <name>
 
 .. _cli-fiftyone-app-view:
 

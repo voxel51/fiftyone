@@ -4,17 +4,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
 import { Matrix4, Mesh, Vector3 } from "three";
 import { Transformable } from "../labels/shared/TransformControls";
-import { SphericalMarker } from "./SphericalMarker";
 import {
   activeSegmentationStateAtom,
   currentArchetypeSelectedForTransformAtom,
   editSegmentsModeAtom,
   hoveredVertexAtom,
   selectedPolylineVertexAtom,
-  tempVertexTransformsAtom,
   transformModeAtom,
 } from "../state";
+import { SphericalMarker } from "./SphericalMarker";
 import { VertexTooltip } from "./VertexTooltip";
+import {
+  useEndDrag,
+  useStartDrag,
+  useTransientPolyline,
+  useUpdateTransient,
+} from "./store";
 import type { SelectedPoint } from "./types";
 interface PolylinePointMarkerProps {
   position: Vector3;
@@ -107,26 +112,35 @@ export const PolylinePointMarker = ({
     ]
   );
 
-  const syncPointTransformationToTempStore = useCallback(() => {
+  const { updatePolyline } = useUpdateTransient();
+
+  const startDrag = useStartDrag();
+  const endDragFn = useEndDrag();
+
+  const transientPolyline = useTransientPolyline(labelId);
+
+  const vertexKey = `${segmentIndex}-${pointIndex}`;
+
+  const syncPointTransformationToTransientStore = useCallback(() => {
     if (groupRef.current) {
       const worldPosition = groupRef.current.position.clone();
-      setTempVertexTransforms({
-        position: [worldPosition.x, worldPosition.y, worldPosition.z],
-        quaternion: groupRef.current.quaternion.toArray(),
+      updatePolyline(labelId, {
+        vertexDeltas: {
+          [vertexKey]: [worldPosition.x, worldPosition.y, worldPosition.z],
+        },
       });
     }
-  }, []);
+  }, [labelId, vertexKey, updatePolyline]);
 
   const handleTransformStart = useCallback(() => {
+    startDrag(labelId);
     if (groupRef.current) {
       // Store the start matrix for computing delta later
       setStartMatrix(groupRef.current.matrixWorld.clone());
     }
-  }, []);
+  }, [startDrag, labelId]);
 
   const handleTransformEnd = useCallback(() => {
-    setTempVertexTransforms(null);
-
     if (groupRef.current && onPointMove && startMatrix) {
       // Compute world-space delta from start and end matrices
       const endMatrix = groupRef.current.matrixWorld.clone();
@@ -155,7 +169,9 @@ export const PolylinePointMarker = ({
       // Clear the start matrix
       setStartMatrix(null);
     }
-  }, [onPointMove, selectedPoint, position, startMatrix]);
+
+    endDragFn(labelId);
+  }, [onPointMove, selectedPoint, position, startMatrix, endDragFn, labelId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -202,31 +218,20 @@ export const PolylinePointMarker = ({
 
   const groupRef = useRef(null);
 
-  const [tempVertexTransforms, setTempVertexTransforms] = useRecoilState(
-    tempVertexTransformsAtom(`${labelId}-${segmentIndex}-${pointIndex}`)
-  );
-
-  useEffect(() => {
-    return () => {
-      setTempVertexTransforms(null);
-    };
-  }, []);
-
   return (
     <Transformable
       archetype="point"
       isSelectedForTransform={isSelected}
       explicitObjectRef={groupRef}
       onTransformStart={handleTransformStart}
-      onTransformChange={syncPointTransformationToTempStore}
+      onTransformChange={syncPointTransformationToTransientStore}
       onTransformEnd={handleTransformEnd}
       transformControlsRef={transformControlsRef}
       transformControlsPosition={position.toArray()}
     >
       <group
         ref={groupRef}
-        position={tempVertexTransforms?.position ?? [0, 0, 0]}
-        quaternion={tempVertexTransforms?.quaternion ?? [0, 0, 0, 1]}
+        position={transientPolyline?.vertexDeltas?.[vertexKey] ?? [0, 0, 0]}
       >
         <SphericalMarker
           ref={meshRef}
@@ -244,13 +249,7 @@ export const PolylinePointMarker = ({
         />
         {tooltipDescriptor && (
           <VertexTooltip
-            position={
-              (tempVertexTransforms?.position ?? position.toArray()) as [
-                number,
-                number,
-                number
-              ]
-            }
+            position={position.toArray()}
             tooltipDescriptor={tooltipDescriptor}
             isVisible={isThisVertexHovered}
           />

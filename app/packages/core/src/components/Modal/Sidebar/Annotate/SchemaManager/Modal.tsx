@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import {
   Button,
   Icon,
@@ -7,23 +6,32 @@ import {
   Size,
   Spacing,
   Stack,
+  Text,
+  TextColor,
+  textColorClass,
+  TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ItemLeft } from "../Components";
-import { currentField, showModal } from "../state";
+import { TAB_JSON } from "./constants";
 import EditFieldLabelSchema from "./EditFieldLabelSchema";
-import GUIView, {
-  selectedActiveFields,
-  selectedHiddenFields,
+import GUIView from "./GUIView";
+import {
   useActivateFields,
+  useCurrentField,
+  useCurrentFieldValue,
   useDeactivateFields,
-} from "./GUIView";
+  useNewFieldMode,
+  useSchemaEditorGUIJSONToggle,
+  useSchemaManagerCleanup,
+  useSelectedFieldCounts,
+  useShowSchemaManagerModal,
+} from "./hooks";
+import NewFieldSchema from "./NewFieldSchema";
 import {
   BackButton,
-  CloseButton,
   ModalBackground,
   ModalContainer,
   ModalFooter,
@@ -34,36 +42,57 @@ import {
 export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
-  const [field, setField] = useAtom(currentField);
+  const { field, setField } = useCurrentField();
+  const { isNewField: newFieldMode, setIsNewField: setNewFieldMode } =
+    useNewFieldMode();
+
+  if (newFieldMode) {
+    return (
+      <ItemLeft>
+        <BackButton color="secondary" onClick={() => setNewFieldMode(false)} />
+        <Text variant={TextVariant.Xl}>New field schema</Text>
+      </ItemLeft>
+    );
+  }
 
   if (!field) {
-    return <Typography variant="h5">Schema manager</Typography>;
+    return <Text variant={TextVariant.Xl}>Schema manager</Text>;
   }
 
   return (
     <ItemLeft>
-      <BackButton color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">Edit field schema</Typography>
+      <BackButton
+        data-cy="schema-manager-back"
+        color="secondary"
+        onClick={() => setField(null)}
+      />
+      <Text variant={TextVariant.Xl}>Edit field schema</Text>
     </ItemLeft>
   );
 };
 
 const Subheading = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
+  const { isNewField: newFieldMode } = useNewFieldMode();
 
-  if (field) {
+  if (field || newFieldMode) {
     return null;
   }
 
   return (
-    <Typography color="secondary" padding="1rem 0">
+    <Text color={TextColor.Secondary} style={{ marginTop: "0.5rem" }}>
       Manage your label schemas
-    </Typography>
+    </Text>
   );
 };
 
 const Page = () => {
-  const field = useAtomValue(currentField);
+  const field = useCurrentFieldValue();
+  const { isNewField: newFieldMode } = useNewFieldMode();
+
+  if (newFieldMode) {
+    return <NewFieldSchema />;
+  }
 
   if (field) {
     return <EditFieldLabelSchema field={field} />;
@@ -73,14 +102,20 @@ const Page = () => {
 };
 
 const SchemaManagerFooter = () => {
-  const field = useAtomValue(currentField);
-  const activeSelectedCount = useAtomValue(selectedActiveFields).size;
-  const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
+  const field = useCurrentFieldValue();
+  const { tab } = useSchemaEditorGUIJSONToggle();
+  const { activeCount: activeSelectedCount, hiddenCount: hiddenSelectedCount } =
+    useSelectedFieldCounts();
   const activateFields = useActivateFields();
   const deactivateFields = useDeactivateFields();
 
   // Don't show footer when editing a field (it has its own footer)
   if (field) {
+    return null;
+  }
+
+  // Don't show footer when in JSON tab
+  if (tab === TAB_JSON) {
     return null;
   }
 
@@ -104,7 +139,12 @@ const SchemaManagerFooter = () => {
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+        <Button
+          data-cy="move-fields"
+          size={Size.Md}
+          variant={Variant.Secondary}
+          onClick={onMove}
+        >
           {isMovingToVisible ? (
             <Icon
               name={IconName.ChevronTop}
@@ -127,6 +167,11 @@ const SchemaManagerFooter = () => {
 };
 
 const Modal = () => {
+  // Reset currentField on unmount.
+  // Note: Selection state is reset by useSelectionCleanup in GUIContent,
+  // and JSON editor state is reset by useFullSchemaEditor's cleanup effect.
+  useSchemaManagerCleanup();
+
   const element = useMemo(() => {
     const el = document.getElementById("annotation");
     if (!el) {
@@ -134,7 +179,7 @@ const Modal = () => {
     }
     return el;
   }, []);
-  const show = useSetAtom(showModal);
+  const setShowModal = useShowSchemaManagerModal();
 
   useEffect(() => {
     element.style.display = "block";
@@ -145,11 +190,27 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <ModalBackground onClick={() => show(false)}>
-      <ModalContainer onClick={(e) => e.stopPropagation()}>
+    <ModalBackground onClick={() => setShowModal(false)}>
+      <ModalContainer
+        data-cy="schema-manager"
+        onClick={(e) => e.stopPropagation()}
+      >
         <ModalHeader>
           <Heading />
-          <CloseButton color="secondary" onClick={() => show(false)} />
+          <Button
+            variant={Variant.Icon}
+            borderless
+            size={Size.Sm}
+            data-cy="close-schema-manager"
+            onClick={() => setShowModal(false)}
+            style={{ marginRight: "14px" }}
+          >
+            <Icon
+              name={IconName.Close}
+              size={Size.Lg}
+              className={textColorClass(TextColor.Secondary)}
+            />
+          </Button>
         </ModalHeader>
 
         <Subheading />

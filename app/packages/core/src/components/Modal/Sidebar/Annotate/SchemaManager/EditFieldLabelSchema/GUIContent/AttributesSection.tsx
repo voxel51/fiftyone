@@ -2,7 +2,6 @@
  * Attributes section component for managing attributes.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   Button,
   Pill,
@@ -13,60 +12,176 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useMemo } from "react";
+import type { ListItemProps } from "@voxel51/voodo";
+import { useCallback, useMemo, useState } from "react";
 import { EditSectionHeader, EmptyStateBox, Section } from "../../styled";
 import {
-  createRichListItem,
+  getAttributeFormErrors,
+  getAttributeNameError,
   getAttributeTypeLabel,
+  hasAttributeFormError,
+  toAttributeConfig,
+  toFormData,
   type AttributeConfig,
-  type RichListItem,
+  type AttributeFormData,
 } from "../../utils";
+import AddAttributeCard from "./AddAttributeCard";
+import { createAttributeCardItem } from "./AttributeCard";
 import EditAction from "./EditAction";
 
 interface AttributesSectionProps {
-  attributes: Record<string, AttributeConfig>;
-  onAddAttribute: () => void;
-  onEditAttribute: (name: string) => void;
+  attributes: AttributeConfig[];
+  onAddAttribute: (config: AttributeConfig) => void;
+  onEditAttribute: (oldName: string, config: AttributeConfig) => void;
+  onDeleteAttribute: (name: string) => void;
+  onOrderChange?: (newOrder: AttributeConfig[]) => void;
 }
 
 const AttributesSection = ({
   attributes,
   onAddAttribute,
   onEditAttribute,
+  onDeleteAttribute,
+  onOrderChange,
 }: AttributesSectionProps) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
+  const [isAdding, setIsAdding] = useState(false);
+  const [editingAttribute, setEditingAttribute] = useState<string | null>(null);
+  const [editingFormState, setEditingFormState] =
+    useState<AttributeFormData | null>(null);
 
-  const listItems: RichListItem[] = useMemo(() => {
-    const attrEntries = Object.entries(attributes);
-    return attrEntries.map(([name, config]) => {
+  const existingAttributeNames = useMemo(
+    () => attributes.map((attr) => attr.name),
+    [attributes]
+  );
+
+  const editNameError =
+    editingAttribute && editingFormState
+      ? getAttributeNameError(
+          editingFormState.name,
+          existingAttributeNames,
+          editingAttribute
+        )
+      : null;
+
+  const editFormErrors = editingFormState
+    ? getAttributeFormErrors(editingFormState)
+    : null;
+
+  const hasEditError =
+    !!editNameError ||
+    (editFormErrors ? hasAttributeFormError(editFormErrors) : false);
+
+  const handleAddSave = useCallback(
+    (config: AttributeConfig) => {
+      onAddAttribute(config);
+      setIsAdding(false);
+    },
+    [onAddAttribute]
+  );
+
+  const handleStartEdit = useCallback(
+    (name: string) => {
+      const config = attributes.find((attr) => attr.name === name);
+      if (config) {
+        setEditingAttribute(name);
+        setEditingFormState(toFormData(config));
+      }
+    },
+    [attributes]
+  );
+
+  const handleEditSave = useCallback(() => {
+    if (!editingAttribute || !editingFormState || hasEditError) return;
+    onEditAttribute(editingAttribute, toAttributeConfig(editingFormState));
+    setEditingAttribute(null);
+    setEditingFormState(null);
+  }, [editingAttribute, editingFormState, hasEditError, onEditAttribute]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingAttribute(null);
+    setEditingFormState(null);
+  }, []);
+
+  const handleDeleteAttribute = useCallback(() => {
+    if (editingAttribute) {
+      onDeleteAttribute(editingAttribute);
+      setEditingAttribute(null);
+      setEditingFormState(null);
+    }
+  }, [editingAttribute, onDeleteAttribute]);
+
+  const listItems = useMemo(() => {
+    return attributes.map((config) => {
+      const name = config.name;
+      // Editing mode: use shared card item creator
+      if (name === editingAttribute && editingFormState) {
+        return createAttributeCardItem({
+          id: name,
+          title: "Edit attribute",
+          formState: editingFormState,
+          onFormStateChange: setEditingFormState,
+          nameError: editNameError,
+          canSave: !hasEditError,
+          onSave: handleEditSave,
+          onCancel: handleCancelEdit,
+          onDelete: handleDeleteAttribute,
+          canDrag: true,
+          isEditing: true,
+        });
+      }
+
+      // Display mode: show attribute summary
       const typeLabel = getAttributeTypeLabel(config.type);
       const optionCount = config.values?.length;
       const secondaryParts = [typeLabel];
-      if (optionCount !== undefined) {
+      if (optionCount !== undefined && optionCount > 0) {
         secondaryParts.push(
           `${optionCount} option${optionCount !== 1 ? "s" : ""}`
         );
       }
 
-      return createRichListItem({
+      return {
         id: name,
-        primaryContent: name,
-        secondaryContent: (
-          <>
-            {secondaryParts.join(" · ")}
-            {isM4Enabled && config.read_only && (
-              <Pill size={Size.Md} style={{ marginLeft: 8 }}>
-                Read-only
-              </Pill>
-            )}
-          </>
-        ),
-        actions: <EditAction onEdit={() => onEditAttribute(name)} />,
-      });
+        data: {
+          canSelect: false,
+          canDrag: true,
+          primaryContent: name,
+          secondaryContent: (
+            <>
+              {secondaryParts.join(" · ")}
+              {config.read_only && (
+                <Pill size={Size.Md} style={{ marginLeft: 8 }}>
+                  Read-only
+                </Pill>
+              )}
+            </>
+          ),
+          actions: <EditAction onEdit={() => handleStartEdit(name)} />,
+        } as ListItemProps,
+      };
     });
-  }, [attributes, onEditAttribute, isM4Enabled]);
+  }, [
+    attributes,
+    editingAttribute,
+    editingFormState,
+    editNameError,
+    hasEditError,
+    handleCancelEdit,
+    handleDeleteAttribute,
+    handleEditSave,
+    handleStartEdit,
+  ]);
+
+  const handleOrderChange = useCallback(
+    (newItems: { id: string; data: ListItemProps }[]) => {
+      // Map the new order back to AttributeConfig objects
+      const newOrder = newItems
+        .map((item) => attributes.find((attr) => attr.name === item.id))
+        .filter((attr): attr is AttributeConfig => attr !== undefined);
+      onOrderChange?.(newOrder);
+    },
+    [attributes, onOrderChange]
+  );
 
   return (
     <Section>
@@ -75,17 +190,34 @@ const AttributesSection = ({
         <Button
           size={Size.Md}
           variant={Variant.Secondary}
-          onClick={onAddAttribute}
+          onClick={() => setIsAdding(true)}
+          disabled={isAdding}
         >
           + Add attribute
         </Button>
       </EditSectionHeader>
-      {listItems.length === 0 ? (
+
+      {/* Add new attribute card */}
+      {isAdding && (
+        <AddAttributeCard
+          existingAttributes={existingAttributeNames}
+          onSave={handleAddSave}
+          onCancel={() => setIsAdding(false)}
+        />
+      )}
+
+      {listItems.length === 0 && !isAdding ? (
         <EmptyStateBox>
           <Text color={TextColor.Secondary}>No attributes defined</Text>
         </EmptyStateBox>
       ) : (
-        <RichList listItems={listItems} draggable={false} />
+        listItems.length > 0 && (
+          <RichList
+            listItems={listItems}
+            draggable={true}
+            onOrderChange={handleOrderChange}
+          />
+        )
       )}
     </Section>
   );

@@ -130,7 +130,7 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
     fos.groupMediaIsCarouselVisibleSetting
   );
   const setIsMainVisible = useSetRecoilState(
-    fos.groupMediaIsMainVisibleSetting
+    fos.groupMediaIsMain2DViewerVisibleSetting
   );
 
   const tabOptions = useMemo(() => {
@@ -425,13 +425,17 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
-      {(modal && mode === fos.EXPLORE) && <HideFieldSetting />}
+      {modal && mode === fos.EXPLORE && <HideFieldSetting />}
       {modal && <ShowModalNav />}
-      {(mode === fos.EXPLORE && isDynamicGroup) && <DynamicGroupsViewMode modal={!!modal} />}
-      {(mode === fos.EXPLORE && isGroup && !isDynamicGroup) && <GroupStatistics modal={modal} />}
+      {mode === fos.EXPLORE && isDynamicGroup && (
+        <DynamicGroupsViewMode modal={!!modal} />
+      )}
+      {mode === fos.EXPLORE && isGroup && !isDynamicGroup && (
+        <GroupStatistics modal={modal} />
+      )}
       {mode === fos.EXPLORE && <MediaFields modal={modal} />}
       {mode === fos.EXPLORE && <Patches modal={!!modal} />}
-      {(mode === fos.EXPLORE && !view?.length) && <QueryPerformance />}
+      {mode === fos.EXPLORE && !view?.length && <QueryPerformance />}
       {mode === fos.EXPLORE && <SortFilterResults modal={modal} />}
       {!modal && <Grid />}
     </Popout>

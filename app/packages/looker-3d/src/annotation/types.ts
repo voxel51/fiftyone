@@ -71,6 +71,11 @@ export interface SegmentState {
   vertices: [number, number, number][];
 }
 
+export interface PolylineTransformData {
+  points3d: [number, number, number][][];
+  closed?: boolean;
+}
+
 export interface CuboidTransformData {
   location: [number, number, number];
   dimensions: [number, number, number];
@@ -99,21 +104,24 @@ interface ReconciledLabelBase3D {
  * A reconciled detection that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D detection that will be rendered.
  */
-export type ReconciledDetection3D = OverlayLabel &
+export type ReconciledDetection3D = Omit<OverlayLabel, "selected"> &
   CuboidTransformData &
   ReconciledLabelBase3D & {
     _cls: "Detection";
+    _id: string;
+    path: string;
   } & Record<string, unknown>;
 
 /**
  * A reconciled polyline that combines raw overlay data from sample with staged transforms.
  * This represents the authoritative state of a 3D polyline that will be rendered.
  */
-export type ReconciledPolyline3D = OverlayLabel &
-  ReconciledLabelBase3D & {
+export type ReconciledPolyline3D = Omit<OverlayLabel, "selected"> &
+  ReconciledLabelBase3D &
+  PolylineTransformData & {
     _cls: "Polyline";
-    points3d: [number, number, number][][];
-    filled?: boolean;
+    _id: string;
+    path: string;
     closed?: boolean;
   } & Record<string, unknown>;
 

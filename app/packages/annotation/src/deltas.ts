@@ -13,23 +13,10 @@ import {
   PrimitiveValue,
   Sample,
 } from "@fiftyone/state";
-import {
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  Field,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  LIST_FIELD,
-  OBJECT_ID_FIELD,
-  Primitive,
-  Schema,
-  STRING_FIELD,
-  UUID_FIELD,
-} from "@fiftyone/utilities";
+import { Field, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
+import type { OpType } from "./types";
+import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
  * Helper type representing a `fo.Polylines`-like element.
@@ -53,11 +40,6 @@ type ClassificationsParent = {
 };
 
 /**
- * Operation type.
- */
-export type OpType = "mutate" | "delete";
-
-/**
  * Types of "native" labels which support delta calculation.
  */
 type FieldType =
@@ -70,58 +52,6 @@ type FieldType =
 
 const isFieldType = (field: Field, fieldType: FieldType): boolean => {
   return field?.embeddedDocType === `fiftyone.core.labels.${fieldType}`;
-};
-
-/**
- * Supported primitive field types for annotation editing.
- * Matches SUPPORTED_PRIMITIVES in fiftyone/core/annotation/constants.py
- */
-const SUPPORTED_PRIMITIVE_FTYPES = new Set([
-  BOOLEAN_FIELD,
-  DATE_FIELD,
-  DATE_TIME_FIELD,
-  DICT_FIELD,
-  FLOAT_FIELD,
-  FRAME_NUMBER_FIELD,
-  INT_FIELD,
-  OBJECT_ID_FIELD,
-  STRING_FIELD,
-  UUID_FIELD,
-]);
-
-/**
- * Supported subfield types for list primitives.
- * Matches SUPPORTED_LISTS_OF_PRIMITIVES in fiftyone/core/annotation/constants.py
- */
-const SUPPORTED_LIST_PRIMITIVE_SUBFIELDS = new Set([
-  BOOLEAN_FIELD,
-  FLOAT_FIELD,
-  INT_FIELD,
-  STRING_FIELD,
-]);
-
-/**
- * Check if the field schema represents a supported primitive type.
- */
-const isPrimitiveFieldType = (field: Field): boolean => {
-  if (!field?.ftype) {
-    return false;
-  }
-
-  if (SUPPORTED_PRIMITIVE_FTYPES.has(field.ftype)) {
-    return true;
-  }
-
-  // Check list of primitives (e.g., list<string>, list<int>, list<float>)
-  if (
-    field.ftype === LIST_FIELD &&
-    field.subfield &&
-    SUPPORTED_LIST_PRIMITIVE_SUBFIELDS.has(field.subfield)
-  ) {
-    return true;
-  }
-
-  return false;
 };
 
 /**
@@ -224,7 +154,8 @@ export const buildMutationDeltas = (
     return buildPrimitiveMutationDelta(
       sample,
       label.path,
-      (label as PrimitiveValue).data
+      (label as PrimitiveValue).data,
+      label.op
     );
   }
 
@@ -342,17 +273,27 @@ const buildSingleMutationDelta = <
 const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
-  data: Primitive
+  data: Primitive,
+  op?: OpType
 ): JSONDeltas => {
   const existingValue = get(sample, path) as Primitive;
 
   // If the value hasn't changed, return empty deltas
-  if (existingValue === data) {
+  if (arePrimitivesEqual(existingValue, data)) {
     return [];
   }
 
+  const delta = { op: "replace", path: "", value: data };
+
+  if (op === "delete") {
+    delta.op = "remove";
+    delete delta.value;
+  } else if (op === "add") {
+    delta.op = "add";
+  }
+
   // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [{ op: "replace", path: "", value: data }];
+  return [delta];
 };
 
 /**
@@ -394,10 +335,22 @@ export const buildDetectionsMutationDelta = (
     detections: [],
   };
 
+  const newDetection = makeDetectionLabel(label);
+  const existingDetection = existingLabel.detections.find(
+    (det) => det._id === label.data._id
+  );
+
+  // Merge with existing data so server-enriched properties (tags,
+  // attributes, _cls, etc.) are preserved when the overlay only carries
+  // a minimal subset of fields.
+  const mergedDetection = existingDetection
+    ? { ...existingDetection, ...newDetection }
+    : newDetection;
+
   const newArray = [...existingLabel.detections];
   upsertArrayElement(
     newArray,
-    makeDetectionLabel(label),
+    mergedDetection,
     (det) => det._id === label.data._id
   );
 
@@ -441,10 +394,18 @@ export const buildClassificationsMutationDeltas = (
     classifications: [],
   };
 
+  const existingClassification = existingLabel.classifications.find(
+    (cls) => cls._id === label.data._id
+  );
+
+  const mergedClassification = existingClassification
+    ? { ...existingClassification, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.classifications];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedClassification,
     (cls) => cls._id === label.data._id
   );
 
@@ -491,10 +452,18 @@ export const buildPolylinesMutationDeltas = (
     polylines: [],
   };
 
+  const existingPolyline = existingLabel.polylines.find(
+    (ply) => ply._id === label.data._id
+  );
+
+  const mergedPolyline = existingPolyline
+    ? { ...existingPolyline, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.polylines];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedPolyline,
     (ply) => ply._id === label.data._id
   );
 
@@ -548,41 +517,6 @@ export const buildJsonPath = (
   );
 
   return `/${parts.join("/")}`;
-};
-
-/**
- * Get the field schema for the given path.
- *
- * @param schema Sample schema
- * @param path Field path
- */
-export const getFieldSchema = (schema: Schema, path: string): Field | null => {
-  if (!schema || !path) {
-    return null;
-  }
-
-  const pathParts = path.split(".");
-  const root = schema[pathParts[0]];
-  return getFieldSchemaHelper(root, pathParts.slice(1));
-};
-
-/**
- * Recursive helper for {@link getFieldSchema}.
- */
-const getFieldSchemaHelper = (
-  field: Field,
-  pathParts: string[]
-): Field | null => {
-  if (!field) {
-    return null;
-  }
-
-  if (!pathParts || pathParts.length === 0) {
-    return field;
-  }
-
-  const nextField = field.fields?.[pathParts[0]];
-  return getFieldSchemaHelper(nextField, pathParts.slice(1));
 };
 
 /**

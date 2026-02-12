@@ -1,32 +1,49 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
-import { useCommandBus } from "@fiftyone/command-bus";
-import { PersistAnnotationChanges } from "../commands";
-import { useNotification } from "@fiftyone/state";
+import { useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
+import { IconName, Variant } from "@voxel51/voodo";
+import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
+import { DetectionLabel } from "@fiftyone/looker";
+import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
 
 /**
  * Hook which registers global annotation event handlers.
  * This should be called once in the composition root.
  */
 export const useRegisterAnnotationEventHandlers = () => {
-  const commandBus = useCommandBus();
-  const setNotification = useNotification();
+  const { setConfig } = useActivityToast();
+  const { addLabelToSidebar } = useLabelsContext();
+  const handlePersistenceRequest = usePersistenceEventHandler();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
+    useCallback(async () => {
+      await handlePersistenceRequest();
+    }, [handlePersistenceRequest])
+  );
+
+  useAnnotationEventHandler(
+    "annotation:persistenceInFlight",
     useCallback(() => {
-      commandBus.execute(new PersistAnnotationChanges());
-    }, [commandBus])
+      setConfig({
+        iconName: IconName.Spinner,
+        message: "Saving changes...",
+        variant: Variant.Secondary,
+        // allow for slow API calls; keep toast open until call resolves
+        timeout: 300_000,
+      });
+    }, [setConfig])
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceSuccess",
     useCallback(() => {
-      setNotification({
-        msg: "Changes saved successfully",
-        variant: "success",
+      setConfig({
+        iconName: IconName.Check,
+        message: "Changes saved successfully",
+        variant: Variant.Success,
       });
-    }, [setNotification])
+    }, [setConfig])
   );
 
   useAnnotationEventHandler(
@@ -35,12 +52,28 @@ export const useRegisterAnnotationEventHandlers = () => {
       ({ error }) => {
         console.error(error);
 
-        setNotification({
-          msg: `Error saving changes: ${error}`,
-          variant: "error",
+        setConfig({
+          iconName: IconName.Error,
+          message: `Error saving changes: ${error}`,
+          variant: Variant.Danger,
         });
       },
-      [setNotification]
+      [setConfig]
+    )
+  );
+
+  useAnnotationEventHandler(
+    "annotation:canvasDetectionOverlayEstablish",
+    useCallback(
+      (payload) => {
+        addLabelToSidebar({
+          data: payload.overlay.label as DetectionLabel,
+          overlay: payload.overlay,
+          path: payload.overlay.field,
+          type: "Detection",
+        });
+      },
+      [addLabelToSidebar]
     )
   );
 };

@@ -19,6 +19,7 @@ from starlette.requests import Request
 
 import fiftyone as fo
 from fiftyone.server import decorators, utils
+from fiftyone.server.exceptions import DbVersionMismatchError
 from fiftyone.server.utils.datasets import (
     get_dataset,
     get_sample_from_dataset,
@@ -143,8 +144,8 @@ def get_sample(
                 sample.last_modified_at,
                 if_last_modified_at,
             )
-            raise HTTPException(
-                status_code=412, detail="If-Match condition failed"
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
             )
 
     return sample
@@ -275,24 +276,21 @@ def ensure_sample_field(sample: fo.Sample, field: str):
     field_parts = field.split(".")
     for idx, part in enumerate(field_parts):
         field_path = ".".join(field_parts[: idx + 1])
-        try:
-            sample.get_field(field_path)
-        except Exception as e:
-            # no information available to create the fields
-            logger.debug("Error getting field %s: %s", field_path, e)
-            break
 
         try:
             current_part = current[part]
-        except KeyError:
+        except (KeyError, TypeError, IndexError):
             current_part = None
 
         if current_part is None:
             # attempt to create the child field
             try:
                 field_type = get_embedded_field_type(schema, field_path)
-            except Exception:
+            except Exception as e:
                 # no schema available for this type
+                logger.debug(
+                    "Error getting field type for %s: %s", field_path, e
+                )
                 break
 
             if field_type is None:
@@ -341,13 +339,13 @@ def save_sample(
                 sample.id,
                 if_last_modified_at,
             )
-            raise HTTPException(
-                status_code=412, detail="If-Match condition failed"
+            raise DbVersionMismatchError(
+                sample, etag=generate_sample_etag(sample)
             )
     else:
         sample.save()
 
-    # Ensure last_modified_at reflects persisted state before computing
+    # Ensure last_modified_at reflects persisted state before computing Etag
     # ETag
     try:
         sample.reload(hard=True)

@@ -50,6 +50,7 @@ ATTRIBUTES = "attributes"
 CLASSES = "classes"
 COMPONENT = "component"
 DEFAULT = "default"
+NAME = "name"
 PRECISION = "precision"
 RANGE = "range"
 READ_ONLY = "read_only"
@@ -137,6 +138,26 @@ FIELD_TYPE_TO_TYPES = {
 }
 
 
+### Label schema type to field class
+
+
+# Maps schema type string to field class (for primitive field creation)
+# Note: List types map to their subfield class (e.g., FLOAT_LIST -> FloatField)
+TYPE_TO_FIELD = {
+    BOOL: fof.BooleanField,
+    DATE: fof.DateField,
+    DATETIME: fof.DateTimeField,
+    DICT: fof.DictField,
+    FLOAT: fof.FloatField,
+    FLOAT_LIST: fof.FloatField,
+    ID: fof.UUIDField,
+    INT: fof.IntField,
+    INT_LIST: fof.IntField,
+    STR: fof.StringField,
+    STR_LIST: fof.StringField,
+}
+
+
 ### Heuristics
 
 
@@ -167,6 +188,16 @@ SUPPORTED_LISTS_OF_PRIMITIVES = (
     fof.StringField,
 )
 SUPPORTED_MEDIA_TYPES = {fom.GROUP, fom.IMAGE, fom.THREE_D}
+
+# Build LABEL_TYPE_TO_CLASS from supported label types
+_all_supported_labels = SUPPORTED_LABEL_TYPES.copy()
+for _types in SUPPORTED_LABEL_TYPES_BY_MEDIA_TYPE.values():
+    _all_supported_labels.update(_types)
+
+LABEL_TYPE_TO_CLASS = {
+    cls.__name__.lower(): cls for cls in _all_supported_labels
+}
+
 SUPPORTED_PRIMITIVES = (
     fof.BooleanField,
     fof.DateField,

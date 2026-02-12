@@ -5,23 +5,25 @@ import {
 } from "@fiftyone/lighter";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
-import useConfirmExit from "./Confirmation/useConfirmExit";
 import { editing } from "./Edit";
-import { current, hasChanges, savedLabel } from "./Edit/state";
+import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
-import useSave from "./Edit/useSave";
 import { labelMap } from "./useLabels";
+import { useQuickDraw } from "./Edit/useQuickDraw";
+import useCreate from "./Edit/useCreate";
+import { DETECTION } from "@fiftyone/utilities";
 
 const STORE = getDefaultStore();
 
 export default function useFocus() {
-  const { scene, removeOverlay } = useLighter();
+  const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
-  const { confirmExit } = useConfirmExit(useExit, useSave);
   const selectId = useRef<string | null>(null);
-  const onExit = useExit(false);
+  const onExit = useExit();
+  const createDetection = useCreate(DETECTION);
+  const { quickDrawActive, handleQuickDrawTransition } = useQuickDraw();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -41,30 +43,18 @@ export default function useFocus() {
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
-      (payload) => {
+      async (payload) => {
         if (payload.ignoreSideEffects) {
           return;
         }
 
-        const id = STORE.get(current)?.overlay?.id;
-
-        // no unsaved changes, allow the exit
-        if (!id || !STORE.get(hasChanges)) {
+        if (!quickDrawActive) {
           onExit();
-          return;
+        } else {
+          handleQuickDrawTransition(createDetection);
         }
-
-        // there are unsaved changes, ask for confirmation
-        scene?.selectOverlay(payload.id, { ignoreSideEffects: true });
-        confirmExit(() => {
-          scene?.deselectOverlay(id, {
-            ignoreSideEffects: true,
-          });
-
-          select();
-        });
       },
-      [confirmExit, scene, onExit, select]
+      [createDetection, handleQuickDrawTransition, onExit, quickDrawActive]
     )
   );
 
@@ -90,7 +80,7 @@ export default function useFocus() {
 
         select();
       },
-      [scene, select, onExit, removeOverlay]
+      [scene, select]
     )
   );
 }

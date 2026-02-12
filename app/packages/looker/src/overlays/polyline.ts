@@ -10,6 +10,7 @@ import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { getInstanceStrokeStyles, t } from "./util";
 
 export type PolylineLabel = RegularLabel & {
+  _cls: "Polyline";
   points?: Coordinates[][];
   points3d?: Coordinates[][];
   closed?: boolean;

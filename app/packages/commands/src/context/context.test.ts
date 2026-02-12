@@ -65,66 +65,66 @@ describe("CommandContext", () => {
     }).toThrowError();
   });
 
-  it("can execute and undo/redo", () => {
-    context.executeAction(testUndoable);
+  it("can execute and undo/redo", async () => {
+    await context.executeAction(testUndoable);
     expect(testExec).toBeCalledTimes(1);
     expect(testUndo).toBeCalledTimes(0);
     expect(context.canUndo()).toBe(true);
     expect(context.canRedo()).toBe(false);
-    context.undo();
+    await context.undo();
     expect(testExec).toBeCalledTimes(1);
     expect(testUndo).toBeCalledTimes(1);
     expect(context.canUndo()).toBe(false);
     expect(context.canRedo()).toBe(true);
-    context.redo();
+    await context.redo();
     expect(testExec).toBeCalledTimes(2);
     expect(testUndo).toBeCalledTimes(1);
     expect(context.canUndo()).toBe(true);
   });
 
-  it("fires updates on undo redo state changes", () => {
+  it("fires updates on undo redo state changes", async () => {
     const listener = vi.fn((_undoEnabled, _redoEnabled) => {
       return;
     });
     const unsub = context.subscribeUndoState(listener);
-    context.executeAction(testUndoable);
+    await context.executeAction(testUndoable);
     expect(listener).toBeCalledTimes(1);
     //expect undo=true, redo=false
     expect(listener.mock.calls[0][0]).toBe(true);
     expect(listener.mock.calls[0][1]).toBe(false);
 
-    context.undo();
+    await context.undo();
     expect(listener).toBeCalledTimes(2);
     //expect undo=false, redo-true
     expect(listener.mock.calls[1][0]).toBe(false);
     expect(listener.mock.calls[1][1]).toBe(true);
     unsub();
-    context.executeAction(testUndoable);
+    await context.executeAction(testUndoable);
     //should no longer be called after unsubscribe
     expect(listener).toBeCalledTimes(2);
-    context.undo();
+    await context.undo();
     expect(listener).toBeCalledTimes(2);
   });
 
-  it("fires action events on execute/undo/redo", () => {
+  it("fires action events on execute/undo/redo", async () => {
     const listener = vi.fn((_id, _isUndo) => {
       return;
     });
     const unsub = context.subscribeActions(listener);
-    context.executeAction(testUndoable);
+    await context.executeAction(testUndoable);
     expect(listener).toBeCalledTimes(1);
     expect(listener.mock.calls[0][0]).toBe(testUndoable.id);
     expect(listener.mock.calls[0][1]).toBe(false);
-    context.undo();
+    await context.undo();
     expect(listener).toBeCalledTimes(2);
     expect(listener.mock.calls[1][0]).toBe(testUndoable.id);
     expect(listener.mock.calls[1][1]).toBe(true);
-    context.redo();
+    await context.redo();
     expect(listener).toBeCalledTimes(3);
     expect(listener.mock.calls[2][0]).toBe(testUndoable.id);
     expect(listener.mock.calls[2][1]).toBe(false);
     unsub();
-    context.undo();
+    await context.undo();
     //not called after unsub
     expect(listener).toBeCalledTimes(3);
   });

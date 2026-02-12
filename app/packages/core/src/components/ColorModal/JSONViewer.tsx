@@ -1,8 +1,7 @@
-import { useTheme } from "@fiftyone/components";
+import { useTheme, Code } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ColorSchemeInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import Editor from "@monaco-editor/react";
 import { Link } from "@mui/material";
 import colorString from "color-string";
 import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -171,9 +170,8 @@ const JSONViewer: React.FC = () => {
           about custom color schemes.
         </p>
       </SectionWrapper>
-      <Editor
+      <Code
         defaultLanguage="json"
-        theme={themeMode == "dark" ? "vs-dark" : "vs-light"}
         value={JSON.stringify(data, null, 4)}
         width={"100%"}
         height={"calc(100% - 90px)"}

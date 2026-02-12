@@ -5,12 +5,13 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
 import { useAtom, useAtomValue } from "jotai";
+import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
 
-const createInput = (name: string) => {
+const createInput = (name: string, readOnly?: boolean) => {
   return {
     [name]: {
       type: "number",
@@ -18,6 +19,7 @@ const createInput = (name: string) => {
         name: "View",
         label: name,
         component: "FieldView",
+        readOnly,
       },
       multipleOf: 0.01,
     },
@@ -40,7 +42,11 @@ interface Coordinates {
   dimensions: { width?: number; height?: number };
 }
 
-export default function Position() {
+export interface PositionProps {
+  readOnly?: boolean;
+}
+
+export default function Position({ readOnly = false }: PositionProps) {
   const [state, setState] = useState<Coordinates>({
     position: {},
     dimensions: {},
@@ -51,7 +57,7 @@ export default function Position() {
 
   const { scene } = useLighter();
   const useEventHandler = useLighterEventHandler(
-    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
 
   useEffect(() => {
@@ -95,38 +101,44 @@ export default function Position() {
   useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
   useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
+  const schema: SchemaType = useMemo(
+    () => ({
+      type: "object",
+      view: {
+        component: "ObjectView",
+      },
+      properties: {
+        position: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("x", readOnly),
+            ...createInput("y", readOnly),
+          },
+        },
+        dimensions: {
+          type: "object",
+          view: createStack(),
+          properties: {
+            ...createInput("width", readOnly),
+            ...createInput("height", readOnly),
+          },
+        },
+      },
+    }),
+    [readOnly]
+  );
+
   return (
     <div style={{ width: "100%" }}>
       <SchemaIOComponent
         key={overlay?.id}
         smartForm={true}
-        schema={{
-          type: "object",
-          view: {
-            component: "ObjectView",
-          },
-          properties: {
-            position: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("x"),
-                ...createInput("y"),
-              },
-            },
-            dimensions: {
-              type: "object",
-              view: createStack(),
-              properties: {
-                ...createInput("width"),
-                ...createInput("height"),
-              },
-            },
-          },
-        }}
+        schema={schema}
         data={state}
         onChange={(data: Coordinates) => {
           if (
+            readOnly ||
             !(overlay instanceof BoundingBoxOverlay) ||
             !overlay.hasValidBounds()
           ) {

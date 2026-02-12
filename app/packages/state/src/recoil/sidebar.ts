@@ -84,6 +84,7 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+import { OpType } from "@fiftyone/annotation/src/types";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -161,10 +162,13 @@ export type AnnotationLabel =
   | Detection3DAnnotationLabel
   | PolylineAnnotationLabel;
 
+export type AnnotationLabelData = AnnotationLabel["data"];
+
 export interface PrimitiveValue {
   type: "Primitive";
   data: Primitive;
   path: string;
+  op?: OpType;
 }
 
 export interface LabelEntry {

@@ -132,14 +132,15 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schemas(dataset, "detection_field"),
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "type": "id",
                         "component": "text",
                         "read_only": True,
                     },
-                    "tags": {"type": "list<str>", "component": "text"},
-                },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
                 "classes": ["test"],
                 "component": "radio",
                 "type": "detection",
@@ -153,21 +154,28 @@ class GenerateLabelSchemaTests(unittest.TestCase):
             fo.Sample(
                 filepath="image.png",
                 detections_field=fo.Detections(
-                    detections=[fo.Detection(label="test")]
+                    detections=[
+                        fo.Detection(
+                            label="test",
+                            # 'attributes' is ignored
+                            attributes={"ignore": fo.Attribute()},
+                        )
+                    ]
                 ),
             )
         )
         self.assertEqual(
             generate_label_schemas(dataset, "detections_field"),
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "type": "id",
                         "component": "text",
                         "read_only": True,
                     },
-                    "tags": {"type": "list<str>", "component": "text"},
-                },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
                 "classes": ["test"],
                 "component": "radio",
                 "type": "detections",
@@ -190,14 +198,15 @@ class GenerateLabelSchemaTests(unittest.TestCase):
         self.assertEqual(
             generate_label_schemas(dataset, "detections_field"),
             {
-                "attributes": {
-                    "id": {
+                "attributes": [
+                    {
+                        "name": "id",
                         "type": "id",
                         "component": "text",
                         "read_only": True,
                     },
-                    "tags": {"type": "list<str>", "component": "text"},
-                },
+                    {"name": "tags", "type": "list<str>", "component": "text"},
+                ],
                 "classes": ["test"],
                 "component": "radio",
                 "type": "detections",

@@ -166,6 +166,9 @@ export class Scene2D {
   private abortController = new AbortController();
   private readonly sceneId: string;
   private readonly eventBus: EventDispatcher<LighterEventGroup>;
+  private readonly eventChannel: string = Math.random()
+    .toString(36)
+    .substring(2, 9);
 
   private _isDestroyed = false;
 
@@ -174,15 +177,15 @@ export class Scene2D {
     this.sceneId = config.sceneId;
 
     this.coordinateSystem = new CoordinateSystem2D();
-    this.selectionManager = new SelectionManager(this.sceneId);
+    this.selectionManager = new SelectionManager(this.eventChannel);
     this.interactionManager = new InteractionManager(
       config.canvas,
       this.selectionManager,
       config.renderer,
-      this.sceneId
+      this.eventChannel
     );
 
-    this.eventBus = getEventBus<LighterEventGroup>(this.sceneId);
+    this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -233,7 +236,9 @@ export class Scene2D {
           absoluteBounds,
           relativeBounds
         );
-        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(addCommand);
       }
     });
 
@@ -253,7 +258,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -276,7 +283,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -974,7 +983,7 @@ export class Scene2D {
     // Inject renderer, resource loader, and scene ID into overlay
     overlay.setRenderer(this.config.renderer);
     overlay.setResourceLoader(this.config.resourceLoader);
-    overlay.setSceneId(this.sceneId);
+    overlay.setEventChannel(this.eventChannel);
 
     // Add to internal tracking
     this.overlays.set(overlay.id, overlay);
@@ -992,6 +1001,18 @@ export class Scene2D {
 
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
+
+    // Mark sibling classifications dirty
+    // so new overlay doesn't...overlay them
+    if (overlay.getOverlayType() === "ClassificationOverlay") {
+      [...this.overlays.values()]
+        .filter(
+          (sibling) =>
+            sibling !== overlay &&
+            sibling.getOverlayType() === "ClassificationOverlay"
+        )
+        .forEach((sibling) => sibling.markDirty());
+    }
 
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
@@ -1085,7 +1106,10 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+  async transformOverlay(
+    id: string,
+    options: TransformOptions
+  ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1182,7 +1206,9 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   async executeCommand(command: Action, isUndoable = true): Promise<void> {
-    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    await CommandContextManager.instance()
+      .getActiveContext()
+      .executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,
@@ -1254,7 +1280,7 @@ export class Scene2D {
     this.abortController.abort();
 
     // Clear all event handlers for this scene's channel and remove from registry
-    clearChannel(this.sceneId);
+    clearChannel(this.eventChannel);
 
     // Clean up renderer (NOT destroy)
     this.config.renderer.cleanUp();
@@ -1723,5 +1749,13 @@ export class Scene2D {
    */
   public getSceneId(): string | undefined {
     return this.sceneId;
+  }
+
+  /**
+   * Gets the event channel for this instance.
+   * @returns Event channel.
+   */
+  public getEventChannel(): string {
+    return this.eventChannel;
   }
 }
