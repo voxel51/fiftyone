@@ -191,6 +191,13 @@ _________________
     :image: _static/images/homepage_mistakes.gif
 
 .. customcalloutitem::
+    :header: Annotating samples
+    :description: AI development projects move faster when annotation happens close to data curation and model evaluation. Fix label mistakes and annotate 2D and 3D datasets from scratch in the FiftyOne App without any cumbersome ontology or project requirements. Available to all Open Source and Enterprise users.
+    :button_text: Edit and create labels in FiftyOne
+    :button_link: user_guide/annotation.html
+    :image: _static/images/annotate.gif
+
+.. customcalloutitem::
     :header: Removing redundant images
     :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
     :button_text: Try the image uniqueness tutorial

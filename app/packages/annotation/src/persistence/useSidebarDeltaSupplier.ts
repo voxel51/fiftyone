@@ -4,6 +4,7 @@ import { useSampleMutationManager } from "./useSampleMutationManager";
 import { Primitive } from "@fiftyone/utilities";
 import { LabelProxy } from "../deltas";
 import { useGetLabelDelta } from "./useGetLabelDelta";
+import { OpType } from "../types";
 
 /**
  * Method for constructing a {@link LabelProxy} from a primitive value.
@@ -14,13 +15,16 @@ import { useGetLabelDelta } from "./useGetLabelDelta";
 const buildLabelProxy = ({
   data,
   path,
+  op,
 }: {
   data: Primitive;
   path: string;
+  op?: OpType;
 }): LabelProxy => ({
   data,
   path,
   type: "Primitive",
+  op,
 });
 
 /**
@@ -33,7 +37,9 @@ export const useSidebarDeltaSupplier = (): DeltaSupplier => {
 
   return useCallback(() => {
     return Object.entries(stagedMutations)
-      .map(([path, data]) => getLabelDelta({ data, path }, path))
+      .map(([path, mutation]) =>
+        getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
+      )
       .flat();
   }, [getLabelDelta, stagedMutations]);
 };

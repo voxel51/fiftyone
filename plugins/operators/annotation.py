@@ -158,7 +158,12 @@ class UpdateLabelSchema(foo.Operator):
         label_schema = ctx.params.get("label_schema", None)
 
         try:
-            ctx.dataset.update_label_schema(field, label_schema)
+            ctx.dataset.update_label_schema(
+                field,
+                label_schema,
+                allow_new_attrs=True,
+                allow_new_fields=True,
+            )
         except Exception as e:
             ctx.ops.notify(str(e), variant="error")
             return {"error": str(e)}

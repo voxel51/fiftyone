@@ -164,6 +164,7 @@ export const GUISectionHeader = styled.div`
   align-items: center;
   gap: 0.8rem;
   padding: 1rem 0;
+  color: ${({ theme }) => theme.text.secondary};
 `;
 
 export const CollapsibleHeader = styled(GUISectionHeader)`

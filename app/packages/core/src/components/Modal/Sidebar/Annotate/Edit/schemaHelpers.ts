@@ -99,9 +99,13 @@ export const createSlider = (
   };
 };
 
-export const createRadio = (name: string, choices: string[]) => {
+export const createRadio = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
       name: "RadioGroup",
       label: name,
@@ -134,9 +138,13 @@ export const createTags = (name: string, choices: string[]) => {
   };
 };
 
-export const createSelect = (name: string, choices: string[]) => {
+export const createSelect = (
+  name: string,
+  choices: string[],
+  type: string = "string"
+) => {
   return {
-    type: "string",
+    type,
     view: {
       name: "SelectWidget",
       label: name,
@@ -178,6 +186,32 @@ export const createText = (name: string, type: string): SchemaType => {
     view: {
       name: "TextWidget",
       component: "TextWidget",
+      label: name,
+    },
+  };
+};
+
+export const createDatePicker = (
+  name: string,
+  dateOnly: boolean
+): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "DatePickerView",
+      component: "DatePickerView",
+      label: name,
+      date_only: dateOnly,
+    },
+  };
+};
+
+export const createJsonInput = (name: string): SchemaType => {
+  return {
+    type: "string",
+    view: {
+      name: "JsonEditorView",
+      component: "JsonEditorView",
       label: name,
     },
   };
@@ -245,11 +279,23 @@ export function generatePrimitiveSchema(
     if (schema.component === "slider" && schema.range) {
       return createSlider(name, schema.range);
     } else if (schema.component === "dropdown") {
-      return createSelect(name, schema.values || []);
+      return createSelect(name, schema.values || [], "number");
     } else if (schema.component === "radio") {
-      return createRadio(name, schema.values || []);
+      return createRadio(name, schema.values || [], "number");
     }
     return createText(name, "number");
+  }
+
+  if (schema.type === "date") {
+    return createDatePicker(name, true);
+  }
+
+  if (schema.type === "datetime") {
+    return createDatePicker(name, false);
+  }
+
+  if (schema.type === "dict") {
+    return createJsonInput(name);
   }
 
   console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);

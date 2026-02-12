@@ -1,18 +1,14 @@
-import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
 import {
   type JSONDeltas,
   patchSample,
   transformSampleData,
   VersionMismatchError,
 } from "@fiftyone/core/src/client";
-import {
-  buildJsonPath,
-  buildLabelDeltas,
-  LabelProxy,
-  type OpType,
-} from "../deltas";
+import type { Sample } from "@fiftyone/looker";
 import { isSampleIsh } from "@fiftyone/looker/src/util";
+import type { Field } from "@fiftyone/utilities";
+import { buildJsonPath, buildLabelDeltas, LabelProxy } from "../deltas";
+import type { OpType } from "../types";
 
 export type DoPatchSampleArgs = {
   sample: Sample | null;

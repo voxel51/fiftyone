@@ -1,10 +1,13 @@
-import { useSampleMutationManager } from "@fiftyone/annotation";
+import {
+  SampleMutationManager,
+  useSampleMutationManager,
+} from "@fiftyone/annotation";
 import {
   DelegatingUndoable,
   KnownContexts,
   useCreateCommand,
 } from "@fiftyone/commands";
-import { Primitive } from "@fiftyone/utilities";
+import { isNullish, Primitive } from "@fiftyone/utilities";
 import { Orientation, Stack } from "@voxel51/voodo";
 import { useCallback, useEffect, useRef, useState } from "react";
 import PrimitiveRenderer from "./PrimitiveRenderer";
@@ -48,6 +51,7 @@ export default function PrimitiveEdit({
     useCallback(() => {
       const oldValue = value;
       const newValue = transientFieldValue.current;
+      const isAddOperation = isAdd(path, sampleMutationManager);
 
       return new DelegatingUndoable(
         `primitive-edit-${path}-action`,
@@ -55,14 +59,27 @@ export default function PrimitiveEdit({
         () => {
           try {
             const serializedValue = serializeFieldValue(newValue, type);
-            sampleMutationManager.stageMutation(path, serializedValue);
+            let op = "mutate";
+            if (isAddOperation) {
+              op = "add";
+            } else if (isNullish(serializedValue) || serializedValue === "") {
+              op = "delete";
+            }
+            sampleMutationManager.stageMutation(path, {
+              data: serializedValue,
+              op,
+            });
           } catch (err) {
             console.warn("unparseable value", newValue);
           }
         },
         // restore original value on undo
         () => {
-          sampleMutationManager.stageMutation(path, oldValue);
+          const hasOldValue = !isNullish(oldValue);
+          sampleMutationManager.stageMutation(path, {
+            data: oldValue,
+            op: isAddOperation && !hasOldValue ? "delete" : "mutate",
+          });
         }
       );
     }, [path, sampleMutationManager, type, value]),
@@ -91,4 +108,11 @@ export default function PrimitiveEdit({
       />
     </Stack>
   );
+}
+
+function isAdd(path: string, sampleMutationManager: SampleMutationManager) {
+  if (!path.includes(".")) return false;
+  const parentPath = path.split(".").slice(0, -1).join(".");
+  const parentValue = sampleMutationManager.getPathValue(parentPath);
+  return isNullish(parentValue);
 }
