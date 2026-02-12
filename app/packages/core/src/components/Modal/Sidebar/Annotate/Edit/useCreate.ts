@@ -51,8 +51,28 @@ const useCreateAnnotationLabel = () => {
         ? getQuickDrawDetectionLabel(field)
         : undefined;
 
+      // Extract default values from the label schema for new annotations
+      const fieldSchema = store.get(labelSchemaData(field));
+      const labelSchema = fieldSchema?.label_schema;
+      const defaults: Record<string, unknown> = {};
+
+      // Top-level default applies to the "label" value (e.g., default class)
+      if (labelSchema?.default !== undefined) {
+        defaults.label = labelSchema.default;
+      }
+
+      // Attribute-level defaults
+      if (Array.isArray(labelSchema?.attributes)) {
+        for (const attr of labelSchema.attributes) {
+          if (attr.name && attr.default !== undefined) {
+            defaults[attr.name] = attr.default;
+          }
+        }
+      }
+
       const data = {
         _id: id,
+        ...defaults,
         ...(labelValue && { label: labelValue }),
       };
 
@@ -77,7 +97,6 @@ const useCreateAnnotationLabel = () => {
       if (type === DETECTION) {
         data["_cls"] = "Detection";
 
-        const fieldSchema = store.get(labelSchemaData(field));
         const readOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
