@@ -10,7 +10,7 @@ import {
 } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
 import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
-import { pendingDeletionsAtom } from "../persistence/pendingDeletions";
+import { usePendingDeletions } from "../persistence/usePendingDeletions";
 import { getDefaultStore } from "jotai";
 import { current, editing, savedLabel } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/state";
 import { _dangerousQuickDrawActiveAtom } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/Edit/useQuickDraw";
@@ -32,6 +32,7 @@ export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
+  const { queueDeletion } = usePendingDeletions();
   const annotationEventBus = useAnnotationEventBus();
 
   useAnnotationEventHandler(
@@ -108,14 +109,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           (l) => l.overlay.id === payload.id
         );
         if (labelToRemove) {
-          STORE.set(pendingDeletionsAtom, (prev) => [
-            ...prev,
-            {
-              type: labelToRemove.type,
-              data: labelToRemove.data,
-              path: labelToRemove.path,
-            },
-          ]);
+          queueDeletion(labelToRemove);
         }
 
         removeLabelFromSidebar(payload.id);
@@ -167,7 +161,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           }
         }
       },
-      [removeLabelFromSidebar, annotationEventBus]
+      [removeLabelFromSidebar, queueDeletion, annotationEventBus]
     )
   );
 
