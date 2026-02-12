@@ -78,7 +78,7 @@ INSTALL_REQUIRES = [
     "pydash",
     # internal packages
     "fiftyone-brain>=0.21.5,<0.22",
-    "fiftyone-db>=0.4,<2.0",
+    "fiftyone-db>=1.4,<2.0",
     "voxel51-eta>=0.15.3,<0.16",
 ]
 
