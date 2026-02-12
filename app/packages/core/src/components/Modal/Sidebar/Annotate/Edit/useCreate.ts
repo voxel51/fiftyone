@@ -6,15 +6,11 @@ import type {
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
-import {
-  CLASSIFICATION,
-  DETECTION,
-  POLYLINE,
-  objectId,
-} from "@fiftyone/utilities";
+import { objectId } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import type { LabelType } from "./state";
+import { CLASSIFICATION, DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { defaultField, editing, savedLabel } from "./state";
 
 const useCreateAnnotationLabel = () => {
@@ -39,6 +35,7 @@ const useCreateAnnotationLabel = () => {
           label: data,
         });
         addOverlay(overlay);
+        scene?.selectOverlay(id, { ignoreSideEffects: true });
         store.set(savedLabel, data);
         return { data, overlay, path: field, type };
       }

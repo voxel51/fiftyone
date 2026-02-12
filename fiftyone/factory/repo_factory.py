@@ -1,7 +1,7 @@
 """
 FiftyOne repository factory.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -20,7 +20,9 @@ from fiftyone.factory.repos.execution_store import (
     ExecutionStoreRepo,
     MongoExecutionStoreRepo,
 )
-
+from fiftyone.operators.store.notification_service import (
+    ChangeStreamNotificationService,
+)
 
 _db: Database = None
 
@@ -57,11 +59,20 @@ class RepositoryFactory(object):
     def execution_store_repo(
         dataset_id: Optional[ObjectId] = None,
         collection_name: Optional[str] = None,
+        notification_service: Optional[ChangeStreamNotificationService] = None,
     ) -> ExecutionStoreRepo:
-        collection = _get_db()[
-            collection_name or MongoExecutionStoreRepo.COLLECTION_NAME
-        ]
-        return MongoExecutionStoreRepo(
-            collection=collection,
-            dataset_id=dataset_id,
+        final_collection_name = (
+            collection_name
+            if collection_name
+            else MongoExecutionStoreRepo.COLLECTION_NAME
         )
+        es_repo_key = f"{final_collection_name}-{dataset_id}"
+
+        if es_repo_key not in RepositoryFactory.repos:
+            RepositoryFactory.repos[es_repo_key] = MongoExecutionStoreRepo(
+                collection=_get_db()[final_collection_name],
+                dataset_id=dataset_id,
+                notification_service=notification_service,
+            )
+
+        return RepositoryFactory.repos[es_repo_key]

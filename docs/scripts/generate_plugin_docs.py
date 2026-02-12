@@ -2,7 +2,7 @@
 """
 Script for generating plugin documentation dynamically from the FiftyOne plugins repository.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -16,6 +16,8 @@ from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from urllib.parse import urlparse, urljoin
 from datetime import datetime
+
+import eta.core.utils as etau
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -42,6 +44,9 @@ class PluginDocGenerator:
         self.plugins_dir.mkdir(exist_ok=True)
         self.plugins_ecosystem_dir = self.plugins_dir / "plugins_ecosystem"
         self.plugins_ecosystem_dir.mkdir(exist_ok=True)
+        self.models_dir = self.docs_source_dir / "model_zoo" / "models"
+        self.models_dir.mkdir(parents=True, exist_ok=True)
+        self._plugin_model_cards = []
         self._compile_regex_patterns()
 
     def _compile_regex_patterns(self):
@@ -50,6 +55,34 @@ class PluginDocGenerator:
             r"[\U0001F300-\U0001FAFF\U00002702-\U000027B0\U000024C2-\U0001F251\u2600-\u26FF\u2700-\u27BF]",
             flags=re.UNICODE,
         )
+        self.feature_patterns = [
+            (re.compile(p), f) for p, f in [
+                (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
+                (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
+                (r"sam\d?|segment\s?anything", "Segmentation"),
+                (r"segmentation|instance.?mask", "Segmentation"),
+                (r"object.?detection|yolo|detectron", "Detection"),
+                (r"ocr|text.?recognition|document.?parsing", "OCR & Document"),
+                (r"pose.?estimation|keypoint|vitpose", "Pose Estimation"),
+                (r"embedding|siglip|clip|nomic", "Embeddings"),
+                (r"similarity.?search|retrieval|vector", "Search & Retrieval"),
+                (r"semantic.?search", "Semantic Search"),
+                (r"deduplication|duplicate", "Data Curation"),
+                (r"clustering|outlier|anomaly", "Data Curation"),
+                (r"quality.?issue|image.?issue", "Data Quality"),
+                (r"annotation|label|cvat|labelbox", "Annotation"),
+                (r"evaluation|metrics|confidence.?threshold", "Evaluation"),
+                (r"active.?learning", "Active Learning"),
+                (r"video.?understanding|video.?analysis", "Video Analysis"),
+                (r"3d|point.?cloud|depth", "3D Vision"),
+                (r"medical|healthcare|dicom|radiology", "Medical Imaging"),
+                (r"audio|speech", "Audio"),
+                (r"pdf|document", "Document Processing"),
+                (r"import|export|loader", "Data Import/Export"),
+                (r"augmentation|transform", "Augmentation"),
+                (r"anonymize|blur|privacy", "Privacy Tools"),
+            ]
+        ]
         self.table_section_pattern = re.compile(
             r"## {}\s*\n\n(.*?)(?=\n## |\n$)", re.DOTALL
         )
@@ -102,6 +135,132 @@ class PluginDocGenerator:
         return self.description_cleanup_pattern.sub(
             lambda m: " " if m.group(0) == "\n" else "\\:", description
         )
+
+    def _generate_seo_metadata(
+        self, plugin: Plugin, readme_content: str
+    ) -> dict:
+        """Generate SEO metadata for a plugin."""
+        display_name = self._get_display_name(plugin.name)
+        feature = self._extract_feature_hint(readme_content)
+        return {
+            "title": self._generate_meta_title(display_name, feature),
+            "description": self._generate_meta_description(
+                plugin.description, readme_content
+            ),
+            "keywords": self._generate_keywords(
+                display_name, plugin.category, feature
+            ),
+        }
+
+    def _get_display_name(self, plugin_name: str) -> str:
+        """Convert plugin name to display format."""
+        name = plugin_name.split("/")[-1].replace("`", "").strip()
+        return " ".join(
+            word.capitalize()
+            for word in name.replace("_", " ").replace("-", " ").split()
+        )
+
+    def _generate_meta_title(
+        self, display_name: str, feature: Optional[str]
+    ) -> str:
+        """Generate SEO-optimized meta title for a plugin."""
+        if feature:
+            return f"{display_name} Plugin for FiftyOne | {feature}"
+        return f"{display_name} Plugin for FiftyOne"
+
+    def _extract_feature_hint(self, readme_content: str) -> Optional[str]:
+        """Extract a feature hint from README content."""
+        if not readme_content:
+            return None
+
+        content_lower = readme_content.lower()
+        for pattern, feature in self.feature_patterns:
+            if pattern.search(content_lower):
+                return feature
+        return None
+
+    def _generate_meta_description(
+        self, description: str, readme_content: str
+    ) -> str:
+        """Generate SEO-optimized meta description for a plugin."""
+        base = description.strip().rstrip(".")
+        extra = self._extract_first_sentence(readme_content)
+
+        if extra and extra.lower() != base.lower():
+            full = f"{base}. {extra}"
+        else:
+            full = f"{base}. Open source FiftyOne plugin for computer vision workflows."
+
+        if len(full) > 155:
+            full = full[:152].rsplit(" ", 1)[0] + "..."
+        return full
+
+    def _extract_first_sentence(self, readme_content: str) -> Optional[str]:
+        """Extract the first meaningful sentence from README content."""
+        if not readme_content:
+            return None
+
+        for line in readme_content.split("\n"):
+            line = line.strip()
+            if not line or line.startswith(("#", "!", "<", "```", "[!", "|-")):
+                continue
+
+            sentence = re.split(r"(?<=[.!?])\s", line)[0]
+            if len(sentence) > 20:
+                return sentence.strip()
+        return None
+
+    def _generate_keywords(
+        self, display_name: str, category: str, feature: Optional[str] = None
+    ) -> str:
+        """Generate SEO keywords for a plugin."""
+        base_keywords = ["FiftyOne", "plugin", "computer vision"]
+        words = display_name.lower().replace("-", " ").split()
+        name_keywords = [w for w in words if len(w) > 2]
+        all_keywords = base_keywords + name_keywords + [category]
+        if feature:
+            all_keywords.append(feature.lower())
+
+        seen = set()
+        unique = []
+        for kw in all_keywords:
+            kw_lower = kw.lower()
+            if kw_lower not in seen and kw_lower not in ("for", "the", "and"):
+                seen.add(kw_lower)
+                unique.append(kw)
+        return ", ".join(unique[:10])
+
+    def _generate_frontmatter(self, seo_metadata: dict) -> str:
+        """Generate MyST frontmatter with SEO metadata."""
+        title = (
+            seo_metadata["title"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
+        description = (
+            seo_metadata["description"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
+        keywords = (
+            seo_metadata["keywords"]
+            .replace("\\", "\\\\")
+            .replace('"', '\\"')
+            .replace("\n", "\\n")
+        )
+
+        return f'''---
+myst:
+  html_meta:
+    "description": "{description}"
+    "keywords": "{keywords}"
+    "og:title": "{title}"
+    "og:description": "{description}"
+---
+
+'''
 
     def _generate_github_badge(self, plugin: Plugin) -> str:
         """Generate GitHub badge markdown for a plugin."""
@@ -191,6 +350,152 @@ class PluginDocGenerator:
         except Exception as e:
             logger.warning(f"Error fetching stars for {owner}/{repo}: {e}")
         return None
+
+    def _fetch_plugin_manifest(
+        self, owner: str, repo: str, path: str, branch: str
+    ) -> Optional[List[dict]]:
+        """Fetch and parse manifest.json from a plugin repository."""
+        manifest_path = f"{path}/manifest.json" if path else "manifest.json"
+        url = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{manifest_path}"
+        try:
+            resp = requests.get(url, timeout=6)
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            if not isinstance(data, dict):
+                return None
+            return data.get("models", [])
+        except (requests.RequestException, ValueError) as e:
+            logger.debug(f"No manifest found at {url}: {e}")
+        return None
+
+    def _format_model_tags(self, tags: List[str]) -> List[str]:
+        """Convert model tags to display format."""
+        display_tags = []
+        for tag in tags:
+            if tag == "torch":
+                display_tags.append("PyTorch")
+            elif tag in ("tf", "tf1", "tf2"):
+                display_tags.append(
+                    "TensorFlow" + ("-" + tag[2:] if len(tag) > 2 else "")
+                )
+            else:
+                display_tags.append(tag.capitalize().replace(" ", "-"))
+        return display_tags
+
+    def _generate_plugin_model_docs(
+        self, models: List[dict], plugin_name: str, plugin_link: str,
+        github_url: str
+    ) -> None:
+        """Generate model documentation for plugin models."""
+        for model in models:
+            name = model.get("base_name")
+            if not name:
+                continue
+
+            description = self._clean_description(model.get("description", ""))
+            tags = model.get("tags") or []
+            source = model.get("source", "")
+            author = model.get("author")
+            license_str = model.get("license")
+            req = model.get("requirements") or {}
+            size_bytes = model.get("size_bytes")
+            size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
+            packages = req.get("packages") or []
+            supports_cpu = "yes" if (req.get("cpu") or {}).get("support") else "no"
+            supports_gpu = "yes" if (req.get("gpu") or {}).get("support") else "no"
+            model_slug = re.sub(r"[^\w]", "_", name)
+            safe_name = plugin_name.replace("-", "--").replace("_", "__")
+
+            content = f"""
+.. _model-zoo-{model_slug}:
+
+{name}
+{"_" * len(name)}
+
+.. raw:: html
+
+    <a href="../../plugins/{plugin_link}" target="_blank">
+        <img src="https://img.shields.io/badge/Plugin-{safe_name}-orange" alt="From Plugin">
+    </a>
+
+.. note::
+
+    This is a :ref:`remotely-sourced model <model-zoo-remote>` from the
+    `{plugin_name} <../../plugins/{plugin_link}>`_ plugin, maintained by the community.
+    It is not part of FiftyOne core and may have special installation requirements.
+    Please review the plugin documentation and license before use.
+
+{description}.
+
+**Details**
+
+-   Model name: ``{name}``
+-   Model source: {source}
+"""
+            if author:
+                content += f"-   Model author: {author}\n"
+            if license_str:
+                content += f"-   Model license: {license_str}\n"
+            if size_str:
+                content += f"-   Model size: {size_str}\n"
+
+            content += f"""-   Exposes embeddings? {"yes" if "embeddings" in tags else "no"}
+-   Tags: ``{", ".join(tags)}``
+
+**Requirements**
+
+"""
+            if packages:
+                content += f"-   Packages: ``{', '.join(packages)}``\n\n"
+
+            content += f"""-   CPU support
+
+    -   {supports_cpu}
+
+-   GPU support
+
+    -   {supports_gpu}
+
+**Example usage**
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    foz.register_zoo_model_source("{github_url}")
+
+    dataset = foz.load_zoo_dataset(
+        "coco-2017",
+        split="validation",
+        dataset_name=fo.get_default_dataset_name(),
+        max_samples=50,
+        shuffle=True,
+    )
+
+    model = foz.load_zoo_model("{name}")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+"""
+            model_path = self.models_dir / f"{model_slug}.rst"
+            with open(model_path, "w", encoding="utf-8") as f:
+                f.write(content)
+
+            display_tags = self._format_model_tags(tags)
+            display_tags.append("Plugin")
+
+            self._plugin_model_cards.append(f"""
+.. customcarditem::
+    :header: {name}
+    :description: {description}
+    :link: models/{model_slug}.html
+    :tags: {",".join(display_tags)}
+""")
+            logger.info(f"Generated model docs for {name}")
 
     def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:
         """Extract plugin information from the README content."""
@@ -507,6 +812,8 @@ class PluginDocGenerator:
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
+                seo_metadata = self._generate_seo_metadata(plugin, readme_content)
+                frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
                 if plugin.category == "community":
@@ -517,9 +824,14 @@ Please review each plugin's documentation and license before use.
 ```
 
 """
-                    f.write(community_note + github_badge + processed_readme)
+                    f.write(
+                        frontmatter
+                        + community_note
+                        + github_badge
+                        + processed_readme
+                    )
                 else:
-                    f.write(github_badge + processed_readme)
+                    f.write(frontmatter + github_badge + processed_readme)
 
             repo_info = self.fetch_github_stars(owner, repo)
             image_path = self._extract_image_from_readme(
@@ -606,6 +918,16 @@ Please review each plugin's documentation and license before use.
                 has_model = False
                 has_dataset = False
 
+            if has_model:
+                models = self._fetch_plugin_manifest(owner, repo, path, branch)
+                if models:
+                    github_url = f"https://github.com/{owner}/{repo}"
+                    if path:
+                        github_url += f"/tree/{branch}/{path}"
+                    self._generate_plugin_model_docs(
+                        models, plugin_name, plugin_link, github_url
+                    )
+
             extra_tags = [
                 tag
                 for tag, condition in [
@@ -641,6 +963,12 @@ Please review each plugin's documentation and license before use.
         )
         with open(self.plugins_ecosystem_dir / "plugin_cards.rst", "w") as f:
             f.write(plugins_ecosystem_content)
+
+        cards_path = self.models_dir / "plugin_model_cards.rst"
+        with open(cards_path, "w", encoding="utf-8") as f:
+            f.write("\n".join(self._plugin_model_cards))
+        if self._plugin_model_cards:
+            logger.info(f"Generated {len(self._plugin_model_cards)} plugin model cards")
 
         logger.info("Plugin documentation generated successfully!")
 

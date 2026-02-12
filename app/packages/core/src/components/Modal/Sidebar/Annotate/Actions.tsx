@@ -1,12 +1,27 @@
+import { useUndoRedo } from "@fiftyone/commands";
 import { Tooltip } from "@fiftyone/components";
-import { useLighter } from "@fiftyone/lighter";
-import { isPolylineAnnotateActiveAtom } from "@fiftyone/looker-3d/src/state";
+import { use3dAnnotationFields } from "@fiftyone/looker-3d/src/annotation/use3dAnnotationFields";
+import {
+  ANNOTATION_CUBOID,
+  ANNOTATION_POLYLINE,
+} from "@fiftyone/looker-3d/src/constants";
+import { current3dAnnotationModeAtom } from "@fiftyone/looker-3d/src/state";
 import { is3DDataset } from "@fiftyone/state";
-import { CLASSIFICATION, DETECTION } from "@fiftyone/utilities";
+import {
+  CLASSIFICATION,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import PolylineIcon from "@mui/icons-material/Timeline";
+import CuboidIcon from "@mui/icons-material/ViewInAr";
+import { useSetAtom } from "jotai";
+import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft } from "./Components";
+import { editing } from "./Edit";
 import useCreate from "./Edit/useCreate";
 import useCanManageSchema from "./useCanManageSchema";
 import useShowModal from "./useShowModal";
@@ -139,10 +154,10 @@ const Detection = () => {
 };
 
 export const Undo = () => {
-  const { undo, canUndo: enabled } = useLighter();
+  const { undo, undoEnabled } = useUndoRedo();
 
   return (
-    <Round onClick={undo} className={enabled ? "" : "disabled"}>
+    <Round onClick={undo} className={undoEnabled ? "" : "disabled"}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="13"
@@ -161,11 +176,11 @@ export const Undo = () => {
 };
 
 export const Redo = () => {
-  const { redo, canRedo: enabled } = useLighter();
+  const { redo, redoEnabled } = useUndoRedo();
 
   return (
     <Tooltip placement="top-center" text="Redo">
-      <Round onClick={redo} className={enabled ? "" : "disabled"}>
+      <Round onClick={redo} className={redoEnabled ? "" : "disabled"}>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="13"
@@ -185,8 +200,23 @@ export const Redo = () => {
 };
 
 export const ThreeDPolylines = () => {
-  const [isPolylineAnnotateActive, setIsPolylineAnnotateActive] =
-    useRecoilState(isPolylineAnnotateActiveAtom);
+  const setEditing = useSetAtom(editing);
+  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
+    current3dAnnotationModeAtom
+  );
+
+  const polylineFields = use3dAnnotationFields(
+    useCallback(
+      (fieldType) =>
+        fieldType === POLYLINE.toLocaleLowerCase() ||
+        fieldType === POLYLINES.toLocaleLowerCase(),
+      []
+    )
+  );
+
+  const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
+  const isPolylineAnnotateActive =
+    current3dAnnotationMode === ANNOTATION_POLYLINE;
 
   return (
     <Tooltip
@@ -200,10 +230,73 @@ export const ThreeDPolylines = () => {
       <Square
         $active={isPolylineAnnotateActive}
         onClick={() => {
-          setIsPolylineAnnotateActive(!isPolylineAnnotateActive);
+          if (isPolylineAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
+            return;
+          }
+
+          if (!hasPolylineFieldsInSchema) {
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
+            setEditing(POLYLINE);
+            return;
+          }
+
+          setCurrent3dAnnotationMode(ANNOTATION_POLYLINE);
         }}
       >
         <PolylineIcon sx={{ transform: "rotate(90deg)" }} />
+      </Square>
+    </Tooltip>
+  );
+};
+
+export const ThreeDCuboids = () => {
+  const setEditing = useSetAtom(editing);
+  const [current3dAnnotationMode, setCurrent3dAnnotationMode] = useRecoilState(
+    current3dAnnotationModeAtom
+  );
+
+  const cuboidFields = use3dAnnotationFields(
+    useCallback(
+      (fieldType) =>
+        fieldType === DETECTION.toLocaleLowerCase() ||
+        fieldType === DETECTIONS.toLocaleLowerCase(),
+      []
+    )
+  );
+
+  const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
+  const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
+
+  return (
+    <Tooltip
+      placement="top-center"
+      text={
+        isCuboidAnnotateActive
+          ? "Exit cuboid annotation mode"
+          : "Enter cuboid annotation mode"
+      }
+    >
+      <Square
+        $active={isCuboidAnnotateActive}
+        onClick={() => {
+          if (isCuboidAnnotateActive) {
+            setCurrent3dAnnotationMode(null);
+            return;
+          }
+
+          if (!hasCuboidFieldsInSchema) {
+            // Setting `editing` to a string triggers schema creation flow
+            // See docstring of `editing` atom for more details
+            setEditing(DETECTION);
+            return;
+          }
+
+          setCurrent3dAnnotationMode(ANNOTATION_CUBOID);
+        }}
+      >
+        <CuboidIcon />
       </Square>
     </Tooltip>
   );
@@ -223,7 +316,14 @@ const Actions = () => {
     <ActionsDiv style={{ margin: "0 0.25rem", paddingBottom: "0.5rem" }}>
       <ItemLeft style={{ columnGap: "0.5rem" }}>
         <Classification />
-        {is3D ? <ThreeDPolylines /> : <Detection />}
+        {is3D ? (
+          <>
+            <ThreeDCuboids />
+            <ThreeDPolylines />
+          </>
+        ) : (
+          <Detection />
+        )}
       </ItemLeft>
 
       {canManage && <Schema />}

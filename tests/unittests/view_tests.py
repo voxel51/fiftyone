@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -700,6 +700,7 @@ class ViewExpressionTests(unittest.TestCase):
                     my_int=5,
                     my_list=["a", "b"],
                     my_int_list=list(range(8)),
+                    predictions=fo.Classification(label="cat", tags=["train"]),
                 ),
                 fo.Sample(
                     filepath="filepath2.jpg",
@@ -707,6 +708,7 @@ class ViewExpressionTests(unittest.TestCase):
                     my_int=6,
                     my_list=["b", "c"],
                     my_int_list=list(range(10)),
+                    predictions=fo.Classification(label="dog"),
                 ),
                 fo.Sample(
                     filepath="filepath3.jpg",
@@ -723,6 +725,8 @@ class ViewExpressionTests(unittest.TestCase):
         manual_ids = [sample.id for sample in dataset if tag in sample.tags]
         view = dataset.match(F("tags").contains(tag))
         self.assertListEqual([sample.id for sample in view], manual_ids)
+        view = dataset.match(F("predictions.tags").contains(tag))
+        self.assertEqual(len(view), 1)
 
         # test is_in
         my_ints = [6, 7, 8]
@@ -3272,9 +3276,15 @@ class ViewStageTests(unittest.TestCase):
                 self.assertEqual(sample.test_class.label, "friend")
 
     def test_filter_labels(self):
-        # Classifications
-        self._setUp_classifications()
 
+        unlabeled_sample = fo.Sample(filepath="/new/image1.jpg")
+        self.dataset.add_sample(unlabeled_sample)
+
+        self._setUp_classification()
+        self._setUp_classifications()
+        self._setUp_detections()
+
+        # Classifications
         view = self.dataset.filter_labels(
             "test_clfs", (F("confidence") > 0.5) & (F("label") == "friend")
         )
@@ -3285,11 +3295,18 @@ class ViewStageTests(unittest.TestCase):
                 self.assertEqual(clf.label, "friend")
 
         # Detections
-        self._setUp_detections()
-
         view = self.dataset.filter_labels(
             "test_dets", (F("confidence") > 0.5) & (F("label") == "friend")
         )
+
+        # Tags
+        self.sample1["test_clf.tags"] = ["test"]
+        self.sample1.save()
+        tagged = self.dataset.filter_labels(
+            "test_clf", F("tags").contains("test")
+        ).values("id")
+        self.assertEqual(len(tagged), 1)
+        self.assertEqual(tagged[0], self.sample1.id)
 
         for sample in view:
             for det in sample.test_dets.detections:
@@ -5202,6 +5219,24 @@ class ViewStageTests(unittest.TestCase):
         # the same `_state`
         self.assertTrue(clips is not also_clips)
         self.assertEqual(clips._dataset.name, also_clips._dataset.name)
+
+    def test_make_optimized_select_view_concat(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg"),
+                fo.Sample(filepath="image2.jpg"),
+                fo.Sample(filepath="image3.jpg"),
+                fo.Sample(filepath="image4.jpg"),
+            ]
+        )
+
+        ids = dataset[1:-1].values("id")
+        view = dataset[:-1] + dataset[1:]
+
+        optimized_view = fov.make_optimized_select_view(view, ids)
+
+        self.assertEqual(optimized_view._stages, [fosg.Select(ids)])
 
     def test_make_optimized_select_view_group_dataset(self):
         dataset, sample_ids = self._make_group_dataset()

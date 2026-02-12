@@ -13,7 +13,10 @@ const isFetchingAtom = atom<boolean>(false);
 /**
  * Hook which provides access to a shared cache of enabled features.
  */
-export const useFeatureCache = (): FeatureCache => {
+export const useFeatureCache = (): {
+  cache: FeatureCache;
+  isResolved: boolean;
+} => {
   const cache = useAtomValue(featureCacheAtom);
   const [isInitialized, setIsInitialized] = useAtom(isInitializedAtom);
   const [isFetching, setIsFetching] = useAtom(isFetchingAtom);
@@ -35,5 +38,5 @@ export const useFeatureCache = (): FeatureCache => {
     }
   }, [cache]);
 
-  return cache;
+  return { cache, isResolved: isInitialized };
 };

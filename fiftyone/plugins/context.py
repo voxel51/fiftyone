@@ -1,10 +1,11 @@
 """
 FiftyOne plugin context.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import importlib
 import logging
 import os
@@ -126,7 +127,27 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, INIT_FILENAME)
+            entrypoint = self.plugin_definition.py_entry
+            module_path = os.path.join(module_dir, entrypoint)
+
+            # Verify the resolved path is within the plugin directory
+            if os.path.isabs(entrypoint) or ".." in os.path.normpath(
+                entrypoint
+            ):
+                raise ValueError(
+                    f"Invalid plugin's Python entrypoint: {entrypoint}"
+                )
+
+            real_module_path = os.path.realpath(module_path)
+            real_module_dir = os.path.realpath(module_dir)
+            if not (
+                real_module_path == real_module_dir
+                or real_module_path.startswith(real_module_dir + os.sep)
+            ):
+                raise ValueError(
+                    "Plugin's Python entrypoint must be located within the plugin directory"
+                )
+
             if not os.path.isfile(module_path):
                 return
 

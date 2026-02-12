@@ -2,7 +2,7 @@
 Script for generating Hugging Face dataset documentation from Voxel51's HF
 organization.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -215,6 +215,11 @@ class HFDatasetDocGenerator:
                 and isinstance(metadata.get("task_categories"), list)
                 else []
             )
+            custom_tags = (
+                metadata.get("tags", [])
+                if metadata and isinstance(metadata.get("tags"), list)
+                else []
+            )
             license_info = metadata.get("license", "") if metadata else ""
 
             readme = self._process_readme(clean_content, dataset.id)
@@ -226,7 +231,7 @@ class HFDatasetDocGenerator:
                 encoding="utf-8",
             ) as f:
                 note = """```{note}
-This is a **Hugging Face dataset**. Learn how to load datasets from the Hub in the <a href="https://docs.voxel51.com/integrations/huggingface.html#loading-datasets-from-the-hub" target="_blank">Hugging Face integration docs</a>.
+This is a **Hugging Face dataset**. For large datasets, ensure `huggingface_hub>=1.1.3` to avoid rate limits. Learn more in the <a href="https://docs.voxel51.com/integrations/huggingface.html#loading-datasets-from-the-hub" target="_blank">Hugging Face integration docs</a>.
 ```
 
 """
@@ -241,7 +246,8 @@ This is a **Hugging Face dataset**. Learn how to load datasets from the Hub in t
                 if dataset.downloads > 0
                 else display_name
             )
-            tags = ["huggingface"] + [t.replace("_", "-") for t in tasks]
+            all_tags = ["huggingface", *tasks, *custom_tags]
+            tags = sorted({t.replace("_", "-").lower() for t in all_tags if t})
 
             hf_badge = '<span class="card-subtitle text-muted" style="background-color: #FFC107; color: black !important; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 500;">Hugging Face</span><br/>'
             base_description = self._make_description(

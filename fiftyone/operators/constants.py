@@ -1,7 +1,7 @@
 """
 FiftyOne operator constants.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -43,3 +43,10 @@ class ViewTarget:
 
     SELECTED_SAMPLES = "SELECTED_SAMPLES"
     """Selected samples in the app view, if any."""
+
+    CUSTOM_VIEW_TARGET = "CUSTOM_VIEW_TARGET"
+    """Custom view target specified by the caller.
+
+    When using this option, specify 'custom_view_target' in the
+    operator parameters with a list of JSON-serialized view stages to apply.
+    """

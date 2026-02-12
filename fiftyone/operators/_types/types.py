@@ -1,7 +1,7 @@
 """
 FiftyOne operator types.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -881,6 +881,55 @@ class Property(BaseType):
                 "view": self.view.to_json() if self.view else None,
             }
         )
+
+
+class ResolvableProperty(BaseType):
+    """Represents a resolvable property.
+
+    Args:
+        resolver (str): operator to resolve the schema for this property
+        debounce (None): whether to debounce the resolver
+        throttle (None): whether to throttle the resolver
+        wait (None): wait time in milliseconds for when debounce or throttle is True
+        auto_update (True): whether to auto-update the property when dependencies change
+        dependencies (list): list of property names that this property depends on
+        params (dict): parameters to pass to the resolver
+        validate (False): whether the property should be validated. If True, the operator
+            will not be allowed to execute until this property is resolved and validated.
+        leading (False): whether to invoke the resolver on the leading edge when
+            debouncing or throttling is enabled.
+        trailing (True): whether to invoke the resolver on the trailing edge when
+            debouncing or throttling is enabled.
+    """
+
+    def __init__(self, resolver: str, **kwargs):
+        if not resolver or not isinstance(resolver, str):
+            raise ValueError("resolver must be a non-empty string")
+        self.resolver = resolver
+        self.debounce = kwargs.get("debounce", None)
+        self.throttle = kwargs.get("throttle", None)
+        self.wait = kwargs.get("wait", None)
+        self.auto_update = kwargs.get("auto_update", True)
+        self.dependencies = kwargs.get("dependencies", None)
+        self.params = kwargs.get("params", None)
+        self.validate = kwargs.get("validate", False)
+        self.leading = kwargs.get("leading", False)
+        self.trailing = kwargs.get("trailing", True)
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "resolver": self.resolver,
+            "debounce": self.debounce,
+            "throttle": self.throttle,
+            "wait": self.wait,
+            "auto_update": self.auto_update,
+            "dependencies": self.dependencies,
+            "params": self.params,
+            "validate": self.validate,
+            "leading": self.leading,
+            "trailing": self.trailing,
+        }
 
 
 class String(BaseType):
@@ -2367,6 +2416,51 @@ class DropdownView(Dropdown):
         super().__init__(**kwargs)
 
 
+class DateTimeView(View):
+    """
+    Displays a date/time input - response in epoch time
+
+    Examples::
+        start_datetime_selector = types.DateTimeView(date_only=True)
+        inputs.int(
+            "start_datetime",
+            required=True,
+            label="Start Date/time",
+            description="Start date/time...",
+            view=start_datetime_selector,
+        )
+
+
+        end_datetime_selector = types.DateTimeView()
+        inputs.int(
+            "end_datetime",
+            required=False,
+            label="End Date/time",
+            description="End date/time...",
+            view=end_datetime_selector,
+        )
+
+        ...
+
+        start_datetime = ctx.params.get("start_datetime", None)
+        end_datetime = ctx.params.get("end_datetime", None)
+
+        if start_datetime:
+            start = fou.timestamp_to_datetime(start_datetime)
+            print(f"start: {start}")
+        if end_datetime:
+            end = fou.timestamp_to_datetime(end_datetime)
+            print(f"end: {end}")
+
+    Args:
+        date_only (False): whether to display a date only input
+            and not require HH:MM:SS
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
 class LabelValueView(View):
     """Displays a label-value component. Used for displaying a label and a
     corresponding value.
@@ -3042,7 +3136,7 @@ class IconButtonView(Button):
         inputs.view("icon_btn", iconButtonView)
 
     Args:
-        icon (None): a icon for the button. See https://marella.me/material-icons/demo/
+        icon (None): a icon for the button. See https://github.com/marella/material-icons?tab=readme-ov-file#available-icons
         variant (None): the optional variant of the icon button. Can be ``"round"``, ``"square"``,
             ``"outlined"``, or ``"contained"``.
         label (None): a label for the button

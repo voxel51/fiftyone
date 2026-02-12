@@ -1,7 +1,7 @@
 """
 Database utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -196,7 +196,7 @@ def establish_db_conn(config):
         _connection_kwargs["host"] = config.database_uri
         if config.database_compressor:
             _connection_kwargs["compressors"] = config.database_compressor
-    elif _db_service is None:
+    elif not established_port and _db_service is None:
         if os.environ.get("FIFTYONE_DISABLE_SERVICES", False):
             return
 
@@ -226,6 +226,7 @@ def establish_db_conn(config):
 
     db_config = get_db_config()
     if db_config.type != foc.CLIENT_TYPE:
+        _disconnect()
         raise ConnectionError(
             "Cannot connect to database type '%s' with client type '%s'"
             % (db_config.type, foc.CLIENT_TYPE)
@@ -647,6 +648,86 @@ def drop_orphan_saved_views(dry_run=False):
         _delete_saved_views(conn, orphan_view_ids)
 
 
+def drop_orphan_generated_datasets(dry_run=False):
+    """Marks all orphan generated datasets as non-persistent so that they will
+     be deleted the next time non-persistent dataset cleanup runs.
+
+    Orphan generated datasets are datasets that were originally associated with
+    a saved generated view that no longer exists.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    saved_generated_datasets_in_use = set()
+    for view_doc in conn.views.find({}):
+        name = _get_generated_dataset_name_for_saved_view_if_any(view_doc)
+        if name is not None:
+            saved_generated_datasets_in_use.add(name)
+
+    # All datasets whose sample collections don't start with `samples.` are
+    # generated datasets
+    query = {
+        "sample_collection_name": {"$not": {"$regex": "^samples\\."}},
+        "persistent": True,
+    }
+    all_saved_generated_datasets = set(
+        conn.datasets.find(query).distinct("name")
+    )
+
+    orphan_generated_datasets = list(
+        all_saved_generated_datasets - saved_generated_datasets_in_use
+    )
+
+    if not orphan_generated_datasets:
+        return
+
+    _logger.info(
+        "Marking %d orphan generated dataset(s) as non-persistent: %s",
+        len(orphan_generated_datasets),
+        orphan_generated_datasets,
+    )
+    if not dry_run:
+        _make_datasets_non_persistent(conn, orphan_generated_datasets)
+
+
+def drop_orphan_workspaces(dry_run=False):
+    """Drops all orphan workspaces from the database.
+
+    Orphan workspaces are workspace documents that are not associated with
+    any known dataset or other collections used by FiftyOne.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    workspace_ids_in_use = set()
+    for dataset_dict in conn.datasets.find({}):
+        workspace_ids = _get_workspace_ids(dataset_dict)
+        workspace_ids_in_use.update(workspace_ids)
+
+    all_workspace_ids = set(conn.workspaces.distinct("_id"))
+
+    orphan_workspace_ids = list(all_workspace_ids - workspace_ids_in_use)
+
+    if not orphan_workspace_ids:
+        return
+
+    _logger.info(
+        "Deleting %d orphan workspace(s): %s",
+        len(orphan_workspace_ids),
+        orphan_workspace_ids,
+    )
+    if not dry_run:
+        _delete_workspaces(conn, orphan_workspace_ids)
+
+
 def drop_orphan_runs(dry_run=False):
     """Drops all orphan runs from the database.
 
@@ -692,6 +773,36 @@ def drop_orphan_runs(dry_run=False):
         )
         if not dry_run:
             _delete_run_results(conn, orphan_result_ids)
+
+
+def drop_orphan_delegated_ops(dry_run=False):
+    """Drops all orphan delegated operations from the database.
+
+    Orphan delegated operations are those that are associated with a dataset
+    that no longer exists in the database.
+
+    Args:
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_ids = set(conn.datasets.distinct("_id"))
+
+    dataset_ids_with_ops = set(conn.delegated_ops.distinct("dataset_id"))
+    dataset_ids_with_ops.discard(None)
+
+    orphan_dataset_ids = list(dataset_ids_with_ops - dataset_ids)
+
+    if orphan_dataset_ids:
+        _logger.info(
+            "Deleting orphan delegated ops for %d dataset(s): %s",
+            len(orphan_dataset_ids),
+            orphan_dataset_ids,
+        )
+        if not dry_run:
+            _delete_delegated_ops(conn, orphan_dataset_ids)
 
 
 def drop_orphan_stores(dry_run=False):
@@ -1006,6 +1117,33 @@ def list_datasets():
     return conn.datasets.distinct("name")
 
 
+def load_dataset(id=None, name=None, reload=False):
+    """Loads the FiftyOne dataset with the given ID or name.
+
+    Args:
+        id (None): the ID of the dataset
+        name (None): the name of the dataset
+        reload (False): whether to reload the dataset if necessary
+
+    Returns:
+        a :class:`fiftyone.core.dataset.Dataset`
+    """
+    if id is not None:
+        try:
+            uid = ObjectId(id)
+        except:
+            uid = id
+
+        conn = get_db_conn()
+        res = conn.datasets.find_one({"_id": uid}, {"name": True})
+        if not res:
+            raise ValueError(f"Dataset with id={uid} does not exist")
+
+        name = res.get("name")
+
+    return fod.load_dataset(name, reload=reload)
+
+
 def _patch_referenced_docs(
     dataset_name, collection_name, field_name, dry_run=False
 ):
@@ -1286,6 +1424,13 @@ def delete_dataset(name, dry_run=False):
         if not dry_run:
             _delete_saved_views(conn, view_ids)
 
+    workspace_ids = _get_workspace_ids(dataset_dict)
+
+    if workspace_ids:
+        _logger.info("Deleting %d workspace(s)", len(workspace_ids))
+        if not dry_run:
+            _delete_workspaces(conn, workspace_ids)
+
     run_ids = _get_run_ids(dataset_dict)
     result_ids = _get_result_ids(conn, dataset_dict)
 
@@ -1298,6 +1443,13 @@ def delete_dataset(name, dry_run=False):
         _logger.info("Deleting %d run result(s)", len(result_ids))
         if not dry_run:
             _delete_run_results(conn, result_ids)
+
+    _id = dataset_dict["_id"]
+    num_ops = conn.delegated_ops.count_documents({"dataset_id": _id})
+    if num_ops > 0:
+        _logger.info("Deleting %d delegated op(s)", num_ops)
+        if not dry_run:
+            conn.delegated_ops.delete_many({"dataset_id": _id})
 
     _id = dataset_dict["_id"]
     num_stores = conn.execution_store.count_documents(
@@ -1352,7 +1504,7 @@ def delete_saved_view(dataset_name, view_name, dry_run=False):
         return
 
     _logger.info(
-        "Deleting saved view %s' with ID '%s' from dataset '%s'",
+        "Deleting saved view '%s' with ID '%s' from dataset '%s'",
         view_name,
         del_id,
         dataset_name,
@@ -1409,6 +1561,110 @@ def delete_saved_views(dataset_name, dry_run=False):
             {"$set": {"saved_views": []}},
         )
         _delete_saved_views(conn, del_ids)
+
+
+def delete_workspace(dataset_name, workspace_name, dry_run=False):
+    """Deletes the workspace with the given name from the dataset with the
+    given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.load_workspace`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Args:
+        dataset_name: the name of the dataset
+        workspace_name: the name of the workspace
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+    workspaces = dataset_dict.get("workspaces", [])
+
+    # {name: id} in `workspaces` collection
+    sd = {}
+    for workspace_dict in conn.workspaces.find({"_dataset_id": dataset_id}):
+        try:
+            sd[workspace_dict["name"]] = workspace_dict["_id"]
+        except:
+            pass
+
+    del_id = sd.get(workspace_name, None)
+    if del_id is None:
+        _logger.warning(
+            "Dataset '%s' has no workspace '%s'", dataset_name, workspace_name
+        )
+        return
+
+    _logger.info(
+        "Deleting workspace '%s' with ID '%s' from dataset '%s'",
+        workspace_name,
+        del_id,
+        dataset_name,
+    )
+
+    workspaces = [_id for _id in workspaces if _id != del_id]
+
+    if not dry_run:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"workspaces": workspaces}},
+        )
+        _delete_workspaces(conn, [del_id])
+
+
+def delete_workspaces(dataset_name, dry_run=False):
+    """Deletes all workspaces from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.load_workspace`,
+    which is helpful if a dataset's backing document or collections are
+    corrupted and cannot be loaded via the normal pathways.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    conn = get_db_conn()
+    _logger = _get_logger(dry_run=dry_run)
+
+    dataset_dict = conn.datasets.find_one({"name": dataset_name})
+    if not dataset_dict:
+        _logger.warning("Dataset '%s' not found", dataset_name)
+        return
+
+    dataset_id = dataset_dict["_id"]
+    del_ids = [
+        d["_id"] for d in conn.workspaces.find({"_dataset_id": dataset_id})
+    ]
+
+    if not del_ids:
+        _logger.info("Dataset '%s' has no workspaces", dataset_name)
+        return
+
+    _logger.info(
+        "Deleting %d workspaces from dataset '%s'",
+        len(del_ids),
+        dataset_name,
+    )
+
+    if not dry_run:
+        conn.datasets.update_one(
+            {"name": dataset_name},
+            {"$set": {"workspaces": []}},
+        )
+        _delete_workspaces(conn, del_ids)
 
 
 def delete_annotation_run(name, anno_key, dry_run=False):
@@ -1825,6 +2081,19 @@ def _get_saved_view_ids(dataset_dict):
     return view_ids
 
 
+def _get_workspace_ids(dataset_dict):
+    workspace_ids = []
+
+    for workspace_doc_or_id in dataset_dict.get("workspaces", []):
+        # Workspace docs used to be stored directly in `dataset_dict`.
+        # Such data could be encountered here because datasets are lazily
+        # migrated
+        if isinstance(workspace_doc_or_id, ObjectId):
+            workspace_ids.append(workspace_doc_or_id)
+
+    return workspace_ids
+
+
 def _get_run_ids(dataset_dict):
     run_ids = []
 
@@ -1865,7 +2134,42 @@ def _get_result_ids(conn, dataset_dict):
 
 
 def _delete_saved_views(conn, view_ids):
+    # Saved *generated* views have associated datasets that need dropping
+    generated_dataset_names = set()
+    for view_doc in conn.views.find({"_id": {"$in": view_ids}}):
+        name = _get_generated_dataset_name_for_saved_view_if_any(view_doc)
+        if name is not None:
+            generated_dataset_names.add(name)
+
     conn.views.delete_many({"_id": {"$in": view_ids}})
+
+    if generated_dataset_names:
+        _make_datasets_non_persistent(conn, list(generated_dataset_names))
+
+
+def _make_datasets_non_persistent(conn, names):
+    conn.datasets.update_many(
+        {"name": {"$in": names}}, {"$set": {"persistent": False}}
+    )
+
+
+def _get_generated_dataset_name_for_saved_view_if_any(view_doc):
+    # By convention all views that use generated datasets store its
+    # name in a `_state.name` parameter
+    for view_stage_str in view_doc.get("view_stages", []):
+        try:
+            view_stage_dict = json_util.loads(view_stage_str)
+            view_stage_kwargs = dict(view_stage_dict.get("kwargs", {}))
+            _state = view_stage_kwargs.get("_state", {})
+            name = _state.get("name", None)
+            if name:
+                return name
+        except:
+            pass
+
+
+def _delete_workspaces(conn, workspace_ids):
+    conn.workspaces.delete_many({"_id": {"$in": workspace_ids}})
 
 
 def _delete_run_docs(conn, run_ids):
@@ -1875,6 +2179,10 @@ def _delete_run_docs(conn, run_ids):
 def _delete_run_results(conn, result_ids):
     conn.fs.files.delete_many({"_id": {"$in": result_ids}})
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+
+
+def _delete_delegated_ops(conn, dataset_ids):
+    conn.delegated_ops.delete_many({"dataset_id": {"$in": dataset_ids}})
 
 
 def _delete_stores(conn, dataset_ids):

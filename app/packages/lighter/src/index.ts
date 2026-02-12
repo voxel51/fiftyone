@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { OverlayFactory } from "./overlay/OverlayFactory";
@@ -35,11 +35,7 @@ export { PixiResourceLoader } from "./resource/PixiResourceLoader";
 export type { ResourceLoader } from "./resource/ResourceLoader";
 
 // Event exports
-export { EventBus, LIGHTER_EVENTS } from "./event/EventBus";
-export type {
-  LighterEvent as OverlayEvent,
-  LighterEventDetail as OverlayEventDetail,
-} from "./event/EventBus";
+export type { LighterEventGroup } from "./events";
 
 // Interaction exports
 export { InteractionManager } from "./interaction/InteractionManager";
@@ -51,12 +47,10 @@ export type { Selectable } from "./selection/Selectable";
 export { SelectionManager } from "./selection/SelectionManager";
 export type { SelectionOptions } from "./selection/SelectionManager";
 
-// Undo/Redo exports
-export type { Command } from "./commands/Command";
+// Command exports
 export { MoveOverlayCommand } from "./commands/MoveOverlayCommand";
 export type { Movable } from "./commands/MoveOverlayCommand";
 export { TransformOverlayCommand } from "./commands/TransformOverlayCommand";
-export { UndoRedoManager } from "./commands/UndoRedoManager";
 export { UpdateLabelCommand } from "./commands/UpdateLabelCommand";
 
 // Plugin exports

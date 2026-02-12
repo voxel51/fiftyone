@@ -6,9 +6,9 @@ import type { PolyLineProps } from "../../labels/polyline";
 import {
   annotationPlaneAtom,
   currentActiveAnnotationField3dAtom,
-  polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
   selectedPolylineVertexAtom,
+  stagedPolylineTransformsAtom,
 } from "../../state";
 import { eulerToQuaternion, quaternionToEuler } from "../../utils";
 import {
@@ -229,8 +229,8 @@ export const VertexCoordinateInputs = ({
     selectedPolylineVertexAtom
   );
   const selectedLabel = useRecoilValue(selectedLabelForAnnotationAtom);
-  const [polylinePointTransforms, setPolylinePointTransforms] = useRecoilState(
-    polylinePointTransformsAtom
+  const [polylinePointTransforms, setStagedPolylineTransforms] = useRecoilState(
+    stagedPolylineTransformsAtom
   );
   const currentActiveField = useRecoilValue(currentActiveAnnotationField3dAtom);
   const currentSampleId = useRecoilValue(fos.currentSampleId);
@@ -275,7 +275,7 @@ export const VertexCoordinateInputs = ({
       if (selectedPoint && selectedLabel) {
         const { segmentIndex, pointIndex, labelId } = selectedPoint;
 
-        setPolylinePointTransforms((prev) => {
+        setStagedPolylineTransforms((prev) => {
           const currentSegments = prev[labelId]?.segments || [];
           const polylineLabel = selectedLabel as unknown as PolyLineProps;
           const points3d = polylineLabel.points3d || [];
@@ -320,7 +320,7 @@ export const VertexCoordinateInputs = ({
       selectedPoint,
       selectedLabel,
       selectedPointPosition,
-      setPolylinePointTransforms,
+      setStagedPolylineTransforms,
       currentActiveField,
       currentSampleId,
     ]

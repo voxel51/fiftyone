@@ -1,11 +1,8 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { lighterSceneAtom } from "@fiftyone/lighter";
-import * as fos from "@fiftyone/state";
 import { EntryKind } from "@fiftyone/state";
-import { isAnnotationSupported } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
-import { useRecoilValue } from "recoil";
+import React from "react";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -14,20 +11,35 @@ import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
+import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
-import { activePaths, schemas, showModal } from "./state";
+import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
+import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
+import { usePrimitivesCount } from "./usePrimitivesCount";
 
-const showImportPage = atom((get) => !get(activePaths).length);
+const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
-const GROUP_UNSUPPORTED = (
-  <p>
-    Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-    <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-    you want to label.
-  </p>
-);
+const DISABLED_MESSAGES: Record<
+  Exclude<AnnotationDisabledReason, null>,
+  React.ReactNode
+> = {
+  generatedView: (
+    <p>
+      Annotation isn&rsquo;t supported for patches, frames, clips, or
+      materialized views.
+    </p>
+  ),
+  groupedDataset: (
+    <p>
+      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
+      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
+      you want to label.
+    </p>
+  ),
+  videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
+};
 
 const Container = styled.div`
   flex: 1;
@@ -51,6 +63,7 @@ const Loading = () => {
 
 const AnnotateSidebar = () => {
   useLabels();
+  usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
   if (editing) return null;
@@ -80,39 +93,47 @@ const AnnotateSidebar = () => {
             };
           }
 
+          if (entry.kind === EntryKind.PATH) {
+            return {
+              children: <PrimitiveEntry path={entry.path} />,
+              disabled: false,
+            };
+          }
+
           throw new Error("unexpected");
         }}
         useEntries={useEntries}
+        modal={true}
       />
     </>
   );
 };
 
-const Annotate = () => {
+interface AnnotateProps {
+  disabledReason: AnnotationDisabledReason;
+}
+
+const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
-  const loading = useAtomValue(schemas) === null;
+  const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
-  const scene = useAtomValue(lighterSceneAtom);
 
-  const mediaType = useRecoilValue(fos.mediaType);
-  const annotationSupported = isAnnotationSupported(mediaType);
+  const isDisabled = disabledReason !== null;
   const disabledMsg =
-    !annotationSupported && mediaType === "group"
-      ? GROUP_UNSUPPORTED
-      : undefined;
+    disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
-  if (annotationSupported && (loading || !scene)) {
+  if (!isDisabled && loading) {
     return <Loading />;
   }
 
   return (
     <>
       {editing && <Edit key="edit" />}
-      {showImport ? (
+      {showImport || isDisabled ? (
         <ImportSchema
           key="import"
-          disabled={!annotationSupported}
+          disabled={isDisabled}
           disabledMsg={disabledMsg}
         />
       ) : (

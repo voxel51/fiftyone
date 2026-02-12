@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import * as PIXI from "pixi.js";
@@ -62,8 +62,11 @@ export class PixiResourceLoader implements ResourceLoader {
 
     await Assets.init({
       preferences: {
-        preferCreateImageBitmap: true,
-        preferWorkers: true,
+        // Note: having these on will incur a `fetch` request
+        // that requires a CORS preflight request.
+        // Keep these off.
+        preferCreateImageBitmap: false,
+        preferWorkers: false,
       },
       texturePreference: {
         resolution,

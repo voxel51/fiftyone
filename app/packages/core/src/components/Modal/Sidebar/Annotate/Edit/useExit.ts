@@ -1,24 +1,30 @@
+import { CommandContextManager } from "@fiftyone/commands";
 import {
   BoundingBoxOverlay,
   TransformOverlayCommand,
   UpdateLabelCommand,
   useLighter,
 } from "@fiftyone/lighter";
+import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
 import {
-  polylinePointTransformsAtom,
   selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
 } from "@fiftyone/looker-3d/src/state";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { current, currentData, currentOverlay, savedLabel } from "./state";
+import { current, currentOverlay, hasChanges, savedLabel } from "./state";
+import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit(revertLabel = true) {
   const setEditing = useSetAtom(editing);
+  const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
   const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
+  const hasChanged = useAtomValue(hasChanges);
 
   /**
    * 3D SPECIFIC IMPORTS
@@ -26,8 +32,11 @@ export default function useExit(revertLabel = true) {
    * COUPLED TO LIGHTER OR LOOKER-3D.
    */
 
-  const setPolylinePointTransforms = useSetRecoilState(
-    polylinePointTransformsAtom
+  const setStagedPolylineTransforms = useSetRecoilState(
+    stagedPolylineTransformsAtom
+  );
+  const setStagedCuboidTransforms = useSetRecoilState(
+    stagedCuboidTransformsAtom
   );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
@@ -38,7 +47,15 @@ export default function useExit(revertLabel = true) {
 
   return useCallback(() => {
     const store = getDefaultStore();
-    store.get(currentOverlay)?.setSelected?.(false);
+    const overlay = store.get(currentOverlay);
+
+    if (overlay) {
+      scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
+      if (TypeGuards.isHoverable(overlay)) {
+        overlay.onHoverLeave?.();
+      }
+    }
+
     const label = store.get(savedLabel);
     const unsaved = store.get(current);
 
@@ -47,18 +64,22 @@ export default function useExit(revertLabel = true) {
      * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
-    setPolylinePointTransforms(null);
+    setStagedPolylineTransforms({});
+    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
      */
 
-    // We are leaving editing mode, clear the stack
-    scene?.clearUndoRedoStack();
-
-    if (!label || !revertLabel) {
+    CommandContextManager.instance().clearUndoRedoStack();
+    const resetEditingState = () => {
       setSaved(null);
       setEditing(null);
+      setActivePrimitive(null);
+    };
+
+    if (!label || !revertLabel) {
+      resetEditingState();
       return;
     }
 
@@ -66,21 +87,28 @@ export default function useExit(revertLabel = true) {
     if (unsaved?.isNew) {
       removeOverlay(unsaved?.overlay.id);
       scene?.exitInteractiveMode();
-      setEditing(null);
-      setSaved(null);
+      resetEditingState();
       return;
     }
 
     // return the label to the last "saved" state
-    label && store.set(currentData, label);
+    if (label && unsaved) {
+      store.set(current, {
+        ...unsaved,
+        data: label,
+      });
+    }
 
-    overlay &&
+    if (overlay) {
       scene?.executeCommand(
         new UpdateLabelCommand(overlay, overlay.label, label)
       );
 
-    if (overlay instanceof BoundingBoxOverlay) {
-      overlay.label.bounding_box &&
+      if (
+        hasChanged &&
+        overlay instanceof BoundingBoxOverlay &&
+        overlay.label.bounding_box
+      ) {
         scene?.executeCommand(
           new TransformOverlayCommand(
             overlay,
@@ -89,10 +117,10 @@ export default function useExit(revertLabel = true) {
             scene?.convertRelativeToAbsolute(overlay.label.bounding_box)
           )
         );
+      }
     }
 
-    setSaved(null);
-    setEditing(null);
+    resetEditingState();
   }, [
     scene,
     setEditing,
@@ -100,7 +128,9 @@ export default function useExit(revertLabel = true) {
     overlay,
     revertLabel,
     removeOverlay,
-    setPolylinePointTransforms,
+    setStagedPolylineTransforms,
+    setStagedCuboidTransforms,
     setSelectedLabelForAnnotation,
+    setStagedCuboidTransforms,
   ]);
 }

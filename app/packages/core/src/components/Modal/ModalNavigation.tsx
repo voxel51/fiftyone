@@ -11,6 +11,11 @@ import useConfirmExit from "./Sidebar/Annotate/Confirmation/useConfirmExit";
 import useExit from "./Sidebar/Annotate/Edit/useExit";
 import useSave from "./Sidebar/Annotate/Edit/useSave";
 import { createDebouncedNavigator } from "./debouncedNavigator";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
 
 const Arrow = styled.span<{
   $isRight?: boolean;
@@ -122,38 +127,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     };
   }, [nextNavigator, previousNavigator]);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-
-      // Prevent navigation when editing text in textarea (e.g., Monaco Editor)
-      if (active?.tagName === "TEXTAREA") {
-        return;
-      }
-
-      // Prevent navigation when editing text in input fields
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
-      }
-
-      if (e.altKey || e.ctrlKey || e.metaKey) {
-        return;
-      }
-
-      if (e.key === "ArrowLeft") {
-        previousNavigator.navigate();
-      } else if (e.key === "ArrowRight") {
-        nextNavigator.navigate();
-      }
-    },
-    [nextNavigator, previousNavigator]
-  );
-
-  fos.useEventHandler(document, "keyup", keyboardHandler);
   const { confirmExit } = useConfirmExit(useExit(), useSave());
-
   const next = useCallback(
     () => confirmExit(nextNavigator.navigate),
     [confirmExit, nextNavigator]
@@ -163,6 +137,27 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
     () => confirmExit(previousNavigator.navigate),
     [confirmExit, previousNavigator]
   );
+
+  const keyBindings = useMemo(() => {
+    return [
+      {
+        commandId: KnownCommands.ModalPreviousSample,
+        sequence: "ArrowLeft",
+        handler: previous,
+        label: "Previous",
+        description: "Previous Sample",
+      },
+      {
+        commandId: KnownCommands.ModalNextSample,
+        sequence: "ArrowRight",
+        handler: next,
+        label: "Next",
+        description: "Next Sample",
+      },
+    ];
+  }, [previous, next]);
+
+  useKeyBindings(KnownContexts.Modal, keyBindings);
 
   if (!modal) {
     return null;

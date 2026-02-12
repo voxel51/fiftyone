@@ -1,12 +1,18 @@
+import {
+  useAutoSave,
+  useRegisterAnnotationCommandHandlers,
+  useRegisterAnnotationEventHandlers,
+} from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
 import { OPERATOR_PROMPT_AREAS, OperatorPromptArea } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
+import { ModalMode, useModalMode } from "@fiftyone/state";
 import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { Fragment, useCallback, useMemo, useRef } from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -17,6 +23,12 @@ import { Sidebar } from "./Sidebar";
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import {
+  KnownCommands,
+  KnownContexts,
+  useKeyBindings,
+} from "@fiftyone/commands";
+import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -51,23 +63,46 @@ const SpacesContainer = styled.div`
   z-index: 1501;
 `;
 
+const ModalCommandHandlersRegistration = () => {
+  useRegisterAnnotationCommandHandlers();
+  useRegisterAnnotationEventHandlers();
+  const modalMode = useModalMode();
+
+  const { isEnabled: enableAutoSave } = useFeature({
+    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
+  });
+  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+
+  return <Fragment />;
+};
+
 const Modal = () => {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const pointerDownTargetRef = useRef<EventTarget | null>(null);
 
   const clearModal = fos.useClearModal();
 
+  const onPointerDownModalWrapper = useCallback((e: React.PointerEvent) => {
+    // Track where the pointer down started
+    pointerDownTargetRef.current = e.target;
+  }, []);
+
   const onClickModalWrapper = useCallback(
     (e: React.MouseEvent) => {
-      if (e.target === wrapperRef.current) {
+      // Only close if both pointer down and pointer up happened on the wrapper
+      if (
+        e.target === wrapperRef.current &&
+        pointerDownTargetRef.current === wrapperRef.current
+      ) {
         clearModal();
       }
+      // Reset the tracked target
+      pointerDownTargetRef.current = null;
     },
     [clearModal]
   );
 
   const { jsonPanel, helpPanel } = useLookerHelpers();
-
-  const select = fos.useSelectSample();
 
   const modalCloseHandler = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -103,76 +138,87 @@ const Modal = () => {
     [clearModal, jsonPanel, helpPanel]
   );
 
-  const keysHandler = useRecoilCallback(
+  const selectCallback = useRecoilCallback(
     ({ snapshot, set }) =>
-      async (e: KeyboardEvent) => {
-        const active = document.activeElement;
-        if (
-          active?.tagName === "TEXTAREA" ||
-          active instanceof HTMLTextAreaElement
-        ) {
-          return;
-        }
-
-        if (active?.tagName === "INPUT" || active instanceof HTMLInputElement) {
-          const inputElement = active as HTMLInputElement;
-          if (inputElement.type === "text") {
-            return;
-          }
-        }
-
-        if (e.repeat) {
-          return;
-        }
-
-        if (e.altKey && e.code === "Space") {
-          const hoveringSampleId = (
-            await snapshot.getPromise(fos.hoveredSample)
-          )?._id;
-          if (hoveringSampleId) {
-            select(hoveringSampleId);
-          } else {
-            const modalSampleId = await snapshot.getPromise(fos.modalSampleId);
-            if (modalSampleId) {
-              select(modalSampleId);
+      async () => {
+        const current = await snapshot.getPromise(fos.modalSelector);
+        set(fos.selectedSamples, (selected) => {
+          const newSelected = new Set([...Array.from(selected)]);
+          if (current?.id) {
+            if (newSelected.has(current.id)) {
+              newSelected.delete(current.id);
+            } else {
+              newSelected.add(current.id);
             }
           }
-        } else if (e.key === "s") {
-          set(fos.sidebarVisible(true), (prev) => !prev);
-        } else if (e.key === "f") {
-          set(fos.fullscreen, (prev) => !prev);
-        } else if (e.key === "x") {
-          const current = await snapshot.getPromise(fos.modalSelector);
-          set(fos.selectedSamples, (selected) => {
-            const newSelected = new Set([...Array.from(selected)]);
-            if (current?.id) {
-              if (newSelected.has(current.id)) {
-                newSelected.delete(current.id);
-              } else {
-                newSelected.add(current.id);
-              }
-            }
-
-            return newSelected;
-          });
-        } else if (e.key === "Escape") {
-          const mediaType = await snapshot.getPromise(fos.mediaType);
-          const is3dVisible = await snapshot.getPromise(
-            fos.groupMediaIs3dVisible
-          );
-          if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
-            // we handle close logic in modal + other places
-            return;
-          }
-
-          await modalCloseHandler();
-        }
+          return newSelected;
+        });
       },
     []
   );
 
-  fos.useEventHandler(document, "keydown", keysHandler);
+  const sidebarFn = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        set(fos.sidebarVisible(true), (prev) => !prev);
+      },
+    []
+  );
 
+  const fullscreenFn = useRecoilCallback(
+    ({ set }) =>
+      async () => {
+        set(fos.fullscreen, (prev) => !prev);
+      },
+    []
+  );
+
+  const closeFn = useRecoilCallback(
+    ({ snapshot }) =>
+      async () => {
+        const mediaType = await snapshot.getPromise(fos.mediaType);
+        const is3dVisible = await snapshot.getPromise(
+          fos.groupMediaIs3dVisible
+        );
+        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+          // we handle close logic in modal + other places
+          return;
+        }
+
+        await modalCloseHandler();
+      },
+    [modalCloseHandler]
+  );
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalClose,
+      sequence: "Escape",
+      handler: closeFn,
+      label: "Close",
+      description: "Close the window.",
+    },
+    {
+      commandId: KnownCommands.ModalFullScreenToggle,
+      sequence: "f",
+      handler: fullscreenFn,
+      label: "Fullscreen",
+      description: "Enter/Exit full screen mode",
+    },
+    {
+      commandId: KnownCommands.ModalSidebarToggle,
+      sequence: "s",
+      handler: sidebarFn,
+      label: "Sidebar",
+      description: "Show/Hide the sidebar",
+    },
+    {
+      commandId: KnownCommands.ModalSelect,
+      sequence: "x",
+      handler: selectCallback,
+      label: "Select",
+      description: "Select Sample",
+    },
+  ]);
   const isFullScreen = useRecoilValue(fos.fullscreen);
 
   const { closePanels } = useLookerHelpers();
@@ -229,10 +275,12 @@ const Modal = () => {
     >
       <ModalWrapper
         ref={wrapperRef}
+        onPointerDown={onPointerDownModalWrapper}
         onClick={onClickModalWrapper}
         data-cy="modal"
       >
         <Actions />
+        <ModalCommandHandlersRegistration />
         <TooltipInfo />
         <ModalContainer style={{ ...screenParams }}>
           <OperatorPromptArea area={OPERATOR_PROMPT_AREAS.DRAWER_LEFT} />

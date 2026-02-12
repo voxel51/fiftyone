@@ -1,15 +1,8 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import type { EventBus } from "../event/EventBus";
-import type {
-  Dimensions2D,
-  DrawStyle,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 
 /**
  * Types of image sources that can be rendered.
@@ -62,9 +55,6 @@ export interface ResourceOptions {
  * 2D renderer interface.
  */
 export interface Renderer2D {
-  // Infrastructure
-  eventBus?: EventBus;
-
   // Tick loop
   addTickHandler(onFrame: () => void): void;
   resetTickHandler(): void;
@@ -83,7 +73,7 @@ export interface Renderer2D {
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D;
+  ): Rect;
   drawLine(
     start: Point,
     end: Point,
@@ -154,6 +144,18 @@ export interface Renderer2D {
    * @returns Current scaling factor.
    */
   getScale(): number;
+
+  /**
+   * Returns the current viewport position (pan offset).
+   * @returns The viewport position { x, y }.
+   */
+  getViewportPosition(): { x: number; y: number };
+
+  /**
+   * Check if the renderer is initialized and ready to use.
+   * @returns True if the renderer is ready.
+   */
+  isReady(): boolean;
 
   /**
    * Reset tick handler, and remove all children from the viewport.

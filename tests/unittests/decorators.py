@@ -1,7 +1,7 @@
 """
 Decorator utils for unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -72,7 +72,7 @@ def skip_windows(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         if platform.system() == "Windows":
-            return unittest.skip(
+            raise unittest.SkipTest(
                 "We've been instructed to skip this test on Windows..."
             )
 

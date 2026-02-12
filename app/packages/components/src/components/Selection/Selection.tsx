@@ -2,13 +2,13 @@ import { IconButton, useTheme, ColoredDot } from "@fiftyone/components";
 import { DEFAULT_SELECTED } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { Select, Typography } from "@mui/material";
+import { ListSubheader, MenuItem, Select, Typography } from "@mui/material";
 import { debounce } from "lodash";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { CustomBox, LastOption, ViewContainer } from "./styledComponents";
+import { CustomBox, LastOption } from "./styledComponents";
 
 type SelectionProps = {
   id: string;
@@ -71,6 +71,7 @@ export default function Selection(props: SelectionProps) {
 
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     placeholder: searchPlaceholder,
@@ -94,17 +95,36 @@ export default function Selection(props: SelectionProps) {
 
   const selectionId = id;
 
+  // Ensure selected item is always in the items list for MUI Select
+  const isSelectedInItems = items.some((item) => item.id === selectedId);
+  const itemsWithSelected = isSelectedInItems ? items : [selected, ...items];
+
   return (
-    <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
+    <div
+      ref={containerRef}
+      style={{ width: "100%" }}
+      data-cy={`${id}-selection-container`}
+    >
       <Select
         MenuProps={{
           sx: {
             // default dialog z-index is 1300
             zIndex: insideModal ? 2400 : undefined,
           },
+          PaperProps: {
+            sx: {
+              width: containerRef.current?.clientWidth,
+            },
+          },
           MenuListProps: {
+            "data-cy": `${id}-selection-view`,
             sx: {
               paddingY: 0,
+              zIndex: 999,
+              maxHeight: "400px",
+              width: "100%",
+              overflowY: "auto",
+              background: theme.background.level2,
             },
           },
         }}
@@ -164,34 +184,40 @@ export default function Selection(props: SelectionProps) {
         }}
       >
         {onSearch && (
-          <SearchBox
-            id="saved-views"
-            debouncedSearch={debouncedSearch}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            searchPlaceholder={searchPlaceholder}
-            searchValue={searchValue}
-          />
+          <ListSubheader sx={{ padding: 0, background: "transparent" }}>
+            <SearchBox
+              id="saved-views"
+              debouncedSearch={debouncedSearch}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              searchPlaceholder={searchPlaceholder}
+              searchValue={searchValue}
+            />
+          </ListSubheader>
         )}
-        {!onSearch && headerComponent}
+        {!onSearch && headerComponent && (
+          <ListSubheader sx={{ padding: 0, background: "transparent" }}>
+            {headerComponent}
+          </ListSubheader>
+        )}
 
-        <ViewContainer
-          data-cy="selection-view"
-          width={hideActions ? "100%" : "270px"}
-        >
-          {items.map((itemProps) => {
-            const { id, color, label, slug } = itemProps;
-            return (
+        {itemsWithSelected.map((itemProps) => {
+          const { id, color, label, slug } = itemProps;
+          return (
+            <MenuItem
+              key={id || label}
+              value={id}
+              sx={{ padding: 0 }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsOpen(false);
+                setSelected(itemProps);
+              }}
+            >
               <SelectionOption
                 dataCy={`${selectionId}-${slug || "new"}-selection-option`}
-                key={id || label}
                 item={itemProps}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsOpen(false);
-                  setSelected(itemProps);
-                }}
                 isSelected={id === selectedId}
                 preDecorator={
                   <CustomBox
@@ -207,20 +233,18 @@ export default function Selection(props: SelectionProps) {
                 onEdit={onEdit}
                 hideActions={hideActions}
               />
-            );
-          })}
-        </ViewContainer>
+            </MenuItem>
+          );
+        })}
         {lastFixedOption && (
-          <LastOption
+          <ListSubheader
             key="create-view-option"
-            value="create-view-option"
-            label=""
-            onClick={(e) => {
-              e.preventDefault();
-            }}
+            component="div"
+            disableSticky
+            sx={{ padding: 0, background: "transparent" }}
           >
-            {lastFixedOption}
-          </LastOption>
+            <LastOption disabled={false}>{lastFixedOption}</LastOption>
+          </ListSubheader>
         )}
       </Select>
     </div>

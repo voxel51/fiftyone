@@ -1,14 +1,20 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { getEventBus, type EventDispatcher } from "@fiftyone/events";
 import { CONTAINS } from "../core/Scene2D";
-import type { EventBus } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
+import type { LighterEventGroup } from "../events";
 import { InteractionHandler } from "../interaction/InteractionManager";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { ResourceLoader } from "../resource/ResourceLoader";
-import type { DrawStyle, Point, RawLookerLabel, Rect } from "../types";
+import type {
+  DrawStyle,
+  Point,
+  RawLookerLabel,
+  Rect,
+  RenderMeta,
+} from "../types";
 
 /**
  * Base abstract class for all overlays.
@@ -28,9 +34,11 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   protected isDirty = false;
 
   protected renderer?: Renderer2D;
-  protected eventBus?: EventBus;
   protected resourceLoader?: ResourceLoader;
   protected currentStyle?: DrawStyle;
+
+  private _sceneId?: string;
+  private _eventBus?: EventDispatcher<LighterEventGroup>;
 
   constructor(id: string, field: string, label: Label) {
     this.id = id;
@@ -41,6 +49,16 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
 
   private _field: string;
   private _label: Label;
+
+  /**
+   * Gets the event bus, initializing it lazily with the sceneId if available.
+   */
+  protected get eventBus(): EventDispatcher<LighterEventGroup> {
+    if (!this._eventBus) {
+      this._eventBus = getEventBus<LighterEventGroup>(this._sceneId);
+    }
+    return this._eventBus;
+  }
 
   public get field(): string {
     return this._field;
@@ -74,14 +92,6 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
-   * Attaches the event bus to this overlay.
-   * @param bus - The event bus to attach.
-   */
-  attachEventBus(bus: EventBus): void {
-    this.eventBus = bus;
-  }
-
-  /**
    * Sets the resource loader for this overlay.
    * @param loader - The resource loader to use.
    */
@@ -90,22 +100,41 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
   }
 
   /**
+   * Sets the scene ID for this overlay.
+   * @param sceneId - The scene ID to use for the event bus channel.
+   */
+  setSceneId(sceneId: string | undefined): void {
+    this._sceneId = sceneId;
+    // Reset eventBus so it gets reinitialized with the new sceneId
+    this._eventBus = undefined;
+  }
+
+  /**
    * Renders the overlay using the provided renderer and style.
    * @param renderer - The renderer to use for drawing.
    * @param style - The drawing style to apply.
+   * @param meta - Rendering metadata containing canonical media bounds and overlay index.
    */
-  render(renderer: Renderer2D, style: DrawStyle | null): void | Promise<void> {
+  render(
+    renderer: Renderer2D,
+    style: DrawStyle | null,
+    meta: RenderMeta
+  ): void | Promise<void> {
     // Store the current style for use in other methods
     this.currentStyle = style || undefined;
 
-    this.renderImpl(renderer);
+    this.renderImpl(renderer, meta);
   }
 
   /**
    * Abstract method for subclasses to implement their specific rendering logic.
    * @param renderer - The renderer to use for drawing.
+   * @param meta - Rendering metadata containing canonical media bounds and overlay index.
    */
-  protected abstract renderImpl(renderer: Renderer2D): void | Promise<void>;
+  protected abstract renderImpl(
+    renderer: Renderer2D,
+    meta: RenderMeta
+  ): void | Promise<void>;
 
   /**
    * Gets the current draw style used for this overlay.
@@ -147,6 +176,10 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
     return this.constructor.name;
   }
 
+  isHovered(): boolean {
+    return this.isHoveredState;
+  }
+
   /**
    * Gets the container ID for this overlay.
    * @returns The container ID.
@@ -159,12 +192,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Emits an overlay-loaded event.
    */
   protected emitLoaded(): void {
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: LIGHTER_EVENTS.OVERLAY_LOADED,
-        detail: { id: this.id },
-      });
-    }
+    this.eventBus.dispatch("lighter:overlay-loaded", { id: this.id });
   }
 
   /**
@@ -172,12 +200,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param error - The error that occurred.
    */
   protected emitError(error: Error): void {
-    if (this.eventBus) {
-      this.eventBus.emit({
-        type: LIGHTER_EVENTS.OVERLAY_ERROR,
-        detail: { id: this.id, error },
-      });
-    }
+    this.eventBus.dispatch("lighter:overlay-error", { id: this.id, error });
   }
 
   /**
@@ -262,9 +285,9 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverEnter(point: Point, event: PointerEvent): boolean {
+  onHoverEnter(point: Point | null, event: PointerEvent | null): boolean {
     this.isHoveredState = true;
-
+    this.markDirty();
     return true;
   }
 
@@ -275,9 +298,9 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean {
+  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean {
     this.isHoveredState = false;
-
+    this.markDirty();
     return true;
   }
 
@@ -288,7 +311,7 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * @param event - The original pointer event.
    * @returns True if the event was handled.
    */
-  onHoverMove(point: Point, event: PointerEvent): boolean {
+  onHoverMove(point?: Point | null, event?: PointerEvent | null): boolean {
     return true;
   }
 

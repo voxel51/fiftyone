@@ -2,7 +2,7 @@
 Utilities for working with the
 `Labeled Faces in the Wild dataset <http://vis-www.cs.umass.edu/lfw>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -46,7 +46,8 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         for test_folder in pb(test_folders):
             indir = os.path.join(images_dir, test_folder)
             outdir = os.path.join(dataset_dir, "test", test_folder)
-            etau.move_dir(indir, outdir)
+            if os.path.exists(indir):
+                etau.move_dir(indir, outdir)
 
     # Train split
     logger.info("Creating train split...")
@@ -55,15 +56,16 @@ def download_lfw_dataset(dataset_dir, scratch_dir=None, cleanup=True):
         for train_folder in pb(train_folders):
             indir = os.path.join(images_dir, train_folder)
             outdir = os.path.join(dataset_dir, "train", train_folder)
-            etau.move_dir(indir, outdir)
+            if os.path.exists(indir):
+                etau.move_dir(indir, outdir)
 
     if cleanup:
         etau.delete_dir(scratch_dir)
 
 
-_VIDEOS_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/lfw.tgz"
-_TEST_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTest.txt"
-_TRAIN_DOWNLOAD_LINK = "http://vis-www.cs.umass.edu/lfw/peopleDevTrain.txt"
+_VIDEOS_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976018"
+_TEST_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976009"
+_TRAIN_DOWNLOAD_LINK = "https://ndownloader.figshare.com/files/5976012"
 
 
 def _download_videos(scratch_dir):

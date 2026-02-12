@@ -1,17 +1,16 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { useLookerOptions } from "@fiftyone/state";
 import { useAtom } from "jotai";
 import { useEffect, useRef } from "react";
 import {
-  EventBus,
-  LIGHTER_EVENTS,
   PixiRenderer2D,
   Scene2D,
   globalPixiResourceLoader,
   lighterSceneAtom,
+  useLighterEventBus,
 } from "../index";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type
@@ -34,17 +33,14 @@ export const useLighterSetupWithPixi = (
   sceneId: string
 ) => {
   const [scene, setScene] = useAtom(lighterSceneAtom);
+  const eventBus = useLighterEventBus(sceneId);
 
   const rendererRef = useRef<PixiRenderer2D | null>(null);
-  const eventBusRef = useRef<EventBus | null>(null);
 
   useEffect(() => {
     if (!stableCanvas || !sceneId) return;
 
-    const eventBus = new EventBus();
-    eventBusRef.current = eventBus;
-
-    const renderer = new PixiRenderer2D(stableCanvas, eventBus);
+    const renderer = new PixiRenderer2D(stableCanvas, sceneId);
     rendererRef.current = renderer;
 
     // Extract only the options we need for Scene2D
@@ -56,7 +52,6 @@ export const useLighterSetupWithPixi = (
 
     const newScene = new Scene2D({
       renderer,
-      eventBus: eventBusRef.current,
       canvas: stableCanvas,
       resourceLoader: globalPixiResourceLoader,
       options: sceneOptions,
@@ -81,16 +76,13 @@ export const useLighterSetupWithPixi = (
 
   useEffect(() => {
     if (scene && !scene.isDestroyed) {
-      scene.dispatch_DANGEROUSLY({
-        type: LIGHTER_EVENTS.SCENE_OPTIONS_CHANGED,
-        detail: {
-          activePaths: options.activePaths,
-          showOverlays: options.showOverlays,
-          alpha: options.alpha,
-        },
+      eventBus.dispatch("lighter:scene-options-changed", {
+        activePaths: options.activePaths,
+        showOverlays: options.showOverlays,
+        alpha: options.alpha,
       });
     }
-  }, [scene, options]);
+  }, [scene, options, eventBus]);
 
   return { scene };
 };

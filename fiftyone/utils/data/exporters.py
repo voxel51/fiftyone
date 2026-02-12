@@ -1,7 +1,7 @@
 """
 Dataset exporters.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1929,6 +1929,16 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
             info[
                 "default_skeleton"
             ] = sample_collection._serialize_default_skeleton()
+
+        if sample_collection.camera_intrinsics:
+            info[
+                "camera_intrinsics"
+            ] = sample_collection._serialize_camera_intrinsics()
+
+        if sample_collection.static_transforms:
+            info[
+                "static_transforms"
+            ] = sample_collection._serialize_static_transforms()
 
         if sample_collection.app_config.is_custom():
             info["app_config"] = sample_collection.app_config.to_dict(

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 export const LABEL_ARCHETYPE_PRIORITY = {
@@ -12,6 +12,22 @@ export const LABEL_ARCHETYPE_PRIORITY = {
  * Default padding for text backgrounds
  */
 export const DEFAULT_TEXT_PADDING = 4;
+
+/**
+ * Default gap between stacked text boxes
+ */
+export const TAB_GAP_DEFAULT = 2;
+
+/**
+ * Default lengths of dashes
+ */
+export const TAB_DASH_SELECTED = 6;
+export const TAB_DASH_HOVERED = 3;
+
+/**
+ * Default width of dashed border
+ */
+export const TAB_DASH_WIDTH = 2;
 
 /**
  * Default stroke width for overlays (matches Looker's STROKE_WIDTH)

@@ -211,6 +211,9 @@ export default function PlotlyView(props: ViewPropsType) {
     }, 500); // Delay to allow for layout to be animated
   }, [relativeLayout?.w, relativeLayout?.x, relativeLayout?.COLS]);
 
+  const plotHeight = view?.height || "100%";
+  const plotWidth = view?.width || "100%";
+
   return (
     <Box
       {...getComponentProps(props, "container")}
@@ -220,7 +223,7 @@ export default function PlotlyView(props: ViewPropsType) {
       <Plot
         revision={revision}
         data={mergedData}
-        style={{ height: "100%", width: "100%", zIndex: 1 }}
+        style={{ height: plotHeight, width: plotWidth, zIndex: 1 }}
         config={mergedConfig}
         layout={mergedLayout}
         {...eventHandlers}

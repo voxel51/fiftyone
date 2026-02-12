@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
@@ -39,17 +39,43 @@ export interface DrawStyle {
   selectionColor?: string;
 }
 
+export interface Anchor {
+  horizontal?: "left" | "center" | "right";
+  vertical?: "top" | "center" | "bottom";
+}
+
+export interface Offset {
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+}
+
+export interface Dashline {
+  strokeStyle: string;
+  lineWidth: number;
+  dashPattern: number[];
+}
+
+export type Direction = "top" | "bottom" | "left" | "right";
+
 /**
  * Text rendering options.
  */
 export interface TextOptions {
   font?: string;
   fontSize?: number;
+  fontStyle?: "normal" | "italic" | "oblique";
   fontColor?: string;
   backgroundColor?: string;
   padding?: number;
   maxWidth?: number;
   height?: number;
+  anchor?: Anchor;
+  offset?: Offset;
+  rounded?: number;
+  tab?: Direction;
+  dashline?: Dashline;
 }
 
 /**
@@ -187,13 +213,13 @@ export interface Hoverable {
   } | null;
 
   /** Handle hover enter event */
-  onHoverEnter?(point: Point, event: PointerEvent): boolean;
+  onHoverEnter?(point: Point | null, event: PointerEvent | null): boolean;
 
   /** Handle hover leave event */
-  onHoverLeave?(point: Point, event: PointerEvent): boolean;
+  onHoverLeave?(point?: Point | null, event?: PointerEvent | null): boolean;
 
   /** Handle hover move event */
-  onHoverMove?(point: Point, event: PointerEvent): boolean;
+  onHoverMove?(point?: Point | null, event?: PointerEvent | null): boolean;
 }
 
 /**
@@ -209,4 +235,9 @@ export class BoundingBoxPersistence {
     public readonly bounds: Rect,
     public readonly misc: Record<string, any> = {}
   ) {}
+}
+
+export interface RenderMeta {
+  canonicalMediaBounds: Rect;
+  overlayIndex: number;
 }

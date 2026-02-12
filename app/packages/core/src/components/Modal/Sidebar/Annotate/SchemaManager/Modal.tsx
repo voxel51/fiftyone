@@ -1,91 +1,49 @@
-import { West as BackIcon, Close as CloseIcon } from "@mui/icons-material";
 import { Typography } from "@mui/material";
+import {
+  Button,
+  Icon,
+  IconName,
+  Orientation,
+  Size,
+  Spacing,
+  Stack,
+  Variant,
+} from "@voxel51/voodo";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import React, { useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
-import styled from "styled-components";
 import { ItemLeft } from "../Components";
-import { activeSchemaTab, schema, showModal } from "../state";
-import ActiveSchema from "./ActiveSchema";
-import EditAnnotationFieldSchema from "./EditAnnotationFieldSchema";
-import FieldsTabs from "./FieldsTabs";
-import OtherFields from "./OtherFields";
-import { currentField } from "./state";
+import { currentField, showModal } from "../state";
+import EditFieldLabelSchema from "./EditFieldLabelSchema";
+import GUIView, {
+  selectedActiveFields,
+  selectedHiddenFields,
+  useActivateFields,
+  useDeactivateFields,
+} from "./GUIView";
+import {
+  BackButton,
+  CloseButton,
+  ModalBackground,
+  ModalContainer,
+  ModalFooter,
+  ModalHeader,
+} from "./styled";
 
-const Back = styled(BackIcon)`
-  cursor: pointer;
-  height: 3rem !important;
-  padding: 0.5rem;
-  width: 3rem !important;
-
-  &:hover {
-    background: ${({ theme }) => theme.background.level1};
-    border-radius: 1.5rem;
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
-const Close = styled(CloseIcon)`
-  cursor: pointer;
-  height: 3rem !important;
-  padding: 0.5rem;
-  width: 3rem !important;
-
-  &:hover {
-    background: ${({ theme }) => theme.background.level1};
-    border-radius: 1.5rem;
-    color: ${({ theme }) => theme.text.primary};
-  }
-`;
-
-const Background = styled.div`
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  top: 0;
-  left: 0;
-  z-index: 1001;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-`;
-
-const Container = styled.div`
-  width: 800px;
-  max-width: 90%;
-  height: 90%;
-  padding: 2rem;
-  background: ${({ theme }) => theme.background.level2};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  border-radius: 4px;
-  display: flex;
-  justify-content: space-between;
-  flex-direction: column;
-  position: relative;
-`;
-
-export const Header = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 36px;
-`;
+// Re-export for backwards compatibility
+export { ModalHeader as Header } from "./styled";
 
 const Heading = () => {
   const [field, setField] = useAtom(currentField);
-  const type = useAtomValue(schema(field ?? ""))?.type;
+
   if (!field) {
     return <Typography variant="h5">Schema manager</Typography>;
   }
 
   return (
     <ItemLeft>
-      <Back color="secondary" onClick={() => setField(null)} />
-      <Typography variant="h5">{field}</Typography>
-      <Typography color="secondary" variant="h5">
-        {type}
-      </Typography>
+      <BackButton color="secondary" onClick={() => setField(null)} />
+      <Typography variant="h5">Edit field schema</Typography>
     </ItemLeft>
   );
 };
@@ -98,30 +56,74 @@ const Subheading = () => {
   }
 
   return (
-    <>
-      <Typography color="secondary" padding="1rem 0">
-        Import schemas to get started with Annotation
-      </Typography>
-      <Header style={{ margin: "1rem 0" }}>
-        <FieldsTabs />
-      </Header>
-    </>
+    <Typography color="secondary" padding="1rem 0">
+      Manage your label schemas
+    </Typography>
   );
 };
 
 const Page = () => {
   const field = useAtomValue(currentField);
-  const tab = useAtomValue(activeSchemaTab);
 
   if (field) {
-    return <EditAnnotationFieldSchema path={field} />;
+    return <EditFieldLabelSchema field={field} />;
   }
 
-  if (tab === "active") {
-    return <ActiveSchema />;
+  return <GUIView />;
+};
+
+const SchemaManagerFooter = () => {
+  const field = useAtomValue(currentField);
+  const activeSelectedCount = useAtomValue(selectedActiveFields).size;
+  const hiddenSelectedCount = useAtomValue(selectedHiddenFields).size;
+  const activateFields = useActivateFields();
+  const deactivateFields = useDeactivateFields();
+
+  // Don't show footer when editing a field (it has its own footer)
+  if (field) {
+    return null;
   }
 
-  return <OtherFields />;
+  const hasSelection = hiddenSelectedCount > 0 || activeSelectedCount > 0;
+
+  // Only show footer when there's a selection to move
+  if (!hasSelection) {
+    return null;
+  }
+
+  const isMovingToVisible = hiddenSelectedCount > 0;
+  const selectedCount = isMovingToVisible
+    ? hiddenSelectedCount
+    : activeSelectedCount;
+  const onMove = isMovingToVisible ? activateFields : deactivateFields;
+
+  return (
+    <ModalFooter>
+      <Stack
+        orientation={Orientation.Row}
+        spacing={Spacing.Sm}
+        style={{ alignItems: "center" }}
+      >
+        <Button size={Size.Md} variant={Variant.Secondary} onClick={onMove}>
+          {isMovingToVisible ? (
+            <Icon
+              name={IconName.ChevronTop}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          ) : (
+            <Icon
+              name={IconName.ChevronBottom}
+              size={Size.Md}
+              style={{ marginRight: 4 }}
+            />
+          )}
+          Move {selectedCount} to {isMovingToVisible ? "visible" : "hidden"}{" "}
+          fields
+        </Button>
+      </Stack>
+    </ModalFooter>
+  );
 };
 
 const Modal = () => {
@@ -143,22 +145,20 @@ const Modal = () => {
   }, [element]);
 
   return createPortal(
-    <Background onClick={() => show(false)}>
-      <Container onClick={(e) => e.stopPropagation()}>
-        <Header>
+    <ModalBackground onClick={() => show(false)}>
+      <ModalContainer onClick={(e) => e.stopPropagation()}>
+        <ModalHeader>
           <Heading />
-          <Close
-            color="secondary"
-            style={{ height: "3rem", width: "3rem" }}
-            onClick={() => show(false)}
-          />
-        </Header>
+          <CloseButton color="secondary" onClick={() => show(false)} />
+        </ModalHeader>
 
         <Subheading />
 
         <Page />
-      </Container>
-    </Background>,
+
+        <SchemaManagerFooter />
+      </ModalContainer>
+    </ModalBackground>,
     element
   );
 };

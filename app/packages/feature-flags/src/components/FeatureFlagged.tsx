@@ -8,18 +8,27 @@ import { FeatureFlag } from "../client";
  * @param feature Feature identifier
  * @param children Component to render if the feature is enabled
  * @param fallback Optional fallback component to render if the feature is disabled
+ * @param resolving Optional component to render while the check is resolving
+ * @param enableTracking If enabled, will emit tracking events
  */
 export const FeatureFlagged = ({
   feature,
   children,
   fallback,
+  resolving,
+  enableTracking,
 }: {
   feature: FeatureFlag;
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  resolving?: React.ReactNode;
+  enableTracking?: boolean;
 }) => {
-  const isFeatureEnabled = useFeature({ feature });
+  const { isEnabled, isResolved } = useFeature({ feature, enableTracking });
 
-  const content = isFeatureEnabled ? children : fallback ?? <Fragment />;
-  return <>{content}</>;
+  if (!isResolved) {
+    return resolving ?? <Fragment />;
+  }
+
+  return isEnabled ? children : fallback ?? <Fragment />;
 };

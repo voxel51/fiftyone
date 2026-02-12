@@ -1,4 +1,4 @@
-import type { AnnotationLabel } from "@fiftyone/state";
+import { type AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   CLASSIFICATIONS,
@@ -9,12 +9,32 @@ import {
 } from "@fiftyone/utilities";
 import type { PrimitiveAtom } from "jotai";
 import { atom } from "jotai";
-import { atomFamily, atomWithDefault, atomWithReset } from "jotai/utils";
-import { activeSchemas, fieldType, schemaConfig } from "../state";
+import { atomFamily, atomWithReset } from "jotai/utils";
+import { capitalize } from "lodash";
+import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
+import { activePrimitiveAtom } from "./useActivePrimitive";
 
 export const savedLabel = atom<AnnotationLabel["data"] | null>(null);
 
+/**
+ * Atom that tracks the current editing state for annotations.
+ *
+ * This atom has three possible value types, each representing a different state:
+ *
+ * 1. `null` - No label is being edited
+ *
+ * 2. `PrimitiveAtom<AnnotationLabel>` - A label is being edited. The atom reference
+ *    points to the actual label data being modified.
+ *
+ * 3. `LabelType` (string: "Classification" | "Detection" | "Polyline") - The user
+ *    wants to create a new label of this type, but no schema fields exist for it.
+ *    This triggers the "Add Schema" UI flow (see Field.tsx for code
+ *    that conditionally renders the AddSchema component).
+ *
+ * TODO: Simplify this atom's usage by putting it behind a cleaner interface.
+ * The union type makes the API confusing.
+ */
 export const editing = atomWithReset<
   PrimitiveAtom<AnnotationLabel> | LabelType | null
 >(null);
@@ -87,8 +107,8 @@ export const currentField = atom(
     if (!label) {
       return;
     }
-    label.overlay.updateField(path);
-    label.overlay.updateLabel({ _id: label.data._id });
+    label.overlay?.updateField(path);
+    label.overlay?.updateLabel({ _id: label.data._id });
     set(current, { ...label, path, data: { _id: label.data._id } });
   }
 );
@@ -103,7 +123,7 @@ export const currentSchema = atom((get) => {
     throw new Error("no current field");
   }
 
-  return get(schemaConfig(field));
+  return get(labelSchemaData(field))?.label_schema;
 });
 
 export const currentDisabledFields = atom((get) => {
@@ -114,12 +134,14 @@ export const disabledFields = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = new Set<string>();
     const map = get(labelsByPath);
-    for (const path of get(fieldsOfType(type))) {
-      if (IS_LIST.has(get(fieldType(path)))) {
-        continue;
-      }
 
-      if (!map[path]?.length) {
+    for (const path of get(fieldsOfType(type))) {
+      const rawType = get(labelSchemaData(path)).type;
+      const schemaType = capitalize(rawType);
+      const isListType = IS_LIST.has(schemaType);
+      const hasLabels = map[path]?.length > 0;
+
+      if (isListType || !hasLabels) {
         continue;
       }
 
@@ -130,7 +152,7 @@ export const disabledFields = atomFamily((type: LabelType) =>
   })
 );
 
-export const currentType = atom<LabelType>((get) => {
+export const currentType = atom<LabelType | null>((get) => {
   const value = get(editing);
 
   if (typeof value === "string") {
@@ -145,11 +167,13 @@ export const currentType = atom<LabelType>((get) => {
       }
     }
   }
-
-  throw new Error("no type");
+  return null;
 });
 
-export const isEditing = atom((get) => get(editing) !== null);
+export const isEditing = atom((get) => {
+  if (get(activePrimitiveAtom) !== null) return true;
+  return get(editing) !== null;
+});
 
 export const isNew = atom((get) => {
   return typeof get(editing) === "string" || get(current)?.isNew;
@@ -158,8 +182,9 @@ export const isNew = atom((get) => {
 const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
-    for (const field in get(activeSchemas)) {
-      if (IS[type].has(get(fieldType(field)))) {
+
+    for (const field of get(activeLabelSchemas) ?? []) {
+      if (type && IS[type].has(get(fieldType(field)))) {
         fields.push(field);
       }
     }
@@ -171,6 +196,7 @@ const fieldsOfType = atomFamily((type: LabelType) =>
 export const defaultField = atomFamily((type: LabelType) =>
   atom((get) => {
     const disabled = get(disabledFields(type));
+
     for (const path of get(fieldsOfType(type))) {
       if (!disabled.has(path)) {
         return path;

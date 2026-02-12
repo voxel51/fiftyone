@@ -1256,6 +1256,21 @@ Loading datasets from the Hub
 
 To load a dataset from the Hugging Face Hub, you can use the
 :func:`load_from_hub() <fiftyone.utils.huggingface.load_from_hub>` function.
+
+.. note::
+
+    If you encounter HTTP 429 (Too Many Requests) errors when downloading
+    large datasets, upgrade to ``huggingface_hub>=1.1.3``:
+
+    .. code-block:: shell
+
+        pip install --upgrade "huggingface_hub>=1.1.3"
+
+    This version includes a fix for redundant API calls that caused rate
+    limiting. For more details, see the
+    `Hugging Face Hub rate limits <https://huggingface.co/docs/hub/rate-limits>`_
+    and `release notes <https://github.com/huggingface/huggingface_hub/releases/tag/v1.1.3>`_.
+
 This function supports loading datasets in any of the 
 :ref:`common formats <supported-import-formats>` supported by FiftyOne, as well
 as image-based datasets stored via `Parquet <https://parquet.apache.org/>`_ files,

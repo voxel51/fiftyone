@@ -1,7 +1,7 @@
 """
 TensorFlow utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -189,7 +189,7 @@ def from_tf_records(
         a ``tf.data.Dataset`` that emits ``tf.train.Example`` protos
     """
     if num_parallel_reads is not None and num_parallel_reads < 0:
-        num_parallel_reads = multiprocessing.cpu_count()
+        num_parallel_reads = fou.get_cpu_count()
 
     return tf.data.TFRecordDataset(
         tf.data.Dataset.list_files(tf_records_patt),

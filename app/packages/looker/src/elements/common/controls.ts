@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import {
@@ -64,13 +64,12 @@ export class ControlsElement<
     loaded,
   }: Readonly<State>) {
     showControls = showControls && !disableControls && !error && loaded;
-    if (this.showControls === showControls) {
-      return this.element;
-    }
     if (showControls) {
+      this.element.style.display = "grid";
       this.element.style.opacity = "0.95";
       this.element.style.height = "unset";
     } else {
+      this.element.style.display = "none";
       this.element.style.opacity = "0.0";
       this.element.style.height = "0";
     }

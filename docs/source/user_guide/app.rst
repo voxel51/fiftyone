@@ -685,7 +685,7 @@ For :class:`ExcludeFields <fiftyone.core.stages.ExcludeFields>` and
 applies to all fields still present in the schema.
 
 :class:`SelectGroupSlices <fiftyone.core.stages.SelectGroupSlices>` is query
-performant. Expect optimal performan when all slices are included in the
+performant. Expect optimal performance when all slices are included in the
 flattened view.
 
 The :class:`GroupBy <fiftyone.core.stages.GroupBy>` stage is a query performant
@@ -1661,6 +1661,34 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
     :ref:`global App config <configuring-fiftyone-app>`.
 
 .. _app-linking-labels:
+
+Annotating a sample __SUB_NEW__
+__________________________
+
+When visualizing images or 3D samples in the expanded view, you can click the
+"Annotate" tab located in the right sidebar to access FiftyOne's in-App
+annotation features.
+
+FiftyOne's in-App annotation features extend the existing data visualization UI,
+allowing you to edit metadata on a sample-by-sample basis directly within the
+App. The label types currently supported are: |Classification|, |Detections|,
+|Polylines|, and |Cuboids|. You can also edit non-label primitive fields,
+as well.
+
+To perform in-App annotation, your dataset requires an Annotation Schema.
+Fields are not automatically included and must be explicitly added through the
+Schema Manager, which you can access in the “Annotate” tab of the visualizer.
+You can also create new fields on your dataset via the Schema Manager, as well.
+
+
+.. note::
+
+    In FiftyOne Enterprise, only users with
+    :ref:`Can manage <enterprise-can-manage>` dataset access can access the
+    Schema Manager.
+
+For more information on FiftyOne’s in-App annotation features,
+:ref:`visit this User Guide! <in-app-annotation>`
 
 Linking labels
 ______________

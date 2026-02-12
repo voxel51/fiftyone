@@ -25,9 +25,9 @@ jobs:
       GCP_LOCATION: us-central1
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Download dist
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           name: dist
           path: dist/
