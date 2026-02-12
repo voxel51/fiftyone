@@ -24,6 +24,7 @@ import RadioGroup from "../../Common/RadioGroup";
 import { gridAutosizing, maxGridItemsSizeBytes } from "../../Grid/recoil";
 import { ActionOption } from "../Common";
 import Popout from "../Popout";
+import { useAtomValue } from "jotai";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
@@ -420,17 +421,18 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const view = useRecoilValue(fos.view);
+  const mode = useAtomValue(fos.modalMode);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
-      {modal && <HideFieldSetting />}
+      {(modal && mode === fos.EXPLORE) && <HideFieldSetting />}
       {modal && <ShowModalNav />}
-      {isDynamicGroup && <DynamicGroupsViewMode modal={!!modal} />}
-      {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
-      <MediaFields modal={modal} />
-      <Patches modal={!!modal} />
-      {!view?.length && <QueryPerformance />}
-      <SortFilterResults modal={modal} />
+      {(mode === fos.EXPLORE && isDynamicGroup) && <DynamicGroupsViewMode modal={!!modal} />}
+      {(mode === fos.EXPLORE && isGroup && !isDynamicGroup) && <GroupStatistics modal={modal} />}
+      {mode === fos.EXPLORE && <MediaFields modal={modal} />}
+      {mode === fos.EXPLORE && <Patches modal={!!modal} />}
+      {(mode === fos.EXPLORE && !view?.length) && <QueryPerformance />}
+      {mode === fos.EXPLORE && <SortFilterResults modal={modal} />}
       {!modal && <Grid />}
     </Popout>
   );

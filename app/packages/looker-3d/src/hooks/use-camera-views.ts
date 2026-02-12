@@ -5,13 +5,101 @@ import { useAtomValue } from "jotai";
 import React, { useCallback, useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Quaternion, Vector3 } from "three";
+import {
+  CuboidTransformData,
+  PolylinePointTransformData,
+} from "../annotation/types";
+import {
+  SET_EGO_VIEW_EVENT,
+  SET_TOP_VIEW_EVENT,
+  SET_ZOOM_TO_SELECTED_EVENT,
+} from "../constants";
 import { useFo3dContext } from "../fo3d/context";
-import { annotationPlaneAtom, cameraViewStatusAtom } from "../state";
+import {
+  annotationPlaneAtom,
+  cameraViewStatusAtom,
+  selectedLabelForAnnotationAtom,
+  stagedCuboidTransformsAtom,
+  stagedPolylineTransformsAtom,
+} from "../state";
 
 interface UseCameraViewsProps {
   cameraRef: React.RefObject<PerspectiveCamera>;
   cameraControlsRef: React.RefObject<CameraControls>;
 }
+
+/**
+ * Calculate the centroid and suggested viewing radius of a selected label.
+ * For cuboids (Detection), returns the location and radius based on dimensions.
+ * For polylines, calculates the centroid and radius from bounding box of all points.
+ */
+const calculateLabelCentroidAndRadius = (
+  cuboidTransform?: CuboidTransformData | null,
+  polylinePointTransforms?: PolylinePointTransformData | null
+): { centroid: Vector3; radius: number } | null => {
+  if (cuboidTransform) {
+    const location = cuboidTransform.location;
+    const dimensions = cuboidTransform.dimensions;
+
+    if (location) {
+      // Todo: Add comment on formula here for radius
+      const radius =
+        Math.sqrt(
+          dimensions[0] ** 2 + dimensions[1] ** 2 + dimensions[2] ** 2
+        ) * 4.5;
+
+      return {
+        centroid: new Vector3(...location),
+        radius,
+      };
+    }
+  } else if (polylinePointTransforms?.segments) {
+    const points3d = polylinePointTransforms.segments.map((seg) => seg.points);
+
+    if (points3d.length > 0) {
+      const allPoints = points3d.flat();
+      if (allPoints.length > 0) {
+        const sum = allPoints.reduce(
+          (acc, point) => [
+            acc[0] + point[0],
+            acc[1] + point[1],
+            acc[2] + point[2],
+          ],
+          [0, 0, 0] as [number, number, number]
+        );
+        const centroid = new Vector3(
+          sum[0] / allPoints.length,
+          sum[1] / allPoints.length,
+          sum[2] / allPoints.length
+        );
+
+        // Calculate bounding box to determine viewing radius
+        const min = [Infinity, Infinity, Infinity];
+        const max = [-Infinity, -Infinity, -Infinity];
+        for (const point of allPoints) {
+          min[0] = Math.min(min[0], point[0]);
+          min[1] = Math.min(min[1], point[1]);
+          min[2] = Math.min(min[2], point[2]);
+          max[0] = Math.max(max[0], point[0]);
+          max[1] = Math.max(max[1], point[1]);
+          max[2] = Math.max(max[2], point[2]);
+        }
+
+        // Use diagonal of bounding box * 1.5 for good viewing distance
+        const diagonal = Math.sqrt(
+          (max[0] - min[0]) ** 2 +
+            (max[1] - min[1]) ** 2 +
+            (max[2] - min[2]) ** 2
+        );
+        const radius = Math.max(diagonal * 1.5, 2); // minimum radius of 2
+
+        return { centroid, radius };
+      }
+    }
+  }
+
+  return null;
+};
 
 export const useCameraViews = ({
   cameraRef,
@@ -23,6 +111,11 @@ export const useCameraViews = ({
   const canAnnotate = useCanAnnotate();
   const mode = useAtomValue(fos.modalMode);
   const enableAnnotationPlaneCameraView = canAnnotate && mode === "annotate";
+  const selectedLabelForAnnotation = useRecoilValue(
+    selectedLabelForAnnotationAtom
+  );
+  const stagedPolylineTransforms = useRecoilValue(stagedPolylineTransformsAtom);
+  const stagedCuboidTransforms = useRecoilValue(stagedCuboidTransformsAtom);
 
   // We use current camera position and look at point to calculate the camera position
   // with some reasonable constraints.
@@ -81,22 +174,19 @@ export const useCameraViews = ({
     [sceneBoundingBox, cameraRef, cameraControlsRef]
   );
 
-  const setCameraView = useCallback(
-    (direction: Vector3, viewName: string) => {
-      const result = calculateCameraPosition(direction);
-      if (!result || !cameraControlsRef.current) {
+  const applyCameraView = useCallback(
+    (cameraPosition: Vector3, target: Vector3, viewName: string) => {
+      if (!cameraControlsRef.current) {
         return;
       }
-
-      const { cameraPosition, center } = result;
 
       cameraControlsRef.current.setLookAt(
         cameraPosition.x,
         cameraPosition.y,
         cameraPosition.z,
-        center.x,
-        center.y,
-        center.z,
+        target.x,
+        target.y,
+        target.z,
         true
       );
 
@@ -105,7 +195,20 @@ export const useCameraViews = ({
         timestamp: Date.now(),
       });
     },
-    [calculateCameraPosition, cameraControlsRef, setCameraViewStatus]
+    [cameraControlsRef, setCameraViewStatus]
+  );
+
+  const setCameraView = useCallback(
+    (direction: Vector3, viewName: string) => {
+      const result = calculateCameraPosition(direction);
+      if (!result) {
+        return;
+      }
+
+      const { cameraPosition, center } = result;
+      applyCameraView(cameraPosition, center, viewName);
+    },
+    [calculateCameraPosition, applyCameraView]
   );
 
   const handleKeyDown = useCallback(
@@ -116,6 +219,36 @@ export const useCameraViews = ({
         event.target instanceof HTMLTextAreaElement;
 
       if (isInputMode) {
+        return;
+      }
+
+      if (event.code === "KeyT") {
+        setCameraViewStatus({
+          viewName: "Top view",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_TOP_VIEW_EVENT));
+        return;
+      }
+
+      if (event.code === "KeyE") {
+        setCameraViewStatus({
+          viewName: "Ego view",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_EGO_VIEW_EVENT));
+        return;
+      }
+
+      if (event.code === "KeyZ") {
+        setCameraViewStatus({
+          viewName: "Crop",
+          timestamp: Date.now(),
+        });
+        event.preventDefault();
+        window.dispatchEvent(new CustomEvent(SET_ZOOM_TO_SELECTED_EVENT));
         return;
       }
 
@@ -223,64 +356,35 @@ export const useCameraViews = ({
           }
         }
       } else if (numPressed === "4" && enableAnnotationPlaneCameraView) {
-        if (
-          !cameraRef.current ||
-          !cameraControlsRef.current ||
-          !sceneBoundingBox
-        ) {
-          return;
-        }
-
-        // Get current radius
-        const currentCameraPosition = cameraRef.current.position.clone();
-        const currentLookAt = new Vector3();
-        cameraControlsRef.current.getTarget(currentLookAt);
-        const currentRadius = currentCameraPosition.distanceTo(currentLookAt);
-
-        // Extract normal from annotation plane quaternion
         const quat = new Quaternion(...annotationPlane.quaternion);
         const normal = new Vector3(0, 0, 1).applyQuaternion(quat).normalize();
 
-        // Use annotation plane position as look-at point
-        const planePosition = new Vector3(...annotationPlane.position);
-
-        let cameraPosition: Vector3;
-        let viewName: string;
-
         if (isCtrlPressed) {
-          // Opposite view: look at plane from opposite side (negative normal)
-          // Position camera at plane position + (-normal) * radius
-          cameraPosition = planePosition
-            .clone()
-            .add(normal.clone().negate().multiplyScalar(currentRadius));
-
+          direction = normal.clone().negate();
           viewName = "Annotation plane view 2";
         } else {
-          cameraPosition = planePosition
-            .clone()
-            .add(normal.clone().multiplyScalar(currentRadius));
-
+          direction = normal.clone();
           viewName = "Annotation plane view 1";
         }
-
-        cameraControlsRef.current.setLookAt(
-          cameraPosition.x,
-          cameraPosition.y,
-          cameraPosition.z,
-          planePosition.x,
-          planePosition.y,
-          planePosition.z,
-          true
-        );
-
-        setCameraViewStatus({
-          viewName,
-          timestamp: Date.now(),
-        });
-
-        return;
       } else {
         return;
+      }
+
+      if (selectedLabelForAnnotation && cameraControlsRef.current) {
+        const labelInfo = calculateLabelCentroidAndRadius(
+          stagedCuboidTransforms?.[selectedLabelForAnnotation._id],
+          stagedPolylineTransforms?.[selectedLabelForAnnotation._id]
+        );
+
+        if (labelInfo) {
+          const { centroid, radius } = labelInfo;
+          const cameraPosition = centroid
+            .clone()
+            .add(direction.clone().multiplyScalar(radius));
+
+          applyCameraView(cameraPosition, centroid, viewName);
+          return;
+        }
       }
 
       setCameraView(direction, viewName);
@@ -288,11 +392,13 @@ export const useCameraViews = ({
     [
       upVector,
       setCameraView,
+      applyCameraView,
+      setCameraViewStatus,
       annotationPlane,
-      cameraRef,
-      cameraControlsRef,
-      sceneBoundingBox,
       enableAnnotationPlaneCameraView,
+      selectedLabelForAnnotation,
+      stagedCuboidTransforms,
+      stagedPolylineTransforms,
     ]
   );
 

@@ -1,9 +1,10 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { useAnnotationEventBus } from "@fiftyone/annotation";
+import { useLighter } from "@fiftyone/lighter";
 import type { AnnotationLabel } from "@fiftyone/state";
 import { animated } from "@react-spring/web";
 import type { PrimitiveAtom } from "jotai";
 import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import styled from "styled-components";
 import { Column } from "./Components";
 import { editing } from "./Edit";
@@ -53,7 +54,6 @@ const Line = styled.div<{ fill: string }>`
 `;
 
 const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
-  const [isHoveringThisRow, setIsHoveringThisRow] = useState(false);
   const label = useAtomValue(atom);
   const type = useAtomValue(fieldType(label.path ?? ""));
   const setEditing = useSetAtom(editing);
@@ -63,35 +63,46 @@ const LabelEntry = ({ atom }: { atom: PrimitiveAtom<AnnotationLabel> }) => {
 
   const isHovering = hoveringLabelIdsList.includes(label.overlay.id);
 
-  useEffect(() => {
-    if (!scene) return;
-
-    if (isHoveringThisRow) {
-      scene.dispatchSafely({
-        type: LIGHTER_EVENTS.DO_OVERLAY_HOVER,
-        detail: { id: label.overlay.id, tooltip: false },
-      });
-    } else {
-      scene.dispatchSafely({
-        type: LIGHTER_EVENTS.DO_OVERLAY_UNHOVER,
-        detail: { id: label.overlay.id },
-      });
-    }
-  }, [scene, isHoveringThisRow, label.overlay.id]);
-
   const color = useColor(label.overlay);
+
+  const annotationEventBus = useAnnotationEventBus();
+
+  const handleMouseEnter = useMemo(() => {
+    return () => {
+      annotationEventBus.dispatch("annotation:sidebarLabelHover", {
+        id: label.overlay.id,
+        tooltip: false,
+      });
+    };
+  }, [annotationEventBus, label.overlay.id]);
+
+  const handleMouseLeave = useMemo(() => {
+    return () => {
+      annotationEventBus.dispatch("annotation:sidebarLabelUnhover", {
+        id: label.overlay.id,
+      });
+    };
+  }, [annotationEventBus, label.overlay.id]);
+
   return (
     <Container
       onClick={() => {
         const store = getDefaultStore();
         scene?.selectOverlay(store.get(atom).overlay.id);
+
+        annotationEventBus.dispatch("annotation:sidebarLabelSelected", {
+          id: label.overlay.id,
+          type: label.type,
+          data: label.data,
+        });
+
         setEditing(atom);
 
         store.set(savedLabel, store.get(atom).data);
       }}
       className={isHovering ? "hovering" : ""}
-      onMouseEnter={() => setIsHoveringThisRow(true)}
-      onMouseLeave={() => setIsHoveringThisRow(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <Line fill={color} />
       <Header>

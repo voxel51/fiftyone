@@ -1,7 +1,7 @@
 """
 Dataset sample fields.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -561,7 +561,6 @@ class Field(mongoengine.fields.BaseField):
         info=None,
         read_only=False,
         created_at=None,
-        schema=None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -569,7 +568,6 @@ class Field(mongoengine.fields.BaseField):
         self._info = info
         self._read_only = read_only
         self._created_at = created_at
-        self._schema = schema
 
         self.__dataset = None
         self.__path = None
@@ -686,15 +684,6 @@ class Field(mongoengine.fields.BaseField):
     @read_only.setter
     def read_only(self, read_only):
         self._read_only = read_only
-
-    @property
-    def schema(self):
-        """ """
-        return self._schema
-
-    @schema.setter
-    def schema(self, schema):
-        self._schema = schema
 
     @property
     def created_at(self):
@@ -2134,7 +2123,7 @@ class EmbeddedDocumentListField(
         # pylint: disable=no-member
         return "%s(%s)" % (
             etau.get_class_name(self),
-            etau.get_class_name(self.document_type),
+            etau.get_class_name(self.field.document_type),
         )
 
 

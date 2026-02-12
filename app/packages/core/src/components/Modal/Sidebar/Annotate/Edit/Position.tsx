@@ -1,42 +1,58 @@
 import {
   BoundingBoxOverlay,
-  LIGHTER_EVENTS,
   TransformOverlayCommand,
+  UNDEFINED_LIGHTER_SCENE_ID,
   useLighter,
+  useLighterEventHandler,
 } from "@fiftyone/lighter";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { currentData, currentOverlay } from "./state";
-import { Box, Stack, TextField } from "@mui/material";
-import { LabeledField } from "@fiftyone/components";
+import { useAtom, useAtomValue } from "jotai";
+
+const createInput = (name: string) => {
+  return {
+    [name]: {
+      type: "number",
+      view: {
+        name: "View",
+        label: name,
+        component: "FieldView",
+      },
+      multipleOf: 0.01,
+    },
+  };
+};
+
+const createStack = () => {
+  return {
+    name: "HStackView",
+    component: "GridView",
+    orientation: "horizontal",
+    gap: 1,
+    align_x: "left",
+    align_y: "top",
+  };
+};
 
 interface Coordinates {
   position: { x?: number; y?: number };
   dimensions: { width?: number; height?: number };
 }
 
-const hasValidBounds = (coordinates: Coordinates): boolean => {
-  return (
-    [
-      coordinates.position.x,
-      coordinates.position.y,
-      coordinates.dimensions.width,
-      coordinates.dimensions.height,
-    ].every((num) => Number.isFinite(num)) &&
-    coordinates.dimensions.width > 0 &&
-    coordinates.dimensions.height > 0
-  );
-};
-
 export default function Position() {
   const [state, setState] = useState<Coordinates>({
     position: {},
     dimensions: {},
   });
+
   const overlay = useAtomValue(currentOverlay);
   const [data, setData] = useAtom(currentData);
 
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   useEffect(() => {
     if (!(overlay instanceof BoundingBoxOverlay) || !overlay.hasValidBounds()) {
@@ -44,159 +60,89 @@ export default function Position() {
     }
 
     const rect = overlay.getAbsoluteBounds();
+
     setState({
       position: { x: rect.x, y: rect.y },
       dimensions: { width: rect.width, height: rect.height },
     });
   }, [overlay]);
 
-  useEffect(() => {
-    const handler = (event) => {
+  const handleBoundsChange = useCallback(
+    (payload: { id: string }) => {
       if (
         !(overlay instanceof BoundingBoxOverlay) ||
         !overlay.hasValidBounds() ||
-        event.detail.id !== data?._id
+        payload.id !== data?._id
       ) {
         return;
       }
-      const absolute = overlay.getAbsoluteBounds();
-      const relative = overlay.getRelativeBounds();
+      const rect = overlay.getAbsoluteBounds();
 
       setState({
-        position: { x: absolute.x, y: absolute.y },
-        dimensions: { width: absolute.width, height: absolute.height },
+        position: { x: rect.x, y: rect.y },
+        dimensions: { width: rect.width, height: rect.height },
       });
 
+      const relative = overlay.getRelativeBounds();
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });
-    };
+    },
+    [data?._id, overlay, setData]
+  );
 
-    scene?.on(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_BOUNDS_CHANGED, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_DRAG_MOVE, handler);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_RESIZE_MOVE, handler);
-    };
-  }, [data?._id, overlay, scene, setData]);
-
-  const handleUserInputChange = (coordinateDelta: Partial<Coordinates>) => {
-    // synchronize internal state
-    const newState = {
-      position: {
-        ...state.position,
-        ...coordinateDelta.position,
-      },
-      dimensions: {
-        ...state.dimensions,
-        ...coordinateDelta.dimensions,
-      },
-    };
-    setState(newState);
-
-    if (
-      !(overlay instanceof BoundingBoxOverlay) ||
-      !overlay.hasValidBounds() ||
-      !hasValidBounds(newState)
-    ) {
-      return;
-    }
-
-    // update overlay
-    const currentBounds = overlay.getAbsoluteBounds();
-    scene?.executeCommand(
-      new TransformOverlayCommand(overlay, overlay.id, currentBounds, {
-        ...currentBounds,
-        ...coordinateDelta?.position,
-        ...coordinateDelta?.dimensions,
-      })
-    );
-  };
+  useEventHandler("lighter:overlay-bounds-changed", handleBoundsChange);
+  useEventHandler("lighter:overlay-drag-move", handleBoundsChange);
+  useEventHandler("lighter:overlay-resize-move", handleBoundsChange);
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ pl: 1, pt: 1, mb: 1 }}
-      >
-        <LabeledField
-          label="x"
-          formControl={
-            <TextField
-              type="number"
-              value={state.position.x ?? ""}
-              onChange={(e) => {
-                handleUserInputChange({
-                  position: { x: parseFloat(e.target.value) },
-                });
-              }}
-              size="small"
-            />
+    <div style={{ width: "100%" }}>
+      <SchemaIOComponent
+        key={overlay?.id}
+        smartForm={true}
+        schema={{
+          type: "object",
+          view: {
+            component: "ObjectView",
+          },
+          properties: {
+            position: {
+              type: "object",
+              view: createStack(),
+              properties: {
+                ...createInput("x"),
+                ...createInput("y"),
+              },
+            },
+            dimensions: {
+              type: "object",
+              view: createStack(),
+              properties: {
+                ...createInput("width"),
+                ...createInput("height"),
+              },
+            },
+          },
+        }}
+        data={state}
+        onChange={(data: Coordinates) => {
+          if (
+            !(overlay instanceof BoundingBoxOverlay) ||
+            !overlay.hasValidBounds()
+          ) {
+            return;
           }
-        />
 
-        <LabeledField
-          label="y"
-          formControl={
-            <TextField
-              type="number"
-              value={state.position.y ?? ""}
-              onChange={(e) => {
-                handleUserInputChange({
-                  position: { y: parseFloat(e.target.value) },
-                });
-              }}
-              size="small"
-            />
-          }
-        />
-      </Stack>
-
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        spacing={2}
-        sx={{ pl: 1, pt: 1, mb: 1 }}
-      >
-        <LabeledField
-          label="width"
-          formControl={
-            <TextField
-              type="number"
-              value={state.dimensions.width ?? ""}
-              onChange={(e) => {
-                handleUserInputChange({
-                  dimensions: { width: parseFloat(e.target.value) },
-                });
-              }}
-              size="small"
-            />
-          }
-        />
-
-        <LabeledField
-          label="height"
-          formControl={
-            <TextField
-              type="number"
-              value={state.dimensions.height ?? ""}
-              onChange={(e) => {
-                handleUserInputChange({
-                  dimensions: { height: parseFloat(e.target.value) },
-                });
-              }}
-              size="small"
-            />
-          }
-        />
-      </Stack>
-    </Box>
+          const oldBounds = overlay.getAbsoluteBounds();
+          scene?.executeCommand(
+            new TransformOverlayCommand(overlay, overlay.id, oldBounds, {
+              ...oldBounds,
+              ...data.dimensions,
+              ...data.position,
+            })
+          );
+        }}
+      />
+    </div>
   );
 }

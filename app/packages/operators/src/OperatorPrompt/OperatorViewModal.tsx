@@ -16,7 +16,12 @@ export default function OperatorViewModal() {
       dialogProps={{ PaperProps: { "data-cy": "operators-prompt-view-modal" } }}
     >
       <PaletteContentContainer>
-        <OperatorIO schema={io.schema} data={io.data || {}} type={io.type} />
+        <OperatorIO
+          id="operators_io_view_modal"
+          schema={io.schema}
+          data={io.data || {}}
+          type={io.type}
+        />
       </PaletteContentContainer>
     </OperatorPalette>,
     document.body

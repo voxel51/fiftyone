@@ -1,42 +1,69 @@
-import { LIGHTER_EVENTS, useLighter } from "@fiftyone/lighter";
+import { useAnnotationEventHandler } from "@fiftyone/annotation";
+import {
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import { atom, getDefaultStore } from "jotai";
-import { useEffect } from "react";
+import { useCallback } from "react";
 
 export const hoveringLabelIds = atom<string[]>([]);
 
 export default function useHover() {
   const { scene } = useLighter();
+  const useEventHandler = useLighterEventHandler(
+    scene?.getSceneId() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
-  useEffect(() => {
-    const store = getDefaultStore();
+  useEventHandler(
+    "lighter:overlay-hover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
+    }, [])
+  );
 
-    const handleHover = (event: CustomEvent) => {
-      store.set(hoveringLabelIds, [
-        ...store.get(hoveringLabelIds),
-        event.detail.id,
-      ]);
-    };
-
-    const handleUnhover = (event: CustomEvent) => {
+  useEventHandler(
+    "lighter:overlay-unhover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
       store.set(
         hoveringLabelIds,
-        store.get(hoveringLabelIds).filter((id) => id !== event.detail.id)
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
       );
-    };
+    }, [])
+  );
 
-    const handleAllUnhover = (event: CustomEvent) => {
+  useEventHandler(
+    "lighter:overlay-all-unhover",
+    useCallback((_payload) => {
+      const store = getDefaultStore();
       store.set(hoveringLabelIds, []);
-    };
+    }, [])
+  );
 
-    scene?.on(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
+  useAnnotationEventHandler(
+    "annotation:canvasOverlayHover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      const current = store.get(hoveringLabelIds);
+      if (!current.includes(payload.id)) {
+        store.set(hoveringLabelIds, [...current, payload.id]);
+      }
+    }, [])
+  );
 
-    scene?.on(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-    scene?.on(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
-
-    return () => {
-      scene?.off(LIGHTER_EVENTS.OVERLAY_HOVER, handleHover);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_UNHOVER, handleUnhover);
-      scene?.off(LIGHTER_EVENTS.OVERLAY_ALL_UNHOVER, handleAllUnhover);
-    };
-  }, [scene]);
+  useAnnotationEventHandler(
+    "annotation:canvasOverlayUnhover",
+    useCallback((payload) => {
+      const store = getDefaultStore();
+      store.set(
+        hoveringLabelIds,
+        store.get(hoveringLabelIds).filter((id) => id !== payload.id)
+      );
+    }, [])
+  );
 }

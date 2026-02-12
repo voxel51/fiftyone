@@ -14,6 +14,7 @@ import {
   createPlane,
   deg2rad,
   eulerToQuaternion,
+  getAxisAlignedBoundingBoxForPoints3d,
   getColorFromPoolBasedOnHash,
   getGridQuaternionFromUpVector,
   getPlaneFromPositionAndQuaternion,
@@ -818,5 +819,244 @@ describe("isValidPolylineSegment", () => {
         [7, 8, 9],
       ])
     ).toBe(true);
+  });
+});
+
+describe("getAxisAlignedBoundingBoxForPoints3d", () => {
+  it("returns zero location and dimensions for empty array", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([]);
+    expect(result).toEqual({
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    });
+  });
+
+  it("returns zero location and dimensions for null input", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d(null as any);
+    expect(result).toEqual({
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    });
+  });
+
+  it("returns zero location and dimensions for undefined input", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d(undefined as any);
+    expect(result).toEqual({
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    });
+  });
+
+  it("returns zero location and dimensions when all points are invalid", () => {
+    const invalidPoints = [
+      null,
+      undefined,
+      [1, 2],
+      [1, 2, 3, 4],
+      [1, 2, "3"],
+      [1, 2, NaN],
+      [1, 2, Infinity],
+      [1, 2, -Infinity],
+    ] as any;
+    const result = getAxisAlignedBoundingBoxForPoints3d(invalidPoints);
+    expect(result).toEqual({
+      location: [0, 0, 0],
+      dimensions: [0, 0, 0],
+    });
+  });
+
+  it("computes bounding box for single point", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([[1, 2, 3]]);
+    expect(result.location).toEqual([1, 2, 3]);
+    expect(result.dimensions).toEqual([0, 0, 0]);
+  });
+
+  it("computes bounding box for two points", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [0, 0, 0],
+      [2, 4, 6],
+    ]);
+    expect(result.location).toEqual([1, 2, 3]);
+    expect(result.dimensions).toEqual([2, 4, 6]);
+  });
+
+  it("computes bounding box for a cube", () => {
+    // Cube from (0,0,0) to (2,2,2)
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [0, 0, 0],
+      [2, 0, 0],
+      [0, 2, 0],
+      [0, 0, 2],
+      [2, 2, 0],
+      [2, 0, 2],
+      [0, 2, 2],
+      [2, 2, 2],
+    ]);
+    expect(result.location).toEqual([1, 1, 1]);
+    expect(result.dimensions).toEqual([2, 2, 2]);
+  });
+
+  it("computes bounding box for points with negative coordinates", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [-5, -10, -15],
+      [5, 10, 15],
+    ]);
+    expect(result.location).toEqual([0, 0, 0]);
+    expect(result.dimensions).toEqual([10, 20, 30]);
+  });
+
+  it("computes bounding box for points with mixed positive and negative coordinates", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [-1, 2, -3],
+      [4, -5, 6],
+      [0, 0, 0],
+    ]);
+    expect(result.location[0]).toBeCloseTo(1.5);
+    expect(result.location[1]).toBeCloseTo(-1.5);
+    expect(result.location[2]).toBeCloseTo(1.5);
+    expect(result.dimensions).toEqual([5, 7, 9]);
+  });
+
+  it("filters out invalid points and computes bounding box from valid ones", () => {
+    const mixedPoints = [
+      [1, 2, 3],
+      null,
+      [4, 5, 6],
+      [7, 8, 9],
+      [1, 2],
+      [10, 11, 12],
+      [NaN, 2, 3],
+      [13, 14, 15],
+    ] as any;
+    const result = getAxisAlignedBoundingBoxForPoints3d(mixedPoints);
+    expect(result.location).toEqual([7, 8, 9]);
+    expect(result.dimensions).toEqual([12, 12, 12]);
+  });
+
+  it("computes bounding box for collinear points", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [0, 0, 0],
+      [1, 0, 0],
+      [2, 0, 0],
+      [3, 0, 0],
+    ]);
+    expect(result.location).toEqual([1.5, 0, 0]);
+    expect(result.dimensions).toEqual([3, 0, 0]);
+  });
+
+  it("computes bounding box for coplanar points", () => {
+    // Points on XY plane
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [0, 0, 5],
+      [2, 0, 5],
+      [0, 2, 5],
+      [2, 2, 5],
+    ]);
+    expect(result.location).toEqual([1, 1, 5]);
+    expect(result.dimensions).toEqual([2, 2, 0]);
+  });
+
+  it("computes bounding box for points in arbitrary positions", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [1.5, 2.7, 3.14],
+      [4.2, 5.8, 6.9],
+      [7.1, 8.3, 9.6],
+    ]);
+    expect(result.location[0]).toBeCloseTo(4.3);
+    expect(result.location[1]).toBeCloseTo(5.5);
+    expect(result.location[2]).toBeCloseTo(6.37);
+    expect(result.dimensions[0]).toBeCloseTo(5.6);
+    expect(result.dimensions[1]).toBeCloseTo(5.6);
+    expect(result.dimensions[2]).toBeCloseTo(6.46);
+  });
+
+  it("handles points with decimal precision", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [0.1, 0.2, 0.3],
+      [0.4, 0.5, 0.6],
+    ]);
+    expect(result.location[0]).toBeCloseTo(0.25);
+    expect(result.location[1]).toBeCloseTo(0.35);
+    expect(result.location[2]).toBeCloseTo(0.45);
+    expect(result.dimensions[0]).toBeCloseTo(0.3);
+    expect(result.dimensions[1]).toBeCloseTo(0.3);
+    expect(result.dimensions[2]).toBeCloseTo(0.3);
+  });
+
+  it("handles very large numbers", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [1e10, 2e10, 3e10],
+      [2e10, 4e10, 6e10],
+    ]);
+    expect(result.location[0]).toBeCloseTo(1.5e10);
+    expect(result.location[1]).toBeCloseTo(3e10);
+    expect(result.location[2]).toBeCloseTo(4.5e10);
+    expect(result.dimensions[0]).toBeCloseTo(1e10);
+    expect(result.dimensions[1]).toBeCloseTo(2e10);
+    expect(result.dimensions[2]).toBeCloseTo(3e10);
+  });
+
+  it("handles very small numbers", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [1e-10, 2e-10, 3e-10],
+      [2e-10, 4e-10, 6e-10],
+    ]);
+    expect(result.location[0]).toBeCloseTo(1.5e-10);
+    expect(result.location[1]).toBeCloseTo(3e-10);
+    expect(result.location[2]).toBeCloseTo(4.5e-10);
+    expect(result.dimensions[0]).toBeCloseTo(1e-10);
+    expect(result.dimensions[1]).toBeCloseTo(2e-10);
+    expect(result.dimensions[2]).toBeCloseTo(3e-10);
+  });
+
+  it("handles many points efficiently", () => {
+    const points: [number, number, number][] = [];
+    for (let i = 0; i < 1000; i++) {
+      points.push([i, i * 2, i * 3]);
+    }
+    const result = getAxisAlignedBoundingBoxForPoints3d(points);
+    expect(result.location[0]).toBeCloseTo(499.5);
+    expect(result.location[1]).toBeCloseTo(999);
+    expect(result.location[2]).toBeCloseTo(1498.5);
+    expect(result.dimensions[0]).toBeCloseTo(999);
+    expect(result.dimensions[1]).toBeCloseTo(1998);
+    expect(result.dimensions[2]).toBeCloseTo(2997);
+  });
+
+  it("filters out points with Infinity and computes bounding box", () => {
+    const points = [
+      [1, 2, 3],
+      [Infinity, 4, 5],
+      [6, Infinity, 7],
+      [8, 9, Infinity],
+      [10, 11, 12],
+      [-Infinity, 13, 14],
+    ] as any;
+    const result = getAxisAlignedBoundingBoxForPoints3d(points);
+    expect(result.location).toEqual([5.5, 6.5, 7.5]);
+    expect(result.dimensions).toEqual([9, 9, 9]);
+  });
+
+  it("filters out points with NaN and computes bounding box", () => {
+    const points = [
+      [1, 2, 3],
+      [NaN, 4, 5],
+      [6, NaN, 7],
+      [8, 9, NaN],
+      [10, 11, 12],
+    ] as any;
+    const result = getAxisAlignedBoundingBoxForPoints3d(points);
+    expect(result.location).toEqual([5.5, 6.5, 7.5]);
+    expect(result.dimensions).toEqual([9, 9, 9]);
+  });
+
+  it("handles points that result in zero dimension on one axis", () => {
+    const result = getAxisAlignedBoundingBoxForPoints3d([
+      [1, 2, 3],
+      [5, 2, 7],
+      [3, 2, 5],
+    ]);
+    expect(result.location).toEqual([3, 2, 5]);
+    expect(result.dimensions).toEqual([4, 0, 4]);
   });
 });

@@ -1,14 +1,14 @@
 """
 Apply JSON patch to python objects.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from typing import Any, Callable, Iterable, Optional, Union
 
-
+from fiftyone.server.utils.json.jsonpatch.exceptions import RootDeleteError
 from fiftyone.server.utils.json.jsonpatch.methods import (
     add,
     copy,
@@ -28,7 +28,6 @@ from fiftyone.server.utils.json.jsonpatch.patch import (
     Replace,
     Test,
 )
-
 
 __PATCH_MAP = {
     Operation.ADD: Add,
@@ -87,3 +86,42 @@ def parse(
             raise ValueError(f"Invalid operation '{op_str}'") from err
 
     return parsed if not return_one else parsed[0]
+
+
+def apply(
+    target: Any,
+    patches: Union[dict[str, Any], Iterable[dict[str, Any]]],
+    *,
+    transform_fn: Optional[Callable[[Any], Any]] = None,
+) -> tuple[Any, list[str]]:
+    """Parse and apply JSON patch operations to a target object.
+
+    Args:
+        target: The object to apply patches to
+        patches: JSON patch operations (dict or list of dicts)
+        transform_fn: Optional function to transform values before applying
+
+    Returns:
+        A tuple of (target, errors) where errors is a list of error messages
+        for any patches that failed to apply
+
+    Raises:
+        RootDeleteError: If a remove operation targets the root. The caller
+            must handle deletion at the parent level.
+    """
+    patches_list = [patches] if isinstance(patches, dict) else list(patches)
+
+    parsed = parse(patches_list, transform_fn=transform_fn)
+    if not isinstance(parsed, list):
+        parsed = [parsed]
+
+    errors = []
+    for i, p in enumerate(parsed):
+        try:
+            target = p.apply(target)
+        except RootDeleteError:
+            raise
+        except Exception as e:
+            errors.append(f"Error applying patch `{patches_list[i]}`: {e}")
+
+    return target, errors

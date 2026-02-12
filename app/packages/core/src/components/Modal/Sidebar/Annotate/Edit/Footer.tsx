@@ -1,23 +1,27 @@
 import { Button, LoadingDots, MuiButton } from "@fiftyone/components";
 import { DeleteOutline } from "@mui/icons-material";
 import { useAtomValue } from "jotai";
-import React, { useContext } from "react";
+import { useContext } from "react";
 import { RoundButton } from "../Actions";
 import { ConfirmationContext } from "../Confirmation";
 import { Row } from "./Components";
 import { currentField, hasChanges, isNew } from "./state";
 import useExit from "./useExit";
-import useSave, { isSaving } from "./useSave";
+import useSave, { isSavingAtom } from "./useSave";
 import { Stack } from "@mui/material";
+import { KnownCommands, KnownContexts, useCommand } from "@fiftyone/commands";
 
 const SaveFooter = () => {
-  const { onDelete, onExit: onExitConfirm } = useContext(ConfirmationContext);
+  const { onExit: onExitConfirm } = useContext(ConfirmationContext);
   const onSave = useSave();
   const onDiscard = useExit();
   const showCancel = useAtomValue(isNew);
   const changes = useAtomValue(hasChanges);
-  const saving = useAtomValue(isSaving);
-
+  const saving = useAtomValue(isSavingAtom);
+  const deleteCmd = useCommand(
+    KnownCommands.ModalDeleteAnnotation,
+    KnownContexts.Modal
+  );
   return (
     <>
       <Stack direction="row" spacing={1}>
@@ -43,14 +47,16 @@ const SaveFooter = () => {
 
       <RoundButton
         className={saving ? "disabled" : ""}
-        onClick={saving ? undefined : showCancel ? onExitConfirm : onDelete}
+        onClick={
+          saving ? undefined : showCancel ? onExitConfirm : deleteCmd.callback
+        }
       >
         {showCancel ? (
           "Cancel"
         ) : (
           <>
             <DeleteOutline />
-            Delete
+            {deleteCmd.descriptor.label}
           </>
         )}
       </RoundButton>

@@ -14,12 +14,16 @@ export const ACTION_VIEW_HELP = "help";
 
 export const SET_TOP_VIEW_EVENT = "fo-action-set-top-view";
 export const SET_EGO_VIEW_EVENT = "fo-action-set-ego-view";
+export const SET_ZOOM_TO_SELECTED_EVENT = "fo-action-zoom-to-selected";
 
 export const SHADE_BY_INTENSITY = "intensity";
 export const SHADE_BY_HEIGHT = "height";
 export const SHADE_BY_RGB = "rgb";
 export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
+
+export const ANNOTATION_CUBOID = "cuboid";
+export const ANNOTATION_POLYLINE = "polyline";
 
 export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5);
 

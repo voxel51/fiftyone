@@ -40,15 +40,16 @@ import {
   COMPARE_KEY_COLOR,
   COMPARE_KEY_SECONDARY_COLOR,
   COMPARE_KEY_TERTIARY_COLOR,
+  DEFAULT_CONFUSION_MATRIX_CONFIG,
   KEY_COLOR,
   SECONDARY_KEY_COLOR,
   TERTIARY_KEY_COLOR,
 } from "../../constants";
 import {
   getClasses,
+  getConfusionMatrixPlotlyData,
   getEvaluationType,
   getInapplicableMetrics,
-  getMatrix,
 } from "../../utils";
 import Actions from "./Actions";
 import Legends from "./Legends";
@@ -1063,7 +1064,6 @@ const MODEL_PERFORMANCE_METRICS = [
   { label: "Precision", key: "precision" },
   { label: "Recall", key: "recall" },
   { label: "IoU", key: "iou" },
-  { label: "mAP", key: "mAP" },
 ];
 
 function PredictionStatisticsChart(props) {
@@ -1369,35 +1369,45 @@ function ConfusionMatrixChart(props) {
   const [subset, setSubset] = usePanelStatePartial(`${id}_cms`, subsets[0]);
   const subsetData = scenario.subsets_data[subset];
   const compareSubsetData = compareScenario?.subsets_data[subset];
-  const [config, setConfig] = usePanelStatePartial(`${subset}_matrix_config`, {
-    log: true,
-  });
+  const [config, setConfig] = usePanelStatePartial(
+    `${subset}_matrix_config`,
+    DEFAULT_CONFUSION_MATRIX_CONFIG
+  );
   const evaluationMaskTargets = props.evaluation?.mask_targets || {};
   const compareEvaluationMaskTargets =
     props.compareEvaluation?.mask_targets || {};
-  const matrices = subsetData?.confusion_matrices;
-  const matrixData = getMatrix(
-    matrices,
-    config,
-    evaluationMaskTargets,
-    undefined,
-    true
+  const matrixData = subsetData?.confusion_matrix;
+  const matrixPlotlyData = getConfusionMatrixPlotlyData(
+    {
+      classes: matrixData?.classes,
+      matrix: matrixData?.matrix,
+      colorscales: {
+        default: matrixData?.primary_colorscale,
+        logarithmic: matrixData?.oranges_logarithmic_colorscale,
+      },
+      maskTargets: { primary: evaluationMaskTargets },
+    },
+    config
   );
-  const matrixPlotData = matrixData?.plot;
-  const plotData = [matrixPlotData];
-  const comparePlotData = compareScenario
-    ? [
-        getMatrix(
-          compareSubsetData?.confusion_matrices,
-          config,
-          evaluationMaskTargets,
-          compareEvaluationMaskTargets,
-          true,
-          true
-        )?.plot,
-      ]
+  const compareMatrixData = compareSubsetData?.confusion_matrix;
+  const compareMatrixPlotlyData = compareScenario
+    ? getConfusionMatrixPlotlyData(
+        {
+          classes: compareMatrixData?.classes,
+          matrix: compareMatrixData?.matrix,
+          colorscales: {
+            default: compareMatrixData?.primary_colorscale,
+            logarithmic: compareMatrixData?.oranges_logarithmic_colorscale,
+          },
+          maskTargets: {
+            primary: compareEvaluationMaskTargets,
+            secondary: evaluationMaskTargets,
+          },
+        },
+        config
+      )
     : undefined;
-  const classes = getClasses(matrices, evaluationMaskTargets);
+  const classes = getClasses(matrixData, evaluationMaskTargets);
 
   return (
     <Stack>
@@ -1420,9 +1430,9 @@ function ConfusionMatrixChart(props) {
       </Stack>
 
       <Stack direction="row" spacing={1}>
-        <Stack sx={{ width: comparePlotData ? "50%" : "100%" }}>
+        <Stack sx={{ width: compareMatrixPlotlyData ? "50%" : "100%" }}>
           <Plot
-            data={plotData}
+            data={matrixPlotlyData}
             onClick={({ points }) => {
               const firstPoint = points[0];
               const subsetDef = getSubsetDef(scenario, subset);
@@ -1452,10 +1462,10 @@ function ConfusionMatrixChart(props) {
             }}
           />
         </Stack>
-        {comparePlotData && (
+        {compareMatrixPlotlyData && (
           <Stack sx={{ width: "50%" }}>
             <Plot
-              data={comparePlotData}
+              data={compareMatrixPlotlyData}
               onClick={({ points }) => {
                 const firstPoint = points[0];
                 const subsetDef = getSubsetDef(scenario, subset);

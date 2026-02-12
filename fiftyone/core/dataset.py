@@ -1,15 +1,15 @@
 """
 FiftyOne datasets.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from collections import defaultdict
+import copy
 from functools import partial
 import contextlib
-from datetime import datetime
 import fnmatch
 import itertools
 import logging
@@ -17,46 +17,41 @@ import numbers
 import os
 import random
 import string
+from datetime import datetime
 
-from bson import json_util, ObjectId, DBRef
 import cachetools
-from deprecated import deprecated
-import mongoengine.errors as moe
-from pymongo import (
-    DeleteMany,
-    InsertOne,
-    ReplaceOne,
-    UpdateMany,
-    UpdateOne,
-)
-from pymongo.collection import Collection
-from pymongo.errors import CursorNotFound, BulkWriteError
-
 import eta.core.serial as etas
 import eta.core.utils as etau
+import mongoengine.errors as moe
+from bson import DBRef, ObjectId, json_util
+from pymongo import DeleteMany, InsertOne, ReplaceOne, UpdateMany, UpdateOne
+from pymongo.errors import BulkWriteError, CursorNotFound
 
 import fiftyone as fo
 import fiftyone.constants as focn
+import fiftyone.core.camera as focam
+import fiftyone.core.annotation as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
 import fiftyone.core.frame as fofr
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import DatasetAppConfig
-import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.storage as fost
-from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+import fiftyone.migrations as fomi
+from fiftyone.core.expressions import ViewField as F
+from fiftyone.core.odm.dataset import DatasetAppConfig
+from fiftyone.core.singletons import DatasetSingleton
 
 fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
+food = fou.lazy_import("fiftyone.operators.delegated")
 foos = fou.lazy_import("fiftyone.operators.store")
 
 
@@ -357,9 +352,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def __deepcopy__(self, memo):
         return self  # datasets are singletons
-
-    def __len__(self):
-        return self.count()
 
     def _estimated_count(self, frames=False):
         if frames:
@@ -1103,9 +1095,718 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.save()
 
     @property
+    def camera_intrinsics(self):
+        """A dict mapping sensor/camera names to
+        :class:`fiftyone.core.camera.CameraIntrinsics` instances that define
+        the intrinsic parameters for each camera in the dataset.
+
+        Intrinsics are keyed by sensor name (typically matching group slice
+        names for grouped datasets).
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set intrinsics for cameras
+            dataset.camera_intrinsics = {
+                "camera_front": fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+                "camera_rear": fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            }
+
+            # Edit existing intrinsics
+            dataset.camera_intrinsics["camera_front"].k1 = -0.12
+            dataset.save()  # must save after edits
+        """
+        return self._doc.camera_intrinsics
+
+    @camera_intrinsics.setter
+    def camera_intrinsics(self, intrinsics):
+        self._doc.camera_intrinsics = intrinsics
+        self.save()
+
+    def add_intrinsics(self, name, intrinsics):
+        """Adds camera intrinsics to the dataset.
+
+        This method provides a convenient way to add intrinsics for a
+        specific camera/sensor without replacing the entire intrinsics dict.
+
+        Args:
+            name: the sensor/camera name (typically matching group slice names
+                for grouped datasets)
+            intrinsics: a :class:`fiftyone.core.camera.CameraIntrinsics`
+                instance
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add intrinsics for front camera
+            dataset.add_intrinsics(
+                "camera_front",
+                fo.OpenCVCameraIntrinsics(
+                    fx=1000.0, fy=1000.0,
+                    cx=960.0, cy=540.0,
+                    k1=-0.1, k2=0.05,
+                ),
+            )
+
+            # Add intrinsics for rear camera
+            dataset.add_intrinsics(
+                "camera_rear",
+                fo.PinholeCameraIntrinsics(
+                    fx=800.0, fy=800.0,
+                    cx=640.0, cy=360.0,
+                ),
+            )
+
+            # Verify intrinsics were added
+            print(dataset.camera_intrinsics.keys())
+            # dict_keys(['camera_front', 'camera_rear'])
+        """
+        if not isinstance(intrinsics, focam.CameraIntrinsics):
+            raise TypeError(
+                f"Expected CameraIntrinsics, got {type(intrinsics).__name__}"
+            )
+
+        current = dict(self._doc.camera_intrinsics or {})
+        current[name] = intrinsics
+        self._doc.camera_intrinsics = current
+        self.save()
+
+    @property
+    def static_transforms(self):
+        """A dict mapping frame relationships to
+        :class:`fiftyone.core.camera.StaticTransform` instances that define
+        the transformation parameters (poses) for sensors in the dataset.
+
+        Transforms are keyed by ``"source_frame::target_frame"`` (e.g.,
+        ``"camera_front::ego"``) or just ``"source_frame"`` which implies
+        transformation to the ``"world"`` frame.
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Set transforms for sensors
+            dataset.static_transforms = {
+                "camera_front::ego": fo.StaticTransform(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                ),
+                "lidar::ego": fo.StaticTransform(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                    target_frame="ego",
+                ),
+            }
+
+            # Edit existing transforms
+            dataset.static_transforms["camera_front::ego"].translation[0] = 1.6
+            dataset.save()  # must save after edits
+        """
+        return self._doc.static_transforms
+
+    @static_transforms.setter
+    def static_transforms(self, transforms):
+        self._validate_static_transforms(transforms)
+        self._doc.static_transforms = transforms
+        self.save()
+
+    def add_static_transform(self, transform):
+        """Adds a static transform to the dataset.
+
+        This method provides a convenient way to add transforms without
+        manually constructing the ``"source_frame::target_frame"`` key.
+
+        Args:
+            transform: a :class:`fiftyone.core.camera.StaticTransform`
+                instance with ``source_frame`` set (``target_frame`` defaults
+                to "world" if not specified)
+
+        Examples::
+
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            # Add transform for camera to ego transformation
+            dataset.add_static_transform(
+                fo.StaticTransform(
+                    translation=[1.5, 0.0, 1.2],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="camera_front",
+                    target_frame="ego",
+                )
+            )
+
+            # Add transform for lidar (target_frame defaults to "world")
+            dataset.add_static_transform(
+                fo.StaticTransform(
+                    translation=[0.0, 0.0, 2.0],
+                    quaternion=[0.0, 0.0, 0.0, 1.0],
+                    source_frame="lidar",
+                )
+            )
+
+            # Verify transforms were added
+            print(dataset.static_transforms.keys())
+            # dict_keys(['camera_front::ego', 'lidar::world'])
+        """
+        if not isinstance(transform, focam.StaticTransform):
+            raise TypeError(
+                f"Expected StaticTransform, got {type(transform).__name__}"
+            )
+
+        if transform.source_frame is None:
+            raise ValueError("transform.source_frame must be set")
+
+        # Default target_frame to world if not specified
+        if transform.target_frame is None:
+            transform.target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+        key = f"{transform.source_frame}::{transform.target_frame}"
+
+        current = dict(self._doc.static_transforms or {})
+        current[key] = transform
+        self._validate_static_transforms({key: transform})
+        self._doc.static_transforms = current
+        self.save()
+
+    def _validate_static_transforms(self, transforms):
+        """Validates that transforms dict keys match object fields.
+
+        Args:
+            transforms: a dict mapping keys to StaticTransform instances
+
+        Raises:
+            ValueError: if a key doesn't match the object's source_frame and
+                target_frame fields
+        """
+        if transforms is None:
+            return
+
+        for key, value in transforms.items():
+            if not isinstance(value, focam.StaticTransform):
+                continue
+
+            # Parse key to get expected frames
+            parts = key.split("::", 1)
+            expected_source = parts[0]
+            expected_target = (
+                parts[1]
+                if len(parts) > 1
+                else focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            )
+
+            if value.source_frame is None:
+                raise ValueError(
+                    f"Key '{key}' requires source_frame to be set, "
+                    f"but got source_frame=None"
+                )
+
+            if value.source_frame != expected_source:
+                raise ValueError(
+                    f"Key '{key}' expects source_frame='{expected_source}' "
+                    f"but got source_frame='{value.source_frame}'"
+                )
+
+            # Treat target_frame=None as world for comparison
+            actual_target = (
+                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            )
+            if actual_target != expected_target:
+                raise ValueError(
+                    f"Key '{key}' expects target_frame='{expected_target}' "
+                    f"but got target_frame='{value.target_frame}'"
+                )
+
+    def resolve_intrinsics(self, sample):
+        """Resolves camera intrinsics for the given sample.
+
+        Resolution precedence:
+            1. If sample has a field with a
+               :class:`fiftyone.core.camera.CameraIntrinsics` value, use it
+            2. If sample has a field with a
+               :class:`fiftyone.core.camera.CameraIntrinsicsRef`, look up in
+               ``dataset.camera_intrinsics[ref]``
+            3. If sample is from a grouped dataset, infer from group slice name
+               and look up in ``dataset.camera_intrinsics[slice_name]``
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+
+        Returns:
+            a :class:`fiftyone.core.camera.CameraIntrinsics`, or None if not
+            found
+        """
+        intrinsics_map = dict(self.camera_intrinsics or {})
+
+        # Check for sample-level intrinsics by matching type
+        for _, value in sample.iter_fields():
+            if isinstance(value, focam.CameraIntrinsics):
+                return value
+            elif isinstance(value, focam.CameraIntrinsicsRef):
+                return intrinsics_map.get(value.ref)
+
+        # Try to infer from group slice
+        if self.media_type == fom.GROUP:
+            group = None
+            if self.group_field is not None:
+                group = getattr(sample, self.group_field, None)
+            if group is None and self.group_field == "group":
+                group = getattr(sample, "group", None)
+
+            if group is not None:
+                try:
+                    slice_name = group.name
+                    return intrinsics_map.get(slice_name)
+                except (AttributeError, KeyError):
+                    pass
+
+        return None
+
+    def resolve_transformation(
+        self, sample, source_frame=None, target_frame=None, chain_via=None
+    ):
+        """Resolves a static transform for the given sample.
+
+        Resolution precedence:
+
+            1. If sample has a field with a
+               :class:`fiftyone.core.camera.StaticTransform` or
+               :class:`fiftyone.core.camera.StaticTransformRef` value (or a
+               list of them) with matching source/target frames, use it
+
+            2. Look up in ``dataset.static_transforms`` using the key format
+               ``"source_frame::target_frame"`` or ``"source_frame"`` (implies
+               target is ``"world"``)
+
+            3. If sample is from a grouped dataset and ``source_frame`` is None,
+               infer source_frame from group slice name and look up in
+               ``dataset.static_transforms``
+
+            4. If ``chain_via`` is provided and no direct match is found,
+               chain transforms through the intermediate frames
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            source_frame (None): the source coordinate frame name. If None and
+                sample is from a grouped dataset, inferred from group slice name
+            target_frame (None): the target coordinate frame name. If None,
+                defaults to ``"world"``
+            chain_via (None): optional list of intermediate frame names to
+                chain through if a direct transform is not found. For example,
+                ``chain_via=["ego"]`` would attempt to resolve
+                ``source_frame -> ego -> target_frame`` by composing individual
+                transforms
+
+        Returns:
+            a :class:`fiftyone.core.camera.StaticTransform`, or None if not
+            found
+
+        Example::
+
+            # Direct lookup
+            transform = dataset.resolve_transformation(sample, "camera", "world")
+
+            # Chain through intermediate frame
+            transform = dataset.resolve_transformation(
+                sample, "camera", "world", chain_via=["ego"]
+            )
+        """
+        transforms = self.static_transforms or {}
+
+        if target_frame is None:
+            target_frame = focam.DEFAULT_TRANSFORM_TARGET_FRAME
+
+        # Try to infer source_frame from group slice if not provided
+        if source_frame is None:
+            if self.media_type == fom.GROUP:
+                group = None
+                if self.group_field is not None:
+                    group = getattr(sample, self.group_field, None)
+                if group is None and self.group_field == "group":
+                    group = getattr(sample, "group", None)
+
+                if group is not None:
+                    try:
+                        source_frame = group.name
+                    except (AttributeError, KeyError):
+                        pass
+
+        # Try direct resolution first
+        result = self._resolve_transformation_direct(
+            sample, source_frame, target_frame, transforms
+        )
+        if result is not None:
+            return result
+
+        # If chain_via is provided, try chaining through intermediate frames
+        if chain_via is not None and source_frame is not None:
+            return self._resolve_transformation_chain(
+                sample, source_frame, target_frame, chain_via, transforms
+            )
+
+        return None
+
+    def _resolve_transformation_direct(
+        self, sample, source_frame, target_frame, transforms
+    ):
+        """Directly resolve transform without chaining."""
+        # Check for sample-level transforms by matching type
+        for _, value in sample.iter_fields():
+            if isinstance(value, list):
+                for item in value:
+                    if isinstance(
+                        item,
+                        (focam.StaticTransform, focam.StaticTransformRef),
+                    ):
+                        t = self._resolve_single_transformation(
+                            item, source_frame, target_frame
+                        )
+                        if t is not None:
+                            return t
+            elif isinstance(
+                value, (focam.StaticTransform, focam.StaticTransformRef)
+            ):
+                t = self._resolve_single_transformation(
+                    value, source_frame, target_frame
+                )
+                if t is not None:
+                    return t
+
+        if source_frame is None:
+            return None
+
+        # Look up in dataset-level transforms
+        key = f"{source_frame}::{target_frame}"
+        if key in transforms:
+            return transforms[key]
+
+        # Try without target frame (implies world)
+        if (
+            target_frame == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            and source_frame in transforms
+        ):
+            return transforms[source_frame]
+
+        return None
+
+    def _resolve_transformation_chain(
+        self, sample, source_frame, target_frame, chain_via, transforms
+    ):
+        """Resolve transform by chaining through intermediate frames."""
+        frames = [source_frame] + list(chain_via) + [target_frame]
+
+        result = None
+        for src, tgt in zip(frames, frames[1:]):
+            transform = self._resolve_transformation_direct(
+                sample, src, tgt, transforms
+            )
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
+
+    def _resolve_single_transformation(
+        self, value, source_frame, target_frame
+    ):
+        """Helper to resolve a single transform value."""
+        transforms = self.static_transforms or {}
+
+        if isinstance(value, focam.StaticTransform):
+            val_target = (
+                value.target_frame or focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            )
+            if (
+                value.source_frame == source_frame
+                and val_target == target_frame
+            ):
+                return value
+        elif isinstance(value, focam.StaticTransformRef):
+            # Look up the reference
+            ref_value = transforms.get(value.ref)
+            if ref_value is not None:
+                # Parse the ref to check frames
+                parts = value.ref.split("::", 1)
+                ref_source = parts[0]
+                ref_target = (
+                    parts[1]
+                    if len(parts) > 1
+                    else focam.DEFAULT_TRANSFORM_TARGET_FRAME
+                )
+                if ref_source == source_frame and ref_target == target_frame:
+                    return ref_value
+
+        return None
+
+    def get_transform_chain(
+        self, source_frame, target_frame, intermediate_frames=None
+    ):
+        """Computes a composed transformation between coordinate frames.
+
+        This method chains multiple static transforms to compute the
+        transformation from ``source_frame`` to ``target_frame``, optionally
+        through intermediate frames.
+
+        Args:
+            source_frame: the source coordinate frame name
+            target_frame: the target coordinate frame name
+            intermediate_frames (None): optional list of intermediate frame
+                names to chain through (e.g., ["ego"])
+
+        Returns:
+            a :class:`fiftyone.core.camera.StaticTransform` representing the
+            composed transformation, or None if the chain cannot be resolved
+
+        Example::
+
+            # Get transform from camera_front to world via ego
+            transform = dataset.get_transform_chain(
+                "camera_front", "world", intermediate_frames=["ego"]
+            )
+        """
+        transforms = self.static_transforms or {}
+
+        if intermediate_frames is None:
+            intermediate_frames = []
+
+        frames = [source_frame] + intermediate_frames + [target_frame]
+
+        result = None
+        for src, tgt in zip(frames, frames[1:]):
+            # Try direct lookup
+            key = f"{src}::{tgt}"
+            transform = transforms.get(key)
+
+            # Try with implied world target
+            if (
+                transform is None
+                and tgt == focam.DEFAULT_TRANSFORM_TARGET_FRAME
+            ):
+                transform = transforms.get(src)
+
+            if transform is None:
+                return None
+
+            if result is None:
+                result = transform
+            else:
+                result = result.compose(transform)
+
+        return result
+
+    @property
     def deleted(self):
         """Whether the dataset is deleted."""
         return self._deleted
+
+    @property
+    def active_label_schemas(self):
+        """The list of active fields in the dataset's
+        :ref:`label schemas <annotation-label-schema>`.
+        """
+        return list(self._doc.active_label_schemas or [])
+
+    @active_label_schemas.setter
+    def active_label_schemas(self, fields):
+        fields = _as_str_list(fields)
+
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+        self._doc.active_label_schemas = fields
+        self.save()
+
+    @property
+    def label_schemas(self):
+        """The dataset's :ref:`label schemas <annotation-label-schema>` that
+        define its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate label
+        schemas.
+
+        Returns:
+            the dataset's label schemas ``dict``
+        """
+        return copy.deepcopy(self._doc.label_schemas) or {}
+
+    def set_label_schemas(self, label_schemas):
+        """Set the dataset's :ref:`label schemas <annotation-label-schema>`
+        that defines its App annotation UX and constraints.
+
+        See
+        :meth:`generate_label_schemas` for ways in which to generate a label
+        schema.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            # Generate and assign a label schemas for all supported fields with
+            # populated constraints and other settings, e.g. 'values', and
+            # 'range'. Requires all samples in the dataset
+            dataset.set_label_schemas(dataset.generate_label_schemas())
+
+            # Generate a bare label schemas for all supported fields
+            dataset.set_label_schemas(
+                dataset.generate_label_schemas(scan_samples=False)
+            )
+
+        Args:
+            label_schemas: a label schemas ``dict``
+        """
+        if label_schemas is None:
+            label_schemas = {}
+
+        foa.validate_label_schemas(self, label_schemas)
+        self._doc.label_schemas = label_schemas
+        self._doc.active_label_schemas = [
+            field
+            for field in self.active_label_schemas
+            if field in label_schemas
+        ]
+        self.save()
+
+    def update_label_schema(self, field, label_schema):
+        """Update an individual field's
+        :ref:`label schema <annotation-label-schema>`.
+
+        Example::
+            dataset.update_label_schema(
+                "ground_truth",
+                dataset.generate_label_schemas("ground_truth")
+            )
+
+        Args:
+            field: the field name
+            label_schema: the field's label schema
+
+        Raises:
+            ExceptionGroup: if the label schema is invalid
+        """
+        foa.validate_label_schemas(self, label_schema, fields=field)
+        label_schemas = self.label_schemas
+        label_schemas[field] = copy.deepcopy(label_schema)
+        self._doc.label_schemas = label_schemas
+        self.save()
+
+    def delete_label_schemas(self, fields=None):
+        """Deletes one or more
+        :ref:`label schemas <annotation-label-schema>`. If no fields are
+        provided, all label schemas are deleted.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if the label schema or schemas do not exist
+        """
+        label_schemas = self.label_schemas
+        fields = _as_str_list(fields if fields is not None else label_schemas)
+
+        for field in fields:
+            if field not in label_schemas:
+                raise ValueError(
+                    f"field '{field}' is not in the dataset's label schema"
+                )
+
+            del label_schemas[field]
+
+        self.set_label_schemas(label_schemas)
+
+    def activate_label_schemas(self, fields=None):
+        """Activate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are activated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable
+                of such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema
+        """
+        if fields is None:
+            fields = sorted(self.label_schemas)
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(f"field '{field}' is not in the label schema")
+
+            if field in result:
+                raise ValueError(
+                    f"field '{field}' is already active in the label schema"
+                )
+
+            result.append(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
+
+    def deactivate_label_schemas(self, fields=None):
+        """Deactivate :meth:`label_schemas`. If no fields are provided, all
+        label schemas are deactivated.
+
+        Args:
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+
+        Raises:
+            ValueError: if any fields are not in the label schema, or any field
+                is not currently active
+        """
+        if fields is None:
+            fields = self.active_label_schemas
+
+        fields = _as_str_list(fields)
+
+        result = self.active_label_schemas
+        for field in fields:
+            if field not in self._doc.label_schemas:
+                raise ValueError(
+                    f"field '{field}' does not have a label schema"
+                )
+
+            if field not in result:
+                raise ValueError(f"field '{field}' label schema is not active")
+
+            result.remove(field)
+
+        self._doc.active_label_schemas = result
+        self.save()
 
     def summary(self):
         """Returns a string summary of the dataset.
@@ -1588,23 +2289,35 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_dynamic_sample_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
-        """Adds all dynamic sample fields to the dataset's schema.
+        """Adds dynamic sample fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
         value that have not been declared on the dataset's schema.
 
+        .. note::
+
+            You can use :meth:`get_dynamic_field_schema` to determine what
+            dynamic fields exist before adding them to your dataset's schema
+            via this method.
+
         Args:
             fields (None): an optional field or iterable of fields for which to
-                add dynamic fields. By default, all fields are considered
+                add dynamic fields, or a pre-computed dict mapping paths to
+                :class:`fiftyone.core.fields.Field` instances generated by
+                :meth:`get_dynamic_field_schema` to use. By default, all fields
+                are considered
             recursive (True): whether to recursively inspect nested lists and
                 embedded documents for dynamic fields
             add_mixed (False): whether to declare fields that contain values
                 of mixed types as generic :class:`fiftyone.core.fields.Field`
                 instances (True) or to skip such fields (False)
         """
-        dynamic_schema = self.get_dynamic_field_schema(
-            fields=fields, recursive=recursive
-        )
+        if isinstance(fields, dict):
+            dynamic_schema = fields
+        else:
+            dynamic_schema = self.get_dynamic_field_schema(
+                fields=fields, recursive=recursive
+            )
 
         schema = {}
         for path, field in dynamic_schema.items():
@@ -2258,14 +2971,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def add_dynamic_frame_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
-        """Adds all dynamic frame fields to the dataset's schema.
+        """Adds dynamic frame fields to the dataset's schema.
 
         Dynamic fields are embedded document fields with at least one non-None
         value that have not been declared on the dataset's schema.
 
+        .. note::
+
+            You can use :meth:`get_dynamic_frame_field_schema` to determine
+            what dynamic frame fields exist before adding them to your
+            dataset's schema via this method.
+
         Args:
-            fields (None): an optional field or iterable of fields for which to
-                add dynamic fields. By default, all fields are considered
+            fields (None): an optional frame field or iterable of frame fields
+                for which to add dynamic fields, or a pre-computed dict mapping
+                paths to :class:`fiftyone.core.fields.Field` instances
+                generated by :meth:`get_dynamic_frame_field_schema` to use.
+                By default, all frame fields are considered
             recursive (True): whether to recursively inspect nested lists and
                 embedded documents for dynamic fields
             add_mixed (False): whether to declare fields that contain values
@@ -2277,9 +2999,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 "Only datasets that contain videos may have frame fields"
             )
 
-        dynamic_schema = self.get_dynamic_frame_field_schema(
-            fields=fields, recursive=recursive
-        )
+        if isinstance(fields, dict):
+            dynamic_schema = fields
+        else:
+            dynamic_schema = self.get_dynamic_frame_field_schema(
+                fields=fields, recursive=recursive
+            )
 
         schema = {}
         for path, field in dynamic_schema.items():
@@ -2427,7 +3152,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._rename_fields(
             sample_collection, paths, new_paths
         )
-
         fields, _, _, _ = _parse_field_mapping(field_mapping)
 
         if fields:
@@ -2744,7 +3468,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls._delete_fields(
             field_names, error_level=error_level
         )
-
         fields, _ = _parse_fields(field_names)
 
         if fields:
@@ -4426,7 +5149,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         field_doc.description = field.description
         field_doc.info = field.info
-        field_doc.schema = field.schema
 
         try:
             self.save()
@@ -4508,7 +5230,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if view._root_dataset._doc.id != self._doc.id:
             raise ValueError("Cannot save view into a different dataset")
 
-        view._set_name(name)
         slug = self._validate_saved_view_name(name, overwrite=overwrite)
 
         now = datetime.utcnow()
@@ -4535,6 +5256,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._doc.saved_views.append(view_doc)
         self._doc.last_modified_at = now
         self._doc.save(virtual=True)
+
+        view._set_name(name)
+
+        # Backing datasets for saved generated views should be persistent
+        if view._is_generated:
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def get_saved_view_info(self, name):
         """Loads the editable information about the saved view with the given
@@ -4631,8 +5359,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         view_doc = self._get_saved_view_doc(name)
         view = self._load_saved_view_from_doc(view_doc)
+        self._update_saved_view_if_necessary(view, view_doc=view_doc)
         view_doc._update_last_loaded_at()
         return view
+
+    def _update_saved_view_if_necessary(
+        self, view, view_doc=None, reload=False
+    ):
+        if view_doc is None:
+            view_doc = self._get_saved_view_doc(view.name)
+
+        updated = False
+
+        # Some view stages store a `_state` parameter that encodes information
+        # about their source collection to determine when they need updating.
+        # Over time, ViewStage kwargs may be changed, which then need to be
+        # incorporated into the saved `view_stages`
+        view_stages = view._serialize(include_uuids=False)
+        saved_view_stages = [json_util.loads(s) for s in view_doc.view_stages]
+        if view_stages != saved_view_stages:
+            view_doc.view_stages = [json_util.dumps(s) for s in view_stages]
+            updated = True
+
+        # When reloading generated views, increment `last_modified_at` so we
+        # can compute when the view next needs refreshing
+        if reload and view._is_generated:
+            view_doc.last_modified_at = datetime.utcnow()
+            updated = True
+
+        if updated:
+            view_doc.save(virtual=True)
+            self._doc.reload("saved_views")
+
+        # Backing datasets for saved generated views should be persistent
+        if view._is_generated and not view._dataset.persistent:
+            view._dataset._doc.persistent = True
+            view._dataset.save()
 
     def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
@@ -4653,6 +5415,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if isinstance(view_doc, DBRef):
                 continue
 
+            _handle_delete_generated_saved_view(self, view_doc)
             view_doc.delete()
 
         self._doc.saved_views = []
@@ -4660,11 +5423,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _delete_saved_view(self, name):
         view_doc = self._get_saved_view_doc(name, pop=True)
-        if not isinstance(view_doc, DBRef):
-            view_id = str(view_doc.id)
-            view_doc.delete()
-        else:
+        if isinstance(view_doc, DBRef):
             view_id = None
+        else:
+            view_id = str(view_doc.id)
+
+            _handle_delete_generated_saved_view(self, view_doc)
+            view_doc.delete()
 
         self.save()
 
@@ -4696,9 +5461,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _load_saved_view_from_doc(self, view_doc):
         stage_dicts = [json_util.loads(s) for s in view_doc.view_stages]
         name = getattr(view_doc, "name")
-        view = fov.DatasetView._build(self, stage_dicts)
-        view._set_name(name)
-        return view
+        return fov.DatasetView._build(self, stage_dicts, name=name)
 
     def _validate_saved_view_name(self, name, skip=None, overwrite=False):
         slug = fou.to_slug(name)
@@ -5438,12 +6201,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._frame_collection.drop()
             fofr.Frame._reset_docs(self._frame_collection_name)
 
-        svc = foos.ExecutionStoreService(dataset_id=self._doc.id)
-        svc.cleanup()
+        _delete_dataset_extras(self)
 
         # Update singleton
         self._instances.pop(self._doc.name, None)
-        _delete_dataset_doc(self._doc)
+
+        self._doc.delete()
+
         self._deleted = True
 
     def add_dir(
@@ -7743,6 +8507,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             d.get("default_skeleton", None)
         )
 
+        dataset._doc.camera_intrinsics = dataset._parse_camera_intrinsics(
+            d.get("camera_intrinsics", {})
+        )
+        dataset._doc.static_transforms = dataset._parse_static_transforms(
+            d.get("static_transforms", {})
+        )
+
         dataset.save()
 
         def parse_sample(sd):
@@ -8182,7 +8953,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     validate=False,
                 )
 
-            # pylint: disable=possibly-used-before-assignment
             if not dynamic and field_name in schema:
                 continue
 
@@ -8220,7 +8990,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 if field_name == "_id":
                     continue
 
-                # pylint: disable=possibly-used-before-assignment
                 if not dynamic and field_name in schema:
                     continue
 
@@ -8242,13 +9011,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._sample_dict_to_doc(d)
         return fos.Sample.from_doc(doc, dataset=self)
 
-    def _sample_dict_to_doc(self, d):
+    def _sample_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._sample_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading sample with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._sample_doc_cls.from_dict(d)
 
@@ -8256,13 +9033,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         doc = self._frame_dict_to_doc(d)
         return fofr.Frame.from_doc(doc, dataset=self)
 
-    def _frame_dict_to_doc(self, d):
+    def _frame_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._frame_doc_cls.from_dict(d)
-        except:
+        except Exception as e:
+            logger.debug(
+                f'Error loading frame with ID {(d or {}).get("_id", "None")}. Error: {e}'
+            )
             # The dataset's schema may have been changed in another process;
             # let's try reloading to see if that fixes things
-            self.reload()
+            self._reload(hard=True)
+
+            # Guard against infinite recursion when _reload_backing_doc
+            # triggers another reload. Otherwise, we should always be reloading.
+            if _reload_backing_docs:
+                self._reload_docs(hard=True)
 
             return self._frame_doc_cls.from_dict(d, extended=False)
 
@@ -9035,11 +9820,29 @@ def _do_load_dataset(obj, name):
     return dataset_doc, sample_doc_cls, frame_doc_cls
 
 
-def _delete_dataset_doc(dataset_doc):
+def _handle_delete_generated_saved_view(dataset, view_doc):
+    if not any("_state" in s for s in view_doc.view_stages):
+        return
+
+    try:
+        # When deleting generated saved views, mark the backing dataset as
+        # non-persistent so it can be garbage collected
+        view = dataset._load_saved_view_from_doc(view_doc)
+        view._dataset._doc.persistent = False
+        view._dataset.save()
+    except:
+        pass
+
+
+def _delete_dataset_extras(dataset):
+    dataset_doc = dataset._doc
+    dataset_id = dataset_doc.id
+
     for view_doc in dataset_doc.saved_views:
         if isinstance(view_doc, DBRef):
             continue
 
+        _handle_delete_generated_saved_view(dataset, view_doc)
         view_doc.delete()
 
     for workspace_doc in dataset_doc.workspaces:
@@ -9084,11 +9887,11 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
-    from fiftyone.operators.delegated import DelegatedOperationService
+    svc = food.DelegatedOperationService()
+    svc.delete_for_dataset(dataset_id=dataset_id)
 
-    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
-
-    dataset_doc.delete()
+    svc = foos.ExecutionStoreService(dataset_id=dataset_id)
+    svc.cleanup()
 
 
 def _clone_collection(
@@ -9553,6 +10356,11 @@ def _merge_dataset_doc(
         curr_doc.mask_targets.update(doc.mask_targets)
         curr_doc.skeletons.update(doc.skeletons)
 
+        if doc.camera_intrinsics is not None:
+            curr_doc.camera_intrinsics.update(doc.camera_intrinsics)
+        if doc.static_transforms is not None:
+            curr_doc.static_transforms.update(doc.static_transforms)
+
         if doc.default_classes:
             curr_doc.default_classes = doc.default_classes
 
@@ -9566,6 +10374,15 @@ def _merge_dataset_doc(
         _update_no_overwrite(curr_doc.classes, doc.classes)
         _update_no_overwrite(curr_doc.mask_targets, doc.mask_targets)
         _update_no_overwrite(curr_doc.skeletons, doc.skeletons)
+
+        if doc.camera_intrinsics is not None:
+            _update_no_overwrite(
+                curr_doc.camera_intrinsics, doc.camera_intrinsics
+            )
+        if doc.static_transforms is not None:
+            _update_no_overwrite(
+                curr_doc.static_transforms, doc.static_transforms
+            )
 
         if doc.default_classes and not curr_doc.default_classes:
             curr_doc.default_classes = doc.default_classes
@@ -10676,6 +11493,16 @@ def _merge_embedded_doc_field(
             "default": {"$mergeObjects": docs},
         }
     }
+
+
+def _as_str_list(fields):
+    if fields is None:
+        return []
+
+    if etau.is_str(fields):
+        return [fields]
+
+    return list(fields)
 
 
 def _always_select_field(sample_collection, field):

@@ -1,19 +1,19 @@
 """
 FiftyOne delegated operation repository document.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 import copy
-import logging
 from datetime import datetime
+import logging
 
 from fiftyone.operators.executor import (
     ExecutionContext,
+    ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
 from fiftyone.operators.types import Pipeline, PipelineRunInfo
 
@@ -27,6 +27,7 @@ class DelegatedOperationDocument(object):
         delegation_target: str = None,
         context: ExecutionContext = None,
         is_remote: bool = False,
+        rerunnable: bool = True,
     ):
         self.operator = operator
         self.label = None
@@ -60,6 +61,9 @@ class DelegatedOperationDocument(object):
         self.log_upload_error = None
         self.log_size = None
         self.log_path = None
+        self.monitored = False
+        self.archived = False
+        self.rerunnable = rerunnable
 
         # distributed task fields
         self.parent_id = None  # Only on children
@@ -93,6 +97,9 @@ class DelegatedOperationDocument(object):
         self.metadata = doc.get("metadata", None)
         self.label = doc.get("label", None)
         self.updated_at = doc.get("updated_at", None)
+        self.monitored = doc.get("monitored", False)
+        self.archived = doc.get("archived", False)
+        self.rerunnable = doc.get("rerunnable", True)
 
         # grouped fields
         self.parent_id = doc.get("parent_id", None)

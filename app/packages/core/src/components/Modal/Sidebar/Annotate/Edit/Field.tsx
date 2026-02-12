@@ -1,5 +1,7 @@
+import { stagedPolylineTransformsAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtom, useAtomValue } from "jotai";
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
@@ -10,8 +12,6 @@ import {
   editing,
   isNew,
 } from "./state";
-import { useRecoilValue } from "recoil";
-import { polylinePointTransformsAtom } from "@fiftyone/looker-3d/src/state";
 
 const createSchema = (choices: string[], disabled: Set<string>) => ({
   type: "object",
@@ -50,7 +50,7 @@ const Field = () => {
   const isCreating = useAtomValue(isNew);
 
   const polylinePointTransforms =
-    useRecoilValue(polylinePointTransformsAtom) ?? {};
+    useRecoilValue(stagedPolylineTransformsAtom) ?? {};
 
   if (!isCreating) {
     return null;
@@ -74,6 +74,8 @@ const Field = () => {
           />
         </div>
       )}
+      {/* Means the user wants to create a label but no schema fields exist for that type.
+      Show AddSchema to let them create the required field. */}
       {typeof state === "string" && <AddSchema type={type} />}
     </>
   );

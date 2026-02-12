@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTH0_;
   readonly VITE_API?: string;
   readonly VITE_HAS_UPDATES: boolean;
+  readonly VITE_DEV_WORKTREE_NAME?: string;
 }
 
 interface ImportMeta {

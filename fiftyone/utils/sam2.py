@@ -2,7 +2,7 @@
 `Segment Anything 2 <https://github.com/facebookresearch/segment-anything-2>`_
 wrapper for the FiftyOne Model Zoo.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -30,6 +30,50 @@ smutil = fou.lazy_import("sam2.utils.misc")
 
 
 logger = logging.getLogger(__name__)
+
+
+def _subtract_negative_box_regions(mask, neg_detections, width, height):
+    """Subtract negative bounding box regions from a segmentation mask.
+
+    Args:
+        mask: numpy array representing segmentation mask(s). Supports:
+            - 2D (H, W) for video model
+            - 3D (N, H, W) for image model
+            - 4D (N, 1, H, W) for image model
+        neg_detections: a :class:`fiftyone.core.labels.Detections` containing
+            negative prompt boxes, or None
+        width: image/frame width in pixels
+        height: image/frame height in pixels
+
+    Returns:
+        the modified mask with negative regions zeroed out
+    """
+    if not neg_detections or not isinstance(neg_detections, fol.Detections):
+        return mask
+
+    if len(neg_detections.detections) == 0:
+        return mask
+
+    for neg_det in neg_detections.detections:
+        box_xyxy = fosam._to_abs_boxes(
+            np.array([neg_det.bounding_box]), width, height, chunk_size=1
+        )
+        box_abs = np.round(box_xyxy.squeeze()).astype(int)
+        nx1, ny1, nx2, ny2 = (
+            max(0, box_abs[0]),
+            max(0, box_abs[1]),
+            min(width, box_abs[2]),
+            min(height, box_abs[3]),
+        )
+        if nx2 > nx1 and ny2 > ny1:
+            if mask.ndim == 2:
+                mask[ny1:ny2, nx1:nx2] = 0
+            elif mask.ndim == 3:
+                mask[:, ny1:ny2, nx1:nx2] = 0
+            else:
+                mask[:, 0, ny1:ny2, nx1:nx2] = 0
+
+    return mask
 
 
 class SegmentAnything2ImageModelConfig(
@@ -122,6 +166,25 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
 
         session = fo.launch_app(dataset)
 
+    Negative prompt example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+
+        model = foz.load_zoo_model("segment-anything-2-hiera-tiny-image-torch")
+
+        # Use positive and negative prompts to refine segmentation
+        dataset.apply_model(
+            model,
+            label_field="refined_segmentations",
+            prompt_field="positive_detections",
+            negative_prompt_field="negative_detections",
+        )
+
+        session = fo.launch_app(dataset)
+
     Automatic segmentation example::
 
         import fiftyone as fo
@@ -146,6 +209,8 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
         dir(sam2)  # ensure package is installed
         super().__init__(config=config)
 
+        self._curr_negative_prompts = None
+
     def _load_model(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         model = entrypoint(
@@ -165,13 +230,49 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
     def _load_predictor(self):
         return smip.SAM2ImagePredictor(self._model)
 
+    def predict_all(self, imgs, samples=None):
+        field_name = self._get_field()
+        if field_name is not None and samples is not None:
+            prompt_type, prompts, classes = self._parse_samples(
+                samples, field_name
+            )
+        else:
+            prompt_type, prompts, classes = None, None, None
+
+        self._curr_prompt_type = prompt_type
+        self._curr_prompts = prompts
+        self._curr_classes = classes
+
+        negative_field = None
+        if "negative_prompt_field" in self.needs_fields:
+            negative_field = self.needs_fields["negative_prompt_field"]
+            if negative_field.startswith("frames."):
+                negative_field = negative_field[len("frames."):]
+
+        if negative_field and samples is not None:
+            negative_prompts = []
+            for sample in samples:
+                try:
+                    value = sample.get_field(negative_field)
+                except AttributeError:
+                    logger.warning(
+                        "Sample %s has no field '%s'", sample.id, negative_field
+                    )
+                    value = None
+                negative_prompts.append(value)
+            self._curr_negative_prompts = negative_prompts
+        else:
+            self._curr_negative_prompts = None
+
+        return self._predict_all(imgs)
+
     def _forward_pass_boxes(self, imgs):
         sam2_predictor = self._load_predictor()
         self._output_processor = fout.InstanceSegmenterOutputProcessor(
             self._curr_classes
         )
         outputs = []
-        for img, detections in zip(imgs, self._curr_prompts):
+        for idx, (img, detections) in enumerate(zip(imgs, self._curr_prompts)):
             ## If no detections, return empty tensors instead of running SAM
             if detections is None or len(detections.detections) == 0:
                 h, w = img.shape[1], img.shape[2]
@@ -205,8 +306,14 @@ class SegmentAnything2ImageModel(fosam.SegmentAnythingModel):
                 box=sam_boxes[None, :],
                 multimask_output=False,
             )
+
+            if self._curr_negative_prompts and idx < len(self._curr_negative_prompts):
+                masks = _subtract_negative_box_regions(
+                    masks, self._curr_negative_prompts[idx], w, h
+                )
+
             if masks.ndim == 3:
-                masks = np.expand_dims(masks, axis=0)
+                masks = np.expand_dims(masks, axis=1)
             outputs.append(
                 {
                     "boxes": torch.tensor(boxes_xyxy),
@@ -256,6 +363,25 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         session = fo.launch_app(dataset)
 
+    Negative prompt example::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart-video", max_samples=1)
+
+        model = foz.load_zoo_model("segment-anything-2-hiera-tiny-video-torch")
+
+        # Use positive and negative prompts to refine segmentation
+        dataset.apply_model(
+            model,
+            label_field="refined_segmentations",
+            prompt_field="frames.positive_detections",
+            negative_prompt_field="frames.negative_detections",
+        )
+
+        session = fo.launch_app(dataset)
+
     Args:
         config: a :class:`SegmentAnything2VideoModelConfig`
     """
@@ -284,6 +410,7 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         self._curr_prompt_type = None
         self._curr_prompts = None
+        self._curr_negative_prompts = None
         self._curr_classes = None
         self._curr_frame_width = None
         self._curr_frame_height = None
@@ -306,13 +433,17 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
         return model
 
     def predict(self, video_reader, sample):
-        field_name = self._get_field()
+        field_name, negative_field_name = self._get_field()
         (
             self._curr_frame_width,
             self._curr_frame_height,
         ) = video_reader.frame_size
         self._curr_prompts = self._get_prompts(sample, field_name)
         self._curr_prompt_type = self._get_prompt_type(sample, field_name)
+        if negative_field_name:
+            self._curr_negative_prompts = self._get_prompts(sample, negative_field_name)
+        else:
+            self._curr_negative_prompts = None
 
         return self._forward_pass(video_reader, sample)
 
@@ -334,7 +465,17 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
 
         prompt_field = prompt_field[len("frames.") :]
 
-        return prompt_field
+        # Get negative_prompt_field if provided
+        negative_prompt_field = None
+        if "negative_prompt_field" in self.needs_fields:
+            negative_prompt_field = self.needs_fields["negative_prompt_field"]
+            if not negative_prompt_field.startswith("frames."):
+                raise ValueError(
+                    "'negative_prompt_field' should be a frame field for segment anything 2 video model"
+                )
+            negative_prompt_field = negative_prompt_field[len("frames.") :]
+
+        return prompt_field, negative_prompt_field
 
     def _get_prompt_type(self, sample, field_name):
         for _, frame in sample.frames.items():
@@ -423,6 +564,15 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                 mask = np.squeeze(
                     (out_mask_logits[i] > 0.0).cpu().numpy(), axis=0
                 )
+
+                if self._curr_negative_prompts and out_frame_idx < len(self._curr_negative_prompts):
+                    mask = _subtract_negative_box_regions(
+                        mask,
+                        self._curr_negative_prompts[out_frame_idx],
+                        self._curr_frame_width,
+                        self._curr_frame_height,
+                    )
+
                 box = fosam._mask_to_box(mask)
                 if box is None:
                     continue
@@ -482,6 +632,21 @@ class SegmentAnything2VideoModel(fom.SamplesMixin, fom.Model):
                     self._curr_frame_height,
                     keypoint,
                 )
+
+                if self._curr_negative_prompts and frame_idx < len(self._curr_negative_prompts):
+                    neg_frame_keypoints = self._curr_negative_prompts[frame_idx]
+                    if neg_frame_keypoints and isinstance(neg_frame_keypoints, fol.Keypoints) and len(neg_frame_keypoints.keypoints) > 0:
+                        for neg_keypoint in neg_frame_keypoints.keypoints:
+                            neg_points, _ = fosam._to_sam_points(
+                                neg_keypoint.points,
+                                self._curr_frame_width,
+                                self._curr_frame_height,
+                                neg_keypoint,
+                            )
+                            neg_labels = np.zeros(len(neg_points), dtype=int)
+                            points = np.vstack([points, neg_points])
+                            labels = np.concatenate([labels, neg_labels])
+
                 _, _, _ = self.model.add_new_points_or_box(
                     inference_state=inference_state,
                     frame_idx=frame_idx,

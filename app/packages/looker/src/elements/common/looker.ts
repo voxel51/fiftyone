@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { SELECTION_TEXT } from "../../constants";
@@ -30,6 +30,7 @@ export class LookerElement<State extends BaseState> extends BaseElement<
             SHORTCUTS,
             error,
             options: { shouldHandleKeyEvents },
+            config: { isModal },
           } = state;
           if (!error && e.key in SHORTCUTS) {
             const matchedControl = SHORTCUTS[e.key] as Control;
@@ -37,6 +38,10 @@ export class LookerElement<State extends BaseState> extends BaseElement<
               shouldHandleKeyEvents || matchedControl.alwaysHandle;
             if (enabled) {
               matchedControl.action(update, dispatchEvent, e.key, e.shiftKey);
+
+              if (e.key === "Escape" && isModal) {
+                e.stopPropagation();
+              }
             }
           }
 

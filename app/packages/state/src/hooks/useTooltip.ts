@@ -3,6 +3,8 @@ import {
   LabelUnhoveredEvent,
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
+import { isCurrentlyTransformingAtom } from "@fiftyone/looker-3d/src/state";
+import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
 import * as fos from "@fiftyone/state";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilState, useSetRecoilState } from "recoil";
@@ -22,7 +24,11 @@ export default function useTooltip() {
   // only relevant for looker-3d
   const getMeshProps = useRecoilCallback(
     ({ snapshot }) =>
-      (label) => {
+      (label: BaseLabel) => {
+        const isCurrentlyTransforming = Boolean(
+          snapshot.getLoadable(isCurrentlyTransformingAtom).getValue()
+        );
+
         return {
           onPointerOver: () => {
             setTooltipDetail(getDetailsFromLabel(label));
@@ -63,6 +69,10 @@ export default function useTooltip() {
             }
           },
           onPointerMove: (e: MouseEvent) => {
+            if (isCurrentlyTransforming) {
+              setTooltipDetail(null);
+            }
+
             if (isTooltipLocked) {
               return;
             }

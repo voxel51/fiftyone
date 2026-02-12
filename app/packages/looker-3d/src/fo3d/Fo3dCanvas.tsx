@@ -13,11 +13,14 @@ import { Vector3 } from "three";
 import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
+import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
 import { ThreeDLabels } from "../labels";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
+import { Fo3dPointCloudSettings } from "./context";
 import { SceneControls } from "./scene-controls/SceneControls";
 
 interface Fo3dSceneContentProps {
@@ -60,7 +63,7 @@ interface Fo3dSceneContentProps {
   /**
    * The 3D scene to render
    */
-  foScene: any;
+  foScene: FoScene;
   /**
    * Whether the scene is initialized
    */
@@ -68,11 +71,11 @@ interface Fo3dSceneContentProps {
   /**
    * Sample data for labels
    */
-  sample: any;
+  sample: fos.ModalSample;
   /**
    * Point cloud settings
    */
-  pointCloudSettings: any;
+  pointCloudSettings: Fo3dPointCloudSettings;
   /**
    * Reference to the assets group
    */
@@ -168,6 +171,7 @@ const AnnotationControls = () => {
     <>
       <AnnotationPlane panelType="main" viewType="top" />
       <SegmentPolylineRenderer />
+      <CreateCuboidRenderer />
     </>
   );
 };

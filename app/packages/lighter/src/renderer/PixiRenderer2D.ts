@@ -1,7 +1,8 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { EventDispatcher, getEventBus } from "@fiftyone/events";
 import { Viewport } from "pixi-viewport";
 import * as PIXI from "pixi.js";
 import {
@@ -15,16 +16,10 @@ import {
   HANDLE_OUTLINE,
   SELECTED_ALPHA,
   SELECTED_COLOR,
+  TAB_GAP_DEFAULT,
 } from "../constants";
-import type { EventBus } from "../event/EventBus";
-import { LIGHTER_EVENTS } from "../event/EventBus";
-import type {
-  Dimensions2D,
-  DrawStyle,
-  Point,
-  Rect,
-  TextOptions,
-} from "../types";
+import type { LighterEventGroup } from "../events";
+import type { DrawStyle, Point, Rect, TextOptions } from "../types";
 import { parseColorWithAlpha } from "../utils/color";
 import { DashLine } from "./pixi-renderer-utils/dashed-line";
 import type { ImageOptions, ImageSource, Renderer2D } from "./Renderer2D";
@@ -39,7 +34,7 @@ export class PixiRenderer2D implements Renderer2D {
   private app!: PIXI.Application;
   private tickHandler?: () => void;
   private isRunning = false;
-  public eventBus?: EventBus;
+  private eventBus: EventDispatcher<LighterEventGroup>;
 
   private viewport?: Viewport;
 
@@ -52,8 +47,8 @@ export class PixiRenderer2D implements Renderer2D {
   // Container tracking for visibility management
   private containers = new Map<string, PIXI.Container>();
 
-  constructor(private canvas: HTMLCanvasElement, eventBus?: EventBus) {
-    this.eventBus = eventBus;
+  constructor(private canvas: HTMLCanvasElement, sceneId: string) {
+    this.eventBus = getEventBus<LighterEventGroup>(sceneId);
   }
 
   public async initializePixiJS(): Promise<void> {
@@ -70,12 +65,7 @@ export class PixiRenderer2D implements Renderer2D {
             this.app.renderer.render(this.app.stage);
           }
 
-          if (this.eventBus) {
-            this.eventBus.emit({
-              type: LIGHTER_EVENTS.RESIZE,
-              detail: { width, height },
-            });
-          }
+          this.eventBus.dispatch("lighter:resize", { width, height });
         }
       }
     });
@@ -97,12 +87,16 @@ export class PixiRenderer2D implements Renderer2D {
     // to re-render the scene with updated scaling
     // TODO: throttle?
     this.viewport.on("zoomed", (_data) => {
-      if (this.viewport && this.eventBus) {
-        this.eventBus.emit({
-          type: LIGHTER_EVENTS.ZOOMED,
-          detail: { scale: this.viewport.scaled },
+      if (this.viewport) {
+        this.eventBus.dispatch("lighter:zoomed", {
+          scale: this.viewport.scaled,
         });
+        this.emitViewportMoved();
       }
+    });
+
+    this.viewport.on("moved", () => {
+      this.emitViewportMoved();
     });
 
     this.foregroundContainer = new PIXI.Container();
@@ -258,23 +252,229 @@ export class PixiRenderer2D implements Renderer2D {
     this.addToContainer(graphics, containerId);
   }
 
+  /**
+   * Draws border of background of 'drawText'
+   */
+  private drawBorder(
+    bounds: Rect,
+    options: TextOptions | undefined,
+    containerId: string
+  ): void {
+    if (options?.dashline) {
+      const border = new PIXI.Graphics();
+      const dashline = options.dashline;
+      const { lineWidth, strokeStyle } = dashline;
+      const scaledLineWidth = lineWidth / this.getScale();
+      const halfLineWidth = scaledLineWidth / 2;
+
+      const colorObj = parseColorWithAlpha(strokeStyle);
+      const color = colorObj.color;
+      const alpha = colorObj.alpha;
+
+      let { x, y, width, height } = { ...bounds };
+      x += halfLineWidth;
+      y += halfLineWidth;
+      height -= halfLineWidth * 2;
+      width -= halfLineWidth * 2;
+
+      const corners: Point[] = [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height },
+      ];
+
+      // for 'tabs' shift the start point
+      // such that `!options.tab` can determine if we `closePath` or not
+      // i.e. tab ? draw three sides : draw four sides
+      switch (options.tab) {
+        case "top":
+          corners.unshift(corners.pop()!);
+          corners[3].y += halfLineWidth;
+          break;
+        case "bottom":
+          corners.push(corners.shift()!);
+          corners[3].y -= halfLineWidth;
+          break;
+        case "left":
+          corners.push(corners.shift()!);
+          corners.push(corners.shift()!);
+          corners[3].x += halfLineWidth;
+          break;
+        case "right":
+          corners[3].x -= halfLineWidth;
+          break;
+      }
+
+      const dashLine = new DashLine(border, {
+        dash: dashline.dashPattern.map((dash) => dash / this.getScale()),
+        width: scaledLineWidth,
+        color,
+        alpha,
+      });
+
+      dashLine
+        .moveTo(corners[0].x, corners[0].y)
+        .lineTo(corners[1].x, corners[1].y)
+        .lineTo(corners[2].x, corners[2].y)
+        .lineTo(corners[3].x, corners[3].y, !options.tab);
+
+      this.addToContainer(border, containerId);
+    }
+  }
+
+  /**
+   * Draws background of 'drawText'
+   */
+  private drawBackground(
+    bounds: Rect,
+    options: TextOptions | undefined,
+    containerId: string
+  ): void {
+    if (options?.backgroundColor) {
+      const background = new PIXI.Graphics();
+
+      if (options?.rounded) {
+        const radius = options?.rounded / this.getScale();
+
+        if (options?.tab) {
+          const corners = { ...bounds };
+          const halfHeight = bounds.height / 2;
+          const halfWidth = bounds.width / 2;
+
+          switch (options.tab) {
+            case "top":
+              corners.y += halfHeight;
+              corners.height -= halfHeight;
+              break;
+            case "bottom":
+              corners.height -= halfHeight;
+              break;
+            case "left":
+              corners.x += halfWidth;
+              corners.width -= halfWidth;
+              break;
+            case "right":
+              corners.width -= halfWidth;
+              break;
+          }
+
+          background
+            .roundRect(bounds.x, bounds.y, bounds.width, bounds.height, radius)
+            .rect(corners.x, corners.y, corners.width, corners.height)
+            .fill(options.backgroundColor);
+        } else {
+          background
+            .roundRect(bounds.x, bounds.y, bounds.width, bounds.height, radius)
+            .fill(options.backgroundColor);
+        }
+      } else {
+        background
+          .rect(bounds.x, bounds.y, bounds.width, bounds.height)
+          .fill(options.backgroundColor);
+      }
+
+      this.addToContainer(background, containerId);
+      this.drawBorder(bounds, options, containerId);
+    }
+  }
+
+  /**
+   * Calculates text and background positions based on anchor and offset options.
+   */
+  private calculatePosition(
+    position: Point,
+    finalHeight: number,
+    finalWidth: number,
+    options: TextOptions | undefined
+  ): { txt: Point; bg: Rect } {
+    const padding =
+      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
+    const gap = TAB_GAP_DEFAULT / this.getScale();
+
+    position.y += gap;
+
+    // text height + top padding + bottom padding + gap
+    const verticalOffset = finalHeight + padding * 2 + gap;
+
+    const anchor = {
+      vertical: "bottom",
+      horizontal: "left",
+      ...options?.anchor,
+    };
+
+    const offset = {
+      top: 0,
+      bottom: 0,
+      ...options?.offset,
+    };
+
+    const txt: Point = { ...position };
+    const bg: Rect = {
+      ...position,
+      width: finalWidth + padding * 2,
+      height: finalHeight + padding * 2,
+    };
+
+    switch (anchor.vertical) {
+      case "top":
+        txt.y += padding;
+        break;
+      case "center":
+        txt.y -= finalHeight / 2;
+        bg.y -= finalHeight / 2 + padding;
+        break;
+      case "bottom":
+        txt.y -= finalHeight + padding;
+        bg.y -= finalHeight + padding * 2;
+        break;
+    }
+
+    switch (anchor.horizontal) {
+      case "left":
+        txt.x += padding;
+        break;
+      case "center":
+        txt.x -= finalWidth / 2;
+        bg.x -= finalWidth / 2 + padding;
+        break;
+      case "right":
+        txt.x -= finalWidth + padding;
+        bg.x -= finalWidth + padding * 2;
+        break;
+    }
+
+    if (offset.top) {
+      txt.y -= verticalOffset * offset.top;
+      bg.y -= verticalOffset * offset.top;
+    }
+
+    if (offset.bottom) {
+      txt.y += verticalOffset * offset.bottom;
+      bg.y += verticalOffset * offset.bottom;
+    }
+
+    return {
+      txt,
+      bg,
+    };
+  }
+
   drawText(
     text: string,
     position: Point,
     options: TextOptions | undefined,
     containerId: string
-  ): Dimensions2D {
+  ): Rect {
     if (text?.length === 0) {
-      return { width: 0, height: 0 };
+      return { x: 0, y: 0, width: 0, height: 0 };
     }
-
-    const padding =
-      (options?.padding ?? DEFAULT_TEXT_PADDING) / this.getScale();
 
     const textStyle = new PIXI.TextStyle({
       fontFamily: options?.font || FONT_FAMILY,
       fontSize: options?.fontSize || FONT_SIZE,
       fontWeight: FONT_WEIGHT,
+      fontStyle: options?.fontStyle || "normal",
       fill: options?.fontColor || "#000000",
       align: "left",
       wordWrap: true,
@@ -282,8 +482,6 @@ export class PixiRenderer2D implements Renderer2D {
     });
 
     const pixiText = new PIXI.Text({ text, style: textStyle });
-    pixiText.x = position.x + padding;
-    pixiText.y = position.y - padding;
     pixiText.scale.set(1 / this.getScale());
 
     const textBounds = pixiText.getLocalBounds();
@@ -292,24 +490,20 @@ export class PixiRenderer2D implements Renderer2D {
       (options?.height || textBounds.height) / this.getScale();
     const finalWidth = textBounds.width / this.getScale();
 
-    pixiText.y -= finalHeight;
+    const { txt, bg } = this.calculatePosition(
+      position,
+      finalHeight,
+      finalWidth,
+      options
+    );
 
-    if (options?.backgroundColor) {
-      const background = new PIXI.Graphics();
+    pixiText.x = txt.x;
+    pixiText.y = txt.y;
 
-      background
-        .rect(
-          position.x,
-          position.y - finalHeight - padding * 2,
-          finalWidth + padding * 2,
-          finalHeight + padding * 2
-        )
-        .fill(options.backgroundColor);
-      this.addToContainer(background, containerId);
-    }
+    this.drawBackground(bg, options, containerId);
     this.addToContainer(pixiText, containerId);
 
-    return { width: finalWidth, height: finalHeight };
+    return bg;
   }
 
   drawLine(
@@ -499,14 +693,44 @@ export class PixiRenderer2D implements Renderer2D {
    * @returns Current scaling factor.
    */
   getScale(): number {
-    return this.viewport?.scaled ?? 1;
+    if (!this.viewport || this.viewport.destroyed) {
+      return 1;
+    }
+    return this.viewport.scaled;
+  }
+
+  /**
+   * Returns the current viewport position (pan offset).
+   * @returns The viewport position { x, y }.
+   */
+  getViewportPosition(): { x: number; y: number } {
+    if (!this.viewport || this.viewport.destroyed) {
+      return { x: 0, y: 0 };
+    }
+    return {
+      x: this.viewport.x,
+      y: this.viewport.y,
+    };
+  }
+
+  /**
+   * Emits a viewport-moved event with current position and scale.
+   */
+  private emitViewportMoved(): void {
+    if (this.viewport) {
+      this.eventBus.dispatch("lighter:viewport-moved", {
+        x: this.viewport.x,
+        y: this.viewport.y,
+        scale: this.viewport.scaled,
+      });
+    }
   }
 
   /**
    * Check if the renderer is initialized
    */
   isReady(): boolean {
-    return sharedPixiApp.isReady();
+    return sharedPixiApp.isReady() && this.viewport !== undefined;
   }
 
   /**

@@ -164,7 +164,7 @@ export class SavedViewsPom {
 
   savedViewOption(slug: string) {
     return this.page
-      .getByTestId("selection-view")
+      .getByTestId("saved-views-selection-view")
       .getByTestId(`saved-views-${slug}-selection-option`);
   }
 
@@ -210,7 +210,7 @@ export class SavedViewsPom {
 
   colorListContainer() {
     return this.page
-      .getByTestId("selection-view")
+      .getByTestId("saved-views-input-color-selection-selection-view")
       .filter({ hasText: defaultColor });
   }
 

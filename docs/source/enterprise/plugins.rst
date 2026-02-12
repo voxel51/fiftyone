@@ -510,8 +510,8 @@ FiftyOne Enterprise supports executing delegated operations on-demand in
 your connected external compute platform. With on-demand compute, resources are
 only provisioned and used when they're actually needed, minimizing idle times.
 
-On-demand compute is currently supported on
-`Databricks <https://www.databricks.com/>`_ and
+On-demand compute is currently supported on FiftyOne's Kubernetes Orchestrator,
+`Databricks <https://www.databricks.com/>`_, and
 `Anyscale <https://www.anyscale.com/>`_.
 
 Administrators can refer to the
@@ -695,26 +695,26 @@ indicated by “3”:
 
 .. image:: /images/plugins/operators/runs/run_rename.png
 
-.. _enterprise-runs-mark-as-failed:
+.. _enterprise-runs-terminate:
 
-Mark as failed
-^^^^^^^^^^^^^^
+Terminate
+^^^^^^^^^
 
-If a delegated operation run terminates unexpectedly without reporting failure,
-you can manually mark it as failed from the Runs page.
-
-To mark a run as failed, click the three dots indicated by "1". Then, in the
-menu, click "Mark as failed" as indicated by "2". The run status will be
+To terminate a run, click the three dots indicated by "1". Then, in the
+menu, click "Terminate" as indicated by "2". The run status will be
 updated and will now display as failed:
 
-.. image:: /images/plugins/operators/runs/runs_mark_as_failed.png
+.. image:: /images/plugins/operators/runs/runs_terminate.png
 
-.. warning::
+.. version-changed:: 2.12.0
+   The "Terminate" action now actually stops running delegated operations.
 
-    If the delegated operation is, in fact, still in progress in your
-    orchestrator, marking the run as failed **will not** terminate the
-    execution of operation. It will continue executing until completion but the
-    operation will be marked as failed regardless of its outcome.
+.. note::
+
+   If you are running a version older than 2.12.0, the button will say
+   "Mark as Failed" instead of "Terminate", and it **will not** stop the
+   operation on your orchestrator-it will only mark the run as failed
+   while the operation continues executing.
 
 .. _enterprise-runs-monitoring-progress:
 

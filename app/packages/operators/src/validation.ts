@@ -1,5 +1,6 @@
 import { isNullish, pluralize } from "@fiftyone/utilities";
-import { Enum, List, Object, Boolean, String, Number } from "./types";
+import { Boolean, Enum, List, Number, Object, Property, String } from "./types";
+import { ParamsType } from "./types-internal";
 
 export class ValidationError {
   constructor(public reason, public property, public path) {}
@@ -151,6 +152,13 @@ export class ValidationContext {
       }
     }
   }
+}
+
+export function validate(params: ParamsType, property: Property) {
+  const context = new ValidationContext({ params }, property, {
+    config: { disableSchemaValidation: false },
+  });
+  return context.toProps();
 }
 
 function existsOrNonRequired(property, value) {

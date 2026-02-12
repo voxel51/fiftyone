@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 import {
   ImageOptions,
@@ -120,7 +120,7 @@ const LighterSetupImpl = (props: {
   const { scene } = useLighterSetupWithPixi(canvas, options, sceneId);
 
   // This is the bridge between FiftyOne state management system and Lighter
-  useBridge(scene);
+  useBridge(scene, sceneId);
 
   return null;
 };

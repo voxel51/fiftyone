@@ -9,6 +9,8 @@
 /app/                        @voxel51/frontend-devs
 /e2e-pw/                     @voxel51/frontend-devs
 /fiftyone/server/            @voxel51/frontend-devs
+
+# Plugins
 /plugins/panels/             @voxel51/plugin-pros
 /fiftyone/operators/         @voxel51/plugin-pros @voxel51/backend-squad
 
@@ -27,3 +29,9 @@ Dockerfile                   @voxel51/aloha-shirts
 setup.py                     @voxel51/aloha-shirts
 requirements.txt             @voxel51/aloha-shirts
 requirements/                @voxel51/aloha-shirts
+
+# e2e test workflow has shared ownership
+.github/workflows/e2e.yml    @voxel51/aloha-shirts sashank@voxel51.com  # implementer of e2e workflow
+
+# Exclusions ('!' syntax not supported by github)
+/fiftyone/internal/features/  @voxel51/developers

@@ -1,5 +1,7 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
+import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
 import { useCursor } from "@react-three/drei";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { use3dLabelColor } from "../../hooks/use-3d-label-color";
 import { useSimilarLabels3d } from "../../hooks/use-similar-labels-3d";
@@ -33,16 +35,35 @@ export const useHoverState = (): HoverState => {
  * Custom hook for managing event handlers and tooltip integration
  */
 export const useEventHandlers = (tooltip: any, label: any): EventHandlers => {
-  const { onPointerOver, onPointerOut, ...restEventHandlers } = useMemo(() => {
-    return {
-      ...tooltip.getMeshProps(label),
-    };
-  }, [tooltip, label]);
+  const {
+    onPointerOver: _onPointerOver,
+    onPointerOut: _onPointerOut,
+    ...restEventHandlers
+  } = useMemo(() => tooltip.getMeshProps(label), [tooltip, label]);
+
+  const canAnnotate = useCanAnnotate();
+  const annotationEventBus = useAnnotationEventBus();
 
   return {
-    onPointerOver,
-    onPointerOut,
-    restEventHandlers,
+    onPointerOver: useCallback(() => {
+      if (canAnnotate) {
+        annotationEventBus.dispatch("annotation:canvasOverlayHover", {
+          id: label.id ?? label._id,
+        });
+      }
+
+      _onPointerOver();
+    }, [label, canAnnotate, annotationEventBus, _onPointerOver]),
+    onPointerOut: useCallback(() => {
+      if (canAnnotate) {
+        annotationEventBus.dispatch("annotation:canvasOverlayUnhover", {
+          id: label.id ?? label._id,
+        });
+      }
+
+      _onPointerOut();
+    }, [label, canAnnotate, annotationEventBus, _onPointerOut]),
+    ...restEventHandlers,
   };
 };
 

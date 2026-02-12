@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { isHoveringParticularLabelWithInstanceConfig } from "@fiftyone/state/src/jotai";
@@ -9,13 +9,12 @@ import { distanceFromLineSegment, getRenderedScale } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
 import { getInstanceStrokeStyles, t } from "./util";
 
-export interface PolylineLabel extends RegularLabel {
+export type PolylineLabel = RegularLabel & {
   points?: Coordinates[][];
   points3d?: Coordinates[][];
   closed?: boolean;
   filled?: boolean;
-}
-
+} & Record<string, unknown>;
 export default class PolylineOverlay<
   State extends BaseState
 > extends CoordinateOverlay<State, PolylineLabel> {

@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -438,19 +438,34 @@ class Classifications(_HasLabelList, Label):
 class Detection(_HasAttributesDict, _HasID, _HasMedia, _HasInstance, Label):
     """An object detection.
 
+    This class can represent 2D or 3D objects:
+
+    -   For :ref:`2D objects <object-detection>`, you must provide the
+        ``bounding_box`` parameter, and you can also provide the optional
+        ``mask`` or ``mask_path`` parameters to represent
+        :ref:`instance segmentations <instance-segmentation>`
+    -   For :ref:`3D objects <3d-detections>`, you must instead provide the
+        ``location``, ``dimensions``, and ``rotation`` parameters
+
     Args:
         label (None): the label string
         bounding_box (None): a list of relative bounding box coordinates in
-            ``[0, 1]`` in the following format::
+            ``[0, 1]`` in the following format (2D only)::
 
-            [<top-left-x>, <top-left-y>, <width>, <height>]
+                [<top-left-x>, <top-left-y>, <width>, <height>]
 
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
-            array
-        mask_path (None):  the absolute path to the instance segmentation image
+            array (2D only)
+        mask_path (None): the absolute path to the instance segmentation image
             on disk, which should be a single-channel PNG image where any
-            non-zero values represent the instance's extent
+            non-zero values represent the instance's extent (2D only)
+        location (None): the object center ``[x, y, z]`` in scene coordinates
+            (3D only)
+        dimensions (None): the object size ``[x, y, z]`` in scene units
+            (3D only)
+        rotation (None): the object rotation ``[x, y, z]`` around its center,
+            in ``[-pi, pi]`` (3D only)
         confidence (None): a confidence in ``[0, 1]`` for the detection
         index (None): an index for the object
         instance (None): an instance of :class:`Instance` to link this
@@ -649,7 +664,7 @@ class Detections(_HasLabelList, Label):
 
         Args:
             tolerance (2): a tolerance, in pixels, when generating approximate
-                polylines for the instance masks
+                polylines for the instance masks. Typical values are 1-3 pixels
             filled (True): whether the polylines should be filled
 
         Returns:
@@ -766,7 +781,7 @@ class Polyline(_HasAttributesDict, _HasID, _HasInstance, Label):
         xtl, ytl, xbr, ybr = bbox.to_coords()
         bounding_box = [xtl, ytl, (xbr - xtl), (ybr - ytl)]
 
-        if mask_size is None and frame_size:
+        if mask_size is None and frame_size is not None:
             w, h = frame_size
             rel_mask_w = bounding_box[2]
             rel_mask_h = bounding_box[3]

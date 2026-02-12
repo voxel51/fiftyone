@@ -1,7 +1,7 @@
 """
 FiftyOne odm unit tests.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,6 +10,7 @@ import unittest
 from bson import ObjectId
 
 import fiftyone as fo
+import fiftyone.core.fields as fof
 import fiftyone.core.odm as foo
 
 
@@ -57,6 +58,62 @@ class DocumentTests(unittest.TestCase):
 
         finally:
             dataset_doc.delete()
+
+
+class _GetImpliedInner(foo.EmbeddedDocument):
+    x = fof.FloatField()
+    score = fof.FloatField()
+
+
+class _GetImpliedSubclassedEmbeddedDocField(fof.EmbeddedDocumentField):
+    """Lightweight subclass used to mimic plugin-provided embedded fields."""
+
+    pass
+
+
+class _GetImpliedOuter(foo.EmbeddedDocument):
+    # Use a subclassed `EmbeddedDocumentField` so that `ftype` in the inferred
+    # schema is a subclass, not the base `EmbeddedDocumentField`
+    pose = _GetImpliedSubclassedEmbeddedDocField(_GetImpliedInner)
+
+
+class GetImpliedFieldKwargsTests(unittest.TestCase):
+    """Integration-style tests that exercise `_merge_embedded_doc_fields`
+    via the public :func:`get_implied_field_kwargs` API.
+    """
+
+    def test_list_of_embedded_docs_merges_nested_schema(self):
+        # Two `_GetImpliedOuter` documents whose nested `_GetImpliedInner`
+        # subdocuments populate
+        # different fields. The merged schema for `pose` should be the union
+        # of the observed inner fields.
+        inner_with_x = _GetImpliedInner(x=1.0)
+        inner_with_score = _GetImpliedInner(score=0.5)
+
+        values = [
+            _GetImpliedOuter(pose=inner_with_x),
+            _GetImpliedOuter(pose=inner_with_score),
+        ]
+
+        kwargs = foo.get_implied_field_kwargs(values)
+
+        # Top-level: list of `_GetImpliedOuter` embedded documents
+        self.assertEqual(kwargs["ftype"], fof.ListField)
+        self.assertEqual(kwargs["subfield"], fof.EmbeddedDocumentField)
+        self.assertEqual(kwargs["embedded_doc_type"], _GetImpliedOuter)
+
+        # Nested: `pose` should itself be an embedded document whose schema
+        # includes both `x` and `score`, demonstrating that nested embedded
+        # schemas from multiple list elements are correctly merged when the
+        # field type is a subclass of `EmbeddedDocumentField`
+        pose_spec = next(f for f in kwargs["fields"] if f["name"] == "pose")
+        self.assertTrue(
+            issubclass(pose_spec["ftype"], fof.EmbeddedDocumentField)
+        )
+        self.assertEqual(pose_spec["embedded_doc_type"], _GetImpliedInner)
+
+        inner_field_names = {f["name"] for f in pose_spec["fields"]}
+        self.assertEqual(inner_field_names, {"x", "score"})
 
 
 class GetIndexedValuesTests(unittest.TestCase):

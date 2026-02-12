@@ -6,7 +6,8 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
 import { usePolylineAnnotation } from "../annotation/usePolylineAnnotation";
 import {
-  isPolylineAnnotateActiveAtom,
+  current3dAnnotationModeAtom,
+  hoveredLabelAtom,
   selectedLabelForAnnotationAtom,
   tempLabelTransformsAtom,
 } from "../state";
@@ -43,24 +44,26 @@ export const Polyline = ({
 }: PolyLineProps) => {
   const meshesRef = useRef<THREE.Mesh[]>([]);
 
-  const { isHovered, setIsHovered } = useHoverState();
-  const { onPointerOver, onPointerOut, restEventHandlers } = useEventHandlers(
-    tooltip,
-    label
-  );
+  useHoverState();
+  const hoveredLabel = useRecoilValue(hoveredLabelAtom);
+  const setHoveredLabel = useSetRecoilState(hoveredLabelAtom);
+  const { onPointerOver, onPointerOut, ...restEventHandlers } =
+    useEventHandlers(tooltip, label);
+
+  const isHovered = hoveredLabel?.id === label._id;
 
   const isAnnotateMode = useAtomValue(fos.modalMode) === "annotate";
   const isSelectedForAnnotation =
     useRecoilValue(selectedLabelForAnnotationAtom)?._id === label._id;
-  const setIsPolylineAnnotateActive = useSetRecoilState(
-    isPolylineAnnotateActiveAtom
+  const setCurrent3dAnnotationMode = useSetRecoilState(
+    current3dAnnotationModeAtom
   );
 
   useEffect(() => {
     if (isSelectedForAnnotation) {
-      setIsPolylineAnnotateActive(true);
+      setCurrent3dAnnotationMode("polyline");
     }
-  }, [isSelectedForAnnotation]);
+  }, [isSelectedForAnnotation, setCurrent3dAnnotationMode]);
 
   const { strokeAndFillColor } = useLabelColor(
     { selected, color },
@@ -271,12 +274,12 @@ export const Polyline = ({
         <group
           {...restEventHandlers}
           onPointerOver={() => {
-            setIsHovered(true);
+            setHoveredLabel({ id: label._id });
             handleAnnotationPointerOver();
             onPointerOver();
           }}
           onPointerOut={() => {
-            setIsHovered(false);
+            setHoveredLabel(null);
             handleAnnotationPointerOut();
             onPointerOut();
           }}

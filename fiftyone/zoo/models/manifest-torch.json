@@ -244,7 +244,8 @@
                 "sa-1b",
                 "torch",
                 "zero-shot",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -286,7 +287,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot"],
+            "tags": ["segment-anything", "torch", "zero-shot", "official"],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -644,7 +645,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -744,7 +746,7 @@
                     "support": true
                 }
             },
-            "tags": ["segment-anything", "torch", "zero-shot", "transformer"],
+            "tags": ["segment-anything", "torch", "zero-shot", "transformer", "official"],
             "training_data": [
                 {
                     "name": "SA-V",
@@ -954,7 +956,8 @@
                 "torch",
                 "zero-shot",
                 "video",
-                "transformer"
+                "transformer",
+                "official"
             ],
             "training_data": [
                 {
@@ -1287,7 +1290,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "densenet"
+                "densenet",
+                "official"
             ],
             "training_data": [
                 {
@@ -2363,7 +2367,8 @@
                 "logits",
                 "imagenet",
                 "torch",
-                "resnext"
+                "resnext",
+                "official"
             ],
             "training_data": [
                 {
@@ -2409,7 +2414,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "retinanet", "resnet"],
+            "tags": ["detection", "coco", "torch", "retinanet", "resnet", "official"],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -2568,7 +2573,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "imagenet", "torch", "squeezenet"],
+            "tags": ["classification", "imagenet", "torch", "squeezenet", "official"],
             "training_data": [
                 {
                     "name": "ImageNet-1K",
@@ -3371,7 +3376,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "transformers", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "transformers",
+                "official",
+                "embeddings"
+            ],
             "training_data": [],
             "date_added": "2024-01-17 14:25:51"
         },
@@ -3400,6 +3411,90 @@
             "tags": ["depth", "torch", "transformers"],
             "training_data": [],
             "date_added": "2024-02-06 14:25:51"
+        },
+        {
+            "base_name": "depth-anything-v2-small-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight Depth Anything V2 model for fast monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 99200000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Small-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v2-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced Depth Anything V2 model for general-purpose monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Base-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 390400000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Base-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
+        },
+        {
+            "base_name": "depth-anything-v2-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-accuracy Depth Anything V2 model for detailed monocular depth estimation",
+            "source": "https://huggingface.co/depth-anything/Depth-Anything-V2-Large-hf",
+            "author": "Lihe Yang, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1340000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {
+                    "name_or_path": "depth-anything/Depth-Anything-V2-Large-hf"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "3d", "torch", "transformers"],
+            "training_data": [],
+            "date_added": "2026-01-05 12:00:00"
         },
         {
             "base_name": "zero-shot-classification-transformer-torch",
@@ -3507,7 +3602,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3603,7 +3697,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3641,7 +3734,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -3679,7 +3771,6 @@
             "tags": [
                 "detection",
                 "logits",
-                "embeddings",
                 "torch",
                 "transformers",
                 "zero-shot",
@@ -5351,6 +5442,866 @@
             "date_added": "2024-10-05 19:22:51"
         },
         {
+            "base_name": "yolo26n-coco-torch",
+            "base_filename": "yolo26n-coco.pt",
+            "description": "Ultra-fast NMS-free detector for edge devices",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 5544453,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26n.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26s-coco-torch",
+            "base_filename": "yolo26s-coco.pt",
+            "description": "Fast NMS-free detector balancing speed and accuracy",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 20422725,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26s.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26m-coco-torch",
+            "base_filename": "yolo26m-coco.pt",
+            "description": "NMS-free detector with improved small object detection",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 44255705,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26m.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26l-coco-torch",
+            "base_filename": "yolo26l-coco.pt",
+            "description": "High-accuracy NMS-free detector for demanding tasks",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 53211173,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26l.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26x-coco-torch",
+            "base_filename": "yolo26x-coco.pt",
+            "description": "Maximum accuracy NMS-free detector",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 118667365,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26x.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsDetectionOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26n-seg-coco-torch",
+            "base_filename": "yolo26n-seg-coco.pt",
+            "description": "Ultra-fast NMS-free instance segmentation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 6719965,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26n-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26s-seg-coco-torch",
+            "base_filename": "yolo26s-seg-coco.pt",
+            "description": "Fast NMS-free instance segmentation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 23467933,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26s-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26m-seg-coco-torch",
+            "base_filename": "yolo26m-seg-coco.pt",
+            "description": "NMS-free instance segmentation with improved masks",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 54750385,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26m-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26l-seg-coco-torch",
+            "base_filename": "yolo26l-seg-coco.pt",
+            "description": "High-accuracy NMS-free instance segmentation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 63700037,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26l-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26x-seg-coco-torch",
+            "base_filename": "yolo26x-seg-coco.pt",
+            "description": "Maximum accuracy NMS-free instance segmentation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 142129861,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x-seg.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26x-seg.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsSegmentationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["instances", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26n-cls-imagenet-torch",
+            "base_filename": "yolo26n-cls-imagenet.pt",
+            "description": "Ultra-fast image classifier for edge devices",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 5786434,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-cls.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26n-cls.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsClassificationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26s-cls-imagenet-torch",
+            "base_filename": "yolo26s-cls-imagenet.pt",
+            "description": "Fast image classifier balancing speed and accuracy",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 13622082,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-cls.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26s-cls.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsClassificationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26m-cls-imagenet-torch",
+            "base_filename": "yolo26m-cls-imagenet.pt",
+            "description": "Medium image classifier for general use",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 23477398,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m-cls.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26m-cls.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsClassificationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26l-cls-imagenet-torch",
+            "base_filename": "yolo26l-cls-imagenet.pt",
+            "description": "High-accuracy image classifier",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 28535928,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l-cls.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26l-cls.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsClassificationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26x-cls-imagenet-torch",
+            "base_filename": "yolo26x-cls-imagenet.pt",
+            "description": "Maximum accuracy image classifier",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 59610168,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x-cls.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26x-cls.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsClassificationOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "imagenet", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "ImageNet-1K", "url": "https://www.image-net.org/download.php" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26n-pose-coco-torch",
+            "base_filename": "yolo26n-pose-coco.pt",
+            "description": "Ultra-fast NMS-free pose estimation for edge devices",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 7878574,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26n-pose.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26n-pose.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsPoseOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26s-pose-coco-torch",
+            "base_filename": "yolo26s-pose-coco.pt",
+            "description": "Fast NMS-free pose estimation balancing speed and accuracy",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 24151790,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-pose.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26s-pose.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsPoseOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26m-pose-coco-torch",
+            "base_filename": "yolo26m-pose-coco.pt",
+            "description": "NMS-free pose estimation with improved keypoint accuracy",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 49036866,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26m-pose.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26m-pose.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsPoseOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26l-pose-coco-torch",
+            "base_filename": "yolo26l-pose-coco.pt",
+            "description": "High-accuracy NMS-free pose estimation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 57995961,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l-pose.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26l-pose.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsPoseOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
+            "base_name": "yolo26x-pose-coco-torch",
+            "base_filename": "yolo26x-pose-coco.pt",
+            "description": "Maximum accuracy NMS-free pose estimation",
+            "source": "https://docs.ultralytics.com/models/yolo26/",
+            "author": "Glenn Jocher, et al.",
+            "license": "AGPL-3.0",
+            "size_bytes": 126242553,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {
+                    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26x-pose.pt"
+                }
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.ultralytics.FiftyOneYOLOModel",
+                "config": {
+                    "entrypoint_fcn": "ultralytics.YOLO",
+                    "entrypoint_args": {
+                        "model": "yolo26x-pose.pt"
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsPoseOutputProcessor"
+                }
+            },
+            "requirements": {
+                "packages": [
+                    "torch>=1.7.0",
+                    "torchvision>=0.8.1",
+                    "ultralytics>=8.4.0"
+                ],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["keypoints", "coco", "torch", "yolo", "official"],
+            "training_data": [
+                { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
+            ],
+            "date_added": "2026-01-15 12:00:00"
+        },
+        {
             "base_name": "yolo11n-seg-coco-torch",
             "base_filename": "yolo11n-seg-coco.pt",
             "description": "Edge model producing object outlines directly on phones and edge devices",
@@ -6814,7 +7765,7 @@
             "source": "https://huggingface.co/facebook/convnext-tiny-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 457742046,
+            "size_bytes": 228984557,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6839,7 +7790,9 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings",
+                "official"
             ],
             "training_data": [
                 {
@@ -6883,7 +7836,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -6901,7 +7855,7 @@
             "source": "https://huggingface.co/facebook/convnext-base-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 1417939660,
+            "size_bytes": 709242057,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6927,7 +7881,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -6945,7 +7900,7 @@
             "source": "https://huggingface.co/facebook/convnext-large-224",
             "author": "Zhuang Liu, et al.",
             "license": "Apache 2.0",
-            "size_bytes": 3164754044,
+            "size_bytes": 1582656553,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
                 "config": {
@@ -6970,7 +7925,9 @@
                 "imagenet",
                 "torch",
                 "transformers",
-                "convnext"
+                "convnext",
+                "embeddings",
+                "official"
             ],
             "training_data": [
                 {
@@ -7014,7 +7971,8 @@
                 "torch",
                 "transformers",
                 "convnext",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7062,7 +8020,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7106,7 +8065,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7150,7 +8110,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7194,7 +8155,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7238,7 +8200,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7282,7 +8245,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7326,7 +8290,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7370,7 +8335,8 @@
                 "torch",
                 "transformers",
                 "efficientnet",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7413,7 +8379,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7456,7 +8423,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7499,7 +8467,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7542,7 +8511,8 @@
                 "torch",
                 "transformers",
                 "swin-transformer",
-                "official"
+                "official",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -7579,7 +8549,15 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch", "transformers", "rtdetr"],
+            "tags": [
+                "detection",
+                "coco",
+                "embeddings",
+                "torch",
+                "transformers",
+                "rtdetr",
+                "official"
+            ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
@@ -7615,6 +8593,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "rtdetr",
@@ -7652,6 +8631,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7689,6 +8669,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7726,6 +8707,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7763,6 +8745,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7800,6 +8783,7 @@
             "tags": [
                 "detection",
                 "coco",
+                "embeddings",
                 "torch",
                 "transformers",
                 "detr",
@@ -7838,7 +8822,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7875,7 +8865,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7912,7 +8908,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7949,7 +8951,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -7986,7 +8994,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8023,7 +9037,13 @@
                     "support": true
                 }
             },
-            "tags": ["segmentation", "torch", "segformer", "official"],
+            "tags": [
+                "segmentation",
+                "torch",
+                "segformer",
+                "official",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "ADE20K",
@@ -8069,7 +9089,8 @@
                 "torch",
                 "official",
                 "medical",
-                "zero-shot"
+                "zero-shot",
+                "embeddings"
             ],
             "training_data": [],
             "date_added": "2025-09-03 15:09:00"
@@ -8100,7 +9121,13 @@
                 "cpu": { "support": true },
                 "gpu": { "support": true }
             },
-            "tags": ["classification", "torch", "official", "medical"],
+            "tags": [
+                "classification",
+                "torch",
+                "official",
+                "medical",
+                "embeddings"
+            ],
             "training_data": [
                 {
                     "name": "MONET (dermatology image–text corpus)",
@@ -8136,7 +9163,8 @@
                 "torch",
                 "official",
                 "medical",
-                "zero-shot"
+                "zero-shot",
+                "embeddings"
             ],
             "training_data": [
                 {
@@ -8208,7 +9236,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8247,7 +9276,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8286,7 +9316,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8325,7 +9356,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8364,7 +9396,8 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
@@ -8403,12 +9436,155 @@
                 "coco",
                 "torch",
                 "transformers",
-                "pose-estimation"
+                "pose-estimation",
+                "official"
             ],
             "training_data": [
                 { "name": "MS COCO 2017", "url": "https://cocodataset.org" }
             ],
             "date_added": "2025-07-09 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-L14-336-Vision-Encoder",
+            "base_filename": "PE-Core-L14-336.pt",
+            "version": null,
+            "description": "The ViT from the large variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 2684747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-L14-336"
+                    },
+                    "transforms_args": {
+                        "image_size": 532
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-11-19 12:00:00"
+        },
+        {
+            "base_name": "PE-Core-B16-224-Vision-Encoder",
+            "base_filename": "PE-Core-B16-224.pt",
+            "version": null,
+            "description": "The ViT from the base variant of the PE Core line of models.",
+            "source": "https://github.com/facebookresearch/perception_models/",
+            "author": "Daniel Bolya, et al.",
+            "license": "Apache 2.0",
+            "size_bytes": 1794747432,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.pe.PEVisionEncoder",
+                "config": {
+                    "entrypoint_args": {
+                        "name": "PE-Core-B16-224"
+                    }
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "perception_models"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["embeddings", "torch"],
+            "training_data": [
+                {
+                    "name": "PE Video Dataset",
+                    "url": "https://ai.meta.com/datasets/pe-video/"
+                }
+            ],
+            "date_added": "2025-12-05 12:00:00"
+        },
+        {
+            "base_name": "llmdet-tiny-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Lightweight open-vocabulary detector that finds any object you describe in images without class-specific training.",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_tiny",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 692015412,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_tiny"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "date_added": "2025-08-11 15:00:08"
+        },
+        {
+            "base_name": "llmdet-base-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Balanced open-vocabulary detector that recognizes objects from natural-language prompts with strong accuracy.",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_base",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 936057092,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_base"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "date_added": "2025-08-11 15:00:08"
+        },
+        {
+            "base_name": "llmdet-large-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "High-capacity open-vocabulary detector for maximum detection quality from free-form text queries.",
+            "source": "https://huggingface.co/iSEE-Laboratory/llmdet_large",
+            "author": "iSEE Laboratory",
+            "license": "Apache 2.0",
+            "size_bytes": 1376000000,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
+                "config": {
+                    "name_or_path": "iSEE-Laboratory/llmdet_large"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": { "support": true },
+                "gpu": { "support": true }
+            },
+            "tags": ["detection", "torch", "transformers", "zero-shot", "official"],
+            "date_added": "2025-08-11 15:00:08"
         }
     ]
 }

@@ -1,7 +1,7 @@
 """
 Frame utilities.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -56,7 +56,7 @@ def validate_frame_number(value):
         )
 
 
-class FrameError(Exception):
+class FrameError(ValueError):
     """Exception raised when an invalid frame number is encountered."""
 
     pass

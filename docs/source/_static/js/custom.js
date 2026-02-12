@@ -528,6 +528,8 @@ const initKapaAI = () => {
       "How can I import my data?,How can I compute embeddings?, How can I create my own plugin?, How can I evaluate my model?",
     modalDisclaimer:
       "Your AI guide to all things FiftyOne and its community, powered by the complete [FiftyOne documentation](https://docs.voxel51.com/).\n\nNeed team collaboration, cloud storage, flexible deployment, and advanced workflows for production? [Get Enterprise](https://link.voxel51.com/docs-search-sales)",
+    mcpEnabled: "true",
+    mcpServerUrl: "https://voxel51.mcp.kapa.ai",
   });
 
   document.head.appendChild(script);
@@ -624,7 +626,7 @@ const addEnterpriseBanner = () => {
 
     footer.parentNode.insertBefore(banner, footer);
     requestAnimationFrame(() => {
-      window.dispatchEvent(new Event('resize'));
+      window.dispatchEvent(new Event("resize"));
     });
     observer.disconnect();
   });
@@ -685,6 +687,57 @@ function initDirectAgentAccess() {
   }
 }
 
+function initAIChatButtons() {
+  const ALLOWED_TARGETS = new Set([
+    "markdown",
+    "chatgpt",
+    "claude",
+    "huggingface",
+  ]);
+
+  const getMdUrl = () => {
+    const url = new URL(window.location.href);
+    const path = url.pathname;
+    if (path.endsWith(".html")) {
+      url.pathname = path.replace(/\.html$/, ".md");
+    } else if (path.endsWith("/")) {
+      url.pathname = path + "index.md";
+    } else {
+      url.pathname = path + ".md";
+    }
+    url.hash = "";
+    url.search = "";
+    return url.href;
+  };
+
+  document.querySelectorAll(".ai-icon-button").forEach((button) => {
+    button.addEventListener("click", (e) => {
+      e.preventDefault();
+      const target = button.dataset.action || button.dataset.ai;
+      if (!ALLOWED_TARGETS.has(target)) return;
+
+      const mdUrl = getMdUrl();
+      const prompt = encodeURIComponent(
+        `Read from ${mdUrl} so I can ask questions about it.`
+      );
+
+      const urls = {
+        markdown: mdUrl,
+        chatgpt: `https://chatgpt.com/?hints=search&q=${prompt}`,
+        claude: `https://claude.ai/new?q=${prompt}`,
+        huggingface: `https://huggingface.co/chat/?attachments=${encodeURIComponent(
+          mdUrl
+        )}&prompt=${prompt}`,
+      };
+
+      const popup = window.open(urls[target], "_blank", "noopener,noreferrer");
+      if (!popup || popup.closed || typeof popup.closed === "undefined") {
+        console.warn("Popup blocked. Please allow popups for this site.");
+      }
+    });
+  });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initSlidingNavBar();
@@ -696,4 +749,5 @@ document.addEventListener("DOMContentLoaded", () => {
   addEnterpriseBanner();
   initDynamicCTAs();
   initDirectAgentAccess();
+  initAIChatButtons();
 });

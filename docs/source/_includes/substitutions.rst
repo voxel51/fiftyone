@@ -69,6 +69,14 @@
 .. |KeypointSkeleton| replace:: :class:`KeypointSkeleton <fiftyone.core.odm.dataset.KeypointSkeleton>`
 .. |ColorScheme| replace:: :class:`ColorScheme <fiftyone.core.odm.dataset.ColorScheme>`
 
+.. |CameraIntrinsics| replace:: :class:`CameraIntrinsics <fiftyone.core.camera.CameraIntrinsics>`
+.. |PinholeCameraIntrinsics| replace:: :class:`PinholeCameraIntrinsics <fiftyone.core.camera.PinholeCameraIntrinsics>`
+.. |OpenCVCameraIntrinsics| replace:: :class:`OpenCVCameraIntrinsics <fiftyone.core.camera.OpenCVCameraIntrinsics>`
+.. |OpenCVFisheyeCameraIntrinsics| replace:: :class:`OpenCVFisheyeCameraIntrinsics <fiftyone.core.camera.OpenCVFisheyeCameraIntrinsics>`
+.. |CameraIntrinsicsRef| replace:: :class:`CameraIntrinsicsRef <fiftyone.core.camera.CameraIntrinsicsRef>`
+.. |StaticTransform| replace:: :class:`StaticTransform <fiftyone.core.camera.StaticTransform>`
+.. |CameraProjector| replace:: :class:`CameraProjector <fiftyone.core.camera.CameraProjector>`
+
 .. |tags| replace:: :class:`tags <fiftyone.core.sample.Sample>`
 .. |Tags| replace:: :class:`Tags <fiftyone.core.sample.Sample>`
 

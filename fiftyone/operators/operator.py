@@ -1,13 +1,12 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from .types import PromptView
-
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -46,6 +45,7 @@ class OperatorConfig(object):
             behavior will match the ``dynamic`` setting
         allow_distributed_execution (False): whether the operator supports
             distributing delegated execution across parallel workers.
+        rerunnable (True): whether the operator can be re-run
     """
 
     def __init__(
@@ -68,6 +68,7 @@ class OperatorConfig(object):
         default_choice_to_delegated=False,
         resolve_execution_options_on_change=None,
         allow_distributed_execution=False,  # Enterprise only
+        rerunnable=True,
         **kwargs
     ):
         self.name = name
@@ -87,6 +88,7 @@ class OperatorConfig(object):
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
         self.allow_distributed_execution = False  # Enterprise only
+        self.rerunnable = rerunnable
         if resolve_execution_options_on_change is None:
             self.resolve_execution_options_on_change = dynamic
         else:
@@ -112,6 +114,7 @@ class OperatorConfig(object):
             "dark_icon": self.dark_icon,
             "allow_immediate_execution": self.allow_immediate_execution,
             "allow_delegated_execution": self.allow_delegated_execution,
+            "rerunnable": self.rerunnable,
             "default_choice_to_delegated": self.default_choice_to_delegated,
             "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
             "allow_distributed_execution": self.allow_distributed_execution,

@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2025, Voxel51, Inc.
+ * Copyright 2017-2026, Voxel51, Inc.
  */
 
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { TransformOptions } from "../commands/TransformOverlayCommand";
 import type { RenderCallback } from "../core/Scene2D";
 import { lighterSceneAtom, overlayFactory } from "../index";
@@ -19,9 +19,6 @@ export const useLighter = () => {
   const scene = useAtomValue(lighterSceneAtom);
   const isReady = !!scene;
   const registeredCallbacks = useRef<Set<() => void>>(new Set());
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
   // Cleanup registered callbacks when scene changes or component unmounts
   useEffect(() => {
     return () => {
@@ -29,30 +26,6 @@ export const useLighter = () => {
       registeredCallbacks.current.forEach((unregister) => unregister());
       registeredCallbacks.current.clear();
     };
-  }, [scene]);
-
-  // Update undo/redo state when scene changes
-  useEffect(() => {
-    if (scene) {
-      setCanUndo(scene.canUndo());
-      setCanRedo(scene.canRedo());
-    } else {
-      setCanUndo(false);
-      setCanRedo(false);
-    }
-  }, [scene]);
-
-  // Register render callback to update undo/redo state
-  useEffect(() => {
-    if (!scene) return;
-
-    return registerRenderCallback({
-      callback: () => {
-        setCanUndo(scene.canUndo());
-        setCanRedo(scene.canRedo());
-      },
-      phase: "after",
-    });
   }, [scene]);
 
   const addOverlay = useCallback(
@@ -84,26 +57,14 @@ export const useLighter = () => {
   );
 
   const transformOverlay = useCallback(
-    (id: string, options: TransformOptions) => {
+    async (id: string, options: TransformOptions) => {
       if (scene) {
-        return scene.transformOverlay(id, options);
+        return await scene.transformOverlay(id, options);
       }
       return false;
     },
     [scene]
   );
-
-  const undo = useCallback(() => {
-    if (scene && scene.canUndo()) {
-      scene.undo();
-    }
-  }, [scene]);
-
-  const redo = useCallback(() => {
-    if (scene && scene.canRedo()) {
-      scene.redo();
-    }
-  }, [scene]);
 
   /**
    * Registers a render callback that will be automatically cleaned up when the component unmounts.
@@ -136,10 +97,6 @@ export const useLighter = () => {
     removeOverlay,
     getOverlay,
     transformOverlay,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
     overlayFactory,
     registerRenderCallback,
   };

@@ -1,10 +1,6 @@
 import { useLighter } from "@fiftyone/lighter";
-import type {
-  AnnotationLabel,
-  ModalSample,
-  PathFilterSelector,
-} from "@fiftyone/state";
-import { activeFields, field, modalSample, pathFilter } from "@fiftyone/state";
+import type { AnnotationLabel, ModalSample } from "@fiftyone/state";
+import { activeFields, field, modalSample } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom } from "jotai/utils";
 import { get } from "lodash";
@@ -16,32 +12,29 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import type { LabelType } from "./Edit/state";
-import type { AnnotationSchemas } from "./state";
-import { schemas } from "./state";
+import { activeLabelSchemas } from "./state";
 import { useAddAnnotationLabel } from "./useAddAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
 
 const handleSample = async ({
   addLabel,
-  filter,
   getFieldType,
   paths,
   sample,
   schemas,
 }: {
   addLabel: ReturnType<typeof useAddAnnotationLabel>;
-  filter: PathFilterSelector;
   getFieldType: (path: string) => Promise<LabelType>;
   paths: { [key: string]: string };
   sample: ModalSample;
-  schemas: AnnotationSchemas;
+  schemas: string[];
 }) => {
   const data = sample.sample;
   const labels: AnnotationLabel[] = [];
 
   for (const path in paths) {
-    if (!schemas[path]?.active) {
+    if (!schemas.includes(path)) {
       continue;
     }
 
@@ -51,10 +44,6 @@ const handleSample = async ({
     const array = Array.isArray(result) ? result : result ? [result] : [];
 
     for (const data of array) {
-      if (!filter(path, data)) {
-        continue;
-      }
-
       const label = addLabel(path, type, data);
       labels.push(label);
     }
@@ -120,11 +109,10 @@ const pathMap = selector<{ [key: string]: string }>({
 
 export default function useLabels() {
   const paths = useRecoilValue(pathMap);
-  const filter = useRecoilValue(pathFilter(true));
   const modalSampleData = useRecoilValueLoadable(modalSample);
   const setLabels = useSetAtom(labels);
   const [loadingState, setLoading] = useAtom(labelsState);
-  const schemaMap = useAtomValue(schemas);
+  const active = useAtomValue(activeLabelSchemas);
   const addLabel = useAddAnnotationLabel();
   const { scene } = useLighter();
 
@@ -149,31 +137,29 @@ export default function useLabels() {
   useEffect(() => {
     if (
       modalSampleData.state !== "loading" &&
-      schemaMap &&
+      active &&
       loadingState === LabelsState.UNSET
     ) {
       setLoading(LabelsState.LOADING);
       handleSample({
         addLabel,
         paths,
-        filter,
         sample: modalSampleData.contents,
         getFieldType,
-        schemas: schemaMap,
+        schemas: active,
       }).then((result) => {
         setLoading(LabelsState.COMPLETE);
         setLabels(result);
       });
     }
   }, [
+    active,
     addLabel,
-    filter,
     getFieldType,
     loadingState,
     modalSampleData,
 
     paths,
-    schemaMap,
 
     setLabels,
     setLoading,

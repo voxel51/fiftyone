@@ -2,7 +2,7 @@
 Utilities for working with
 `Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -684,8 +684,9 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, fout.TorchImageModel):
                 output,
                 image_sizes,
                 confidence_thresh=self.config.confidence_thresh,
+                classes=self.config.filter_classes,
+                input_ids=args.get("input_ids"),
             )
-
         else:
             return output
 
@@ -787,11 +788,8 @@ class FiftyOneZeroShotTransformer(
         return self._text_prompts
 
     def _get_text_prompts(self):
-        if self.classes is None and self.config.classes is None:
-            return None
-
         if self.classes is None:
-            self.classes = self.config.classes
+            return None
 
         text_prompt = (
             self.config.text_prompt if self.config.text_prompt else None
@@ -1406,7 +1404,9 @@ class _HFTransformsHandler:
                     )
 
             res = self.processor(**args, **self.kwargs)
-            res["boxes"] = args.get("boxes", [])
+            # only attach boxes if explicitly provided
+            if "boxes" in args:
+                res["boxes"] = args["boxes"]
         else:
             # single input, most likely either a list of images or a single image
             num_images = len(args) if isinstance(args, list) else 1
@@ -1439,12 +1439,17 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
     Args:
         store_logits (False): whether to store the logits in the output
         logits_key ("logits"): the key to use for the logits in the output
+
+    Attributes:
+        _is_grounded (bool): whether the processor handles grounded object
+            detection models (e.g., GroundingDINO) vs standard detectors.
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._processor = None
         self._objection_detection_processor = None
+        self._is_grounded = False
 
     @property
     def processor(self):
@@ -1468,26 +1473,80 @@ class TransformersDetectorOutputProcessor(fout.DetectorOutputProcessor):
                 self._objection_detection_processor = (
                     self._processor.post_process_grounded_object_detection
                 )
+                self._is_grounded = True
             else:
                 raise ValueError(
                     "Processor does not have a post_process_object_detection "
                     "or post_process_grounded_object_detection method."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
-        output = self._objection_detection_processor(
-            output, target_sizes=image_sizes, threshold=confidence_thresh or 0
-        )
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
+        if self._is_grounded:
+            output = self._objection_detection_processor(
+                output, kwargs.get("input_ids"),
+                threshold=confidence_thresh or 0, target_sizes=image_sizes,
+            )
+        else:
+            output = self._objection_detection_processor(
+                output, target_sizes=image_sizes, threshold=confidence_thresh or 0
+            )
         res = []
-        for o, img_sz in zip(output, image_sizes):
+        for o, img_sz in zip(output, image_sizes, strict=True):
             res.append(
                 self._parse_output(
                     o,
                     (img_sz[1], img_sz[0]),
-                    confidence_thresh=confidence_thresh,
+                    confidence_thresh,
+                    classes,
                 )
             )
+
         return res
+
+    def _parse_output(self, output, frame_size, confidence_thresh, classes=None):
+        """Converts raw detector output to :class:`fiftyone.core.labels.Detections`.
+
+        Unlike the base class, this handles grounded detection models that
+        return text labels directly rather than class indices.
+        """
+        detections = []
+
+        scores = output["scores"].cpu().numpy()
+        boxes = output["boxes"].cpu().numpy()
+        labels = output.get("text_labels", output["labels"])
+        if hasattr(labels, "cpu"):
+            labels = labels.cpu().numpy()
+
+        for score, label, box in zip(scores, labels, boxes):
+            if confidence_thresh is not None and score < confidence_thresh:
+                continue
+
+            if not self._is_grounded:
+                if self.classes is not None and 0 <= int(label) < len(self.classes):
+                    label = self.classes[int(label)]
+                else:
+                    label = str(label)
+
+            if classes is not None and label not in classes:
+                continue
+
+            box = _convert_bounding_box(box, frame_size)
+            detections.append(
+                fol.Detection(
+                    label=label,
+                    bounding_box=box,
+                    confidence=score.item(),
+                )
+            )
+
+        return fol.Detections(detections=detections)
 
 
 class TransformersSemanticSegmentatorOutputProcessor(
@@ -1497,13 +1556,21 @@ class TransformersSemanticSegmentatorOutputProcessor(
         self.logits_key = kwargs.pop("logits_key", "logits")
         super().__init__(*args, **kwargs)
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        classes=None,
+        **kwargs,
+    ):
         return super().__call__(
             {
                 "out": output[self.logits_key]
             },  # to be compatible with the base class
             image_sizes,
             confidence_thresh=confidence_thresh,
+            classes=classes,
         )
 
 
@@ -1534,7 +1601,7 @@ class TransformersDepthEstimatorOutputProcessor(fout.OutputProcessor):
                     "Processor does not have a post_process_depth_estimation."
                 )
 
-    def __call__(self, output, image_sizes, confidence_thresh=None):
+    def __call__(self, output, image_sizes, **kwargs):
         output = self._depth_estimation_post_processor(output)
         output = np.array(
             [o["predicted_depth"].detach().cpu().numpy() for o in output]
@@ -1573,7 +1640,12 @@ class TransformersPoseEstimationOutputProcessor(fout.KeypointOutputProcessor):
                 )
 
     def __call__(
-        self, output, image_sizes, confidence_thresh=None, box_prompts=None
+        self,
+        output,
+        image_sizes,
+        confidence_thresh=None,
+        box_prompts=None,
+        **kwargs,
     ):
         """Process pose estimation outputs to FiftyOne format."""
         output.heatmaps = output.heatmaps.detach()

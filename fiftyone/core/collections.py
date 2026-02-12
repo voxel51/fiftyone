@@ -1,12 +1,13 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2025, Voxel51, Inc.
+| Copyright 2017-2026, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
 from operator import itemgetter
@@ -18,6 +19,7 @@ import os
 from packaging.version import Version
 import random
 import string
+import threading
 import timeit
 import warnings
 
@@ -34,6 +36,7 @@ import fiftyone.core.evaluation as foev
 import fiftyone.core.expressions as foe
 from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame_utils as fofu
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.map as focm
@@ -78,6 +81,28 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+class _DummyFuture:
+    def __init__(self, *, value=None):
+        self.value = value
+
+    def result(self):
+        return self.value
+
+    def done(self):
+        return True
+
+
+class _DummyExecutor:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def submit(self, fn, *args, **kwargs):
+        return _DummyFuture(value=fn(*args, **kwargs))
+
+
 class SaveContext(object):
     """Context that saves samples from a collection according to a configurable
     batching strategy.
@@ -100,6 +125,8 @@ class SaveContext(object):
             -   ``"latency"``: a target latency, in seconds, between saves
 
             By default, ``fo.config.default_batcher`` is used
+        async_writes (False): whether to perform batch writes asynchronously in
+            a background thread
     """
 
     def __init__(
@@ -107,6 +134,7 @@ class SaveContext(object):
         sample_collection,
         batch_size=None,
         batching_strategy=None,
+        async_writes=False,
     ):
         batch_size, batching_strategy = fou.parse_batching_strategy(
             batch_size=batch_size, batching_strategy=batching_strategy
@@ -131,6 +159,19 @@ class SaveContext(object):
         self._encoding_ratio = 1.0
         self._last_time = None
 
+        self.samples_lock = threading.Lock()
+        self.frames_lock = threading.Lock()
+        self.batch_ids_lock = threading.Lock()
+        self.reloading_lock = threading.Lock()
+
+        self.executor = (
+            # Using more than one worker will introduce race conditions in the state preserved between DB writes
+            ThreadPoolExecutor(max_workers=1)
+            if async_writes
+            else _DummyExecutor()
+        )
+        self.futures = []
+
     def __enter__(self):
         if self._batching_strategy == "static":
             self._curr_batch_size = 0
@@ -139,10 +180,31 @@ class SaveContext(object):
         elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
 
+        self.executor.__enter__()
         return self
 
     def __exit__(self, *args):
         self._save_batch()
+
+        error = None
+        try:
+            # Loop-drain self.futures so any submissions triggered by
+            # self._save_batch() are awaited.
+            while self.futures:
+                futures = self.futures
+                self.futures = []
+                for future in futures:
+                    try:
+                        future.result()
+                    except Exception as e:
+                        if error is None:
+                            error = e
+            self.futures.clear()
+        finally:
+            self.executor.__exit__(*args)
+
+        if error and (not args or args[0] is None):
+            raise error
 
     def save(self, sample):
         """Registers the sample for saving in the next batch.
@@ -161,16 +223,20 @@ class SaveContext(object):
         updated = sample_ops or frame_ops
 
         if sample_ops:
-            self._sample_ops.extend(sample_ops)
+            with self.samples_lock:
+                self._sample_ops.extend(sample_ops)
 
         if frame_ops:
-            self._frame_ops.extend(frame_ops)
+            with self.frames_lock:
+                self._frame_ops.extend(frame_ops)
 
         if updated and self._is_generated:
-            self._batch_ids.append(sample.id)
+            with self.batch_ids_lock:
+                self._batch_ids.append(sample.id)
 
         if updated and isinstance(sample, fosa.SampleView):
-            self._reload_parents.append(sample)
+            with self.reloading_lock:
+                self._reload_parents.append(sample)
 
         if self._batching_strategy == "static":
             self._curr_batch_size += 1
@@ -199,24 +265,31 @@ class SaveContext(object):
                 self._save_batch()
                 self._last_time = timeit.default_timer()
 
-    def _save_batch(self):
+    def _do_save_batch(self):
         encoded_size = -1
         if self._sample_ops:
+            with self.samples_lock:
+                sample_ops = self._sample_ops.copy()
+                self._sample_ops.clear()
             res = foo.bulk_write(
-                self._sample_ops,
+                sample_ops,
                 self._sample_coll,
                 ordered=False,
                 batcher=False,
             )[0]
             encoded_size += res.bulk_api_result.get("nBytes", 0)
-            self._sample_ops.clear()
 
         if self._frame_ops:
+            with self.frames_lock:
+                frame_ops = self._frame_ops.copy()
+                self._frame_ops.clear()
             res = foo.bulk_write(
-                self._frame_ops, self._frame_coll, ordered=False, batcher=False
+                frame_ops,
+                self._frame_coll,
+                ordered=False,
+                batcher=False,
             )[0]
             encoded_size += res.bulk_api_result.get("nBytes", 0)
-            self._frame_ops.clear()
 
         self._encoding_ratio = (
             self._curr_batch_size_bytes / encoded_size
@@ -225,14 +298,32 @@ class SaveContext(object):
         )
 
         if self._batch_ids and self._is_generated:
-            self.sample_collection._sync_source(ids=self._batch_ids)
-            self._batch_ids.clear()
+            with self.batch_ids_lock:
+                batch_ids = self._batch_ids.copy()
+                self._batch_ids.clear()
+            self.sample_collection._sync_source(ids=batch_ids)
 
         if self._reload_parents:
-            for sample in self._reload_parents:
+            with self.reloading_lock:
+                reload_parents = self._reload_parents.copy()
+                self._reload_parents.clear()
+            for sample in reload_parents:
                 sample._reload_parents()
 
-            self._reload_parents.clear()
+    def _save_batch(self):
+        pending = []
+        for future in self.futures:
+            if not future.done():
+                pending.append(future)
+            else:
+                try:
+                    future.result()
+                except Exception:
+                    pending.append(future)  # re-raise in __exit__
+        self.futures = pending
+
+        future = self.executor.submit(self._do_save_batch)
+        self.futures.append(future)
 
 
 class SampleCollection(object):
@@ -253,10 +344,13 @@ class SampleCollection(object):
         return self.summary()
 
     def __bool__(self):
-        return len(self) > 0
+        if self._is_full_collection():
+            return self.count() > 0
+        else:
+            return self.limit(1).count() > 0
 
     def __len__(self):
-        raise NotImplementedError("Subclass must implement __len__()")
+        return self.count()
 
     def __contains__(self, sample_id):
         try:
@@ -558,6 +652,24 @@ class SampleCollection(object):
         information.
         """
         raise NotImplementedError("Subclass must implement default_skeleton")
+
+    @property
+    def camera_intrinsics(self):
+        """The camera intrinsics of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.camera_intrinsics` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement camera_intrinsics")
+
+    @property
+    def static_transforms(self):
+        """The static transforms of the underlying dataset.
+
+        See :meth:`fiftyone.core.dataset.Dataset.static_transforms` for more
+        information.
+        """
+        raise NotImplementedError("Subclass must implement static_transforms")
 
     def has_skeleton(self, field):
         """Determines whether this collection has a keypoint skeleton for the
@@ -1465,7 +1577,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            while isinstance(field, fof.ListField):
+            while isinstance(field, (fof.ListField, fof.DictField)):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1642,7 +1754,11 @@ class SampleCollection(object):
 
         unwind_cache = []
         dynamic_schema = self._do_get_dynamic_field_schema(
-            schema, unwind_cache, frames=frames, fields=fields
+            schema,
+            unwind_cache,
+            frames=frames,
+            fields=fields,
+            recursive=recursive,
         )
 
         # Recurse into new dynamic fields
@@ -1650,7 +1766,11 @@ class SampleCollection(object):
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(
-                    s, unwind_cache, frames=frames, new=True
+                    s,
+                    unwind_cache,
+                    frames=frames,
+                    recursive=recursive,
+                    new=True,
                 )
                 if s:
                     dynamic_schema.update(s)
@@ -1684,7 +1804,13 @@ class SampleCollection(object):
         return dynamic_schema
 
     def _do_get_dynamic_field_schema(
-        self, schema, unwind_cache, frames=False, fields=None, new=False
+        self,
+        schema,
+        unwind_cache,
+        frames=False,
+        fields=None,
+        recursive=True,
+        new=False,
     ):
         if frames:
             prefix = self._FRAMES_PREFIX
@@ -1697,7 +1823,10 @@ class SampleCollection(object):
             schema = {
                 k: v
                 for k, v in schema.items()
-                if any(f == k or f.startswith(k + ".") for f in fields)
+                if any(
+                    f == k or recursive and k.startswith(f + ".")
+                    for f in fields
+                )
             }
 
         aggs = []
@@ -2127,30 +2256,24 @@ class SampleCollection(object):
                     )
                 )
         else:
-            _id_path = _root + "._id"
             id_path = root + "._id"
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
             update["$set"] = {"last_modified_at": now}
 
-            if label_ids is None:
+            if ids is None or label_ids is None:
                 if is_frame_field:
-                    label_ids = self.values(id_path, unwind=True)
+                    ids, label_ids = self.values(["frames._id", id_path])
+                    ids = itertools.chain.from_iterable(ids)
+                    label_ids = itertools.chain.from_iterable(label_ids)
                 else:
-                    label_ids = self.values(id_path)
+                    ids, label_ids = self.values(["_id", id_path])
 
-            batch_size = fou.recommend_batch_size_for_value(
-                ObjectId(), max_size=100000
-            )
-            for _label_ids in fou.iter_batches(label_ids, batch_size):
-                _label_ids = [_id for _id in _label_ids if _id is not None]
-                if _label_ids:
-                    ops.append(
-                        UpdateMany(
-                            {_id_path: {"$in": _label_ids}},
-                            update,
-                        )
-                    )
+            for _id, _label_id in zip(ids, label_ids):
+                if _label_id is None:
+                    continue
+
+                ops.append(UpdateOne({"_id": _id}, update))
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
@@ -3503,33 +3626,242 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def compute_annotation_schema(self, field_name, scan_samples=True):
-        """Compute the annotation schema for a collection's field
+    def generate_label_schemas(self, fields=None, scan_samples=True):
+        """Generates label schemas for the
+        :class:`fiftyone.core.collections.SampleCollection`.
 
-        An annotation schema is defined by a type. A field type and an annotation
-        type informs the annotation form type and allowed values
+        A label schema is defined by a ``type`` and ``component`` with respect
+        to a field. Further settings depend on the ``type`` and ``component``
+        combination as outlined below.
 
-        Annotation types are:
-            - checkbox
-            - input
-            - select
-            - radio
-            - text
-            - tags
+        The ``type`` value for a field is inferred from the collection's field
+        schema. See
+        :meth:`fiftyone.core.collections.SampleCollection.get_field_schema`
+
+        Currently supported media types for the collection are ``image`` and
+        ``3d``. See
+        :attr:`fiftyone.core.collections.SampleCollection.media_type`
+
+        **Primitives and components**
+
+        Supported primitive types are:
+
+            -   ``bool``: :class:`fiftyone.core.fields.BooleanField`
+            -   ``date``: :class:`fiftyone.core.fields.DateField`
+            -   ``datetime``: :class:`fiftyone.core.fields.DateTimeField`
+            -   ``dict``: :class:`fiftyone.core.fields.DictField`
+            -   ``float``: :class:`fiftyone.core.fields.FloatField`
+            -   ``id``: :class:`fiftyone.core.fields.ObjectIdField` or
+                :class:`fiftyone.core.fields.UUIDField`
+            -   ``int``: :class:`fiftyone.core.fields.IntField` or
+                :class:`fiftyone.core.fields.FrameNumberField`
+            -   ``list<int>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.IntField`
+            -   ``list<float>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.FloatField`
+            -   ``list<str>``: :class:`fiftyone.core.fields.ListField` of
+                :class:`fiftyone.core.fields.StringField`
+            -   ``str``: :class:`fiftyone.core.fields.StringField`
+
+        Supported ``bool`` components are:
+
+            -   ``checkbox``
+            -   ``toggle`` - the default
+
+        ``date`` and ``datetime`` only support the ``datepicker`` component.
+
+        ``dict`` only supports the ``json`` component.
+
+        Supported ``float`` and ``int`` components are:
+
+            -   ``dropdown``
+            -   ``radio``
+            -   ``slider``: the default when ``scan_samples`` is ``True`` and
+                distinct finite bounds are found that define a ``range``
+            -   ``text``: the default when ``scan_samples`` is ``False`` or
+                distinct finite bounds are not found
+
+        Supported ``list<float>`` and ``list<int>`` components are:
+
+            -   ``checkboxes``
+            -   ``dropdown``
+            -   ``text`` - the default
+
+        Supported ``list<str>`` components are:
+
+            -   ``checkboxes``: the default if ``<=5`` values are scanned
+            -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
+                scanned
+            -   ``text``: the default if ``0`` values or ``>1000`` values are
+                scanned, or ``scan_samples`` is ``False``
+
+        Supported ``str`` type components are:
+
+            -   ``dropdown``: the default if ``>5`` and ``<=1000`` values are
+                scanned
+            -   ``radio``: the default if ``<=5`` values are scanned
+            -   ``text``: the default if ``0`` values or ``>1000`` values are
+                scanned, or ``scan_samples`` is ``False``
+
+        ``float`` types support a ``precision`` setting when a ``text``
+        component is configured for the number of digits to allow after the
+        decimal.
+
+        All types support a ``read_only`` flag. ``id`` types must be
+        ``read_only``. If a field is ``read_only`` in the field schema, then
+        the ``read_only`` label schema setting must be ``True``, e.g.
+        ``created_at`` and ``last_modified_at`` must be read only.
+
+        All components support ``values`` except ``json``, ``slider``, and
+        ``toggle`` excepting ``id`` restrictions.
+
+        ``checkboxes`` and ``dropdown`` require the ``values`` setting.
+
+        ``slider`` requires the ``range: [min, max]`` setting.
+
+        **Labels**
+
+        The ``label`` subfield of all label types are configured via ``classes``
+        and support the same settings as a ``str`` type. See the example output
+        below for ``detections`` fields in the quickstart dataset. If the label
+        type has a visual representation, that field is handled by the App's
+        builtin annotation UI, e.g. ``bounding_box`` for a ``detection``.
+        Primitive attributes of label types are configured via the
+        ``attributes`` setting.
+
+        When a label is marked as ``read_only``, all its attributes inherit the
+        setting as well.
+
+
+        All :class:`fiftyone.core.labels.Label` types are resolved by this
+        method except :class:`fiftyone.core.labels.GeoLocation`,
+        :class:`fiftyone.core.labels.GeoLocations`,
+        :class:`fiftyone.core.labels.TemporalDetection`, and
+        :class:`fiftyone.core.labels.TemporalDetections` when provided
+        in the ``fields`` argument, otherwise only App supported fields are
+        resolved. For label types supported
+        by the App for annotation, see
+        :func:`fiftyone.core.annotation.utils.get_supported_app_annotation_fields`.
+
+        All attributes and the label class itself support a ``default`` setting
+        that applies when creating a new label.
+
+        **Embedded documents**
+
+        One level of nesting is supported via ``dot.notation`` for
+        :class:`fiftyone.core.fields.EmbeddedDocumentField`` fields for the
+        default ``metadata`` field and the
+        :class:`fiftyone.core.odm.embedded_document.DynamicEmbeddedDocument``
+        document type. All label and primitive types are supported. See
+        :ref:`here <dynamic-attributes>` for more details on adding dynamic
+        attributes.
+
+        Example::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+
+            dataset = foz.load_zoo_dataset("quickstart")
+            dataset.compute_metadata()
+
+            fo.pprint(dataset.generate_label_schemas(scan_samples=True))
+
+        Output::
+
+            {
+                'created_at': {
+                    'type': 'datetime',
+                    'component': 'datepicker',
+                    'read_only': True,
+                },
+                'filepath': {'type': 'str', 'component': 'text'},
+                'ground_truth': {
+                    'attributes': {
+                        'attributes': {'type': 'dict', 'component': 'json'},
+                        'confidence': {'type': 'float', 'component': 'text'},
+                        'id': {
+                            'type': 'id',
+                            'component': 'text',
+                            'read_only': True
+                        },
+                        'index': {'type': 'int', 'component': 'text'},
+                        'mask_path': {'type': 'str', 'component': 'text'},
+                        'tags': {'type': 'list<str>', 'component': 'text'},
+                    },
+                    'classes': [
+                        'airplane',
+                        '...',
+                        'zebra',
+                    ],
+                    'component': 'dropdown',
+                    'type': 'detections',
+                },
+                'id': {'type': 'id', 'component': 'text', 'read_only': True},
+                'last_modified_at': {
+                    'type': 'datetime',
+                    'component': 'datepicker',
+                    'read_only': True,
+                },
+                'metadata.height': {'type': 'int', 'component': 'text'},
+                'metadata.mime_type': {'type': 'str', 'component': 'text'},
+                'metadata.num_channels': {'type': 'int', 'component': 'text'},
+                'metadata.size_bytes': {'type': 'int', 'component': 'text'},
+                'metadata.width': {'type': 'int', 'component': 'text'},
+                'predictions': {
+                    'attributes': {
+                        'attributes': {'type': 'dict', 'component': 'json'},
+                        'confidence': {
+                            'type': 'float',
+                            'component': 'slider',
+                            'range': [0.05003104358911514, 0.9999035596847534],
+                        },
+                        'id': {
+                            'type': 'id',
+                            'component': 'text',
+                            'read_only': True
+                        },
+                        'index': {'type': 'int', 'component': 'text'},
+                        'mask_path': {'type': 'str', 'component': 'text'},
+                        'tags': {'type': 'list<str>', 'component': 'text'},
+                    },
+                    'classes': [
+                        'airplane',
+                        '...',
+                        'zebra',
+                    ],
+                    'component': 'dropdown',
+                    'type': 'detections',
+                },
+                'tags': {
+                    'type': 'list<str>',
+                    'component': 'checkboxes',
+                    'values': ['validation'],
+                },
+                'uniqueness': {
+                    'type': 'float',
+                    'component': 'slider',
+                    'range': [0.15001302256126986, 1.0],
+                },
+            }
 
         Args:
-            collection: a :class:`fiftyone.core.collections.SampleCollection`
-            field_name: a field name or ``embedded.field.name`` to process
+            fields (None): a field name, ``embedded.field.name`` or iterable of
+                such values
+            scan_samples (True): whether to scan the collection to populate
+                component settings based on actual field values (ranges,
+                values, etc). If False, the label schema is generated from
+                *only* the statically available information in the dataset's
+                field schema
 
         Raises:
-            ValueError: if the field does not exists or annotation for its
-            field type is not supported
+            ValueError: if the sample collection or field is not supported
 
         Returns:
-            an annotation schema dictionary
+            a label schemas ``dict``, or an individual field's label schema
+            ``dict`` if only one field is provided
         """
-        return foan.compute_annotation_schema(
-            self, field_name, scan_samples=scan_samples
+        return foan.generate_label_schemas(
+            self, fields=fields, scan_samples=scan_samples
         )
 
     def apply_model(
@@ -3537,6 +3869,7 @@ class SampleCollection(object):
         model,
         label_field="predictions",
         confidence_thresh=None,
+        classes=None,
         store_logits=False,
         batch_size=None,
         num_workers=None,
@@ -3563,6 +3896,8 @@ class SampleCollection(object):
                 frames, the "frames." prefix is optional
             confidence_thresh (None): an optional confidence threshold to apply
                 to any applicable labels generated by the model
+            classes (None): an optional iterable of classes to which to
+                restrict any applicable labels generated by the model
             store_logits (False): whether to store logits for the model
                 predictions. This is only supported when the provided ``model``
                 has logits, ``model.has_logits == True``
@@ -3597,6 +3932,7 @@ class SampleCollection(object):
             model,
             label_field=label_field,
             confidence_thresh=confidence_thresh,
+            classes=classes,
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
@@ -10866,6 +11202,12 @@ class SampleCollection(object):
         if self.default_skeleton:
             d["default_skeleton"] = self._serialize_default_skeleton()
 
+        if self.camera_intrinsics:
+            d["camera_intrinsics"] = self._serialize_camera_intrinsics()
+
+        if self.static_transforms:
+            d["static_transforms"] = self._serialize_static_transforms()
+
         if self.media_type == fom.GROUP:
             view = self.select_group_slices(_allow_mixed=True)
         else:
@@ -11533,6 +11875,28 @@ class SampleCollection(object):
 
         return self._root_dataset._doc.field_to_python(
             "default_skeleton", default_skeleton
+        )
+
+    def _serialize_camera_intrinsics(self):
+        return self._root_dataset._doc.field_to_mongo("camera_intrinsics")
+
+    def _serialize_static_transforms(self):
+        return self._root_dataset._doc.field_to_mongo("static_transforms")
+
+    def _parse_camera_intrinsics(self, camera_intrinsics):
+        if not camera_intrinsics:
+            return camera_intrinsics
+
+        return self._root_dataset._doc.field_to_python(
+            "camera_intrinsics", camera_intrinsics
+        )
+
+    def _parse_static_transforms(self, static_transforms):
+        if not static_transforms:
+            return static_transforms
+
+        return self._root_dataset._doc.field_to_python(
+            "static_transforms", static_transforms
         )
 
     def _to_fields_str(self, field_schema):
@@ -12619,6 +12983,7 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
             id_map[(_id, fn)] = _fid
 
         for fn in set(_vals.keys()) - set(_fns):
+            fofu.validate_frame_number(fn)
             dicts.append(
                 {
                     "_sample_id": ObjectId(_id),

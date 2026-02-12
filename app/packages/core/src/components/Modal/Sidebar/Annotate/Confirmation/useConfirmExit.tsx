@@ -1,7 +1,7 @@
 import { MuiButton } from "@fiftyone/components";
 import { Typography } from "@mui/material";
 import { atom, getDefaultStore, useAtom, useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import styled from "styled-components";
 import { hasChanges } from "../Edit/state";
 import Modal from "./Modal";
@@ -19,7 +19,7 @@ function ExitChangesModal({
   save,
 }: {
   exit: () => void;
-  save: () => void;
+  save: () => void | Promise<void>;
 }) {
   const [shown, show] = useAtom(showUnsavedChangesConfirmation);
 
@@ -51,8 +51,13 @@ function ExitChangesModal({
           </MuiButton>
           <MuiButton
             color="success"
-            onClick={() => {
-              save();
+            onClick={async () => {
+              try {
+                await save();
+              } catch (error) {
+                console.error("Failed to save annotations:", error);
+              }
+
               close();
               shown();
             }}
@@ -68,24 +73,36 @@ function ExitChangesModal({
 
 export default function useConfirmExit(
   exit: () => void,
-  saveAnnotation?: () => void
+  saveAnnotation?: () => void | Promise<void>
 ) {
-  const showConfirmation = useSetAtom(showUnsavedChangesConfirmation);
-  return {
-    confirmExit: useCallback(
-      (callback) => {
-        if (getDefaultStore().get(hasChanges)) {
-          showConfirmation(() => callback);
-          return;
-        }
+  const setShowConfirmation = useSetAtom(showUnsavedChangesConfirmation);
 
-        callback();
-        exit();
-      },
-      [exit, showConfirmation]
-    ),
-    ExitChangesModal: () => (
-      <ExitChangesModal exit={exit} save={saveAnnotation ?? (() => {})} />
-    ),
-  };
+  const exitRef = useRef(exit);
+  exitRef.current = exit;
+
+  const saveAnnotationRef = useRef(saveAnnotation);
+  saveAnnotationRef.current = saveAnnotation;
+
+  const confirmExit = useCallback((callback) => {
+    if (getDefaultStore().get(hasChanges)) {
+      setShowConfirmation(() => callback);
+      return;
+    }
+
+    callback();
+    exitRef.current();
+  }, []);
+
+  return useMemo(
+    () => ({
+      confirmExit,
+      ExitChangesModal: () => (
+        <ExitChangesModal
+          exit={exitRef.current}
+          save={saveAnnotationRef.current ?? (() => {})}
+        />
+      ),
+    }),
+    [confirmExit]
+  );
 }
