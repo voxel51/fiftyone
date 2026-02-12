@@ -17,6 +17,7 @@ export const hideOverflowingNodes = throttle(
     let hiddenItems = 0;
     let lastRightEdge = 0;
     let lastVisibleItemId = "";
+    let totalVisibleWidth = 0;
 
     items.forEach((item: HTMLDivElement) => {
       const itemWidth = item.offsetWidth;
@@ -28,6 +29,7 @@ export const hideOverflowingNodes = throttle(
       } else {
         lastRightEdge = rightEdge;
         lastVisibleItemId = item.getAttribute("data-item-id") as string;
+        totalVisibleWidth += itemWidth;
       }
     });
 
@@ -37,6 +39,7 @@ export const hideOverflowingNodes = throttle(
       hiddenItems = 0;
       lastRightEdge = 0;
       lastVisibleItemId = "";
+      totalVisibleWidth = 0;
 
       items.forEach((item: HTMLDivElement) => {
         const itemWidth = item.offsetWidth;
@@ -48,11 +51,15 @@ export const hideOverflowingNodes = throttle(
         } else {
           lastRightEdge = rightEdge;
           lastVisibleItemId = item.getAttribute("data-item-id") as string;
+          totalVisibleWidth += itemWidth;
         }
       });
     }
 
-    itemsContainer.style.width = `${lastRightEdge - 4}px`;
+    const visibleItemsCount = items.length - hiddenItems;
+    const totalGap = Math.max(0, visibleItemsCount - 1) * ADAPTIVE_MENU_GAP;
+    const calculatedWidth = totalVisibleWidth + totalGap;
+    itemsContainer.style.width = `${calculatedWidth}px`;
     onHide(hiddenItems, lastVisibleItemId);
   },
   ADAPT_THROTTLE,
