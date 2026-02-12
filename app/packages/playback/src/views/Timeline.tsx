@@ -1,10 +1,10 @@
 import React from "react";
 import { SEEK_BAR_DEBOUNCE } from "../lib/constants";
 import { TimelineName } from "../lib/state";
-import { useFrameNumber } from "../lib/use-frame-number";
-import { useTimeline } from "../lib/use-timeline";
-import { useTimelineBuffers } from "../lib/use-timeline-buffers";
-import { useTimelineVizUtils } from "../lib/use-timeline-viz-utils";
+import { useFrameNumber } from "../lib/hooks/use-frame-number";
+import { useTimeline } from "../lib/hooks/use-timeline";
+import { useTimelineBuffers } from "../lib/hooks/use-timeline-buffers";
+import { useTimelineVizUtils } from "../lib/hooks/use-timeline-viz-utils";
 import {
   FoTimelineContainer,
   FoTimelineControlsContainer,

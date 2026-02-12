@@ -3,7 +3,7 @@ import React from "react";
 import { DEFAULT_FRAME_NUMBER } from "../lib/constants";
 import { useCreateTimeline } from "../lib/use-create-timeline";
 import { useDefaultTimelineNameImperative } from "../lib/use-default-timeline-name";
-import { useTimeline } from "../lib/use-timeline";
+import { useTimeline } from "../lib/hooks/use-timeline";
 import { Timeline } from "./Timeline";
 
 /**

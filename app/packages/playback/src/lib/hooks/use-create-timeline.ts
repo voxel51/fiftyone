@@ -14,16 +14,16 @@ import {
   SequenceTimelineSubscription,
   setFrameNumberAtom,
   updatePlayheadStateAtom,
-} from "../lib/state";
+} from "../../lib/state";
 import {
   DEFAULT_FRAME_NUMBER,
   PLAYHEAD_STATE_BUFFERING,
   PLAYHEAD_STATE_PAUSED,
   PLAYHEAD_STATE_PLAYING,
   PLAYHEAD_STATE_WAITING_TO_PAUSE,
-} from "./constants";
+} from "../constants";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
-import { getTimelineSetFrameNumberEventName } from "./utils";
+import { getTimelineSetFrameNumberEventName } from "../utils";
 
 /**
  * This hook creates a new timeline with the given configuration.

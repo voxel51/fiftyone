@@ -4,7 +4,7 @@ import {
   getCurrentBufferingRangeAtom,
   getDataLoadedBuffersAtom,
   TimelineName,
-} from "./state";
+} from "../state";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**

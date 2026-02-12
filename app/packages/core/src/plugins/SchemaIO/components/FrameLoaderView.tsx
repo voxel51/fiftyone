@@ -4,7 +4,7 @@ import { DEFAULT_FRAME_NUMBER } from "@fiftyone/playback/src/lib/constants";
 import { BufferManager, BufferRange } from "@fiftyone/utilities";
 import { usePanelEvent } from "@fiftyone/operators";
 import { usePanelId, useSetPanelStateById } from "@fiftyone/spaces";
-import { useTimeline } from "@fiftyone/playback/src/lib/use-timeline";
+import { useTimeline } from "@fiftyone/playback";
 import _ from "lodash";
 
 const FRAME_LOADED_EVENT = "frames-loaded";

@@ -12,9 +12,9 @@ import {
   TimelineName,
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
-} from "../lib/state";
+} from "../state";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
-import { PlayheadState } from "./constants";
+import { PlayheadState } from "../constants";
 
 /**
  * This hook provides access to the timeline with the given name.

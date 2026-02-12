@@ -1,6 +1,6 @@
 import { useSetAtom } from "jotai";
 import React from "react";
-import { setFrameNumberAtom, TimelineName } from "./state";
+import { setFrameNumberAtom, TimelineName } from "../state";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { useFrameNumber } from "./use-frame-number";
 import { useTimeline } from "./use-timeline";

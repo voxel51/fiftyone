@@ -1,5 +1,5 @@
 import { BufferRange, Buffers } from "@fiftyone/utilities";
-import { getTimelineNameFromSampleAndGroupId } from "./use-default-timeline-name";
+import { getTimelineNameFromSampleAndGroupId } from "./hooks/use-default-timeline-name";
 
 /**
  * Returns the event name for setting the frame number for a specific timeline.

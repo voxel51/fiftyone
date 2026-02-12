@@ -9,7 +9,7 @@ import {
   PlayheadState,
 } from "../lib/constants";
 import { TimelineName } from "../lib/state";
-import { convertFrameNumberToPercentage } from "../lib/use-timeline-viz-utils";
+import { convertFrameNumberToPercentage } from "../lib/hooks/use-timeline-viz-utils";
 import { getGradientStringForSeekbar } from "../lib/utils";
 import BufferingIcon from "./svgs/buffering.svg?react";
 import PauseIcon from "./svgs/pause.svg?react";

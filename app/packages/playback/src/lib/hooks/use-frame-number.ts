@@ -5,7 +5,7 @@ import {
   getFrameNumberAtom,
   getTimelineConfigAtom,
   TimelineName,
-} from "./state";
+} from "../state";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**
