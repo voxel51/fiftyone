@@ -1688,7 +1688,7 @@ You can also create new fields on your dataset via the Schema Manager, as well.
     Schema Manager.
 
 For more information on FiftyOne’s in-App annotation features,
-:ref:`visit this User Guide! <fiftyone-annotation>`
+:ref:`visit this User Guide! <in-app-annotation>`
 
 Linking labels
 ______________
