@@ -43,7 +43,6 @@ class PipelineStage:
     - `view`: List of view stages to apply
     - `view_name`: Name of a saved view to use
     - `filters`: Dictionary of filters to apply
-    - `dataset_name`: Name of the dataset to use
     - Any other valid ExecutionContext request parameter
     
     Note: The `params` field should not be included in `request_params_overrides`.
@@ -138,7 +137,7 @@ class Pipeline:
             rerunnable: whether the stage is rerunnable
             request_params_overrides: optional dict of request parameter
                 overrides for the execution context. Allows overriding fields
-                like `view`, `view_name`, `filters`, `dataset_name`, etc.
+                like `view`, `filters`, etc.
             **kwargs: reserved for future use
 
         Returns:
