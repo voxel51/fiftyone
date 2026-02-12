@@ -295,7 +295,6 @@ export function generatePrimitiveSchema(
     return createDatePicker(name, false);
   }
 
-  console.log("schema.type", schema.type);
   if (schema.type === "dict") {
     return createJsonInput(name);
   }

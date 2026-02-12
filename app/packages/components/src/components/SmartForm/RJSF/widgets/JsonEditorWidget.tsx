@@ -18,7 +18,6 @@ export default function JsonEditorWidget(props: WidgetProps) {
     disabled,
     readonly,
     onChange = () => {},
-    rawErrors,
     uiSchema,
   } = props;
   const [localValue, setLocalValue] = useState("");
@@ -27,7 +26,7 @@ export default function JsonEditorWidget(props: WidgetProps) {
   const height = uiSchema?.["ui:options"]?.height ?? DEFAULT_HEIGHT;
 
   useEffect(() => {
-    setLocalValue(JSON.stringify(value, undefined, 2));
+    setLocalValue(JSON.stringify(value ?? {}, undefined, 2));
   }, [value]);
 
   const handleEditorChange = (editorValue: unknown) => {
@@ -57,6 +56,7 @@ export default function JsonEditorWidget(props: WidgetProps) {
     >
       <Code
         defaultValue={localValue}
+        value={localValue}
         onChange={handleEditorChange}
         language="json"
         height={`${height}px`}

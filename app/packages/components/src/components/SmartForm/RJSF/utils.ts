@@ -22,15 +22,15 @@ function isJsonEditorWidgetPath(property: string, uiSchema: UiSchema): boolean {
   // property is in RJSF form has a leading dot, remove it
   const propertyPath = property.replace(/^\./, "");
   const node = uiSchema[propertyPath];
-  console.log("node", node);
   return node && node["ui:widget"] === "JsonEditorWidget";
 }
 
 export function transformErrors(
   errors: RJSFValidationError[],
-  uiSchema: UiSchema
+  uiSchema?: UiSchema
 ) {
   const filteredErrors = errors.filter((error) => {
+    if (!uiSchema) return true; // can't filter without the schema
     // JSON editor controls its own validation errors
     return !isJsonEditorWidgetPath(error?.property ?? "", uiSchema);
   });
