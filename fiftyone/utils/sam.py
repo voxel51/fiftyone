@@ -387,7 +387,9 @@ def _to_sam_points(points, w, h, keypoint):
     scaled_points = np.array(points[valid_rows]) * np.array([w, h])
     labels = (
         np.array(keypoint.sam2_labels)[valid_rows]
-        if "sam_labels" in keypoint
+        if "sam2_labels" in keypoint and keypoint.sam2_labels is not None
+        else np.array(keypoint.sam_labels)[valid_rows]
+        if "sam_labels" in keypoint and keypoint.sam_labels is not None
         else np.ones(len(scaled_points))
     )
     return scaled_points.astype(np.float32), labels.astype(np.uint32)
