@@ -1,12 +1,14 @@
 import * as fos from "@fiftyone/state";
+import { useSetRecoilState } from "recoil";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
 import { shortcutToHelpItems } from "./utils";
+import { useViewport } from "./useViewport";
 
 const CLOSE = "close";
 
@@ -88,10 +90,6 @@ function useLooker<L extends fos.Lookers>({
     looker.attach(id);
   }, [looker, id]);
 
-  useEffect(() => {
-    return () => looker?.destroy();
-  }, [looker]);
-
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
@@ -122,15 +120,83 @@ function useLooker<L extends fos.Lookers>({
 
   const { setActiveLookerRef } = useModalContext();
 
+  const { viewport, setViewport, pan, scale } = useViewport();
+  const lastLookerViewport = useRef<{
+    scale: number;
+    pan: [number, number];
+  } | null>(null);
+
   useEffect(() => {
-    setModalLooker(looker);
-  }, [looker, setModalLooker]);
+    return () => {
+      looker?.destroy();
+      // Don't reset viewport here - it prevents zoom from persisting when switching to Lighter
+      // Viewport is reset on sample change and modal close via other mechanisms
+    };
+  }, [looker]);
+
+  const currentSampleId = sample.sample._id;
+  useEffect(() => {
+    if (!looker) return;
+
+    const disposeScale = looker.subscribeToState("scale", (scale: number) => {
+      if (!showControls) return;
+      setViewport((prev: { scale: number; pan: [number, number] } | null) => {
+        if (prev?.scale === scale) return prev;
+        const next: { scale: number; pan: [number, number] } = {
+          scale,
+          pan: prev?.pan ?? [0, 0],
+        };
+        lastLookerViewport.current = next;
+        return next;
+      });
+    });
+
+    const onPanChange = (pan: [number, number]) => {
+      if (!showControls) return;
+      setViewport((prev: { scale: number; pan: [number, number] } | null) => {
+        if (prev?.pan[0] === pan[0] && prev?.pan[1] === pan[1]) return prev;
+        const next: { scale: number; pan: [number, number] } = {
+          scale: prev?.scale ?? 1,
+          pan: [pan[0], pan[1]],
+        };
+        lastLookerViewport.current = next;
+        return next;
+      });
+    };
+
+    const unsubscribePan = looker.subscribeToState("pan", onPanChange);
+
+    return () => {
+      disposeScale();
+      unsubscribePan();
+    };
+  }, [looker, setViewport, showControls, currentSampleId]);
+
+  useEffect(() => {
+    if (!looker || !viewport) return;
+
+    if (
+      lastLookerViewport.current &&
+      scale === lastLookerViewport.current.scale &&
+      pan[0] === lastLookerViewport.current.pan[0] &&
+      pan[1] === lastLookerViewport.current.pan[1]
+    ) {
+      return;
+    }
+
+    (looker as any).setCamera(scale, pan);
+  }, [looker, viewport, pan, scale]);
 
   useEffect(() => {
     if (looker) {
+      setModalLooker(looker);
       setActiveLookerRef(looker as fos.Lookers);
     }
-  }, [looker, setActiveLookerRef]);
+  }, [looker, setModalLooker, setActiveLookerRef]);
+
+  useEffect(() => {
+    setViewport(null);
+  }, [sample.sample._id, setViewport]);
 
   return { id, looker, ref, sample, updateLookerOptions };
 }

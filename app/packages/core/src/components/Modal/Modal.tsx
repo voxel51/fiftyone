@@ -13,7 +13,14 @@ import {
   currentModalUniqueIdJotaiAtom,
   jotaiStore,
 } from "@fiftyone/state/src/jotai";
-import React, { Fragment, useCallback, useMemo, useRef } from "react";
+import { useSetAtom } from "jotai";
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import ReactDOM from "react-dom";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -73,6 +80,21 @@ const ModalCommandHandlersRegistration = () => {
   const modalMode = useModalMode();
 
   useAutoSave(modalMode === ModalMode.ANNOTATE);
+  // Right now, we don't support annotations on generated views,
+  // so start in explore mode if the view is generated.
+  // TODO: support annotations on generated views
+  const isGenerated = useRecoilValue(fos.isGeneratedView);
+  const setModalMode = useSetAtom(fos.modalMode);
+  const initialCheckRef = useRef(false);
+
+  useEffect(() => {
+    if (!initialCheckRef.current) {
+      if (isGenerated && modalMode === ModalMode.ANNOTATE) {
+        setModalMode(ModalMode.EXPLORE);
+      }
+      initialCheckRef.current = true;
+    }
+  }, [isGenerated, modalMode, setModalMode]);
 
   return <Fragment />;
 };
