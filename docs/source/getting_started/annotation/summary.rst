@@ -67,13 +67,12 @@ When to Use What
 - Single annotator workflows
 - Tight model-labeling feedback loops
 
-**Use external tools (CVAT, Label Studio) when:**
+**Use external tools (CVAT, Label Studio, Labelbox) when:**
 
-- High-volume annotation with teams
-- Role-based review workflows
-- Audit trails and agreement metrics needed
+- High-volume annotation with distributed teams
+- Complex labeling pipelines requiring external infrastructure
 
-FiftyOne integrates with external tools via the :ref:`annotation API <fiftyone-annotation>`.
+FiftyOne integrates with external annotation tools. See :ref:`Integrations <integrations>` for details.
 
 What's Next
 -----------
@@ -89,7 +88,7 @@ Resources
 * `FiftyOne 3D Visualizer <../../user_guide/app.html#d-visualizer>`_
 * `FiftyOne Brain - Embeddings <../../user_guide/brain.html>`_
 * `FiftyOne Evaluation API <../../user_guide/evaluation.html>`_
-* `External Annotation Integration <../../user_guide/annotation.html>`_
+* `Annotation Integrations <../../integrations/index.html>`_
 * `Grouped Datasets <../../user_guide/groups.html>`_
 * `ZCore Repository <https://github.com/voxel51/zcore>`_
 * `YOLOv8 Documentation <https://docs.ultralytics.com/>`_
