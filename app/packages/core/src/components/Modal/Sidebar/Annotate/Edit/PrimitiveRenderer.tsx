@@ -3,7 +3,9 @@ import { Primitive } from "@fiftyone/utilities";
 import { DatePicker } from "@voxel51/voodo";
 import styled from "styled-components";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import JSONEditor from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
+import JSONEditor, {
+  JSONValue,
+} from "../SchemaManager/EditFieldLabelSchema/JSONEditor";
 
 const EditorContainer = styled.div`
   height: 400px;
@@ -30,7 +32,7 @@ export default function PrimitiveRenderer({
     return (
       <EditorContainer>
         <JSONEditor
-          data={(fieldValue as string) || {}}
+          data={(fieldValue as JSONValue) || {}}
           onChange={handleChange}
           errors={false}
           scanning={false}
