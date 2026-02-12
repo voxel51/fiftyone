@@ -132,7 +132,7 @@ export default function useDelete() {
         enablement: () => {
           return !!label;
         },
-        sequence: "Delete",
+        sequence: ["Delete", "Backspace"],
         label: "Delete label",
         description: "Delete label",
       },
