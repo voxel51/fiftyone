@@ -6,12 +6,10 @@ import {
   _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
   addTimelineAtom,
-  CreateFoTimeline,
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
   getTimelineUpdateFreqAtom,
-  SequenceTimelineSubscription,
   setFrameNumberAtom,
   updatePlayheadStateAtom,
 } from "../../lib/state";
@@ -22,8 +20,9 @@ import {
   PLAYHEAD_STATE_PLAYING,
   PLAYHEAD_STATE_WAITING_TO_PAUSE,
 } from "../constants";
-import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { getTimelineSetFrameNumberEventName } from "../utils";
+import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
+import { CreateFoTimeline, SequenceTimelineSubscription } from "../types";
 
 /**
  * This hook creates a new timeline with the given configuration.

@@ -4,8 +4,8 @@ import {
   _INTERNAL_timelineConfigsLruCache,
   getFrameNumberAtom,
   getTimelineConfigAtom,
-  TimelineName,
 } from "../state";
+import { TimelineName } from "../types";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**

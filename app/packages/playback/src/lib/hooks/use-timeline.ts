@@ -1,20 +1,19 @@
 import { useAtomValue, useSetAtom } from "jotai";
 import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
+import { PlayheadState } from "../constants";
 import {
   _INTERNAL_timelineConfigsLruCache,
   addSubscriberAtom,
   getFrameNumberAtom,
   getPlayheadStateAtom,
   getTimelineConfigAtom,
-  SequenceTimelineSubscription,
   setFrameNumberAtom,
-  TimelineName,
   updatePlayheadStateAtom,
   updateTimelineConfigAtom,
 } from "../state";
+import { SequenceTimelineSubscription, TimelineName } from "../types";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
-import { PlayheadState } from "../constants";
 
 /**
  * This hook provides access to the timeline with the given name.

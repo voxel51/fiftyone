@@ -3,8 +3,8 @@ import React from "react";
 import {
   getCurrentBufferingRangeAtom,
   getDataLoadedBuffersAtom,
-  TimelineName,
 } from "../state";
+import { TimelineName } from "../types";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 
 /**
