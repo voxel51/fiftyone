@@ -24,6 +24,18 @@ export function serializeDateValue(type: string, date: Date): string {
 }
 
 /**
+ * Serialize a date value from the database back to an ISO string.
+ * number back into a date string
+ * @param value - The value to serialize
+ * @returns The serialized value
+ */
+export function serializeDatabaseDateValue(value: {
+  datetime: number;
+}): Primitive {
+  return new Date(value.datetime).toISOString();
+}
+
+/**
  * processes dict fields by parsing string values to objects, returns
  * input value for other field types
  * @param fieldValue - the value of the field
