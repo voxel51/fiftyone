@@ -27,7 +27,6 @@ To perform in-App annotation, your dataset must contain at least one of the foll
 * `Labels <https://docs.voxel51.com/user_guide/basics.html#labels>`_
 
   * ``Classification``
-  * ``Classifications``
   * ``Detections``
   * ``3D Polylines``
   * ``3D Cuboids``
@@ -88,6 +87,9 @@ FiftyOne's in-App annotation supports two groups of field types: **label-type** 
 Schema Manager
 ^^^^^^^^^^^^^^
 
+.. image:: /_static/images/annotation/schema_manager.png
+   :alt: Schema Manager
+
 The "Schema Manager" user interface defines the Annotation Schema for the dataset. The main page of the Schema Manager features two sections: "Active fields" and "Hidden fields".
 
 "Active fields" are fields included in your Annotation Schema.
@@ -137,7 +139,7 @@ For both primitive fields and ``attributes``, the following properties apply:
   * ``datepicker``: a calendar date picker component. Applicable when ``type`` is ``date`` or ``datetime``.
   * ``json``: an editable JSON code block. Applicable when ``type`` is ``list`` or ``dict``.
 
-* ``values``: the list of allowed values available for selection in the ``attribute`` or ``primitive``.
+* ``values``: the list of allowed values available for selection in the ``attribute`` or primitive.
 * ``range``: the ``[min, max]`` values available for numeric ``type``\s, used in the ``slider``. When ``range`` is defined, ``values`` must be omitted.
 * ``default``: the default value assigned to the attribute on new label instances. Not applicable to primitive fields.
 
@@ -189,6 +191,9 @@ If you do not see a field or its contents in the "Annotate" tab of the sample ex
 
 .. warning::
    Like the above features in :ref:`the "Schema Import / Management" section <schema-import-management>`, this bypass feature is only available to users with `"Can manage" access <https://docs.voxel51.com/enterprise/roles_and_permissions.html#can-manage>`_ on a dataset.
+
+.. image:: /_static/images/annotation/quick_edit.png
+   :alt: Explore tab field selection
 
 While on the "Explore" tab of the sample expanded view, hover over the field with objects/values you wish to edit via in-App annotation, and you'll see a ✏️ icon. When you click the ✏️ icon, if no valid schema exists yet for that field–and the field does not exist in the Annotation Schema, the following happens:
 
@@ -261,7 +266,7 @@ Creating a Detection label
 
 Click the "Create new detection" icon in the annotation actions toolbar to enable the crosshair mouse cursor on the Annotation Canvas and display the detection editor in the right sidebar. Position the cursor at one corner of the new detection, then click and hold the mouse button while dragging diagonally to create a bounding box.
 
-.. image:: /_static/images/annotation/image7.gif
+.. image:: /_static/images/annotation/bounding_box.gif
    :alt: Drawing a bounding box
 
 Once a bounding box has been created, it can be resized and repositioned as desired by clicking and holding any edge or corner drag handle while moving the mouse cursor. For finer adjustments, first zoom in on the image. To maintain the aspect ratio of the selection, hold down the shift key while dragging.
@@ -279,9 +284,9 @@ A detection label's size and shape can be adjusted directly in the annotation ca
 Editing in the Right Sidebar
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Labels can be selected by clicking on its bounding box or on the item in the list in the right sidebar, which will highlight the associated bounding box on the annotation canvas if the label is a detection, then clicking the chosen row. This will open the editing panel in the right sidebar.
+Select a label by clicking on it on the Annotation Canvas, or by its representation in the list of label instances. As you hover over labels, you'll notice the corresponding object (either on the Annotation Canvas or in the list of label instances) appear highlighted. When you select a label, you can edit its properties via the right sidebar.
 
-.. image:: /_static/images/annotation/image9.gif
+.. image:: /_static/images/annotation/bounding_box2.gif
    :alt: Right sidebar editor
 
 Spatial Properties
