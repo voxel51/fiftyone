@@ -156,12 +156,6 @@ export interface Renderer2D {
   getViewportPosition(): { x: number; y: number };
 
   /**
-   * Check if the renderer is currently being interacted with (dragged, pinched, or zoomed)
-   * @returns True if the renderer is being interacted with.
-   */
-  isInteracting(): boolean;
-
-  /**
    * Check if the renderer is initialized and ready to use.
    * @returns True if the renderer is ready.
    */
@@ -171,13 +165,6 @@ export interface Renderer2D {
    * Reset tick handler, and remove all children from the viewport.
    */
   cleanUp(): void;
-
-  /**
-   * Sets the scale and pan of the viewport.
-   * @param scale - The new scale level.
-   * @param pan - The new pan position [x, y].
-   */
-  setViewport(scale: number, pan: [number, number]): void;
 
   /**
    * Destroys the renderer.
