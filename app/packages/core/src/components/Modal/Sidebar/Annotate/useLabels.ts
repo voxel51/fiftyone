@@ -15,7 +15,11 @@ import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
-import { activeLabelSchemas, isFieldReadOnly, labelSchemasData } from "./state";
+import {
+  isFieldReadOnly,
+  labelSchemasData,
+  visibleLabelSchemas,
+} from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
 import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 import useFocus from "./useFocus";
@@ -280,7 +284,7 @@ export default function useLabels() {
   const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
-  const active = useAtomValue(activeLabelSchemas);
+  const active = useAtomValue(visibleLabelSchemas);
   const addLabelToRenderer = useAddAnnotationLabelToRenderer();
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
