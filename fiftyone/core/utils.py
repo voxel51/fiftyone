@@ -3241,7 +3241,12 @@ class ResponseStream(object):
         """
         size = self._response.headers.get("Content-Length")
         if size is not None:
-            return int(size)
+            try:
+                size = int(size)
+                if size >= 0:
+                    return size
+            except Exception:
+                pass
 
         self._bytes.seek(0, io.SEEK_END)
         size = self.tell() + sum(map(len, self._iterator))
