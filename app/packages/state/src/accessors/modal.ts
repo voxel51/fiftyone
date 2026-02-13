@@ -93,4 +93,8 @@ export const usePreferredGroupAnnotationSlice = () =>
 /**
  * Gets the current sample ID.
  */
-export const useCurrentSampleId = () => useRecoilValue(currentSampleId);
+export const useCurrentSampleId = () => {
+  const loadable = useRecoilValueLoadable(currentSampleId);
+
+  return loadable.state === "hasValue" ? loadable.contents : null;
+};
