@@ -3245,7 +3245,6 @@ class ResponseStream(object):
 
         self._bytes.seek(0, io.SEEK_END)
         size = self.tell() + sum(map(len, self._iterator))
-        self._bytes.seek(0, io.SEEK_END)
 
         return size
 

@@ -1004,10 +1004,8 @@ class ResponseStreamTests(unittest.TestCase):
     def _make_response(self, data, content_length=None):
         """Create a mock requests.Response with given data and headers."""
         response = MagicMock()
-        chunk_size_holder = [64]
 
         def iter_content(chunk_size=64):
-            chunk_size_holder[0] = chunk_size
             for i in range(0, len(data), chunk_size):
                 yield data[i : i + chunk_size]
 
