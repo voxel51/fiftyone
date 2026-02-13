@@ -85,6 +85,7 @@ class ImageMetadataUrlTests(unittest.TestCase):
 
         self.assertEqual(metadata.width, 50)
         self.assertEqual(metadata.height, 50)
+        self.assertEqual(metadata.size_bytes, len(img_data))
         self.assertEqual(metadata.num_channels, 1)
 
     @patch("fiftyone.core.metadata.requests.get")
