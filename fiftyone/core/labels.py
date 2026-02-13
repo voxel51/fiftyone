@@ -1783,8 +1783,8 @@ def _render_instance(mask, detection, target):
     # shift caused by independently flooring both the start and end
     # coordinates. The mask is placed at its actual dimensions with no
     # resize, and clipped to image bounds.
-    x0 = int(round(bbox.top_left.x * img_w))
-    y0 = int(round(bbox.top_left.y * img_h))
+    x0 = round(bbox.top_left.x * img_w)
+    y0 = round(bbox.top_left.y * img_h)
 
     obj_mask = np.asarray(dobj.mask, dtype=bool)
     dh, dw = obj_mask.shape
