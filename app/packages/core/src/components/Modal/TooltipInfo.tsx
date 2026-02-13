@@ -371,14 +371,16 @@ export const TooltipInfo = React.memo(() => {
 
     return (
       <TooltipDiv
-        data-cy={"sample-canvas-tooltip locked"}
+        data-cy={`sample-canvas-tooltip-${
+          isTooltipLocked ? "locked" : "unlocked"
+        }`}
         $isTooltipLocked={isTooltipLocked}
         style={{ ...coordsProps, ...showProps, position: "fixed" }}
         ref={ref}
       >
         <Header title={detail.field} labelId={detail.label.id} />
         <Border color={detail.color} id={detail.label.id} />
-        <TooltipContentDiv>
+        <TooltipContentDiv data-cy="sample-canvas-tooltip-content">
           {detail.label.tags && detail.label.tags.length > 0 && (
             <TagInfo key={"tags"} tags={detail.label?.tags} />
           )}
@@ -402,9 +404,7 @@ export const TooltipInfo = React.memo(() => {
   }
 
   return ReactDOM.createPortal(
-    <Draggable data-cy={"tooltip-locked"} handle={"#" + TOOLTIP_HEADER_ID}>
-      {tooltipDiv}
-    </Draggable>,
+    <Draggable handle={"#" + TOOLTIP_HEADER_ID}>{tooltipDiv}</Draggable>,
     document.body
   );
 });

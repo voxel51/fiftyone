@@ -25,8 +25,8 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await mediaFactory.createBlankImage({
     outputPath: "/tmp/blank.png",
-    width: 50,
-    height: 50,
+    width: 914,
+    height: 620,
     fillColor: "#ffffff",
     hideLogs: true,
   });
@@ -34,8 +34,10 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   await fiftyoneLoader.executePythonCode(`
   from bson import ObjectId
   import fiftyone as fo
+  from datetime import datetime
 
   dataset = fo.Dataset("${datasetName}")
+  dataset.media_type = "image"
 
   sample = fo.Sample(
       _id=ObjectId("${id}"),
@@ -61,7 +63,10 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       fo.EmbeddedDocumentField,
       embedded_doc_type=fo.Detections,
   )
-  dataset.save()`);
+  dataset.save()
+  sample = dataset.first()
+  sample.tags = ["tag"]
+  sample.save()`);
 });
 
 test.describe.serial("quick edit", () => {
@@ -75,12 +80,14 @@ test.describe.serial("quick edit", () => {
     // Init
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
+    await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot(
       "classification-label-looker.png"
     );
 
     // Show tooltip
-    await modal.sampleCanvas.move(0.2, 0.03);
+    await modal.sampleCanvas.move(0.05, 0.03);
+    await modal.sampleCanvas.assert.hasCursor("pointer");
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.assert.isLocked(false);
 
@@ -100,16 +107,15 @@ test.describe.serial("quick edit", () => {
     );
   });
 
-  test("detections via tooltip", async ({ modal }) => {
+  test("detections via tooltip", async ({ modal, page }) => {
     // Init
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-looker.png"
-    );
+    await modal.sampleCanvas.move(0.9, 0.9);
+    await modal.sampleCanvas.assert.hasCursor("default");
 
     // Show tooltip
-    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.assert.isLocked(false);
 
@@ -127,9 +133,18 @@ test.describe.serial("quick edit", () => {
 
     // Transition to quick edit via the tooltip
     await modal.sampleCanvas.tooltip.quickEdit();
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter.png"
-    );
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
+    await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "centered-bounding-box-lighter-focused.png"
+    );
+    await modal.sampleCanvas.move(0.75, 0.75, "nwse-resize");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.5, 0.5);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "centered-bounding-box-lighter-focused-small.png"
+    );
   });
 });

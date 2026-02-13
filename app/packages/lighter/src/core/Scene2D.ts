@@ -2,21 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Action, CommandContextManager } from "@fiftyone/commands";
 import {
-  clearChannel,
   EventDispatcher,
   EventHandler,
+  clearChannel,
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import {
-  MoveOverlayCommand,
   type Movable,
+  MoveOverlayCommand,
 } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
-  TransformOverlayCommand,
   type TransformOptions,
+  TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
@@ -49,7 +50,6 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
   isHoverable: (
@@ -236,7 +236,9 @@ export class Scene2D {
           absoluteBounds,
           relativeBounds
         );
-        CommandContextManager.instance().getActiveContext().pushUndoable(addCommand);
+        CommandContextManager.instance()
+          .getActiveContext()
+          .pushUndoable(addCommand);
       }
     });
 
@@ -256,7 +258,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -279,7 +283,9 @@ export class Scene2D {
             startBounds,
             endBounds
           );
-          CommandContextManager.instance().getActiveContext().pushUndoable(moveCommand);
+          CommandContextManager.instance()
+            .getActiveContext()
+            .pushUndoable(moveCommand);
         }
       }
     });
@@ -887,6 +893,9 @@ export class Scene2D {
     this.isRenderLoopActive = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
+      requestAnimationFrame(() => {
+        document.dispatchEvent(new CustomEvent("render"));
+      });
     });
   }
 
@@ -1088,7 +1097,10 @@ export class Scene2D {
    * @param options - The transformation options.
    * @returns True if the transformation was successful, false otherwise.
    */
-  async transformOverlay(id: string, options: TransformOptions): Promise<boolean> {
+  async transformOverlay(
+    id: string,
+    options: TransformOptions
+  ): Promise<boolean> {
     const overlay = this.overlays.get(id);
     if (!overlay) {
       console.warn(`Overlay with id ${id} not found`);
@@ -1185,7 +1197,9 @@ export class Scene2D {
    * @param isUndoable - Whether the command is undoable.
    */
   async executeCommand(command: Action, isUndoable = true): Promise<void> {
-    await CommandContextManager.instance().getActiveContext().executeAction(command);
+    await CommandContextManager.instance()
+      .getActiveContext()
+      .executeAction(command);
     this.eventBus.dispatch("lighter:command-executed", {
       commandId: command.id,
       isUndoable,

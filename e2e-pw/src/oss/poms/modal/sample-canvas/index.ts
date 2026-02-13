@@ -1,4 +1,3 @@
-import { Mouse } from "@playwright/test";
 import { Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { TooltipPom } from "./tooltip";
@@ -40,7 +39,7 @@ export class SampleCanvasPom {
   /**
    * Get the current mouse cursor style
    */
-  get cursor(): string {
+  get cursor(): Promise<string> {
     // eslint-disable-next-line
     // @ts-ignore
     return this.page.evaluate(() => window.CURRENT_CURSOR);
@@ -53,7 +52,8 @@ export class SampleCanvasPom {
    * @param y The y coordinate between [0, 1]
    */
   async click(x: number, y: number) {
-    await this.#callMouse("click", x, y);
+    const xy = await this.#toScreenCoordinates(x, y);
+    await this.page.mouse.click(xy.x, xy.y);
   }
 
   /**
@@ -63,17 +63,15 @@ export class SampleCanvasPom {
    * @param y The y coordinate between [0, 1]
    */
   async dblclick(x: number, y: number) {
-    await this.#callMouse("dblclick", x, y);
+    const xy = await this.#toScreenCoordinates(x, y);
+    await this.page.mouse.dblclick(xy.x, xy.y);
   }
 
   /**
    * Mouse down on the sample canvas
-   *
-   * @param x The x coordinate between [0, 1]
-   * @param y The y coordinate between [0, 1]
    */
-  async down(x: number, y: number) {
-    await this.#callMouse("down", x, y);
+  async down() {
+    await this.page.mouse.down();
   }
 
   /**
@@ -81,24 +79,28 @@ export class SampleCanvasPom {
    *
    * @param x The x coordinate between [0, 1]
    * @param y The y coordinate between [0, 1]
+   * @param cursor An optional cursor value to expect after moving
    */
-  async move(x: number, y: number) {
-    await this.#callMouse("move", x, y);
+  async move(x: number, y: number, cursor?: string) {
+    const xy = await this.#toScreenCoordinates(x, y);
+    await this.page.mouse.move(xy.x, xy.y);
+    if (cursor) {
+      await this.assert.hasCursor(cursor);
+    }
   }
 
   /**
    * Mouse up on the sample canvas
-   *
-   * @param x The x coordinate between [0, 1]
-   * @param y The y coordinate between [0, 1]
    */
-  async up(x: number, y: number) {
-    await this.#callMouse("up", x, y);
+  async up() {
+    await this.page.mouse.up();
   }
 
-  async #callMouse(method: keyof Mouse, x: number, y: number) {
-    const xy = await this.#toScreenCoordinates(x, y);
-    await this.page.mouse[method](xy.x, xy.y);
+  /**
+   * Wait for the cursor to change
+   */
+  async waitForCursorChange() {
+    await this.eventUtils.getEventReceivedPromiseForPredicate("cursor-change");
   }
 
   async #toScreenCoordinates(x: number, y: number) {
@@ -125,8 +127,9 @@ class SampleCanvasAsserter {
    *
    * @param name the cursor style
    */
-  hasCursor(cursor: string) {
-    return expect(this.sampleCanvasPom.cursor).toBe(cursor);
+  async hasCursor(cursor: string) {
+    const value = await this.sampleCanvasPom.cursor;
+    return expect(value).toBe(cursor);
   }
 
   /**
@@ -134,8 +137,18 @@ class SampleCanvasAsserter {
    *
    * @param name the name of the screenshot
    */
-  hasScreenshot(name: string) {
-    return expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
+  async hasScreenshot(name: string) {
+    if (
+      await this.sampleCanvasPom.page
+        .getByTestId("sample-canvas-checkbox")
+        .isVisible()
+    ) {
+      // Hide controls before checking the screenshot
+      await this.sampleCanvasPom.page.keyboard.press("c");
+    }
+
+    //   await this.sampleCanvasPom.tooltip.assert.isVisible(false);
+    return await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
   }
 
   /**

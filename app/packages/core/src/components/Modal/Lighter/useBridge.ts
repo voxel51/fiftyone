@@ -6,9 +6,8 @@ import {
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
+import type { LighterEventGroup, Scene2D } from "@fiftyone/lighter";
 import {
-  type LighterEventGroup,
-  type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,

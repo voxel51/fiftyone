@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useAnnotationEventBus, usePatchSample } from "../hooks";
+import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 
 /**
  * @returns `true` if persistence was successful

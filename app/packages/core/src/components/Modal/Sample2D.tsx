@@ -59,7 +59,7 @@ export const SampleWrapper = ({
       {...hoverEventHandlers}
     >
       {hovering && (
-        <CheckboxWrapper>
+        <CheckboxWrapper data-cy="sample-canvas-checkbox">
           <SelectSampleCheckbox
             sampleId={sample.sample._id ?? sample.sample.id}
           />

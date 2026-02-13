@@ -68,7 +68,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
         if (element) {
           // eslint-disable-next-line
           // @ts-ignore
+          console.log("CHANGE", window.getComputedStyle(element).cursor);
           window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
+          document.dispatchEvent(new CustomEvent("cursor-change"));
         }
       });
 

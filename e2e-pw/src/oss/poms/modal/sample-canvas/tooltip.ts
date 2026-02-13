@@ -13,24 +13,31 @@ export class TooltipPom {
   }
 
   /**
-   * The tooltip locator
+   * The tooltip content locator
    */
-  get locator() {
-    return this.page.getByTestId("sample-canvas-tooltip");
-  }
-
-  /**
-   * The tooltip title locator
-   */
-  get title() {
-    return this.locator.getByTestId("sample-canvas-tooltip-title");
+  get content() {
+    return this.page.getByTestId("sample-canvas-tooltip-content");
   }
 
   /**
    * The locked tooltip locator
    */
   get locked() {
-    return this.page.getByTestId("sample-canvas-tooltip locked");
+    return this.page.getByTestId("sample-canvas-tooltip-locked");
+  }
+
+  /**
+   * The tooltip title locator
+   */
+  get title() {
+    return this.page.getByTestId("sample-canvas-tooltip-title");
+  }
+
+  /**
+   * The unlocked tooltip locator
+   */
+  get unlocked() {
+    return this.page.getByTestId("sample-canvas-tooltip-unlocked");
   }
 
   /**
@@ -40,9 +47,9 @@ export class TooltipPom {
    * @returns A {Locator}
    */
   getAttribute(name: string, hidden = false) {
-    let locator = this.locator;
+    let locator = this.content;
     if (hidden) {
-      locator = this.locator.getByTestId("hidden-attributes");
+      locator = this.content.getByTestId("hidden-attributes");
     }
     return locator.getByTestId(`attribute-${name}`);
   }
@@ -52,7 +59,11 @@ export class TooltipPom {
    * for this action to succeed.
    */
   async quickEdit() {
-    await this.locator.getByTestId("quick-edit").click();
+    const render =
+      this.eventUtils.getEventReceivedPromiseForPredicate("render");
+    await this.locked.hover();
+    await this.locked.getByTestId("quick-edit").click();
+    await render;
   }
 
   /**
@@ -86,9 +97,9 @@ class TooltipAsserter {
    * @param visible Whether it is expected to be visibile or not
    */
   async isVisible(visible = true) {
-    const locator = this.tooltipPom.locator;
+    const locator = this.tooltipPom.content;
     return visible
-      ? await expect(locator).toBeVisible()
+      ? await expect(locator).toBeAttached()
       : await expect(locator).toBeHidden();
   }
 
