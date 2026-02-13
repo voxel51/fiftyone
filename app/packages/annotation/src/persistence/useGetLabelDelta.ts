@@ -1,5 +1,6 @@
 import type { JSONDeltas } from "@fiftyone/core";
 import { useModalSample, useModalSampleSchema } from "@fiftyone/state";
+import type { Field } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { buildJsonPath, buildLabelDeltas, LabelProxy } from "../deltas";
 import { getFieldSchema } from "../util";
@@ -16,6 +17,39 @@ export interface UseGetLabelDeltaOptions {
    */
   opType?: DeltaOpType;
 }
+
+/**
+ * Map from LabelProxy singular type to the plural embeddedDocType used by
+ * list-based label fields (the kind the Schema Manager creates).
+ */
+const LABEL_TYPE_TO_EMBEDDED_DOC: Record<string, string> = {
+  Detection: "fiftyone.core.labels.Detections",
+  Classification: "fiftyone.core.labels.Classifications",
+  Polyline: "fiftyone.core.labels.Polylines",
+};
+
+/**
+ * Build a minimal {@link Field} from a {@link LabelProxy} type so that delta
+ * generation can proceed even when the Recoil schema cache is stale (e.g.
+ * immediately after a field is created via the Schema Manager).
+ */
+const inferFieldSchema = (labelProxy: LabelProxy): Field | null => {
+  if (!("type" in labelProxy)) return null;
+
+  const embeddedDocType = LABEL_TYPE_TO_EMBEDDED_DOC[labelProxy.type];
+  if (!embeddedDocType) return null;
+
+  return {
+    embeddedDocType,
+    ftype: "fiftyone.core.fields.EmbeddedDocumentField",
+    name: labelProxy.path?.split(".").pop() ?? "",
+    path: labelProxy.path ?? "",
+    dbField: null,
+    description: null,
+    info: null,
+    subfield: null,
+  };
+};
 
 /**
  * Hook which provides a function capable of generating a {@link JSONDeltas}
@@ -35,26 +69,30 @@ export const useGetLabelDelta = <T>(
 
   return useCallback(
     (labelSource: T, path: string) => {
-      if (modalSample?.sample) {
-        const fieldSchema = getFieldSchema(modalSampleSchema, path);
+      if (!modalSample?.sample) {
+        return [];
+      }
 
-        if (fieldSchema) {
-          const labelProxy = labelConstructor(labelSource);
+      const labelProxy = labelConstructor(labelSource);
 
-          if (labelProxy) {
-            const labelDeltas = buildLabelDeltas(
-              modalSample.sample,
-              labelProxy,
-              fieldSchema,
-              opType
-            );
+      if (labelProxy) {
+        const recoilSchema = getFieldSchema(modalSampleSchema, path);
+        const inferred = recoilSchema ? null : inferFieldSchema(labelProxy);
+        const schema = recoilSchema ?? inferred;
 
-            return labelDeltas.map((delta) => ({
-              ...delta,
-              // convert label delta to sample delta
-              path: buildJsonPath(path, delta.path),
-            }));
-          }
+        if (schema) {
+          const labelDeltas = buildLabelDeltas(
+            modalSample.sample,
+            labelProxy,
+            schema,
+            opType
+          );
+
+          return labelDeltas.map((delta) => ({
+            ...delta,
+            // convert label delta to sample delta
+            path: buildJsonPath(path, delta.path),
+          }));
         }
       }
 

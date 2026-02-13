@@ -16,6 +16,7 @@ import {
   Size,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
   Variant,
@@ -28,6 +29,7 @@ import {
   useActiveFieldsList,
   useNewFieldMode,
   useSelectedActiveFields,
+  useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
 import SecondaryText from "./SecondaryText";
@@ -52,7 +54,11 @@ const FieldActions = ({ path }: { path: string }) => {
         data-cy="edit"
         onClick={() => setField(path)}
       >
-        <Icon name={IconName.Edit} size={Size.Md} />
+        <Icon
+          name={IconName.Edit}
+          size={Size.Md}
+          className={textColorClass(TextColor.Secondary)}
+        />
       </Button>
     </Tooltip>
   );
@@ -66,7 +72,8 @@ const ActiveFieldsSection = () => {
   }, [setNewFieldMode]);
 
   const { fields, setFields } = useActiveFieldsList();
-  const { setSelected } = useSelectedActiveFields();
+  const { selected, setSelected } = useSelectedActiveFields();
+  const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -147,15 +154,22 @@ const ActiveFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setHiddenSelected(new Set());
     },
-    [setSelected]
+    [setHiddenSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields?.length) {
     return (
-      <>
+      <div style={{ marginTop: "0.5rem" }}>
         <GUISectionHeader>
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            style={{ fontWeight: 500 }}
+            color={TextColor.Secondary}
+          >
             Active fields
           </Text>
           <Tooltip
@@ -182,14 +196,18 @@ const ActiveFieldsSection = () => {
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
-      </>
+      </div>
     );
   }
 
   return (
     <>
       <GUISectionHeader>
-        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+        <Text
+          variant={TextVariant.Lg}
+          style={{ fontWeight: 500 }}
+          color={TextColor.Secondary}
+        >
           Active fields
         </Text>
         <Tooltip
@@ -219,6 +237,7 @@ const ActiveFieldsSection = () => {
         draggable={true}
         onOrderChange={handleOrderChange}
         onSelected={handleSelected}
+        selected={selectedList}
       />
     </>
   );

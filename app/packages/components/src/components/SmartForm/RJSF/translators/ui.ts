@@ -50,6 +50,14 @@ export function translateToUISchema(
       };
       break;
 
+    case SmartFormComponents.Select:
+    case SmartFormComponents.SelectWidget:
+      uiSchema["ui:widget"] = "SelectWidget";
+      uiSchema["ui:options"] = {
+        multiple: view.multiple,
+      };
+      break;
+
     case SmartFormComponents.RadioView:
     case SmartFormComponents.RadioGroup:
       uiSchema["ui:widget"] = "radio";
@@ -72,6 +80,17 @@ export function translateToUISchema(
         minLabel: view.minLabel,
         maxLabel: view.maxLabel,
       };
+      break;
+
+    case SmartFormComponents.DatePickerView:
+      uiSchema["ui:widget"] = "DatePickerWidget";
+      uiSchema["ui:options"] = {
+        dateOnly: view.date_only,
+      };
+      break;
+
+    case SmartFormComponents.JsonEditorView:
+      uiSchema["ui:widget"] = "JsonEditorWidget";
       break;
 
     case SmartFormComponents.ColorView:

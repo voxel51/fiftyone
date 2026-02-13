@@ -350,6 +350,12 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     attributes = {}
     classes = []
     for f in field.fields:
+        if f.name == foac.ATTRIBUTES and issubclass(
+            field.document_type, fol.Label
+        ):
+            # ignore deprecated 'attributes' subfield on label types
+            continue
+
         if (
             f.name == foac.BOUNDING_BOX
             and field.document_type == fol.Detection

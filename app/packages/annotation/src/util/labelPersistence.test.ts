@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { handleLabelPersistence } from "./labelPersistence";
 import type { Sample } from "@fiftyone/looker";
-import type { Field } from "@fiftyone/utilities";
 import type { AnnotationLabel } from "@fiftyone/state";
-import type { OpType } from "../deltas";
+import type { Field } from "@fiftyone/utilities";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { OpType } from "../types";
+import { handleLabelPersistence } from "./labelPersistence";
 
 vi.mock("../deltas", () => ({
   buildJsonPath: vi.fn(),

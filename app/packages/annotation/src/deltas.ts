@@ -15,6 +15,7 @@ import {
 } from "@fiftyone/state";
 import { Field, Primitive } from "@fiftyone/utilities";
 import { get } from "lodash";
+import type { OpType } from "./types";
 import { arePrimitivesEqual, isPrimitiveFieldType } from "./util";
 
 /**
@@ -37,11 +38,6 @@ type DetectionsParent = {
 type ClassificationsParent = {
   classifications: ClassificationLabel[];
 };
-
-/**
- * Operation type.
- */
-export type OpType = "mutate" | "delete";
 
 /**
  * Types of "native" labels which support delta calculation.
@@ -158,7 +154,8 @@ export const buildMutationDeltas = (
     return buildPrimitiveMutationDelta(
       sample,
       label.path,
-      (label as PrimitiveValue).data
+      (label as PrimitiveValue).data,
+      label.op
     );
   }
 
@@ -276,7 +273,8 @@ const buildSingleMutationDelta = <
 const buildPrimitiveMutationDelta = (
   sample: Sample,
   path: string,
-  data: Primitive
+  data: Primitive,
+  op?: OpType
 ): JSONDeltas => {
   const existingValue = get(sample, path) as Primitive;
 
@@ -285,8 +283,17 @@ const buildPrimitiveMutationDelta = (
     return [];
   }
 
+  const delta = { op: "replace", path: "", value: data };
+
+  if (op === "delete") {
+    delta.op = "remove";
+    delete delta.value;
+  } else if (op === "add") {
+    delta.op = "add";
+  }
+
   // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [{ op: "replace", path: "", value: data }];
+  return [delta];
 };
 
 /**
@@ -328,10 +335,22 @@ export const buildDetectionsMutationDelta = (
     detections: [],
   };
 
+  const newDetection = makeDetectionLabel(label);
+  const existingDetection = existingLabel.detections.find(
+    (det) => det._id === label.data._id
+  );
+
+  // Merge with existing data so server-enriched properties (tags,
+  // attributes, _cls, etc.) are preserved when the overlay only carries
+  // a minimal subset of fields.
+  const mergedDetection = existingDetection
+    ? { ...existingDetection, ...newDetection }
+    : newDetection;
+
   const newArray = [...existingLabel.detections];
   upsertArrayElement(
     newArray,
-    makeDetectionLabel(label),
+    mergedDetection,
     (det) => det._id === label.data._id
   );
 
@@ -375,10 +394,18 @@ export const buildClassificationsMutationDeltas = (
     classifications: [],
   };
 
+  const existingClassification = existingLabel.classifications.find(
+    (cls) => cls._id === label.data._id
+  );
+
+  const mergedClassification = existingClassification
+    ? { ...existingClassification, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.classifications];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedClassification,
     (cls) => cls._id === label.data._id
   );
 
@@ -425,10 +452,18 @@ export const buildPolylinesMutationDeltas = (
     polylines: [],
   };
 
+  const existingPolyline = existingLabel.polylines.find(
+    (ply) => ply._id === label.data._id
+  );
+
+  const mergedPolyline = existingPolyline
+    ? { ...existingPolyline, ...label.data }
+    : { ...label.data };
+
   const newArray = [...existingLabel.polylines];
   upsertArrayElement(
     newArray,
-    { ...label.data },
+    mergedPolyline,
     (ply) => ply._id === label.data._id
   );
 

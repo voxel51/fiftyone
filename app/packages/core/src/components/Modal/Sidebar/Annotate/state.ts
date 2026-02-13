@@ -104,6 +104,18 @@ export const removeFromActiveSchemas = atom(
 export const showModal = atom(false);
 
 /**
+ * Check if a field is read-only.
+ *
+ * User-set schema `read_only` (from Schema Manager) takes precedence,
+ * then falls back to field-level `read_only` (from Python backend).
+ */
+export const isFieldReadOnly = (
+  data: LabelSchemaMeta | undefined
+): boolean => {
+  return !!data?.label_schema?.read_only || !!data?.read_only;
+};
+
+/**
  * Public API for the current annotation schema context.
  */
 export interface AnnotationSchemaContext {

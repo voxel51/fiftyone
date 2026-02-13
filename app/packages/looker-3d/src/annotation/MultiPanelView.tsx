@@ -8,6 +8,7 @@ import styled from "styled-components";
 import * as THREE from "three";
 import { Vector3 } from "three";
 import { PcdColorMapTunnel } from "../components/PcdColormapModal";
+import { PANEL_ID_SIDE_BOTTOM, PANEL_ID_SIDE_TOP } from "../constants";
 import { StatusBarRootContainer } from "../containers";
 import { useFo3dContext } from "../fo3d/context";
 import HoverMetadataHUD from "../fo3d/HoverMetadataHUD";
@@ -19,6 +20,7 @@ import {
   selectedPolylineVertexAtom,
 } from "../state";
 import { StatusBar } from "../StatusBar";
+import { GlobalCursorCoordinator } from "./GlobalCursorCoordinator";
 import { MainPanel } from "./MainPanel";
 import { SidePanel, ViewType } from "./SidePanel";
 
@@ -93,7 +95,6 @@ export const MultiPanelView = ({
 
   const [pointCloudSettings] = useBrowserStorage("fo3d-pointCloudSettings", {
     enableTooltip: false,
-    rayCastingSensitivity: "high",
   });
 
   const setPanelView = useCallback(
@@ -108,6 +109,7 @@ export const MultiPanelView = ({
 
   return (
     <GridMain ref={containerRef}>
+      <GlobalCursorCoordinator containerRef={containerRef} />
       <HoverMetadataHUD />
       <PcdColorMapTunnel.Out />
 
@@ -142,7 +144,7 @@ export const MultiPanelView = ({
       />
 
       <SidePanel
-        which="top"
+        panelId={PANEL_ID_SIDE_TOP}
         view={panelState.top}
         setView={(view) => setPanelView("top", view)}
         foScene={foScene}
@@ -154,7 +156,7 @@ export const MultiPanelView = ({
       />
 
       <SidePanel
-        which="bottom"
+        panelId={PANEL_ID_SIDE_BOTTOM}
         view={panelState.bottom}
         setView={(view) => setPanelView("bottom", view)}
         foScene={foScene}

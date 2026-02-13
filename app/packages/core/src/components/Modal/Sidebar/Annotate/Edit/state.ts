@@ -10,7 +10,12 @@ import {
 import { atom, PrimitiveAtom, useAtomValue } from "jotai";
 import { atomFamily, atomWithReset } from "jotai/utils";
 import { capitalize } from "lodash";
-import { activeLabelSchemas, fieldType, labelSchemaData } from "../state";
+import {
+  activeLabelSchemas,
+  fieldType,
+  isFieldReadOnly,
+  labelSchemaData,
+} from "../state";
 import { addLabel, labels, labelsByPath } from "../useLabels";
 import { activePrimitiveAtom } from "./useActivePrimitive";
 
@@ -124,7 +129,7 @@ export const currentFieldIsReadOnlyAtom = atom((get) => {
   }
 
   const fieldSchema = get(labelSchemaData(field));
-  return !!fieldSchema?.read_only;
+  return isFieldReadOnly(fieldSchema);
 });
 
 export const currentOverlay = atom((get) => {
@@ -200,9 +205,9 @@ const fieldsOfType = atomFamily((type: LabelType) =>
     for (const field of get(activeLabelSchemas) ?? []) {
       if (type && IS[type].has(get(fieldType(field)))) {
         const fieldSchema = get(labelSchemaData(field));
-        const isFieldReadOnly = fieldSchema?.read_only || false;
+        const fieldReadOnly = isFieldReadOnly(fieldSchema);
 
-        if (!isFieldReadOnly) {
+        if (!fieldReadOnly) {
           fields.push(field);
         }
       }
