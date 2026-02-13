@@ -4,7 +4,6 @@ import {
   AnnotationLabel,
   AnnotationLabelData,
   field,
-  modalGroupSlice,
   ModalSample,
   useModalSample,
 } from "@fiftyone/state";
@@ -17,9 +16,9 @@ import { selector, useRecoilCallback, useRecoilValue } from "recoil";
 import type { LabelType } from "./Edit/state";
 import { activeLabelSchemas, isFieldReadOnly, labelSchemasData } from "./state";
 import { useAddAnnotationLabelToRenderer } from "./useAddAnnotationLabelToRenderer";
+import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 import useFocus from "./useFocus";
 import useHover from "./useHover";
-import { useCreateAnnotationLabel } from "./useCreateAnnotationLabel";
 
 /**
  * Map from plural label _cls to the list key and singular LabelType.
@@ -284,7 +283,6 @@ export default function useLabels() {
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
-  const currentSlice = useRecoilValue(modalGroupSlice);
   const updateLabelAtom = useUpdateLabelAtom();
 
   // Use a ref for the loading state machine to avoid having it as an effect
@@ -404,7 +402,7 @@ export default function useLabels() {
   ]);
 
   /**
-   * This effect resets label state when the active slice, sample, or scene changes.
+   * Resets label state when the modal sample or scene changes.
    * Clears all labels and reverts loading state to UNSET so that the
    * primary loading effect above can re-initialize for the new context.
    */
@@ -414,7 +412,7 @@ export default function useLabels() {
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [currentSlice, modalSample, scene, setLabels, setLoading]);
+  }, [modalSample, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
