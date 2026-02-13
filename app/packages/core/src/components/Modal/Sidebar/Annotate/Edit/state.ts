@@ -198,7 +198,7 @@ export const isNew = atom((get) => {
   return typeof get(editing) === "string" || get(current)?.isNew;
 });
 
-const fieldsOfType = atomFamily((type: LabelType) =>
+export const fieldsOfType = atomFamily((type: LabelType) =>
   atom((get) => {
     const fields = new Array<string>();
 
