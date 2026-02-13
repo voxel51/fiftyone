@@ -88,9 +88,28 @@ if [[ -n "${PATH_TO_TEAMS}" ]]; then
 
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
+    rm -rf "${PATH_TO_FIFTYONE_DIR}/internal.bak"
     mv "${PATH_TO_FIFTYONE_DIR}/internal" "${PATH_TO_FIFTYONE_DIR}/internal.bak"
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/internal" "${PATH_TO_FIFTYONE_DIR}/internal"
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/utils/decorators.py" "${PATH_TO_FIFTYONE_DIR}/utils/decorators.py"
+    for f in "${PATH_TO_TEAMS}/fiftyone/utils/"*.py; do
+        name=$(basename "$f")
+        if [[ ! -e "${PATH_TO_FIFTYONE_DIR}/utils/${name}" ]]; then
+            ln -sfn "$f" "${PATH_TO_FIFTYONE_DIR}/utils/${name}"
+        fi
+    done
+
+    cleanup_teams() {
+        unlink "$PATH_TO_FIFTYONE_DIR/management" 2>/dev/null || true
+        unlink "$PATH_TO_FIFTYONE_DIR/api" 2>/dev/null || true
+        if [ -L "$PATH_TO_FIFTYONE_DIR/internal" ]; then
+            unlink "$PATH_TO_FIFTYONE_DIR/internal"
+        fi
+        if [ -d "$PATH_TO_FIFTYONE_DIR/internal.bak" ]; then
+            mv "$PATH_TO_FIFTYONE_DIR/internal.bak" "$PATH_TO_FIFTYONE_DIR/internal"
+        fi
+        find "$PATH_TO_FIFTYONE_DIR/utils" -maxdepth 1 -type l -delete
+    }
+    trap cleanup_teams EXIT
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
     echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
 fi
@@ -152,14 +171,6 @@ sphinx-build -M markdown source build --jobs auto $SPHINXOPTS
 echo "Copying markdown files to HTML output"
 cp -r build/markdown/* build/html/
 
-# Remove symlink to fiftyone-teams
-if [[ -n "${PATH_TO_TEAMS}" ]]; then
-    unlink "$PATH_TO_FIFTYONE_DIR/management"
-    unlink "$PATH_TO_FIFTYONE_DIR/api"
-    unlink "$PATH_TO_FIFTYONE_DIR/internal"
-    mv "$PATH_TO_FIFTYONE_DIR/internal.bak" "$PATH_TO_FIFTYONE_DIR/internal"
-    unlink "$PATH_TO_FIFTYONE_DIR/utils/decorators.py"
-fi
 
 echo "Post-processing docs"
 node ./scripts/post-process.js
