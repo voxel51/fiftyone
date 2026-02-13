@@ -5,6 +5,7 @@ import {
   AnnotationLabelData,
   field,
   ModalSample,
+  useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
@@ -276,6 +277,7 @@ export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
+  const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
@@ -402,7 +404,7 @@ export default function useLabels() {
   ]);
 
   /**
-   * Resets label state when the modal sample or scene changes.
+   * Resets label state when the sample ID or scene changes.
    * Clears all labels and reverts loading state to UNSET so that the
    * primary loading effect above can re-initialize for the new context.
    */
@@ -412,7 +414,7 @@ export default function useLabels() {
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [modalSample, scene, setLabels, setLoading]);
+  }, [currentSampleId, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
