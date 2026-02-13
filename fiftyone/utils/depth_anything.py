@@ -155,6 +155,9 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     Args:
         name_or_path ("depth-anything/da3-base"): the name or path to the
             Depth Anything V3 model
+        process_res (504): the processing resolution in pixels. The model
+            resizes inputs to this resolution for inference
+        process_res_method ("upper_bound_resize"): the resize strategy
         use_ray_pose (False): whether to use ray-based pose estimation instead
             of camera decoder (more accurate but slower)
     """
@@ -170,6 +173,11 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.is_metric = (
             "metric" in self.name_or_path.lower()
             or "nested" in self.name_or_path.lower()
+        )
+
+        self.process_res = self.parse_int(d, "process_res", default=504)
+        self.process_res_method = self.parse_string(
+            d, "process_res_method", default="upper_bound_resize"
         )
 
         self.use_ray_pose = self.parse_bool(d, "use_ray_pose", default=False)
@@ -225,6 +233,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
     def _forward_pass(self, imgs):
         prediction = self._model.inference(
             imgs,
+            process_res=self.config.process_res,
+            process_res_method=self.config.process_res_method,
             use_ray_pose=self.config.use_ray_pose,
         )
         output = {"depth": prediction.depth}

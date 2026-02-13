@@ -38,6 +38,27 @@ class TestDepthAnythingV3ModelConfig:
 
         assert config.name_or_path == "depth-anything/da3-large"
 
+    def test_process_res_default(self):
+        """Test process_res defaults to 504."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config = DepthAnythingV3ModelConfig({})
+
+        assert config.process_res == 504
+        assert config.process_res_method == "upper_bound_resize"
+
+    def test_process_res_explicit(self):
+        """Test process_res can be set explicitly."""
+        from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
+
+        config = DepthAnythingV3ModelConfig({
+            "process_res": 336,
+            "process_res_method": "upper_bound_resize",
+        })
+
+        assert config.process_res == 336
+        assert config.process_res_method == "upper_bound_resize"
+
     def test_use_ray_pose_default(self):
         """Test use_ray_pose defaults to False."""
         from fiftyone.utils.depth_anything import DepthAnythingV3ModelConfig
