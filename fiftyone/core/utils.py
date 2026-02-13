@@ -3228,7 +3228,7 @@ class ResponseStream(object):
 
     def consume_size(self):
         """Returns the total size of the response content in bytes but
-        invalidates the stream for subsequent reads.
+        may invalidate the stream for subsequent reads.
 
         If a ``Content-Length`` header is available, it is returned directly.
         Otherwise, remaining chunks are counted but discarded rather than
