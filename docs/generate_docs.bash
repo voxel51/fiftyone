@@ -88,6 +88,9 @@ if [[ -n "${PATH_TO_TEAMS}" ]]; then
 
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
     ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
+    mv "${PATH_TO_FIFTYONE_DIR}/internal" "${PATH_TO_FIFTYONE_DIR}/internal.bak"
+    ln -sfn "${PATH_TO_TEAMS}/fiftyone/internal" "${PATH_TO_FIFTYONE_DIR}/internal"
+    ln -sfn "${PATH_TO_TEAMS}/fiftyone/utils/decorators.py" "${PATH_TO_FIFTYONE_DIR}/utils/decorators.py"
     echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
     echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
 fi
@@ -153,6 +156,9 @@ cp -r build/markdown/* build/html/
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
     unlink "$PATH_TO_FIFTYONE_DIR/management"
     unlink "$PATH_TO_FIFTYONE_DIR/api"
+    unlink "$PATH_TO_FIFTYONE_DIR/internal"
+    mv "$PATH_TO_FIFTYONE_DIR/internal.bak" "$PATH_TO_FIFTYONE_DIR/internal"
+    unlink "$PATH_TO_FIFTYONE_DIR/utils/decorators.py"
 fi
 
 echo "Post-processing docs"
