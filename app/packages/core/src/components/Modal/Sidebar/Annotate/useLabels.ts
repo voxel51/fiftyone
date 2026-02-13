@@ -220,9 +220,9 @@ export interface LabelsContext {
   /**
    * Remove a label from the annotation sidebar.
    *
-   * @param labelId ID of label to remove
+   * @param overlayId Overlay ID of the label to remove
    */
-  removeLabelFromSidebar: (labelId: string) => void;
+  removeLabelFromSidebar: (overlayId: string) => void;
 
   /**
    * Update the label data for the specified label ID.
@@ -242,8 +242,8 @@ export const useLabelsContext = (): LabelsContext => {
   const setLabels = useSetAtom(labels);
 
   const removeLabelFromSidebar = useCallback(
-    (labelId: string) =>
-      setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
+    (overlayId: string) =>
+      setLabels((prev) => prev.filter((label) => label.data._id !== overlayId)),
     [setLabels]
   );
 

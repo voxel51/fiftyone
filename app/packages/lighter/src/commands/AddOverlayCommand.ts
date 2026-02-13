@@ -13,8 +13,7 @@ import type { Undoable } from "@fiftyone/commands";
  *
  * When {@link startsSession} is true this command also manages the drawing
  * session lifecycle: undoing it ends the drawing session, and redoing it
- * re-activates it.  This replaces the former standalone
- * `EnterDrawingModeCommand`.
+ * re-activates it.
  */
 export class AddOverlayCommand implements Undoable {
   readonly id: string;

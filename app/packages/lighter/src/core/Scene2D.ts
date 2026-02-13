@@ -1762,11 +1762,6 @@ export class Scene2D {
   }
 
   /**
-   * Dispatches a `lighter:overlay-restored` event for the given overlay.
-   * Called by {@link AddOverlayCommand.execute} on redo so the annotation
-   * layer can re-add the label to the sidebar.
-   */
-  /**
    * Converts absolute bounds to relative bounds using the scene's coordinate
    * system.  Returns null when the coordinate system is not yet initialised.
    */
@@ -1777,6 +1772,11 @@ export class Scene2D {
     return this.coordinateSystem.absoluteToRelative(absoluteBounds);
   }
 
+  /**
+   * Dispatches a `lighter:overlay-restored` event for the given overlay.
+   * Called by {@link AddOverlayCommand.execute} on redo so the annotation
+   * layer can re-add the label to the sidebar.
+   */
   public dispatchOverlayRestored(overlay: BaseOverlay): void {
     this.eventBus.dispatch("lighter:overlay-restored", {
       id: overlay.id,
