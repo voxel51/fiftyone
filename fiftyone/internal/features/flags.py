@@ -8,10 +8,5 @@ FiftyOne feature flags.
 
 from typing import Literal
 
-FeatureFlag = Literal[
-    # experimental sample annotation features
-    "VFF_EXP_ANNOTATION",
-    # annotation milestone 4 features
-    "VFF_ANNOTATION_M4",
-]
+FeatureFlag = Literal[()]
 """Enumeration of active feature flags."""

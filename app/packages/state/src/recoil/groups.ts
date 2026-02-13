@@ -6,6 +6,12 @@ import {
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
+import {
+  is3d,
+  isFo3d,
+  setContains3d,
+  setContainsFo3d,
+} from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
 import {
@@ -38,13 +44,11 @@ import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import * as viewAtoms from "./view";
-import {
-  is3d,
-  isFo3d,
-  setContains3d,
-  setContainsFo3d,
-} from "@fiftyone/utilities";
 
+/**
+ * User setting controlling whether the carousel (filmstrip of group slices)
+ * is visible in the modal.
+ */
 export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   key: "groupMediaIsCarouselVisibleSetting",
   default: true,
@@ -56,6 +60,10 @@ export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   ],
 });
 
+/**
+ * Derived selector that determines if the carousel should actually be visible.
+ * Combines user setting with contextual rules (e.g., hidden for ImaVid in nested groups).
+ */
 export const groupMediaIsCarouselVisible = selector<boolean>({
   key: "groupMediaIsCarouselVisible",
   get: ({ get }) => {
@@ -66,6 +74,10 @@ export const groupMediaIsCarouselVisible = selector<boolean>({
   },
 });
 
+/**
+ * User setting controlling whether the 3D viewer panel is visible
+ * in the modal for grouped datasets with 3D slices.
+ */
 export const groupMedia3dVisibleSetting = atom<boolean>({
   key: "groupMediaIs3dVisibleSetting",
   default: true,
@@ -77,6 +89,10 @@ export const groupMedia3dVisibleSetting = atom<boolean>({
   ],
 });
 
+/**
+ * Derived selector that determines if the 3D viewer should actually be visible.
+ * Combines user setting with contextual rules (requires 3D slices, hidden for ImaVid in nested groups).
+ */
 export const groupMediaIs3dVisible = selector<boolean>({
   key: "groupMedia3dVisible",
   get: ({ get }) => {
@@ -88,32 +104,49 @@ export const groupMediaIs3dVisible = selector<boolean>({
   },
 });
 
-export const groupMediaIsMainVisibleSetting = atom<boolean>({
-  key: "groupMediaIsMainVisibleSetting",
+/**
+ * User setting controlling whether the main 2D viewer
+ * is visible in the modal for grouped datasets. Persisted to session storage.
+ */
+export const groupMediaIsMain2DViewerVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMain2DViewerVisibleSetting",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
+    getBrowserStorageEffectForKey("groupMediaIsMain2DViewerVisible", {
       sessionStorage: true,
       valueClass: "boolean",
     }),
   ],
 });
 
-export const groupMediaIsMainVisible = selector<boolean>({
-  key: "groupMediaIsMainVisible",
+/**
+ * Derived selector that determines if the main viewer should actually be visible.
+ * Combines user setting with contextual rules (shown when no 3D slices or multiple media types exist).
+ */
+export const groupMediaIsMain2DViewerVisible = selector<boolean>({
+  key: "groupMediaIsMain2DViewerVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
     return (
-      get(groupMediaIsMainVisibleSetting) && (!get(has3dSlice) || set.size > 1)
+      get(groupMediaIsMain2DViewerVisibleSetting) &&
+      (!get(has3dSlice) || set.size > 1)
     );
   },
 });
 
+/**
+ * The name of the currently pinned 3D slice. When a 3D slice is pinned,
+ * its sample data is used for sidebar display instead of the main slice's data.
+ */
 export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
   default: null,
 });
 
+/**
+ * Whether the 3D viewer is currently "pinned" (focused). When true, the sidebar
+ * displays data from the pinned 3D sample rather than the main modal sample.
+ */
 export const pinned3d = atom<boolean>({
   key: "pinned3d",
   default: false,
@@ -206,6 +239,10 @@ export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   },
 });
 
+/**
+ * Mapping of slice names to their media types for grouped datasets.
+ * E.g., { "left": "image", "right": "image", "lidar": "point_cloud" }
+ */
 export const groupMediaTypesMap = selector({
   key: "groupMediaTypesMap",
   get: ({ get }) =>
@@ -256,6 +293,10 @@ export const hasFo3dSlice = selector<boolean>({
   },
 });
 
+/**
+ * List of currently active (visible) 3D slice names in the modal.
+ * Used to track which 3D slices are being displayed in the 3D viewer.
+ */
 export const active3dSlices = atom<string[]>({
   key: "active3dSlices",
   default: [],

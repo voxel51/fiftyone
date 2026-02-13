@@ -208,13 +208,16 @@ export class BoundingBoxOverlay
       );
     }
 
-    if (this.isSelected() && style.strokeStyle) {
+    if (
+      this.isSelected() &&
+      style.strokeStyle &&
+      (this.isDraggable || this.isResizeable)
+    ) {
       const colorObj = parseColorWithAlpha(style.strokeStyle);
       const color = colorObj.color;
-
       renderer.drawScrim(
         this.absoluteBounds,
-        style.lineWidth || STROKE_WIDTH,
+        _renderMeta.canonicalMediaBounds,
         this.containerId
       );
       renderer.drawHandles(
@@ -294,6 +297,9 @@ export class BoundingBoxOverlay
     if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
       return;
 
+    // Respect read-only flags
+    if (!this.isDraggable && !this.isResizeable) return;
+
     const distance = Math.sqrt(
       Math.pow((point.x - this.moveStartPoint.x) / scale, 2) +
         Math.pow((point.y - this.moveStartPoint.y) / scale, 2)
@@ -301,9 +307,13 @@ export class BoundingBoxOverlay
 
     if (distance > this.CLICK_THRESHOLD) {
       const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      this.moveState = !this.hasValidBounds()
-        ? "SETTING"
-        : resizeRegion || "DRAGGING";
+      if (!this.hasValidBounds()) {
+        this.moveState = "SETTING";
+      } else if (resizeRegion && this.isResizeable) {
+        this.moveState = resizeRegion;
+      } else if (!resizeRegion && this.isDraggable) {
+        this.moveState = "DRAGGING";
+      }
     }
   }
 
@@ -361,10 +371,22 @@ export class BoundingBoxOverlay
     if (!this.hasValidBounds()) return "crosshair";
     if (!this.isSelected()) return "pointer";
 
+    if (!this.isDraggable && !this.isResizeable) {
+      return "default";
+    }
+
     const resizeRegion = this.getResizeRegion(worldPoint, scale);
 
     if (!resizeRegion) {
-      return this.moveStartPoint ? "grabbing" : "grab";
+      return this.isDraggable
+        ? this.moveStartPoint
+          ? "grabbing"
+          : "grab"
+        : "default";
+    }
+
+    if (!this.isResizeable) {
+      return "default";
     }
 
     switch (resizeRegion) {
@@ -631,7 +653,10 @@ export class BoundingBoxOverlay
    * @param draggable - Whether the overlay should be draggable.
    */
   setDraggable(draggable: boolean): void {
-    this.isDraggable = draggable;
+    if (this.isDraggable !== draggable) {
+      this.isDraggable = draggable;
+      this.markDirty();
+    }
   }
 
   /**
@@ -647,7 +672,10 @@ export class BoundingBoxOverlay
    * @param resizeable - Whether the overlay should be resizeable.
    */
   setResizeable(resizeable: boolean): void {
-    this.isResizeable = resizeable;
+    if (this.isResizeable !== resizeable) {
+      this.isResizeable = resizeable;
+      this.markDirty();
+    }
   }
 
   /**

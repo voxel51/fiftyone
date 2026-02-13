@@ -26,10 +26,12 @@ from .group_by import GroupBy
 from .model_evaluation import ConfigureScenario, ConfigureScenarioPlotResolver
 from .annotation import (
     ActivateLabelSchemas,
+    CreateAndActivateField,
     DeactivateLabelSchemas,
     DeleteLabelSchemas,
     GetLabelSchemas,
     GenerateLabelSchemas,
+    ListValidAnnotationFields,
     SetActiveLabelSchemas,
     UpdateLabelSchema,
     ValidateLabelSchemas,
@@ -3472,10 +3474,12 @@ def register(p):
 
     # annotation
     p.register(ActivateLabelSchemas)
+    p.register(CreateAndActivateField)
     p.register(DeactivateLabelSchemas)
     p.register(DeleteLabelSchemas)
     p.register(GenerateLabelSchemas)
     p.register(GetLabelSchemas)
+    p.register(ListValidAnnotationFields)
     p.register(SetActiveLabelSchemas)
     p.register(UpdateLabelSchema)
     p.register(ValidateLabelSchemas)

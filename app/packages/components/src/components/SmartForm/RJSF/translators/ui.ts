@@ -26,6 +26,11 @@ export function translateToUISchema(
       // i.e. uiSchema["ui:placeholder"] = view.placeholder;
       break;
 
+    case SmartFormComponents.LabelValueView:
+      // Read-only text display, no input
+      uiSchema["ui:widget"] = "LabelValueWidget";
+      break;
+
     case SmartFormComponents.CheckboxView:
       uiSchema["ui:widget"] = "checkbox";
       break;
@@ -42,6 +47,14 @@ export function translateToUISchema(
         compact: view.compact,
         color: view.color,
         variant: view.variant,
+      };
+      break;
+
+    case SmartFormComponents.Select:
+    case SmartFormComponents.SelectWidget:
+      uiSchema["ui:widget"] = "SelectWidget";
+      uiSchema["ui:options"] = {
+        multiple: view.multiple,
       };
       break;
 
@@ -67,6 +80,17 @@ export function translateToUISchema(
         minLabel: view.minLabel,
         maxLabel: view.maxLabel,
       };
+      break;
+
+    case SmartFormComponents.DatePickerView:
+      uiSchema["ui:widget"] = "DatePickerWidget";
+      uiSchema["ui:options"] = {
+        dateOnly: view.date_only,
+      };
+      break;
+
+    case SmartFormComponents.JsonEditorView:
+      uiSchema["ui:widget"] = "JsonEditorWidget";
       break;
 
     case SmartFormComponents.ColorView:

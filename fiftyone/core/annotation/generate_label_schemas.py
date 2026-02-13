@@ -18,6 +18,10 @@ import fiftyone.core.annotation.utils as foau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def generate_label_schemas(sample_collection, fields=None, scan_samples=True):
     """Generates label schemas for a
@@ -346,6 +350,12 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
     attributes = {}
     classes = []
     for f in field.fields:
+        if f.name == foac.ATTRIBUTES and issubclass(
+            field.document_type, fol.Label
+        ):
+            # ignore deprecated 'attributes' subfield on label types
+            continue
+
         if (
             f.name == foac.BOUNDING_BOX
             and field.document_type == fol.Detection
@@ -354,13 +364,17 @@ def _generate_field_label_schema(collection, field_name, scan_samples):
             # [0, 1] floats, omit for special handling by the App
             continue
 
+        if f.name == foac.POINTS and field.document_type == fol.Polyline:
+            # points is a list of (x, y) or (x, y, z) coordinate lists that
+            # define the polyline shape, omit for special handling by the App
+            continue
+
         try:
             attributes[f.name] = _generate_field_label_schema(
                 collection, f"{field_name}.{f.name}", scan_samples
             )
         except ValueError:
-            # Field type not supported for schema generation
-            pass
+            logger.debug(f"Field '{f.name}' is not supported")
 
     label = attributes.pop(foac.LABEL, {})
     label.pop(foac.TYPE, None)
@@ -408,9 +422,12 @@ def _handle_str(collection, field_name, is_list, settings, scan_samples):
     try:
         if scan_samples and field_name != foac.FILEPATH:
             values = collection.distinct(field_name)
-    except OperationFailure:
-        # too many distinct values
-        pass
+    except OperationFailure as e:
+        # Likely too many distinct values
+        errmsg = (e.details or {}).get("errmsg") or str(e)
+        logger.debug(
+            f"Could not compute distinct values for field `{field_name}`: {errmsg}"
+        )
 
     if values:
         if len(values) <= foac.CHECKBOXES_OR_RADIO_THRESHOLD:

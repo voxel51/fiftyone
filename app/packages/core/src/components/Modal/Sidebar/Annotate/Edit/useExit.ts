@@ -1,36 +1,26 @@
 import { useLighter } from "@fiftyone/lighter";
 import { TypeGuards } from "@fiftyone/lighter/src/core/Scene2D";
-import {
-  selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
-  stagedPolylineTransformsAtom,
-} from "@fiftyone/looker-3d/src/state";
+import { selectedLabelForAnnotationAtom } from "@fiftyone/looker-3d/src/state";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { editing } from ".";
-import { currentOverlay, savedLabel } from "./state";
+import { current, currentOverlay, savedLabel } from "./state";
 import useActivePrimitive from "./useActivePrimitive";
 
 export default function useExit() {
   const setEditing = useSetAtom(editing);
   const [, setActivePrimitive] = useActivePrimitive();
   const setSaved = useSetAtom(savedLabel);
-  const { scene } = useLighter();
+  const { scene, removeOverlay } = useLighter();
   const overlay = useAtomValue(currentOverlay);
+  const label = useAtomValue(current);
 
   /**
    * 3D SPECIFIC IMPORTS
    * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
    * COUPLED TO LIGHTER OR LOOKER-3D.
    */
-
-  const setStagedPolylineTransforms = useSetRecoilState(
-    stagedPolylineTransformsAtom
-  );
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
-  );
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
@@ -39,7 +29,13 @@ export default function useExit() {
    */
 
   return useCallback(() => {
-    if (overlay) {
+    // If this is an uncommitted dummy label with no value, remove it from the scene
+    if (label?.isNew && !label.data.label) {
+      if (scene && !scene.isDestroyed && scene.renderLoopActive) {
+        scene.exitInteractiveMode();
+        removeOverlay(label.data._id, true);
+      }
+    } else if (overlay) {
       scene?.deselectOverlay(overlay.id, { ignoreSideEffects: true });
       if (TypeGuards.isHoverable(overlay)) {
         overlay.onHoverLeave?.();
@@ -51,8 +47,6 @@ export default function useExit() {
      * : TODO: CLEAN THIS UP. THIS FUNCTION SHOULDN'T BE
      * COUPLED TO LIGHTER OR LOOKER-3D.
      */
-    setStagedPolylineTransforms({});
-    setStagedCuboidTransforms({});
     setSelectedLabelForAnnotation(null);
     /**
      * 3D SPECIFIC LOGIC ENDS HERE.
@@ -62,14 +56,5 @@ export default function useExit() {
     setSaved(null);
     setEditing(null);
     setActivePrimitive(null);
-  }, [
-    overlay,
-    scene,
-    setActivePrimitive,
-    setEditing,
-    setSaved,
-    setSelectedLabelForAnnotation,
-    setStagedCuboidTransforms,
-    setStagedPolylineTransforms,
-  ]);
+  }, [label, overlay, removeOverlay, scene, setActivePrimitive, setEditing, setSaved]);
 }

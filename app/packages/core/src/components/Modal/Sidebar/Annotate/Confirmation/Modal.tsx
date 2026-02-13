@@ -12,7 +12,7 @@ const Close = styled(CloseIcon)`
 
   &:hover {
     background: ${({ theme }) => theme.background.level1};
-    border-radius: 1.5rem;
+    border-radius: var(--radius-full);
     color: ${({ theme }) => theme.text.primary};
   }
 `;
@@ -35,7 +35,7 @@ const Container = styled.div`
   padding: 2rem;
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: space-between;
   flex-direction: column;

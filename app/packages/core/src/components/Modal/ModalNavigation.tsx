@@ -14,6 +14,7 @@ import {
   KnownCommands,
   KnownContexts,
   useKeyBindings,
+  useUndoRedo,
 } from "@fiftyone/commands";
 
 const Arrow = styled.span<{
@@ -60,7 +61,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const showModalNavigationControls = useRecoilValue(
     fos.showModalNavigationControls
   );
-
+  const clearUndo = useUndoRedo(KnownContexts.ModalAnnotate).clear;
   const sidebarwidth = useRecoilValue(fos.sidebarWidth(true));
   const isSidebarVisible = useRecoilValue(fos.sidebarVisible(true));
 
@@ -88,6 +89,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
+            clearUndo();
             return await navigation.next(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
               setModal(s);
@@ -97,7 +99,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, clearUndo]
   );
 
   const previousNavigator = useMemo(
@@ -107,6 +109,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         navigateFn: async (offset) => {
           const navigation = fos.modalNavigation.get();
           if (navigation) {
+            clearUndo();
             return await navigation.previous(offset).then((s) => {
               selectiveRenderingEventBus.removeAllListeners();
               setModal(s);
@@ -116,7 +119,7 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
         onNavigationStart: closePanels,
         debounceTime: 150,
       }),
-    [closePanels, setModal]
+    [closePanels, setModal, clearUndo]
   );
 
   useEffect(() => {
@@ -128,37 +131,33 @@ const ModalNavigation = ({ closePanels }: { closePanels: () => void }) => {
   const onExit = useExit();
   const onSave = useSave();
   const next = useCallback(async () => {
-    await onSave();
+    onSave();
     onExit();
     nextNavigator.navigate();
   }, [nextNavigator, onExit, onSave]);
 
   const previous = useCallback(async () => {
-    await onSave();
+    onSave();
     onExit();
     previousNavigator.navigate();
   }, [previousNavigator, onSave, onExit]);
 
-  const keyBindings = useMemo(() => {
-    return [
-      {
-        commandId: KnownCommands.ModalPreviousSample,
-        sequence: "ArrowLeft",
-        handler: previous,
-        label: "Previous",
-        description: "Previous Sample",
-      },
-      {
-        commandId: KnownCommands.ModalNextSample,
-        sequence: "ArrowRight",
-        handler: next,
-        label: "Next",
-        description: "Next Sample",
-      },
-    ];
-  }, [previous, next]);
-
-  useKeyBindings(KnownContexts.Modal, keyBindings);
+  useKeyBindings(KnownContexts.Modal, [
+    {
+      commandId: KnownCommands.ModalPreviousSample,
+      sequence: "ArrowLeft",
+      handler: previous,
+      label: "Previous",
+      description: "Previous Sample",
+    },
+    {
+      commandId: KnownCommands.ModalNextSample,
+      sequence: "ArrowRight",
+      handler: next,
+      label: "Next",
+      description: "Next Sample",
+    },
+  ]);
 
   if (!modal) {
     return null;

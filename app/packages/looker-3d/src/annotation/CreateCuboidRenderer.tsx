@@ -1,5 +1,5 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import { objectId } from "@fiftyone/utilities";
+import { DETECTION, objectId } from "@fiftyone/utilities";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import * as THREE from "three";
@@ -11,9 +11,9 @@ import {
   isCreatingCuboidAtom,
   isCreatingCuboidPointerDownAtom,
   selectedLabelForAnnotationAtom,
-  stagedCuboidTransformsAtom,
 } from "../state";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
+import { useCuboidOperations } from "./store/operations";
 import { CuboidTransformData } from "./types";
 import { useSetEditingToNewCuboid } from "./useSetEditingToNewCuboid";
 
@@ -36,9 +36,7 @@ export const CreateCuboidRenderer = ({
   const setSelectedLabelForAnnotation = useSetRecoilState(
     selectedLabelForAnnotationAtom
   );
-  const setStagedCuboidTransforms = useSetRecoilState(
-    stagedCuboidTransformsAtom
-  );
+  const { createCuboid } = useCuboidOperations();
   const annotationPlane = useRecoilValue(annotationPlaneAtom);
   const [creationState, setCreationState] = useRecoilState(
     cuboidCreationStateAtom
@@ -299,22 +297,17 @@ export const CreateCuboidRenderer = ({
           quaternion,
         };
 
-        // Add to staged transforms
-        setStagedCuboidTransforms({
-          [labelId]: transformData,
-        });
+        createCuboid(labelId, transformData, currentActiveField);
 
-        // Set editing to the new cuboid
         setEditingToNewCuboid(labelId, transformData);
 
-        // Select the newly created cuboid
         setSelectedLabelForAnnotation({
           _id: labelId,
-          _cls: "Detection",
+          _cls: DETECTION,
           location,
           dimensions,
           quaternion,
-        } as any);
+        });
 
         // Exit create mode after creating one cuboid
         setIsCreatingCuboid(false);
@@ -338,12 +331,7 @@ export const CreateCuboidRenderer = ({
       currentActiveField,
       creationState.step,
       previewCuboid,
-      setStagedCuboidTransforms,
-      setSelectedLabelForAnnotation,
-      setIsCreatingCuboid,
-      setIsCreatingCuboidPointerDown,
-      setCreationState,
-      setEditingToNewCuboid,
+      createCuboid,
       handleClick,
     ]
   );

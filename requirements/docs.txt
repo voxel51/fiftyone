@@ -6,30 +6,36 @@ torchvision
 typing_extensions==4.15.0
 
 # precommit requirements
-pre-commit==4.4.0
-pylint==4.0.3
-jupyter-client==8.6.3
+pre-commit==4.5.1
+pylint==4.0.4
+jupyter-client==8.8.0
 
 # docs requirements
 autodocsumm==0.2.14
-# myst parser does not support docutils 0.22: https://github.com/executablebooks/MyST-Parser/pull/1045
+# docutils 0.22.x is available but not compatible with Sphinx 8.3.0
+# Sphinx 8.3.0 requires: docutils>=0.20,<0.22
+# Using latest compatible version from 0.21.x series
 docutils==0.21.2
-huggingface_hub>=0.20.0
-requests>=2.32.3
+pypandoc>=1.11
+sphinx-markdown-builder==0.6.9
+huggingface_hub>=1.3.2
+requests>=2.32.5
 ipykernel==7.1.0
 ipython_genutils==0.2.0
 Jinja2==3.1.6
 MarkupSafe==3.0.3
 jsx-lexer==2.0.1
 libsass==0.23.0
-myst-parser==4.0.1
-nbsphinx==0.9.7
+myst-parser==5.0.0
+nbsphinx==0.9.8
 pydata-sphinx-theme==0.16.1
 sphinx-autobuild==2025.8.25
 sphinx-tabs==3.4.7
 sphinx-design==0.6.1
-# nbsphinx does not support yet Sphinx > 8.2: https://github.com/spatialaudio/nbsphinx/issues/832
-Sphinx==8.1.3
+# Sphinx 9.x is available but not compatible with autodocsumm 0.2.14
+# autodocsumm 0.2.14 requires: Sphinx>=4.0,<9.0
+# Using latest stable version: 8.2.3
+Sphinx==8.2.3
 sphinx-copybutton==0.5.2
 sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.8

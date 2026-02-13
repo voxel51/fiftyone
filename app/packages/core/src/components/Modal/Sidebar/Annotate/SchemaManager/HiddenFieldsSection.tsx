@@ -4,22 +4,22 @@
  * Displays the collapsible list of hidden fields.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Clickable,
   Icon,
   IconName,
   Pill,
   RichList,
   Size,
   Text,
+  TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
 import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
@@ -27,6 +27,7 @@ import {
   useFieldIsReadOnly,
   useFieldSchemaData,
   useHiddenFieldsWithMetadata,
+  useSelectedActiveFields,
   useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
@@ -42,9 +43,6 @@ const HiddenFieldActions = ({
   path: string;
   hasSchema: boolean;
 }) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
   const setField = useSetCurrentField();
   const fieldData = useFieldSchemaData(path);
   const isSystemReadOnly = isSystemReadOnlyField(path);
@@ -58,7 +56,7 @@ const HiddenFieldActions = ({
           Unsupported
         </Pill>
       )}
-      {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
+      {(isReadOnly || isSystemReadOnly) && (
         <Pill data-cy="pill" size={Size.Md}>
           Read-only
         </Pill>
@@ -71,9 +69,18 @@ const HiddenFieldActions = ({
               anchor={Anchor.Bottom}
               portal
             >
-              <Clickable data-cy={"edit"} onClick={() => setField(path)}>
-                <Icon name={IconName.Edit} size={Size.Md} />
-              </Clickable>
+              <Button
+                variant={Variant.Icon}
+                borderless
+                data-cy={"edit"}
+                onClick={() => setField(path)}
+              >
+                <Icon
+                  name={IconName.Edit}
+                  size={Size.Md}
+                  className={textColorClass(TextColor.Secondary)}
+                />
+              </Button>
             </Tooltip>
           ) : (
             <Button
@@ -82,7 +89,7 @@ const HiddenFieldActions = ({
               variant={Variant.Secondary}
               onClick={() => setField(path)}
             >
-              Scan
+              Setup
             </Button>
           )}
         </>
@@ -99,7 +106,8 @@ const HiddenFieldsSection = () => {
     hasSchemaStates: fieldHasSchemaStates,
   } = useHiddenFieldsWithMetadata();
   const [expanded, setExpanded] = useState(true);
-  const { setSelected } = useSelectedHiddenFields();
+  const { selected, setSelected } = useSelectedHiddenFields();
+  const { setSelected: setActiveSelected } = useSelectedActiveFields();
 
   const listItems = useMemo(
     () =>
@@ -107,11 +115,6 @@ const HiddenFieldsSection = () => {
         const isSystemReadOnly = isSystemReadOnlyField(path);
         const hasSchema = fieldHasSchemaStates[path];
         const canSelect = hasSchema && !isSystemReadOnly;
-
-        // Add left padding when no checkbox is shown to maintain alignment
-        const paddingStyle = !canSelect
-          ? { paddingLeft: "0.25rem" }
-          : undefined;
 
         return {
           id: path,
@@ -137,9 +140,12 @@ const HiddenFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setActiveSelected(new Set());
     },
-    [setSelected]
+    [setActiveSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields.length) {
     return null;
@@ -152,7 +158,11 @@ const HiddenFieldsSection = () => {
           onClick={() => setExpanded((v) => !v)}
           style={{ padding: 0, flex: "none" }}
         >
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            color={TextColor.Secondary}
+            style={{ fontWeight: 500 }}
+          >
             Hidden fields
           </Text>
           {expanded ? (
@@ -180,6 +190,7 @@ const HiddenFieldsSection = () => {
           listItems={listItems}
           draggable={false}
           onSelected={handleSelected}
+          selected={selectedList}
         />
       )}
     </>

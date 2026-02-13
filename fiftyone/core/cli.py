@@ -1087,6 +1087,7 @@ class AppCommand(Command):
         subparsers = parser.add_subparsers(title="available commands")
         _register_command(subparsers, "config", AppConfigCommand)
         _register_command(subparsers, "launch", AppLaunchCommand)
+        _register_command(subparsers, "debug", AppDebugCommand)
         _register_command(subparsers, "view", AppViewCommand)
         _register_command(subparsers, "connect", AppConnectCommand)
 
@@ -1249,6 +1250,66 @@ def _wait():
             time.sleep(10)
     except KeyboardInterrupt:
         pass
+
+
+class AppDebugCommand(Command):
+    """Launch the FiftyOne App in debug mode.
+
+    Examples::
+
+        # Launch the App in debug mode
+        fiftyone app debug
+
+        # Launch the App in debug mode with a given dataset loaded
+        fiftyone app debug <name>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "name",
+            metavar="NAME",
+            nargs="?",
+            help="the name of a dataset to open",
+        )
+        parser.add_argument(
+            "-p",
+            "--port",
+            metavar="PORT",
+            default=None,
+            type=int,
+            help="the port number to use",
+        )
+        parser.add_argument(
+            "-A",
+            "--address",
+            metavar="ADDRESS",
+            default=None,
+            type=str,
+            help="the address (server name) to use",
+        )
+        parser.add_argument(
+            "--headless",
+            action="store_true",
+            help="don't open the browser",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        import fiftyone.server.main as fsm
+
+        # TODO: remove when https://voxel51.atlassian.net/browse/FOEPD-2418
+        # is resolved
+        os.environ[
+            "FIFTYONE_EXECUTION_STORE_NOTIFICATION_SERVICE_DISABLED"
+        ] = "true"
+
+        fsm.start_server(
+            port=args.port,
+            address=args.address,
+            dataset=args.name,
+            open_browser=not args.headless,
+        )
 
 
 class AppViewCommand(Command):
@@ -3043,6 +3104,13 @@ class OperatorsListCommand(Command):
             action="store_true",
             help="only show names",
         )
+        parser.add_argument(
+            "-u",
+            "--include-unlisted",
+            action="store_true",
+            default=None,
+            help="include unlisted operators",
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -3068,11 +3136,23 @@ class OperatorsListCommand(Command):
             type = None
 
         _print_operators_list(
-            enabled, builtin, type, args.glob_patt, args.names_only
+            enabled,
+            builtin,
+            type,
+            args.glob_patt,
+            args.names_only,
+            args.include_unlisted,
         )
 
 
-def _print_operators_list(enabled, builtin, type, glob_patt, names_only):
+def _print_operators_list(
+    enabled,
+    builtin,
+    type,
+    glob_patt,
+    names_only,
+    include_unlisted,
+):
     if glob_patt is not None:
         regex = re.compile(fnmatch.translate(glob_patt))
     else:
@@ -3095,7 +3175,9 @@ def _print_operators_list(enabled, builtin, type, glob_patt, names_only):
 
         return
 
-    headers = ["uri", "enabled", "builtin", "panel", "unlisted"]
+    headers = ["uri", "enabled", "builtin", "panel"]
+    if include_unlisted:
+        headers.append("unlisted")
 
     enabled_plugins = set(fop.list_enabled_plugins())
 
@@ -3104,15 +3186,19 @@ def _print_operators_list(enabled, builtin, type, glob_patt, names_only):
         if regex is not None and not regex.match(op.uri):
             continue
 
-        rows.append(
-            {
-                "uri": op.uri,
-                "enabled": op.builtin or op.plugin_name in enabled_plugins,
-                "builtin": op.builtin,
-                "panel": isinstance(op, foo.Panel),
-                "unlisted": op.config.unlisted,
-            }
-        )
+        if op.config.unlisted and not include_unlisted:
+            continue
+
+        row = {
+            "uri": op.uri,
+            "enabled": op.builtin or op.plugin_name in enabled_plugins,
+            "builtin": op.builtin,
+            "panel": isinstance(op, foo.Panel),
+        }
+        if include_unlisted:
+            row["unlisted"] = op.config.unlisted
+
+        rows.append(row)
 
     records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
 

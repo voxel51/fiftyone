@@ -2,18 +2,23 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { useAnnotationEventHandler } from "@fiftyone/annotation";
 import {
+  AnnotationEventGroup,
+  useAnnotationEventBus,
+  useAnnotationEventHandler,
+} from "@fiftyone/annotation";
+import {
+  type LighterEventGroup,
+  type Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
   useLighterEventHandler,
-  type LighterEventGroup,
-  type Scene2D,
 } from "@fiftyone/lighter";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { currentData, currentOverlay } from "../Sidebar/Annotate/Edit/state";
-import { coerceStringBooleans } from "../Sidebar/Annotate/utils";
+import { currentData } from "../Sidebar/Annotate/Edit/state";
+import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -24,12 +29,17 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
  * 1. We listen to certain events from "FiftyOne state" world and react to them, or
  * 2. We trigger certain events into "FiftyOne state" world based on user interactions in Lighter.
  */
-export const useBridge = (scene: Scene2D | null, sceneId: string) => {
-  useLighterTooltipEventHandler(scene, sceneId);
-  const eventBus = useLighterEventBus(sceneId);
-  const useEventHandler = useLighterEventHandler(sceneId);
+export const useBridge = (scene: Scene2D | null) => {
+  useLighterTooltipEventHandler(scene);
+  const annotationEventBus = useAnnotationEventBus();
+  const eventBus = useLighterEventBus(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
   const save = useSetAtom(currentData);
-  const overlay = useAtomValue(currentOverlay);
+  const { updateLabelData } = useLabelsContext();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -46,10 +56,15 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
         }
 
         scene.executeCommand(
-          new UpdateLabelCommand(overlay, payload.currentLabel, payload.value)
+          new UpdateLabelCommand(
+            overlay,
+            payload.currentLabel,
+            payload.value,
+            annotationEventBus
+          )
         );
       },
-      [scene]
+      [annotationEventBus, scene]
     )
   );
 
@@ -86,27 +101,41 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
     )
   );
 
-  const handleCommandEvent = useCallback(
+  useEventHandler(
+    "lighter:overlay-establish",
+    useCallback(
+      (payload) => {
+        annotationEventBus.dispatch(
+          "annotation:canvasDetectionOverlayEstablish",
+          {
+            id: payload.id,
+            overlay: payload.overlay.overlay,
+          }
+        );
+      },
+      [annotationEventBus]
+    )
+  );
+
+  const handleUndoRedo = useCallback(
     (
       payload:
-        | LighterEventGroup["lighter:command-executed"]
-        | LighterEventGroup["lighter:undo"]
-        | LighterEventGroup["lighter:redo"]
+        | AnnotationEventGroup["annotation:labelEdit"]
+        | AnnotationEventGroup["annotation:undoLabelEdit"]
     ) => {
-      // Here, this would be true for `undo` or `redo`
-      if (
-        !("command" in payload) ||
-        !(payload.command instanceof UpdateLabelCommand)
-      ) {
-        const label = overlay?.label;
-
-        if (label) {
-          save(label);
-        }
-
-        return;
+      // sync data with the sidebar
+      if (payload.label) {
+        updateLabelData(payload.label._id ?? payload.label.id, payload.label);
       }
+    },
+    [updateLabelData]
+  );
 
+  useAnnotationEventHandler("annotation:labelEdit", handleUndoRedo);
+  useAnnotationEventHandler("annotation:undoLabelEdit", handleUndoRedo);
+
+  const handleCommandEvent = useCallback(
+    (payload: LighterEventGroup["lighter:command-executed"]) => {
       if (!payload.command.nextLabel) {
         return;
       }
@@ -119,12 +148,10 @@ export const useBridge = (scene: Scene2D | null, sceneId: string) => {
         save(newLabel);
       }
     },
-    [overlay, save]
+    [save]
   );
 
   useEventHandler("lighter:command-executed", handleCommandEvent);
-  useEventHandler("lighter:redo", handleCommandEvent);
-  useEventHandler("lighter:undo", handleCommandEvent);
 
   const context = useColorMappingContext();
 

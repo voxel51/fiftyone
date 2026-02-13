@@ -180,6 +180,12 @@ plugin:
     If your FiftyOne App is already running, you may need to restart the server
     and refresh your browser to see new plugins.
 
+.. note::
+
+    When writing Python plugins with multiple files, see
+    :ref:`importing modules <operator-importing-modules>` for how to import
+    code between files in your plugin.
+
 .. _plugin-fiftyone-yml:
 
 fiftyone.yml
@@ -1184,6 +1190,89 @@ the caching strategy according to your needs:
     Refer to :ref:`this section <panel-execution-cache>` for more information
     about using the execution cache.
 
+.. _operator-async-data-loading:
+
+Async data loading
+------------------
+
+Some operators need to load data asynchronously (e.g., from an API or database)
+based on user input. The :meth:`loader() <fiftyone.operators.types.Object.loader>`
+method allows you to fetch data without blocking the form, showing a loading
+indicator while the data is being retrieved.
+
+To use a loader, define an operator that returns the data and call
+:meth:`inputs.loader() <fiftyone.operators.types.Object.loader>` to trigger it:
+
+.. code-block:: python
+    :linenos:
+
+    class LoadModels(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="load_models", unlisted=True)
+
+        def execute(self, ctx):
+            make = ctx.params.get("make")
+            models = {"dodge": [{"id": "charger", "name": "Charger"}]}
+            return models.get(make, [])
+
+
+    class CarSelector(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(name="car_selector", dynamic=True)
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+            inputs.enum("make", values=["dodge", "jeep"], label="Make")
+
+            if ctx.params.get("make"):
+                inputs.loader(
+                    "models",
+                    type=types.List(types.Object()),
+                    operator="@my-plugin/load_models",
+                    params={"make": ctx.params["make"]},
+                    label="Loading models...",
+                    dependencies=["make"],  # reload when "make" changes
+                )
+
+            models = ctx.params.get("models", {})
+            if models.get("state") == "loaded":
+                inputs.enum("model", values=[m["id"] for m in models["data"]], label="Model")
+
+            return types.Property(inputs)
+
+The loader property value always has the following structure:
+
+- ``state``: one of ``"idle"``, ``"loading"``, ``"loaded"``, or ``"errored"``
+- ``data``: the data returned by the operator (shaped by the ``type`` argument)
+- ``error``: an error message if the loader failed
+
+By default, loaders execute only once when the form mounts. To reload data when
+specific parameters change, use the ``dependencies`` argument with a list of
+parameter paths to watch:
+
+.. code-block:: python
+
+    inputs.loader(
+        "models",
+        type=types.List(types.Object()),
+        operator="@my-plugin/load_models",
+        params={"make": ctx.params["make"]},
+        label="Loading models...",
+        dependencies=["make"],  # reload only when "make" changes
+    )
+
+The ``dependencies`` argument supports dot-notation for nested values (e.g.,
+``"filters.category"``). The loader will re-execute whenever any of these
+values change, but will ignore changes to other parameters.
+
+.. note::
+
+    Loaders require ``dynamic=True`` in the operator config so that
+    :meth:`resolve_input() <fiftyone.operators.Operator.resolve_input>` is
+    re-called when the loader state changes.
+
 .. _operator-target-view:
 
 Target view __SUB_NEW__
@@ -2075,6 +2164,74 @@ plugin. Operators can access these secrets via the `ctx.secrets` dict:
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
       email = ctx.secrets["FIFTYONE_CVAT_EMAIL"]
+
+.. _operator-importing-modules:
+
+Importing modules
+-----------------
+
+When your plugin has multiple Python files, you can import between them using
+absolute imports based on your plugin's name.
+
+Plugin names map to Python module namespaces under `fiftyone.plugins.orgs`:
+
+.. table::
+    :widths: 40 60
+
+    +------------------------------+-----------------------------------------------+
+    | Plugin name                  | Module namespace                              |
+    +==============================+===============================================+
+    | `@myorg/my-plugin`           | `fiftyone.plugins.orgs.myorg.my_plugin`       |
+    +------------------------------+-----------------------------------------------+
+    | `my-plugin`                  | `fiftyone.plugins.orgs.external.my_plugin`    |
+    +------------------------------+-----------------------------------------------+
+
+.. note::
+
+    Plugins without an organization prefix are placed under the ``external``
+    namespace.
+
+Names are automatically sanitized: hyphens become underscores and `PascalCase`
+becomes `snake_case`.
+
+For example, if your plugin `@myorg/my-plugin` has this structure:
+
+.. code-block:: text
+
+    my-plugin/
+        fiftyone.yml
+        __init__.py
+        utils.py
+        models/
+            __init__.py
+            classifier.py
+
+You can import modules using absolute paths:
+
+.. code-block:: python
+    :linenos:
+
+    # In __init__.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+    from fiftyone.plugins.orgs.myorg.my_plugin.models import classifier
+
+    # In models/classifier.py
+    from fiftyone.plugins.orgs.myorg.my_plugin.utils import helper
+
+Relative imports also work:
+
+.. code-block:: python
+
+    # In __init__.py
+    from .utils import helper
+    from .models import classifier
+
+.. warning::
+
+    These module paths are for **internal plugin use only**. External code
+    should not import plugin modules directly, as the namespace is created
+    dynamically when FiftyOne loads the plugin. To run plugin code from
+    external scripts, use the :ref:`operator execution API <using-operators>`.
 
 .. _operator-outputs:
 

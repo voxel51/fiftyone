@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import {
   AdaptiveDpr,
   AdaptiveEvents,
-  Bvh,
   CameraControls,
   OrbitControls,
   PerspectiveCamera as PerspectiveCameraDrei,
@@ -14,11 +13,14 @@ import { SpinningCube } from "../SpinningCube";
 import { StatusTunnel } from "../StatusBar";
 import { AnnotationPlane } from "../annotation/AnnotationPlane";
 import { CreateCuboidRenderer } from "../annotation/CreateCuboidRenderer";
+import { Crosshair3D } from "../annotation/Crosshair3D";
 import { SegmentPolylineRenderer } from "../annotation/SegmentPolylineRenderer";
+import { PANEL_ID_MAIN } from "../constants";
+import { FrustumCollection } from "../frustum";
 import { FoScene } from "../hooks";
 import { useCameraViews } from "../hooks/use-camera-views";
-import { FrustumCollection } from "../frustum";
 import { ThreeDLabels } from "../labels";
+import { RaycastService } from "../services/RaycastService";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { Fo3dPointCloudSettings } from "./context";
@@ -118,6 +120,7 @@ export const Fo3dSceneContent = ({
 
   return (
     <>
+      <RaycastService panelId={PANEL_ID_MAIN} />
       <StatusTunnel.Out />
       <AdaptiveDpr pixelated />
       <AdaptiveEvents />
@@ -152,11 +155,10 @@ export const Fo3dSceneContent = ({
         isGridVisible={true}
       />
       {!isSceneInitialized && <SpinningCube />}
-      <Bvh firstHitOnly enabled={pointCloudSettings.enableTooltip}>
-        <group ref={assetsGroupRef} visible={isSceneInitialized}>
-          <FoSceneComponent scene={foScene} />
-        </group>
-      </Bvh>
+
+      <group ref={assetsGroupRef} visible={isSceneInitialized}>
+        <FoSceneComponent scene={foScene} />
+      </group>
 
       {isSceneInitialized && (
         <>
@@ -176,6 +178,7 @@ const AnnotationControls = () => {
       <AnnotationPlane panelType="main" viewType="top" />
       <SegmentPolylineRenderer />
       <CreateCuboidRenderer />
+      <Crosshair3D panelId={PANEL_ID_MAIN} />
     </>
   );
 };

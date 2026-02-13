@@ -18,7 +18,7 @@ const NoActiveSchema = () => {
       <Icon
         name={IconName.Edit}
         size={Size.Xl}
-        style={{ color: "#FF9950", marginBottom: 16 }}
+        style={{ color: "var(--color-brand-accent)", marginBottom: 16 }}
       />
       <Text variant={TextVariant.Lg} style={{ textAlign: "center" }}>
         No active schemas yet

@@ -32,23 +32,47 @@ export enum KnownCommands {
 export type CommandContextListener = (newId: string) => void;
 
 /**
- * Manages a stack of contexts as was all created context.
+ * Manages a fixed chain of command contexts: [default, modal, modalAnnotate].
  * Contexts consist of commands, keybindings and the undo stack.
- * This manager allows for creation and a push/pop mechanism
- * to activate/deactivate them.
+ * Key matching walks the stack from top to bottom, first match wins.
+ *
+ * TODO: This is a duct-tape simplification. The stack is hardcoded.
+ * Refactor to support dynamic context management properly.
  */
 export class CommandContextManager {
   private defaultContext = new CommandContext(KnownContexts.Default);
-  private contextStack = new Array<CommandContext>();
+  // TODO: hardcoded modal context chain — refactor to be dynamic
+  private modalContext = new CommandContext(
+    KnownContexts.Modal,
+    this.defaultContext
+  );
+  // TODO: hardcoded modalAnnotate context chain — refactor to be dynamic
+  private modalAnnotateContext = new CommandContext(
+    KnownContexts.ModalAnnotate,
+    this.modalContext
+  );
+
+  // TODO: hardcoded fixed stack order — refactor to be dynamic
+  private contextStack: CommandContext[] = [
+    this.defaultContext,
+    this.modalContext,
+    this.modalAnnotateContext,
+  ];
+
   private static _instance: CommandContextManager | undefined;
   private listeners = new Set<CommandContextListener>();
   private contexts = new Map<string, CommandContext>();
 
   constructor() {
-    this.contextStack.push(this.defaultContext);
     if (document) {
       document.addEventListener("keydown", this.handleKeyDown.bind(this));
     }
+
+    // Register all hardcoded contexts in the lookup map
+    this.contexts.set(KnownContexts.Default, this.defaultContext);
+    this.contexts.set(KnownContexts.Modal, this.modalContext);
+    this.contexts.set(KnownContexts.ModalAnnotate, this.modalAnnotateContext);
+
     this.defaultContext.registerCommand(
       KnownCommands.Undo,
       async () => {
@@ -76,6 +100,11 @@ export class CommandContextManager {
     this.defaultContext.bindKey("ctrl+shift+z", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+y", KnownCommands.Redo);
     this.defaultContext.bindKey("meta+shift+z", KnownCommands.Redo);
+
+    // activate all contexts
+    for (const ctx of this.contextStack) {
+      ctx.activate();
+    }
   }
   /**
    * @returns the single instance of this manager
@@ -87,31 +116,24 @@ export class CommandContextManager {
     return CommandContextManager._instance;
   }
   /**
-   * Factory method for CommandContexts for easy inheriting of the current context.
-   * @param id The id of the new context
-   * @param inheritCurrent If true, the current context will serve as a parent, so
-   * any commands not handled in the current context will propagate up to the parent,
-   * it's parent if there is one, and so on.
-   * @returns The new context.  This context is not active until it is pushed @see this.pushExecutionContext
+   * TODO: duct-tape — createCommandContext is kept for API compat but
+   * returns existing context if it matches a known ID. Refactor later.
    */
   public createCommandContext(
     id: string,
-    inheritCurrent: boolean
+    _inheritCurrent: boolean
   ): CommandContext {
-    if (this.contexts.has(id)) {
-      throw new Error(`The command context ${id} already exists.`);
+    const existing = this.contexts.get(id);
+    if (existing) {
+      return existing;
     }
-    const newContext = new CommandContext(
-      id,
-      inheritCurrent
-        ? this.contextStack[this.contextStack.length - 1]
-        : undefined
-    );
+    // For unknown contexts, create and register but don't add to stack
+    const newContext = new CommandContext(id);
     this.contexts.set(id, newContext);
     return newContext;
   }
   /**
-   * Gets a previously created context by id.  @see this.createCommandContext
+   * Gets a previously created context by id.
    * @param id the context id
    * @returns The context or undefined if it doesn't exist
    */
@@ -120,14 +142,13 @@ export class CommandContextManager {
   }
 
   /**
-   * Removes a context from the list of known contexts.
-   * @param id The context id
+   * TODO: duct-tape no-op — stack is fixed. Refactor later.
    */
-  public deleteContext(id: string) {
-    this.contexts.delete(id);
+  public deleteContext(_id: string) {
+    // no-op: stack is fixed
   }
   /**
-   * Get the current command context
+   * Get the current command context (top of fixed stack)
    * @returns the current command context
    */
   public getActiveContext(): CommandContext {
@@ -135,49 +156,24 @@ export class CommandContextManager {
   }
 
   /**
-   * Pushes a context on to the stack, making it the active context.
-   * When it is no longer needed to be active, pop it. @see this.popExecutionContext
-   * @param context The context to activate
+   * TODO: duct-tape no-op — stack is fixed. Refactor later.
    */
-  public pushContext(context: CommandContext): void {
-    this.contextStack.push(context);
-    context.activate();
-    this.fireListeners();
+  public pushContext(_context: CommandContext): void {
+    // no-op: stack is fixed
   }
 
   /**
-   * Pops the current command context if it is not the
-   * base context.  Will never result in no context being
-   * available.
+   * TODO: duct-tape no-op — stack is fixed. Refactor later.
    */
-  public popContext(expectedId?: string): void {
-    //do not pop the base/default context
-    if (this.contextStack.length > 1) {
-      const popped = this.contextStack.pop();
-      if (expectedId) {
-        if (expectedId !== popped?.id) {
-          console.warn(
-            `The CommandContext that was popped was not the expected context: ${expectedId}`
-          );
-        }
-      }
-      popped?.deactivate();
-      this.fireListeners();
-    }
+  public popContext(_expectedId?: string): void {
+    // no-op: stack is fixed
   }
 
   /**
-   * clears all contexts except the default context
+   * TODO: duct-tape no-op — stack is fixed. Refactor later.
    */
   public toDefault(): void {
-    let changed = false;
-    while (this.contextStack.length > 1) {
-      this.contextStack.pop()?.deactivate();
-      changed = true;
-    }
-    if (changed) {
-      this.fireListeners();
-    }
+    // no-op: stack is fixed
   }
 
   /**
@@ -186,9 +182,28 @@ export class CommandContextManager {
    */
   public reset(): void {
     this.defaultContext = new CommandContext(KnownContexts.Default);
-    this.contextStack = [this.defaultContext];
+    this.modalContext = new CommandContext(
+      KnownContexts.Modal,
+      this.defaultContext
+    );
+    this.modalAnnotateContext = new CommandContext(
+      KnownContexts.ModalAnnotate,
+      this.modalContext
+    );
+    this.contextStack = [
+      this.defaultContext,
+      this.modalContext,
+      this.modalAnnotateContext,
+    ];
     this.listeners.clear();
     this.contexts.clear();
+    this.contexts.set(KnownContexts.Default, this.defaultContext);
+    this.contexts.set(KnownContexts.Modal, this.modalContext);
+    this.contexts.set(KnownContexts.ModalAnnotate, this.modalAnnotateContext);
+
+    for (const ctx of this.contextStack) {
+      ctx.activate();
+    }
   }
 
   /**
@@ -201,8 +216,7 @@ export class CommandContextManager {
   }
 
   /**
-   * Subscribes to context change events.  Useful if you
-   * have multiple contexts switching in the same component, ie. 2 editors
+   * Subscribes to context change events.
    * @param listener the listener
    * @returns The unsubscribe function
    */
@@ -214,8 +228,9 @@ export class CommandContextManager {
   }
   /**
    * Fires any context listeners that are registered
+   * TODO: currently unused because stack is fixed — will be needed after refactor
    */
-  private fireListeners() {
+  private _fireListeners() {
     this.listeners.forEach((listener) => {
       listener(this.contextStack[this.contextStack.length - 1].id);
     });
@@ -223,8 +238,8 @@ export class CommandContextManager {
 
   /**
    * Handles the keydown event.  Only public for testing.
+   * Walks the fixed stack from top to bottom, first full match wins.
    * @param event the key event
-   * @returns Nothing
    */
   public async handleKeyDown(event: KeyboardEvent): Promise<void> {
     const active = document.activeElement;
@@ -238,11 +253,17 @@ export class CommandContextManager {
     ) {
       return;
     }
-    const match = this.getActiveContext().handleKeyDown(event);
-    if (match.full) {
-      await this.getActiveContext().executeCommand(match.full);
-      event.stopPropagation();
-      event.preventDefault();
+
+    // Try to match key with all contexts starting from top of stack
+    for (let i = this.contextStack.length - 1; i >= 0; i--) {
+      const context = this.contextStack[i];
+      const match = context.handleKeyDown(event);
+      if (match.full) {
+        await context.executeCommand(match.full);
+        event.stopPropagation();
+        event.preventDefault();
+        return;
+      }
     }
   }
   /**

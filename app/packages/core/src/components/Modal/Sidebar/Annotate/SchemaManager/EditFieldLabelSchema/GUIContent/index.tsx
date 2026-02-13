@@ -3,7 +3,14 @@
  */
 
 import { LoadingSpinner, scrollable } from "@fiftyone/components";
-import { Text, TextColor, TextVariant } from "@voxel51/voodo";
+import {
+  Button,
+  Size,
+  Text,
+  TextColor,
+  TextVariant,
+  Variant,
+} from "@voxel51/voodo";
 import { useCallback, useMemo } from "react";
 import { PRIMITIVE_FIELD_TYPES } from "../../constants";
 import { useFieldType } from "../../hooks";
@@ -29,6 +36,7 @@ interface GUIContentProps {
   field: string;
   config: SchemaConfigType | undefined;
   scanning: boolean;
+  onCancelScan?: () => void;
   onConfigChange?: (config: SchemaConfigType) => void;
 }
 
@@ -36,6 +44,7 @@ const GUIContent = ({
   field,
   config,
   scanning,
+  onCancelScan,
   onConfigChange,
 }: GUIContentProps) => {
   const fType = useFieldType(field);
@@ -126,6 +135,7 @@ const GUIContent = ({
       <ListContainer className={scrollable}>
         <Section>
           <PrimitiveFieldContent
+            field={field}
             fieldType={fType}
             config={config}
             onConfigChange={onConfigChange}
@@ -143,18 +153,32 @@ const GUIContent = ({
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Classes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
         <Section>
           <EditSectionHeader>
             <Text variant={TextVariant.Lg}>Attributes</Text>
           </EditSectionHeader>
-          <EmptyStateBox>
-            <LoadingSpinner style={{ marginRight: 8 }} />
+          <EmptyStateBox style={{ flexDirection: "column", gap: 8 }}>
+            <LoadingSpinner />
             <Text color={TextColor.Secondary}>Scanning schema</Text>
+            <Button
+              size={Size.Sm}
+              variant={Variant.Secondary}
+              onClick={onCancelScan}
+            >
+              Cancel
+            </Button>
           </EmptyStateBox>
         </Section>
       </ListContainer>

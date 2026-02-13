@@ -3,7 +3,6 @@
  * Renders the form UI - logic is in useAttributeForm hook.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   Input,
   Orientation,
@@ -38,10 +37,6 @@ const AttributeFormContent = ({
   nameError,
   isEditing = false,
 }: AttributeFormContentProps) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
-
   const {
     // Derived state
     isNumericType,
@@ -225,25 +220,23 @@ const AttributeFormContent = ({
       )}
 
       {/* Read-only toggle */}
-      {isM4Enabled && (
-        <div>
-          <Stack
-            orientation={Orientation.Row}
-            spacing={Spacing.Sm}
-            style={{ alignItems: "center", marginBottom: 4 }}
-          >
-            <Text variant={TextVariant.Md}>Read-only</Text>
-            <Toggle
-              checked={formState.read_only}
-              onChange={handleReadOnlyChange}
-              size={Size.Sm}
-            />
-          </Stack>
-          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-            When enabled, annotators can view but cannot edit values.
-          </Text>
-        </div>
-      )}
+      <div>
+        <Stack
+          orientation={Orientation.Row}
+          spacing={Spacing.Sm}
+          style={{ alignItems: "center", marginBottom: 4 }}
+        >
+          <Text variant={TextVariant.Md}>Read-only</Text>
+          <Toggle
+            checked={formState.read_only}
+            onChange={handleReadOnlyChange}
+            size={Size.Sm}
+          />
+        </Stack>
+        <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+          When enabled, annotators can view but cannot edit values.
+        </Text>
+      </div>
     </Stack>
   );
 };

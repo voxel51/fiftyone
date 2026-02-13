@@ -2,12 +2,16 @@
  * Utility functions for SchemaManager
  */
 
+import { is3d } from "@fiftyone/utilities";
 import type { ListItemProps as BaseListItemProps } from "@voxel51/voodo";
 import type { ReactNode } from "react";
 import {
+  CLASSES_COMPONENT_THRESHOLD,
   componentNeedsRange,
   componentNeedsValues,
   getDefaultComponent,
+  LABEL_TYPE_OPTIONS,
+  LABEL_TYPE_OPTIONS_3D,
   LIST_TYPES,
   NUMERIC_TYPES,
   SYSTEM_READ_ONLY_FIELD_NAME,
@@ -571,3 +575,74 @@ export const getAttributeFormErrors = (
  */
 export const hasAttributeFormError = (errors: AttributeFormErrors): boolean =>
   !!(errors.values || errors.range || errors.default);
+
+// =============================================================================
+// Component Reconciliation
+// =============================================================================
+
+/**
+ * Auto-adjust the component type to match the current classes.
+ * - Classes present + component is "text" → switch to "radio" or "dropdown"
+ * - Classes removed + component is "radio"/"dropdown" → switch to "text"
+ */
+export const reconcileComponent = (
+  config: SchemaConfigType
+): SchemaConfigType => {
+  const { classes, component } = config;
+  const hasClasses = classes && classes.length > 0;
+
+  if (hasClasses) {
+    if (component === "text") {
+      return {
+        ...config,
+        component:
+          classes.length > CLASSES_COMPONENT_THRESHOLD ? "dropdown" : "radio",
+      };
+    }
+  } else {
+    // Strip empty classes key and reset component to text
+    const { classes: _, ...rest } = config;
+    if (component === "radio" || component === "dropdown") {
+      return { ...rest, component: "text" };
+    }
+    return rest;
+  }
+
+  return config;
+};
+
+// =============================================================================
+// Media Type Helpers
+// =============================================================================
+
+/**
+ * Get label type options based on media type
+ */
+export const getLabelTypeOptions = (mediaType: string | null | undefined) => {
+  if (mediaType && is3d(mediaType)) {
+    return LABEL_TYPE_OPTIONS_3D;
+  }
+  return LABEL_TYPE_OPTIONS;
+};
+
+// =============================================================================
+// Field Name Validation
+// =============================================================================
+
+/**
+ * Validate field name and return error message if invalid
+ */
+export const validateFieldName = (
+  fieldName: string,
+  existingFields: Record<string, unknown> | null
+): string | null => {
+  const trimmed = fieldName.trim();
+  if (!trimmed) return null;
+  if (existingFields && trimmed in existingFields) {
+    return "Field name already exists";
+  }
+  if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(trimmed)) {
+    return "Invalid field name (use letters, numbers, underscores)";
+  }
+  return null;
+};

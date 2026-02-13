@@ -3,15 +3,23 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
-import { useNotification } from "@fiftyone/state";
+import {
+  datasetSampleCount,
+  mediaType,
+  queryPerformanceMaxSearch,
+  useNotification,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
+import { useRecoilValue } from "recoil";
 import { isEqual } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
   activePaths,
   activeSchemaTab,
   addToActiveSchemas,
+  currentField,
   fieldAttributeCount,
   fieldType,
   fieldTypes,
@@ -19,7 +27,6 @@ import {
   labelSchemasData,
   removeFromActiveSchemas,
   showModal,
-  currentField,
 } from "../state";
 import {
   draftJsonContent,
@@ -28,11 +35,13 @@ import {
   hiddenFieldAttrCounts,
   hiddenFieldHasSchemaStates,
   hiddenFieldTypes,
+  isNewFieldMode,
   jsonValidationErrors,
   selectedActiveFields,
   selectedHiddenFields,
   sortedInactivePaths,
 } from "./state";
+import { PRIMITIVE_FIELD_TYPES } from "./constants";
 
 // =============================================================================
 // Current Field Hooks
@@ -206,6 +215,44 @@ export const useFieldType = (field: string) => {
 };
 
 /**
+ * Hook which returns a callback to dynamically get the field type for a path.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const getFieldType = useGetFieldType();
+ *   const fieldType = getFieldType(field);
+ * }
+ * ```
+ */
+export const useGetFieldType = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldType(field)), [])
+  );
+
+/**
+ * Hook which returns a callback to check whether a field is a primitive type.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isPrimitiveField = useIsPrimitiveField();
+ *   if (isPrimitiveField(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsPrimitiveField = () => {
+  const getFieldType = useGetFieldType();
+
+  return useCallback(
+    (field: string) => PRIMITIVE_FIELD_TYPES.has(getFieldType(field)),
+    [getFieldType]
+  );
+};
+
+/**
  * Hook to get a field's schema data
  */
 export const useFieldSchemaData = (field: string) => {
@@ -218,6 +265,24 @@ export const useFieldSchemaData = (field: string) => {
 export const useFieldIsReadOnly = (field: string) => {
   return useAtomValue(fieldIsReadOnly(field));
 };
+
+/**
+ * Hook which returns a callback to check whether a field is read-only.
+ *
+ * @example
+ * ```tsx
+ * const useFoo = () => {
+ *   const isFieldReadOnly = useIsFieldReadOnly();
+ *   if (isFieldReadOnly(field)) {
+ *     bar();
+ *   }
+ * };
+ * ```
+ */
+export const useIsFieldReadOnly = () =>
+  useAtomCallback(
+    useCallback((get, _set, field: string) => get(fieldIsReadOnly(field)), [])
+  );
 
 /**
  * Hook to check if a field has schema configured
@@ -242,6 +307,20 @@ export const useFieldAttributeCount = (field: string) => {
  */
 export const useLabelSchemasData = () => {
   return useAtomValue(labelSchemasData);
+};
+
+/**
+ * Hook to set label schemas data
+ */
+export const useSetLabelSchemasData = () => {
+  return useSetAtom(labelSchemasData);
+};
+
+/**
+ * Hook to set active label schemas
+ */
+export const useSetActiveLabelSchemas = () => {
+  return useSetAtom(activeLabelSchemas);
 };
 
 // =============================================================================
@@ -372,6 +451,14 @@ export const useFullSchemaEditor = () => {
   const validate = useOperatorExecutor("validate_label_schemas");
   const updateSchema = useOperatorExecutor("update_label_schema");
 
+  // Reset JSON editor state on unmount
+  useEffect(() => {
+    return () => {
+      setDraftJson(null);
+      setErrors([]);
+    };
+  }, []);
+
   const originalJson = useMemo(
     () => JSON.stringify(schemasData, null, 2),
     [schemasData]
@@ -410,7 +497,9 @@ export const useFullSchemaEditor = () => {
         for (const [field, data] of Object.entries(parsed)) {
           if (data && typeof data === "object" && "label_schema" in data) {
             labelSchemas[field] = (
-              data as { label_schema: unknown }
+              data as {
+                label_schema: unknown;
+              }
             ).label_schema;
           }
         }
@@ -507,4 +596,80 @@ export const useFullSchemaEditor = () => {
     save,
     discard,
   };
+};
+
+// =============================================================================
+// New Field Mode Hooks
+// =============================================================================
+
+/**
+ * Hook to read and set new field mode state
+ */
+export const useNewFieldMode = () => {
+  const [isNewField, setIsNewField] = useAtom(isNewFieldMode);
+  return { isNewField, setIsNewField };
+};
+
+/**
+ * Hook to exit new field mode (convenience hook)
+ */
+export const useExitNewFieldMode = () => {
+  const setNewFieldMode = useSetAtom(isNewFieldMode);
+  return useCallback(() => setNewFieldMode(false), [setNewFieldMode]);
+};
+
+// =============================================================================
+// Media Type Hook
+// =============================================================================
+
+/**
+ * Hook to get the current dataset media type
+ */
+export const useMediaType = () => {
+  return useRecoilValue(mediaType);
+};
+
+/**
+ * Hook to check if the dataset sample count exceeds the scan limit.
+ * Returns whether the dataset is large and the scan sample limit.
+ */
+export const useIsLargeDataset = () => {
+  const count = useRecoilValue(datasetSampleCount);
+  const maxSearch = useRecoilValue(queryPerformanceMaxSearch);
+  return { isLargeDataset: (count ?? 0) > maxSearch, scanLimit: maxSearch };
+};
+
+// =============================================================================
+// Cleanup Hook
+// =============================================================================
+
+/**
+ * Hook to reset SchemaManager state on unmount.
+ * Call this from the Modal component to clean up state when the modal closes.
+ */
+export const useSchemaManagerCleanup = () => {
+  const setCurrentFieldAtom = useSetAtom(currentField);
+
+  useEffect(() => {
+    return () => {
+      // Reset field editing state
+      setCurrentFieldAtom(null);
+    };
+  }, []);
+};
+
+/**
+ * Hook to reset field selection state on unmount.
+ * Call this from GUIContent to clear selection when switching to JSON tab.
+ */
+export const useSelectionCleanup = () => {
+  const setSelectedActive = useSetAtom(selectedActiveFields);
+  const setSelectedHidden = useSetAtom(selectedHiddenFields);
+
+  useEffect(() => {
+    return () => {
+      setSelectedActive(new Set());
+      setSelectedHidden(new Set());
+    };
+  }, []);
 };

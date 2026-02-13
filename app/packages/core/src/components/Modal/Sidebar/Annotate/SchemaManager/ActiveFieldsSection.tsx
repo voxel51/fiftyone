@@ -4,12 +4,11 @@
  * Displays the list of active (visible) fields with drag-drop reordering.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import { useOperatorExecutor } from "@fiftyone/operators";
 import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
-  Clickable,
+  Button,
   Icon,
   IconName,
   Pill,
@@ -17,8 +16,10 @@ import {
   Size,
   Text,
   TextColor,
+  textColorClass,
   TextVariant,
   Tooltip,
+  Variant,
 } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
@@ -26,7 +27,9 @@ import { fieldAttributeCount, fieldType } from "../state";
 import { Item } from "./Components";
 import {
   useActiveFieldsList,
+  useNewFieldMode,
   useSelectedActiveFields,
+  useSelectedHiddenFields,
   useSetCurrentField,
 } from "./hooks";
 import SecondaryText from "./SecondaryText";
@@ -45,20 +48,32 @@ const FieldActions = ({ path }: { path: string }) => {
       anchor={Anchor.Bottom}
       portal
     >
-      <Clickable data-cy="edit" onClick={() => setField(path)}>
-        <Icon name={IconName.Edit} size={Size.Md} />
-      </Clickable>
+      <Button
+        variant={Variant.Icon}
+        borderless
+        data-cy="edit"
+        onClick={() => setField(path)}
+      >
+        <Icon
+          name={IconName.Edit}
+          size={Size.Md}
+          className={textColorClass(TextColor.Secondary)}
+        />
+      </Button>
     </Tooltip>
   );
 };
 
 const ActiveFieldsSection = () => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
+  const { setIsNewField: setNewFieldMode } = useNewFieldMode();
+
+  const handleNewField = useCallback(() => {
+    setNewFieldMode(true);
+  }, [setNewFieldMode]);
 
   const { fields, setFields } = useActiveFieldsList();
-  const { setSelected } = useSelectedActiveFields();
+  const { selected, setSelected } = useSelectedActiveFields();
+  const { setSelected: setHiddenSelected } = useSelectedHiddenFields();
 
   // Batch field data fetching
   const fieldTypes = useAtomValue(
@@ -114,7 +129,7 @@ const ActiveFieldsSection = () => {
           ),
           actions: (
             <span className="flex items-center gap-2">
-              {isM4Enabled && fieldReadOnlyStates[path] && (
+              {fieldReadOnlyStates[path] && (
                 <Pill size={Size.Md}>Read-only</Pill>
               )}
               <FieldActions path={path} />
@@ -122,7 +137,7 @@ const ActiveFieldsSection = () => {
           ),
         } as ListItemProps,
       })),
-    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates, isM4Enabled]
+    [fields, fieldTypes, fieldAttrCounts, fieldReadOnlyStates]
   );
 
   const handleOrderChange = useCallback(
@@ -139,15 +154,22 @@ const ActiveFieldsSection = () => {
   const handleSelected = useCallback(
     (selectedIds: string[]) => {
       setSelected(new Set(selectedIds));
+      setHiddenSelected(new Set());
     },
-    [setSelected]
+    [setHiddenSelected, setSelected]
   );
+
+  const selectedList = useMemo(() => Array.from(selected), [selected]);
 
   if (!fields?.length) {
     return (
-      <>
+      <div style={{ marginTop: "0.5rem" }}>
         <GUISectionHeader>
-          <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+          <Text
+            variant={TextVariant.Lg}
+            style={{ fontWeight: 500 }}
+            color={TextColor.Secondary}
+          >
             Active fields
           </Text>
           <Tooltip
@@ -162,18 +184,30 @@ const ActiveFieldsSection = () => {
             <Icon name={IconName.Info} size={Size.Md} />
           </Tooltip>
           <Pill size={Size.Md}>0</Pill>
+          <div style={{ flex: 1 }} />
+          <Button
+            size={Size.Md}
+            variant={Variant.Primary}
+            onClick={handleNewField}
+          >
+            New field
+          </Button>
         </GUISectionHeader>
         <Item style={{ justifyContent: "center", opacity: 0.7 }}>
           <Text color={TextColor.Secondary}>No active fields</Text>
         </Item>
-      </>
+      </div>
     );
   }
 
   return (
     <>
       <GUISectionHeader>
-        <Text variant={TextVariant.Lg} style={{ fontWeight: 500 }}>
+        <Text
+          variant={TextVariant.Lg}
+          style={{ fontWeight: 500 }}
+          color={TextColor.Secondary}
+        >
           Active fields
         </Text>
         <Tooltip
@@ -188,6 +222,14 @@ const ActiveFieldsSection = () => {
           <Icon name={IconName.Info} size={Size.Md} />
         </Tooltip>
         <Pill size={Size.Md}>{fields.length}</Pill>
+        <div style={{ flex: 1 }} />
+        <Button
+          size={Size.Md}
+          variant={Variant.Primary}
+          onClick={handleNewField}
+        >
+          New field
+        </Button>
       </GUISectionHeader>
       <RichList
         data-cy={"active-fields"}
@@ -195,6 +237,7 @@ const ActiveFieldsSection = () => {
         draggable={true}
         onOrderChange={handleOrderChange}
         onSelected={handleSelected}
+        selected={selectedList}
       />
     </>
   );

@@ -17,8 +17,10 @@ import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
 import useLabels from "./useLabels";
-import { KnownContexts, useCommandContext } from "@fiftyone/commands";
 import { usePrimitivesCount } from "./usePrimitivesCount";
+import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import useDelete from "./Edit/useDelete";
+import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
 
 const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
@@ -32,11 +34,10 @@ const DISABLED_MESSAGES: Record<
       materialized views.
     </p>
   ),
-  groupedDataset: (
+  groupedDatasetNoSupportedSlices: (
     <p>
-      Annotation isn&rsquo;t supported for grouped datasets. Use{" "}
-      <code>SelectGroupSlices</code> to create a view of the image or 3D slices
-      you want to label.
+      This grouped dataset has no slices that support annotation. Only image and
+      3D slices can be annotated.
     </p>
   ),
   videoDataset: <p>Annotation isn&rsquo;t supported for video datasets.</p>,
@@ -63,7 +64,6 @@ const Loading = () => {
 };
 
 const AnnotateSidebar = () => {
-  useLabels();
   usePrimitivesCount();
   const editing = useAtomValue(isEditing);
 
@@ -119,17 +119,20 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
   const editing = useAtomValue(isEditing);
-  const { activate, deactivate } = useCommandContext(
-    KnownContexts.ModalAnnotate,
-    true
-  );
+  const contextManager = useAnnotationContextManager();
+  const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+
+  useLabels();
+  useDelete();
 
   useEffect(() => {
-    activate();
+    contextManager.enter();
+
     return () => {
-      deactivate();
+      contextManager.exit();
+      clearUndo();
     };
-  }, [activate, deactivate]);
+  }, []);
 
   const isDisabled = disabledReason !== null;
   const disabledMsg =
@@ -142,7 +145,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   return (
     <>
       {editing && <Edit key="edit" />}
-      {showImport ? (
+      {showImport || isDisabled ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}

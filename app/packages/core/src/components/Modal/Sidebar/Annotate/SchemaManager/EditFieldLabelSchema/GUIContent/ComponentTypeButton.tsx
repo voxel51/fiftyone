@@ -36,10 +36,10 @@ const ComponentTypeButton = ({
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: "flex-start",
             gap: 8,
             padding: "8px 12px",
-            borderRadius: 6,
+            borderRadius: "var(--radius-md)",
             border: isSelected
               ? `1px solid ${theme.voxel[500]}`
               : `1px solid ${theme.primary.softBorder}`,
