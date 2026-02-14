@@ -141,6 +141,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
             heatmap.is_metric = output.get("is_metric", False)
 
+            if heatmap.is_metric:
+                heatmap.max_depth = float(max_depth)
+
             results.append(heatmap)
 
         return results

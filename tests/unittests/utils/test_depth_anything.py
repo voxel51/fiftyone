@@ -194,6 +194,32 @@ class TestDepthAnythingV3OutputProcessor:
         assert results[1].map.max() == pytest.approx(1.0)
         np.testing.assert_array_almost_equal(results[0].map, results[1].map, decimal=5)
 
+    def test_metric_output_stores_max_depth(self):
+        """Test metric models store max_depth for meter recovery."""
+        processor = self._make_processor()
+        depth = np.array([[[10.0, 20.0], [30.0, 40.0]]], dtype=np.float32)
+
+        results = processor(
+            {"depth": depth, "is_metric": True}, (2, 2)
+        )
+
+        assert results[0].is_metric is True
+        assert results[0].max_depth == pytest.approx(40.0)
+        recovered = results[0].map * results[0].max_depth
+        np.testing.assert_array_almost_equal(recovered, depth[0], decimal=5)
+
+    def test_relative_output_no_max_depth(self):
+        """Test relative models do not store max_depth."""
+        processor = self._make_processor()
+        depth = np.array([[[10.0, 20.0], [30.0, 40.0]]], dtype=np.float32)
+
+        results = processor(
+            {"depth": depth, "is_metric": False}, (2, 2)
+        )
+
+        assert results[0].is_metric is False
+        assert not hasattr(results[0], "max_depth") or results[0].max_depth is None
+
     def test_none_frame_size_skips_resize(self):
         """Test None dimensions in frame_size skips resize."""
         processor = self._make_processor()
