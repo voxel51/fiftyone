@@ -74,44 +74,12 @@ fi
 
 echo "**** Generating documentation ****"
 
-# Symlink to fiftyone-teams
+# Set fiftyone-teams path for autoapi
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
-    # macOS users may need to run `brew install coreutils` to get `realpath``
+    # macOS users may need to run `brew install coreutils` to get `realpath`
     PATH_TO_TEAMS="$(realpath "$PATH_TO_TEAMS")"
-
-    cd "${THIS_DIR}"
-    PATH_TO_FIFTYONE_DIR=$(
-        python -c "import os, fiftyone as fo; print(os.path.dirname(fo.__file__))" ||
-        true
-    )
-    cd -
-
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
-    rm -rf "${PATH_TO_FIFTYONE_DIR}/internal.bak"
-    mv "${PATH_TO_FIFTYONE_DIR}/internal" "${PATH_TO_FIFTYONE_DIR}/internal.bak"
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/internal" "${PATH_TO_FIFTYONE_DIR}/internal"
-    for f in "${PATH_TO_TEAMS}/fiftyone/utils/"*.py; do
-        name=$(basename "$f")
-        if [[ ! -e "${PATH_TO_FIFTYONE_DIR}/utils/${name}" ]]; then
-            ln -sfn "$f" "${PATH_TO_FIFTYONE_DIR}/utils/${name}"
-        fi
-    done
-
-    cleanup_teams() {
-        unlink "$PATH_TO_FIFTYONE_DIR/management" 2>/dev/null || true
-        unlink "$PATH_TO_FIFTYONE_DIR/api" 2>/dev/null || true
-        if [ -L "$PATH_TO_FIFTYONE_DIR/internal" ]; then
-            unlink "$PATH_TO_FIFTYONE_DIR/internal"
-        fi
-        if [ -d "$PATH_TO_FIFTYONE_DIR/internal.bak" ]; then
-            mv "$PATH_TO_FIFTYONE_DIR/internal.bak" "$PATH_TO_FIFTYONE_DIR/internal"
-        fi
-        find "$PATH_TO_FIFTYONE_DIR/utils" -maxdepth 1 -type l -delete
-    }
-    trap cleanup_teams EXIT
-    echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
-    echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
+    export FIFTYONE_TEAMS_DIR="${PATH_TO_TEAMS}"
+    echo "Using fiftyone-teams at: ${PATH_TO_TEAMS}"
 fi
 
 cd "${THIS_DIR}/.."
@@ -128,9 +96,7 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
         fiftyone/constants \
         fiftyone/internal \
         fiftyone/server \
-        fiftyone/service \
-        fiftyone/management \
-        fiftyone/api &
+        fiftyone/service &
 
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \

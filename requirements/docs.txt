@@ -41,3 +41,4 @@ sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.2.0
 sphinx-remove-toctrees==1.0.0.post1
+sphinx-autoapi>=3.6.1
