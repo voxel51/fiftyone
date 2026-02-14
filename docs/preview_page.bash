@@ -77,7 +77,8 @@ PAGE_DIR=$(dirname "${PAGE}")
 mkdir -p "${PREVIEW_DIR}/${PAGE_DIR}"
 cp "${SOURCE_DIR}/${PAGE}" "${PREVIEW_DIR}/${PAGE}"
 
-if [[ -d "${SOURCE_DIR}/${PAGE_DIR}/images" ]]; then
+if [[ -d "${SOURCE_DIR}/${PAGE_DIR}/images" ]] && \
+   [[ ! -e "${PREVIEW_DIR}/${PAGE_DIR}/images" ]]; then
     ln -s \
         "${SOURCE_DIR}/${PAGE_DIR}/images" \
         "${PREVIEW_DIR}/${PAGE_DIR}/images"
