@@ -92,7 +92,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
-  let locale = "en-ZA";
+  let locale = "en-CA";
 
   return (
     timeZone: string,
@@ -107,7 +107,7 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
       hour12: false,
     };
 
-    const formatter = new Intl.DateTimeFormat("en-CA", {
+    const formatter = new Intl.DateTimeFormat(locale, {
       timeZone,
       year: "numeric",
       month: twoDigit,
@@ -131,7 +131,6 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         fractionalSecondDigits: 3,
         ...diff,
       };
-      locale = "en-CA";
     } else {
       common = null;
       diff = {
@@ -144,7 +143,6 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         fractionalSecondDigits: 3,
         ...diff,
       };
-      locale = "en-CA";
     }
 
     return {
