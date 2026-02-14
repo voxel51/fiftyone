@@ -218,7 +218,7 @@ export const buildDeletionDeltas = (
   schema: Field,
   isGenerated = false
 ): JSONDeltas => {
-  // For generated views, deletion is always a simple remove of the label
+  // Future-proofing for generated views: deletion is always a simple remove of the label
   // The backend handles removing from the source sample's list
   if (isGenerated) {
     return [{ op: "remove", path: "/" }];

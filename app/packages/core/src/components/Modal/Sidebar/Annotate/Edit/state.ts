@@ -142,7 +142,10 @@ export const currentSchema = atom((get) => {
     throw new Error("no current field");
   }
 
-  return get(labelSchemaData(field))?.label_schema;
+  const meta = get(labelSchemaData(field));
+
+  // TODO: [FOEPD-3183] Temporarily fallback to default schema for generated datasets
+  return meta?.label_schema ?? meta?.default_label_schema;
 });
 
 export const currentDisabledFields = atom((get) => {

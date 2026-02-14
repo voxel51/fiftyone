@@ -156,8 +156,8 @@ export const patchSample = async (
 
   // Add generated dataset and label ids as query parameter if present
   // This enables syncing changes from the source to the currently loaded generated dataset.
-  // We do this instead of making a separate request with the generated dataset _id because we want to
-  // ensure permissions are checked against the src dataset.
+  // We do this instead of making a separate request with the generated dataset _id
+  // because we want to ensure permissions are checked against the src dataset.
   const queryParams = new URLSearchParams();
   if (request.generatedDatasetName) {
     queryParams.set("generated_dataset", request.generatedDatasetName);

@@ -100,11 +100,9 @@ export const doPatchSample = async ({
         }
       }
 
-      // For delete operations on patches, the patch sample is deleted and
-      // the backend returns the source sample. We can't refresh the modal
-      // with the source sample (different structure), so we skip the refresh.
-      // The modal should close automatically via other mechanisms.
       if (isGenerated && opType === "delete") {
+        // Response contains the source sample and the patch sample was deleted
+        // so don't attempt to refresh the patch sample
         return true;
       }
 
@@ -124,8 +122,7 @@ export const doPatchSample = async ({
       }
     } catch (error) {
       // For delete operations on generated views (patches/clips/frames), a 404
-      // is expected because the patch sample is deleted on the backend. The
-      // deletion was successful - the modal will close via other mechanisms.
+      // is expected because the sample in the generated dataset is deleted
       if (
         isGenerated &&
         opType === "delete" &&

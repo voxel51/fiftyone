@@ -97,7 +97,6 @@ export default function useDelete() {
           try {
             const fieldSchema = getFieldSchema(schema, label?.path);
 
-            // setSaving(false);
             if (!fieldSchema) {
               setNotification({
                 msg: `Error restoring deleted label. "${
@@ -112,7 +111,6 @@ export default function useDelete() {
             addLabelToSidebar(label);
           } catch (error) {
             console.error(error);
-            // setSaving(false);
             setNotification({
               msg: `Label "${
                 label.data.label ?? "Label"

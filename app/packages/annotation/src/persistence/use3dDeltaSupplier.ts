@@ -135,21 +135,3 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     dragInProgress,
   ]);
 };
-
-// export const use3dDeltaSupplier = (): DeltaSupplier => {
-//   const labels = useReconciledLabels3D();
-//   const getLabelDelta = useGetLabelDelta( buildAnnotationLabel );
-//
-//   return useCallback( () => {
-//     const allLabels = [
-//       ...(labels?.detections ?? []),
-//       ...(labels?.polylines ?? []),
-//     ];
-//
-//     const deltas = allLabels.flatMap( (label) =>
-//       getLabelDelta( label, label.path )
-//     );
-//
-//     return { deltas };
-//   }, [getLabelDelta, labels] );
-// };

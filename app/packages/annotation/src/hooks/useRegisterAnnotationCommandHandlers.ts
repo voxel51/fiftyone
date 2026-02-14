@@ -19,7 +19,6 @@ export const useRegisterAnnotationCommandHandlers = () => {
     DeleteAnnotationCommand,
     useCallback(
       async (cmd) => {
-        console.log("Handling DeleteAnnotationCommand for cmd", cmd);
         try {
           const labelId = cmd.label.data._id;
           const success = await deleteLabel(cmd.label, cmd.schema);
