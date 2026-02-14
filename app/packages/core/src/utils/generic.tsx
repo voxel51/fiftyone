@@ -94,17 +94,11 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
   let locale = "en-ZA";
 
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
-
   return (
     timeZone: string,
     d1: number,
     d2: number
-  ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
-    const delta = Math.abs(d1 - d2);
+  ): { common: Intl.DateTimeFormat | null; diff: Intl.DateTimeFormat } => {
     timeZone = resolveTimeZone(timeZone);
 
     let common: Intl.DateTimeFormatOptions | null = { timeZone, hour12: false };
@@ -153,10 +147,10 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
       locale = "en-CA";
     }
 
-    return [
-      common ? new Intl.DateTimeFormat(locale, common) : null,
-      new Intl.DateTimeFormat(locale, diff),
-    ];
+    return {
+      common: common ? new Intl.DateTimeFormat(locale, common) : null,
+      diff: new Intl.DateTimeFormat(locale, diff),
+    };
   };
 })();
 
