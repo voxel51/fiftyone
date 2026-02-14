@@ -11,12 +11,13 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
 import { useCallback, useMemo, useState } from "react";
 import {
+  activeLabelSchemas,
   addToActiveSchemas,
   currentField,
   labelSchemaData,
   removeFromActiveSchemas,
 } from "../../state";
-import { currentLabelSchema } from "../state";
+import { currentLabelSchema, pendingActiveSchemas } from "../state";
 import { reconcileComponent } from "../utils";
 
 // =============================================================================
@@ -64,6 +65,66 @@ const useHasChanges = (one: unknown, two: unknown) => {
   }, [one, two]);
 };
 
+const sameSet = (a: string[], b: string[]): boolean => {
+  if (a.length !== b.length) return false;
+  const setB = new Set(b);
+  return a.every((f) => setB.has(f));
+};
+
+/**
+ * Manages pending visibility for a field. The toggle updates
+ * pendingActiveSchemas (lazily initialized from activeLabelSchemas).
+ * Changes are only persisted on save via set_active_label_schemas.
+ */
+const useVisibility = (field: string) => {
+  const activeSchemas = useAtomValue(activeLabelSchemas);
+  const [pending, setPending] = useAtom(pendingActiveSchemas);
+
+  // Lazily initialize pending from current active schemas
+  const effective = pending ?? activeSchemas ?? [];
+
+  const isFieldVisible = effective.includes(field);
+
+  const visibilityChanged = useMemo(
+    () => !sameSet(effective, activeSchemas ?? []),
+    [effective, activeSchemas]
+  );
+
+  const toggleVisibility = useCallback(() => {
+    const current = pending ?? activeSchemas ?? [];
+    if (current.includes(field)) {
+      setPending(current.filter((f) => f !== field));
+    } else {
+      // Append new field at the end
+      setPending([...current, field]);
+    }
+  }, [field, pending, activeSchemas, setPending]);
+
+  const discardVisibility = useCallback(() => {
+    const current = pending ?? activeSchemas ?? [];
+    const original = activeSchemas ?? [];
+    const wasActive = original.includes(field);
+    const isPending = current.includes(field);
+
+    if (wasActive === isPending) return; // no change for this field
+
+    if (wasActive && !isPending) {
+      // Was active, user hid it — revert by re-adding at original position
+      setPending(original.filter((f) => current.includes(f) || f === field));
+    } else {
+      // Was hidden, user activated it — revert by removing
+      setPending(current.filter((f) => f !== field));
+    }
+  }, [field, pending, activeSchemas, setPending]);
+
+  return {
+    isFieldVisible,
+    visibilityChanged,
+    toggleVisibility,
+    discardVisibility,
+  };
+};
+
 export const useReadOnly = (field: string) => {
   const data = useAtomValue(labelSchemaData(field));
   const [current, setCurrent] = useCurrentLabelSchema(field);
@@ -102,13 +163,17 @@ const useSavedLabelSchema = (field: string) => {
   ] as const;
 };
 
-const useSave = (field: string) => {
+const useSave = (field: string, visibilityChanged: boolean) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const activate = useOperatorExecutor("activate_label_schemas");
+  const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const setActiveLabelSchemasAtom = useSetAtom(activeLabelSchemas);
+  const [pending, setPending] = useAtom(pendingActiveSchemas);
+  const activeSchemas = useAtomValue(activeLabelSchemas);
   const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
@@ -159,6 +224,37 @@ const useSave = (field: string) => {
                       variant: "error",
                     });
                   }
+                },
+              }
+            );
+          }
+
+          // Persist pending visibility changes
+          if (visibilityChanged && pending) {
+            // Build ordered list: old items first, new appended at end
+            const oldSet = new Set(activeSchemas ?? []);
+            const kept = (activeSchemas ?? []).filter((f) =>
+              pending.includes(f)
+            );
+            const added = pending.filter((f) => !oldSet.has(f));
+            const ordered = [...kept, ...added];
+
+            setActiveSchemas.execute(
+              { fields: ordered },
+              {
+                callback: (setResult) => {
+                  if (setResult.error) {
+                    notify({
+                      msg: `Failed to update field visibility: ${
+                        setResult.errorMessage || setResult.error
+                      }`,
+                      variant: "error",
+                    });
+                    return;
+                  }
+                  // Sync Jotai state
+                  setActiveLabelSchemasAtom(ordered);
+                  setPending(ordered);
                 },
               }
             );
@@ -271,20 +367,34 @@ export default function useLabelSchema(field: string) {
   const readOnly = useReadOnly(field);
   const configUpdate = useConfigUpdate(field);
   const scan = useScan(field);
-  const save = useSave(field);
+  const visibility = useVisibility(field);
+  const save = useSave(field, visibility.visibilityChanged);
   const validate = useValidate(field);
-  const hasChanges = useHasChanges(
+  const schemaChanged = useHasChanges(
     validate.currentLabelSchema,
     save.savedLabelSchema
   );
 
+  const hasChanges =
+    schemaChanged || !!validate.errors.length || visibility.visibilityChanged;
+
+  // Wrap discard to also revert visibility
+  const originalDiscard = validate.discard;
+  const discard = useCallback(() => {
+    originalDiscard();
+    visibility.discardVisibility();
+  }, [originalDiscard, visibility.discardVisibility]);
+
   return {
-    hasChanges: hasChanges || !!validate.errors.length,
+    hasChanges,
+    isFieldVisible: visibility.isFieldVisible,
+    toggleVisibility: visibility.toggleVisibility,
 
     ...readOnly,
     ...configUpdate,
     ...save,
     ...scan,
     ...validate,
+    discard,
   };
 }

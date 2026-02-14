@@ -186,6 +186,16 @@ export const hasJsonChanges = atom((get) => {
 });
 
 // =============================================================================
+// Pending Visibility State
+// =============================================================================
+
+/**
+ * Pending active schemas list. Mirrors activeLabelSchemas but only persisted
+ * on save via set_active_label_schemas. null means not yet initialized.
+ */
+export const pendingActiveSchemas = atom<string[] | null>(null);
+
+// =============================================================================
 // Edit Field Label Schema State
 // =============================================================================
 
