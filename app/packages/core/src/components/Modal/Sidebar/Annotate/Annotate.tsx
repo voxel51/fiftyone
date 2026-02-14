@@ -1,12 +1,15 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { EntryKind } from "@fiftyone/state";
+import { useLighter } from "@fiftyone/lighter";
+import { EntryKind, isGeneratedView, isPatchesView } from "@fiftyone/state";
 import { Typography } from "@mui/material";
-import { atom, useAtomValue } from "jotai";
-import React, { useEffect } from "react";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
+import React, { useEffect, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
-import Edit, { isEditing } from "./Edit";
+import Edit, { editing, isEditing } from "./Edit";
+import { savedLabel } from "./Edit/state";
 import GroupEntry from "./GroupEntry";
 import ImportSchema from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
@@ -16,7 +19,7 @@ import SchemaManager from "./SchemaManager";
 import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
-import useLabels from "./useLabels";
+import useLabels, { LabelsState, labelsState } from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
@@ -30,8 +33,7 @@ const DISABLED_MESSAGES: Record<
 > = {
   generatedView: (
     <p>
-      Annotation isn&rsquo;t supported for patches, frames, clips, or
-      materialized views.
+      Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
   groupedDatasetNoSupportedSlices: (
@@ -65,22 +67,70 @@ const Loading = () => {
 
 const AnnotateSidebar = () => {
   usePrimitivesCount();
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
+  const setEditing = useSetAtom(editing);
+  const isPatches = useRecoilValue(isPatchesView);
+  const isGenerated = useRecoilValue(isGeneratedView);
+  const [entries] = useEntries();
+  const { scene } = useLighter();
+  const loadingState = useAtomValue(labelsState);
 
-  if (editing) return null;
+  // Track the previous loading state to detect fresh loads
+  const prevLoadingState = useRef<LabelsState>(LabelsState.UNSET);
+
+  // Auto-edit single label in patches view
+  useEffect(() => {
+    // Only auto-edit when labels just finished loading (LOADING -> COMPLETE)
+    // This prevents re-triggering after save/exit while still on the same sample
+    const justLoaded =
+      prevLoadingState.current !== LabelsState.COMPLETE &&
+      loadingState === LabelsState.COMPLETE;
+
+    prevLoadingState.current = loadingState;
+
+    if (!justLoaded || !isPatches || isEditingValue) return;
+
+    const labelEntries = entries.filter(
+      (entry) => entry.kind === EntryKind.LABEL
+    );
+    if (labelEntries.length === 1) {
+      const labelEntry = labelEntries[0];
+      if (labelEntry.kind === EntryKind.LABEL) {
+        const store = getDefaultStore();
+        const label = store.get(labelEntry.atom);
+
+        // Ensure overlay exists and is valid
+        if (!label?.overlay?.id) return;
+
+        // Replicate exactly what LabelEntry.onClick does:
+        // 1. Select overlay in scene (for visual highlight and drag/resize)
+        scene?.selectOverlay(label.overlay.id);
+
+        // 2. Set editing state (for sidebar edit panel)
+        setEditing(labelEntry.atom);
+
+        // 3. Set savedLabel (for change detection)
+        store.set(savedLabel, label.data);
+      }
+    }
+  }, [isPatches, isEditingValue, entries, setEditing, scene, loadingState]);
+
+  // Don't show label list in edit mode or in generated views (patches/clips/frames)
+  // In generated views, only the edit panel should be visible
+  if (isEditingValue || isGenerated) return null;
 
   return (
     <>
       <Actions />
       <Sidebar
         isDisabled={() => true}
-        render={(key, group, entry) => {
+        render={(_key, _group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _, atom } = entry;
+            const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
               disabled: true,

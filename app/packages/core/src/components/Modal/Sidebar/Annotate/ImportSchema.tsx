@@ -64,6 +64,8 @@ const ImportSchema = (
   const canManage = useCanManageSchema();
   const showModal = useShowModal();
 
+  // TODO: disable for patches?
+
   const alertMessage = disabled
     ? disabledMsg || DISABLED_DEFAULT
     : !canManage

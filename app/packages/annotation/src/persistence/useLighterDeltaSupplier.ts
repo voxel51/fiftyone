@@ -6,16 +6,17 @@ import {
   useLighter,
 } from "@fiftyone/lighter";
 import { useCallback } from "react";
-import type { JSONDeltas } from "@fiftyone/core";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import { useGetLabelDelta } from "./useGetLabelDelta";
-import type { LabelProxy } from "../deltas";
+import { buildAnnotationPath, type LabelProxy } from "../deltas";
 import { hasValidBounds } from "@fiftyone/utilities";
 import { BoundingBox } from "@fiftyone/looker/src/state";
+import { useRecoilValue } from "recoil";
+import { isGeneratedView } from "@fiftyone/state";
 
 /**
- * Build a {@link LabelProxy} instance from a reconciled 3d label.
+ * Build a {@link LabelProxy} instance from a lighter overlay.
  *
  * @param overlay Lighter overlay
  */
@@ -37,12 +38,15 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         path: overlay.field,
       };
     }
-  } else if (overlay instanceof ClassificationOverlay && overlay.label.label) {
-    return {
-      type: "Classification",
-      data: overlay.label as ClassificationLabel,
-      path: overlay.field,
-    };
+  } else if (overlay instanceof ClassificationOverlay) {
+    const label = overlay.label as ClassificationLabel;
+    if (label.label) {
+      return {
+        type: "Classification",
+        data: label,
+        path: overlay.field,
+      };
+    }
   }
 };
 
@@ -53,14 +57,33 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
 export const useLighterDeltaSupplier = (): DeltaSupplier => {
   const { scene } = useLighter();
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   return useCallback(() => {
-    const sampleDeltas: JSONDeltas = [];
+    const allDeltas =
+      scene
+        ?.getAllOverlays()
+        ?.flatMap((overlay) => getLabelDelta(overlay, overlay.field)) ?? [];
 
-    scene?.getAllOverlays()?.forEach((overlay) => {
-      sampleDeltas.push(...getLabelDelta(overlay, overlay.field));
-    });
+    // For generated views, attach metadata from the first overlay with changes
+    // (patches only have 1 label, so there's at most one)
+    let metadata;
+    if (isGenerated && allDeltas.length > 0) {
+      const overlay = scene?.getAllOverlays()?.find((o) => {
+        const deltas = getLabelDelta(o, o.field);
+        return deltas.length > 0;
+      });
+      if (overlay) {
+        const labelProxy = buildAnnotationLabel(overlay);
+        if (labelProxy) {
+          metadata = {
+            labelId: (labelProxy.data as { _id?: string })._id,
+            labelPath: buildAnnotationPath(labelProxy, isGenerated),
+          };
+        }
+      }
+    }
 
-    return sampleDeltas;
-  }, [getLabelDelta, scene]);
+    return { deltas: allDeltas, metadata };
+  }, [getLabelDelta, isGenerated, scene]);
 };

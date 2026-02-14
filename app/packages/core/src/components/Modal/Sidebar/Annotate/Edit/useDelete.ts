@@ -2,12 +2,15 @@ import { DeleteAnnotationCommand, getFieldSchema } from "@fiftyone/annotation";
 import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { current } from "./state";
+import { current, deleteValue } from "./state";
 import useExit from "./useExit";
+import { isSavingAtom } from "./useSave";
+
 import { useLabelsContext } from "../useLabels";
 import {
   DelegatingUndoable,
@@ -20,13 +23,16 @@ export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
+  const setter = useSetAtom(deleteValue);
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
   const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
 
   const exit = useExit();
+  const [isSaving, setSaving] = useAtom(isSavingAtom);
   const setNotification = fos.useNotification();
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const undoable = useMemo(() => {
     return new DelegatingUndoable(
@@ -46,6 +52,8 @@ export default function useDelete() {
           return;
         }
 
+        setSaving(true);
+
         try {
           const fieldSchema = getFieldSchema(schema, label?.path);
 
@@ -63,9 +71,10 @@ export default function useDelete() {
             new DeleteAnnotationCommand(label, fieldSchema)
           );
 
+          setter();
           removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
-
+          setSaving(false);
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
@@ -74,6 +83,7 @@ export default function useDelete() {
           exit();
         } catch (error) {
           console.error(error);
+          setSaving(false);
           setNotification({
             msg: `Label "${
               label.data.label ?? "Label"
@@ -86,6 +96,8 @@ export default function useDelete() {
         if (label) {
           try {
             const fieldSchema = getFieldSchema(schema, label?.path);
+
+            // setSaving(false);
             if (!fieldSchema) {
               setNotification({
                 msg: `Error restoring deleted label. "${
@@ -100,6 +112,7 @@ export default function useDelete() {
             addLabelToSidebar(label);
           } catch (error) {
             console.error(error);
+            // setSaving(false);
             setNotification({
               msg: `Label "${
                 label.data.label ?? "Label"
@@ -111,14 +124,15 @@ export default function useDelete() {
       }
     );
   }, [
-    commandBus,
-    exit,
     label,
-    removeLabelFromSidebar,
-    removeOverlay,
+    commandBus,
     scene,
-    schema,
+    exit,
+    removeOverlay,
     setNotification,
+    schema,
+    setSaving,
+    setter,
   ]);
 
   useKeyBindings(
@@ -130,13 +144,14 @@ export default function useDelete() {
           return undoable;
         },
         enablement: () => {
-          return !!label;
+          // Disable delete for generated views (patches/clips/frames)
+          return !!label && !isGenerated;
         },
         sequence: ["Delete", "Backspace"],
         label: "Delete label",
         description: "Delete label",
       },
     ],
-    [undoable]
+    [undoable, isGenerated]
   );
 }

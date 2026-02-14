@@ -1,4 +1,6 @@
 import { useCallback } from "react";
+import { useRecoilValue } from "recoil";
+import { isGeneratedView } from "@fiftyone/state";
 import { useAnnotationDeltaSupplier } from "./useAnnotationDeltaSupplier";
 import { useAnnotationEventBus, usePatchSample } from "../hooks";
 
@@ -22,15 +24,28 @@ export const usePersistAnnotationDeltas =
     const supplyAnnotationDeltas = useAnnotationDeltaSupplier();
     const patchSample = usePatchSample();
     const eventBus = useAnnotationEventBus();
+    const isGenerated = useRecoilValue(isGeneratedView);
 
     return useCallback(async () => {
-      const sampleDeltas = supplyAnnotationDeltas();
+      const { deltas, metadata } = supplyAnnotationDeltas();
 
-      if (sampleDeltas.length > 0) {
-        eventBus.dispatch("annotation:persistenceInFlight");
-        return await patchSample(sampleDeltas);
+      if (deltas.length === 0) {
+        return null;
       }
 
-      return null;
-    }, [eventBus, patchSample, supplyAnnotationDeltas]);
+      eventBus.dispatch("annotation:persistenceInFlight");
+
+      // For generated views (patches/clips/frames), include metadata
+      // for the field-level API endpoint
+      if (isGenerated && metadata) {
+        return await patchSample(deltas, {
+          labelId: metadata.labelId,
+          labelPath: metadata.labelPath,
+          opType: "mutate",
+        });
+      }
+
+      // For regular samples, just send the deltas
+      return await patchSample(deltas);
+    }, [eventBus, isGenerated, patchSample, supplyAnnotationDeltas]);
   };

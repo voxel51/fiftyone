@@ -1,21 +1,32 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  handleLabelPersistence,
+  type LabelPersistenceArgs,
+} from "./labelPersistence";
 import type { Sample } from "@fiftyone/looker";
-import type { AnnotationLabel } from "@fiftyone/state";
 import type { Field } from "@fiftyone/utilities";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { AnnotationLabel } from "@fiftyone/state";
+import type { LabelProxy } from "../deltas";
+import type { JSONDeltas } from "@fiftyone/core/src/client";
 import type { OpType } from "../types";
-import { handleLabelPersistence } from "./labelPersistence";
 
 vi.mock("../deltas", () => ({
   buildJsonPath: vi.fn(),
   buildLabelDeltas: vi.fn(),
+  buildAnnotationPath: vi.fn(),
 }));
 
-import { buildJsonPath, buildLabelDeltas } from "../deltas";
+import {
+  buildJsonPath,
+  buildLabelDeltas,
+  buildAnnotationPath,
+} from "../deltas";
 
 describe("handleLabelPersistence", () => {
-  let mockPatchSample: ReturnType<typeof vi.fn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockPatchSample: any;
   let mockSample: Sample;
-  let mockAnnotationLabel: AnnotationLabel;
+  let mockAnnotationLabel: LabelProxy;
   let mockSchema: Field;
   let mockOpType: OpType;
 
@@ -26,15 +37,17 @@ describe("handleLabelPersistence", () => {
     mockSample = { id: "sample-id" } as Sample;
     mockAnnotationLabel = {
       path: "predictions.detections",
-      id: "label-id",
-    } as AnnotationLabel;
+      type: "Detection",
+      data: { _id: "label-id", label: "cat" },
+    } as LabelProxy;
     mockSchema = { name: "detections" } as Field;
     mockOpType = "mutate";
 
     vi.mocked(buildLabelDeltas).mockReturnValue([]);
     vi.mocked(buildJsonPath).mockImplementation(
-      (basePath, deltaPath) => `${basePath}.${deltaPath}`
+      (basePath, deltaPath) => `${basePath ?? ""}.${deltaPath}`
     );
+    vi.mocked(buildAnnotationPath).mockReturnValue("predictions.detections");
   });
 
   it("should return false when sample is null", async () => {
@@ -65,7 +78,11 @@ describe("handleLabelPersistence", () => {
 
   it("should call buildLabelDeltas with correct arguments", async () => {
     vi.mocked(buildLabelDeltas).mockReturnValue([
-      { path: "label", value: "cat", op: "replace" },
+      {
+        path: "label",
+        value: "cat",
+        op: "replace",
+      } as unknown as JSONDeltas[0],
     ]);
 
     await handleLabelPersistence({
@@ -80,7 +97,8 @@ describe("handleLabelPersistence", () => {
       mockSample,
       mockAnnotationLabel,
       mockSchema,
-      mockOpType
+      mockOpType,
+      false
     );
   });
 
@@ -88,7 +106,7 @@ describe("handleLabelPersistence", () => {
     const mockDeltas = [
       { path: "label", value: "cat", op: "replace" },
       { path: "confidence", value: 0.95, op: "replace" },
-    ];
+    ] as unknown as JSONDeltas;
 
     vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
     vi.mocked(buildJsonPath)
@@ -117,7 +135,9 @@ describe("handleLabelPersistence", () => {
   });
 
   it("should call patchSample with transformed deltas", async () => {
-    const mockDeltas = [{ path: "label", value: "dog", op: "replace" }];
+    const mockDeltas = [
+      { path: "label", value: "dog", op: "replace" },
+    ] as unknown as JSONDeltas;
 
     vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
     vi.mocked(buildJsonPath).mockReturnValue("predictions.detections.label");
@@ -130,13 +150,16 @@ describe("handleLabelPersistence", () => {
       opType: mockOpType,
     });
 
-    expect(mockPatchSample).toHaveBeenCalledWith([
-      {
-        path: "predictions.detections.label",
-        value: "dog",
-        op: "replace",
-      },
-    ]);
+    expect(mockPatchSample).toHaveBeenCalledWith(
+      [
+        {
+          path: "predictions.detections.label",
+          value: "dog",
+          op: "replace",
+        },
+      ],
+      undefined
+    );
   });
 
   it("should return true when patchSample succeeds", async () => {
@@ -184,7 +207,7 @@ describe("handleLabelPersistence", () => {
       opType: mockOpType,
     });
 
-    expect(mockPatchSample).toHaveBeenCalledWith([]);
+    expect(mockPatchSample).toHaveBeenCalledWith([], undefined);
     expect(result).toBe(true);
   });
 
@@ -193,7 +216,7 @@ describe("handleLabelPersistence", () => {
       { path: "label", value: "cat", op: "replace" },
       { path: "confidence", value: 0.95, op: "replace" },
       { path: "bounding_box", value: [0, 0, 100, 100], op: "replace" },
-    ];
+    ] as unknown as JSONDeltas;
 
     vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
     vi.mocked(buildJsonPath)
@@ -209,15 +232,22 @@ describe("handleLabelPersistence", () => {
       opType: mockOpType,
     });
 
-    expect(mockPatchSample).toHaveBeenCalledWith([
-      { path: "predictions.detections.label", value: "cat", op: "replace" },
-      { path: "predictions.detections.confidence", value: 0.95, op: "replace" },
-      {
-        path: "predictions.detections.bounding_box",
-        value: [0, 0, 100, 100],
-        op: "replace",
-      },
-    ]);
+    expect(mockPatchSample).toHaveBeenCalledWith(
+      [
+        { path: "predictions.detections.label", value: "cat", op: "replace" },
+        {
+          path: "predictions.detections.confidence",
+          value: 0.95,
+          op: "replace",
+        },
+        {
+          path: "predictions.detections.bounding_box",
+          value: [0, 0, 100, 100],
+          op: "replace",
+        },
+      ],
+      undefined
+    );
   });
 
   it("should propagate errors from patchSample", async () => {
@@ -246,7 +276,7 @@ describe("handleLabelPersistence", () => {
         op: "replace",
         customProp: "custom-value",
       },
-    ];
+    ] as unknown as JSONDeltas;
 
     vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
     vi.mocked(buildJsonPath).mockReturnValue("predictions.detections.label");
@@ -259,13 +289,54 @@ describe("handleLabelPersistence", () => {
       opType: mockOpType,
     });
 
-    expect(mockPatchSample).toHaveBeenCalledWith([
+    expect(mockPatchSample).toHaveBeenCalledWith(
+      [
+        {
+          path: "predictions.detections.label",
+          value: "cat",
+          op: "replace",
+          customProp: "custom-value",
+        },
+      ],
+      undefined
+    );
+  });
+
+  it("should pass isGenerated to buildLabelDeltas and use null path for generated views", async () => {
+    const mockDeltas = [
+      { path: "label", value: "cat", op: "replace" },
+    ] as unknown as JSONDeltas;
+
+    vi.mocked(buildLabelDeltas).mockReturnValue(mockDeltas);
+    vi.mocked(buildJsonPath).mockReturnValue("/label");
+    vi.mocked(buildAnnotationPath).mockReturnValue(
+      "predictions.detections.detections"
+    );
+
+    await handleLabelPersistence({
+      sample: mockSample,
+      applyPatch: mockPatchSample,
+      annotationLabel: mockAnnotationLabel,
+      schema: mockSchema,
+      opType: mockOpType,
+      isGenerated: true,
+    });
+
+    expect(buildLabelDeltas).toHaveBeenCalledWith(
+      mockSample,
+      mockAnnotationLabel,
+      mockSchema,
+      mockOpType,
+      true
+    );
+    expect(buildJsonPath).toHaveBeenCalledWith(null, "label");
+    expect(mockPatchSample).toHaveBeenCalledWith(
+      [{ path: "/label", value: "cat", op: "replace" }],
       {
-        path: "predictions.detections.label",
-        value: "cat",
-        op: "replace",
-        customProp: "custom-value",
-      },
-    ]);
+        labelId: "label-id",
+        labelPath: "predictions.detections.detections",
+        opType: mockOpType,
+      }
+    );
   });
 });

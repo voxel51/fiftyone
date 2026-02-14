@@ -25,6 +25,8 @@ export type PatchSampleRequest = {
   versionToken: string;
   path?: string;
   labelId?: string;
+  generatedDatasetName?: string;
+  generatedSampleId?: string;
 };
 
 export type ErrorResponse = {
@@ -87,12 +89,16 @@ const errorHandlers: Record<number, (response: Response) => Promise<void>> = {
       }
     } catch (err) {
       // doesn't look like a list of errors
+      console.error("unparsable error:", err);
     }
     if (errorResponse?.errors) {
+      console.error("Patch application errors:", errorResponse.errors);
       throw new PatchApplicationError(errorResponse.errors.join(", "));
     }
 
-    throw new MalformedRequestError();
+    throw new MalformedRequestError(
+      "Unexpected error response. See console for details."
+    );
   },
 
   // sample not found
@@ -140,13 +146,33 @@ const doFetch = <A, R>(
 export const patchSample = async (
   request: PatchSampleRequest
 ): Promise<PatchSampleResponse> => {
+  // Build the base path for the request.
   const pathParts = ["dataset", request.datasetId, "sample", request.sampleId];
+
+  // Use the sampleField endpoint for field-level updates (eg detection in patchesView)
   if (request.path && request.labelId) {
     pathParts.push(request.path, request.labelId);
   }
 
+  // Add generated dataset and label ids as query parameter if present
+  // This enables syncing changes from the source to the currently loaded generated dataset.
+  // We do this instead of making a separate request with the generated dataset _id because we want to
+  // ensure permissions are checked against the src dataset.
+  const queryParams = new URLSearchParams();
+  if (request.generatedDatasetName) {
+    queryParams.set("generated_dataset", request.generatedDatasetName);
+  }
+  if (request.generatedSampleId) {
+    queryParams.set("generated_sample_id", request.generatedSampleId);
+  }
+
+  const queryString = queryParams.toString();
+  const pathWithQuery = queryString
+    ? `${encodeURIPath(pathParts)}?${queryString}`
+    : encodeURIPath(pathParts);
+
   const response = await doFetch<JSONDeltas, Sample>({
-    path: encodeURIPath(pathParts),
+    path: pathWithQuery,
     method: "PATCH",
     body: request.deltas,
     headers: {

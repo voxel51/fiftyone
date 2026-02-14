@@ -106,6 +106,7 @@ def get_if_last_modified_at(
             ...
 
         if if_last_modified_at is None:
+            logger.debug("Could not parse If-Match header: %s", if_match)
             raise HTTPException(
                 status_code=400, detail="Invalid If-Match header"
             )
@@ -134,6 +135,7 @@ def get_sample(
 
     dataset = get_dataset(dataset_id)
     sample = get_sample_from_dataset(dataset, sample_id)
+    logger.debug("Loaded sample %s from dataset %s", sample_id, dataset_id)
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
@@ -400,6 +402,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         ) from err
 
     if errors:
+        logger.error(f"Errors applying JSON patches to sample: {target}")
         for error in errors:
             logger.error(error)
         raise HTTPException(
@@ -534,7 +537,7 @@ class SampleField(HTTPEndpoint):
         if_last_modified_at = get_if_last_modified_at(request)
         if if_last_modified_at is None:
             logger.debug(
-                "Invalid or missing If-Match header for sample %s in dataset %s",
+                "Missing If-Match header for sample %s in dataset %s",
                 sample_id,
                 dataset_id,
             )
@@ -597,6 +600,7 @@ class SampleField(HTTPEndpoint):
             )
 
         # Apply patches - RootDeleteError signals deletion is needed
+        logger.debug("Applying patches to field with id %s", field_id)
         try:
             handle_json_patch(field, data)
             is_delete = False
@@ -605,9 +609,12 @@ class SampleField(HTTPEndpoint):
             is_delete = True
 
         # Save the source sample
+        logger.debug("Saving source sample %s", sample.id)
         etag = save_sample(sample, source_if_match)
+        logger.debug("Saved source sample %s", sample.id)
 
         if generated_dataset_name and generated_sample_id:
+            logger.debug("Syncing changes to generated dataset")
             # Sync changes to generated dataset
             try:
                 generated_sample = sync_to_generated_dataset(

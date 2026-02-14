@@ -23,9 +23,11 @@ export type TabId = typeof TAB_IDS[number];
 
 // System read-only fields that cannot be edited or scanned
 const SYSTEM_READ_ONLY_FIELDS_ARRAY = [
+  "_sample_id",
   "created_at",
   "id",
   "last_modified_at",
+  "sample_id",
 ] as const;
 
 export const SYSTEM_READ_ONLY_FIELD_NAME = "system";

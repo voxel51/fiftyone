@@ -10,7 +10,7 @@ import {
   useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, pinned3d } from "@fiftyone/state";
+import { is3DDataset, isPatchesView, pinned3d } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -129,18 +129,32 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+  const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
 
   const handleCreateClassification = useCallback(() => {
+    if (isPatchView) {
+      return;
+    }
     create();
 
     // Exit other "persistent" annotation modes like 3D
     reset3dAnnotationMode();
-  }, [create]);
+  }, [create, isPatchView]);
 
   return (
-    <Tooltip placement="top-center" text="Create new classification">
-      <Square onClick={handleCreateClassification}>
+    <Tooltip
+      placement="top-center"
+      text={
+        isPatchView
+          ? "Creating classifications in a patches view is not supported"
+          : "Create new classification"
+      }
+    >
+      <Square
+        onClick={handleCreateClassification}
+        className={isPatchView ? "disabled" : ""}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -162,17 +176,20 @@ const Classification = () => {
 const Detection = () => {
   const { enableQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
+  const isPatchView = useRecoilValue(isPatchesView);
 
   return (
-    <Tooltip placement="top-center" text="Create new detections">
+    <Tooltip
+      placement="top-center"
+      text={
+        isPatchView
+          ? "Creating detections in a patches view is not supported"
+          : "Create new detection"
+      }
+    >
       <Square
-        onClick={() => {
-          enableQuickDraw();
-
-          // Create first detection in quick draw mode,
-          // `true` to work around stale quickDrawActive closure
-          create(true);
-        }}
+        onClick={isPatchView ? undefined : create}
+        className={isPatchView ? "disabled" : ""}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

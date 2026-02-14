@@ -1,12 +1,13 @@
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   canAnnotate,
   isGeneratedView,
   isGroup,
+  isPatchesView,
   mediaType,
   readOnly,
 } from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
+
 import { useRecoilValue } from "recoil";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 
@@ -64,6 +65,8 @@ export default function useCanAnnotate(): CanAnnotateResult {
   const { supportedSlices } = useGroupAnnotationSlices();
 
   const hasSupportedSlices = supportedSlices.length > 0;
+  const isPatches = useRecoilValue(isPatchesView);
+  const isUnsupportedGeneratedView = isGenerated && !isPatches;
 
   // hide tab entirely if user lacks edit permission or feature disabled
   if (isReadOnlySnapshot || !canAnnotateEnabled) {
@@ -79,7 +82,7 @@ export default function useCanAnnotate(): CanAnnotateResult {
     showAnnotationTab: true,
     disabledReason: getDisabledReason(
       currentMediaType,
-      isGenerated,
+      isUnsupportedGeneratedView,
       isGroupedDataset,
       hasSupportedSlices
     ),

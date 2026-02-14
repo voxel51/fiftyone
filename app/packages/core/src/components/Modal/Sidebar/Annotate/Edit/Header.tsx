@@ -2,6 +2,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
+import { useCallback } from "react";
 import { useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
@@ -10,7 +11,9 @@ import { ItemLeft, ItemRight } from "../Components";
 import { ICONS } from "../Icons";
 import { Row } from "./Components";
 
+import { labels } from "../useLabels";
 import * as fos from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { showModal } from "../state";
 import {
@@ -39,6 +42,7 @@ const LabelHamburgerMenu = () => {
   const canEditLabels = useRecoilValue(fos.canEditLabels);
   const currentFieldIsReadOnly = useAtomValue(currentFieldIsReadOnlyAtom);
   const setShowSchemaManager = useSetAtom(showModal);
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const handleOpenSchemaManager = () => {
     setShowSchemaManager(true);
@@ -46,6 +50,8 @@ const LabelHamburgerMenu = () => {
   };
 
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
+  // Disable delete for generated views (patches/clips/frames)
+  const showDelete = !isGenerated;
 
   return (
     <>
@@ -61,12 +67,14 @@ const LabelHamburgerMenu = () => {
         onClose={() => setOpen(false)}
         sx={{ zIndex: 9999 }}
       >
-        <MenuItem onClick={deleteCommand.callback}>
-          <Stack direction="row" gap={1} alignItems="center">
-            <Icon name={IconName.Delete} size={Size.Md} />
-            <Text>{deleteCommand.descriptor.label}</Text>
-          </Stack>
-        </MenuItem>
+        {showDelete && (
+          <MenuItem onClick={deleteCommand.callback}>
+            <Stack direction="row" gap={1} alignItems="center">
+              <Icon name={IconName.Delete} size={Size.Md} />
+              <Text>{deleteCommand.descriptor.label}</Text>
+            </Stack>
+          </MenuItem>
+        )}
         {showEditSchema && (
           <MenuItem onClick={handleOpenSchemaManager}>
             Edit field schema
@@ -92,11 +100,20 @@ const Header = () => {
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
-  const handleExit = () => {
+  // In patches view with single label, back should go to explore mode
+  const isPatches = useRecoilValue(fos.isPatchesView);
+  const labelCount = useAtomValue(labels).length;
+  const setModalMode = useSetAtom(fos.modalMode);
+  const shouldExitToExplore = isPatches && labelCount === 1;
+
+  const handleExit = useCallback(() => {
+    if (shouldExitToExplore) {
+      setModalMode(fos.ModalMode.EXPLORE);
+    }
     disableQuickDraw();
     scene?.exitInteractiveMode();
     onExit();
-  };
+  }, [shouldExitToExplore, setModalMode, onExit, disableQuickDraw, scene]);
 
   return (
     <Row>

@@ -33,6 +33,20 @@ type ComponentType =
   | "toggle";
 
 /**
+ * Schema attribute definition.
+ */
+type AttributeSchema = {
+  name: string;
+  type: FieldType;
+  component?: ComponentType;
+  read_only?: boolean;
+  precision?: number;
+  range?: [number, number];
+  values?: (string | number)[];
+  default?: string | number | (string | number)[];
+};
+
+/**
  * Schema definition for a single field.
  */
 type FieldSchema = {
@@ -43,6 +57,7 @@ type FieldSchema = {
   range?: [number, number];
   values?: (string | number)[];
   classes?: string[];
+  attributes?: AttributeSchema[];
 };
 
 /**

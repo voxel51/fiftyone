@@ -8,7 +8,6 @@ import {
   useWorkingDetections,
   useWorkingPolylines,
 } from "@fiftyone/looker-3d";
-import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useCallback } from "react";
 import { LabelProxy } from "../deltas";
@@ -104,7 +103,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     // Guard: don't compute deltas during active drag
     // This prevents intermediate states from being persisted
     if (dragInProgress) {
-      return [];
+      return { deltas: [] };
     }
 
     const sampleDeltas: JSONDeltas = [];
@@ -121,12 +120,12 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     // Generate deletion deltas for deleted labels
     // Only for labels that existed in baseline
     deletedLabels.forEach((label) => {
-      if (isDetection(label) || isPolyline(label)) {
+      if (label._cls === "Detection" || label._cls === "Polyline") {
         sampleDeltas.push(...getLabelDeleteDelta(label, label.path));
       }
     });
 
-    return sampleDeltas;
+    return { deltas: sampleDeltas };
   }, [
     getLabelDelta,
     getLabelDeleteDelta,
@@ -136,3 +135,21 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     dragInProgress,
   ]);
 };
+
+// export const use3dDeltaSupplier = (): DeltaSupplier => {
+//   const labels = useReconciledLabels3D();
+//   const getLabelDelta = useGetLabelDelta( buildAnnotationLabel );
+//
+//   return useCallback( () => {
+//     const allLabels = [
+//       ...(labels?.detections ?? []),
+//       ...(labels?.polylines ?? []),
+//     ];
+//
+//     const deltas = allLabels.flatMap( (label) =>
+//       getLabelDelta( label, label.path )
+//     );
+//
+//     return { deltas };
+//   }, [getLabelDelta, labels] );
+// };
