@@ -33,7 +33,7 @@ shift $((OPTIND - 1))
 
 set -eo pipefail
 
-THIS_DIR=$(cd "$(dirname "$0")" && pwd)
+THIS_DIR=$(realpath "$(dirname "$0")")
 SOURCE_DIR="${THIS_DIR}/source"
 EXTENSIONS_DIR="${THIS_DIR}/extensions"
 
