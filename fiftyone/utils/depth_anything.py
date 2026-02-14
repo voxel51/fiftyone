@@ -146,6 +146,11 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
             results.append(heatmap)
 
+        if output.get("extrinsics") is not None:
+            results[0].extrinsics = output["extrinsics"]
+        if output.get("intrinsics") is not None:
+            results[0].intrinsics = output["intrinsics"]
+
         return results
 
 
@@ -246,6 +251,10 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         if prediction.sky is not None:
             output["sky"] = prediction.sky
         output["is_metric"] = self.config.is_metric
+        if prediction.extrinsics is not None:
+            output["extrinsics"] = prediction.extrinsics
+        if prediction.intrinsics is not None:
+            output["intrinsics"] = prediction.intrinsics
         return output
 
 
