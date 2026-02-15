@@ -1,6 +1,7 @@
 import { subscribe } from "@fiftyone/relay";
 import { useRecoilCallback } from "recoil";
 import {
+  activeField,
   extendedStages,
   filters,
   groupSlice,
@@ -35,6 +36,8 @@ export default function useToPatches() {
         const unsubscribe = subscribe((_, { reset, set }) => {
           reset(viewStateForm_INTERNAL);
           set(patching, false);
+          // Activate the selected field in the sidebar so its overlays render
+          set(activeField({ modal: false, path: field }), true);
           unsubscribe();
         });
       },
