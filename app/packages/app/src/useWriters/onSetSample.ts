@@ -1,9 +1,4 @@
-import type { setSampleMutation } from "@fiftyone/relay";
 import type { RegisteredWriter } from "./registerWriter";
-
-import { setSample } from "@fiftyone/relay";
-import { env } from "@fiftyone/utilities";
-import { commitMutation } from "relay-runtime";
 
 export const handleGroupId = (search: URLSearchParams, groupId?: string) => {
   if (groupId) {
@@ -25,7 +20,7 @@ export const handleSampleId = (search: URLSearchParams, id?: string) => {
 };
 
 const onSetSample: RegisteredWriter<"modalSelector"> =
-  ({ environment, router, subscription }) =>
+  ({ router }) =>
   (selector) => {
     const search = new URLSearchParams(router.location.search);
 
@@ -41,17 +36,6 @@ const onSetSample: RegisteredWriter<"modalSelector"> =
       ...router.location.state,
       event: "modal",
       modalSelector: selector,
-    });
-
-    if (env().VITE_NO_STATE) return;
-
-    commitMutation<setSampleMutation>(environment, {
-      mutation: setSample,
-      variables: {
-        groupId: selector?.groupId,
-        id: selector?.id,
-        subscription,
-      },
     });
   };
 

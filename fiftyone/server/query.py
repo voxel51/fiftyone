@@ -486,6 +486,9 @@ class Query(fosa.AggregateQuery):
         filter: SampleFilter,
         filters: t.Optional[JSON] = None,
     ) -> t.Optional[SampleItem]:
+        print("querying sample with filter", filter, "and filters", filters)
+        print("dataset", dataset)
+        print("view", view)
         samples = await paginate_samples(
             dataset,
             view,
@@ -495,8 +498,9 @@ class Query(fosa.AggregateQuery):
             pagination_data=False,
         )
         if samples.edges:
+            print("found sample", samples.edges[0].node)
             return samples.edges[0].node
-
+        print("no sample found")
         return None
 
     stage_definitions = gql.field(stage_definitions)

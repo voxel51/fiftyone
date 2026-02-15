@@ -11,6 +11,7 @@ import {
   NotFoundError,
 } from "@fiftyone/utilities";
 import * as jsonpatch from "fast-json-patch";
+import { toExtendedJson } from "./transformer";
 import { encodeURIPath, parseETag } from "./util";
 
 /**
@@ -160,9 +161,15 @@ export const patchSample = async (
   // because we want to ensure permissions are checked against the src dataset.
   const queryParams = new URLSearchParams();
   if (request.generatedDatasetName) {
+    if (
+      !request.generatedSampleId ||
+      request.generatedSampleId == request.sampleId
+    ) {
+      throw new MalformedRequestError(
+        "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided"
+      );
+    }
     queryParams.set("generated_dataset", request.generatedDatasetName);
-  }
-  if (request.generatedSampleId) {
     queryParams.set("generated_sample_id", request.generatedSampleId);
   }
 
@@ -171,10 +178,16 @@ export const patchSample = async (
     ? `${encodeURIPath(pathParts)}?${queryString}`
     : encodeURIPath(pathParts);
 
+  // Convert ObjectId strings to Extended JSON ({ $oid: "..." }) so the server
+  // can deserialize them as bson.ObjectId rather than storing plain strings.
+  const deltas = request.deltas.map((delta) =>
+    "value" in delta ? { ...delta, value: toExtendedJson(delta.value) } : delta
+  );
+
   const response = await doFetch<JSONDeltas, Sample>({
     path: pathWithQuery,
     method: "PATCH",
-    body: request.deltas,
+    body: deltas,
     headers: {
       "Content-Type": "application/json-patch+json",
       "If-Match": `"${request.versionToken}"`,

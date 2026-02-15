@@ -70,9 +70,11 @@ export const doPatchSample = async ({
   if (sampleDeltas.length > 0) {
     try {
       let updatedSample: Sample;
-      // For patches views, use _sample_id (source sample) if available
-      const sampleId =
-        (sample as Sample & { _sample_id?: string })._sample_id || sample._id;
+      // For generated views, use _sample_id so that the sampleId and datasetId
+      // always refer to the persistent source.
+      const sampleId = isGenerated
+        ? (sample as Sample & { _sample_id?: string })._sample_id
+        : sample._id;
 
       try {
         const response = await patchSample({

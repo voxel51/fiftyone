@@ -20,7 +20,9 @@ export const useShowOverlays = () => {
 
 export const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(fos.selectedLabels, []),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, []),
     []
   );
 };
@@ -60,6 +62,8 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
     const modalSampleData = useRecoilValue(fos.modalSample);
+    console.log("modal sample data:", modalSampleData);
+    console.log("props sample data:", propsSampleData);
     const mode = useAtomValue(fos.modalMode);
     const sample = useMemo(() => {
       if (propsSampleData) {
