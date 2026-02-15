@@ -154,6 +154,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if output.get("gaussians") is not None:
             results[0].gaussians = output["gaussians"]
 
+        if output.get("aux"):
+            results[0].aux = output["aux"]
+
         return results
 
 
@@ -173,6 +176,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             of camera decoder (more accurate but slower)
         infer_gs (False): whether to predict 3D Gaussian Splatting parameters.
             Only supported by giant and nested models
+        export_feat_layers (None): optional list of transformer layer indices
+            to extract intermediate features from (e.g. ``[0, 5, 10]``)
     """
 
     def __init__(self, d):
@@ -196,6 +201,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.use_ray_pose = self.parse_bool(d, "use_ray_pose", default=False)
 
         self.infer_gs = self.parse_bool(d, "infer_gs", default=False)
+
+        self.export_feat_layers = d.get("export_feat_layers", None)
 
         self.raw_inputs = True
 
@@ -252,6 +259,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             process_res_method=self.config.process_res_method,
             infer_gs=self.config.infer_gs,
             use_ray_pose=self.config.use_ray_pose,
+            export_feat_layers=self.config.export_feat_layers or [],
         )
         output = {"depth": prediction.depth}
         if prediction.conf is not None:
@@ -271,6 +279,8 @@ class DepthAnythingV3Model(fout.TorchImageModel):
                     "infer_gs=True but model returned no gaussians. "
                     "Only giant and nested models support Gaussian Splatting"
                 )
+        if prediction.aux:
+            output["aux"] = prediction.aux
         return output
 
 
