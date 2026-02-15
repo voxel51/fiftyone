@@ -151,6 +151,9 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
         if output.get("intrinsics") is not None:
             results[0].intrinsics = output["intrinsics"]
 
+        if output.get("gaussians") is not None:
+            results[0].gaussians = output["gaussians"]
+
         return results
 
 
@@ -168,6 +171,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         process_res_method ("upper_bound_resize"): the resize strategy
         use_ray_pose (False): whether to use ray-based pose estimation instead
             of camera decoder (more accurate but slower)
+        infer_gs (False): whether to predict 3D Gaussian Splatting parameters.
+            Only supported by giant and nested models
     """
 
     def __init__(self, d):
@@ -189,6 +194,8 @@ class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         )
 
         self.use_ray_pose = self.parse_bool(d, "use_ray_pose", default=False)
+
+        self.infer_gs = self.parse_bool(d, "infer_gs", default=False)
 
         self.raw_inputs = True
 
@@ -243,6 +250,7 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             imgs,
             process_res=self.config.process_res,
             process_res_method=self.config.process_res_method,
+            infer_gs=self.config.infer_gs,
             use_ray_pose=self.config.use_ray_pose,
         )
         output = {"depth": prediction.depth}
@@ -255,6 +263,14 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             output["extrinsics"] = prediction.extrinsics
         if prediction.intrinsics is not None:
             output["intrinsics"] = prediction.intrinsics
+        if self.config.infer_gs:
+            if prediction.gaussians is not None:
+                output["gaussians"] = prediction.gaussians
+            else:
+                logger.warning(
+                    "infer_gs=True but model returned no gaussians. "
+                    "Only giant and nested models support Gaussian Splatting"
+                )
         return output
 
 
