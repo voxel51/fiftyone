@@ -284,6 +284,93 @@ class DepthAnythingV3Model(fout.TorchImageModel):
         return output
 
 
+def compute_multiview_depth(
+    filepaths,
+    model_name="depth-anything/da3-large",
+    *,
+    process_res=504,
+    use_ray_pose=False,
+    infer_gs=False,
+    export_feat_layers=None,
+    extrinsics=None,
+    intrinsics=None,
+):
+    """Computes multi-view depth using Depth Anything V3.
+
+    Passes all images to the model simultaneously for cross-view
+    attention, producing geometrically consistent depth maps and
+    camera poses across views.
+
+    Examples::
+
+        import fiftyone.utils.depth_anything as fouda
+
+        results = fouda.compute_multiview_depth(
+            ["view1.jpg", "view2.jpg", "view3.jpg"],
+        )
+
+        for r in results:
+            print(r.map.shape)
+
+        print(results[0].extrinsics.shape)
+
+    Args:
+        filepaths: list of image file paths
+        model_name ("depth-anything/da3-large"): DA3 model to use
+        process_res (504): processing resolution in pixels
+        use_ray_pose (False): whether to use ray-based pose estimation
+        infer_gs (False): whether to predict Gaussian Splatting parameters
+        export_feat_layers (None): optional list of transformer layer
+            indices for feature extraction
+        extrinsics (None): optional ``(N, 4, 4)`` array of known camera
+            world-to-camera matrices for pose conditioning
+        intrinsics (None): optional ``(N, 3, 3)`` array of known camera
+            intrinsic matrices for pose conditioning
+
+    Returns:
+        list of :class:`fiftyone.core.labels.Heatmap` instances with
+        camera parameters and optional gaussians/features attached
+    """
+    _ensure_depth_anything_3()
+
+    model = da3_api.DepthAnything3.from_pretrained(model_name)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+
+    prediction = model.inference(
+        filepaths,
+        process_res=process_res,
+        use_ray_pose=use_ray_pose,
+        infer_gs=infer_gs,
+        export_feat_layers=export_feat_layers or [],
+        extrinsics=extrinsics,
+        intrinsics=intrinsics,
+    )
+
+    is_metric = (
+        "metric" in model_name.lower()
+        or "nested" in model_name.lower()
+    )
+
+    processor = DepthAnythingV3OutputProcessor()
+    output = {"depth": prediction.depth, "is_metric": is_metric}
+    if prediction.conf is not None:
+        output["confidence"] = prediction.conf
+    if prediction.sky is not None:
+        output["sky"] = prediction.sky
+    if prediction.extrinsics is not None:
+        output["extrinsics"] = prediction.extrinsics
+    if prediction.intrinsics is not None:
+        output["intrinsics"] = prediction.intrinsics
+    if infer_gs and prediction.gaussians is not None:
+        output["gaussians"] = prediction.gaussians
+    if prediction.aux:
+        output["aux"] = prediction.aux
+
+    return processor(output, (None, None))
+
+
 def compute_3d_exports(
     samples,
     output_dir,
