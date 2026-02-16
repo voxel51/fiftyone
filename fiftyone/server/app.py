@@ -107,6 +107,13 @@ schema = gql.Schema(
     scalar_overrides=SCALAR_OVERRIDES,
 )
 
+try:  # strawberry-graphql<0.292.0
+    gqlc = GraphQL(schema, graphiql=foc.DEV_INSTALL)
+except TypeError:  # strawberry-graphql>=0.292.0
+    gqlc = GraphQL(
+        schema,
+        graphql_ide="graphiql" if foc.DEV_INSTALL else None
+    )
 
 app = Starlette(
     middleware=[
@@ -125,13 +132,11 @@ app = Starlette(
     ],
     debug=True,
     routes=[Route(route, endpoint) for route, endpoint in routes]
+
     + [
         Route(
             "/graphql",
-            GraphQL(
-                schema,
-                graphiql=foc.DEV_INSTALL,
-            ),
+            gqlc,
         ),
         Mount(
             "/plugins",
