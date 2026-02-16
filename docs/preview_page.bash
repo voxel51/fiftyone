@@ -12,7 +12,8 @@ usage() {
 Options:
 -h      Display this help message.
 <page>  Path to the doc page relative to docs/source/.
-        Also accepts absolute or relative file paths.
+        Also accepts absolute paths or paths relative to your
+        current working directory.
 
 Examples:
   bash $0 user_guide/using_datasets.rst
