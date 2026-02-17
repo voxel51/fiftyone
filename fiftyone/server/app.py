@@ -128,10 +128,7 @@ app = Starlette(
     + [
         Route(
             "/graphql",
-            GraphQL(
-                schema,
-                graphiql=foc.DEV_INSTALL,
-            ),
+            GraphQL(schema),
         ),
         Mount(
             "/plugins",
