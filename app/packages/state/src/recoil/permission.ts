@@ -42,10 +42,10 @@ export const readOnly = sessionAtom({
 
 export const canAnnotate = sessionAtom({
   key: "canAnnotate",
-  default: { enabled: false, message: null },
+  default: { enabled: true, message: null },
 });
 
 export const canManageSchema = sessionAtom({
   key: "canManageSchema",
-  default: { enabled: false, message: null },
+  default: { enabled: true, message: null },
 });

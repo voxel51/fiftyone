@@ -242,7 +242,12 @@ def _validate_dict_field_label_schema(
 def _validate_float_int_field_label_schema(
     field, field_name, label_schema, allow_default
 ):
-    is_float = isinstance(field, fof.FloatField)
+    # When field is None (new attribute not yet on the dataset), fall back to
+    # the schema's type to determine float vs int, otherwise float values
+    # like 1.1 are incorrectly rejected as invalid int values
+    is_float = isinstance(field, fof.FloatField) or (
+        field is None and label_schema.get(foac.TYPE) == foac.FLOAT
+    )
     _str_type = foac.FLOAT if is_float else foac.INT
     # a float field accepts float and int values
     _type = (float, int) if is_float else int

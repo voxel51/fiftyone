@@ -18,7 +18,7 @@ Thank you for submitting an issue. Please refer to our [issue policy](https://ww
 
 ### System information
 
--   **OS Platform and Distribution** (e.g., Linux Ubuntu 16.04):
+-   **OS Platform and Distribution** (e.g., Linux Ubuntu 24.04.3 LTS):
 -   **Python version** (`python --version`):
 -   **FiftyOne version** (`fiftyone --version`):
 -   **FiftyOne installed from** (pip or source):

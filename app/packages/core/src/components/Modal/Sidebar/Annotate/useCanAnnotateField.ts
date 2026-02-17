@@ -1,3 +1,5 @@
+import { isSystemReadOnlyField } from "./SchemaManager/constants";
+import { useIsFieldReadOnly } from "./SchemaManager/hooks";
 import useCanAnnotate from "./useCanAnnotate";
 import { useValidAnnotationFields } from "./useValidAnnotationFields";
 
@@ -7,8 +9,14 @@ import { useValidAnnotationFields } from "./useValidAnnotationFields";
  * @param path Path to field
  */
 export const useCanAnnotateField = (path: string): boolean => {
-  const { showAnnotationTab } = useCanAnnotate();
+  const { showAnnotationTab: canAnnotate } = useCanAnnotate();
   const { validFields } = useValidAnnotationFields();
+  const isFieldReadOnly = useIsFieldReadOnly();
 
-  return showAnnotationTab && validFields.includes(path);
+  return (
+    canAnnotate &&
+    validFields.includes(path) &&
+    !isFieldReadOnly(path) &&
+    !isSystemReadOnlyField(path)
+  );
 };

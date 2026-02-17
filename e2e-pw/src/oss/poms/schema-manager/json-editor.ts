@@ -81,6 +81,13 @@ export class JSONEditorPom {
   }
 
   /**
+   * Switch to the JSON tab in the edit field schema view
+   */
+  async switchToJSONTab() {
+    await this.schemaManager.locator.getByText("JSON", { exact: true }).click();
+  }
+
+  /**
    * Scan the dataset and populate label schema values
    */
   async scan() {

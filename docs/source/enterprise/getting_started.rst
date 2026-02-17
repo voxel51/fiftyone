@@ -150,8 +150,11 @@ interacting with cloud-backed media in FiftyOne Enterprise.
 Import your data
 ~~~~~~~~~~~~~~~~
 
+Importing directly from cloud bucket
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 The example code below shows the basic pattern for creating new datasets and
-populating them via the FiftyOne Enterprise Python SDK:
+populating them directly from cloud storage via the FiftyOne Enterprise Python SDK:
 
 .. tabs::
 
@@ -222,7 +225,7 @@ populating them via the FiftyOne Enterprise Python SDK:
          dataset.add_samples(samples)
 
          # You must mark the dataset as persistent to access it in the UI
-         dataset.persistent = True     
+         dataset.persistent = True
 
   .. group-tab:: MinIO
 
@@ -249,8 +252,17 @@ populating them via the FiftyOne Enterprise Python SDK:
          # You must mark the dataset as persistent to access it in the UI
          dataset.persistent = True
 
-Refer to :ref:`this page <importing-datasets>` for more information about
-importing your media and labels into FiftyOne via Python.
+Refer to :ref:`this page <importing-datasets>` for more
+information about importing your media and labels into FiftyOne via Python.
+
+Migrate from FiftyOne open-source
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you have an existing FiftyOne open-source dataset with locally stored media,
+you can migrate it to FiftyOne Enterprise and upload your media to cloud storage.
+
+Refer to :ref:`this page <enterprise-migrating-datasets>` for detailed instructions on
+migrating datasets from FiftyOne open-source to FiftyOne Enterprise.
 
 Compute metadata
 ~~~~~~~~~~~~~~~~

@@ -1005,6 +1005,18 @@ export class Scene2D {
     // Recalculate overlay order to maintain proper z-ordering
     this.recalculateOverlayOrder();
 
+    // Mark sibling classifications dirty
+    // so new overlay doesn't...overlay them
+    if (overlay.getOverlayType() === "ClassificationOverlay") {
+      [...this.overlays.values()]
+        .filter(
+          (sibling) =>
+            sibling !== overlay &&
+            sibling.getOverlayType() === "ClassificationOverlay"
+        )
+        .forEach((sibling) => sibling.markDirty());
+    }
+
     this.eventBus.dispatch("lighter:overlay-added", {
       id: overlay.id,
       overlay,

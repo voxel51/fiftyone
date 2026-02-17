@@ -93,15 +93,15 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsCount(1);
 
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
-    await modalAnnotateSidebar.collapseActiveLabels();
+    await modalAnnotateSidebar.toggleActiveLabels();
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsCollapsed();
-    await modalAnnotateSidebar.expandActiveLabels();
+    await modalAnnotateSidebar.toggleActiveLabels();
     await modalAnnotateSidebar.assert.verifyActiveLabelsIsExpanded();
 
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
-    await modalAnnotateSidebar.collapseActivePrimitiveFields();
+    await modalAnnotateSidebar.toggleActivePrimitiveFields();
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsCollapsed();
-    await modalAnnotateSidebar.expandActivePrimitiveFields();
+    await modalAnnotateSidebar.toggleActivePrimitiveFields();
     await modalAnnotateSidebar.assert.verifyActivePrimitiveFieldsIsExpanded();
 
     // await modalAnnotateSidebar.selectActiveLabel("bird", 1);

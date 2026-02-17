@@ -1,15 +1,15 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { useEffect, useMemo, useRef } from "react";
-import type { Quaternion } from "three";
+import type { Points, Quaternion } from "three";
 import { Vector3 } from "three";
+import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import PcdColormapModal, {
   PcdColorMapTunnel,
 } from "../../components/PcdColormapModal";
 import type { PcdAsset } from "../../hooks";
 import { useFoLoader } from "../../hooks/use-fo-loaders";
-import { usePointCloudHover } from "../../hooks/use-point-cloud-hover";
+import { usePointCloudHoverFromRaycast } from "../../hooks/use-point-cloud-hover-from-raycast";
 import { DynamicPCDLoader } from "../../loaders/dynamic-pcd-loader";
-import { HoveredPointMarker } from "../../components/HoveredPointMarker";
 import { useFo3dContext } from "../context";
 import { getResolvedUrlForFo3dAsset } from "../utils";
 import { usePcdMaterial } from "./use-pcd-material";
@@ -49,7 +49,7 @@ export const Pcd = ({
     }
   }, [points, centerGeometry]);
 
-  const pcdContainerRef = useRef();
+  const pcdContainerRef = useRef<Points>(null);
 
   const {
     pointsMaterial,
@@ -66,13 +66,11 @@ export const Pcd = ({
     quaternion
   );
 
-  const { hoverProps, currentHoveredPoint } = usePointCloudHover({
+  const { currentHoveredPoint } = usePointCloudHoverFromRaycast({
     geometry: points.geometry,
     assetName: name,
     shadingMode,
-    position,
-    quaternion,
-    scale,
+    pointsRef: pcdContainerRef,
   });
 
   useEffect(() => {
@@ -98,7 +96,6 @@ export const Pcd = ({
         position={position}
         quaternion={quaternion}
         scale={scale}
-        {...hoverProps}
       >
         {pointsMaterial}
         {children ?? null}

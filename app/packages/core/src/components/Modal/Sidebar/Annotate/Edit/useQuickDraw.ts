@@ -1,12 +1,12 @@
+import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo } from "react";
-import { fieldType, labelSchemaData } from "../state";
+import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -106,37 +106,50 @@ export const useQuickDraw = () => {
    * 3. Default detection field
    *
    * Returns null if no detection field is available.
+   *
+   * Reads `lastUsedDetectionFieldAtom` directly via `useAtomCallback` so that
+   * a field set by `trackLastUsedDetection` in the same synchronous call-stack
+   * is visible immediately (avoids stale closure).
    */
-  const getQuickDrawDetectionField = useCallback((): string | null => {
-    if (quickDrawActive && lastUsedField) {
-      return lastUsedField;
-    }
+  const getQuickDrawDetectionField = useAtomCallback(
+    useCallback(
+      (get): string | null => {
+        const lastField = get(lastUsedDetectionFieldAtom);
 
-    let maxCount = 0;
-    let fieldWithMostLabels: string | null = null;
+        if (lastField) {
+          const schema = get(labelSchemaData(lastField));
+          if (!isFieldReadOnly(schema)) {
+            return lastField;
+          }
+        }
 
-    for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
-      const typeStr = getFieldType(fieldPath);
+        let maxCount = 0;
+        let fieldWithMostLabels: string | null = null;
 
-      if (detectionTypes.has(typeStr || "") && fieldLabels.length > maxCount) {
-        maxCount = fieldLabels.length;
-        fieldWithMostLabels = fieldPath;
-      }
-    }
+        for (const [fieldPath, fieldLabels] of Object.entries(labelsMap)) {
+          const typeStr = getFieldType(fieldPath);
+          const schema = getLabelSchema(fieldPath);
 
-    if (fieldWithMostLabels) {
-      return fieldWithMostLabels;
-    }
+          if (
+            detectionTypes.has(typeStr || "") &&
+            !isFieldReadOnly(schema) &&
+            fieldLabels.length > maxCount
+          ) {
+            maxCount = fieldLabels.length;
+            fieldWithMostLabels = fieldPath;
+          }
+        }
 
-    // Fallback to default detection field
-    return defaultDetectionField;
-  }, [
-    defaultDetectionField,
-    getFieldType,
-    labelsMap,
-    lastUsedField,
-    quickDrawActive,
-  ]);
+        if (fieldWithMostLabels) {
+          return fieldWithMostLabels;
+        }
+
+        // Fallback to default detection field
+        return defaultDetectionField;
+      },
+      [defaultDetectionField, getFieldType, getLabelSchema, labelsMap]
+    )
+  );
 
   /**
    * Get the auto-assigned label value (class) for a detection field.

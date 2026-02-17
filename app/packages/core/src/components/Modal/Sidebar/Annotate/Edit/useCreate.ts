@@ -5,6 +5,7 @@ import type {
   ClassificationOverlay,
 } from "@fiftyone/lighter";
 import { InteractiveDetectionHandler, useLighter } from "@fiftyone/lighter";
+import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
 import type { AnnotationLabel } from "@fiftyone/state";
 import {
   CLASSIFICATION,
@@ -14,6 +15,7 @@ import {
 } from "@fiftyone/utilities";
 import { atom, getDefaultStore, useSetAtom } from "jotai";
 import { useCallback } from "react";
+import { isFieldReadOnly, labelSchemaData } from "../state";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
 import { useQuickDraw } from "./useQuickDraw";
@@ -49,19 +51,41 @@ const useCreateAnnotationLabel = () => {
         ? getQuickDrawDetectionLabel(field)
         : undefined;
 
+      // Extract default values from the label schema for new annotations
+      const fieldSchema = store.get(labelSchemaData(field));
+      const labelSchema = fieldSchema?.label_schema;
+      const defaults: Record<string, unknown> = {};
+
+      // Top-level default applies to the "label" value (e.g., default class)
+      if (labelSchema?.default !== undefined) {
+        defaults.label = labelSchema.default;
+      }
+
+      // Attribute-level defaults
+      if (Array.isArray(labelSchema?.attributes)) {
+        for (const attr of labelSchema.attributes) {
+          if (attr.name && attr.default !== undefined) {
+            defaults[attr.name] = attr.default;
+          }
+        }
+      }
+
       const data = {
         _id: id,
+        ...defaults,
         ...(labelValue && { label: labelValue }),
       };
 
       if (type === CLASSIFICATION) {
+        data["_cls"] = "Classification";
+
         const overlay = overlayFactory.create<
           ClassificationOptions,
           ClassificationOverlay
         >("classification", {
           field,
           id,
-          label: data,
+          label: data as ClassificationLabel,
         });
         addOverlay(overlay);
         scene?.selectOverlay(id, { ignoreSideEffects: true });
@@ -71,13 +95,19 @@ const useCreateAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
+        data["_cls"] = "Detection";
+
+        const readOnly = isFieldReadOnly(fieldSchema);
+
         const overlay = overlayFactory.create<
           BoundingBoxOptions,
           BoundingBoxOverlay
         >("bounding-box", {
           field,
           id,
-          label: data,
+          label: data as DetectionLabel,
+          draggable: !readOnly,
+          resizeable: !readOnly,
         });
         addOverlay(overlay);
 

@@ -251,6 +251,94 @@ class Object(BaseType):
         """
         return self.define_property(name, Void(), view=view, **kwargs)
 
+    def loader(
+        self,
+        name,
+        type,
+        operator,
+        params=None,
+        label=None,
+        placeholder_view=None,
+        dependencies=None,
+        **kwargs,
+    ):
+        """Defines a loader property that fetches data asynchronously.
+
+        The loader executes an operator and stores the result at the property
+        path. The property value always has the following structure::
+
+            {
+                "state": "idle" | "loading" | "loaded" | "errored",
+                "data": <type>,  # the loaded data, shaped by the type argument
+                "error": <str>   # error message (when state is "errored")
+            }
+
+        The ``type`` argument defines the shape of the ``data`` field, not the
+        entire loader value. For example, if ``type=types.List(types.Object())``,
+        then ``ctx.params[name]["data"]`` will be a list of objects.
+
+        By default, the loader executes only once when the component mounts.
+        Use the ``dependencies`` argument to specify which param paths should
+        trigger a reload when their values change.
+
+        Examples::
+
+            def resolve_input(self, ctx):
+                inputs = types.Object()
+
+                inputs.str("make", label="Car Make")
+
+                chosen_make = ctx.params.get("make")
+                if chosen_make:
+                    inputs.loader(
+                        "available_models",
+                        type=types.List(types.Object()),
+                        operator="@my-plugin/load_models",
+                        params={"make": chosen_make},
+                        label="Loading models...",
+                        dependencies=["make"],  # reload when "make" changes
+                    )
+
+                models = ctx.params.get("available_models", {})
+                if models.get("state") == "loaded":
+                    choices = Choices()
+                    for model in models.get("data", []):
+                        choices.add_choice(model["id"], label=model["name"])
+                    inputs.enum("model", values=choices)
+
+                return types.Property(inputs)
+
+        Args:
+            name: the name of the property
+            type: the type of the ``data`` field within the loader value
+                (e.g., ``types.Object()``, ``types.List(types.Object())``)
+            operator: the operator to execute (string URI or callable method)
+            params (None): parameters to pass to the operator
+            label (None): loading message to display
+            placeholder_view (None): view to render while loading
+            dependencies (None): list of param paths (dot-notation supported)
+                that should trigger a reload when changed. If None, the loader
+                only executes once on mount
+
+        Returns:
+            a :class:`Property`
+        """
+        loader_type = Object()
+        loader_type.enum(
+            "state", values=["idle", "loading", "loaded", "errored"]
+        )
+        loader_type.define_property("data", type)
+        loader_type.str("error")
+
+        view = LoaderView(
+            operator=operator,
+            params=params,
+            label=label,
+            placeholder_view=placeholder_view,
+            dependencies=dependencies,
+        )
+        return self.define_property(name, loader_type, view=view, **kwargs)
+
     def btn(
         self,
         name,
@@ -1845,6 +1933,82 @@ class LoadingView(ReadOnlyView):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class LoaderView(View):
+    """A view that loads data asynchronously via an operator.
+
+    The view executes the specified operator and stores the result. The loader
+    property value always has the following structure::
+
+        {
+            "state": "idle" | "loading" | "loaded" | "errored",
+            "data": <type>,  # shaped by the type argument passed to loader()
+            "error": <str>   # error message (when state is "errored")
+        }
+
+    The ``type`` argument passed to :meth:`Object.loader` defines the shape of
+    the ``data`` field, not the entire loader value.
+
+    By default, the loader executes only once when the component mounts.
+    Use the ``dependencies`` argument to specify which param paths should
+    trigger a reload when their values change.
+
+    Args:
+        operator: the operator to execute (string URI or callable method)
+        params (None): parameters to pass to the operator
+        label (None): loading message to display
+        placeholder_view (None): view to render while loading
+        dependencies (None): list of param paths (dot-notation supported)
+            that should trigger a reload when changed. If None, the loader
+            only executes once on mount
+    """
+
+    def __init__(
+        self,
+        operator,
+        params=None,
+        label=None,
+        placeholder_view=None,
+        dependencies=None,
+        **kwargs,
+    ):
+        super().__init__(
+            operator=operator,
+            params=params,
+            label=label,
+            placeholder_view=placeholder_view,
+            dependencies=dependencies,
+            **kwargs,
+        )
+        self.operator = operator
+        self.params = params
+        self.placeholder_view = placeholder_view
+        self.dependencies = dependencies
+        if label is not None:
+            self.label = label
+
+    def to_json(self):
+        d = super().to_json()
+        if callable(self.operator):
+            op_self = getattr(self.operator, "__self__", None)
+            uri = (
+                getattr(op_self, "uri", None) if op_self is not None else None
+            )
+            if uri is not None:
+                d["operator"] = f"{uri}#{self.operator.__name__}"
+            else:
+                module = getattr(self.operator, "__module__", "")
+                name = getattr(self.operator, "__name__", str(self.operator))
+                d["operator"] = f"{module}.{name}" if module else name
+        else:
+            d["operator"] = self.operator
+        d["params"] = self.params
+        if self.placeholder_view:
+            d["placeholder_view"] = self.placeholder_view.to_json()
+        if self.dependencies:
+            d["dependencies"] = self.dependencies
+        return d
 
 
 class PillBadgeView(View):

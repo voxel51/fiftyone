@@ -315,6 +315,12 @@ export const componentNeedsValues = (component: string): boolean =>
   component === "checkboxes";
 
 /**
+ * Threshold for switching between radio and dropdown components.
+ * Mirrors CHECKBOXES_OR_RADIO_THRESHOLD in annotation/constants.py
+ */
+export const CLASSES_COMPONENT_THRESHOLD = 5;
+
+/**
  * Get default component for a type
  */
 export const getDefaultComponent = (type: string): string => {

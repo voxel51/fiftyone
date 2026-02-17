@@ -76,6 +76,7 @@ extensions = [
     "myst_parser",
     "llms_txt",
     "sphinx_remove_toctrees",
+    "sphinx_markdown_builder",
 ]
 
 # Types of class members to generate documentation for.

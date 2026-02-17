@@ -5,7 +5,6 @@ FiftyOne CPU count utility unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import unittest
 from unittest.mock import patch, mock_open
 

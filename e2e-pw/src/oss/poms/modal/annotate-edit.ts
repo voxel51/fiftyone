@@ -1,7 +1,8 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 
 /**
- * The edit form when in 'Annotate' mode. Applies to Primitives and Labels
+ * The modal sidebar's edit form when in 'Annotate' mode. Applies to primitives
+ * and labels
  */
 export class ModalAnnotateEditPom {
   readonly page: Page;
@@ -36,26 +37,28 @@ export class ModalAnnotateEditPom {
   }
 
   /**
-   * Click the undo button
+   * Click the redo button
    */
   async redo() {
     await this.redoButton.click();
   }
 
   /**
+   * Get the container element for a specific field
    *
    * @param path The field path
-   * @returns
+   * @returns A locator for the field container
    */
-  async getFieldContainer(path: string) {
+  getFieldContainer(path: string) {
     const id = convertPathToId(path);
     return this.locator.getByTestId(`${id}_container`);
   }
 
   /**
+   * Get the error message text for a specific field
    *
    * @param path The field path
-   * @returns A locator
+   * @returns A promise that resolves to the error text content
    */
   async getFieldErrors(path: string) {
     const id = convertPathToId(path);
@@ -66,7 +69,7 @@ export class ModalAnnotateEditPom {
    * Get a field label
    *
    * @param path The field path
-   * @returns A locator
+   * @returns A promise that resolves to the label text content
    */
   async getFieldLabel(path: string) {
     return (await this.getFieldContainer(path)).locator("label").textContent();
@@ -76,7 +79,8 @@ export class ModalAnnotateEditPom {
    * Get a field form input
    *
    * @param path The field path
-   * @returns A locator
+   * @returns A promise that resolves to a locator for the input, textarea, o
+   *  select element
    */
   async getField(path: string) {
     return (await this.getFieldContainer(path)).locator(
@@ -88,7 +92,7 @@ export class ModalAnnotateEditPom {
    * Get a field value
    *
    * @param field The field name
-   * @returns A string value
+   * @returns A promise that resolves to the field's input value
    */
   async getFieldValue(field: string) {
     const locator = await this.getField(field);
@@ -108,7 +112,7 @@ export class ModalAnnotateEditPom {
 }
 
 /**
- * Modal 'Annotate' edit asserter
+ * Asserter class for the modal's sidebar when in 'Annotate' edit mode
  */
 class ModalAnnotateEditAsserter {
   constructor(private readonly modalAnnotateEdit: ModalAnnotateEditPom) {}
@@ -117,7 +121,7 @@ class ModalAnnotateEditAsserter {
    * Verify a field's label
    *
    * @param path The field path
-   * @param expectedLabel The expected value
+   * @param expectedLabel The expected label value
    */
   async verifyFieldLabel(path: string, expectedLabel: string) {
     const actualLabel = await this.modalAnnotateEdit.getFieldLabel(path);
@@ -128,7 +132,7 @@ class ModalAnnotateEditAsserter {
    * Verify a field's errors
    *
    * @param path The field path
-   * @param expectedLabel The expected value
+   * @param expectedErrors The expected error message
    */
   async verifyFieldErrors(path: string, expectedErrors: string) {
     const actualErrors = await this.modalAnnotateEdit.getFieldErrors(path);
@@ -139,34 +143,52 @@ class ModalAnnotateEditAsserter {
    * Verify a field's value
    *
    * @param path The field path
-   * @param expectedValue The expected value
+   * @param expectedValue The expected field value
    */
   async verifyFieldValue(path: string, expectedValue: string) {
     const actualValue = await this.modalAnnotateEdit.getFieldValue(path);
     expect(actualValue).toBe(expectedValue);
   }
 
+  /**
+   * Verify that the undo button is enabled
+   */
   async verifyUndoButtonEnabled() {
-    const undoButton = await this.modalAnnotateEdit.undoButton;
-    await expect(await undoButton).not.toHaveClass(/disabled/);
+    const undoButton = this.modalAnnotateEdit.undoButton;
+    await expect(undoButton).not.toHaveClass(/disabled/);
   }
 
+  /**
+   * Verify that the redo button is enabled
+   */
   async verifyRedoButtonEnabled() {
-    const redoButton = await this.modalAnnotateEdit.redoButton;
-    await expect(await redoButton).not.toHaveClass(/disabled/);
+    const redoButton = this.modalAnnotateEdit.redoButton;
+    await expect(redoButton).not.toHaveClass(/disabled/);
   }
 
+  /**
+   * Verify that the undo button is disabled
+   */
   async verifyUndoButtonDisabled() {
-    const undoButton = await this.modalAnnotateEdit.undoButton;
-    await expect(await undoButton).toHaveClass(/disabled/);
+    const undoButton = this.modalAnnotateEdit.undoButton;
+    await expect(undoButton).toHaveClass(/disabled/);
   }
 
+  /**
+   * Verify that the redo button is disabled
+   */
   async verifyRedoButtonDisabled() {
-    const redoButton = await this.modalAnnotateEdit.redoButton;
-    await expect(await redoButton).toHaveClass(/disabled/);
+    const redoButton = this.modalAnnotateEdit.redoButton;
+    await expect(redoButton).toHaveClass(/disabled/);
   }
 }
 
+/**
+ * Convert a field path to a test ID format
+ *
+ * @param path The field path (dot-separated)
+ * @returns The converted test ID with underscores
+ */
 function convertPathToId(path: string) {
   return "root_" + path.replace(/\./g, "_");
 }

@@ -3,44 +3,21 @@
  */
 
 import { useOperatorExecutor } from "@fiftyone/operators";
+import {
+  useNotification,
+  useQueryPerformanceSampleLimit,
+} from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { useMemo, useState } from "react";
-import { currentField, labelSchemaData } from "../../state";
-import { getAttributeNames, hasAttributes, isNamedAttribute } from "../utils";
+import { useCallback, useMemo, useState } from "react";
+import {
+  addToActiveSchemas,
+  currentField,
+  labelSchemaData,
+  removeFromActiveSchemas,
+} from "../../state";
 import { currentLabelSchema } from "../state";
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Extract new attributes from current schema that don't exist in saved or default.
- * Returns a dict format for the backend API (name -> config without name field).
- */
-const getNewAttributes = (
-  current: unknown,
-  saved: unknown,
-  defaultSchema: unknown
-): Record<string, unknown> => {
-  const savedNames = getAttributeNames(saved);
-  const defaultNames = getAttributeNames(defaultSchema);
-
-  const newAttributes: Record<string, unknown> = {};
-
-  if (hasAttributes(current) && Array.isArray(current.attributes)) {
-    for (const attr of current.attributes) {
-      if (isNamedAttribute(attr)) {
-        const { name, ...config } = attr;
-        if (!savedNames.has(name) && !defaultNames.has(name)) {
-          newAttributes[name] = config;
-        }
-      }
-    }
-  }
-
-  return newAttributes;
-};
+import { reconcileComponent } from "../utils";
 
 // =============================================================================
 // Internal Hooks
@@ -64,7 +41,6 @@ const useDiscard = (field: string, reset: () => void) => {
   const [currentSchema, setCurrent] = useCurrentLabelSchema(field);
   const defaultLabelSchema = useDefaultLabelSchema(field);
   const [saved] = useSavedLabelSchema(field);
-  const setCurrentField = useSetAtom(currentField);
 
   return {
     currentLabelSchema: currentSchema,
@@ -129,17 +105,25 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
-  const defaultLabelSchema = useDefaultLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
+  const activate = useOperatorExecutor("activate_label_schemas");
+  const addToActive = useSetAtom(addToActiveSchemas);
+  const removeFromActive = useSetAtom(removeFromActiveSchemas);
+  const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
   const setCurrentField = useSetAtom(currentField);
 
   return {
     isSaving,
     save: () => {
+      const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
 
-      const params: Record<string, unknown> = { field, label_schema: current };
+      const labelSchema = current ? reconcileComponent(current) : current;
+      const params: Record<string, unknown> = {
+        field,
+        label_schema: labelSchema,
+      };
 
       update.execute(params, {
         callback: (result) => {
@@ -157,6 +141,29 @@ const useSave = (field: string) => {
 
           // Only update state on success
           setSaved(current);
+
+          // Auto-activate the field on first save
+          if (isFirstSave) {
+            const fieldSet = new Set([field]);
+            addToActive(fieldSet);
+            activate.execute(
+              { fields: [field] },
+              {
+                callback: (activateResult) => {
+                  if (activateResult.error) {
+                    removeFromActive(fieldSet);
+                    notify({
+                      msg: `Failed to activate field: ${
+                        activateResult.errorMessage || activateResult.error
+                      }`,
+                      variant: "error",
+                    });
+                  }
+                },
+              }
+            );
+          }
+
           setCurrentField(null);
         },
       });
@@ -169,13 +176,13 @@ const useScan = (field: string) => {
   const [isScanning, setIsScanning] = useState(false);
   const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
-
+  const limit = useQueryPerformanceSampleLimit();
   return {
     isScanning,
     scan: () => {
       setIsScanning(true);
       generate.execute(
-        { field },
+        { field, limit },
         {
           callback: (result) => {
             if (result.result) {
@@ -189,6 +196,9 @@ const useScan = (field: string) => {
         }
       );
     },
+    cancelScan: () => {
+      setIsScanning(false);
+    },
   };
 };
 
@@ -201,11 +211,17 @@ const useValidate = (field: string) => {
   const discard = useDiscard(field, () => setErrors([]));
   const validate = useOperatorExecutor("validate_label_schemas");
 
+  const resetErrors = useCallback(() => {
+    setErrors([]);
+    setIsValid(true);
+  }, []);
+
   return {
     ...discard,
     errors,
     isValid,
     isValidating,
+    resetErrors,
     validate: (data: string) => {
       try {
         setIsValidating(true);

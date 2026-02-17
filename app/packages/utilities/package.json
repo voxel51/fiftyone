@@ -31,5 +31,8 @@
         "lru-cache": "^11.0.1",
         "mime": "^2.5.2",
         "path-browserify": "^1.0.1"
+    },
+    "peerDependencies": {
+        "react": "*"
     }
 }
