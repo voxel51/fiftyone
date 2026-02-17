@@ -506,7 +506,7 @@ class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.overrides = self.parse_dict(d, "overrides", default=None)
 
 
-class FiftyOneYOLOModel(fout.TorchImageModel):
+class FiftyOneYOLOModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
 
     Args:
@@ -514,7 +514,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        super().__init__(config)
+        fout.TorchSamplesMixin.__init__(self)
+        fout.TorchImageModel.__init__(self, config)
+        self._curr_visual_prompts = None
 
     @property
     def has_collate_fn(self):
@@ -610,6 +612,23 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         preds = self._model.predictor.inference(imgs)
         return {"preds": preds}
 
+    def predict_all(self, imgs, samples=None):
+        field_name = self._get_field()
+        if field_name is not None and samples is not None:
+            self._curr_visual_prompts = _parse_visual_prompts(
+                samples, field_name
+            )
+        else:
+            self._curr_visual_prompts = None
+
+        return self._predict_all(imgs)
+
+    def _get_field(self):
+        if "prompt_field" in self.needs_fields:
+            return self.needs_fields["prompt_field"]
+
+        return next(iter(self.needs_fields.values()), None)
+
     def _build_transforms(self, config):
         if config.ragged_batches is not None:
             ragged_batches = config.ragged_batches
@@ -666,6 +685,9 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
         return output_processor
 
     def _predict_all(self, imgs):
+        if self._curr_visual_prompts is not None:
+            return self._predict_all_visual_prompts(imgs)
+
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
             if self.has_collate_fn:
@@ -700,6 +722,67 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             confidence_thresh=self.config.confidence_thresh,
             classes=self.config.filter_classes,
         )
+
+    def _predict_all_visual_prompts(self, imgs):
+        if self._preprocess and self._transforms is not None:
+            imgs = [self._transforms(img) for img in imgs]
+            if self.has_collate_fn:
+                imgs = self.collate_fn(imgs)
+
+        orig_images = imgs["orig_imgs"]
+        width_height = imgs["orig_shapes"]
+
+        vp_predictor_cls = _get_yoloe_vp_predictor()
+
+        orig_predictor = self._model.predictor
+
+        all_labels = []
+        try:
+            for orig_img, wh, prompts in zip(
+                orig_images, width_height, self._curr_visual_prompts
+            ):
+                if prompts is None or len(prompts.detections) == 0:
+                    all_labels.append(fol.Detections())
+                    continue
+
+                w, h = wh
+                bboxes, cls_indices, classes = (
+                    _detections_to_visual_prompts(prompts, w, h)
+                )
+
+                visual_prompts = dict(
+                    bboxes=np.array(bboxes),
+                    cls=np.array(cls_indices),
+                )
+
+                results = self._model.predict(
+                    orig_img,
+                    visual_prompts=visual_prompts,
+                    predictor=vp_predictor_cls,
+                    conf=self.config.confidence_thresh or 0.25,
+                    device=self._device,
+                    verbose=False,
+                )
+
+                # Remap class names from prompt labels
+                names_map = {i: name for i, name in enumerate(classes)}
+                for r in results:
+                    r.names = names_map
+
+                labels = to_instances(
+                    results,
+                    confidence_thresh=self.config.confidence_thresh,
+                    classes=self.config.filter_classes,
+                )
+
+                if isinstance(labels, list):
+                    labels = labels[0] if labels else fol.Detections()
+
+                all_labels.append(labels)
+        finally:
+            self._model.predictor = orig_predictor
+
+        return all_labels
 
 
 def _get_image_dims(img):
@@ -1054,4 +1137,50 @@ class UltralyticsOBBOutputProcessor(
         preds = self.post_process(output)
         return obb_to_polylines(
             preds, confidence_thresh=confidence_thresh, classes=classes
+        )
+
+
+def _parse_visual_prompts(samples, field_name):
+    prompts = []
+    for sample in samples:
+        value = sample.get_field(field_name)
+        if value is not None:
+            if not isinstance(value, fol.Detections):
+                raise ValueError(
+                    "YOLOE visual prompts must be Detections, got %s"
+                    % type(value)
+                )
+            prompts.append(value)
+        else:
+            prompts.append(None)
+
+    return prompts
+
+
+def _detections_to_visual_prompts(detections, img_width, img_height):
+    bboxes = []
+    cls_indices = []
+    classes = []
+    for det in detections.detections:
+        bx, by, bw, bh = det.bounding_box
+        x1 = bx * img_width
+        y1 = by * img_height
+        x2 = (bx + bw) * img_width
+        y2 = (by + bh) * img_height
+        bboxes.append([x1, y1, x2, y2])
+        if det.label not in classes:
+            classes.append(det.label)
+        cls_indices.append(classes.index(det.label))
+
+    return bboxes, cls_indices, classes
+
+
+def _get_yoloe_vp_predictor():
+    try:
+        from ultralytics.models.yolo.yoloe import YOLOEVPSegPredictor
+
+        return YOLOEVPSegPredictor
+    except ImportError:
+        raise ImportError(
+            "Visual prompts require ultralytics>=8.4.0 with YOLOE support"
         )
