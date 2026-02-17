@@ -4,9 +4,12 @@
 
 import {
   AnnotationEventGroup,
+  DeleteAnnotationCommand,
+  getFieldSchema,
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import {
   BoundingBoxOverlay,
   type LighterEventGroup,
@@ -17,10 +20,14 @@ import {
   useLighterEventHandler,
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import { currentData } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
+import { labels } from "../Sidebar/Annotate/useLabels";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -34,6 +41,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
   const annotationEventBus = useAnnotationEventBus();
+  const commandBus = useCommandBus();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -43,6 +51,16 @@ export const useBridge = (scene: Scene2D | null) => {
   const save = useSetAtom(currentData);
   const { addLabelToSidebar, removeLabelFromSidebar, updateLabelData } =
     useLabelsContext();
+  const fieldSchema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
+  const getLabelById = useAtomCallback(
+    useCallback(
+      (get, _set, id: string) =>
+        get(labels).find((label) => label.data._id === id),
+      []
+    )
+  );
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -147,6 +165,32 @@ export const useBridge = (scene: Scene2D | null) => {
         }
       },
       [addLabelToSidebar]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-undone",
+    useCallback(
+      (payload) => {
+        // Look up the label before it gets removed from the sidebar
+        // (lighter:creation-undone fires before lighter:overlay-removed)
+        const label = getLabelById(payload.id);
+        if (!label) {
+          return;
+        }
+
+        const schema = getFieldSchema(fieldSchema, label.path);
+        if (!schema) {
+          return;
+        }
+
+        commandBus
+          .execute(new DeleteAnnotationCommand(label, schema))
+          .catch((error) => {
+            console.error("Failed to persist undo of creation:", error);
+          });
+      },
+      [commandBus, fieldSchema, getLabelById]
     )
   );
 

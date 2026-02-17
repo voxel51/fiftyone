@@ -63,6 +63,8 @@ export type LighterEventGroup = {
     absoluteBounds: Rect;
     relativeBounds: Rect;
   };
+  /** Emitted when an overlay creation is undone, before the overlay is removed */
+  "lighter:overlay-undone": { id: string };
   /** Emitted when an overlay starts being dragged */
   "lighter:overlay-drag-start": {
     id: string;
