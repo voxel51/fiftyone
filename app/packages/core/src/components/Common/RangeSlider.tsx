@@ -243,7 +243,7 @@ const BaseSlider = <T extends Range | number>({
           }
         </>
       ) : null}
-      <SliderContainer id="slider-container" style={style}>
+      <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
           ref={sliderRef}
