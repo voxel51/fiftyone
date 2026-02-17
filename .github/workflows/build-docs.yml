@@ -120,8 +120,6 @@ jobs:
           sudo apt-get install pandoc
           echo "Installing docs requirements"
           pip install -r requirements/docs.txt
-          echo "Installing fiftyone-teams requirements"
-          pip install ./fiftyone-teams
           echo "Installing fiftyone-brain and fiftyone-db"
           pip install fiftyone-brain fiftyone-db
           echo "Installing fiftyone"

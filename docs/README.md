@@ -40,14 +40,7 @@ To build the documentation locally, follow these steps:
     pip install -r requirements/docs.txt
     ```
 
-3. If you are going to include FiftyOne Enterprise SDK components in your local
-   docs build, you need to install some additional dependencies as well:
-
-    ```shell
-    pip install -r requirements/docs-teams.txt
-    ```
-
-4. To use the `fiftyone` repository to autogenerate docs, you need to add it to
+3. To use the `fiftyone` repository to autogenerate docs, you need to add it to
    your `PYTHONPATH`:
 
     ```shell
