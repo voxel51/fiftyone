@@ -381,6 +381,62 @@ class TFImageClassificationDataset(ImageClassificationDataset):
         return fout.TFImageClassificationDatasetExporter
 
 
+class HDF5Dataset(UnlabeledImageDataset):
+    """A dataset consisting of images stored in an
+    `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.
+
+    The HDF5 file should contain a dataset keyed by ``images_key`` (default
+    ``"images"``) containing images stored as either pixel arrays of shape
+    ``(N, H, W, C)`` or ``(N, H, W)``, or encoded image bytes (e.g.,
+    PNG/JPEG) of shape ``(N,)``.
+
+    During import, images are extracted from the HDF5 file and written to
+    individual image files in a specified directory.
+
+    .. note::
+
+        See :class:`fiftyone.utils.hdf5.HDF5UnlabeledImageDatasetImporter`
+        for parameters that can be passed to methods like
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+        to customize the import of datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.hdf5 as fouh
+
+        return fouh.HDF5UnlabeledImageDatasetImporter
+
+
+class HDF5ImageClassificationDataset(ImageClassificationDataset):
+    """A labeled dataset consisting of images and their associated
+    classification labels stored in an
+    `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.
+
+    The HDF5 file should contain a dataset keyed by ``images_key`` (default
+    ``"images"``) containing images stored as either pixel arrays of shape
+    ``(N, H, W, C)`` or ``(N, H, W)``, or encoded image bytes (e.g.,
+    PNG/JPEG) of shape ``(N,)``; and a dataset keyed by ``labels_key``
+    (default ``"labels"``) containing string or integer classification
+    labels of shape ``(N,)``.
+
+    During import, images are extracted from the HDF5 file and written to
+    individual image files in a specified directory, analogous to how
+    TFRecords-based datasets are imported.
+
+    .. note::
+
+        See :class:`fiftyone.utils.hdf5.HDF5ImageDatasetImporter` for
+        parameters that can be passed to methods like
+        :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`
+        to customize the import of datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.hdf5 as fouh
+
+        return fouh.HDF5ImageDatasetImporter
+
+
 class FiftyOneImageDetectionDataset(ImageDetectionDataset):
     """A labeled dataset consisting of images and their associated object
     detections stored in a simple JSON format.

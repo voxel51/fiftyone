@@ -615,6 +615,28 @@ def ensure_tf(eager=False, error_level=None, error_msg=None):
     return True
 
 
+def ensure_h5py(error_level=None, error_msg=None):
+    """Verifies that ``h5py`` is installed and importable.
+
+    Args:
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisfied
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        error_msg (None): an optional custom error message to print
+
+    Returns:
+        True/False whether the requirement is satisfied
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return ensure_import("h5py", error_level=error_level, error_msg=error_msg)
+
+
 def ensure_tfds(error_level=None, error_msg=None):
     """Verifies that ``tensorflow_datasets`` is installed and importable.
 

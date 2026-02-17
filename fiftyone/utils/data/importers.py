@@ -608,12 +608,17 @@ def build_dataset_importer(
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
-    # If we're importing TFRecords, they must be unpacked into an `images_dir`
-    # during import
+    # If we're importing TFRecords or HDF5, they must be unpacked into an
+    # `images_dir` during import
     if (
         isinstance(
             dataset_type,
-            (fot.TFImageClassificationDataset, fot.TFObjectDetectionDataset),
+            (
+                fot.TFImageClassificationDataset,
+                fot.TFObjectDetectionDataset,
+                fot.HDF5Dataset,
+                fot.HDF5ImageClassificationDataset,
+            ),
         )
         and "images_dir" not in kwargs
     ):
