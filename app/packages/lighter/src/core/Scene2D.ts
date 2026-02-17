@@ -227,15 +227,19 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds, relativeBounds } = event;
+      const { overlay, absoluteBounds } = event;
 
       if (overlay) {
+        const relativeBounds =
+          this.coordinateSystem.absoluteToRelative(absoluteBounds);
+
         const addCommand = new AddOverlayCommand(
           this,
           overlay,
           absoluteBounds,
           relativeBounds
         );
+
         CommandContextManager.instance()
           .getActiveContext()
           .pushUndoable(addCommand);
@@ -1475,9 +1479,7 @@ export class Scene2D {
   /**
    * Updates coordinates for a single spatial overlay.
    */
-  private updateSpatialOverlayCoordinates(
-    overlay: BaseOverlay & Spatial
-  ): void {
+  updateSpatialOverlayCoordinates(overlay: BaseOverlay & Spatial): void {
     const relativeBounds = overlay.getRelativeBounds();
     if (BaseOverlay.validBounds(relativeBounds)) {
       const absoluteBounds =
@@ -1491,9 +1493,7 @@ export class Scene2D {
    * This is used when an overlay's position is changed and we need to update its relative coordinates.
    * @param overlay - The spatial overlay to update.
    */
-  private updateSpatialOverlayRelativeBounds(
-    overlay: BaseOverlay & Spatial
-  ): void {
+  updateSpatialOverlayRelativeBounds(overlay: BaseOverlay & Spatial): void {
     const absoluteBounds = overlay.getAbsoluteBounds();
 
     if (BaseOverlay.validBounds(absoluteBounds)) {

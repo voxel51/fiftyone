@@ -36,8 +36,9 @@ export class AddOverlayCommand implements Undoable {
       if (this.relativeBounds) {
         handler.setRelativeBounds(this.relativeBounds);
       }
+
       interactionManager.removeHandler(this.overlay);
-      interactionManager.addHandler(handler);
+      this.scene.addOverlay(handler, false);
     } else {
       this.scene.addOverlay(this.overlay, false);
     }
@@ -49,7 +50,7 @@ export class AddOverlayCommand implements Undoable {
       const interactionManager = this.scene.getInteractionManager();
 
       handler.unsetBounds();
-      interactionManager.removeHandler(handler);
+      this.scene.removeOverlay(handler.id, false);
       interactionManager.addHandler(this.overlay);
       this.scene.setCursor(this.overlay.cursor);
     } else {

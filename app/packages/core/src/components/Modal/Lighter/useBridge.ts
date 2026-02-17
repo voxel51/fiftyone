@@ -8,6 +8,7 @@ import {
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
 import {
+  BoundingBoxOverlay,
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -15,6 +16,7 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import type { DetectionLabel } from "@fiftyone/looker";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { currentData } from "../Sidebar/Annotate/Edit/state";
@@ -39,7 +41,8 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const { updateLabelData } = useLabelsContext();
+  const { addLabelToSidebar, removeLabelFromSidebar, updateLabelData } =
+    useLabelsContext();
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -114,6 +117,36 @@ export const useBridge = (scene: Scene2D | null) => {
         );
       },
       [annotationEventBus]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        removeLabelFromSidebar(payload.id);
+      },
+      [removeLabelFromSidebar]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (
+          payload.overlay instanceof BoundingBoxOverlay &&
+          payload.overlay.field
+        ) {
+          addLabelToSidebar({
+            data: payload.overlay.label as DetectionLabel,
+            overlay: payload.overlay,
+            path: payload.overlay.field,
+            type: "Detection",
+          });
+        }
+      },
+      [addLabelToSidebar]
     )
   );
 
