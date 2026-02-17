@@ -1,11 +1,11 @@
 import { BoundingBoxOverlay, useLighter } from "@fiftyone/lighter";
 import {
+  activeFields,
   AnnotationLabel,
   AnnotationLabelData,
-  ModalSample,
-  activeFields,
   field,
-  modalGroupSlice,
+  ModalSample,
+  useCurrentSampleId,
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
@@ -277,6 +277,7 @@ export default function useLabels() {
   const paths = useRecoilValue(pathMap);
   const currentLabels = useAtomValue(labels);
   const modalSample = useModalSample();
+  const currentSampleId = useCurrentSampleId();
   const setLabels = useSetAtom(labels);
   const setLoading = useSetAtom(labelsState);
   const active = useAtomValue(activeLabelSchemas);
@@ -284,8 +285,6 @@ export default function useLabels() {
   const addLabelToStore = useSetAtom(addLabel);
   const createLabel = useCreateAnnotationLabel();
   const { scene, removeOverlay } = useLighter();
-  const currentSlice = useRecoilValue(modalGroupSlice);
-  const prevSliceRef = useRef(currentSlice);
   const updateLabelAtom = useUpdateLabelAtom();
 
   // Use a ref for the loading state machine to avoid having it as an effect
@@ -312,16 +311,6 @@ export default function useLabels() {
       },
     []
   );
-
-  // This effect resets labels when the annotation slice changes for grouped datasets
-  useEffect(() => {
-    if (prevSliceRef.current !== currentSlice && currentSlice) {
-      prevSliceRef.current = currentSlice;
-      setLabels([]);
-      loadingRef.current = LabelsState.UNSET;
-      setLoading(LabelsState.UNSET);
-    }
-  }, [currentSlice, setLabels, setLoading]);
 
   // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
@@ -415,13 +404,18 @@ export default function useLabels() {
     updateLabelAtom,
   ]);
 
+  /**
+   * Resets label state when the sample ID or scene changes.
+   * Clears all labels and reverts loading state to UNSET so that the
+   * primary loading effect above can re-initialize for the new context.
+   */
   useEffect(() => {
     return () => {
       setLabels([]);
       loadingRef.current = LabelsState.UNSET;
       setLoading(LabelsState.UNSET);
     };
-  }, [scene]);
+  }, [currentSampleId, scene, setLabels, setLoading]);
 
   useSyncOverlayReadOnly();
   useHover();
