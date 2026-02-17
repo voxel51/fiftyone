@@ -759,7 +759,7 @@ class FiftyOneYOLOModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                     orig_img,
                     visual_prompts=visual_prompts,
                     predictor=vp_predictor_cls,
-                    conf=self.config.confidence_thresh or 0.25,
+                    conf=self.config.confidence_thresh if self.config.confidence_thresh is not None else 0.25,
                     device=self._device,
                     verbose=False,
                 )
