@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { formatPrimitive } from "@fiftyone/utilities";
-import React from "react";
+import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import CommonRangeSlider from "../../Common/RangeSlider";
@@ -39,6 +39,7 @@ const RangeSlider = ({
   path: string;
   inputs?: boolean;
 }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
@@ -69,6 +70,7 @@ const RangeSlider = ({
 
   return (
     <Container
+      ref={containerRef}
       onMouseDown={(e) => e.stopPropagation()}
       style={{ cursor: "default" }}
       data-cy={`numeric-slider-container-${key}`}
@@ -87,6 +89,7 @@ const RangeSlider = ({
             modal,
           })}
           color={color}
+          containerRef={containerRef}
         />
       )}
       <Inputs modal={modal} path={path} color={color} />

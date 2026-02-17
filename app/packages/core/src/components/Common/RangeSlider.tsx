@@ -2,7 +2,14 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
-import React, { ChangeEvent, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  ChangeEvent,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import type { RecoilState, RecoilValueReadOnly } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -123,6 +130,7 @@ type BaseSliderProps<T extends Range | number> = {
   int?: boolean;
   style?: React.CSSProperties;
   alternateThumbLabelDirection?: boolean;
+  containerRef?: React.RefObject<HTMLDivElement>;
 };
 
 function isBoundsValid(bounds: Range): bounds is [number, number] {
@@ -143,18 +151,60 @@ const BaseSlider = <T extends Range | number>({
   style,
   showValue = true,
   alternateThumbLabelDirection = false,
+  containerRef,
 }: BaseSliderProps<T>) => {
   const theme = useTheme();
   const bounds = useRecoilValue(boundsAtom);
 
   const dirtyMin = useRef(false);
   const dirtyMax = useRef(false);
+  const sliderRef = useRef<HTMLSpanElement>(null);
 
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
       ? useRecoilValue(fos.timeZone)
       : null;
   const [clicking, setClicking] = useState(false);
+
+  const adjustLabelsPosition = useCallback(() => {
+    const currentSlider = sliderRef.current;
+    const currentContainer = containerRef?.current;
+    const labelPadding = 1;
+    if (!currentSlider || !currentContainer) return;
+
+    const containerRect = currentContainer.getBoundingClientRect();
+    const valueLabels = currentSlider.querySelectorAll(".valueLabel");
+
+    valueLabels.forEach((label) => {
+      const labelElement = label as HTMLElement;
+      labelElement.style.translate = "0 0";
+      const labelRect = labelElement.getBoundingClientRect();
+      let shiftX = 0;
+
+      if (labelRect.left < containerRect.left + labelPadding) {
+        shiftX = containerRect.left + labelPadding - labelRect.left;
+      } else if (labelRect.right > containerRect.right - labelPadding) {
+        shiftX = containerRect.right - labelPadding - labelRect.right;
+      }
+
+      labelElement.style.translate = `${shiftX}px 0`;
+    });
+  }, []);
+
+  // Adjust on mount after paint
+  useEffect(() => {
+    if (!sliderRef.current || !containerRef?.current) return;
+
+    adjustLabelsPosition();
+  }, []);
+
+  // Adjust on value/clicking changes
+  useLayoutEffect(() => {
+    if (!sliderRef.current || !containerRef?.current) return;
+
+    const frameId = requestAnimationFrame(adjustLabelsPosition);
+    return () => cancelAnimationFrame(frameId);
+  }, [value, clicking, adjustLabelsPosition]);
 
   if (!isBoundsValid(bounds)) {
     return null;
@@ -193,9 +243,10 @@ const BaseSlider = <T extends Range | number>({
           }
         </>
       ) : null}
-      <SliderContainer style={style}>
+      <SliderContainer id="slider-container" style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
+          ref={sliderRef}
           data-cy="slider"
           onMouseDown={() => setClicking(true)}
           onMouseUp={() => setClicking(false)}
