@@ -125,6 +125,10 @@ type BaseSliderProps<T extends Range | number> = {
   alternateThumbLabelDirection?: boolean;
 };
 
+function isBoundsValid(bounds: Range): bounds is [number, number] {
+  return typeof bounds[0] === "number" && typeof bounds[1] === "number";
+}
+
 const BaseSlider = <T extends Range | number>({
   boundsAtom,
   color,
@@ -152,16 +156,14 @@ const BaseSlider = <T extends Range | number>({
       : null;
   const [clicking, setClicking] = useState(false);
 
-  const hasBounds = bounds.every((b) => b !== null);
-
-  if (!hasBounds) {
+  if (!isBoundsValid(bounds)) {
     return null;
   }
 
   const step = getStep(bounds, fieldType);
   const { formatter, hasTitle } = getFormatter(
-    fieldType,
-    fieldType === DATE_FIELD ? "UTC" : timeZone,
+    fieldType || "",
+    fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC",
     bounds
   );
 
@@ -183,12 +185,10 @@ const BaseSlider = <T extends Range | number>({
               }}
             >
               {getDateTimeRangeFormattersWithPrecision(
-                timeZone,
+                timeZone || "UTC",
                 bounds[0],
                 bounds[1]
-              )[0]
-                .format(bounds[0])
-                .replaceAll("/", "-")}
+              ).common?.format(bounds[0])}
             </div>
           }
         </>
@@ -317,7 +317,7 @@ export const RangeSlider = ({
 
   const bounds = useRecoilValue(boundsAtom);
   // Restrict numeric precision to better represent the slider controls.
-  const precision = getPrecision(fieldType, bounds);
+  const precision = getPrecision(fieldType, bounds as [number, number]);
 
   return (
     <BaseSlider
