@@ -3220,11 +3220,38 @@ class ResponseStream(object):
     def seek(self, position, whence=io.SEEK_SET):
         if whence == io.SEEK_END:
             self._load_all()
-        else:
-            self._bytes.seek(position, whence)
+        self._bytes.seek(position, whence)
+        return self.tell()
 
     def tell(self):
         return self._bytes.tell()
+
+    def consume_size(self):
+        """Returns the total size of the response content in bytes but
+        may invalidate the stream for subsequent reads.
+
+        If a ``Content-Length`` header is available, it is returned directly.
+        Otherwise, remaining chunks are counted but discarded rather than
+        buffered into memory. This is more memory-efficient for large
+        responses when you only need the size, but the stream will be
+        unusable for subsequent reads after this call.
+
+        Returns:
+            the total size of the response content in bytes
+        """
+        size = self._response.headers.get("Content-Length")
+        if size is not None:
+            try:
+                size = int(size)
+                if size >= 0:
+                    return size
+            except Exception:
+                pass
+
+        self._bytes.seek(0, io.SEEK_END)
+        size = self.tell() + sum(map(len, self._iterator))
+
+        return size
 
     def _load_all(self):
         self._bytes.seek(0, io.SEEK_END)

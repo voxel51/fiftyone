@@ -1000,6 +1000,116 @@ class RecommendThreadPoolWorkersTests(unittest.TestCase):
                 self.assertEqual(fou.recommend_thread_pool_workers(), 2)
 
 
+class ResponseStreamTests(unittest.TestCase):
+    def _make_response(self, data, content_length=None):
+        """Create a mock requests.Response with given data and headers."""
+        response = MagicMock()
+
+        def iter_content(chunk_size=64):
+            for i in range(0, len(data), chunk_size):
+                yield data[i : i + chunk_size]
+
+        response.iter_content = iter_content
+        response.headers = {}
+        if content_length is not None:
+            response.headers["Content-Length"] = str(content_length)
+
+        return response
+
+    def test_read_all(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        self.assertEqual(stream.read(), data)
+
+    def test_read_partial(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        self.assertEqual(stream.read(5), b"hello")
+        self.assertEqual(stream.read(6), b" world")
+
+    def test_read_past_end(self):
+        data = b"short"
+        stream = fou.ResponseStream(self._make_response(data))
+        self.assertEqual(stream.read(100), b"short")
+
+    def test_tell(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        self.assertEqual(stream.tell(), 0)
+        stream.read(5)
+        self.assertEqual(stream.tell(), 5)
+
+    def test_seek_set(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        stream.read(5)
+        stream.seek(0)
+        self.assertEqual(stream.read(5), b"hello")
+
+    def test_seek_returns_position(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        stream.read()
+        pos = stream.seek(3)
+        self.assertEqual(pos, 3)
+
+    def test_seek_end(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        pos = stream.seek(0, 2)  # SEEK_END
+        self.assertEqual(pos, len(data))
+
+    def test_read_after_seek(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        stream.read()
+        stream.seek(6)
+        self.assertEqual(stream.read(), b"world")
+
+    def test_large_data(self):
+        data = b"x" * 10000
+        stream = fou.ResponseStream(self._make_response(data), chunk_size=64)
+        self.assertEqual(stream.read(), data)
+
+    def test_empty_data(self):
+        data = b""
+        stream = fou.ResponseStream(self._make_response(data))
+        self.assertEqual(stream.read(), b"")
+        self.assertEqual(stream.tell(), 0)
+
+    def test_seek_end_for_size_fallback(self):
+        """Test the pattern used in ImageMetadata._build_for_url for chunked
+        responses where Content-Length is missing."""
+        data = b"x" * 500
+        stream = fou.ResponseStream(self._make_response(data))
+        # Simulate reading some data first (like get_image_info would)
+        stream.read(100)
+        # Then seek to end to get total size (the fallback pattern)
+        size = stream.seek(0, 2)  # os.SEEK_END
+        self.assertEqual(size, len(data))
+
+    def test_seek_end_with_negative_offset(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(self._make_response(data))
+        pos = stream.seek(-5, 2)  # SEEK_END, back 5 bytes
+        self.assertEqual(pos, len(data) - 5)
+        self.assertEqual(stream.read(), b"world")
+
+    def test_consume_size_with_content_length(self):
+        data = b"hello world"
+        stream = fou.ResponseStream(
+            self._make_response(data, content_length=len(data))
+        )
+        self.assertEqual(stream.consume_size(), len(data))
+
+    def test_consume_size_without_content_length(self):
+        data = b"x" * 1000
+        stream = fou.ResponseStream(self._make_response(data))
+        stream.read(100)
+        size = stream.consume_size()
+        self.assertEqual(size, len(data))
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)
