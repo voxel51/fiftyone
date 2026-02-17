@@ -49,7 +49,7 @@ export class ModalAnnotateEditPom {
    * @param path The field path
    * @returns A locator for the field container
    */
-  async getFieldContainer(path: string) {
+  getFieldContainer(path: string) {
     const id = convertPathToId(path);
     return this.locator.getByTestId(`${id}_container`);
   }
@@ -154,32 +154,32 @@ class ModalAnnotateEditAsserter {
    * Verify that the undo button is enabled
    */
   async verifyUndoButtonEnabled() {
-    const undoButton = await this.modalAnnotateEdit.undoButton;
-    await expect(await undoButton).not.toHaveClass(/disabled/);
+    const undoButton = this.modalAnnotateEdit.undoButton;
+    await expect(undoButton).not.toHaveClass(/disabled/);
   }
 
   /**
    * Verify that the redo button is enabled
    */
   async verifyRedoButtonEnabled() {
-    const redoButton = await this.modalAnnotateEdit.redoButton;
-    await expect(await redoButton).not.toHaveClass(/disabled/);
+    const redoButton = this.modalAnnotateEdit.redoButton;
+    await expect(redoButton).not.toHaveClass(/disabled/);
   }
 
   /**
    * Verify that the undo button is disabled
    */
   async verifyUndoButtonDisabled() {
-    const undoButton = await this.modalAnnotateEdit.undoButton;
-    await expect(await undoButton).toHaveClass(/disabled/);
+    const undoButton = this.modalAnnotateEdit.undoButton;
+    await expect(undoButton).toHaveClass(/disabled/);
   }
 
   /**
    * Verify that the redo button is disabled
    */
   async verifyRedoButtonDisabled() {
-    const redoButton = await this.modalAnnotateEdit.redoButton;
-    await expect(await redoButton).toHaveClass(/disabled/);
+    const redoButton = this.modalAnnotateEdit.redoButton;
+    await expect(redoButton).toHaveClass(/disabled/);
   }
 }
 

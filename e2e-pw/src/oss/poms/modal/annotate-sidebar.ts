@@ -64,30 +64,16 @@ export class ModalAnnotateSidebarPom {
   }
 
   /**
-   * Expand the active labels section in the sidebar
+   * Toggle the active labels section in the sidebar
    */
-  async expandActiveLabels() {
+  async toggleActiveLabels() {
     await this.locator.getByTestId("sidebar-group-Labels-toggle").click();
   }
 
   /**
-   * Collapse the active labels section in the sidebar
+   * Toggle the active primitive fields section in the sidebar
    */
-  async collapseActiveLabels() {
-    await this.locator.getByTestId("sidebar-group-Labels-toggle").click();
-  }
-
-  /**
-   * Expand the active primitive fields section in the sidebar
-   */
-  async expandActivePrimitiveFields() {
-    await this.locator.getByTestId("sidebar-group-PRIMITIVES-toggle").click();
-  }
-
-  /**
-   * Collapse the active primitive fields section in the sidebar
-   */
-  async collapseActivePrimitiveFields() {
+  async toggleActivePrimitiveFields() {
     await this.locator.getByTestId("sidebar-group-PRIMITIVES-toggle").click();
   }
 }
