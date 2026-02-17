@@ -22,12 +22,10 @@ import {
 import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
-import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { currentData } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
-import { labels } from "../Sidebar/Annotate/useLabels";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 
@@ -49,17 +47,10 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const { addLabelToSidebar, removeLabelFromSidebar, updateLabelData } =
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
     useLabelsContext();
   const fieldSchema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
-  );
-  const getLabelById = useAtomCallback(
-    useCallback(
-      (get, _set, id: string) =>
-        get(labels).find((label) => label.data._id === id),
-      []
-    )
   );
 
   useAnnotationEventHandler(
