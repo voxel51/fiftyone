@@ -1,8 +1,7 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 
 /**
- * Page Object Model for the Modal Annotate Sidebar
- * Handles interactions with the sidebar in annotate mode
+ * The modal sidebar's main listing view when in 'Annotate' mode
  */
 export class ModalAnnotateSidebarPom {
   readonly page: Page;
@@ -94,8 +93,7 @@ export class ModalAnnotateSidebarPom {
 }
 
 /**
- * Asserter class for Modal Annotate Sidebar
- * Provides verification methods for sidebar state
+ * Asserter class for the modal's sidebar when in 'Annotate' mode
  */
 class ModalAnnotateSidebarAsserter {
   constructor(private readonly modalAnnotateSidebar: ModalAnnotateSidebarPom) {}

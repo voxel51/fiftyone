@@ -1,7 +1,8 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 
 /**
- * The edit form when in 'Annotate' mode. Applies to Primitives and Labels
+ * The modal sidebar's edit form when in 'Annotate' mode. Applies to primitives
+ * and labels
  */
 export class ModalAnnotateEditPom {
   readonly page: Page;
@@ -78,7 +79,8 @@ export class ModalAnnotateEditPom {
    * Get a field form input
    *
    * @param path The field path
-   * @returns A locator for the input, textarea, or select element
+   * @returns A promise that resolves to a locator for the input, textarea, o
+   *  select element
    */
   async getField(path: string) {
     return (await this.getFieldContainer(path)).locator(
@@ -110,7 +112,7 @@ export class ModalAnnotateEditPom {
 }
 
 /**
- * Modal 'Annotate' edit asserter
+ * Asserter class for the modal's sidebar when in 'Annotate' edit mode
  */
 class ModalAnnotateEditAsserter {
   constructor(private readonly modalAnnotateEdit: ModalAnnotateEditPom) {}
