@@ -109,8 +109,19 @@ const useVisibility = (field: string) => {
     if (wasActive === isPending) return; // no change for this field
 
     if (wasActive && !isPending) {
-      // Was active, user hid it — revert by re-adding at original position
-      setPending(original.filter((f) => current.includes(f) || f === field));
+      // Was active, user hid it — revert by re-inserting at original position
+      const newPending = [...current];
+      const originalIndex = original.indexOf(field);
+      let insertAt = newPending.length;
+      for (let i = originalIndex - 1; i >= 0; i--) {
+        const idx = newPending.indexOf(original[i]);
+        if (idx >= 0) {
+          insertAt = idx + 1;
+          break;
+        }
+      }
+      newPending.splice(insertAt, 0, field);
+      setPending(newPending);
     } else {
       // Was hidden, user activated it — revert by removing
       setPending(current.filter((f) => f !== field));
@@ -254,7 +265,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
                   }
                   // Sync Jotai state
                   setActiveLabelSchemasAtom(ordered);
-                  setPending(ordered);
+                  setPending(null);
                 },
               }
             );
