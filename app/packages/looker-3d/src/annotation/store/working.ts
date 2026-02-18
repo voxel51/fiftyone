@@ -22,7 +22,7 @@ import {
   roundPolyline,
   roundTuple,
 } from "../utils/rounding-utils";
-import { clearLastCreatedLabels } from "./labelDefaulting";
+import { clearLastCreatedLabels } from "./labelResolution";
 import type { LabelId, WorkingDoc, WorkingState } from "./types";
 
 // =============================================================================
