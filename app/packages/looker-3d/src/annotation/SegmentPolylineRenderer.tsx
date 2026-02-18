@@ -23,6 +23,10 @@ import {
 import { isPolyline } from "../types";
 import { getPlaneFromPositionAndQuaternion } from "../utils";
 import { PolylinePointMarker } from "./PolylinePointMarker";
+import {
+  getDefaultLabel,
+  recordLastCreatedLabel,
+} from "./store/labelResolution";
 import { usePolylineOperations } from "./store/operations";
 import { workingAtom } from "./store/working";
 import type { PolylinePointTransformData } from "./types";
@@ -109,10 +113,15 @@ export const SegmentPolylineRenderer = ({
             },
           };
         } else {
+          const labelClass = currentActiveField
+            ? getDefaultLabel(currentActiveField, working.doc)
+            : "";
+
           transformData = {
             segments: [{ points: newSegmentPoints }],
             path: currentActiveField,
             sampleId: currentSampleId,
+            label: labelClass,
             misc: {
               closed: shouldClose,
             },
@@ -120,6 +129,10 @@ export const SegmentPolylineRenderer = ({
 
           // Create polyline in working store
           createPolyline(labelId, transformData, currentActiveField || "");
+
+          if (currentActiveField) {
+            recordLastCreatedLabel(currentActiveField, labelClass);
+          }
         }
 
         // Set editing for sidebar UI

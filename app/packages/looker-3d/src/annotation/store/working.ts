@@ -22,6 +22,7 @@ import {
   roundPolyline,
   roundTuple,
 } from "../utils/rounding-utils";
+import { clearLastCreatedLabels } from "./labelDefaulting";
 import type { LabelId, WorkingDoc, WorkingState } from "./types";
 
 // =============================================================================
@@ -251,6 +252,7 @@ export function useResetWorkingOnModeChange() {
   useEffect(() => {
     if (mode !== fos.ModalMode.ANNOTATE) {
       setWorking(defaultWorkingState);
+      clearLastCreatedLabels();
     }
   }, [mode, setWorking]);
 }

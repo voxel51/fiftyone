@@ -155,7 +155,12 @@ export function useCuboidOperations() {
    * Creates a new cuboid label and adds it to the working store.
    */
   const createCuboid = useCallback(
-    (labelId: LabelId, data: CuboidTransformData, path: string) => {
+    (
+      labelId: LabelId,
+      data: CuboidTransformData,
+      path: string,
+      labelClass = ""
+    ) => {
       if (!currentSampleId) return;
 
       const newLabel: ReconciledDetection3D = {
@@ -174,6 +179,7 @@ export function useCuboidOperations() {
         sampleId: currentSampleId,
         tags: [],
         isNew: true,
+        label: labelClass,
       };
 
       const execFn = () => {
