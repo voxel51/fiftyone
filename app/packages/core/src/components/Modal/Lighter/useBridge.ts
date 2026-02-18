@@ -21,10 +21,11 @@ import {
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { currentData } from "../Sidebar/Annotate/Edit/state";
+import { editing } from "../Sidebar/Annotate/Edit";
+import { current, currentData, savedLabel } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -47,6 +48,9 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
+  const setEditing = useSetAtom(editing);
+  const setSavedLabel = useSetAtom(savedLabel);
+  const currentLabel = useAtomValue(current);
   const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
     useLabelsContext();
   const fieldSchema = useRecoilValue(
@@ -133,9 +137,15 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
+        // If the removed overlay is the one being edited, close the sidebar
+        if (currentLabel?.overlay?.id === payload.id) {
+          setEditing(null);
+          setSavedLabel(null);
+        }
+
         removeLabelFromSidebar(payload.id);
       },
-      [removeLabelFromSidebar]
+      [currentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
     )
   );
 
