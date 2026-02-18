@@ -27,6 +27,9 @@ setup.py                     @voxel51/aloha-shirts
 requirements.txt             @voxel51/aloha-shirts
 requirements/                @voxel51/aloha-shirts
 
+# Aloha Shirts care about models
+fiftyone/zoo/models/manifest-torch.json @voxel51/aloha-shirts
+
 # e2e test workflow has shared ownership
 .github/workflows/e2e.yml    @voxel51/aloha-shirts sashank@voxel51.com  # implementer of e2e workflow
 
