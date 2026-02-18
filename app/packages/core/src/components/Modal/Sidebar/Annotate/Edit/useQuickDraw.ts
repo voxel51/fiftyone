@@ -8,6 +8,7 @@ import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
 import { BaseOverlay, UNDEFINED_LIGHTER_SCENE_ID, useLighter, useLighterEventHandler, type BoundingBoxLabel } from "@fiftyone/lighter";
 import { AnnotationLabel, DetectionAnnotationLabel } from "@fiftyone/state";
+import useCreate from "./useCreate";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -36,14 +37,6 @@ const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
- * Stores the QuickDraw create callback in an atom so it survives
- * unmount/remount cycles during QuickDraw transitions.
- */
-const quickDrawCreateDetectionAtom = atom<
-  ((options?: { field?: string; labelValue?: string }) => void) | null
->(null);
-
-/**
  * Tracks processed `lighter:overlay-create` event IDs so that only one
  * `useQuickDraw` instance handles each event, even though the hook is
  * called in multiple components.
@@ -63,20 +56,10 @@ export const useQuickDraw = () => {
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
 
+  const createDetection = useCreate(DETECTION);
+
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-
-  const getCreateDetection = useAtomCallback(
-    useCallback((get) => get(quickDrawCreateDetectionAtom), [])
-  );
-
-  const setCreateDetection = useAtomCallback(
-    useCallback(
-      (_get, set, cb: ((shouldUseQuickDraw: boolean) => void) | null) =>
-        set(quickDrawCreateDetectionAtom, () => cb),
-      []
-    )
   );
 
   /**
@@ -116,43 +99,29 @@ export const useQuickDraw = () => {
 
   /**
    * Enable quick draw mode for Detection annotations.
-   * Sets quickDraw active, and registers the deferred creation callback.
    * The actual overlay/label creation is deferred until the user mouses down in the scene.
-   *
-   * @param createDetection - Function that creates a detection label (from useCreate).
-   *   Will be called with auto-assigned `field` and `labelValue` on pointer-down.
    */
-  const enableQuickDraw = useCallback(
-    (createDetection: (options?: { field?: string; labelValue?: string | null }) => void) => {
-      setQuickDrawActive(true);
-      setCreateDetection(createDetection);
-    },
-    [setQuickDrawActive, setCreateDetection]
-  );
+  const enableQuickDraw = useCallback(() => {
+    setQuickDrawActive(true);
+  }, [setQuickDrawActive]);
 
   /**
    * Disable quick draw mode.
-   * Resets the active flag to false. Last-used field and label atoms
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
-    setCreateDetection(null);
-  }, [setQuickDrawActive, setCreateDetection]);
+  }, [setQuickDrawActive]);
 
   /**
-   * Toggle quick draw mode. Enables with the given create function if
-   * currently inactive, disables if currently active.
+   * Toggle quick draw mode.
    */
-  const toggleQuickDraw = useCallback(
-    (createDetection: (options?: { field?: string; labelValue?: string | null }) => void) => {
-      if (quickDrawActive) {
-        disableQuickDraw();
-      } else {
-        enableQuickDraw(createDetection);
-      }
-    },
-    [quickDrawActive, disableQuickDraw, enableQuickDraw]
-  );
+  const toggleQuickDraw = useCallback(() => {
+    if (quickDrawActive) {
+      disableQuickDraw();
+    } else {
+      enableQuickDraw();
+    }
+  }, [quickDrawActive, disableQuickDraw, enableQuickDraw]);
 
   /**
    * Get the auto-assigned detection field path.
@@ -349,10 +318,10 @@ export const useQuickDraw = () => {
 					_lastProcessedCreateId = payload.eventId;
 					const field = getQuickDrawDetectionField() ?? undefined;
 					const labelValue = field ? getQuickDrawDetectionLabel(field) ?? undefined : undefined;
-					getCreateDetection()?.({ field, labelValue });
+					createDetection({ field, labelValue });
 				}
       },
-      [getCreateDetection, getQuickDrawDetectionField, getQuickDrawDetectionLabel]
+      [createDetection, getQuickDrawDetectionField, getQuickDrawDetectionLabel]
     )
   );
 
@@ -367,10 +336,6 @@ export const useQuickDraw = () => {
       disableQuickDraw,
       toggleQuickDraw,
 
-      // Auto-assignment (for useCreate)
-      getQuickDrawDetectionField,
-      getQuickDrawDetectionLabel,
-
       // Tracking and transitions
       trackLastUsedDetection,
       handleQuickDrawTransition,
@@ -384,8 +349,6 @@ export const useQuickDraw = () => {
       enableQuickDraw,
       disableQuickDraw,
       toggleQuickDraw,
-      getQuickDrawDetectionField,
-      getQuickDrawDetectionLabel,
       handleQuickDrawTransition,
       trackLastUsedDetection,
       handleQuickDrawFieldChange,

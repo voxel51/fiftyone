@@ -165,14 +165,13 @@ const Classification = () => {
 
 const Detection = () => {
   const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
-  const create = useCreate(DETECTION);
 
   return (
     <Tooltip placement="top-center" text="Create new detections">
       <Square
         $active={quickDrawActive}
         onClick={() => {
-          toggleQuickDraw(create);
+          toggleQuickDraw();
         }}
       >
         <svg
