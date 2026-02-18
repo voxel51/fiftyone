@@ -395,7 +395,7 @@ export const RangeSlider = ({
           v === bounds[1] ? null : parseFloat(v.toFixed(precision));
         setValue((prev) => [prev[0], newMax]);
       }}
-      value={[...localValue]}
+      value={localValue}
     />
   );
 };
