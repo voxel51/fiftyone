@@ -86,8 +86,7 @@ test.describe.serial("quick edit", () => {
     );
 
     // Show tooltip
-    await modal.sampleCanvas.move(0.05, 0.03);
-    await modal.sampleCanvas.assert.hasCursor("pointer");
+    await modal.sampleCanvas.move(0.05, 0.03, "pointer");
     await modal.sampleCanvas.tooltip.assert.isVisible();
     await modal.sampleCanvas.tooltip.assert.isLocked(false);
 
@@ -140,11 +139,11 @@ test.describe.serial("quick edit", () => {
     );
 
     // Resize box
-    await modal.sampleCanvas.move(0.75, 0.75);
+    await modal.sampleCanvas.move(0.75, 0.75, "nwse-resize");
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.move(0.75, 0.75);
+    await modal.sampleCanvas.move(0.75, 0.75, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused-small.png"
     );

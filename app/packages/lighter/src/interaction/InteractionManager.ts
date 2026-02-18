@@ -245,7 +245,6 @@ export class InteractionManager {
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
-    this.renderer.disableZoomPan();
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -379,8 +378,6 @@ export class InteractionManager {
         }
 
         event.preventDefault();
-        event.stopImmediatePropagation();
-        event.stopPropagation();
       }
       this.configureCursorStyle(handler, worldPoint, scale);
     } else if (quickDrawBridge.isQuickDrawActive() && !interactiveHandler) {
@@ -440,10 +437,6 @@ export class InteractionManager {
             ...detail,
             overlay: interactiveHandler,
           });
-
-          if (quickDrawBridge.isQuickDrawActive()) {
-            this.selectionManager.clearSelection();
-          }
         } else {
           const type =
             moveState === "DRAGGING"

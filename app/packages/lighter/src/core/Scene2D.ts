@@ -891,11 +891,14 @@ export class Scene2D {
     }
 
     this.isRenderLoopActive = true;
+    let firstRender = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
-      requestAnimationFrame(() => {
-        document.dispatchEvent(new CustomEvent("render"));
-      });
+      firstRender &&
+        requestAnimationFrame(() => {
+          firstRender = false;
+          document.dispatchEvent(new CustomEvent("lighter-first-render"));
+        });
     });
   }
 
