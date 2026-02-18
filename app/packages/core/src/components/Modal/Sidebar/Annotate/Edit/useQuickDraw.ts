@@ -110,6 +110,21 @@ export const useQuickDraw = () => {
   }, [setQuickDrawActive]);
 
   /**
+   * Toggle quick draw mode. Enables with the given create function if
+   * currently inactive, disables if currently active.
+   */
+  const toggleQuickDraw = useCallback(
+    (createFn: (shouldUseQuickDraw?: boolean) => void) => {
+      if (quickDrawActive) {
+        disableQuickDraw();
+      } else {
+        enableQuickDraw(createFn);
+      }
+    },
+    [quickDrawActive, disableQuickDraw, enableQuickDraw]
+  );
+
+  /**
    * Get the auto-assigned detection field path.
    *
    * Auto-assignment priority:
@@ -306,6 +321,7 @@ export const useQuickDraw = () => {
       // Mode control (for UI components)
       enableQuickDraw,
       disableQuickDraw,
+      toggleQuickDraw,
 
       // Auto-assignment (for useCreate)
       getQuickDrawDetectionField,
@@ -323,6 +339,7 @@ export const useQuickDraw = () => {
       lastUsedField,
       enableQuickDraw,
       disableQuickDraw,
+      toggleQuickDraw,
       getQuickDrawDetectionField,
       getQuickDrawDetectionLabel,
       handleQuickDrawTransition,

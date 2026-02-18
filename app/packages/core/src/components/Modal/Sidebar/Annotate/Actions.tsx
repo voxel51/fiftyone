@@ -164,7 +164,7 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { quickDrawActive, enableQuickDraw } = useQuickDraw();
+  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
 
   return (
@@ -172,7 +172,7 @@ const Detection = () => {
       <Square
         $active={quickDrawActive}
         onClick={() => {
-          enableQuickDraw(create);
+          toggleQuickDraw(create);
         }}
       >
         <svg
