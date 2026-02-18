@@ -69,7 +69,6 @@ export const getFormatter = (fieldType: string, timeZone: string, bounds) => {
         let [day, time] = str;
 
         if (dtFormatters.diff.resolvedOptions().fractionalSecondDigits === 3) {
-          time += "ms";
           return (
             <>
               <div>{day}</div>
