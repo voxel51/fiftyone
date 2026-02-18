@@ -40,7 +40,7 @@ const detectionTypes = new Set(["Detection", "Detections"]);
  * unmount/remount cycles during QuickDraw transitions.
  */
 const quickDrawCreateDetectionAtom = atom<
-  ((shouldUseQuickDraw: boolean) => void) | null
+  ((options?: { field?: string; labelValue?: string }) => void) | null
 >(null);
 
 /**
@@ -63,6 +63,10 @@ export const useQuickDraw = () => {
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
 
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
   const getCreateDetection = useAtomCallback(
     useCallback((get) => get(quickDrawCreateDetectionAtom), [])
   );
@@ -74,23 +78,6 @@ export const useQuickDraw = () => {
       []
     )
   );
-
-  const useEventHandler = useLighterEventHandler(
-    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
-  );
-
-	useEventHandler(
-		"lighter:overlay-create",
-		useCallback(
-			(payload) => {
-				if (payload.eventId !== _lastProcessedCreateId) {
-					_lastProcessedCreateId = payload.eventId;
-					getCreateDetection()?.(true);
-				}
-			},
-			[getCreateDetection]
-		)
-	);
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -133,10 +120,10 @@ export const useQuickDraw = () => {
    * The actual overlay/label creation is deferred until the user mouses down in the scene.
    *
    * @param createDetection - Function that creates a detection label (from useCreate).
-   *   Will be called with `true` (shouldUseQuickDraw) on pointer-down.
+   *   Will be called with auto-assigned `field` and `labelValue` on pointer-down.
    */
   const enableQuickDraw = useCallback(
-    (createDetection: (shouldUseQuickDraw?: boolean) => void) => {
+    (createDetection: (options?: { field?: string; labelValue?: string | null }) => void) => {
       setQuickDrawActive(true);
       setCreateDetection(createDetection);
     },
@@ -157,7 +144,7 @@ export const useQuickDraw = () => {
    * currently inactive, disables if currently active.
    */
   const toggleQuickDraw = useCallback(
-    (createDetection: (shouldUseQuickDraw?: boolean) => void) => {
+    (createDetection: (options?: { field?: string; labelValue?: string | null }) => void) => {
       if (quickDrawActive) {
         disableQuickDraw();
       } else {
@@ -352,6 +339,21 @@ export const useQuickDraw = () => {
       }
     },
     [addOverlay, quickDrawActive, scene, selectedLabel, trackLastUsedDetection]
+  );
+
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(
+			(payload) => {
+				if (payload.eventId !== _lastProcessedCreateId) {
+					_lastProcessedCreateId = payload.eventId;
+					const field = getQuickDrawDetectionField() ?? undefined;
+					const labelValue = field ? getQuickDrawDetectionLabel(field) ?? undefined : undefined;
+					getCreateDetection()?.({ field, labelValue });
+				}
+      },
+      [getCreateDetection, getQuickDrawDetectionField, getQuickDrawDetectionLabel]
+    )
   );
 
   return useMemo(

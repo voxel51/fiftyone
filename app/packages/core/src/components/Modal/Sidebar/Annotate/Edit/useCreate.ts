@@ -17,39 +17,31 @@ import { useCallback } from "react";
 import type { LabelType } from "./state";
 import { defaultField, editing, savedLabel } from "./state";
 import { isFieldReadOnly, labelSchemaData } from "../state";
-import { useQuickDraw } from "./useQuickDraw";
 import { ClassificationLabel, DetectionLabel } from "@fiftyone/looker";
+
+export interface CreateOptions {
+  field?: string;
+  labelValue?: string;
+}
 
 const useCreateAnnotationLabel = () => {
   const { scene, addOverlay, overlayFactory } = useLighter();
-  const {
-    quickDrawActive,
-    getQuickDrawDetectionField,
-    getQuickDrawDetectionLabel,
-  } = useQuickDraw();
 
   return useCallback(
     (
       type: LabelType,
-      shouldUseQuickDraw = false
+      options?: CreateOptions
     ): AnnotationLabel | undefined => {
       const id = objectId();
       const store = getDefaultStore();
-      const isQuickDraw = shouldUseQuickDraw || quickDrawActive;
 
-      // Get field - use auto-assignment for quick draw detections
-      const field = isQuickDraw
-        ? getQuickDrawDetectionField()
-        : store.get(defaultField(type));
+      const field = options?.field ?? store.get(defaultField(type));
 
       if (!field) {
         return undefined;
       }
 
-      // Get auto-assigned label value if in quick draw detection mode
-      const labelValue = isQuickDraw
-        ? getQuickDrawDetectionLabel(field)
-        : undefined;
+      const labelValue = options?.labelValue;
 
       // Extract default values from the label schema for new annotations
       const fieldSchema = store.get(labelSchemaData(field));
@@ -127,9 +119,6 @@ const useCreateAnnotationLabel = () => {
       addOverlay,
       overlayFactory,
       scene,
-      quickDrawActive,
-      getQuickDrawDetectionField,
-      getQuickDrawDetectionLabel,
     ]
   );
 };
@@ -137,23 +126,16 @@ const useCreateAnnotationLabel = () => {
 /**
  * Hook that returns a function to create a new annotation label.
  * @param type - The type of label to create (CLASSIFICATION, DETECTION, or POLYLINE)
- * @returns A function that creates the annotation label. The function accepts an optional
- *   `shouldUseQuickDraw` parameter to force quick draw behavior, working around stale
- *   closure issues when `enableQuickDraw()` is called immediately before this function.
+ * @returns A function that creates the annotation label, optionally accepting
+ *   a `field` and `labelValue` to override the defaults.
  */
 export default function useCreate(type: LabelType) {
   const setEditing = useSetAtom(editing);
   const createAnnotationLabel = useCreateAnnotationLabel();
 
   return useCallback(
-    /**
-     * Create a new annotation label!
-     * @param shouldUseQuickDraw - Force quick draw mode. Pass `true` to ensure quick draw
-     *   behavior even if the `quickDrawActive` closure is stale. This handles React's async
-     *   state updates when `enableQuickDraw()` is called immediately before `create()`.
-     */
-    (shouldUseQuickDraw = false) => {
-      const label = createAnnotationLabel(type, shouldUseQuickDraw);
+    (options?: CreateOptions) => {
+      const label = createAnnotationLabel(type, options);
 
       if (label) {
         setEditing(
