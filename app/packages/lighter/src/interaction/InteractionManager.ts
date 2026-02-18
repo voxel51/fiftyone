@@ -270,6 +270,7 @@ export class InteractionManager {
           !this.selectionManager.isSelected(handler.id);
 
         if (isNonOverlay || isUnselectedOverlay) {
+          this.renderer.disableZoomPan();
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
