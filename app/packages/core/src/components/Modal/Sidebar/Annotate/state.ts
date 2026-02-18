@@ -1,8 +1,25 @@
+import {
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+} from "@fiftyone/utilities";
 import { atom, useAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
 import { useMemo } from "react";
+
+const EMBEDDED_DOC_TYPES = new Set([
+  CLASSIFICATION,
+  CLASSIFICATIONS,
+  DETECTION,
+  DETECTIONS,
+  POLYLINE,
+  POLYLINES,
+]);
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
@@ -23,6 +40,37 @@ export const labelSchemaData = atomFamily((field: string) => {
 });
 
 export const activeLabelSchemas = atom<string[] | null>(null);
+
+/**
+ * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
+ * Can't read Recoil from inside a Jotai atom's getter, so we need the data
+ * bridged into a Jotai atom. null means not yet active (falls through to
+ * activeLabelSchemas).
+ */
+export const exploreActiveFields = atom<string[] | null>(null);
+
+/**
+ * Intersection of activeLabelSchemas and exploreActiveFields.
+ * Display consumers should read this instead of activeLabelSchemas so that
+ * hiding a field in the Explore sidebar also hides it in Annotate.
+ */
+export const visibleLabelSchemas = atom((get) => {
+  const active = get(activeLabelSchemas);
+  const explore = get(exploreActiveFields);
+
+  if (!active || !explore) return [];
+
+  const exploreSet = new Set(explore);
+  return active.filter((field) => {
+    const type = get(fieldType(field));
+    // Only filter embedded doc fields by explore visibility.
+    // Primitive fields don't appear in the Explore sidebar.
+    if (type && EMBEDDED_DOC_TYPES.has(type)) {
+      return exploreSet.has(field);
+    }
+    return true;
+  });
+});
 
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
@@ -109,9 +157,7 @@ export const showModal = atom(false);
  * User-set schema `read_only` (from Schema Manager) takes precedence,
  * then falls back to field-level `read_only` (from Python backend).
  */
-export const isFieldReadOnly = (
-  data: LabelSchemaMeta | undefined
-): boolean => {
+export const isFieldReadOnly = (data: LabelSchemaMeta | undefined): boolean => {
   return !!data?.label_schema?.read_only || !!data?.read_only;
 };
 
