@@ -56,13 +56,9 @@ class PluginDocGenerator:
             flags=re.UNICODE,
         )
         self.feature_patterns = [
-            (re.compile(p), f)
-            for p, f in [
+            (re.compile(p), f) for p, f in [
                 (r"vlm|vision.?language|multimodal", "Vision-Language Model"),
-                (
-                    r"qwen|gemini|gpt-?4|claude|llava|minicpm",
-                    "Vision-Language Model",
-                ),
+                (r"qwen|gemini|gpt-?4|claude|llava|minicpm", "Vision-Language Model"),
                 (r"sam\d?|segment\s?anything", "Segmentation"),
                 (r"segmentation|instance.?mask", "Segmentation"),
                 (r"object.?detection|yolo|detectron", "Detection"),
@@ -255,7 +251,7 @@ class PluginDocGenerator:
             .replace("\n", "\\n")
         )
 
-        return f"""---
+        return f'''---
 myst:
   html_meta:
     "description": "{description}"
@@ -264,7 +260,7 @@ myst:
     "og:description": "{description}"
 ---
 
-"""
+'''
 
     def _generate_github_badge(self, plugin: Plugin) -> str:
         """Generate GitHub badge markdown for a plugin."""
@@ -388,11 +384,8 @@ myst:
         return display_tags
 
     def _generate_plugin_model_docs(
-        self,
-        models: List[dict],
-        plugin_name: str,
-        plugin_link: str,
-        github_url: str,
+        self, models: List[dict], plugin_name: str, plugin_link: str,
+        github_url: str
     ) -> None:
         """Generate model documentation for plugin models."""
         for model in models:
@@ -407,18 +400,10 @@ myst:
             license_str = model.get("license")
             req = model.get("requirements") or {}
             size_bytes = model.get("size_bytes")
-            size_str = (
-                etau.to_human_bytes_str(size_bytes, decimals=2)
-                if size_bytes
-                else None
-            )
+            size_str = etau.to_human_bytes_str(size_bytes, decimals=2) if size_bytes else None
             packages = req.get("packages") or []
-            supports_cpu = (
-                "yes" if (req.get("cpu") or {}).get("support") else "no"
-            )
-            supports_gpu = (
-                "yes" if (req.get("gpu") or {}).get("support") else "no"
-            )
+            supports_cpu = "yes" if (req.get("cpu") or {}).get("support") else "no"
+            supports_gpu = "yes" if (req.get("gpu") or {}).get("support") else "no"
             model_slug = re.sub(r"[^\w]", "_", name)
             safe_name = plugin_name.replace("-", "--").replace("_", "__")
 
@@ -503,15 +488,13 @@ myst:
             display_tags = self._format_model_tags(tags)
             display_tags.append("Plugin")
 
-            self._plugin_model_cards.append(
-                f"""
+            self._plugin_model_cards.append(f"""
 .. customcarditem::
     :header: {name}
     :description: {description}
     :link: models/{model_slug}.html
     :tags: {",".join(display_tags)}
-"""
-            )
+""")
             logger.info(f"Generated model docs for {name}")
 
     def extract_plugins_from_readme(self, readme_content: str) -> List[Plugin]:
@@ -829,9 +812,7 @@ myst:
             readme_path = self.plugins_ecosystem_dir / f"{plugin_slug}.md"
 
             with open(readme_path, "w", encoding="utf-8") as f:
-                seo_metadata = self._generate_seo_metadata(
-                    plugin, readme_content
-                )
+                seo_metadata = self._generate_seo_metadata(plugin, readme_content)
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
@@ -987,9 +968,7 @@ Please review each plugin's documentation and license before use.
         with open(cards_path, "w", encoding="utf-8") as f:
             f.write("\n".join(self._plugin_model_cards))
         if self._plugin_model_cards:
-            logger.info(
-                f"Generated {len(self._plugin_model_cards)} plugin model cards"
-            )
+            logger.info(f"Generated {len(self._plugin_model_cards)} plugin model cards")
 
         logger.info("Plugin documentation generated successfully!")
 
