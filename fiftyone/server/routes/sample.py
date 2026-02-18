@@ -134,7 +134,6 @@ def get_sample(
 
     dataset = get_dataset(dataset_id)
     sample = get_sample_from_dataset(dataset, sample_id)
-    logger.debug("Loaded sample %s from dataset %s", sample_id, dataset_id)
 
     # Fail early, if very out-of-date
     if if_last_modified_at is not None:
@@ -608,12 +607,10 @@ class SampleField(HTTPEndpoint):
             is_delete = True
 
         # Save the source sample
-        logger.debug("Saving source sample %s", sample.id)
         etag = save_sample(sample, source_if_match)
-        logger.debug("Saved source sample %s", sample.id)
+        logger.debug("Saved changes to source sample %s", sample.id)
 
         if generated_dataset_name and generated_sample_id:
-            logger.debug("Syncing changes to generated dataset")
             # Sync changes to generated dataset
             try:
                 generated_sample = sync_to_generated_dataset(
@@ -624,6 +621,11 @@ class SampleField(HTTPEndpoint):
                     data,
                     delete=is_delete,
                 )
+                logger.debug(
+                    "Synced changes to generated dataset %s",
+                    generated_dataset_name,
+                )
+
                 if generated_sample is not None:
                     return utils.json.JSONResponse(
                         utils.json.serialize(generated_sample),

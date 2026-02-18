@@ -62,8 +62,6 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
 export const ModalLooker = React.memo(
   ({ sample: propsSampleData }: LookerProps) => {
     const modalSampleData = useRecoilValue(fos.modalSample);
-    console.log("modal sample data:", modalSampleData);
-    console.log("props sample data:", propsSampleData);
     const mode = useAtomValue(fos.modalMode);
     const sample = useMemo(() => {
       if (propsSampleData) {

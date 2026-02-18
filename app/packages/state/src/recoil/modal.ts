@@ -21,7 +21,7 @@ import {
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
-import { isGeneratedView, view } from "./view";
+import { view } from "./view";
 
 export const modalLooker = atom<Lookers | null>({
   key: "modalLooker",
@@ -154,21 +154,12 @@ export const modalSample = graphQLSelector<
   key: "modalSample",
   query: mainSample,
   mapResponse: (data: ModalSampleResponse, { variables }) => {
-    console.log("modalSample mapResponse called:", {
-      hasSample: !!data.sample,
-      sampleId: data.sample?.id,
-      variables: variables,
-      stack: new Error().stack?.split("\n").slice(1, 6).join("\n"),
-    });
-
     if (!data.sample) {
       if (variables.filter.group) {
         throw new GroupSampleNotFound(
           `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
         );
       }
-      console.log("Sample not found with variables:", variables);
-      console.log("data returned from server:", data);
 
       throw new SampleNotFound(
         `sample with id ${variables.filter.id} not found`

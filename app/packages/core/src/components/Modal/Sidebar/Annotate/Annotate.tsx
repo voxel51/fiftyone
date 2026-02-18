@@ -103,13 +103,8 @@ const AnnotateSidebar = () => {
         if (!label?.overlay?.id) return;
 
         // Replicate exactly what LabelEntry.onClick does:
-        // 1. Select overlay in scene (for visual highlight and drag/resize)
         scene?.selectOverlay(label.overlay.id);
-
-        // 2. Set editing state (for sidebar edit panel)
         setEditing(labelEntry.atom);
-
-        // 3. Set savedLabel (for change detection)
         store.set(savedLabel, label.data);
       }
     }

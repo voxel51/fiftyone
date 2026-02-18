@@ -7,7 +7,6 @@ import {
   readOnly,
 } from "@fiftyone/state";
 import { isAnnotationSupported } from "@fiftyone/utilities";
-
 import { useRecoilValue } from "recoil";
 import { useGroupAnnotationSlices } from "./useGroupAnnotationSlices";
 

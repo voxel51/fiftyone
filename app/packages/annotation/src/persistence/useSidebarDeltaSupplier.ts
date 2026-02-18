@@ -30,21 +30,16 @@ const buildLabelProxy = ({
 /**
  * Hook which provides a {@link DeltaSupplier} which captures changes isolated
  * to the annotation sidebar.
- *
- * Note: Primitive fields don't need metadata for generated views since they
- * are sample-level fields, not label fields.
  */
 export const useSidebarDeltaSupplier = (): DeltaSupplier => {
   const { stagedMutations } = useSampleMutationManager();
   const getLabelDelta = useGetLabelDelta(buildLabelProxy);
 
   return useCallback(() => {
-    const deltas = Object.entries(stagedMutations)
-      .map(([path, mutation]) =>
+    return {
+      deltas: Object.entries(stagedMutations).flatMap(([path, mutation]) =>
         getLabelDelta({ data: mutation.data, path, op: mutation.op }, path)
-      )
-      .flat();
-
-    return { deltas };
+      ),
+    };
   }, [getLabelDelta, stagedMutations]);
 };

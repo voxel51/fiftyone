@@ -52,8 +52,6 @@ export default (store: WeakMap<ID, { index: number; sample: Sample }>) => {
         const iter = async (request: Promise<ID | undefined>) => {
           const id = await request;
           const sample = store.get(id);
-          console.log("requesting sample with id:", id);
-          console.log("got sample from store:", sample);
 
           if (!sample) {
             throw new Error("unable to paginate to next sample");

@@ -177,7 +177,6 @@ const useScan = (field: string) => {
   const [, setCurrent] = useCurrentLabelSchema(field);
   const generate = useOperatorExecutor("generate_label_schemas");
   const limit = useQueryPerformanceSampleLimit();
-  console.log("useScan called");
   return {
     isScanning,
     scan: () => {
@@ -187,10 +186,6 @@ const useScan = (field: string) => {
         {
           callback: (result) => {
             if (result.result) {
-              console.log(
-                "setting current label_schema with result.result:",
-                result.result
-              );
               setCurrent(result.result.label_schema);
             }
             setIsScanning(false);

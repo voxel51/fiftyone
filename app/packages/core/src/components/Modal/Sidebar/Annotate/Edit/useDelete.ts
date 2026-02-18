@@ -96,7 +96,6 @@ export default function useDelete() {
         if (label) {
           try {
             const fieldSchema = getFieldSchema(schema, label?.path);
-
             if (!fieldSchema) {
               setNotification({
                 msg: `Error restoring deleted label. "${

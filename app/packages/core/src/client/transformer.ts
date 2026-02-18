@@ -94,14 +94,7 @@ export const transformSampleData = (
   return SampleTransformer.transform(sample);
 };
 
-/**
- * Pattern matching a valid BSON ObjectId hex string (24 hex characters).
- */
 const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/;
-
-/**
- * Field names that are known to contain BSON ObjectId values.
- */
 const OBJECT_ID_FIELDS = new Set(["_id", "_sample_id"]);
 
 /**

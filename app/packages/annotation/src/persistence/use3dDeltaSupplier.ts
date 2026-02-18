@@ -8,6 +8,7 @@ import {
   useWorkingDetections,
   useWorkingPolylines,
 } from "@fiftyone/looker-3d";
+import { isDetection, isPolyline } from "@fiftyone/looker-3d/src/types";
 import { PolylineLabel } from "@fiftyone/looker/src/overlays/polyline";
 import { useCallback } from "react";
 import { LabelProxy } from "../deltas";
@@ -120,7 +121,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     // Generate deletion deltas for deleted labels
     // Only for labels that existed in baseline
     deletedLabels.forEach((label) => {
-      if (label._cls === "Detection" || label._cls === "Polyline") {
+      if (isDetection(label) || isPolyline(label)) {
         sampleDeltas.push(...getLabelDeleteDelta(label, label.path));
       }
     });
