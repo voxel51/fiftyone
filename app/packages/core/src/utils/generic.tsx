@@ -92,7 +92,7 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
-  let locale = "en-CA";
+  const locale = "en-CA";
 
   return (
     timeZone: string,
