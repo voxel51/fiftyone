@@ -170,6 +170,14 @@ export const PolylinePointMarker = ({
     endDragFn(labelId);
   }, [onPointMove, selectedPoint, position, startMatrix, endDragFn, labelId]);
 
+  // This effect resets the cursor to default when the component unmounts.
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = "default";
+    };
+  }, []);
+
+  // This effect clears the selected vertex when Escape is pressed.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && selectedPoint) {

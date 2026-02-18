@@ -6,7 +6,6 @@ import {
   selectiveRenderingEventBus,
 } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { computeCoordinates } from "@fiftyone/state/src/hooks/useTooltip";
 import { useCursor } from "@react-three/drei";
 import type { ThreeEvent } from "@react-three/fiber";
 import { useCallback, useState } from "react";
@@ -23,7 +22,7 @@ import type { BaseOverlayProps, EventHandlers, HoverState } from "../../types";
 
 const getDetailsFromLabel = (label: any) => {
   const field = Array.isArray(label.path)
-    ? [label.path.length - 1]
+    ? label.path[label.path.length - 1]
     : label.path;
   return {
     field,
@@ -75,8 +74,12 @@ const useMeshTooltipProps = (label: any) => {
 
         if (!label.instance) return;
 
-        const sampleId = snapshot.getLoadable(fos.pinned3DSample).getValue()
-          .sample._id;
+        const pinned3DSample = snapshot
+          .getLoadable(fos.pinned3DSample)
+          .getValue();
+
+        if (!pinned3DSample?.sample) return;
+        const sampleId = pinned3DSample.sample._id;
 
         selectiveRenderingEventBus.emit(
           new LabelHoveredEvent({
@@ -118,7 +121,6 @@ const useMeshTooltipProps = (label: any) => {
 
         if (!isTooltipLocked) {
           set(fos.tooltipDetail, null);
-          set(fos.isTooltipLocked, false);
         }
       },
     []
@@ -151,7 +153,7 @@ const useMeshTooltipProps = (label: any) => {
         } else {
           set(
             fos.tooltipCoordinates,
-            computeCoordinates([e.clientX, e.clientY])
+            fos.computeCoordinates([e.clientX, e.clientY])
           );
         }
       },
