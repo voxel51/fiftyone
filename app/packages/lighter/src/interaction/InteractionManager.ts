@@ -196,8 +196,7 @@ export class InteractionManager {
   private canonicalMediaId?: string;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 0.1;
-  private readonly CLICK_TIME_THRESHOLD = 300; // ms
+  private readonly CLICK_THRESHOLD = 10; // pixels, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
@@ -540,13 +539,9 @@ export class InteractionManager {
       Math.pow(point.x - this.clickStartPoint.x, 2) +
         Math.pow(point.y - this.clickStartPoint.y, 2)
     );
-    const duration = now - this.clickStartTime;
 
-    // Check if this is a valid click (not too much movement or time)
-    if (
-      distance <= this.CLICK_THRESHOLD &&
-      duration <= this.CLICK_TIME_THRESHOLD
-    ) {
+    // Check if this is a valid click (not too much movement)
+    if (distance <= this.CLICK_THRESHOLD) {
       // Skip canonical media (background) when finding handler for clicks
       // This ensures clicking on empty space clears selection
       const handler = this.findHandlerAtPoint(point, true);
