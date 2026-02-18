@@ -130,6 +130,8 @@ export default function useDelete() {
     schema,
     setSaving,
     setter,
+    removeLabelFromSidebar,
+    addLabelToSidebar,
   ]);
 
   useKeyBindings(

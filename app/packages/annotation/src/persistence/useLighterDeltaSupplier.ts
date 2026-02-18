@@ -60,27 +60,30 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
   const isGenerated = useRecoilValue(isGeneratedView);
 
   return useCallback(() => {
-    const allDeltas =
-      scene
-        ?.getAllOverlays()
-        ?.flatMap((overlay) => getLabelDelta(overlay, overlay.field)) ?? [];
+    const overlays = scene?.getAllOverlays() ?? [];
+    const allDeltas: ReturnType<typeof getLabelDelta> = [];
+    let firstChangedOverlay: BaseOverlay | undefined;
+
+    for (const overlay of overlays) {
+      const deltas = getLabelDelta(overlay, overlay.field);
+      if (deltas.length > 0) {
+        allDeltas.push(...deltas);
+        if (!firstChangedOverlay) {
+          firstChangedOverlay = overlay;
+        }
+      }
+    }
 
     // For generated views, attach metadata from the first overlay with changes
     // (patches only have 1 label, so there's at most one)
     let metadata;
-    if (isGenerated && allDeltas.length > 0) {
-      const overlay = scene?.getAllOverlays()?.find((o) => {
-        const deltas = getLabelDelta(o, o.field);
-        return deltas.length > 0;
-      });
-      if (overlay) {
-        const labelProxy = buildAnnotationLabel(overlay);
-        if (labelProxy) {
-          metadata = {
-            labelId: (labelProxy.data as { _id?: string })._id,
-            labelPath: buildAnnotationPath(labelProxy, isGenerated),
-          };
-        }
+    if (isGenerated && firstChangedOverlay) {
+      const labelProxy = buildAnnotationLabel(firstChangedOverlay);
+      if (labelProxy) {
+        metadata = {
+          labelId: (labelProxy.data as { _id?: string })._id,
+          labelPath: buildAnnotationPath(labelProxy, isGenerated),
+        };
       }
     }
 

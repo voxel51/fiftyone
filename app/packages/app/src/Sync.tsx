@@ -6,6 +6,8 @@ import {
   type setDatasetMutation,
   setGroupSlice,
   type setGroupSliceMutation,
+  setSample,
+  type setSampleMutation,
   setSpaces,
   type setSpacesMutation,
   setView,
@@ -74,34 +76,17 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
           }}
           setters={setters}
           subscribe={(fn) => {
-            let lastPreloadedQuery = router.get().preloadedQuery;
-            return router.subscribe(
-              ({ state, ...entry }, action) => {
-                dispatchSideEffect({
-                  action,
-                  currentEntry: router.get(),
-                  environment,
-                  nextEntry: { state, ...entry },
-                  subscription,
-                  session: sessionRef.current,
-                });
-
-                // Modal navigation reuses the same page query, so skip
-                // notifying the Writer to avoid re-setting fragment atoms
-                // and triggering redundant graphQL queries.
-                // However, allow through explicit data refreshes (e.g. new
-                // field created) where the preloadedQuery has changed.
-                const preloadedQueryChanged =
-                  entry.preloadedQuery !== lastPreloadedQuery;
-                lastPreloadedQuery = entry.preloadedQuery;
-
-                if (state.event === "modal" && !preloadedQueryChanged) {
-                  return;
-                }
-
-                fn({ ...entry, event: state.event });
-              }
-            );
+            return router.subscribe(({ state, ...entry }, action) => {
+              dispatchSideEffect({
+                action,
+                currentEntry: router.get(),
+                environment,
+                nextEntry: { state, ...entry },
+                subscription,
+                session: sessionRef.current,
+              });
+              fn({ ...entry, event: state.event });
+            });
           }}
         >
           <Plugins>{children}</Plugins>
@@ -139,6 +124,14 @@ const dispatchSideEffect = ({
     if (nextEntry.state.event !== "modal") {
       session.selectedLabels = [];
     }
+    commitMutation<setSampleMutation>(environment, {
+      mutation: setSample,
+      variables: {
+        groupId: nextEntry.state.modalSelector?.groupId,
+        id: nextEntry.state.modalSelector?.id,
+        subscription,
+      },
+    });
     return;
   }
 

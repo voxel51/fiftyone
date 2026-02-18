@@ -400,7 +400,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         ) from err
 
     if errors:
-        logger.error(f"Errors applying JSON patches to sample: {target}")
+        logger.error("Errors applying JSON patches to sample: %s", target)
         for error in errors:
             logger.error(error)
         raise HTTPException(
