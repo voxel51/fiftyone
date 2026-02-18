@@ -167,11 +167,7 @@ const Detection = () => {
     <Tooltip placement="top-center" text="Create new detections">
       <Square
         onClick={() => {
-          enableQuickDraw();
-
-          // Create first detection in quick draw mode,
-          // `true` to work around stale quickDrawActive closure
-          create(true);
+          enableQuickDraw(create);
         }}
       >
         <svg

@@ -6,7 +6,9 @@ import { useCallback, useMemo } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, useLighter } from "@fiftyone/lighter";
+import { BaseOverlay, useLighter, type BoundingBoxLabel } from "@fiftyone/lighter";
+import { quickDrawBridge } from "./bridgeQuickDraw";
+import type { AnnotationLabel, DetectionAnnotationLabel } from "@fiftyone/state";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -28,7 +30,7 @@ const lastUsedDetectionFieldAtom = atom<string | null>(null);
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
-const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
+const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
   atom<string | null>(null)
 );
 
@@ -84,10 +86,19 @@ export const useQuickDraw = () => {
 
   /**
    * Enable quick draw mode for Detection annotations.
+   * Sets quickDraw active, and registers the deferred creation callback.
+   * The actual overlay/label creation is deferred until the user mouses down in the scene.
+   *
+   * @param createFn - Function that creates a detection label (from useCreate).
+   *   Will be called with `true` (shouldUseQuickDraw) on pointer-down.
    */
-  const enableQuickDraw = useCallback(() => {
-    setQuickDrawActive(true);
-  }, [setQuickDrawActive]);
+  const enableQuickDraw = useCallback(
+    (createFn: (shouldUseQuickDraw?: boolean) => void) => {
+      setQuickDrawActive(true);
+      quickDrawBridge.registerCreateCallback(() => createFn(true));
+    },
+    [setQuickDrawActive]
+  );
 
   /**
    * Disable quick draw mode.
@@ -95,6 +106,7 @@ export const useQuickDraw = () => {
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
+    quickDrawBridge.clearCreateCallback();
   }, [setQuickDrawActive]);
 
   /**
@@ -230,9 +242,13 @@ export const useQuickDraw = () => {
    * @returns The complete updated data object
    */
   const handleQuickDrawFieldChange = useCallback(
-    (newFieldPath: string, currentLabel: any, setCurrent: any): any => {
+    (
+      newFieldPath: string,
+      currentLabel: DetectionAnnotationLabel,
+      setCurrent: (label: AnnotationLabel) => void
+    ): void => {
       if (!quickDrawActive || !currentLabel) {
-        return null;
+        return;
       }
 
       const newLabelValue = getQuickDrawDetectionLabel(newFieldPath);
@@ -242,12 +258,10 @@ export const useQuickDraw = () => {
         ...(newLabelValue ? { label: newLabelValue } : {}),
       };
 
-      currentLabel.overlay?.updateField(newFieldPath);
-      currentLabel.overlay?.updateLabel(newData);
+      currentLabel.overlay.updateField(newFieldPath);
+      currentLabel.overlay.updateLabel(newData as BoundingBoxLabel);
 
       setCurrent({ ...currentLabel, path: newFieldPath, data: newData });
-
-      return newData;
     },
     [quickDrawActive, getQuickDrawDetectionLabel]
   );
@@ -260,11 +274,14 @@ export const useQuickDraw = () => {
    */
   const handleQuickDrawTransition = useCallback(
     /**
-     * Closes the current drawing session and initializes a new detection.
+     * Closes the current drawing session and enters a "ready to draw" state.
+     * The next detection is deferred until the user mouses down in the scene.
      *
-     * @param initDetection Function to initialize a new detection label
+     * The bridge callback registered by {@link enterQuickDrawReadyState} is
+     * preserved — `triggerCreate` will invoke the same `create` function on
+     * the next pointer-down.
      */
-    (initDetection: () => void) => {
+    () => {
       if (selectedLabel && quickDrawActive) {
         // Always exit interactive mode after save
         // This ensures clean state transition
@@ -275,10 +292,6 @@ export const useQuickDraw = () => {
 
         // Track last-used detection field and label for auto-assignment
         trackLastUsedDetection(selectedLabel.path, selectedLabel.data.label);
-
-        // Create next detection immediately
-        // This will enter interactive mode with a new handler
-        initDetection();
       }
     },
     [addOverlay, quickDrawActive, scene, selectedLabel, trackLastUsedDetection]

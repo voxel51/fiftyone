@@ -274,6 +274,12 @@ export class InteractionManager {
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
+
+          if (!interactiveHandler) {
+            quickDrawBridge.triggerCreate();
+            interactiveHandler = this.getInteractiveHandler();
+          }
+
           if (interactiveHandler) {
             handler = interactiveHandler.getOverlay();
             this.selectionManager.select(handler.id);

@@ -1,4 +1,5 @@
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
+import type { DetectionAnnotationLabel } from "@fiftyone/state";
 import { useAtom, useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
@@ -62,7 +63,7 @@ const Field = () => {
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
               if (quickDrawActive) {
-                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
+                handleQuickDrawFieldChange(field, currentLabel as DetectionAnnotationLabel, setCurrent);
               } else {
                 setCurrentField(field);
               }

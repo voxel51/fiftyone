@@ -10,8 +10,6 @@ import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
 import { useQuickDraw } from "./Edit/useQuickDraw";
-import useCreate from "./Edit/useCreate";
-import { DETECTION } from "@fiftyone/utilities";
 
 const STORE = getDefaultStore();
 
@@ -22,7 +20,6 @@ export default function useFocus() {
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
-  const createDetection = useCreate(DETECTION);
   const { quickDrawActive, handleQuickDrawTransition } = useQuickDraw();
 
   const select = useCallback(() => {
@@ -51,10 +48,10 @@ export default function useFocus() {
         if (!quickDrawActive) {
           onExit();
         } else {
-          handleQuickDrawTransition(createDetection);
+          handleQuickDrawTransition();
         }
       },
-      [createDetection, handleQuickDrawTransition, onExit, quickDrawActive]
+      [handleQuickDrawTransition, onExit, quickDrawActive]
     )
   );
 
