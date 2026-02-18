@@ -6,8 +6,6 @@
  * - Primitive fields: configure component type, values, range
  */
 
-import { scrollable } from "@fiftyone/components";
-import { useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -286,12 +284,9 @@ const NewFieldSchema = () => {
   return (
     <ListContainer style={{ display: "flex", flexDirection: "column" }}>
       <div
-        className={scrollable}
         style={{
           flex: 1,
           overflowY: "auto",
-          paddingBottom: "1rem",
-          paddingRight: "1rem",
         }}
       >
         <Stack

@@ -1,3 +1,4 @@
+import { scrollable } from "@fiftyone/components";
 import {
   Button,
   Icon,
@@ -212,11 +213,10 @@ const Modal = () => {
             />
           </Button>
         </ModalHeader>
-
-        <Subheading />
-
-        <Page />
-
+        <div className={scrollable}>
+          <Subheading />
+          <Page />
+        </div>
         <SchemaManagerFooter />
       </ModalContainer>
     </ModalBackground>,
