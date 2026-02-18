@@ -22,7 +22,6 @@ export type DoPatchSampleArgs = {
   getVersionToken: () => string;
   refreshSample: (sample: Sample) => void;
   sampleDeltas: JSONDeltas;
-  // Generated view specific parameters
   isGenerated?: boolean;
   generatedDatasetName?: string;
   labelId?: string;
@@ -125,6 +124,8 @@ export const doPatchSample = async ({
     } catch (error) {
       // For delete operations on generated views (patches/clips/frames), a 404
       // is expected because the sample in the generated dataset is deleted
+      // Note that although this is currently disabled in the UI,
+      // the backend already supports it
       if (
         isGenerated &&
         opType === "delete" &&
@@ -200,13 +201,12 @@ export const handleLabelPersistence = async ({
     isGenerated
   ).map((delta) => ({
     ...delta,
-    // convert label delta to sample delta
-    // For generated views, pass null as the label path since the backend
-    // uses the labelPath parameter for field-level routing
+    // Convert label delta to sample delta
+    // Operation path is the label path for patches views
     path: buildJsonPath(isGenerated ? null : annotationLabel.path, delta.path),
   }));
 
-  // For generated views, pass additional metadata for field-level updates
+  // For SampleField patch updates on generated views
   const patchOptions = isGenerated
     ? {
         labelId: (annotationLabel as { data?: { _id?: string } }).data?._id,

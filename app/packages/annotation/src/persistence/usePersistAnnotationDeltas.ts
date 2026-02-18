@@ -35,8 +35,6 @@ export const usePersistAnnotationDeltas =
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
-      // For generated views (patches/clips/frames), include metadata
-      // for the field-level API endpoint
       if (isGenerated && metadata) {
         return await patchSample(deltas, {
           labelId: metadata.labelId,
@@ -45,7 +43,6 @@ export const usePersistAnnotationDeltas =
         });
       }
 
-      // For regular samples, just send the deltas
       return await patchSample(deltas);
     }, [eventBus, isGenerated, patchSample, supplyAnnotationDeltas]);
   };

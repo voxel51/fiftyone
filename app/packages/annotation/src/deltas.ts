@@ -55,10 +55,8 @@ const isFieldType = (field: Field, fieldType: FieldType): boolean => {
 };
 
 /**
- * Build the annotation path for a label, adjusting for generated datasets.
+ * Build the annotation path for a label.
  *
- * For generated views (patches/evaluation patches), we need to return the path
- * to the list field in the source sample so the backend can find the label by ID.
  *
  * @param label The annotation label
  * @param isGenerated Whether this is from a generated dataset
@@ -70,7 +68,7 @@ export const buildAnnotationPath = (
 ): string => {
   let basePath = label.path;
   if (isGenerated) {
-    // Patches views flatten the structure so we need to adjust the path to reflect the sample.
+    // Patches views flatten the structure so we need to adjust the path to reflect the src sample.
     if (label.type === "Detection") basePath = `${basePath}.detections`;
   }
   return basePath;
@@ -331,12 +329,17 @@ const buildPrimitiveMutationDelta = (
     return [];
   }
 
+  const delta = { op: "replace", path: "", value: data };
+
   if (op === "delete") {
-    return [{ op: "remove" as const, path: "" }];
+    delta.op = "remove";
+    delete delta.value;
+  } else if (op === "add") {
+    delta.op = "add";
   }
 
-  const opName: "add" | "replace" = op === "add" ? "add" : "replace";
-  return [{ op: opName, path: "", value: data }];
+  // Return a replace operation with empty path - buildJsonPath will prepend the label path
+  return [delta];
 };
 
 /**
@@ -368,49 +371,39 @@ export const buildDetectionMutationDelta = (
  * @param sample Sample containing unmodified label data
  * @param label Current label state
  * @param isGenerated Whether this is from a generated view
- */
-export const buildDetectionsMutationDelta = (
+ */ export const buildDetectionsMutationDelta = (
   sample: Sample,
   label: LabelMetadata<DetectionLabel> | Detection2DMetadata,
   isGenerated = false
 ): JSONDeltas => {
   const existingLabel = <DetectionsParent>(
     extractNestedField(sample, label.path)
-  ) ?? {
-    detections: [],
-  };
-  // For generated views, compare individual labels (backend applies to individual label)
-  if (isGenerated) {
-    const existingDetection =
-      existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
-    return generateJsonPatch(existingDetection, makeDetectionLabel(label));
-  }
+  ) ?? { detections: [] };
 
   const newDetection = makeDetectionLabel(label);
-  const existingDetection = existingLabel.detections.find(
-    (det) => det._id === label.data._id
-  );
+
+  if (isGenerated) {
+    // Field-level single updates
+    const existingDetection =
+      existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
+    return generateJsonPatch(existingDetection, newDetection);
+  }
 
   // Merge with existing data so server-enriched properties (tags,
   // attributes, _cls, etc.) are preserved when the overlay only carries
   // a minimal subset of fields.
-  const mergedDetection = existingDetection
-    ? { ...existingDetection, ...newDetection }
-    : newDetection;
+  const { detections } = existingLabel;
+  const exists = detections.some((det) => det._id === label.data._id);
+  const newDetections = exists
+    ? detections.map((det) =>
+        det._id === label.data._id ? { ...det, ...newDetection } : det
+      )
+    : [...detections, newDetection];
 
-  const newArray = [...existingLabel.detections];
-  upsertArrayElement(
-    newArray,
-    mergedDetection,
-    (det) => det._id === label.data._id
-  );
-
-  const newLabel = {
+  return generateJsonPatch(existingLabel, {
     ...existingLabel,
-    detections: newArray,
-  };
-
-  return generateJsonPatch(existingLabel, newLabel);
+    detections: newDetections,
+  });
 };
 
 /**

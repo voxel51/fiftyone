@@ -98,8 +98,6 @@ export const useGetLabelDelta = <T>(
           return labelDeltas.map((delta) => ({
             ...delta,
             // convert label delta to sample delta
-            // For generated views, paths are label-relative (SampleField
-            // endpoint routes by field path + label ID in the URL)
             path: buildJsonPath(isGenerated ? null : path, delta.path),
           }));
         }

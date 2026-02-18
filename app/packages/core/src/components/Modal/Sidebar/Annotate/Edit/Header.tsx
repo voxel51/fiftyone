@@ -46,11 +46,11 @@ const LabelHamburgerMenu = () => {
 
   const handleOpenSchemaManager = () => {
     setShowSchemaManager(true);
-    setOpen(false); //handleMenuClose();
+    setOpen(false);
   };
 
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
-  // Disable delete for generated views (patches/clips/frames)
+  // Delete currently disabled because not sure how to handle it in the UI
   const showDelete = !isGenerated;
 
   return (

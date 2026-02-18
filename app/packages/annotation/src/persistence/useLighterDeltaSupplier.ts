@@ -74,10 +74,10 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
       }
     }
 
-    // For generated views, attach metadata from the first overlay with changes
-    // (patches only have 1 label, so there's at most one)
     let metadata;
     if (isGenerated && firstChangedOverlay) {
+      // Must include label metadata for generated views
+      // so that the backend can identify the correct label to update
       const labelProxy = buildAnnotationLabel(firstChangedOverlay);
       if (labelProxy) {
         metadata = {
