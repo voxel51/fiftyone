@@ -1,4 +1,3 @@
-import { useCursor } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -73,8 +72,6 @@ export const PolylinePointMarker = ({
     hoveredVertex?.labelId === labelId &&
     hoveredVertex?.segmentIndex === segmentIndex &&
     hoveredVertex?.pointIndex === pointIndex;
-
-  useCursor(isThisVertexHovered && isDraggable, "grab", "auto");
 
   const handlePointClick = useCallback(
     (event: any) => {
@@ -232,6 +229,15 @@ export const PolylinePointMarker = ({
       <group
         ref={groupRef}
         position={transientPolyline?.vertexDeltas?.[vertexKey] ?? [0, 0, 0]}
+        onPointerOver={() => {
+          setHoveredVertex({ labelId, segmentIndex, pointIndex });
+          document.body.style.cursor = "grab";
+        }}
+        onPointerOut={() => {
+          setHoveredVertex(null);
+          document.body.style.cursor = "default";
+        }}
+        onClick={handlePointClick}
       >
         <SphericalMarker
           ref={meshRef}
@@ -239,13 +245,6 @@ export const PolylinePointMarker = ({
           color={color}
           size={size}
           isSelected={isSelected}
-          onPointerOver={() => {
-            setHoveredVertex({ labelId, segmentIndex, pointIndex });
-          }}
-          onPointerOut={() => {
-            setHoveredVertex(null);
-          }}
-          onClick={handlePointClick}
         />
         {tooltipDescriptor && (
           <VertexTooltip
