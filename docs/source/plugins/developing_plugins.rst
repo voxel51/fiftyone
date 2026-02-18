@@ -1512,6 +1512,8 @@ uploads:
 .. code-block:: python
     :linenos:
 
+    import base64
+
     def resolve_input(self, ctx):
         inputs = types.Object()
 
@@ -1528,8 +1530,9 @@ uploads:
         )
 
         # A drag-and-drop file upload
-        inputs.str(
+        inputs.define_property(
             "uploaded",
+            types.UploadedFile(),
             label="Upload a file",
             description="Drag and drop a file here",
             view=types.FileView(
@@ -1543,15 +1546,17 @@ uploads:
 
     def execute(self, ctx):
         directory = ctx.params.get("directory", {}).get("absolute_path", None)
-        uploaded_content = ctx.params.get("uploaded", None)
+        file_obj = ctx.params["uploaded"]
+        filename = file_obj["name"]
+        content = base64.b64decode(file_obj["content"])
 
-.. _operator-input-tags:
+.. _operator-input-list:
 
-Tags inputs
+List inputs
 ~~~~~~~~~~~
 
-Use :class:`TagsView <fiftyone.operators.types.TagsView>` to let users enter
-a list of string values as tags:
+Use :class:`DropdownView <fiftyone.operators.types.DropdownView>` with
+``multiple=True`` to let users select multiple values from a predefined set:
 
 .. code-block:: python
     :linenos:
@@ -1559,18 +1564,30 @@ a list of string values as tags:
     def resolve_input(self, ctx):
         inputs = types.Object()
 
+        choices = types.DropdownView(multiple=True)
+        choices.add_choice("train", label="Train")
+        choices.add_choice("val", label="Validation")
+        choices.add_choice("test", label="Test")
+
         inputs.list(
-            "tags",
+            "splits",
             types.String(),
-            label="Tags",
-            description="Add one or more tags",
-            view=types.TagsView(),
+            label="Splits",
+            description="Select one or more splits",
+            view=choices,
         )
 
-        return types.Property(inputs, view=types.View(label="Tags input"))
+        return types.Property(inputs, view=types.View(label="List input"))
 
     def execute(self, ctx):
-        tags = ctx.params.get("tags", [])
+        splits = ctx.params.get("splits", [])
+
+.. note::
+
+    You can also use :class:`TagsView <fiftyone.operators.types.TagsView>`
+    with ``inputs.list()`` to render values as chips. ``TagsView`` is best
+    suited for displaying existing tags, while ``DropdownView(multiple=True)``
+    is recommended when users need to choose from a known set of options.
 
 .. _operator-input-code:
 
@@ -1605,7 +1622,9 @@ Tabbed inputs
 ~~~~~~~~~~~~~
 
 Use :class:`TabsView <fiftyone.operators.types.TabsView>` to render a set
-of choices as a horizontal tab bar:
+of choices as a horizontal tab bar. Combine with
+:ref:`conditional logic <operator-input-conditional>` to show different
+fields for each tab:
 
 .. code-block:: python
     :linenos:
@@ -1614,22 +1633,54 @@ of choices as a horizontal tab bar:
         inputs = types.Object()
 
         tabs = types.TabsView()
-        tabs.add_choice("images", label="Images")
-        tabs.add_choice("videos", label="Videos")
-        tabs.add_choice("point_clouds", label="Point clouds")
+        tabs.add_choice("IMAGE", label="Image")
+        tabs.add_choice("VIDEO", label="Video")
+        tabs.add_choice("POINT_CLOUD", label="Point cloud")
 
         inputs.enum(
             "media_type",
             tabs.values(),
+            default="IMAGE",
             required=True,
             label="Media type",
             view=tabs,
         )
 
+        media_type = ctx.params.get("media_type", "IMAGE")
+
+        if media_type == "IMAGE":
+            inputs.str(
+                "image_field",
+                required=True,
+                label="Image field",
+                description="The field containing images",
+            )
+        elif media_type == "VIDEO":
+            inputs.str(
+                "video_field",
+                required=True,
+                label="Video field",
+                description="The field containing videos",
+            )
+        elif media_type == "POINT_CLOUD":
+            inputs.str(
+                "point_cloud_field",
+                required=True,
+                label="Point cloud field",
+                description="The field containing point clouds",
+            )
+
         return types.Property(inputs, view=types.View(label="Tabbed input"))
 
     def execute(self, ctx):
         media_type = ctx.params["media_type"]
+
+        if media_type == "IMAGE":
+            field = ctx.params["image_field"]
+        elif media_type == "VIDEO":
+            field = ctx.params["video_field"]
+        elif media_type == "POINT_CLOUD":
+            field = ctx.params["point_cloud_field"]
 
 .. _operator-caching-expensive-inputs:
 
