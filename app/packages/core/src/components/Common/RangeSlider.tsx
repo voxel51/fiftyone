@@ -131,6 +131,7 @@ type BaseSliderProps<T extends Range | number> = {
   style?: React.CSSProperties;
   alternateThumbLabelDirection?: boolean;
   containerRef?: React.RefObject<HTMLDivElement>;
+  reserveLabelSpace?: boolean;
 };
 
 function isBoundsValid(bounds: Range): bounds is [number, number] {
@@ -152,6 +153,7 @@ const BaseSlider = <T extends Range | number>({
   showValue = true,
   alternateThumbLabelDirection = false,
   containerRef,
+  reserveLabelSpace = false,
 }: BaseSliderProps<T>) => {
   const theme = useTheme();
   const bounds = useRecoilValue(boundsAtom);
@@ -240,6 +242,17 @@ const BaseSlider = <T extends Range | number>({
                 bounds[1]
               ).common?.format(bounds[0])}
             </div>
+          }
+        </>
+      ) : reserveLabelSpace && showValue ? (
+        <>
+          {
+            <div
+              style={{
+                width: "100%",
+                minHeight: "1.25rem",
+              }}
+            />
           }
         </>
       ) : null}

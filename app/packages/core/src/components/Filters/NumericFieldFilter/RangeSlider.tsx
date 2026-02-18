@@ -90,6 +90,7 @@ const RangeSlider = ({
           })}
           color={color}
           containerRef={containerRef}
+          reserveLabelSpace={true}
         />
       )}
       <Inputs modal={modal} path={path} color={color} />
