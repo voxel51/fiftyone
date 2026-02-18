@@ -184,7 +184,8 @@ export function useInitializeWorking(rawOverlays: OverlayLabel[]) {
 
           // Baseline no longer includes this label (e.g. annotationSchemas
           // contracted). User-created labels (isNew) are always kept.
-          if (!raw && !label.isNew) {
+          // Soft-deleted labels are also kept so their data survives for undo.
+          if (!raw && !label.isNew && !state.doc.deletedIds.has(id)) {
             if (!next) next = { ...prev };
             delete next[id];
             changed = true;

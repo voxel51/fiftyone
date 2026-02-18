@@ -9,7 +9,7 @@ import {
   useModalSample,
 } from "@fiftyone/state";
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtomValue, useSetAtom } from "jotai";
+import { atom, getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { splitAtom, useAtomCallback } from "jotai/utils";
 import { get } from "lodash";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -228,6 +228,15 @@ export interface LabelsContext {
    */
   updateLabelData: (labelId: string, data: AnnotationLabelData) => void;
 }
+
+/**
+ * Hook which returns a getter function for reading the current sidebar labels
+ * imperatively.
+ */
+export const useGetSidebarLabels = () => {
+  const store = getDefaultStore();
+  return useCallback(() => store.get(labels), [store]);
+};
 
 /**
  * Hook which provides access to the current {@link LabelsContext}.

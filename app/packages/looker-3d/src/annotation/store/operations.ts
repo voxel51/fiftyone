@@ -1,9 +1,15 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
+import {
+  useGetSidebarLabels,
+  useLabelsContext,
+} from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { isDetection, isPolyline } from "../../types";
+import { quaternionToRadians } from "../../utils";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -20,8 +26,6 @@ import {
   useUpdateWorkingLabel,
   workingAtom,
 } from "./working";
-import { quaternionToRadians } from "../../utils";
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 
 // =============================================================================
 // CUBOID OPERATIONS
@@ -40,6 +44,8 @@ export function useCuboidOperations() {
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const eventBus = useAnnotationEventBus();
+  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
+  const getSidebarLabels = useGetSidebarLabels();
 
   /**
    * Updates cuboid properties.
@@ -208,17 +214,32 @@ export function useCuboidOperations() {
           return;
         }
 
+        const sidebarLabel = getSidebarLabels().find(
+          (l) => l.data._id === labelId
+        );
+
         const execFn = () => {
           deleteLabel(labelId);
+          removeLabelFromSidebar(labelId);
         };
 
         const undoFn = () => {
           restoreLabel(labelId);
+          if (sidebarLabel) {
+            addLabelToSidebar(sidebarLabel);
+          }
         };
 
         createPushAndExec(`delete-cuboid-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, deleteLabel, restoreLabel]
+    [
+      createPushAndExec,
+      deleteLabel,
+      restoreLabel,
+      removeLabelFromSidebar,
+      addLabelToSidebar,
+      getSidebarLabels,
+    ]
   );
 
   return {
@@ -246,6 +267,8 @@ export function usePolylineOperations() {
   const endDrag = useEndDrag();
   const currentSampleId = useRecoilValue(fos.currentSampleId);
   const eventBus = useAnnotationEventBus();
+  const { addLabelToSidebar, removeLabelFromSidebar } = useLabelsContext();
+  const getSidebarLabels = useGetSidebarLabels();
 
   /**
    * Updates polyline properties.
@@ -423,17 +446,32 @@ export function usePolylineOperations() {
           return;
         }
 
+        const sidebarLabel = getSidebarLabels().find(
+          (l) => l.data._id === labelId
+        );
+
         const execFn = () => {
           deleteLabel(labelId);
+          removeLabelFromSidebar(labelId);
         };
 
         const undoFn = () => {
           restoreLabel(labelId);
+          if (sidebarLabel) {
+            addLabelToSidebar(sidebarLabel);
+          }
         };
 
         createPushAndExec(`delete-polyline-${labelId}`, execFn, undoFn);
       },
-    [createPushAndExec, deleteLabel, restoreLabel]
+    [
+      createPushAndExec,
+      deleteLabel,
+      restoreLabel,
+      removeLabelFromSidebar,
+      addLabelToSidebar,
+      getSidebarLabels,
+    ]
   );
 
   return {

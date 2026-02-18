@@ -32,6 +32,7 @@ import { workingAtom } from "./store/working";
 import type { PolylinePointTransformData } from "./types";
 import { useSetEditingToNewPolyline } from "./useSetEditingToNewPolyline";
 import { shouldClosePolylineLoop } from "./utils/polyline-utils";
+import { roundTuple } from "./utils/rounding-utils";
 
 interface SegmentPolylineRendererProps {
   ignoreEffects?: boolean;
@@ -97,7 +98,7 @@ export const SegmentPolylineRenderer = ({
         let transformData: PolylinePointTransformData;
 
         if (existingLabel && isPolyline(existingLabel)) {
-          // Add segment to existing polyline
+          // Add a new segment to an already-selected polyline (multi-segment)
           const existingPoints3d = existingLabel.points3d || [];
           const newPoints3d = [...existingPoints3d, newSegmentPoints];
 
@@ -108,6 +109,7 @@ export const SegmentPolylineRenderer = ({
             segments: newPoints3d.map((pts) => ({ points: pts })),
             path: currentActiveField,
             sampleId: currentSampleId,
+            label: existingLabel.label ?? "",
             misc: {
               closed: shouldClose,
             },
@@ -135,6 +137,8 @@ export const SegmentPolylineRenderer = ({
           }
         }
 
+        const labelClass = transformData.label ?? "";
+
         // Set editing for sidebar UI
         setEditingToNewPolyline(labelId, transformData);
 
@@ -149,7 +153,10 @@ export const SegmentPolylineRenderer = ({
             path: currentActiveField || "",
             sampleId: currentSampleId,
             _cls: POLYLINE,
-            label: "",
+            label: labelClass,
+            points3d: transformData.segments.map((seg) =>
+              seg.points.map((pt) => roundTuple(pt))
+            ),
           });
         }
 
