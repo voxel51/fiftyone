@@ -245,16 +245,12 @@ const BaseSlider = <T extends Range | number>({
           }
         </>
       ) : reserveLabelSpace && showValue ? (
-        <>
-          {
-            <div
-              style={{
-                width: "100%",
-                minHeight: "1.25rem",
-              }}
-            />
-          }
-        </>
+        <div
+          style={{
+            width: "100%",
+            minHeight: "1.25rem",
+          }}
+        />
       ) : null}
       <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
