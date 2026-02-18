@@ -276,7 +276,9 @@ export class InteractionManager {
           interactiveHandler = this.getInteractiveHandler();
 
           if (!interactiveHandler) {
-            quickDrawBridge.triggerCreate();
+            this.eventBus.dispatch("lighter:overlay-create", {
+              eventId: crypto.randomUUID(),
+            });
             interactiveHandler = this.getInteractiveHandler();
           }
 

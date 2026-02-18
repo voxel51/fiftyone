@@ -6,9 +6,8 @@ import { useCallback, useMemo } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, useLighter, type BoundingBoxLabel } from "@fiftyone/lighter";
-import { quickDrawBridge } from "./bridgeQuickDraw";
-import type { AnnotationLabel, DetectionAnnotationLabel } from "@fiftyone/state";
+import { BaseOverlay, UNDEFINED_LIGHTER_SCENE_ID, useLighter, useLighterEventHandler, type BoundingBoxLabel } from "@fiftyone/lighter";
+import { AnnotationLabel, DetectionAnnotationLabel } from "@fiftyone/state";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -37,6 +36,21 @@ const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
+ * Stores the QuickDraw create callback in an atom so it survives
+ * unmount/remount cycles during QuickDraw transitions.
+ */
+const quickDrawCreateDetectionAtom = atom<
+  ((shouldUseQuickDraw: boolean) => void) | null
+>(null);
+
+/**
+ * Tracks processed `lighter:overlay-create` event IDs so that only one
+ * `useQuickDraw` instance handles each event, even though the hook is
+ * called in multiple components.
+ */
+let _lastProcessedCreateId: string | null = null;
+
+/**
  * Centralized hook for managing quick draw mode state and operations.
  */
 export const useQuickDraw = () => {
@@ -48,6 +62,35 @@ export const useQuickDraw = () => {
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
+
+  const getCreateDetection = useAtomCallback(
+    useCallback((get) => get(quickDrawCreateDetectionAtom), [])
+  );
+
+  const setCreateDetection = useAtomCallback(
+    useCallback(
+      (_get, set, cb: ((shouldUseQuickDraw: boolean) => void) | null) =>
+        set(quickDrawCreateDetectionAtom, () => cb),
+      []
+    )
+  );
+
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
+
+	useEventHandler(
+		"lighter:overlay-create",
+		useCallback(
+			(payload) => {
+				if (payload.eventId !== _lastProcessedCreateId) {
+					_lastProcessedCreateId = payload.eventId;
+					getCreateDetection()?.(true);
+				}
+			},
+			[getCreateDetection]
+		)
+	);
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -89,15 +132,15 @@ export const useQuickDraw = () => {
    * Sets quickDraw active, and registers the deferred creation callback.
    * The actual overlay/label creation is deferred until the user mouses down in the scene.
    *
-   * @param createFn - Function that creates a detection label (from useCreate).
+   * @param createDetection - Function that creates a detection label (from useCreate).
    *   Will be called with `true` (shouldUseQuickDraw) on pointer-down.
    */
   const enableQuickDraw = useCallback(
-    (createFn: (shouldUseQuickDraw?: boolean) => void) => {
+    (createDetection: (shouldUseQuickDraw?: boolean) => void) => {
       setQuickDrawActive(true);
-      quickDrawBridge.registerCreateCallback(() => createFn(true));
+      setCreateDetection(createDetection);
     },
-    [setQuickDrawActive]
+    [setQuickDrawActive, setCreateDetection]
   );
 
   /**
@@ -106,19 +149,19 @@ export const useQuickDraw = () => {
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
-    quickDrawBridge.clearCreateCallback();
-  }, [setQuickDrawActive]);
+    setCreateDetection(null);
+  }, [setQuickDrawActive, setCreateDetection]);
 
   /**
    * Toggle quick draw mode. Enables with the given create function if
    * currently inactive, disables if currently active.
    */
   const toggleQuickDraw = useCallback(
-    (createFn: (shouldUseQuickDraw?: boolean) => void) => {
+    (createDetection: (shouldUseQuickDraw?: boolean) => void) => {
       if (quickDrawActive) {
         disableQuickDraw();
       } else {
-        enableQuickDraw(createFn);
+        enableQuickDraw(createDetection);
       }
     },
     [quickDrawActive, disableQuickDraw, enableQuickDraw]
@@ -292,9 +335,8 @@ export const useQuickDraw = () => {
      * Closes the current drawing session and enters a "ready to draw" state.
      * The next detection is deferred until the user mouses down in the scene.
      *
-     * The bridge callback registered by {@link enterQuickDrawReadyState} is
-     * preserved — `triggerCreate` will invoke the same `create` function on
-     * the next pointer-down.
+     * The create callback registered by {@link enableQuickDraw} is preserved —
+     * the `lighter:overlay-create` event will invoke it on the next pointer-down.
      */
     () => {
       if (selectedLabel && quickDrawActive) {
