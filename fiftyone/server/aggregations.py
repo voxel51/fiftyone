@@ -101,27 +101,29 @@ class StringAggregation(Aggregation):
     values: t.Optional[t.List[StringAggregationValue]] = None
 
 
+_AGGREGATE_TYPES = (
+    BooleanAggregation,
+    DataAggregation,
+    IntAggregation,
+    FloatAggregation,
+    RootAggregation,
+    StringAggregation,
+)
+
 AggregateResult = t.Annotated[
-    t.Union[
-        BooleanAggregation,
-        DataAggregation,
-        IntAggregation,
-        FloatAggregation,
-        RootAggregation,
-        StringAggregation,
-    ],
+    t.Union[_AGGREGATE_TYPES],
     gql.union("AggregateResult"),
+]
+
+AggregationResponse = t.Annotated[
+    t.Union[(*_AGGREGATE_TYPES, AggregationQueryTimeout)],
+    gql.union("AggregationResponse"),
 ]
 
 
 async def aggregate_resolver(
     form: AggregationForm,
-) -> t.List[
-    t.Annotated[
-        t.Union[AggregateResult, AggregationQueryTimeout],
-        gql.union("AggregationResponse"),
-    ]
-]:
+) -> t.List[AggregationResponse]:
     if not form.dataset:
         raise ValueError("Aggregate form missing dataset")
 
