@@ -1,5 +1,5 @@
 import { useAnnotationEventBus } from "@fiftyone/annotation";
-import useCanAnnotate from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useCanAnnotate";
+import { useCanAnnotate } from "@fiftyone/core";
 import {
   LabelHoveredEvent,
   LabelUnhoveredEvent,
