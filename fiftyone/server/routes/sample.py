@@ -106,7 +106,6 @@ def get_if_last_modified_at(
             ...
 
         if if_last_modified_at is None:
-            logger.debug("Could not parse If-Match header: %s", if_match)
             raise HTTPException(
                 status_code=400, detail="Invalid If-Match header"
             )
@@ -537,7 +536,7 @@ class SampleField(HTTPEndpoint):
         if_last_modified_at = get_if_last_modified_at(request)
         if if_last_modified_at is None:
             logger.debug(
-                "Missing If-Match header for sample %s in dataset %s",
+                "Invalid or missing If-Match header for sample %s in dataset %s",
                 sample_id,
                 dataset_id,
             )

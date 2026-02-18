@@ -178,6 +178,17 @@ const Detection = () => {
   const create = useCreate(DETECTION);
   const isPatchView = useRecoilValue(isPatchesView);
 
+  const handleCreateDetection = useCallback(() => {
+    if (isPatchView) {
+      return;
+    }
+    enableQuickDraw();
+
+    // Create first detection in quick draw mode,
+    // `true` to work around stale quickDrawActive closure
+    create(true);
+  }, [create, enableQuickDraw, isPatchView]);
+
   return (
     <Tooltip
       placement="top-center"
@@ -188,7 +199,7 @@ const Detection = () => {
       }
     >
       <Square
-        onClick={isPatchView ? undefined : create}
+        onClick={handleCreateDetection}
         className={isPatchView ? "disabled" : ""}
       >
         <svg
