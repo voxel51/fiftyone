@@ -1,25 +1,9 @@
-import {
-  CLASSIFICATION,
-  CLASSIFICATIONS,
-  DETECTION,
-  DETECTIONS,
-  POLYLINE,
-  POLYLINES,
-} from "@fiftyone/utilities";
 import { atom, useAtom } from "jotai";
 import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
 import { useMemo } from "react";
-
-const EMBEDDED_DOC_TYPES = new Set([
-  CLASSIFICATION,
-  CLASSIFICATIONS,
-  DETECTION,
-  DETECTIONS,
-  POLYLINE,
-  POLYLINES,
-]);
+import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
@@ -44,8 +28,9 @@ export const activeLabelSchemas = atom<string[] | null>(null);
 /**
  * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
  * Can't read Recoil from inside a Jotai atom's getter, so we need the data
- * bridged into a Jotai atom. null means not yet active (falls through to
- * activeLabelSchemas).
+ * bridged into a Jotai atom. null means not yet initialized — in that case
+ * visibleLabelSchemas treats the explore set as empty (only primitive fields
+ * pass through).
  */
 export const exploreActiveFields = atom<string[] | null>(null);
 
@@ -56,19 +41,18 @@ export const exploreActiveFields = atom<string[] | null>(null);
  */
 export const visibleLabelSchemas = atom((get) => {
   const active = get(activeLabelSchemas);
+  if (!active) return [];
+
   const explore = get(exploreActiveFields);
-
-  if (!active || !explore) return [];
-
-  const exploreSet = new Set(explore);
+  const exploreSet = new Set(explore ?? []);
   return active.filter((field) => {
     const type = get(fieldType(field));
-    // Only filter embedded doc fields by explore visibility.
-    // Primitive fields don't appear in the Explore sidebar.
-    if (type && EMBEDDED_DOC_TYPES.has(type)) {
-      return exploreSet.has(field);
+    // Primitive fields don't appear in the Explore sidebar — always show them.
+    // Everything else is a label (embedded doc) type — filter by explore visibility.
+    if (type && PRIMITIVE_FIELD_TYPES.has(type)) {
+      return true;
     }
-    return true;
+    return exploreSet.has(field);
   });
 });
 
