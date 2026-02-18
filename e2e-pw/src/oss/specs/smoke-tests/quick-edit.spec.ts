@@ -107,7 +107,7 @@ test.describe.serial("quick edit", () => {
     );
   });
 
-  test("detections via tooltip", async ({ modal, page }) => {
+  test("detections via tooltip", async ({ modal }) => {
     // Init
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
@@ -138,11 +138,13 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused.png"
     );
-    await modal.sampleCanvas.move(0.75, 0.75, "nwse-resize");
+
+    // Resize box
+    await modal.sampleCanvas.move(0.75, 0.75);
     await modal.sampleCanvas.down();
     await modal.sampleCanvas.move(0.5, 0.5);
     await modal.sampleCanvas.up();
-    await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sampleCanvas.move(0.75, 0.75);
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused-small.png"
     );

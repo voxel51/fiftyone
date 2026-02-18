@@ -60,15 +60,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     await page.addInitScript(() => {
-      // eslint-disable-next-line
-      // @ts-ignore
-      window.CURRENT_CURSOR = "default";
       document.addEventListener("mousemove", (e) => {
         const element = document.elementFromPoint(e.clientX, e.clientY);
-        if (element) {
+        const cursor = window.getComputedStyle(element).cursor;
+        // eslint-disable-next-line
+        // @ts-ignore
+        if (cursor !== window.CURRENT_CURSOR) {
           // eslint-disable-next-line
           // @ts-ignore
-          console.log("CHANGE", window.getComputedStyle(element).cursor);
           window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
           document.dispatchEvent(new CustomEvent("cursor-change"));
         }

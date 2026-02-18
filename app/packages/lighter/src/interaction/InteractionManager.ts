@@ -246,7 +246,6 @@ export class InteractionManager {
 
   private handlePointerDown = (event: PointerEvent): void => {
     this.renderer.disableZoomPan();
-    console.log("DOWN");
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -327,7 +326,6 @@ export class InteractionManager {
   }
 
   private handlePointerMove = (event: PointerEvent): void => {
-    console.log("MOVE");
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -391,7 +389,6 @@ export class InteractionManager {
   };
 
   private handlePointerUp = (event: PointerEvent): void => {
-    console.log("UP");
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();

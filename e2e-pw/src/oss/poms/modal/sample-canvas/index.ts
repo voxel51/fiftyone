@@ -147,7 +147,7 @@ class SampleCanvasAsserter {
       await this.sampleCanvasPom.page.keyboard.press("c");
     }
 
-    //   await this.sampleCanvasPom.tooltip.assert.isVisible(false);
+    await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     return await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
   }
 
