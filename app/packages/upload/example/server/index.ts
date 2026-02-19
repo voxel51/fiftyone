@@ -60,6 +60,18 @@ function writeBodyToDisk(
   return new Promise((resolve, reject) => {
     const writeStream = fs.createWriteStream(filePath);
     let size = 0;
+    let settled = false;
+
+    const fail = (err: Error) => {
+      if (settled) return;
+      settled = true;
+      req.unpipe();
+      writeStream.destroy();
+      reject(err);
+    };
+
+    req.on("error", fail);
+    writeStream.on("error", fail);
 
     if (chunkDelayMs > 0) {
       const throttled = new Writable({
@@ -73,15 +85,22 @@ function writeBodyToDisk(
         },
       });
 
+      throttled.on("error", fail);
       req.pipe(throttled);
-      throttled.on("finish", () => resolve(size));
-      throttled.on("error", reject);
+      throttled.on("finish", () => {
+        if (!settled) {
+          settled = true;
+          resolve(size);
+        }
+      });
     } else {
       req.pipe(writeStream);
       writeStream.on("finish", () => {
-        resolve(fs.statSync(filePath).size);
+        if (!settled) {
+          settled = true;
+          resolve(fs.statSync(filePath).size);
+        }
       });
-      writeStream.on("error", reject);
     }
   });
 }
