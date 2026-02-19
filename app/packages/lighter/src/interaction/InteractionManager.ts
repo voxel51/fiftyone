@@ -351,6 +351,15 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event);
     }
 
+    // To determine drag behavior, we allow for two cases:
+    //  1. A spatial drag indicates that the pointer has moved a sufficient
+    //    distance from its starting point. We allow for some epsilon of
+    //    movement to allow for normal clicks to move a few pixels.
+    //  2. A temporal drag indicates that the pointer has been pressed for a
+    //    sufficient period of time.
+    //  By combining both spatial and temporal drags, we can prevent accidental
+    //  dragging behavior when clicking (via spatial gate), while still
+    //  allowing for pixel-level drag precision (via temporal gate).
     const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
 
     // Apply drag gate to prevent accidental overlay dragging on click
@@ -810,9 +819,7 @@ export class InteractionManager {
    */
   private isTemporalDrag(): boolean {
     if (this.clickStartTime) {
-      const now = new Date().getTime();
-
-      return now - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
+      return Date.now() - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
     }
 
     return false;
