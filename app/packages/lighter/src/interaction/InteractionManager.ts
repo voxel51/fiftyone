@@ -268,6 +268,7 @@ export class InteractionManager {
 
       if (isUnselectedOverlay) {
         this.renderer.disableZoomPan();
+        this.selectionManager.select(handler!.id);
       }
 
       // QuickDraw: clicking outside the selected overlay starts a new detection.
@@ -562,7 +563,6 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
-        this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
       // Otherwise, handle regular click
