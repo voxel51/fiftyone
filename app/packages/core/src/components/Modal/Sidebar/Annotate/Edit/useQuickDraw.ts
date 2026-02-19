@@ -37,11 +37,11 @@ const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
 const detectionTypes = new Set(["Detection", "Detections"]);
 
 /**
- * Tracks processed `lighter:overlay-create` event IDs so that only one
+ * Tracks the last processed `lighter:overlay-create` event ID so that only one
  * `useQuickDraw` instance handles each event, even though the hook is
  * called in multiple components.
  */
-let _lastProcessedCreateId: string | null = null;
+const lastProcessedCreateIdAtom = atom<string | null>(null);
 
 /**
  * Centralized hook for managing quick draw mode state and operations.
@@ -310,18 +310,37 @@ export const useQuickDraw = () => {
     [addOverlay, quickDrawActive, scene, selectedLabel, trackLastUsedDetection]
   );
 
+  const claimCreateEvent = useAtomCallback(
+    useCallback(
+      (get, set, eventId: string) => {
+        if (get(lastProcessedCreateIdAtom) === eventId) {
+          return false;
+        }
+        set(lastProcessedCreateIdAtom, eventId);
+        return true;
+      },
+      []
+    )
+  );
+
   useEventHandler(
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (payload.eventId !== _lastProcessedCreateId) {
-          _lastProcessedCreateId = payload.eventId;
+        if (claimCreateEvent(payload.eventId)) {
           const field = getQuickDrawDetectionField() ?? undefined;
-          const labelValue = field ? getQuickDrawDetectionLabel(field) ?? undefined : undefined;
+          const labelValue = field
+            ? (getQuickDrawDetectionLabel(field) ?? undefined)
+            : undefined;
           createDetection({ field, labelValue });
         }
       },
-      [createDetection, getQuickDrawDetectionField, getQuickDrawDetectionLabel]
+      [
+        claimCreateEvent,
+        createDetection,
+        getQuickDrawDetectionField,
+        getQuickDrawDetectionLabel,
+      ]
     )
   );
 
