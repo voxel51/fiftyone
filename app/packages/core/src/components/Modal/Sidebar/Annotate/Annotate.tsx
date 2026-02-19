@@ -163,7 +163,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
@@ -189,7 +189,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   return (
     <>
-      {editing && <Edit key="edit" />}
+      {isEditingValue && <Edit key="edit" />}
       {showImport || isDisabled ? (
         <ImportSchema
           key="import"

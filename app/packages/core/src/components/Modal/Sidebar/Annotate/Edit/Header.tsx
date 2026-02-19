@@ -50,8 +50,12 @@ const LabelHamburgerMenu = () => {
   };
 
   const showEditSchema = canEditLabels.enabled && currentFieldIsReadOnly;
-  // Delete currently disabled because not sure how to handle it in the UI
   const showDelete = !isGenerated;
+  const hasMenuItems = showDelete || showEditSchema;
+
+  if (!hasMenuItems) {
+    return null;
+  }
 
   return (
     <>

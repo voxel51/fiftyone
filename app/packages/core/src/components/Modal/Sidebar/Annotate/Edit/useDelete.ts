@@ -21,7 +21,6 @@ export default function useDelete() {
   const commandBus = useCommandBus();
   const { scene, removeOverlay } = useLighter();
   const label = useAtomValue(current);
-  // const setter = useSetAtom(deleteValue);
   const schema = useRecoilValue(
     fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
   );
@@ -66,7 +65,6 @@ export default function useDelete() {
             new DeleteAnnotationCommand(label, fieldSchema)
           );
 
-          // setter();
           removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
           setNotification({
