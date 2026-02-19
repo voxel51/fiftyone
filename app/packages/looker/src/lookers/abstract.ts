@@ -335,7 +335,8 @@ export abstract class AbstractLooker<
     return (eventType: string, detail: any) => {
       if (eventType === "selectthumbnail") {
         this.dispatchEvent(eventType, {
-          shiftKey: detail,
+          shiftKey: detail.shiftKey,
+          altKey: detail.altKey,
           id: this.sample.id,
           sample: this.sample,
           symbol: this.state.config.symbol,

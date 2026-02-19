@@ -1,5 +1,5 @@
 import { usePanelContext } from "@fiftyone/spaces";
-import { Box } from "@mui/material";
+import { Spinner, Text, TextColor } from "@voxel51/voodo";
 import React, { Suspense, useCallback } from "react";
 import { useAtom } from "jotai";
 import { SimilaritySearchViewProps } from "../types";
@@ -83,7 +83,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   }, [navigateHome, refreshRuns]);
 
   return (
-    <Box sx={{ width: "100%", height: "100%" }}>
+    <div className="w-full h-full">
       {page === "home" && (
         <RunList
           runs={runs}
@@ -103,7 +103,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
           onSubmitted={handleSubmitted}
         />
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -113,22 +113,20 @@ export default function SimilaritySearchView(props: SimilaritySearchViewProps) {
 
   if (!panelId) {
     return (
-      <Box
-        sx={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        Loading...
-      </Box>
+      <div className="w-full h-full flex items-center justify-center">
+        <Spinner />
+      </div>
     );
   }
 
   return (
-    <Suspense fallback={<Box>Loading...</Box>}>
+    <Suspense
+      fallback={
+        <div className="w-full h-full flex items-center justify-center">
+          <Spinner />
+        </div>
+      }
+    >
       <SimilaritySearchReady {...props} />
     </Suspense>
   );

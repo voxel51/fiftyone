@@ -7,6 +7,7 @@ import { BaseState } from "../../state";
 import { BaseElement, Events } from "../base";
 
 import { lookerThumbnailSelector, showSelector } from "./thumbnail.module.css";
+import { altSelectedCheckbox } from "./util.module.css";
 import { makeCheckboxRow } from "./util";
 
 export class ThumbnailSelectorElement<
@@ -14,6 +15,7 @@ export class ThumbnailSelectorElement<
 > extends BaseElement<State> {
   private shown: boolean;
   private selected: boolean;
+  private altSelected: boolean;
   private checkbox: HTMLInputElement;
   private label: HTMLLabelElement;
   private title: HTMLDivElement;
@@ -22,16 +24,23 @@ export class ThumbnailSelectorElement<
   getEvents(): Events<State> {
     return {
       click: ({ event, update, dispatchEvent }) => {
-        update(({ options: { selected, inSelectionMode } }) => {
+        update(({ options: { selected, altSelected, inSelectionMode } }) => {
           if (inSelectionMode && (event.shiftKey || event.ctrlKey)) {
             return {};
           }
           event.stopPropagation();
           event.preventDefault();
 
-          dispatchEvent("selectthumbnail", event.shiftKey);
+          dispatchEvent("selectthumbnail", {
+            shiftKey: event.shiftKey,
+            altKey: event.altKey,
+          });
 
-          return { options: { selected: !selected } };
+          if (event.altKey) {
+            return { options: { altSelected: !altSelected, selected: false } };
+          }
+
+          return { options: { selected: !selected, altSelected: false } };
         });
       },
     };
@@ -59,11 +68,11 @@ export class ThumbnailSelectorElement<
   renderSelf(
     {
       hovering,
-      options: { selected, inSelectionMode, thumbnailTitle },
+      options: { selected, altSelected, inSelectionMode, thumbnailTitle },
     }: Readonly<State>,
     sample
   ) {
-    const shown = hovering || selected || inSelectionMode;
+    const shown = hovering || selected || altSelected || inSelectionMode;
     if (this.shown !== shown) {
       shown
         ? this.element.classList.add(showSelector)
@@ -74,6 +83,15 @@ export class ThumbnailSelectorElement<
     if (this.selected !== selected && this.checkbox) {
       this.selected = selected;
       this.checkbox.checked = selected;
+    }
+
+    if (this.altSelected !== altSelected && this.checkbox) {
+      this.altSelected = altSelected;
+      if (altSelected) {
+        this.checkbox.classList.add(altSelectedCheckbox);
+      } else {
+        this.checkbox.classList.remove(altSelectedCheckbox);
+      }
     }
 
     if (thumbnailTitle && thumbnailTitle(sample) !== this.titleText) {

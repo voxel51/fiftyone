@@ -192,6 +192,7 @@ export interface BaseOptions {
   smoothMasks: boolean;
   zoomPad: number;
   selected: boolean;
+  altSelected: boolean;
   shouldHandleKeyEvents?: boolean;
   inSelectionMode: boolean;
   timeZone: string;
@@ -469,6 +470,7 @@ export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   smoothMasks: true,
   zoomPad: 0.2,
   selected: false,
+  altSelected: false,
   inSelectionMode: false,
   timeZone: "UTC",
   mimetype: "",

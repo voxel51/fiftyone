@@ -25,7 +25,7 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { dynamicGroupsElementCount, selectedMediaField } from "../recoil";
-import { selectedSamples } from "../recoil/atoms";
+import { altSelectedSamples, selectedSamples } from "../recoil/atoms";
 import * as dynamicGroupAtoms from "../recoil/dynamicGroups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName, dynamicGroupsTargetFrameRate } from "../recoil/selectors";
@@ -45,6 +45,7 @@ export default <T extends AbstractLooker<BaseState>>(
   const abortControllerRef = useRef(new AbortController());
   const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
+  const altSelected = useRecoilValue(altSelectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
@@ -261,6 +262,7 @@ export default <T extends AbstractLooker<BaseState>>(
             ...options,
             ...extra,
             selected: selected.has(sample._id),
+            altSelected: altSelected.has(sample._id),
             highlight: highlight?.(sample),
           }
         );
@@ -295,6 +297,7 @@ export default <T extends AbstractLooker<BaseState>>(
       options,
       shouldRenderImaVidLooker,
       selected,
+      altSelected,
       thumbnail,
       view,
       getOnShiftClickLabelCallback,

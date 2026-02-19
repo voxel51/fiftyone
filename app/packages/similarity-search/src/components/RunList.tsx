@@ -1,19 +1,18 @@
-import AddIcon from "@mui/icons-material/Add";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import {
-  Box,
   Button,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
+  Heading,
+  Icon,
+  IconName,
+  Size,
   Stack,
+  Text,
+  TextColor,
+  TextVariant,
   Tooltip,
-  Typography,
-} from "@mui/material";
+  Orientation,
+  Spacing,
+  Variant,
+} from "@voxel51/voodo";
 import React from "react";
 import { SimilarityRun } from "../types";
 import StatusBadge from "./StatusBadge";
@@ -50,6 +49,12 @@ function formatTime(isoString?: string): string {
   }
 }
 
+const ApplyIcon = () => <Icon name={IconName.Enter} size={Size.Md} />;
+const CloneIcon = () => <Icon name={IconName.Redo} size={Size.Md} />;
+const DeleteIcon = () => <Icon name={IconName.Delete} size={Size.Md} />;
+const RefreshIcon = () => <Icon name={IconName.Refresh} size={Size.Md} />;
+const AddIcon = () => <Icon name={IconName.Add} size={Size.Sm} />;
+
 export default function RunList({
   runs,
   appliedRunId,
@@ -60,24 +65,26 @@ export default function RunList({
   onNewSearch,
 }: RunListProps) {
   return (
-    <Box sx={{ p: 2, height: "100%" }}>
+    <div className="p-4 h-full">
       <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2 }}
+        orientation={Orientation.Row}
+        className="justify-between items-center mb-4"
       >
-        <Typography variant="h6">Similarity Search</Typography>
-        <Stack direction="row" spacing={1}>
-          <Tooltip title="Refresh">
-            <IconButton size="small" onClick={onRefresh}>
-              <RefreshIcon fontSize="small" />
-            </IconButton>
+        <Heading level="h2">Similarity Search</Heading>
+        <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
+          <Tooltip content="Refresh">
+            <Button
+              borderless
+              size={Size.Sm}
+              variant={Variant.Borderless}
+              leadingIcon={RefreshIcon}
+              onClick={onRefresh}
+            />
           </Tooltip>
           <Button
-            variant="contained"
-            size="small"
-            startIcon={<AddIcon />}
+            variant={Variant.Primary}
+            size={Size.Sm}
+            leadingIcon={AddIcon}
             onClick={onNewSearch}
           >
             New Search
@@ -86,117 +93,112 @@ export default function RunList({
       </Stack>
 
       {runs.length === 0 ? (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "50%",
-            gap: 2,
-          }}
-        >
-          <Typography color="text.secondary">
-            No similarity searches yet
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
+        <div className="flex flex-col items-center justify-center h-1/2 gap-4">
+          <Text color={TextColor.Secondary}>No similarity searches yet</Text>
+          <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             Create a new search to find similar samples using your computed
             embeddings.
-          </Typography>
+          </Text>
           <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
+            variant={Variant.Secondary}
+            leadingIcon={AddIcon}
             onClick={onNewSearch}
           >
             New Search
           </Button>
-        </Box>
+        </div>
       ) : (
-        <List sx={{ overflow: "auto" }}>
+        <div className="overflow-auto flex flex-col gap-2">
           {runs.map((run) => (
-            <ListItem
+            <div
               key={run.run_id}
-              sx={{
-                border: 1,
-                borderColor:
-                  appliedRunId === run.run_id ? "primary.main" : "divider",
-                borderRadius: 1,
-                mb: 1,
-                bgcolor:
-                  appliedRunId === run.run_id
-                    ? "action.selected"
-                    : "background.paper",
-              }}
-              secondaryAction={
-                <Stack direction="row" spacing={0.5}>
-                  <Tooltip title="Apply results">
-                    <span>
-                      <IconButton
-                        size="small"
-                        onClick={() => onApply(run.run_id)}
-                        disabled={run.status !== "completed"}
-                        color="primary"
-                      >
-                        <PlayArrowIcon fontSize="small" />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title="Clone search">
-                    <IconButton
-                      size="small"
-                      onClick={() => onClone(run.run_id)}
-                    >
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="Delete">
-                    <IconButton
-                      size="small"
-                      onClick={() => onDelete(run.run_id)}
-                      color="error"
-                    >
-                      <DeleteOutlineIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              }
+              className={`border rounded-md p-3 ${
+                appliedRunId === run.run_id
+                  ? "border-action-primary-primary bg-content-bg-card-2"
+                  : "border-content-border-secondary-primary bg-content-bg-card-1"
+              }`}
             >
-              <ListItemText
-                primary={
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography variant="body2" fontWeight="bold">
+              <Stack
+                orientation={Orientation.Row}
+                className="justify-between items-start"
+              >
+                <Stack orientation={Orientation.Column} spacing={Spacing.Xs}>
+                  <Stack
+                    orientation={Orientation.Row}
+                    spacing={Spacing.Sm}
+                    className="items-center"
+                  >
+                    <Text
+                      variant={TextVariant.Sm}
+                      color={TextColor.Primary}
+                      className="font-bold"
+                    >
                       {run.run_name}
-                    </Typography>
+                    </Text>
                     <StatusBadge status={run.status} />
                     {run.status === "completed" && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Text variant={TextVariant.Xs} color={TextColor.Muted}>
                         {run.result_count} results
-                      </Typography>
+                      </Text>
                     )}
                   </Stack>
-                }
-                secondary={
-                  <Stack spacing={0.25} sx={{ mt: 0.5 }}>
-                    <Typography variant="caption" color="text.secondary">
-                      {formatQuery(run)} {"\u00B7"} {run.brain_key}
-                      {run.k ? ` \u00B7 k=${run.k}` : ""}
-                      {run.reverse ? " (least similar)" : ""}
-                    </Typography>
-                    <Typography variant="caption" color="text.disabled">
-                      {formatTime(run.creation_time)}
-                    </Typography>
-                    {run.status === "failed" && run.status_details && (
-                      <Typography variant="caption" color="error.main">
-                        {run.status_details}
-                      </Typography>
-                    )}
-                  </Stack>
-                }
-              />
-            </ListItem>
+                  <Text variant={TextVariant.Xs} color={TextColor.Secondary}>
+                    {formatQuery(run)} {"\u00B7"} {run.brain_key}
+                    {run.k ? ` \u00B7 k=${run.k}` : ""}
+                    {run.reverse ? " (least similar)" : ""}
+                  </Text>
+                  <Text variant={TextVariant.Xs} color={TextColor.Muted}>
+                    {formatTime(run.creation_time)}
+                  </Text>
+                  {run.status === "failed" && run.status_details && (
+                    <Text
+                      variant={TextVariant.Xs}
+                      color={TextColor.Destructive}
+                    >
+                      {run.status_details}
+                    </Text>
+                  )}
+                </Stack>
+
+                <Stack
+                  orientation={Orientation.Row}
+                  spacing={Spacing.Xs}
+                  className="shrink-0"
+                >
+                  <Tooltip content="Apply results">
+                    <Button
+                      borderless
+                      size={Size.Sm}
+                      variant={Variant.Borderless}
+                      leadingIcon={ApplyIcon}
+                      onClick={() => onApply(run.run_id)}
+                      disabled={run.status !== "completed"}
+                    />
+                  </Tooltip>
+                  <Tooltip content="Clone search">
+                    <Button
+                      borderless
+                      size={Size.Sm}
+                      variant={Variant.Borderless}
+                      leadingIcon={CloneIcon}
+                      onClick={() => onClone(run.run_id)}
+                    />
+                  </Tooltip>
+                  <Tooltip content="Delete">
+                    <Button
+                      borderless
+                      size={Size.Sm}
+                      variant={Variant.Danger}
+                      leadingIcon={DeleteIcon}
+                      onClick={() => onDelete(run.run_id)}
+                    />
+                  </Tooltip>
+                </Stack>
+              </Stack>
+            </div>
           ))}
-        </List>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
