@@ -21,7 +21,8 @@ import {
 } from "@fiftyone/lighter";
 import type { DetectionLabel } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { editing } from "../Sidebar/Annotate/Edit";
@@ -50,7 +51,9 @@ export const useBridge = (scene: Scene2D | null) => {
   const save = useSetAtom(currentData);
   const setEditing = useSetAtom(editing);
   const setSavedLabel = useSetAtom(savedLabel);
-  const currentLabel = useAtomValue(current);
+  const getCurrentLabel = useAtomCallback(
+    useCallback((get) => get(current), [])
+  );
   const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
     useLabelsContext();
   const fieldSchema = useRecoilValue(
@@ -137,15 +140,18 @@ export const useBridge = (scene: Scene2D | null) => {
     "lighter:overlay-removed",
     useCallback(
       (payload) => {
+        // Read at event-handling time to avoid stale closure
+        const label = getCurrentLabel();
+
         // If the removed overlay is the one being edited, close the sidebar
-        if (currentLabel?.overlay?.id === payload.id) {
+        if (label?.overlay?.id === payload.id) {
           setEditing(null);
           setSavedLabel(null);
         }
 
         removeLabelFromSidebar(payload.id);
       },
-      [currentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
+      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
     )
   );
 
