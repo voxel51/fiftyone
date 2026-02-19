@@ -81,7 +81,11 @@ function xhrPost(
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText));
+        try {
+          resolve(JSON.parse(xhr.responseText));
+        } catch {
+          reject(new Error("Invalid JSON response from server"));
+        }
       } else {
         try {
           const data = JSON.parse(xhr.responseText);
