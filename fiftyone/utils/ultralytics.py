@@ -701,72 +701,86 @@ class FiftyOneYOLOModel(fout.TorchImageModel):
             classes=self.config.filter_classes,
         )
 
-class FiftyOneYOLOEVPModel(fout.TorchSamplesMixin, FiftyOneYOLOModel):
-    """YOLOE model with visual prompt support.
+class YOLOEVPGetItem(fout.GetItem):
+    """A :class:`GetItem` that loads images and box prompt detections for
+    :class:`FiftyOneYOLOEVPModel` instances.
 
-    This subclass adds visual-prompt-based inference to YOLOE models,
-    allowing users to supply bounding box detections as prompts.
+    Args:
+        transform (None): a preprocessing transform to apply
+        field_mapping (None): the user-supplied dict mapping keys in
+            :attr:`required_keys` to field names of their dataset
+    """
+
+    def __init__(self, transform=None, field_mapping=None, **kwargs):
+        super().__init__(field_mapping=field_mapping, **kwargs)
+        self._transform = transform
+
+    def __call__(self, d):
+        img = fout._load_image(d["filepath"], use_numpy=False, force_rgb=True)
+        result = (
+            self._transform(img)
+            if self._transform is not None
+            else {"img": np.asarray(img), "orig_img": np.asarray(img)}
+        )
+        result["prompt"] = d["prompt_field"]
+        return result
+
+    @property
+    def required_keys(self):
+        return ["filepath", "prompt_field"]
+
+
+class FiftyOneYOLOEVPModel(FiftyOneYOLOModel):
+    """YOLOE model with visual prompt (box prompt) support.
 
     Args:
         config: a ``FiftyOneYOLOModelConfig``
     """
 
-    def __init__(self, config):
-        fout.TorchSamplesMixin.__init__(self)
-        FiftyOneYOLOModel.__init__(self, config)
-        self._curr_visual_prompts = None
-
-    def predict_all(self, imgs, samples=None):
-        field_name = self._get_field()
-        if field_name is not None and samples is not None:
-            self._curr_visual_prompts = _parse_visual_prompts(
-                samples, field_name
-            )
-        else:
-            self._curr_visual_prompts = None
-
-        try:
-            return self._predict_all(imgs)
-        finally:
-            self._curr_visual_prompts = None
-
-    def _get_field(self):
-        return self.needs_fields.get("prompt_field")
+    @staticmethod
+    def collate_fn(batch):
+        prompts = [item.pop("prompt", None) for item in batch]
+        orig_images = [img.get("orig_img") for img in batch]
+        orig_shapes = [_get_image_dims(img)[::-1] for img in orig_images]
+        images = torch.stack([img.get("img") for img in batch])
+        return {
+            "orig_imgs": orig_images,
+            "images": images,
+            "orig_shapes": orig_shapes,
+            "prompts": prompts,
+        }
 
     def _predict_all(self, imgs):
-        if self._curr_visual_prompts is not None:
-            return self._predict_all_visual_prompts(imgs)
-
-        return super()._predict_all(imgs)
-
-    def _predict_all_visual_prompts(self, imgs):
         if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
             if self.has_collate_fn:
                 imgs = self.collate_fn(imgs)
 
-        orig_images = imgs["orig_imgs"]
-        width_height = imgs["orig_shapes"]
+        prompts = imgs.get("prompts") if isinstance(imgs, dict) else None
 
+        if prompts and any(p is not None for p in prompts):
+            return self._predict_all_visual_prompts(
+                imgs["orig_imgs"], imgs["orig_shapes"], prompts
+            )
+
+        return super()._predict_all(imgs)
+
+    def _predict_all_visual_prompts(self, orig_images, width_height, prompts):
         vp_predictor_cls = _get_yoloe_vp_predictor()
-
         orig_predictor = self._model.predictor
 
         all_labels = []
         try:
-            for orig_img, wh, prompts in zip(
-                orig_images,
-                width_height,
-                self._curr_visual_prompts,
-                strict=True,
+            for orig_img, wh, prompt in zip(
+                orig_images, width_height, prompts, strict=True
             ):
-                if prompts is None or len(prompts.detections) == 0:
+                if not prompt or not prompt.detections:
                     all_labels.append(fol.Detections())
                     continue
 
                 w, h = wh
-                bboxes, cls_indices, classes = (
-                    _detections_to_visual_prompts(prompts, w, h)
+                bboxes, cls_indices, classes = _detections_to_visual_prompts(
+                    prompt, w, h
                 )
 
                 visual_prompts = {
@@ -785,7 +799,6 @@ class FiftyOneYOLOEVPModel(fout.TorchSamplesMixin, FiftyOneYOLOModel):
                     verbose=False,
                 )
 
-                # Remap class names from prompt labels
                 names_map = dict(enumerate(classes))
                 for r in results:
                     r.names = names_map
@@ -804,6 +817,12 @@ class FiftyOneYOLOEVPModel(fout.TorchSamplesMixin, FiftyOneYOLOModel):
             self._model.predictor = orig_predictor
 
         return all_labels
+
+    def build_get_item(self, field_mapping=None):
+        return YOLOEVPGetItem(
+            transform=self._transforms,
+            field_mapping=field_mapping,
+        )
 
 
 def _get_image_dims(img):
@@ -1159,23 +1178,6 @@ class UltralyticsOBBOutputProcessor(
         return obb_to_polylines(
             preds, confidence_thresh=confidence_thresh, classes=classes
         )
-
-
-def _parse_visual_prompts(samples, field_name):
-    prompts = []
-    for sample in samples:
-        value = sample.get_field(field_name)
-        if value is not None:
-            if not isinstance(value, fol.Detections):
-                raise ValueError(
-                    "YOLOE visual prompts must be Detections, got %s"
-                    % type(value)
-                )
-            prompts.append(value)
-        else:
-            prompts.append(None)
-
-    return prompts
 
 
 def _detections_to_visual_prompts(detections, img_width, img_height):
