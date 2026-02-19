@@ -27,6 +27,7 @@ Error responses follow a consistent shape::
 |
 """
 
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -37,6 +38,8 @@ import anyio
 
 import fiftyone as fo
 import fiftyone.core.storage as fos
+
+logger = logging.getLogger(__name__)
 
 
 _STATUS_CODE_MAP = {
@@ -229,12 +232,14 @@ def _sync_write_chunks(path: str, chunks: list) -> None:
 
 
 def _sync_try_remove(path: str) -> None:
-    """Best-effort removal of *path*.  Ignores errors."""
+    """Best-effort removal of *path*.  Logs a warning on failure."""
     try:
         if fos.exists(path):
             fos.delete_file(path)
     except Exception:
-        pass
+        logger.warning(
+            "Failed to clean up partial file: %s", path, exc_info=True
+        )
 
 
 # =========================================================================
