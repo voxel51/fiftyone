@@ -492,6 +492,8 @@ export class ImageOverlay
    * Cleanup method to remove resize observer when overlay is destroyed.
    */
   destroy(): void {
+    super.destroy();
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;

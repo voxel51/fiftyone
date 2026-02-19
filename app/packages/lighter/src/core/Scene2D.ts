@@ -1381,6 +1381,10 @@ export class Scene2D {
     // Ensure canonical media is in the background
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
 
+    if (this.unsubscribeCanonicalMediaBounds) {
+      this.unsubscribeCanonicalMediaBounds();
+    }
+
     // Set up bounds change listener for coordinate system updates
     this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {

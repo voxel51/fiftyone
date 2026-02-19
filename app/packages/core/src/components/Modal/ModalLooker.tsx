@@ -98,7 +98,15 @@ export const ModalLooker = React.memo(
 
     if (isNative) {
       return isAnnotate ? (
-        <LighterSampleRenderer sample={sample} />
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+          }}
+        >
+          <LighterSampleRenderer sample={sample} />
+        </div>
       ) : (
         <ModalLookerNoTimeline sample={sample} showControls />
       );
