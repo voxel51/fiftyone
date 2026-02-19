@@ -3,11 +3,32 @@ import { Stack } from "@mui/material";
 import { Clickable, Icon, IconName, Size } from "@voxel51/voodo";
 import { FC, ReactNode } from "react";
 import { useCanAnnotateField } from "./useCanAnnotateField";
+import useCanAnnotate from "./useCanAnnotate";
 
 type QuickEditEntryProps = {
   children: ReactNode;
   enabled: boolean;
   path: string;
+};
+
+/**
+ * Inner component that uses annotation-dependent hooks.
+ * Only mounted when the user has base annotation permission,
+ * avoiding lookups of operators that are not enabled.
+ */
+const QuickEditAction: FC<{ path: string }> = ({ path }) => {
+  const canAnnotateField = useCanAnnotateField(path);
+  const { enterAnnotationMode } = useAnnotationController();
+
+  if (!canAnnotateField) {
+    return null;
+  }
+
+  return (
+    <Clickable onClick={() => enterAnnotationMode(path)}>
+      <Icon name={IconName.Edit} size={Size.Sm} />
+    </Clickable>
+  );
 };
 
 /**
@@ -22,8 +43,7 @@ export const QuickEditEntry: FC<QuickEditEntryProps> = ({
   enabled,
   path,
 }) => {
-  const canAnnotate = useCanAnnotateField(path);
-  const { enterAnnotationMode } = useAnnotationController();
+  const { showAnnotationTab: canAnnotate } = useCanAnnotate();
 
   return (
     <Stack
@@ -33,11 +53,7 @@ export const QuickEditEntry: FC<QuickEditEntryProps> = ({
       gap={2}
     >
       {children}
-      {enabled && canAnnotate && (
-        <Clickable onClick={() => enterAnnotationMode(path)}>
-          <Icon name={IconName.Edit} size={Size.Sm} />
-        </Clickable>
-      )}
+      {enabled && canAnnotate && <QuickEditAction path={path} />}
     </Stack>
   );
 };
