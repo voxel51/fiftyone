@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { UseFileUploadOptions } from "./types";
 import { useFileDrop } from "./useFileDrop";
 import { useFileInput } from "./useFileInput";
@@ -13,6 +14,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     headers,
     onFileSuccess,
     onFileError,
+    autoUpload,
   } = options;
 
   const {
@@ -39,6 +41,13 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
 
   const dropProps = useFileDrop(addFiles);
   const { inputProps, browse } = useFileInput(accept, multiple, addFiles);
+
+  // Auto-upload: as soon as new files land in "selected" status, start uploading
+  useEffect(() => {
+    if (autoUpload && files.some((f) => f.status === "selected")) {
+      upload(autoUpload);
+    }
+  }, [autoUpload, files, upload]);
 
   return {
     files,
