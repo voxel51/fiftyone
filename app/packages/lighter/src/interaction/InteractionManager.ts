@@ -196,8 +196,8 @@ export class InteractionManager {
   private canonicalMediaId?: string;
 
   // Configuration
-  private readonly CLICK_THRESHOLD = 0.1;
-  private readonly CLICK_TIME_THRESHOLD = 300; // ms
+  private readonly CLICK_THRESHOLD = 10; // pixels, dictates drag vs. click
+  private readonly DRAG_TIME_THRESHOLD = 500; // ms, dictates drag vs. click
   private readonly DOUBLE_CLICK_TIME_THRESHOLD = 500; // ms
   private readonly DOUBLE_CLICK_DISTANCE_THRESHOLD = 10; // pixels
 
@@ -263,15 +263,27 @@ export class InteractionManager {
     } else {
       handler = this.findHandlerAtPoint(point);
 
+      // Prevent pan/zoom when target is selectable
+      if (handler && TypeGuards.isSelectable(handler)) {
+        this.renderer.disableZoomPan();
+      }
+
+      // If clicking an overlay, select it
+      const isUnselectedOverlay =
+        !!handler &&
+        TypeGuards.isSelectable(handler) &&
+        !this.selectionManager.isSelected(handler.id);
+
+      if (isUnselectedOverlay) {
+        this.selectionManager.select(handler!.id);
+      }
+
       // QuickDraw: clicking outside the selected overlay starts a new detection.
       if (quickDrawBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-        const isUnselectedOverlay =
-          !!handler &&
-          TypeGuards.isSelectable(handler) &&
-          !this.selectionManager.isSelected(handler.id);
 
         if (isNonOverlay || isUnselectedOverlay) {
+          this.renderer.disableZoomPan();
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
@@ -340,7 +352,10 @@ export class InteractionManager {
       this.handleHover(this.currentPixelCoordinates, event);
     }
 
-    if (handler) {
+    const isDrag = this.isTemporalDrag() || this.isSpatialDragEvent(event);
+
+    // Apply drag gate to prevent accidental overlay dragging on click
+    if (handler && isDrag) {
       // Handle drag move
       if (!interactiveHandler) {
         handler.onMove?.(
@@ -463,6 +478,8 @@ export class InteractionManager {
 
     this.canvas.style.cursor =
       handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
+    this.clickStartPoint = undefined;
+    this.clickStartTime = 0;
   };
 
   private handlePointerCancel = (event: PointerEvent): void => {
@@ -535,17 +552,8 @@ export class InteractionManager {
   private handleClick(point: Point, event: PointerEvent, now: number): void {
     if (!this.clickStartPoint || !this.clickStartTime) return;
 
-    const distance = Math.sqrt(
-      Math.pow(point.x - this.clickStartPoint.x, 2) +
-        Math.pow(point.y - this.clickStartPoint.y, 2)
-    );
-    const duration = now - this.clickStartTime;
-
-    // Check if this is a valid click (not too much movement or time)
-    if (
-      distance <= this.CLICK_THRESHOLD &&
-      duration <= this.CLICK_TIME_THRESHOLD
-    ) {
+    // Check if this is a valid click (not a drag)
+    if (!this.isSpatialDragEvent(event)) {
       // Skip canonical media (background) when finding handler for clicks
       // This ensures clicking on empty space clears selection
       const handler = this.findHandlerAtPoint(point, true);
@@ -560,7 +568,6 @@ export class InteractionManager {
 
       // Handle selection if the handler is selectable
       if (handler && TypeGuards.isSelectable(handler)) {
-        this.selectionManager.toggle(handler.id, { event });
         event.preventDefault();
       }
       // Otherwise, handle regular click
@@ -767,6 +774,47 @@ export class InteractionManager {
     };
 
     return screenPoint;
+  }
+
+  /**
+   * Returns whether the event should be considered a spatial drag.
+   *
+   * This method checks whether the event's position exceeds the spatial gate
+   * specified by {@link CLICK_THRESHOLD}.
+   *
+   * @param event Pointer event
+   * @private
+   */
+  private isSpatialDragEvent(event: PointerEvent): boolean {
+    if (this.clickStartPoint) {
+      const point = this.getCanvasPoint(event);
+      const distanceSquared =
+        Math.pow(point.x - this.clickStartPoint.x, 2) +
+        Math.pow(point.y - this.clickStartPoint.y, 2);
+
+      return distanceSquared > this.CLICK_THRESHOLD * this.CLICK_THRESHOLD;
+    }
+
+    return false;
+  }
+
+  /**
+   * Returns whether the current time should be considered a temporal drag.
+   *
+   * This method checks whether the delta between the current time and the
+   * initial pointerdown time exceeds the temporal gate specified by
+   * {@link DRAG_TIME_THRESHOLD}.
+   *
+   * @private
+   */
+  private isTemporalDrag(): boolean {
+    if (this.clickStartTime) {
+      const now = new Date().getTime();
+
+      return now - this.clickStartTime > this.DRAG_TIME_THRESHOLD;
+    }
+
+    return false;
   }
 
   /**
