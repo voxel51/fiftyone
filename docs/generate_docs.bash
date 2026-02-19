@@ -74,22 +74,12 @@ fi
 
 echo "**** Generating documentation ****"
 
-# Symlink to fiftyone-teams
+# Set fiftyone-teams path for autoapi
 if [[ -n "${PATH_TO_TEAMS}" ]]; then
-    # macOS users may need to run `brew install coreutils` to get `realpath``
+    # macOS users may need to run `brew install coreutils` to get `realpath`
     PATH_TO_TEAMS="$(realpath "$PATH_TO_TEAMS")"
-
-    cd "${THIS_DIR}"
-    PATH_TO_FIFTYONE_DIR=$(
-        python -c "import os, fiftyone as fo; print(os.path.dirname(fo.__file__))" ||
-        true
-    )
-    cd -
-
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/management" "${PATH_TO_FIFTYONE_DIR}/management"
-    ln -sfn "${PATH_TO_TEAMS}/fiftyone/api" "${PATH_TO_FIFTYONE_DIR}/api"
-    echo "Linking to fiftyone-teams at: ${PATH_TO_TEAMS}"
-    echo "In fiftyone path: ${PATH_TO_FIFTYONE_DIR}"
+    export FIFTYONE_TEAMS_DIR="${PATH_TO_TEAMS}"
+    echo "Using fiftyone-teams at: ${PATH_TO_TEAMS}"
 fi
 
 cd "${THIS_DIR}/.."
@@ -106,9 +96,7 @@ sphinx-apidoc --force --no-toc --separate --follow-links \
         fiftyone/constants \
         fiftyone/internal \
         fiftyone/server \
-        fiftyone/service \
-        fiftyone/management \
-        fiftyone/api &
+        fiftyone/service &
 
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
@@ -149,11 +137,6 @@ sphinx-build -M markdown source build --jobs auto $SPHINXOPTS
 echo "Copying markdown files to HTML output"
 cp -r build/markdown/* build/html/
 
-# Remove symlink to fiftyone-teams
-if [[ -n "${PATH_TO_TEAMS}" ]]; then
-    unlink "$PATH_TO_FIFTYONE_DIR/management"
-    unlink "$PATH_TO_FIFTYONE_DIR/api"
-fi
 
 echo "Post-processing docs"
 node ./scripts/post-process.js

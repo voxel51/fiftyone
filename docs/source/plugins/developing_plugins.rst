@@ -1117,6 +1117,571 @@ the property will automatically be marked as `invalid=True`. The operator's
     As the example above shows, you can manually set a property to invalid by
     setting its `invalid` property.
 
+.. _operator-common-input-patterns:
+
+Common input patterns
+---------------------
+
+The :mod:`fiftyone.operators.types` module provides a wide variety of input
+types and views that you can use to build rich input forms for your operators.
+This section demonstrates the most popular patterns.
+
+.. note::
+
+    These examples show Python operators. The same types are available for
+    :ref:`JS operators <developing-js-plugins>` via the
+    :js:mod:`@fiftyone/operators <@fiftyone/operators>` package.
+
+.. image:: https://cdn.voxel51.com/developing_plugins/operator_inputs_showcase.webp
+    :align: center
+
+.. _operator-input-string:
+
+String inputs
+~~~~~~~~~~~~~
+
+The simplest input type is a string field. Use the `description` parameter
+to configure placeholder text:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        inputs.str(
+            "name",
+            label="Name",
+            description="Enter a name...",
+            required=True,
+        )
+
+        inputs.str(
+            "notes",
+            label="Notes",
+            description="Optional notes",
+        )
+
+        return types.Property(inputs, view=types.View(label="String inputs"))
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+        notes = ctx.params.get("notes", None)
+
+.. _operator-input-numeric:
+
+Numeric inputs
+~~~~~~~~~~~~~~
+
+Use `inputs.int()` and `inputs.float()` to collect numeric values. You can
+enforce `min` and `max` constraints and optionally render the input as a
+slider via :class:`SliderView <fiftyone.operators.types.SliderView>`:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        # A simple integer input with min/max constraints
+        inputs.int(
+            "num_samples",
+            label="Number of samples",
+            description="How many samples to process",
+            required=True,
+            min=1,
+            max=1000,
+        )
+
+        # A float input rendered as a slider
+        inputs.float(
+            "confidence",
+            label="Confidence threshold",
+            description="Minimum confidence score",
+            default=0.5,
+            min=0.0,
+            max=1.0,
+            view=types.SliderView(),
+        )
+
+        return types.Property(inputs, view=types.View(label="Numeric inputs"))
+
+    def execute(self, ctx):
+        num_samples = ctx.params["num_samples"]
+        confidence = ctx.params.get("confidence", 0.5)
+
+.. _operator-input-boolean:
+
+Boolean inputs
+~~~~~~~~~~~~~~
+
+Use `inputs.bool()` to collect boolean values. By default, a checkbox is
+rendered, but you can also use
+:class:`SwitchView <fiftyone.operators.types.SwitchView>` for a toggle
+switch:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        # A standard checkbox
+        inputs.bool(
+            "include_labels",
+            label="Include labels",
+            description="Whether to include labels in the export",
+            default=True,
+            view=types.CheckboxView(),
+        )
+
+        # A toggle switch
+        inputs.bool(
+            "overwrite",
+            label="Overwrite existing",
+            description="Whether to overwrite existing results",
+            default=False,
+            view=types.SwitchView(),
+        )
+
+        return types.Property(inputs, view=types.View(label="Boolean inputs"))
+
+    def execute(self, ctx):
+        include_labels = ctx.params.get("include_labels", True)
+        overwrite = ctx.params.get("overwrite", False)
+
+.. _operator-input-date:
+
+Date and datetime inputs
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use :class:`DateTimeView <fiftyone.operators.types.DateTimeView>` to render
+a calendar picker. Set `date_only=True` to collect a date without a time
+component. The values are returned as epoch timestamps in milliseconds and
+can be converted to Python datetime objects via
+:func:`timestamp_to_datetime() <fiftyone.core.utils.timestamp_to_datetime>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.core.utils as fou
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        # A date-only picker
+        inputs.int(
+            "start_date",
+            required=True,
+            label="Start date",
+            description="Choose a start date",
+            view=types.DateTimeView(date_only=True),
+        )
+
+        # A full date and time picker
+        inputs.int(
+            "end_datetime",
+            label="End date/time",
+            description="Choose an end date and time",
+            view=types.DateTimeView(),
+        )
+
+        return types.Property(inputs, view=types.View(label="Date inputs"))
+
+    def execute(self, ctx):
+        start_epoch = ctx.params.get("start_date", None)
+        end_epoch = ctx.params.get("end_datetime", None)
+
+        if start_epoch is not None:
+            start = fou.timestamp_to_datetime(start_epoch)
+
+        if end_epoch is not None:
+            end = fou.timestamp_to_datetime(end_epoch)
+
+.. note::
+
+    Date and datetime properties must use `inputs.int()` because the values
+    are returned as epoch timestamps (milliseconds).
+
+.. _operator-input-dropdown:
+
+Dropdown and autocomplete inputs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use :class:`DropdownView <fiftyone.operators.types.DropdownView>` to render a
+dropdown selector. For inputs where the user may also need to search or type
+a custom value, use
+:class:`AutocompleteView <fiftyone.operators.types.AutocompleteView>`:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        # A standard dropdown
+        dropdown = types.DropdownView()
+        dropdown.add_choice("coco", label="COCO")
+        dropdown.add_choice("voc", label="VOC")
+        dropdown.add_choice("yolo", label="YOLO")
+
+        inputs.enum(
+            "format",
+            dropdown.values(),
+            required=True,
+            label="Export format",
+            description="Choose an export format",
+            view=dropdown,
+        )
+
+        # An autocomplete input that also allows custom values
+        field_names = ctx.dataset.get_field_schema().keys()
+        autocomplete = types.AutocompleteView()
+        for name in field_names:
+            autocomplete.add_choice(name, label=name)
+
+        inputs.enum(
+            "field",
+            autocomplete.values(),
+            required=True,
+            label="Field",
+            description="Choose or type a field name",
+            view=autocomplete,
+        )
+
+        return types.Property(inputs, view=types.View(label="Selection inputs"))
+
+    def execute(self, ctx):
+        format = ctx.params["format"]
+        field = ctx.params["field"]
+
+.. _operator-input-radio:
+
+Radio group inputs
+~~~~~~~~~~~~~~~~~~
+
+Use :class:`RadioGroup <fiftyone.operators.types.RadioGroup>` to render a
+set of mutually exclusive choices as radio buttons. You can control the
+layout via the `orientation` parameter:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        choices = types.RadioGroup(orientation="vertical")
+        choices.add_choice(
+            "classification",
+            label="Classification",
+            description="Classify each sample into a category",
+        )
+        choices.add_choice(
+            "detection",
+            label="Detection",
+            description="Detect objects in each sample",
+        )
+        choices.add_choice(
+            "segmentation",
+            label="Segmentation",
+            description="Segment each sample",
+        )
+
+        inputs.enum(
+            "task",
+            choices.values(),
+            required=True,
+            label="Task type",
+            view=choices,
+        )
+
+        return types.Property(inputs, view=types.View(label="Radio group inputs"))
+
+    def execute(self, ctx):
+        task = ctx.params["task"]
+
+.. _operator-input-conditional:
+
+Conditional inputs
+~~~~~~~~~~~~~~~~~~
+
+A common pattern is to show or hide input fields based on the current value
+of another field. To achieve this, set `dynamic=True` in the
+:ref:`operator's config <operator-config>` and use the current `ctx.params`
+to conditionally define properties in
+:meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.operators as foo
+    import fiftyone.operators.types as types
+
+    class ConditionalInputsExample(foo.Operator):
+        @property
+        def config(self):
+            return foo.OperatorConfig(
+                name="conditional_inputs_example",
+                label="Conditional inputs example",
+                dynamic=True,
+            )
+
+        def resolve_input(self, ctx):
+            inputs = types.Object()
+
+            # First, let the user choose a task type
+            choices = types.RadioGroup()
+            choices.add_choice("export", label="Export")
+            choices.add_choice("import", label="Import")
+
+            inputs.enum(
+                "action",
+                choices.values(),
+                required=True,
+                label="Action",
+                view=choices,
+            )
+
+            action = ctx.params.get("action", None)
+
+            # Then show different fields depending on the chosen action
+            if action == "export":
+                dropdown = types.DropdownView()
+                dropdown.add_choice("coco", label="COCO")
+                dropdown.add_choice("yolo", label="YOLO")
+
+                inputs.enum(
+                    "format",
+                    dropdown.values(),
+                    required=True,
+                    label="Export format",
+                    view=dropdown,
+                )
+                inputs.str(
+                    "output_dir",
+                    required=True,
+                    label="Output directory",
+                    description="Where to write the exported data",
+                )
+
+            elif action == "import":
+                inputs.file(
+                    "input_file",
+                    required=True,
+                    label="Input file",
+                    description="Choose a file to import",
+                    view=types.FileExplorerView(
+                        button_label="Choose a file...",
+                    ),
+                )
+
+            return types.Property(
+                inputs, view=types.View(label="Conditional inputs example")
+            )
+
+        def execute(self, ctx):
+            action = ctx.params["action"]
+
+            if action == "export":
+                format = ctx.params["format"]
+                output_dir = ctx.params["output_dir"]
+                # perform export...
+            elif action == "import":
+                input_file = ctx.params.get("input_file", {})
+                filepath = input_file.get("absolute_path", None)
+                # perform import...
+
+.. note::
+
+    The `dynamic=True` setting causes
+    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+    to be called after each user interaction, which is what enables the
+    conditional rendering. Without it, the form is rendered only once.
+
+.. _operator-input-file:
+
+File inputs
+~~~~~~~~~~~
+
+Use `inputs.file()` with
+:class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>` to
+let users browse and select files or directories. You can also use
+:class:`FileView <fiftyone.operators.types.FileView>` for drag-and-drop file
+uploads:
+
+.. code-block:: python
+    :linenos:
+
+    import base64
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        # A file explorer for choosing a directory
+        inputs.file(
+            "directory",
+            required=True,
+            label="Directory",
+            description="Choose a directory",
+            view=types.FileExplorerView(
+                choose_dir=True,
+                button_label="Choose a directory...",
+            ),
+        )
+
+        # A drag-and-drop file upload
+        inputs.define_property(
+            "uploaded",
+            types.UploadedFile(),
+            label="Upload a file",
+            description="Drag and drop a file here",
+            view=types.FileView(
+                max_size=10 * 1024 * 1024,
+                max_size_error_message="File must be under 10MB",
+                types=".csv,.json",
+            ),
+        )
+
+        return types.Property(inputs, view=types.View(label="File inputs"))
+
+    def execute(self, ctx):
+        directory = ctx.params.get("directory", {}).get("absolute_path", None)
+        file_obj = ctx.params["uploaded"]
+        filename = file_obj["name"]
+        content = base64.b64decode(file_obj["content"])
+
+.. _operator-input-list:
+
+List inputs
+~~~~~~~~~~~
+
+Use :class:`DropdownView <fiftyone.operators.types.DropdownView>` with
+``multiple=True`` to let users select multiple values from a predefined set:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        choices = types.DropdownView(multiple=True)
+        choices.add_choice("train", label="Train")
+        choices.add_choice("val", label="Validation")
+        choices.add_choice("test", label="Test")
+
+        inputs.list(
+            "splits",
+            types.String(),
+            label="Splits",
+            description="Select one or more splits",
+            view=choices,
+        )
+
+        return types.Property(inputs, view=types.View(label="List input"))
+
+    def execute(self, ctx):
+        splits = ctx.params.get("splits", [])
+
+.. note::
+
+    You can also use :class:`TagsView <fiftyone.operators.types.TagsView>`
+    with ``inputs.list()`` to render values as chips. ``TagsView`` is best
+    suited for displaying existing tags, while ``DropdownView(multiple=True)``
+    is recommended when users need to choose from a known set of options.
+
+.. _operator-input-code:
+
+Code inputs
+~~~~~~~~~~~
+
+Use :class:`CodeView <fiftyone.operators.types.CodeView>` to render a code
+editor with syntax highlighting. Specify the `language` parameter to enable
+highlighting for the appropriate language:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        inputs.str(
+            "query",
+            label="MongoDB query",
+            description="Enter a MongoDB aggregation pipeline",
+            view=types.CodeView(language="json"),
+        )
+
+        return types.Property(inputs, view=types.View(label="Code input"))
+
+    def execute(self, ctx):
+        query = ctx.params.get("query", None)
+
+.. _operator-input-tabs:
+
+Tabbed inputs
+~~~~~~~~~~~~~
+
+Use :class:`TabsView <fiftyone.operators.types.TabsView>` to render a set
+of choices as a horizontal tab bar. Combine with
+:ref:`conditional logic <operator-input-conditional>` to show different
+fields for each tab:
+
+.. code-block:: python
+    :linenos:
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        tabs = types.TabsView()
+        tabs.add_choice("IMAGE", label="Image")
+        tabs.add_choice("VIDEO", label="Video")
+        tabs.add_choice("POINT_CLOUD", label="Point cloud")
+
+        inputs.enum(
+            "media_type",
+            tabs.values(),
+            default="IMAGE",
+            required=True,
+            label="Media type",
+            view=tabs,
+        )
+
+        media_type = ctx.params.get("media_type", "IMAGE")
+
+        if media_type == "IMAGE":
+            inputs.str(
+                "image_field",
+                required=True,
+                label="Image field",
+                description="The field containing images",
+            )
+        elif media_type == "VIDEO":
+            inputs.str(
+                "video_field",
+                required=True,
+                label="Video field",
+                description="The field containing videos",
+            )
+        elif media_type == "POINT_CLOUD":
+            inputs.str(
+                "point_cloud_field",
+                required=True,
+                label="Point cloud field",
+                description="The field containing point clouds",
+            )
+
+        return types.Property(inputs, view=types.View(label="Tabbed input"))
+
+    def execute(self, ctx):
+        media_type = ctx.params["media_type"]
+
+        if media_type == "IMAGE":
+            field = ctx.params["image_field"]
+        elif media_type == "VIDEO":
+            field = ctx.params["video_field"]
+        elif media_type == "POINT_CLOUD":
+            field = ctx.params["point_cloud_field"]
+
 .. _operator-caching-expensive-inputs:
 
 Caching expensive inputs
