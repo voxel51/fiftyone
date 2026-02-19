@@ -49,7 +49,10 @@ async function fetchDelete(
 ): Promise<void> {
   const init: RequestInit = { method: "DELETE" };
   if (options?.headers) init.headers = options.headers;
-  await fetch(url, init);
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    throw await parseUploadError(response);
+  }
 }
 
 export function createFetchTransport(): UploadTransport {
