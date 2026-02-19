@@ -17,6 +17,7 @@ import {
   labelSchemaData,
   removeFromActiveSchemas,
 } from "../../state";
+import { useSchemaManager } from "../../useSchemaManager";
 import { currentLabelSchema, pendingActiveSchemas } from "../state";
 import { reconcileComponent } from "../utils";
 
@@ -65,6 +66,7 @@ const useHasChanges = (one: unknown, two: unknown) => {
   }, [one, two]);
 };
 
+// Assumes elements in each array are distinct (true for field name lists).
 const sameSet = (a: string[], b: string[]): boolean => {
   if (a.length !== b.length) return false;
   const setB = new Set(b);
@@ -81,7 +83,10 @@ const useVisibility = (field: string) => {
   const [pending, setPending] = useAtom(pendingActiveSchemas);
 
   // Lazily initialize pending from current active schemas
-  const effective = pending ?? activeSchemas ?? [];
+  const effective = useMemo(
+    () => pending ?? activeSchemas ?? [],
+    [pending, activeSchemas]
+  );
 
   const isFieldVisible = effective.includes(field);
 
@@ -91,14 +96,13 @@ const useVisibility = (field: string) => {
   );
 
   const toggleVisibility = useCallback(() => {
-    const current = pending ?? activeSchemas ?? [];
-    if (current.includes(field)) {
-      setPending(current.filter((f) => f !== field));
+    if (effective.includes(field)) {
+      setPending(effective.filter((f) => f !== field));
     } else {
       // Append new field at the end
-      setPending([...current, field]);
+      setPending([...effective, field]);
     }
-  }, [field, pending, activeSchemas, setPending]);
+  }, [field, effective, setPending]);
 
   const discardVisibility = useCallback(() => {
     const current = pending ?? activeSchemas ?? [];
@@ -179,7 +183,7 @@ const useSave = (field: string, visibilityChanged: boolean) => {
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
   const update = useOperatorExecutor("update_label_schema");
   const activate = useOperatorExecutor("activate_label_schemas");
-  const setActiveSchemas = useOperatorExecutor("set_active_label_schemas");
+  const { setActiveSchemas } = useSchemaManager();
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
   const setActiveLabelSchemasAtom = useSetAtom(activeLabelSchemas);
@@ -250,23 +254,16 @@ const useSave = (field: string, visibilityChanged: boolean) => {
             const added = pending.filter((f) => !oldSet.has(f));
             const ordered = [...kept, ...added];
 
-            setActiveSchemas.execute(
-              { fields: ordered },
-              {
-                callback: (setResult) => {
-                  if (setResult.error) {
-                    notify({
-                      msg: `Failed to update field visibility: ${
-                        setResult.errorMessage || setResult.error
-                      }`,
-                      variant: "error",
-                    });
-                    return;
-                  }
-                  // Sync Jotai state
-                  setActiveLabelSchemasAtom(ordered);
-                  setPending(null);
-                },
+            setActiveSchemas({ fields: ordered }).then(
+              () => {
+                setActiveLabelSchemasAtom(ordered);
+                setPending(null);
+              },
+              (error) => {
+                notify({
+                  msg: `Failed to update field visibility: ${error}`,
+                  variant: "error",
+                });
               }
             );
           }
