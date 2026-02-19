@@ -23,17 +23,9 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
-import {
-  Button,
-  Icon,
-  IconName,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-} from "@voxel51/voodo";
-import { useAnnotationController } from "@fiftyone/annotation";
+import { Orientation, Spacing, Stack } from "@voxel51/voodo";
 import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
+import { QuickEditEntry } from "./Sidebar/Annotate";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
 
@@ -517,15 +509,12 @@ const HiddenItemRow = ({
   );
 };
 
-const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
-
 const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const { enterAnnotationMode } = useAnnotationController();
-  const canAnnotate = useCanAnnotateField(title);
+  const canAnnotateField = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
   const closeTooltip = useCallback(() => {
@@ -542,16 +531,13 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       <span style={{ fontSize: "0.8rem" }}>{title}</span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          {modalMode === ModalMode.EXPLORE && canAnnotate && (
-            <Button
-              leadingIcon={EditIcon}
-              size={Size.Xs}
-              onClick={() => {
-                enterAnnotationMode(title, labelId);
-                closeTooltip();
-              }}
-            ></Button>
-          )}
+          <QuickEditEntry
+            enabled={modalMode === ModalMode.EXPLORE && canAnnotateField}
+            labelId={labelId}
+            onClick={closeTooltip}
+            path={title}
+            type="button"
+          />
 
           <IconButton size="small" onClick={closeTooltip}>
             <CloseIcon fontSize="small" />
