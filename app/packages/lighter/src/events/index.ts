@@ -63,7 +63,6 @@ export type LighterEventGroup = {
     startBounds: Rect;
     startPosition: Point;
     absoluteBounds: Rect;
-    relativeBounds: Rect;
   };
   /** Emitted when an overlay creation is undone, before the overlay is removed */
   "lighter:overlay-undone": { id: string };

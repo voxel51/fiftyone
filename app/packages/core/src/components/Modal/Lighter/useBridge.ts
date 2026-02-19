@@ -141,10 +141,10 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(
       (payload) => {
         // Read at event-handling time to avoid stale closure
-        const label = getCurrentLabel();
+        const currentLabel = getCurrentLabel();
 
         // If the removed overlay is the one being edited, close the sidebar
-        if (label?.overlay?.id === payload.id) {
+        if (currentLabel?.overlay?.id === payload.id) {
           setEditing(null);
           setSavedLabel(null);
         }
