@@ -310,8 +310,10 @@ export class BoundingBoxOverlay
       if (!this.hasValidBounds()) {
         this.moveState = "SETTING";
       } else if (resizeRegion && this.isResizeable) {
+        console.log("YESSSS", resizeRegion);
         this.moveState = resizeRegion;
       } else if (!resizeRegion && this.isDraggable) {
+        console.log("NOOOOO", resizeRegion);
         this.moveState = "DRAGGING";
       }
     }
@@ -422,8 +424,13 @@ export class BoundingBoxOverlay
     if (cursorState === "DRAGGING" && !this.isDraggable) return false;
     if (cursorState.startsWith("RESIZE_") && !this.isResizeable) return false;
 
+    if (cursorState === "DRAGGING" || cursorState.startsWith("RESIZE_")) {
+      this.renderer?.disableZoomPan();
+    }
+
+    this.moveState = cursorState;
+
     if (cursorState === "SETTING") {
-      this.moveState = cursorState;
       this.setPosition(worldPoint);
       this.absoluteBounds = {
         ...worldPoint,
@@ -448,7 +455,6 @@ export class BoundingBoxOverlay
     maintainAspectRatio?: boolean
   ): boolean {
     this.calculateMoving(point, worldPoint, scale);
-
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     }
@@ -603,6 +609,7 @@ export class BoundingBoxOverlay
     this.moveStartPoint = undefined;
     this.moveStartPosition = undefined;
     this.moveStartBounds = undefined;
+    this.renderer?.enableZoomPan();
 
     return true;
   }

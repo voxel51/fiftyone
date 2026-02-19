@@ -245,6 +245,7 @@ export class InteractionManager {
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
+    console.log("DOONNWWNWN");
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();
@@ -362,8 +363,6 @@ export class InteractionManager {
       }
 
       if (handler.isMoving?.()) {
-        this.renderer.disableZoomPan();
-
         // Emit move event with bounds information
         if (TypeGuards.isSpatial(handler)) {
           const type = handler.isDragging?.()

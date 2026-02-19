@@ -65,8 +65,10 @@ export class InteractiveDetectionHandler implements InteractionHandler {
   }
 
   private updateBounds(point: Point): boolean {
+    console.log("UPDATE", this._isDragging, this.startPoint);
     if (!this._isDragging || !this.startPoint) return false;
 
+    console.log("KJFDOLJLD");
     const x = Math.min(this.startPoint.x, point.x);
     const y = Math.min(this.startPoint.y, point.y);
     const width = Math.abs(point.x - this.startPoint.x);

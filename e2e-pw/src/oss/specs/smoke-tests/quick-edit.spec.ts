@@ -134,6 +134,8 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.tooltip.quickEdit();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sidebar.edit.assert.isRedoEnabled(false);
+    await modal.sidebar.edit.assert.isUndoEnabled(false);
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused.png"
     );
@@ -147,5 +149,20 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused-small.png"
     );
+
+    // Resize to original box
+    await modal.sampleCanvas.move(0.5, 0.5, "nwse-resize");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.75, 0.75);
+    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.move(0.9, 0.9, "default");
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "centered-bounding-box-lighter-focused-again.png"
+    );
+
+    await await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.down();
+    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
+    await modal.sampleCanvas.up();
   });
 });

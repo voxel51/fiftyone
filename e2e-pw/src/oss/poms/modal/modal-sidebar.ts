@@ -1,10 +1,14 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { Duration } from "src/oss/utils";
+import { ModalAnnotateEditPom } from "./annotate-edit";
+import { ModalAnnotateSidebarPom } from "./annotate-sidebar";
 
 /**
  * The modal sidebar in 'Explore' mode
  */
 export class ModalSidebarPom {
+  readonly annotate: ModalAnnotateSidebarPom;
+  readonly edit: ModalAnnotateEditPom;
   readonly page: Page;
   readonly locator: Locator;
   readonly assert: ModalSidebarAsserter;
@@ -16,8 +20,9 @@ export class ModalSidebarPom {
    *  the modal sidebar
    */
   constructor(page: Page) {
+    this.annotate = new ModalAnnotateSidebarPom(page);
+    this.edit = new ModalAnnotateEditPom(page);
     this.page = page;
-
     this.assert = new ModalSidebarAsserter(this);
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
