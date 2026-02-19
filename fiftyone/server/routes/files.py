@@ -13,11 +13,7 @@ from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from fiftyone.server.files import (
-    FileOperationError,
-    delete_file,
-    stream_upload,
-)
+import fiftyone.server.files as fsf
 
 
 class FileUpload(HTTPEndpoint):
@@ -38,13 +34,13 @@ class FileUpload(HTTPEndpoint):
         path = request.query_params.get("path")
 
         try:
-            resolved_path = await stream_upload(
+            resolved_path = await fsf.stream_upload(
                 stream=request.stream(),
                 path=path,
             )
             return JSONResponse({"path": resolved_path}, status_code=201)
 
-        except FileOperationError as e:
+        except fsf.FileOperationError as e:
             return JSONResponse(e.to_dict(), status_code=e.status_code)
 
 
@@ -63,8 +59,8 @@ class FileDelete(HTTPEndpoint):
         path = request.query_params.get("path")
 
         try:
-            await delete_file(path=path)
+            await fsf.delete_file(path=path)
             return Response(status_code=204)
 
-        except FileOperationError as e:
+        except fsf.FileOperationError as e:
             return JSONResponse(e.to_dict(), status_code=e.status_code)
