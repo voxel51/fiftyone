@@ -43,12 +43,12 @@ Main hook that combines file management, upload handling, and UI helpers.
 #### Options
 
 | Option           | Type                                                       | Description                                         |
-| ---------------- | ---------------------------------------------------------- | --------------------------------------------------- | -------------------------- |
+| ---------------- | ---------------------------------------------------------- | --------------------------------------------------- |
 | `multiple`       | `boolean`                                                  | Allow multiple file selection (default: `false`)    |
 | `accept`         | `string[]`                                                 | Accepted file extensions (e.g., `[".png", ".jpg"]`) |
 | `maxSize`        | `number`                                                   | Maximum file size in bytes                          |
 | `maxSizeMessage` | `string`                                                   | Custom error message for size validation            |
-| `validate`       | `(file: File) => string                                    | null`                                               | Custom validation function |
+| `validate`       | `(file: File) => string \| null`                           | Custom validation function                          |
 | `transport`      | `UploadTransport`                                          | Custom upload transport                             |
 | `maxConcurrent`  | `number`                                                   | Max concurrent uploads                              |
 | `headers`        | `Record<string, string>` or `() => Record<string, string>` | Request headers                                     |
@@ -59,10 +59,10 @@ Main hook that combines file management, upload handling, and UI helpers.
 #### Returns
 
 | Property         | Type                                      | Description                   |
-| ---------------- | ----------------------------------------- | ----------------------------- | ------------------ |
+| ---------------- | ----------------------------------------- | ----------------------------- |
 | `files`          | `FileUploadItem[]`                        | Current file list with status |
 | `errors`         | `string[]`                                | Validation errors             |
-| `addFiles`       | `(files: File[]                           | FileList) => void`            | Add files to queue |
+| `addFiles`       | `(files: File[] \| FileList) => void`     | Add files to queue            |
 | `removeFile`     | `(id: string) => void`                    | Remove a file                 |
 | `clear`          | `() => void`                              | Clear all files               |
 | `upload`         | `(action: UploadAction) => Promise<void>` | Start uploading               |
