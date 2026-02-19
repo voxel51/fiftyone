@@ -1,6 +1,9 @@
 import useCanAnnotate from "./useCanAnnotate";
-import { useValidAnnotationFields } from "./useValidAnnotationFields";
-import { useIsFieldReadOnly } from "./SchemaManager/hooks";
+import {
+  useActiveFieldsList,
+  useHiddenFieldsWithMetadata,
+  useIsFieldReadOnly,
+} from "./SchemaManager/hooks";
 import { isSystemReadOnlyField } from "./SchemaManager/constants";
 
 /**
@@ -10,8 +13,11 @@ import { isSystemReadOnlyField } from "./SchemaManager/constants";
  */
 export const useCanAnnotateField = (path: string): boolean => {
   const { showAnnotationTab: canAnnotate } = useCanAnnotate();
-  const { validFields } = useValidAnnotationFields();
+  const { fields: activeFields } = useActiveFieldsList();
+  const { fields: hiddenFields } = useHiddenFieldsWithMetadata();
   const isFieldReadOnly = useIsFieldReadOnly();
+
+  const validFields = [...activeFields, ...hiddenFields];
 
   return (
     canAnnotate &&
