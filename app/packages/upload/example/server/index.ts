@@ -67,6 +67,7 @@ function writeBodyToDisk(
       settled = true;
       req.unpipe();
       writeStream.destroy();
+      fs.unlink(filePath, () => {});
       reject(err);
     };
 
