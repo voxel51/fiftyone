@@ -86,7 +86,7 @@ FiftyOne 1.13.0
 
 App
 
-- New Feature: :ref:`Human Annotation! <fiftyone-annotation>` Create, edit, and
+- New Feature: :ref:`In-App Annotation <in-app-annotation>` Create, edit, and
   delete classification and detection labels on images, as well as cuboid and
   3d polylines on 3d datasets. :ref:`Dataset Managers <enterprise-can-edit>`
   can define an annotation schema to constrain all metadata edits, either
