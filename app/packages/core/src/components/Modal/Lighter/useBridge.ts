@@ -174,7 +174,7 @@ export const useBridge = (scene: Scene2D | null) => {
     useCallback(
       (payload) => {
         // Look up the label before it gets removed from the sidebar
-        // (lighter:creation-undone fires before lighter:overlay-removed)
+        // (lighter:overlay-undone fires before lighter:overlay-removed)
         const label = getLabelById(payload.id);
         if (!label) {
           return;

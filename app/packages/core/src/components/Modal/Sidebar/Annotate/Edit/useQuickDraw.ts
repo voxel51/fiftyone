@@ -70,7 +70,7 @@ export const useQuickDraw = () => {
   );
 
   /**
-   * Getter whcih wraps {@link lastUsedLabelByFieldAtom} atom family.
+   * Getter which wraps {@link lastUsedLabelByFieldAtom} atom family.
    */
   const getLastUsedLabel = useAtomCallback(
     useCallback(
@@ -313,13 +313,13 @@ export const useQuickDraw = () => {
   useEventHandler(
     "lighter:overlay-create",
     useCallback(
-			(payload) => {
-				if (payload.eventId !== _lastProcessedCreateId) {
-					_lastProcessedCreateId = payload.eventId;
-					const field = getQuickDrawDetectionField() ?? undefined;
-					const labelValue = field ? getQuickDrawDetectionLabel(field) ?? undefined : undefined;
-					createDetection({ field, labelValue });
-				}
+      (payload) => {
+        if (payload.eventId !== _lastProcessedCreateId) {
+          _lastProcessedCreateId = payload.eventId;
+          const field = getQuickDrawDetectionField() ?? undefined;
+          const labelValue = field ? getQuickDrawDetectionLabel(field) ?? undefined : undefined;
+          createDetection({ field, labelValue });
+        }
       },
       [createDetection, getQuickDrawDetectionField, getQuickDrawDetectionLabel]
     )

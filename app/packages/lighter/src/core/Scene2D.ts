@@ -1479,7 +1479,9 @@ export class Scene2D {
   /**
    * Updates coordinates for a single spatial overlay.
    */
-  updateSpatialOverlayCoordinates(overlay: BaseOverlay & Spatial): void {
+  private updateSpatialOverlayCoordinates(
+    overlay: BaseOverlay & Spatial
+  ): void {
     const relativeBounds = overlay.getRelativeBounds();
     if (BaseOverlay.validBounds(relativeBounds)) {
       const absoluteBounds =
@@ -1493,7 +1495,9 @@ export class Scene2D {
    * This is used when an overlay's position is changed and we need to update its relative coordinates.
    * @param overlay - The spatial overlay to update.
    */
-  updateSpatialOverlayRelativeBounds(overlay: BaseOverlay & Spatial): void {
+  private updateSpatialOverlayRelativeBounds(
+    overlay: BaseOverlay & Spatial
+  ): void {
     const absoluteBounds = overlay.getAbsoluteBounds();
 
     if (BaseOverlay.validBounds(absoluteBounds)) {
