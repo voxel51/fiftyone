@@ -365,13 +365,19 @@ function FileItemRow({
 }) {
   const [deleting, setDeleting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const isOnServer = file.status === "success";
+
+  useEffect(() => {
+    return () => clearTimeout(copyTimerRef.current);
+  }, []);
 
   const handleCopy = () => {
     if (!file.remotePath) return;
     navigator.clipboard.writeText(file.remotePath).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
     });
   };
 
