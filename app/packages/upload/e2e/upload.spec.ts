@@ -1,163 +1,149 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
 
-// Helper to create a test file
 const TEST_FILE = path.join(__dirname, "fixtures", "test-file.txt");
+const TEST_FILE_2 = path.join(__dirname, "fixtures", "test-file-2.txt");
+const LARGE_FILE = path.join(__dirname, "fixtures", "large-file.bin");
 
 test.describe("File Upload", () => {
   test.beforeEach(async ({ request }) => {
-    // Clear uploads before each test
     await request.delete("http://localhost:3001/api/files");
   });
 
-  test("displays empty state initially", async ({ page }) => {
+  test("displays drop zone initially with no file list", async ({ page }) => {
     await page.goto("/");
 
     await expect(page.getByTestId("drop-zone")).toBeVisible();
     await expect(page.getByTestId("file-list")).not.toBeVisible();
   });
 
-  test("adds files via file input", async ({ page }) => {
+  test("has a destination input defaulting to /my/upload/dir", async ({
+    page,
+  }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
-
-    await expect(page.getByTestId("file-list")).toBeVisible();
-    await expect(page.getByTestId("file-item-test-file.txt")).toBeVisible();
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "selected"
-    );
+    const input = page.getByTestId("destination-input");
+    await expect(input).toBeVisible();
+    await expect(input).toHaveValue("/my/upload/dir");
   });
 
-  test("uploads file successfully", async ({ page, request }) => {
+  test("auto-uploads file on selection and verifies on server", async ({
+    page,
+    request,
+  }) => {
     await page.goto("/");
 
-    // Add file
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
 
-    // Click upload
-    await page.getByTestId("upload-button").click();
+    // File should appear in the list
+    await expect(page.getByTestId("file-item-test-file.txt")).toBeVisible();
 
-    // Wait for success status
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "success",
-      {
-        timeout: 10000,
-      }
+    // Wait for upload to complete — remove button title changes to "Delete from server"
+    await expect(page.getByTestId("remove-test-file.txt")).toHaveAttribute(
+      "title",
+      "Delete from server",
+      { timeout: 10000 }
     );
 
-    // Verify file was uploaded to server
+    // Verify file arrived on the server
     const response = await request.get("http://localhost:3001/api/files");
     const files = await response.json();
     expect(files.length).toBe(1);
     expect(files[0].name).toContain("test-file.txt");
   });
 
-  test("shows upload progress", async ({ page }) => {
+  test("hides drop zone after files are added", async ({ page }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
 
-    await page.getByTestId("upload-button").click();
-
-    // Should transition through uploading state
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "uploading"
-    );
-
-    // Wait for completion
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "success",
-      {
-        timeout: 10000,
-      }
-    );
+    await expect(page.getByTestId("drop-zone")).not.toBeVisible();
+    await expect(page.getByTestId("add-more-button")).toBeVisible();
   });
 
-  test("can cancel upload", async ({ page }) => {
+  test("shows drop zone again via Add More Files button", async ({ page }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
+    await expect(page.getByTestId("drop-zone")).not.toBeVisible();
 
-    await page.getByTestId("upload-button").click();
-
-    // Try to catch uploading or success state (uploads can be fast)
-    const status = page.getByTestId("status-test-file.txt");
-    await expect(status).toHaveText(/uploading|success/);
-
-    // If still uploading, try to cancel
-    const currentStatus = await status.textContent();
-    if (currentStatus === "uploading") {
-      await page.getByTestId("cancel-test-file.txt").click();
-      await expect(status).toHaveText("cancelled");
-    }
-    // Test passes if upload was too fast - cancel functionality tested elsewhere
+    await page.getByTestId("add-more-button").click();
+    await expect(page.getByTestId("drop-zone")).toBeVisible();
   });
 
-  test("can remove file from list", async ({ page }) => {
+  test("removes file from list", async ({ page }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
-
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
     await expect(page.getByTestId("file-item-test-file.txt")).toBeVisible();
 
-    // Remove file
     await page.getByTestId("remove-test-file.txt").click();
 
-    // Should be gone
     await expect(page.getByTestId("file-item-test-file.txt")).not.toBeVisible();
+  });
+
+  test("deletes uploaded file from server on remove", async ({
+    page,
+    request,
+  }) => {
+    await page.goto("/");
+
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
+
+    // Wait for upload to complete
+    await expect(page.getByTestId("remove-test-file.txt")).toHaveAttribute(
+      "title",
+      "Delete from server",
+      { timeout: 10000 }
+    );
+
+    // Verify on server
+    let response = await request.get("http://localhost:3001/api/files");
+    let files = await response.json();
+    expect(files.length).toBe(1);
+
+    // Click remove (trash icon) — triggers server deletion
+    await page.getByTestId("remove-test-file.txt").click();
+
+    // File should disappear from list
+    await expect(page.getByTestId("file-item-test-file.txt")).not.toBeVisible({
+      timeout: 10000,
+    });
+
+    // Verify deleted from server
+    response = await request.get("http://localhost:3001/api/files");
+    files = await response.json();
+    expect(files.length).toBe(0);
   });
 
   test("clears all files", async ({ page }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
-
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
     await expect(page.getByTestId("file-list")).toBeVisible();
 
     await page.getByTestId("clear-button").click();
 
     await expect(page.getByTestId("file-list")).not.toBeVisible();
+    await expect(page.getByTestId("drop-zone")).toBeVisible();
   });
 
-  test("displays stats correctly", async ({ page }) => {
+  test("shows total progress bar during upload", async ({ page }) => {
     await page.goto("/");
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles(TEST_FILE);
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
 
-    const stats = page.getByTestId("stats");
-    await expect(stats).toContainText("Total: 1");
-    await expect(stats).toContainText("Completed: 0");
-
-    await page.getByTestId("upload-button").click();
-
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "success",
-      {
-        timeout: 10000,
-      }
-    );
-
-    await expect(stats).toContainText("Completed: 1");
+    // Progress bar should appear while uploading or after completion
+    await expect(page.getByTestId("total-progress")).toBeVisible({
+      timeout: 10000,
+    });
   });
 
-  test("validates file size", async ({ page }) => {
+  test("validates file size and shows error", async ({ page }) => {
     await page.goto("/");
 
-    // Create a file path for a large file fixture
-    const largeFile = path.join(__dirname, "fixtures", "large-file.bin");
-    const fileInput = page.getByTestId("file-input");
+    await page.getByTestId("file-input").setInputFiles(LARGE_FILE);
 
-    await fileInput.setInputFiles(largeFile);
-
-    // Should show validation error
     await expect(page.getByTestId("error-list")).toBeVisible();
     await expect(page.getByTestId("error-list")).toContainText("10MB");
   });
@@ -168,60 +154,44 @@ test.describe("Multiple Files", () => {
     await request.delete("http://localhost:3001/api/files");
   });
 
-  test("uploads multiple files", async ({ page, request }) => {
+  test("auto-uploads multiple files", async ({ page, request }) => {
     await page.goto("/");
 
-    const file1 = path.join(__dirname, "fixtures", "test-file.txt");
-    const file2 = path.join(__dirname, "fixtures", "test-file-2.txt");
-
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles([file1, file2]);
+    await page
+      .getByTestId("file-input")
+      .setInputFiles([TEST_FILE, TEST_FILE_2]);
 
     await expect(page.getByTestId("file-item-test-file.txt")).toBeVisible();
     await expect(page.getByTestId("file-item-test-file-2.txt")).toBeVisible();
 
-    await page.getByTestId("upload-button").click();
-
-    await expect(page.getByTestId("status-test-file.txt")).toHaveText(
-      "success",
-      {
-        timeout: 10000,
-      }
+    // Wait for both to complete
+    await expect(page.getByTestId("remove-test-file.txt")).toHaveAttribute(
+      "title",
+      "Delete from server",
+      { timeout: 10000 }
     );
-    await expect(page.getByTestId("status-test-file-2.txt")).toHaveText(
-      "success",
-      {
-        timeout: 10000,
-      }
+    await expect(page.getByTestId("remove-test-file-2.txt")).toHaveAttribute(
+      "title",
+      "Delete from server",
+      { timeout: 10000 }
     );
 
+    // Verify both files on server
     const response = await request.get("http://localhost:3001/api/files");
     const files = await response.json();
     expect(files.length).toBe(2);
   });
 
-  test("can cancel all uploads", async ({ page }) => {
+  test("can add more files after initial selection", async ({ page }) => {
     await page.goto("/");
 
-    const file1 = path.join(__dirname, "fixtures", "test-file.txt");
-    const file2 = path.join(__dirname, "fixtures", "test-file-2.txt");
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE);
+    await expect(page.getByTestId("file-item-test-file.txt")).toBeVisible();
 
-    const fileInput = page.getByTestId("file-input");
-    await fileInput.setInputFiles([file1, file2]);
+    // Open the drop zone again and add another file
+    await page.getByTestId("add-more-button").click();
+    await page.getByTestId("file-input").setInputFiles(TEST_FILE_2);
 
-    await page.getByTestId("upload-button").click();
-
-    // Wait for upload to start or complete (uploads can be very fast)
-    const status1 = page.getByTestId("status-test-file.txt");
-    await expect(status1).toHaveText(/uploading|success/);
-
-    // Try to cancel all if any are still uploading
-    const cancelAllButton = page.getByTestId("cancel-all-button");
-    if (await cancelAllButton.isVisible()) {
-      await cancelAllButton.click();
-      // Files should be cleared after cancel all
-      await expect(page.getByTestId("file-list")).not.toBeVisible();
-    }
-    // Test passes - cancel all clears the list or uploads completed too fast
+    await expect(page.getByTestId("file-item-test-file-2.txt")).toBeVisible();
   });
 });
