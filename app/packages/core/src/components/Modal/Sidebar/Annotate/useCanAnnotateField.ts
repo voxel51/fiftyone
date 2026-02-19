@@ -1,6 +1,7 @@
 import useCanAnnotate from "./useCanAnnotate";
 import {
   useActiveFieldsList,
+  useFieldSchemaData,
   useHiddenFieldsWithMetadata,
   useIsFieldReadOnly,
 } from "./SchemaManager/hooks";
@@ -16,12 +17,14 @@ export const useCanAnnotateField = (path: string): boolean => {
   const { fields: activeFields } = useActiveFieldsList();
   const { fields: hiddenFields } = useHiddenFieldsWithMetadata();
   const isFieldReadOnly = useIsFieldReadOnly();
+  const isFieldUnsupported = useFieldSchemaData(path)?.unsupported;
 
   const validFields = [...activeFields, ...hiddenFields];
 
   return (
     canAnnotate &&
     validFields.includes(path) &&
+    !isFieldUnsupported &&
     !isFieldReadOnly(path) &&
     !isSystemReadOnlyField(path)
   );
