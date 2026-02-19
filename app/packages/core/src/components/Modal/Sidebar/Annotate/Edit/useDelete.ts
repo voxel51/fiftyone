@@ -4,10 +4,10 @@ import { useLighter } from "@fiftyone/lighter";
 import * as fos from "@fiftyone/state";
 import { isGeneratedView } from "@fiftyone/state";
 
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { current, deleteValue } from "./state";
+import { current } from "./state";
 import useExit from "./useExit";
 import { useLabelsContext } from "../useLabels";
 import {

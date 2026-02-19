@@ -1,8 +1,7 @@
 import { useAtomValue, useSetAtom } from "jotai";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Redo, Round, Undo } from "../Actions";
 
-import { useCallback } from "react";
 import { useLighter } from "@fiftyone/lighter";
 import { West as Back } from "@mui/icons-material";
 import { Box, Menu, MenuItem, Stack } from "@mui/material";
@@ -104,7 +103,7 @@ const Header = () => {
   const isAnnotatingPolyline = current3dAnnotationMode === "polyline";
   const isAnnotatingCuboid = current3dAnnotationMode === "cuboid";
 
-  // In patches view with single label, back should go to explore mode
+  // In patches view with single label, clicking back should go to explore mode
   const isPatches = useRecoilValue(fos.isPatchesView);
   const labelCount = useAtomValue(labels).length;
   const setModalMode = useSetAtom(fos.modalMode);
@@ -112,7 +111,7 @@ const Header = () => {
 
   const handleExit = useCallback(() => {
     if (shouldExitToExplore) {
-      setModalMode(fos.ModalMode.EXPLORE);
+      void setModalMode(fos.ModalMode.EXPLORE);
     }
     disableQuickDraw();
     scene?.exitInteractiveMode();

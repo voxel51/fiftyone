@@ -37,7 +37,7 @@ const MEDIA_TYPE_TO_DISABLED_REASON: Partial<
   video: "videoDataset",
 };
 
-function getDisabledReason(
+export function getDisabledReason(
   currentMediaType: string | null | undefined,
   isGenerated: boolean,
   isGrouped: boolean,

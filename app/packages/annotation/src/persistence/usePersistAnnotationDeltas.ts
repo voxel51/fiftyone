@@ -35,7 +35,15 @@ export const usePersistAnnotationDeltas =
 
       eventBus.dispatch("annotation:persistenceInFlight");
 
-      if (isGenerated && metadata) {
+      if (isGenerated) {
+        if (!metadata) {
+          console.warn(
+            "Generated view persistence requires label metadata but none was provided.",
+            { deltaCount: deltas.length, deltas }
+          );
+          return false;
+        }
+
         return await patchSample(deltas, {
           labelId: metadata.labelId,
           labelPath: metadata.labelPath,
