@@ -79,6 +79,22 @@ class RunManager:
             run.update(updates)
             self._store.set(self._key(run_id), run)
 
+    def find_run_by_operator_id(self, operator_run_id: str) -> Optional[Dict]:
+        """Find a run by its delegated operation ID.
+
+        Args:
+            operator_run_id: the delegated operation document ID
+
+        Returns:
+            the run data dict, or None
+        """
+        for key in self._store.list_keys():
+            if key.startswith(self._RUN_PREFIX):
+                run = self._store.get(key)
+                if run and run.get("operator_run_id") == operator_run_id:
+                    return run
+        return None
+
     def delete_run(self, run_id: str):
         """Delete a run.
 

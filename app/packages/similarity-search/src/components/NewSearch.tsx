@@ -1,9 +1,7 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import SearchIcon from "@mui/icons-material/Search";
 import {
   Alert,
   Box,
-  Button,
   FormControl,
   FormControlLabel,
   IconButton,
@@ -17,11 +15,17 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
-import { useOperatorExecutor } from "@fiftyone/operators";
+import {
+  OperatorExecutionButton,
+  useOperatorExecutor,
+} from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
+
+const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
+const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
 
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
@@ -50,12 +54,7 @@ export default function NewSearch({
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
 
-  const { execute: initRun } = useOperatorExecutor(
-    "@voxel51/panels/init_similarity_run"
-  );
-  const { execute: runSearch } = useOperatorExecutor(
-    "@voxel51/panels/similarity_search"
-  );
+  const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
 
   // Get config for selected brain key
   const selectedConfig = brainKeys.find((bk) => bk.key === brainKey);
@@ -78,7 +77,6 @@ export default function NewSearch({
   }, [supportsPrompts, queryType]);
 
   const getQueryIds = useCallback(() => {
-    // Get IDs from selected labels first, then selected samples
     if (selectedLabels && selectedLabels.length > 0) {
       return selectedLabels.map((l: any) => l.label_id);
     }
@@ -95,7 +93,8 @@ export default function NewSearch({
     return true;
   }, [brainKey, queryType, textQuery, getQueryIds]);
 
-  const handleSubmit = useCallback(() => {
+  // Build the params that will be passed to the operator
+  const executionParams = useMemo(() => {
     const query = queryType === "text" ? textQuery.trim() : getQueryIds();
 
     const params: Record<string, any> = {
@@ -111,16 +110,7 @@ export default function NewSearch({
     if (distField.trim()) params.dist_field = distField.trim();
     if (runName.trim()) params.run_name = runName.trim();
 
-    initRun(params, {
-      callback: (result?: any) => {
-        const runId = result?.result?.run_id;
-        if (runId) {
-          // Trigger the delegated search operator
-          runSearch({ ...params, run_id: runId });
-        }
-        onSubmitted();
-      },
-    });
+    return params;
   }, [
     brainKey,
     queryType,
@@ -132,10 +122,37 @@ export default function NewSearch({
     selectedConfig,
     view,
     getQueryIds,
-    initRun,
-    runSearch,
-    onSubmitted,
   ]);
+
+  // Called when operator execution completes (or is queued for delegation)
+  const handleSuccess = useCallback(
+    (result: any) => {
+      if (result?.delegated) {
+        // Delegated: the DO is queued. Create a run record so it
+        // appears in the panel list immediately while the worker
+        // picks it up.
+        const operatorRunId = result?.result?.id?.$oid;
+        initRun(
+          {
+            ...executionParams,
+            operator_run_id: operatorRunId,
+          },
+          {
+            callback: () => onSubmitted(),
+          }
+        );
+      } else {
+        // Immediate execution: the operator already created the
+        // run record and completed the search.
+        onSubmitted();
+      }
+    },
+    [initRun, executionParams, onSubmitted]
+  );
+
+  const handleError = useCallback((error: any) => {
+    console.error("Similarity search failed:", error);
+  }, []);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -267,16 +284,19 @@ export default function NewSearch({
           fullWidth
         />
 
-        {/* Submit */}
-        <Button
-          variant="contained"
-          startIcon={<SearchIcon />}
-          onClick={handleSubmit}
-          disabled={!canSubmit()}
-          fullWidth
-        >
-          Search
-        </Button>
+        {/* Submit with execution target selector */}
+        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+          <OperatorExecutionButton
+            operatorUri={SEARCH_OPERATOR_URI}
+            executionParams={executionParams}
+            onSuccess={handleSuccess}
+            onError={handleError}
+            disabled={!canSubmit()}
+            variant="contained"
+          >
+            Search
+          </OperatorExecutionButton>
+        </Box>
       </Stack>
     </Box>
   );

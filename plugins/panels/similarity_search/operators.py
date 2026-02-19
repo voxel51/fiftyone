@@ -17,34 +17,16 @@ from .run_manager import RunManager
 logger = logging.getLogger(__name__)
 
 
-class InitSimilarityRunOperator(foo.Operator):
-    """Creates a similarity search run record in the execution store.
-
-    This operator runs immediately and returns the run_id so the frontend
-    can show the run in the list right away. The frontend then triggers
-    the delegated search operator separately.
-    """
-
-    @property
-    def config(self):
-        return foo.OperatorConfig(
-            name="init_similarity_run",
-            label="Initialize Similarity Run",
-            unlisted=True,
-        )
-
-    def execute(self, ctx):
-        manager = RunManager(ctx)
-        run_id = manager.create_run(ctx.params)
-        return {"run_id": run_id}
-
-
 class SimilaritySearchOperator(foo.Operator):
-    """Delegated operator that executes a similarity search query.
+    """Operator that executes a similarity search query.
 
-    This operator always runs as a delegated operation on a worker. It:
-    1. Loads the similarity index for the specified brain key
-    2. Executes sort_by_similarity() with the provided query
+    Supports both immediate execution (runs on the app server) and
+    delegated execution (runs on a worker pod). The user chooses via
+    the OperatorExecutionButton in the frontend.
+
+    Flow:
+    1. Creates or updates a run record in the execution store
+    2. Calls sort_by_similarity() with the provided query
     3. Stores the sorted result IDs in the run record
     """
 
@@ -54,16 +36,28 @@ class SimilaritySearchOperator(foo.Operator):
             name="similarity_search",
             label="Similarity Search",
             unlisted=True,
-            allow_immediate_execution=False,
+            allow_immediate_execution=True,
             allow_delegated_execution=True,
         )
 
-    def resolve_delegation(self, ctx):
-        return True
-
     def execute(self, ctx):
-        run_id = ctx.params["run_id"]
         manager = RunManager(ctx)
+        run_id = ctx.params.get("run_id")
+
+        if not run_id:
+            # For delegated execution, InitSimilarityRunOperator already
+            # created a run record linked by operator_run_id (the DO doc
+            # ID). Look it up so we update the same record.
+            do_id = ctx.request_params.get("run_doc")
+            if do_id:
+                existing = manager.find_run_by_operator_id(str(do_id))
+                if existing:
+                    run_id = existing["run_id"]
+
+        # If still no run_id (immediate execution, or no matching
+        # record found), create a new run record.
+        if not run_id:
+            run_id = manager.create_run(ctx.params)
 
         try:
             now = datetime.now(timezone.utc).isoformat()
@@ -72,9 +66,6 @@ class SimilaritySearchOperator(foo.Operator):
                 {
                     "status": RunStatus.RUNNING,
                     "start_time": now,
-                    "operator_run_id": str(
-                        getattr(ctx, "_delegated_operation_id", None)
-                    ),
                 },
             )
 
@@ -129,6 +120,8 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(1.0, label="Done")
 
+            return {"run_id": run_id}
+
         except Exception as e:
             logger.error(
                 "Similarity search failed for run %s: %s",
@@ -145,6 +138,34 @@ class SimilaritySearchOperator(foo.Operator):
                 },
             )
             raise
+
+
+class InitSimilarityRunOperator(foo.Operator):
+    """Creates a run record for a delegated similarity search.
+
+    Called by the frontend after a delegated operation is queued, so
+    the run appears in the panel's list immediately while the DO is
+    pending/running on a worker.
+    """
+
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="init_similarity_run",
+            label="Initialize Similarity Run",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        manager = RunManager(ctx)
+        run_id = manager.create_run(ctx.params)
+
+        # Link the delegated operation to the run
+        operator_run_id = ctx.params.get("operator_run_id")
+        if operator_run_id:
+            manager.update_run(run_id, {"operator_run_id": operator_run_id})
+
+        return {"run_id": run_id}
 
 
 class ListSimilarityRunsOperator(foo.Operator):

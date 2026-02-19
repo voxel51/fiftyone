@@ -178,8 +178,8 @@ export default function RunList({
                 secondary={
                   <Stack spacing={0.25} sx={{ mt: 0.5 }}>
                     <Typography variant="caption" color="text.secondary">
-                      {formatQuery(run)} &middot; {run.brain_key}
-                      {run.k ? ` &middot; k=${run.k}` : ""}
+                      {formatQuery(run)} {"\u00B7"} {run.brain_key}
+                      {run.k ? ` \u00B7 k=${run.k}` : ""}
                       {run.reverse ? " (least similar)" : ""}
                     </Typography>
                     <Typography variant="caption" color="text.disabled">
