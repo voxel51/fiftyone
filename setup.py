@@ -13,7 +13,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "1.13.1"
+VERSION = "1.13.2"
 
 
 def get_version():
@@ -70,7 +70,7 @@ INSTALL_REQUIRES = [
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
     "starlette>=0.24.0",
-    "strawberry-graphql>=0.262.4",
+    "strawberry-graphql>=0.262.4,<0.292.0",
     "tabulate",
     "tqdm",
     "xmltodict",

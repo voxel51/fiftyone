@@ -7,7 +7,7 @@ typing_extensions==4.15.0
 
 # precommit requirements
 pre-commit==4.5.1
-pylint==4.0.4
+pylint==3.3.9
 jupyter-client==8.8.0
 
 # docs requirements
@@ -41,3 +41,4 @@ sphinxcontrib-jquery==4.1
 sphinx-pushfeedback==0.1.8
 sphinx-docsearch==0.2.0
 sphinx-remove-toctrees==1.0.0.post1
+sphinx-autoapi==3.6.1

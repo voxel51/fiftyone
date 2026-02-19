@@ -1,3 +1,4 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { useFrame } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRecoilState, useSetRecoilState } from "recoil";
@@ -48,6 +49,7 @@ export const PolylinePointMarker = ({
   const meshRef = useRef<Mesh>(null);
   const transformControlsRef = useRef<any>(null);
   const [startMatrix, setStartMatrix] = useState<Matrix4 | null>(null);
+  const annotationEventBus = useAnnotationEventBus();
 
   const [hoveredVertex, setHoveredVertex] = useRecoilState(hoveredVertexAtom);
 
@@ -95,12 +97,21 @@ export const PolylinePointMarker = ({
         isActive: false,
       }));
       setEditSegmentsMode(false);
+
+      annotationEventBus.dispatch("annotation:3dPolylineVertexSelected", {
+        labelId,
+        segmentIndex,
+        pointIndex,
+        position: [position.x, position.y, position.z],
+      });
     },
     [
+      annotationEventBus,
       isDraggable,
       labelId,
       segmentIndex,
       pointIndex,
+      position,
       setSelectedPoint,
       setCurrentArchetypeSelectedForTransform,
       setTransformMode,
