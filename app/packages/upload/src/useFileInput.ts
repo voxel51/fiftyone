@@ -22,9 +22,11 @@ export function useFileInput(
   const inputProps = useMemo(
     () => ({
       ref,
+      type: "file" as const,
       accept: accept ? accept.join(",") : "",
       multiple,
       onChange,
+      style: { display: "none" },
     }),
     [accept, multiple, onChange]
   );

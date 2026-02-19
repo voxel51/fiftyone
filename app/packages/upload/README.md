@@ -9,23 +9,16 @@ upload management.
 import { useFileUpload } from "@fiftyone/upload";
 
 function UploadForm() {
-    const {
-        files,
-        addFiles,
-        upload,
-        dropProps,
-        inputProps,
-        browse,
-        isUploading,
-    } = useFileUpload({ multiple: true });
+    const { files, dropProps, inputProps, browse, isUploading } =
+        useFileUpload({
+            multiple: true,
+            autoUpload: { destination: "/uploads", endpoint: "/uploads" },
+        });
 
     return (
         <div {...dropProps}>
             <input {...inputProps} />
             <button onClick={browse}>Select Files</button>
-            <button onClick={() => upload({ destination: "/uploads" })}>
-                Upload
-            </button>
 
             {files.map((f) => (
                 <div key={f.id}>
@@ -36,6 +29,10 @@ function UploadForm() {
     );
 }
 ```
+
+Files begin uploading immediately after selection when `autoUpload` is
+provided. To upload manually instead, omit `autoUpload` and call the returned
+`upload(action)` function.
 
 ## API
 
@@ -57,6 +54,7 @@ Main hook that combines file management, upload handling, and UI helpers.
 | `headers`        | `Record<string, string>` or `() => Record<string, string>` | Request headers                                     |
 | `onFileSuccess`  | `(file: FileUploadItem) => void`                           | Success callback                                    |
 | `onFileError`    | `(file: FileUploadItem, error: string) => void`            | Error callback                                      |
+| `autoUpload`     | `UploadAction`                                             | Auto-upload files immediately on selection          |
 
 #### Returns
 
@@ -116,12 +114,40 @@ interface UploadAction {
 -   `useFileInput` - File input handling
 -   `createFetchTransport` / `createXhrTransport` - Transport factories
 
-## Running Tests
+## Development
+
+### Example App
+
+Run the example app with a local upload server:
 
 ```bash
-# From the package directory
-yarn test
-
-# Or from the app root
-yarn test --filter=@fiftyone/upload
+yarn example
 ```
+
+This starts:
+
+-   Frontend at http://localhost:3000
+-   Upload server at http://localhost:3001
+
+### Unit Tests
+
+```bash
+yarn test
+```
+
+### E2E Tests
+
+```bash
+# Install Playwright browsers (first time only)
+npx playwright install
+
+# Run e2e tests
+yarn test:e2e
+
+# Run with UI
+yarn test:e2e:ui
+```
+
+## License
+
+Apache-2.0

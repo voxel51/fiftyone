@@ -10,12 +10,26 @@
         "dev": "vite",
         "build": "vite build",
         "preview": "vite preview",
-        "test": "vitest"
+        "test": "vitest",
+        "example": "concurrently -k \"yarn example:server\" \"yarn example:client\"",
+        "example:slow": "CHUNK_DELAY=50 UPLOAD_DELAY=500 concurrently -k \"yarn example:server\" \"yarn example:client\"",
+        "example:client": "vite --config example/vite.config.ts",
+        "example:server": "tsx example/server/index.ts",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui"
     },
     "devDependencies": {
+        "@playwright/test": "^1.40.0",
         "@testing-library/dom": "^10.4.0",
         "@testing-library/react": "^16.2.0",
+        "@types/cors": "^2.8.17",
+        "@types/express": "^4.17.21",
+        "@vitejs/plugin-react": "^4.2.1",
+        "concurrently": "^8.2.2",
+        "cors": "^2.8.5",
+        "express": "^4.18.2",
         "jsdom": "^26.0.0",
+        "tsx": "^4.7.0",
         "typescript": "^5.5.4",
         "vite": "^5.4.21",
         "vitest": "^1.6.0"

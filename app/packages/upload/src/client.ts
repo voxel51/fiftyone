@@ -24,14 +24,18 @@ async function fetchPost(
   file: File,
   options: TransportPostOptions
 ): Promise<{ path: string }> {
-  const init: RequestInit = {
+  const headers: Record<string, string> = {
+    "Content-Type": file.type || "application/octet-stream",
+    ...options.headers,
+  };
+
+  const response = await fetch(url, {
     method: "POST",
     body: file,
     signal: options.signal,
-  };
-  if (options.headers) init.headers = options.headers;
-  const response = await fetch(url, init);
-  if (response.status === 201) {
+    headers,
+  });
+  if (response.ok) {
     const result = await response.json();
     options.onProgress?.(100);
     return result;
@@ -73,7 +77,7 @@ function xhrPost(
     };
 
     xhr.onload = () => {
-      if (xhr.status === 201) {
+      if (xhr.status >= 200 && xhr.status < 300) {
         resolve(JSON.parse(xhr.responseText));
       } else {
         try {
@@ -93,6 +97,10 @@ function xhrPost(
     xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
 
     xhr.open("POST", url);
+    xhr.setRequestHeader(
+      "Content-Type",
+      file.type || "application/octet-stream"
+    );
     if (options.headers) {
       for (const [key, value] of Object.entries(options.headers)) {
         xhr.setRequestHeader(key, value);

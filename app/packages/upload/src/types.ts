@@ -69,4 +69,6 @@ export interface UseFileUploadOptions {
   headers?: HeadersOption;
   onFileSuccess?: (file: FileUploadItem) => void;
   onFileError?: (file: FileUploadItem, error: string) => void;
+  /** When provided, files begin uploading immediately after selection. */
+  autoUpload?: UploadAction;
 }

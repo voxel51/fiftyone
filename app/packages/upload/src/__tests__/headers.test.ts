@@ -156,7 +156,7 @@ describe("upload — custom headers", () => {
     );
   });
 
-  it("omits headers from fetch when not configured", async () => {
+  it("sets Content-Type from file MIME type when no custom headers configured", async () => {
     mockFetch.mockResolvedValueOnce(successResponse("/uploads/a.png"));
 
     const { result } = renderHook(() => useFileUpload());
@@ -169,6 +169,8 @@ describe("upload — custom headers", () => {
       await result.current.upload({ destination: "/uploads" });
     });
 
-    expect(mockFetch.mock.calls[0][1].headers).toBeUndefined();
+    expect(mockFetch.mock.calls[0][1].headers).toEqual({
+      "Content-Type": "image/png",
+    });
   });
 });
