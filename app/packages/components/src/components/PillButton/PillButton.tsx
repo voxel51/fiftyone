@@ -72,8 +72,8 @@ type PillButtonProps = {
 const PillButtonDiv = animated(styled.div.withConfig({
   shouldForwardProp: (prop) => {
     // Don't forward non-DOM props
-    return !['variant', 'color', 'size'].includes(prop);
-  }
+    return !["variant", "color", "size"].includes(prop);
+  },
 })`
   display: flex;
   align-items: center;
@@ -87,10 +87,10 @@ const PillButtonDiv = animated(styled.div.withConfig({
   display: flex;
   justify-content: space-between;
   opacity: 1;
+  gap: 0.25rem;
 
   & > span {
     text-align: center;
-    margin: 0 0.25rem;
   }
   & > svg {
     display: inline-block;

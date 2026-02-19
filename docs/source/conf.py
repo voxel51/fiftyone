@@ -79,6 +79,13 @@ extensions = [
     "sphinx_markdown_builder",
 ]
 
+teams_dir = os.environ.get("FIFTYONE_TEAMS_DIR")
+if teams_dir:
+    extensions.append("autoapi.extension")
+    autoapi_dirs = [os.path.join(teams_dir, "fiftyone")]
+    autoapi_generate_api_docs = False
+    autoapi_options = ["members", "undoc-members", "show-inheritance"]
+
 # Types of class members to generate documentation for.
 autodoc_default_options = {
     "members": True,

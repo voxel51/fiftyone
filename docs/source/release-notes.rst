@@ -3,6 +3,41 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Enterprise 2.16.1
+--------------------------
+*Released February 18, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.1 <release-notes-v1.13.1>`, plus:
+
+- Reduced the need for manual refreshes in the App by disabling the in-memory
+  singleton cache in the App server
+- Disabled, by default, the task-based `disable_sample_fields` behavior that
+  reduces timeouts. New behavior can still be enabled by setting the
+  `FIFTYONE_ENABLE_RPC` environment variable to `True`. Note: Configuration for
+  `teams-api` may need to be
+  `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v215-additional-api-routes>`_
+  given the new `/rpc` routes.
+- `Updated documentation <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/expose-teams-api.md>`_
+  with updated configuration for exposing the new teams-api routes `/rpc` and
+  `/cloud_credentials`.
+
+
+.. _release-notes-v1.13.1:
+
+FiftyOne 1.13.1
+---------------
+*Released February 18, 2026*
+
+App
+ - Fixed a bug where a new release of the `strawberry-graphql` library was
+   incompatible with the application.
+   `#7017 <https://github.com/voxel51/fiftyone/pull/7017>`_,
+   `#7029 <https://github.com/voxel51/fiftyone/pull/7029>`_
+ - Fixed a bug where annotation state wasn't always updating properly when
+   switching between samples.
+   `#7001 <https://github.com/voxel51/fiftyone/pull/7001>`_
+
+
 FiftyOne Enterprise 2.16.0
 --------------------------
 *Released February 12, 2026*
@@ -21,6 +56,9 @@ Cloud Media
   :func:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
   and 
   :func:`delete_cloud_credentials() <fiftyone.management.cloud_credentials.delete_cloud_credentials>`.
+  Note: Configuration for `teams-api` may need to be
+  `updated <https://github.com/voxel51/fiftyone-teams-app-deploy/blob/main/docker/docs/upgrading.md#fiftyone-enterprise-v216-additional-api-routes>`_
+  given the new `/cloud_credentials` routes.
 
 Plugins and Operators
 
@@ -102,8 +140,8 @@ Core
 - Migrated more methods to use a more robust approach for communication with
   the API: `add_samples()`, `set_values()` now join `delete_sample_fields()`.
   This will significantly increase the reliability and consistency of long
-  running requests. This change is now enabled by default, but can be disabled
-  by setting the `FIFTYONE_ENABLE_RPC` environment variable to `False`.
+  running requests. This change is disabled by default, but can be enabled
+  by setting the `FIFTYONE_ENABLE_RPC` environment variable to `True`.
 - Users can now configure their priority preference for loading credentials
   (remote vs local) when accessing storage utilities. 
   `#2209 <https://github.com/voxel51/fiftyone-teams/pull/2209>`_
