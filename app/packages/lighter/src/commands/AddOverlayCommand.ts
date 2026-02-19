@@ -61,12 +61,9 @@ export class AddOverlayCommand implements Undoable {
 
     if (this.overlay instanceof InteractiveDetectionHandler) {
       const handler = this.overlay.getOverlay();
-      const interactionManager = this.scene.getInteractionManager();
 
       handler.unsetBounds();
       this.scene.removeOverlay(handler.id, false);
-      interactionManager.addHandler(this.overlay);
-      this.scene.setCursor(this.overlay.cursor);
     } else {
       this.scene.removeOverlay(this.overlay.id, false);
     }
