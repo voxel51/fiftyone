@@ -1,0 +1,36 @@
+{
+    "name": "@fiftyone/similarity-search",
+    "version": "1.0.0",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview",
+        "watch": "nodemon --watch ./src --ext js,jsx,ts,tsx --exec 'yarn build'"
+    },
+    "files": [
+        "dist"
+    ],
+    "main": "src/index.ts",
+    "dependencies": {
+        "@fiftyone/components": "*",
+        "@fiftyone/operators": "*",
+        "@fiftyone/plugins": "*",
+        "@fiftyone/spaces": "*",
+        "@fiftyone/state": "*"
+    },
+    "devDependencies": {
+        "typescript": "^4.7.4",
+        "vite": "^5.4.12",
+        "vite-plugin-externals": "^0.5.0"
+    },
+    "fiftyone": {
+        "script": "dist/index.umd.js"
+    },
+    "packageManager": "yarn@4.9.1",
+    "peerDependencies": {
+        "@mui/icons-material": "*",
+        "@mui/material": "*",
+        "jotai": "*",
+        "recoil": "*"
+    }
+}

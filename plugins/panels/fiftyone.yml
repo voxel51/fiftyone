@@ -4,5 +4,10 @@ version: 1.0.0
 fiftyone:
   version: "*"
 url: https://github.com/voxel51/fiftyone/plugins/panels
+operators:
+  - similarity_search
+  - list_similarity_runs
+  - init_similarity_run
 panels:
   - model_evaluation_panel_builtin
+  - similarity_search_panel
