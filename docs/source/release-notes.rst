@@ -6,7 +6,7 @@ FiftyOne Release Notes
 
 FiftyOne Enterprise 2.16.2
 --------------------------
-*Released February 19, 2026*
+*Released February 20, 2026*
 
 Includes all updates from :ref:`FiftyOne 1.13.2 <release-notes-v1.13.2>`, plus:
 
@@ -17,7 +17,7 @@ Includes all updates from :ref:`FiftyOne 1.13.2 <release-notes-v1.13.2>`, plus:
 
 FiftyOne 1.13.2
 ---------------
-*Released February 19, 2026*
+*Released February 20, 2026*
 
 :ref:`In-App Annotation <in-app-annotation>`
 
