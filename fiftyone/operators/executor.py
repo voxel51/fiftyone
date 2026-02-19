@@ -833,6 +833,11 @@ class ExecutionContext(contextlib.AbstractContextManager):
         return self.request_params.get("selected", [])
 
     @property
+    def alt_selected(self):
+        """The list of alt-selected (negative selection) sample IDs (if any)."""
+        return self.request_params.get("alt_selected", [])
+
+    @property
     def selected_labels(self):
         """A list of selected labels (if any).
 

@@ -9,6 +9,8 @@ Similarity search operators.
 import logging
 from datetime import datetime, timezone
 
+import numpy as np
+
 import fiftyone.operators as foo
 
 from .constants import RunStatus
@@ -89,6 +91,16 @@ class SimilaritySearchOperator(foo.Operator):
             else:
                 view = dataset.view()
 
+            ctx.set_progress(0.2, label="Preparing query...")
+
+            # Handle negative query IDs (alt-selected samples)
+            negative_query_ids = ctx.params.get("negative_query_ids")
+            if negative_query_ids and isinstance(query, list):
+                # Vector arithmetic: mean(positive) - mean(negative)
+                query = self._compute_combined_query(
+                    dataset, brain_key, query, negative_query_ids
+                )
+
             ctx.set_progress(0.3, label="Running similarity query...")
 
             # Build kwargs, omitting None values
@@ -138,6 +150,48 @@ class SimilaritySearchOperator(foo.Operator):
                 },
             )
             raise
+
+    @staticmethod
+    def _compute_combined_query(
+        dataset, brain_key, positive_ids, negative_ids
+    ):
+        """Compute a combined query vector from positive and negative samples.
+
+        Uses vector arithmetic: mean(positive_embeddings) - mean(negative_embeddings)
+
+        Args:
+            dataset: the dataset
+            brain_key: the brain key for the similarity index
+            positive_ids: list of positive sample IDs
+            negative_ids: list of negative sample IDs
+
+        Returns:
+            numpy array representing the combined query vector
+        """
+        results = dataset.load_brain_results(brain_key)
+
+        pos_embeddings = []
+        for sid in positive_ids:
+            emb = results.get_embedding(sid)
+            if emb is not None:
+                pos_embeddings.append(np.asarray(emb))
+
+        neg_embeddings = []
+        for sid in negative_ids:
+            emb = results.get_embedding(sid)
+            if emb is not None:
+                neg_embeddings.append(np.asarray(emb))
+
+        if not pos_embeddings:
+            raise ValueError("No embeddings found for positive samples")
+
+        pos_mean = np.mean(pos_embeddings, axis=0)
+
+        if neg_embeddings:
+            neg_mean = np.mean(neg_embeddings, axis=0)
+            return pos_mean - neg_mean
+        else:
+            return pos_mean
 
 
 class InitSimilarityRunOperator(foo.Operator):

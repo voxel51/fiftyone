@@ -25,6 +25,7 @@ function useOperatorThrottledContextSetter() {
   const extendedStages = useRecoilValue(fos.extendedStages);
   const filters = useRecoilValue(fos.filters);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
+  const altSelectedSamples = useRecoilValue(fos.altSelectedSamples);
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const groupSlice = useRecoilValue(fos.groupSlice);
   const currentSample = useCurrentSample();
@@ -48,6 +49,7 @@ function useOperatorThrottledContextSetter() {
       extendedStages,
       filters,
       selectedSamples,
+      altSelectedSamples,
       selectedLabels,
       currentSample,
       viewName,
@@ -62,6 +64,7 @@ function useOperatorThrottledContextSetter() {
     extendedStages,
     filters,
     selectedSamples,
+    altSelectedSamples,
     selectedLabels,
     currentSample,
     viewName,
