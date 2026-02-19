@@ -28,6 +28,8 @@ import {
 import {
   ExecutionContext,
   InvocationRequestQueue,
+  Operator,
+  OperatorConfig,
   OperatorResult,
   executeOperatorWithContext,
   getInvocationRequestQueue,
@@ -1068,7 +1070,21 @@ export function useOperatorBrowser() {
 export function useOperatorExecutor(uri, handlers: any = {}) {
   uri = resolveOperatorURI(uri, { keepMethod: true });
 
-  const { operator } = getLocalOrRemoteOperator(uri);
+  let operator: Operator;
+  let operatorNotFound = false;
+  try {
+    ({ operator } = getLocalOrRemoteOperator(uri));
+  } catch {
+    // Operator not registered (e.g. filtered by permissions).
+    // Provide a stub so hooks are still called in a consistent order;
+    // the actual error is surfaced when execute() is called.
+    operator = new Operator(
+      "__missing__",
+      false,
+      new OperatorConfig({ name: "__missing__", label: "Missing" })
+    );
+    operatorNotFound = true;
+  }
   const [isExecuting, setIsExecuting] = useState(false);
 
   const [error, setError] = useState(null);
@@ -1092,6 +1108,18 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
 
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
+      if (operatorNotFound) {
+        const msg = `Operator "${uri}" not found`;
+        const { callback } = options || {};
+        setError(msg);
+        setHasExecuted(true);
+        if (!options?.skipErrorNotification) {
+          notify({ msg, variant: "error" });
+        }
+        console.error(msg);
+        callback?.(new OperatorResult(operator, null, null, msg, false), {});
+        return;
+      }
       const { delegationTarget, requestDelegation, skipOutput, callback } =
         options || {};
       setIsExecuting(true);

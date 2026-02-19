@@ -519,12 +519,39 @@ const HiddenItemRow = ({
 
 const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
 
+/**
+ * Edit button that enters annotation mode. Separated so that
+ * `useAnnotationController` (which depends on schema-management operators)
+ * is only mounted when the user has annotation permissions.
+ */
+const HeaderEditButton = ({
+  title,
+  labelId,
+  closeTooltip,
+}: {
+  title: string;
+  labelId: string;
+  closeTooltip: () => void;
+}) => {
+  const { enterAnnotationMode } = useAnnotationController();
+
+  return (
+    <Button
+      leadingIcon={EditIcon}
+      size={Size.Xs}
+      onClick={() => {
+        enterAnnotationMode(title, labelId);
+        closeTooltip();
+      }}
+    ></Button>
+  );
+};
+
 const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const { enterAnnotationMode } = useAnnotationController();
   const canAnnotate = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
@@ -543,14 +570,11 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
           {modalMode === ModalMode.EXPLORE && canAnnotate && (
-            <Button
-              leadingIcon={EditIcon}
-              size={Size.Xs}
-              onClick={() => {
-                enterAnnotationMode(title, labelId);
-                closeTooltip();
-              }}
-            ></Button>
+            <HeaderEditButton
+              title={title}
+              labelId={labelId}
+              closeTooltip={closeTooltip}
+            />
           )}
 
           <IconButton size="small" onClick={closeTooltip}>

@@ -1,10 +1,10 @@
+import { useOperatorExecutor } from "@fiftyone/operators";
 import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { useCurrentDatasetId } from "@fiftyone/state";
 import {
   ListValidAnnotationFieldsRequest,
   ListValidAnnotationFieldsResponse,
-  useSchemaManager,
 } from "./useSchemaManager";
 
 /**
@@ -87,7 +87,31 @@ export const useValidAnnotationFields = (): UseValidAnnotationFields => {
   const [validFieldsMap, setValidFieldsMap] = useAtom(validFieldsAtom);
   const [resolvedMap, setResolvedMap] = useAtom(isResolvedAtom);
   const initializeSample = useSetAtom(initializeSampleAtom);
-  const { listValidAnnotationFields } = useSchemaManager();
+  const listFieldsOperator = useOperatorExecutor(
+    "@voxel51/operators/list_valid_annotation_fields"
+  );
+
+  const listValidAnnotationFields = useCallback(
+    (
+      request: ListValidAnnotationFieldsRequest
+    ): Promise<ListValidAnnotationFieldsResponse> => {
+      return new Promise((resolve, reject) => {
+        listFieldsOperator.execute(request, {
+          callback: (response: {
+            result: ListValidAnnotationFieldsResponse;
+            error?: string;
+          }) => {
+            if (response.error) {
+              reject(new Error(response.error));
+            } else {
+              resolve(response.result);
+            }
+          },
+        });
+      });
+    },
+    [listFieldsOperator]
+  );
 
   const datasetId = useCurrentDatasetId();
 

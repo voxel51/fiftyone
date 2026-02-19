@@ -11,6 +11,23 @@ type QuickEditEntryProps = {
 };
 
 /**
+ * Renders the edit icon affordance for entering annotation mode.
+ *
+ * This is a separate component so that `useAnnotationController` (which
+ * depends on schema-management operators) is only mounted when the current
+ * user actually has annotation permissions.
+ */
+const QuickEditButton: FC<{ path: string }> = ({ path }) => {
+  const { enterAnnotationMode } = useAnnotationController();
+
+  return (
+    <Clickable onClick={() => enterAnnotationMode(path)}>
+      <Icon name={IconName.Edit} size={Size.Sm} />
+    </Clickable>
+  );
+};
+
+/**
  * Component which provides entry into annotation mode via "quick-edit" flow.
  *
  * @param children Content to wrap; entry affordance will be adjacent
@@ -23,7 +40,6 @@ export const QuickEditEntry: FC<QuickEditEntryProps> = ({
   path,
 }) => {
   const canAnnotate = useCanAnnotateField(path);
-  const { enterAnnotationMode } = useAnnotationController();
 
   return (
     <Stack
@@ -33,11 +49,7 @@ export const QuickEditEntry: FC<QuickEditEntryProps> = ({
       gap={2}
     >
       {children}
-      {enabled && canAnnotate && (
-        <Clickable onClick={() => enterAnnotationMode(path)}>
-          <Icon name={IconName.Edit} size={Size.Sm} />
-        </Clickable>
-      )}
+      {enabled && canAnnotate && <QuickEditButton path={path} />}
     </Stack>
   );
 };
