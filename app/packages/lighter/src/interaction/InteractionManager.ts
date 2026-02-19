@@ -261,13 +261,18 @@ export class InteractionManager {
     } else {
       handler = this.findHandlerAtPoint(point);
 
+      const isUnselectedOverlay =
+        !!handler &&
+        TypeGuards.isSelectable(handler) &&
+        !this.selectionManager.isSelected(handler.id);
+
+      if (isUnselectedOverlay) {
+        this.renderer.disableZoomPan();
+      }
+
       // QuickDraw: clicking outside the selected overlay starts a new detection.
       if (quickDrawBridge.isQuickDrawActive()) {
         const isNonOverlay = !handler || handler.id === this.canonicalMediaId;
-        const isUnselectedOverlay =
-          !!handler &&
-          TypeGuards.isSelectable(handler) &&
-          !this.selectionManager.isSelected(handler.id);
 
         if (isNonOverlay || isUnselectedOverlay) {
           this.renderer.disableZoomPan();
