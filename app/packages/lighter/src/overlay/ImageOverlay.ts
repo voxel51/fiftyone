@@ -136,6 +136,9 @@ export class ImageOverlay
     this.imgElement = document.createElement("img");
     this.imgElement.setAttribute("data-cy", "lighter-sample-image");
 
+    // We'll toggle to "show" in render
+    this.hide();
+
     // Note: No CORS requirement
     const src = getSampleSrc(this.options.src);
     if (!src) {
@@ -291,6 +294,7 @@ export class ImageOverlay
     }
 
     this.notifyBoundsChanged();
+    this.show();
   }
 
   /**
