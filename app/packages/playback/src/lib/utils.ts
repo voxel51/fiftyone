@@ -1,5 +1,86 @@
-import { BufferRange, Buffers } from "@fiftyone/utilities";
-import { getTimelineNameFromSampleAndGroupId } from "./use-default-timeline-name";
+import { Buffers } from "@fiftyone/utilities";
+import {
+  DEFAULT_TARGET_FRAME_RATE,
+  GLOBAL_TIMELINE_ID,
+  MIN_LOAD_RANGE_SIZE,
+} from "./constants";
+import type { BufferRange, FoTimelineConfig, FrameNumber } from "./types";
+
+export const getTimelineNameFromSampleAndGroupId = (
+  sampleId?: string | null,
+  groupId?: string | null
+) => {
+  if (!sampleId && !groupId) {
+    return GLOBAL_TIMELINE_ID;
+  }
+
+  if (groupId) {
+    return `timeline-${groupId}`;
+  }
+
+  return `timeline-${sampleId}`;
+};
+
+export const convertFrameNumberToPercentage = (
+  frameNumber: number,
+  totalFrames: number
+) => {
+  // offset by -1 since frame indexing is 1-based
+  const numerator = frameNumber - 1;
+  const denominator = totalFrames - 1;
+
+  if (denominator <= 0) {
+    return 0;
+  }
+
+  return (numerator / denominator) * 100;
+};
+
+export const getLoadRangeForFrameNumber = (
+  frameNumber: FrameNumber,
+  config: FoTimelineConfig
+): BufferRange => {
+  const { totalFrames, targetFrameRate, speed } = config;
+
+  // we'll keep behind-buffer size fixed
+  const behindBuffer = MIN_LOAD_RANGE_SIZE;
+  // adaptive ahead-buffer: at minimum MIN_LOAD_RANGE_SIZE,
+  // but scales with speed and target frame rate relative to a baseline
+
+  const baseAdaptiveBuffer =
+    MIN_LOAD_RANGE_SIZE *
+    (speed ?? 1) *
+    ((targetFrameRate ?? DEFAULT_TARGET_FRAME_RATE) /
+      DEFAULT_TARGET_FRAME_RATE);
+
+  // use weight = 2% of totalFrames to gently extend the buffer on larger timelines.
+  const totalFramesFactor = Math.ceil(totalFrames * 0.02);
+
+  const adaptiveAheadBuffer = Math.max(
+    MIN_LOAD_RANGE_SIZE,
+    Math.ceil(baseAdaptiveBuffer + totalFramesFactor)
+  );
+
+  // initial range centered on the current frame.
+  let min = frameNumber - behindBuffer;
+  let max = frameNumber + adaptiveAheadBuffer;
+
+  // if the range exceeds totalFrames at the end,
+  // pull extra frames from behind to maintain overall buffer size.
+  if (max > totalFrames) {
+    const extra = max - totalFrames;
+    min = Math.max(1, min - extra);
+    max = totalFrames;
+  }
+  // similarly, if the range goes below 1, extend the ahead buffer.
+  if (min < 1) {
+    const extra = 1 - min;
+    max = Math.min(totalFrames, max + extra);
+    min = 1;
+  }
+
+  return [min, max] as const;
+};
 
 /**
  * Returns the event name for setting the frame number for a specific timeline.

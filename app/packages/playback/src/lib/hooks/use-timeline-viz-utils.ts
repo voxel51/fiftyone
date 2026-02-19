@@ -1,6 +1,8 @@
 import { useSetAtom } from "jotai";
 import React from "react";
-import { setFrameNumberAtom, TimelineName } from "./state";
+import { setFrameNumberAtom } from "../state";
+import type { TimelineName } from "../types";
+import { convertFrameNumberToPercentage } from "../utils";
 import { useDefaultTimelineNameImperative } from "./use-default-timeline-name";
 import { useFrameNumber } from "./use-frame-number";
 import { useTimeline } from "./use-timeline";
@@ -43,19 +45,4 @@ export const useTimelineVizUtils = (name?: TimelineName) => {
     getSeekValue,
     seekTo,
   };
-};
-
-export const convertFrameNumberToPercentage = (
-  frameNumber: number,
-  totalFrames: number
-) => {
-  // offset by -1 since frame indexing is 1-based
-  const numerator = frameNumber - 1;
-  const denominator = totalFrames - 1;
-
-  if (denominator <= 0) {
-    return 0;
-  }
-
-  return (numerator / denominator) * 100;
 };

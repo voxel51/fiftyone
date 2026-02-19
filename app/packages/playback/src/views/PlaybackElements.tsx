@@ -8,9 +8,11 @@ import {
   PLAYHEAD_STATE_PLAYING,
   PlayheadState,
 } from "../lib/constants";
-import { TimelineName } from "../lib/state";
-import { convertFrameNumberToPercentage } from "../lib/use-timeline-viz-utils";
-import { getGradientStringForSeekbar } from "../lib/utils";
+import type { TimelineName } from "../lib/types";
+import {
+  convertFrameNumberToPercentage,
+  getGradientStringForSeekbar,
+} from "../lib/utils";
 import BufferingIcon from "./svgs/buffering.svg?react";
 import PauseIcon from "./svgs/pause.svg?react";
 import PlayIcon from "./svgs/play.svg?react";
