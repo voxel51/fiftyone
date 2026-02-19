@@ -219,16 +219,13 @@ def _check_and_resolve_path(path: str) -> str:
 # =========================================================================
 
 
-def _sync_write_chunks(path: str, chunks: list) -> None:
-    """Writes *chunks* to *path* via :mod:`fiftyone.core.storage`.
+def _sync_open_for_write(path: str):
+    """Creates parent directories and opens *path* for binary writing.
 
-    Creates parent directories as needed.  This function is designed to be
-    called from a worker thread via :func:`anyio.to_thread.run_sync`.
+    Returns the file handle.  Caller is responsible for closing it.
     """
     fos.ensure_basedir(path)
-    with fos.open_file(path, "wb") as f:
-        for chunk in chunks:
-            f.write(chunk)
+    return fos.open_file(path, "wb").__enter__()
 
 
 def _sync_try_remove(path: str) -> None:
@@ -276,17 +273,18 @@ async def stream_upload(
         lambda: get_unique_path(normalized)
     )
 
-    # Receive all chunks from the network, then flush to disk in a worker
-    # thread.  Both phases are wrapped so that any failure triggers cleanup
-    # of the (possibly partially written) destination file.
+    # Stream chunks to disk incrementally to avoid holding the entire file
+    # in memory.  The file handle is opened/closed in worker threads; each
+    # chunk write is also offloaded so the event loop stays free.
     try:
-        chunks = []
-        async for chunk in stream:
-            chunks.append(chunk)
-
-        await anyio.to_thread.run_sync(
-            lambda: _sync_write_chunks(resolved_path, chunks)
+        fh = await anyio.to_thread.run_sync(
+            lambda: _sync_open_for_write(resolved_path)
         )
+        try:
+            async for chunk in stream:
+                await anyio.to_thread.run_sync(lambda c=chunk: fh.write(c))
+        finally:
+            await anyio.to_thread.run_sync(lambda: fh.close())
     except FileOperationError:
         raise
     except OSError as e:
