@@ -194,7 +194,7 @@ def _check_and_resolve_path(path: str) -> str:
     try:
         normalized = fos.realpath(safe_path)
         base = fos.realpath(allowed_base)
-    except Exception as e:
+    except (OSError, ValueError) as e:
         raise FileOperationError(
             code=FileOperationErrorCode.PATH_INVALID,
             message=f"Invalid path: {e}",
