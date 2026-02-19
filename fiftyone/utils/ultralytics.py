@@ -1181,21 +1181,21 @@ class UltralyticsOBBOutputProcessor(
 
 
 def _detections_to_visual_prompts(detections, img_width, img_height):
-    bboxes = []
-    cls_indices = []
-    classes = []
-    for det in detections.detections:
-        bx, by, bw, bh = det.bounding_box
-        x1 = bx * img_width
-        y1 = by * img_height
-        x2 = (bx + bw) * img_width
-        y2 = (by + bh) * img_height
-        bboxes.append([x1, y1, x2, y2])
-        if det.label not in classes:
-            classes.append(det.label)
-        cls_indices.append(classes.index(det.label))
+    dets = detections.detections
+    boxes = np.array([d.bounding_box for d in dets])
+    boxes[:, 2] += boxes[:, 0]
+    boxes[:, 3] += boxes[:, 1]
+    boxes[:, 0] *= img_width
+    boxes[:, 2] *= img_width
+    boxes[:, 1] *= img_height
+    boxes[:, 3] *= img_height
 
-    return bboxes, cls_indices, classes
+    labels = [d.label for d in dets]
+    classes = list(dict.fromkeys(labels))
+    label_to_idx = {c: i for i, c in enumerate(classes)}
+    cls_indices = [label_to_idx[l] for l in labels]
+
+    return boxes.tolist(), cls_indices, classes
 
 
 def _get_yoloe_vp_predictor():
