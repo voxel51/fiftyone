@@ -33,9 +33,9 @@ from fiftyone.server.files import (
 @pytest.fixture
 def enable_file_ops(tmp_path):
     """Enable browser file operations with tmp_path as the allowed directory."""
-    with patch("fiftyone.config.allow_browser_file_operations", True), patch(
-        "fiftyone.config.browser_file_operations_dir", str(tmp_path)
-    ):
+    with patch(
+        "fiftyone.config.allow_browser_file_operations", new=True
+    ), patch("fiftyone.config.browser_file_operations_dir", new=str(tmp_path)):
         yield tmp_path
 
 
@@ -208,7 +208,7 @@ class TestStreamUpload:
         async def mock_stream():
             yield b"data"
 
-        with patch("fiftyone.config.allow_browser_file_operations", False):
+        with patch("fiftyone.config.allow_browser_file_operations", new=False):
             with pytest.raises(FileOperationError) as exc_info:
                 await stream_upload(mock_stream(), "/any/path.png")
 
@@ -224,8 +224,8 @@ class TestStreamUpload:
             yield b"data"
 
         with patch(
-            "fiftyone.config.allow_browser_file_operations", True
-        ), patch("fiftyone.config.browser_file_operations_dir", None):
+            "fiftyone.config.allow_browser_file_operations", new=True
+        ), patch("fiftyone.config.browser_file_operations_dir", new=None):
             with pytest.raises(FileOperationError) as exc_info:
                 await stream_upload(mock_stream(), "/any/path.png")
 
@@ -399,7 +399,7 @@ class TestDeleteFile:
     @pytest.mark.asyncio
     async def test_rejects_when_feature_disabled(self):
         """Raises FEATURE_DISABLED when config flag is False."""
-        with patch("fiftyone.config.allow_browser_file_operations", False):
+        with patch("fiftyone.config.allow_browser_file_operations", new=False):
             with pytest.raises(FileOperationError) as exc_info:
                 await delete_file("/any/path.png")
 
@@ -411,8 +411,8 @@ class TestDeleteFile:
     async def test_rejects_when_no_dir_configured(self):
         """Raises error when feature enabled but no directory set."""
         with patch(
-            "fiftyone.config.allow_browser_file_operations", True
-        ), patch("fiftyone.config.browser_file_operations_dir", None):
+            "fiftyone.config.allow_browser_file_operations", new=True
+        ), patch("fiftyone.config.browser_file_operations_dir", new=None):
             with pytest.raises(FileOperationError) as exc_info:
                 await delete_file("/any/path.png")
 
