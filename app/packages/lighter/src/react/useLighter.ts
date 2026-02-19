@@ -19,6 +19,18 @@ export const useLighter = () => {
   const scene = useAtomValue(lighterSceneAtom);
   const isReady = !!scene;
   const registeredCallbacks = useRef<Set<() => void>>(new Set());
+
+  // useLighter() consumers may cache callback that closes over `scene` and that can result in memory leak.
+  // Use ref to avoid capturing `scene` directly in useCallback closures.
+  //
+  // The returned action callbacks (addOverlay, removeOverlay, etc.) are stable
+  // and read `sceneRef.current` at call time. This is safe because
+  // they are imperative functions invoked in response to user actions, not used
+  // to drive renders or effects. Components that need to react to scene changes
+  // should use the `scene` value returned directly from this hook.
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+
   // Cleanup registered callbacks when scene changes or component unmounts
   useEffect(() => {
     return () => {
@@ -30,40 +42,34 @@ export const useLighter = () => {
 
   const addOverlay = useCallback(
     (overlay: BaseOverlay, withUndo: boolean = false) => {
-      if (scene) {
-        scene.addOverlay(overlay, withUndo);
+      if (sceneRef.current) {
+        sceneRef.current.addOverlay(overlay, withUndo);
       }
     },
-    [scene]
+    []
   );
 
-  const removeOverlay = useCallback(
-    (id: string, withUndo: boolean = false) => {
-      if (scene) {
-        scene.removeOverlay(id, withUndo);
-      }
-    },
-    [scene]
-  );
+  const removeOverlay = useCallback((id: string, withUndo: boolean = false) => {
+    if (sceneRef.current) {
+      sceneRef.current.removeOverlay(id, withUndo);
+    }
+  }, []);
 
-  const getOverlay = useCallback(
-    (id: string) => {
-      if (scene) {
-        return scene.getOverlay(id);
-      }
-      return undefined;
-    },
-    [scene]
-  );
+  const getOverlay = useCallback((id: string) => {
+    if (sceneRef.current) {
+      return sceneRef.current.getOverlay(id);
+    }
+    return undefined;
+  }, []);
 
   const transformOverlay = useCallback(
     async (id: string, options: TransformOptions) => {
-      if (scene) {
-        return await scene.transformOverlay(id, options);
+      if (sceneRef.current) {
+        return await sceneRef.current.transformOverlay(id, options);
       }
       return false;
     },
-    [scene]
+    []
   );
 
   /**
@@ -73,12 +79,14 @@ export const useLighter = () => {
    */
   const registerRenderCallback = useCallback(
     (callback: Omit<RenderCallback, "id"> & { id?: string }) => {
-      if (!scene) {
+      const s = sceneRef.current;
+
+      if (!s) {
         console.warn("Cannot register render callback: scene not ready");
         return () => {}; // Return no-op function
       }
 
-      const unregister = scene.registerRenderCallback(callback);
+      const unregister = s.registerRenderCallback(callback);
       registeredCallbacks.current.add(unregister);
 
       // Return a function that removes from our tracking and unregisters
@@ -87,7 +95,7 @@ export const useLighter = () => {
         unregister();
       };
     },
-    [scene]
+    []
   );
 
   return {
