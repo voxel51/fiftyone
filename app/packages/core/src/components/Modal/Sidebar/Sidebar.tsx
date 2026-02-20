@@ -17,6 +17,7 @@ import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
 import { useModalSidebarRenderEntry } from "./use-sidebar-render-entry";
+import useFieldActivationSync from "./useFieldActivationSync";
 
 const Explore = () => {
   const renderEntry = useModalSidebarRenderEntry();
@@ -38,6 +39,7 @@ const Sidebar = () => {
   const datasetNameValue = useRecoilValue(datasetName);
 
   const loadSchemas = useLoadSchemas();
+  useFieldActivationSync();
 
   // This effect loads schemas on init for valid annotation sessions
   useEffect(() => {
