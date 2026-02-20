@@ -224,13 +224,19 @@ def _check_and_resolve_path(path: str) -> str:
 # =========================================================================
 
 
-def _sync_open_for_write(path: str):
-    """Creates parent directories and opens *path* for binary writing.
+def _sync_resolve_and_open(normalized: str):
+    """Resolves filename collisions and opens the file atomically.
 
-    Returns the file handle.  Caller is responsible for closing it.
+    Combining these steps in a single sync call eliminates the TOCTOU
+    window where two concurrent uploads could pick the same unique name.
+
+    Returns a ``(resolved_path, file_handle)`` tuple.  Caller is
+    responsible for closing the file handle.
     """
-    fos.ensure_basedir(path)
-    return fos.open_file(path, "wb").__enter__()
+    resolved = get_unique_path(normalized)
+    fos.ensure_basedir(resolved)
+    fh = fos.open_file(resolved, "wb").__enter__()
+    return resolved, fh
 
 
 def _sync_try_remove(path: str) -> None:
@@ -273,17 +279,13 @@ async def stream_upload(
     _check_feature_enabled()
     normalized = _check_and_resolve_path(path)
 
-    # Resolve collisions (offload to thread since it hits the filesystem)
-    resolved_path = await anyio.to_thread.run_sync(
-        lambda: get_unique_path(normalized)
-    )
-
-    # Stream chunks to disk incrementally to avoid holding the entire file
-    # in memory.  The file handle is opened/closed in worker threads; each
-    # chunk write is also offloaded so the event loop stays free.
+    # Resolve collisions and open the file atomically in a single thread
+    # call to avoid TOCTOU races between concurrent uploads.  Each chunk
+    # write is also offloaded so the event loop stays free.
+    resolved_path = normalized
     try:
-        fh = await anyio.to_thread.run_sync(
-            lambda: _sync_open_for_write(resolved_path)
+        resolved_path, fh = await anyio.to_thread.run_sync(
+            lambda: _sync_resolve_and_open(normalized)
         )
         try:
             async for chunk in stream:
