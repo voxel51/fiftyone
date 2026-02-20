@@ -17,6 +17,10 @@ class RunManager:
     """Manager class for persisting and retrieving similarity search runs."""
 
     _RUN_PREFIX = "run:"
+    _OPID_PREFIX = "opid:"
+
+    # Fields too large for listing — only needed by get_run / apply_run
+    _HEAVY_FIELDS = {"result_ids", "result_view", "source_view"}
 
     def __init__(self, ctx):
         self._store = ctx.store(STORE_NAME)
@@ -45,6 +49,7 @@ class RunManager:
             "dist_field": run_params.get("dist_field"),
             "patches_field": run_params.get("patches_field"),
             "result_ids": [],
+            "result_view": None,
             "result_count": 0,
             "creation_time": now,
             "start_time": None,
@@ -80,8 +85,18 @@ class RunManager:
             run.update(updates)
             self._store.set(self._key(run_id), run)
 
+    def set_operator_run_id(self, run_id: str, operator_run_id: str):
+        """Link a delegated operation ID to a run and create index key.
+
+        Args:
+            run_id: the run ID
+            operator_run_id: the delegated operation document ID
+        """
+        self.update_run(run_id, {"operator_run_id": operator_run_id})
+        self._store.set(f"{self._OPID_PREFIX}{operator_run_id}", run_id)
+
     def find_run_by_operator_id(self, operator_run_id: str) -> Optional[Dict]:
-        """Find a run by its delegated operation ID.
+        """Find a run by its delegated operation ID. O(1) lookup.
 
         Args:
             operator_run_id: the delegated operation document ID
@@ -89,19 +104,20 @@ class RunManager:
         Returns:
             the run data dict, or None
         """
-        for key in self._store.list_keys():
-            if key.startswith(self._RUN_PREFIX):
-                run = self._store.get(key)
-                if run and run.get("operator_run_id") == operator_run_id:
-                    return run
+        run_id = self._store.get(f"{self._OPID_PREFIX}{operator_run_id}")
+        if run_id:
+            return self.get_run(run_id)
         return None
 
     def delete_run(self, run_id: str):
-        """Delete a run.
+        """Delete a run and its index keys.
 
         Args:
             run_id: the run ID
         """
+        run = self.get_run(run_id)
+        if run and run.get("operator_run_id"):
+            self._store.delete(f"{self._OPID_PREFIX}{run['operator_run_id']}")
         self._store.delete(self._key(run_id))
 
     def list_runs(self) -> List[Dict]:
@@ -116,7 +132,14 @@ class RunManager:
             if key.startswith(self._RUN_PREFIX):
                 run = self._store.get(key)
                 if run:
-                    runs.append(run)
+                    # Strip heavy fields for listing
+                    runs.append(
+                        {
+                            k: v
+                            for k, v in run.items()
+                            if k not in self._HEAVY_FIELDS
+                        }
+                    )
 
         runs.sort(key=lambda r: r.get("creation_time", ""), reverse=True)
         return runs

@@ -78,26 +78,35 @@ class SimilaritySearchPanel(Panel):
             ctx.ops.notify("Run is not completed yet", variant="warning")
             return
 
-        result_ids = run_data.get("result_ids", [])
-        if not result_ids:
-            ctx.ops.notify("Run has no results", variant="warning")
-            return
-
+        result_view_stages = run_data.get("result_view")
         patches_field = run_data.get("patches_field")
 
         try:
-            if patches_field:
-                view = ctx.dataset.to_patches(patches_field).select(
-                    result_ids, ordered=True
-                )
+            if result_view_stages:
+                # Efficient path: reconstruct from serialized view
+                from fiftyone.core.view import DatasetView
+
+                view = DatasetView._build(ctx.dataset, result_view_stages)
             else:
-                view = ctx.dataset.select(result_ids, ordered=True)
+                # Legacy fallback: use stored result_ids
+                result_ids = run_data.get("result_ids", [])
+                if not result_ids:
+                    ctx.ops.notify("Run has no results", variant="warning")
+                    return
+
+                if patches_field:
+                    view = ctx.dataset.to_patches(patches_field).select(
+                        result_ids, ordered=True
+                    )
+                else:
+                    view = ctx.dataset.select(result_ids, ordered=True)
 
             ctx.ops.set_view(view)
             ctx.panel.set_state("applied_run_id", run_id)
 
+            result_count = run_data.get("result_count", 0)
             ctx.ops.notify(
-                f"Showing {len(result_ids)} results", variant="success"
+                f"Showing {result_count} results", variant="success"
             )
         except Exception as e:
             logger.error("Failed to apply run %s: %s", run_id, e)

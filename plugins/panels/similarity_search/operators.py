@@ -116,6 +116,9 @@ class SimilaritySearchOperator(foo.Operator):
 
             ctx.set_progress(0.7, label="Collecting results...")
 
+            # Serialize the result view for efficient reconstruction
+            result_view_stages = result_view._serialize(include_uuids=False)
+
             result_ids = [str(rid) for rid in result_view.values("id")]
 
             ctx.set_progress(0.9, label="Saving results...")
@@ -126,6 +129,7 @@ class SimilaritySearchOperator(foo.Operator):
                     "status": RunStatus.COMPLETED,
                     "result_ids": result_ids,
                     "result_count": len(result_ids),
+                    "result_view": result_view_stages,
                     "end_time": datetime.now(timezone.utc).isoformat(),
                 },
             )
@@ -217,7 +221,7 @@ class InitSimilarityRunOperator(foo.Operator):
         # Link the delegated operation to the run
         operator_run_id = ctx.params.get("operator_run_id")
         if operator_run_id:
-            manager.update_run(run_id, {"operator_run_id": operator_run_id})
+            manager.set_operator_run_id(run_id, operator_run_id)
 
         return {"run_id": run_id}
 
