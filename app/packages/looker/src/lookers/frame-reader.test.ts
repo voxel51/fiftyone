@@ -282,6 +282,12 @@ describe("frame-reader", () => {
         const result = updateFn({ buffering: true });
         expect(result).toEqual({ buffering: false });
         expect(dispatchEvent).toHaveBeenCalledWith("buffering", false);
+
+        // Non-buffering state: dispatchEvent should NOT be called again
+        vi.clearAllMocks();
+        const result2 = updateFn({ buffering: false });
+        expect(result2).toEqual({ buffering: false });
+        expect(dispatchEvent).not.toHaveBeenCalled();
     });
 
     it("clearReader resets state and terminates worker", () => {

@@ -157,7 +157,7 @@ export const { acquireReader, clearReader } = (() => {
       frameCache = createCache(options.removeFrame);
 
       return (frameNumber: number) => {
-        const isCacheMiss = frameCache && !frameCache.has(frameNumber);
+        const isCacheMiss = Boolean(frameCache && !frameCache.has(frameNumber));
         const isBeingFetched =
           nextRange !== null &&
           frameNumber >= nextRange[0] &&
