@@ -50,6 +50,15 @@ export const useCurrentSelected3dAnnotationLabel = () => {
 };
 
 /**
+ * Hook to reset the selected 3D annotation label to null.
+ *
+ * @returns A function that clears the selection when called
+ */
+export const useResetSelected3dAnnotationLabel = () => {
+  return useResetRecoilState(selectedLabelForAnnotationAtom);
+};
+
+/**
  * Hook to retrieve the currently hovered 3D label in annotation mode.
  *
  * @returns The hovered label identifier (`{ id }`) or null if no label is hovered
