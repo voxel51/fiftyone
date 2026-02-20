@@ -24,9 +24,9 @@ from fiftyone.server.routes.files import FileUpload, FileDelete
 @pytest.fixture
 def enable_file_ops(tmp_path):
     """Enable browser file operations with tmp_path as the allowed directory."""
-    with patch("fiftyone.config.allow_browser_file_operations", True), patch(
-        "fiftyone.config.browser_file_operations_dir", str(tmp_path)
-    ):
+    with patch(
+        "fiftyone.config.allow_browser_file_operations", new=True
+    ), patch("fiftyone.config.browser_file_operations_dir", new=str(tmp_path)):
         yield tmp_path
 
 
@@ -111,7 +111,7 @@ class TestFileUploadRoute:
         """Returns 403 when file operations disabled."""
         request = mock_request(path="/some/path.png")
 
-        with patch("fiftyone.config.allow_browser_file_operations", False):
+        with patch("fiftyone.config.allow_browser_file_operations", new=False):
             response = await upload_endpoint.post(request)
 
         assert response.status_code == 403
@@ -125,7 +125,7 @@ class TestFileUploadRoute:
         """Error response has 'error' key and no 'path' key."""
         request = mock_request(path="/some/path.png")
 
-        with patch("fiftyone.config.allow_browser_file_operations", False):
+        with patch("fiftyone.config.allow_browser_file_operations", new=False):
             response = await upload_endpoint.post(request)
 
         data = json.loads(response.body)
@@ -218,7 +218,7 @@ class TestFileDeleteRoute:
         """Returns 403 when file operations disabled."""
         request = mock_request(path="/some/path.png")
 
-        with patch("fiftyone.config.allow_browser_file_operations", False):
+        with patch("fiftyone.config.allow_browser_file_operations", new=False):
             response = await delete_endpoint.delete(request)
 
         assert response.status_code == 403
