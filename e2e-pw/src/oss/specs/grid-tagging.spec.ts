@@ -22,10 +22,6 @@ const test = base.extend<{
 
 const datasetName = getUniqueDatasetNameWithPrefix("grid-tagging");
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   await foWebServer.startWebServer();
 

@@ -42,10 +42,6 @@ test.beforeAll(async ({ fiftyoneLoader, foWebServer }) => {
   `);
 });
 
-test.afterAll(async ({ foWebServer }) => {
-  await foWebServer.stopWebServer();
-});
-
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
