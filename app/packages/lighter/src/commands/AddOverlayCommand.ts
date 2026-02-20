@@ -57,15 +57,23 @@ export class AddOverlayCommand implements Undoable {
     const eventBus = getEventBus<LighterEventGroup>(
       this.scene.getEventChannel()
     );
-    eventBus.dispatch("lighter:overlay-undone", { id: overlayID });
 
-    if (this.overlay instanceof InteractiveDetectionHandler) {
-      const handler = this.overlay.getOverlay();
+    try {
+      eventBus.dispatch("lighter:overlay-undone", { id: overlayID });
+    } catch (error) {
+      console.error(
+        `Failed to dispatch overlay-undone for ${overlayID}:`,
+        error
+      );
+    } finally {
+      if (this.overlay instanceof InteractiveDetectionHandler) {
+        const handler = this.overlay.getOverlay();
 
-      handler.unsetBounds();
-      this.scene.removeOverlay(handler.id, false);
-    } else {
-      this.scene.removeOverlay(this.overlay.id, false);
+        handler.unsetBounds();
+        this.scene.removeOverlay(handler.id, false);
+      } else {
+        this.scene.removeOverlay(this.overlay.id, false);
+      }
     }
   }
 }
