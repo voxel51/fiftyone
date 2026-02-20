@@ -2,7 +2,14 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 import { Slider as SliderUnstyled } from "@mui/material";
-import React, { ChangeEvent, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  ChangeEvent,
+  useEffect,
+  useLayoutEffect,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import type { RecoilState, RecoilValueReadOnly } from "recoil";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -123,7 +130,13 @@ type BaseSliderProps<T extends Range | number> = {
   int?: boolean;
   style?: React.CSSProperties;
   alternateThumbLabelDirection?: boolean;
+  containerRef?: React.RefObject<HTMLDivElement>;
+  reserveLabelSpace?: boolean;
 };
+
+function isBoundsValid(bounds: Range): bounds is [number, number] {
+  return typeof bounds[0] === "number" && typeof bounds[1] === "number";
+}
 
 const BaseSlider = <T extends Range | number>({
   boundsAtom,
@@ -139,12 +152,15 @@ const BaseSlider = <T extends Range | number>({
   style,
   showValue = true,
   alternateThumbLabelDirection = false,
+  containerRef,
+  reserveLabelSpace = false,
 }: BaseSliderProps<T>) => {
   const theme = useTheme();
   const bounds = useRecoilValue(boundsAtom);
 
   const dirtyMin = useRef(false);
   const dirtyMax = useRef(false);
+  const sliderRef = useRef<HTMLSpanElement>(null);
 
   const timeZone =
     fieldType && [DATE_FIELD, DATE_TIME_FIELD].includes(fieldType)
@@ -152,16 +168,54 @@ const BaseSlider = <T extends Range | number>({
       : null;
   const [clicking, setClicking] = useState(false);
 
-  const hasBounds = bounds.every((b) => b !== null);
+  const adjustLabelsPosition = useCallback(() => {
+    const currentSlider = sliderRef.current;
+    const currentContainer = containerRef?.current;
+    const labelPadding = 1;
+    if (!currentSlider || !currentContainer) return;
 
-  if (!hasBounds) {
+    const containerRect = currentContainer.getBoundingClientRect();
+    const valueLabels = currentSlider.querySelectorAll(".valueLabel");
+
+    valueLabels.forEach((label) => {
+      const labelElement = label as HTMLElement;
+      labelElement.style.translate = "0 0";
+      const labelRect = labelElement.getBoundingClientRect();
+      let shiftX = 0;
+
+      if (labelRect.left < containerRect.left + labelPadding) {
+        shiftX = containerRect.left + labelPadding - labelRect.left;
+      } else if (labelRect.right > containerRect.right - labelPadding) {
+        shiftX = containerRect.right - labelPadding - labelRect.right;
+      }
+
+      labelElement.style.translate = `${shiftX}px 0`;
+    });
+  }, []);
+
+  // Adjust on mount after paint
+  useEffect(() => {
+    if (!sliderRef.current || !containerRef?.current) return;
+
+    adjustLabelsPosition();
+  }, []);
+
+  // Adjust on value/clicking changes
+  useLayoutEffect(() => {
+    if (!sliderRef.current || !containerRef?.current) return;
+
+    const frameId = requestAnimationFrame(adjustLabelsPosition);
+    return () => cancelAnimationFrame(frameId);
+  }, [value, clicking, adjustLabelsPosition]);
+
+  if (!isBoundsValid(bounds)) {
     return null;
   }
 
   const step = getStep(bounds, fieldType);
   const { formatter, hasTitle } = getFormatter(
-    fieldType,
-    fieldType === DATE_FIELD ? "UTC" : timeZone,
+    fieldType || "",
+    fieldType === DATE_FIELD ? "UTC" : timeZone || "UTC",
     bounds
   );
 
@@ -183,19 +237,25 @@ const BaseSlider = <T extends Range | number>({
               }}
             >
               {getDateTimeRangeFormattersWithPrecision(
-                timeZone,
+                timeZone || "UTC",
                 bounds[0],
                 bounds[1]
-              )[0]
-                .format(bounds[0])
-                .replaceAll("/", "-")}
+              ).common?.format(bounds[0])}
             </div>
           }
         </>
+      ) : reserveLabelSpace && showValue ? (
+        <div
+          style={{
+            width: "100%",
+            minHeight: "1.25rem",
+          }}
+        />
       ) : null}
       <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
+          ref={sliderRef}
           data-cy="slider"
           onMouseDown={() => setClicking(true)}
           onMouseUp={() => setClicking(false)}
@@ -317,7 +377,7 @@ export const RangeSlider = ({
 
   const bounds = useRecoilValue(boundsAtom);
   // Restrict numeric precision to better represent the slider controls.
-  const precision = getPrecision(fieldType, bounds);
+  const precision = getPrecision(fieldType, bounds as [number, number]);
 
   return (
     <BaseSlider
@@ -335,7 +395,7 @@ export const RangeSlider = ({
           v === bounds[1] ? null : parseFloat(v.toFixed(precision));
         setValue((prev) => [prev[0], newMax]);
       }}
-      value={[...localValue]}
+      value={localValue}
     />
   );
 };
