@@ -8,8 +8,8 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
 import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2";
 import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry";
 import { useTransientCuboid } from "../annotation/store";
-import { FO_USER_DATA } from "../constants";
 import { useCuboidAnnotation } from "../annotation/useCuboidAnnotation";
+import { FO_USER_DATA } from "../constants";
 import {
   hoveredLabelAtom,
   selectedLabelForAnnotationAtom,

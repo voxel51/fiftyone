@@ -2,21 +2,22 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { Action, CommandContextManager } from "@fiftyone/commands";
 import {
-  clearChannel,
   EventDispatcher,
   EventHandler,
+  clearChannel,
   getEventBus,
 } from "@fiftyone/events";
 import { AddOverlayCommand } from "../commands/AddOverlayCommand";
 import {
-  MoveOverlayCommand,
   type Movable,
+  MoveOverlayCommand,
 } from "../commands/MoveOverlayCommand";
 import { RemoveOverlayCommand } from "../commands/RemoveOverlayCommand";
 import {
-  TransformOverlayCommand,
   type TransformOptions,
+  TransformOverlayCommand,
 } from "../commands/TransformOverlayCommand";
 import { STROKE_WIDTH } from "../constants";
 import type { LighterEventGroup } from "../events";
@@ -49,7 +50,6 @@ import {
   RenderingStateManager,
 } from "./RenderingStateManager";
 import type { Scene2DConfig, SceneOptions } from "./SceneConfig";
-import { CommandContextManager, Action } from "@fiftyone/commands";
 
 export const TypeGuards = {
   isHoverable: (
@@ -891,8 +891,14 @@ export class Scene2D {
     }
 
     this.isRenderLoopActive = true;
+    let firstRender = true;
     this.config.renderer.addTickHandler(async () => {
       await this.renderFrame();
+      firstRender &&
+        requestAnimationFrame(() => {
+          firstRender = false;
+          document.dispatchEvent(new CustomEvent("lighter-first-render"));
+        });
     });
   }
 

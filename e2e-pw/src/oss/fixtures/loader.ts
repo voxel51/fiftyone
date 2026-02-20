@@ -60,6 +60,19 @@ export class OssLoader extends AbstractFiftyoneLoader {
     };
 
     await page.addInitScript(() => {
+      document.addEventListener("mousemove", (e) => {
+        const element = document.elementFromPoint(e.clientX, e.clientY);
+        const cursor = window.getComputedStyle(element).cursor;
+        // eslint-disable-next-line
+        // @ts-ignore
+        if (cursor !== window.CURRENT_CURSOR) {
+          // eslint-disable-next-line
+          // @ts-ignore
+          window.CURRENT_CURSOR = window.getComputedStyle(element).cursor;
+          document.dispatchEvent(new CustomEvent("cursor-change"));
+        }
+      });
+
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore injecting IS_PLAYWRIGHT into window so that
       // we can disable 1) analytics, and 2) QA performance toast banners

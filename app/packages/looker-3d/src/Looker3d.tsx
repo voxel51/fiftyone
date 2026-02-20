@@ -7,21 +7,19 @@ import {
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Fo3dErrorBoundary } from "./ErrorBoundary";
+import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
-import { Fo3dErrorBoundary } from "./ErrorBoundary";
 import { Leva } from "./fo3d/Leva";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
-import { MediaTypePcdComponent } from "./MediaTypePcd";
 import {
-  clearTransformStateSelector,
   currentActionAtom,
   fo3dContainsBackground,
   isColormapModalOpenAtom,
   isGridOnAtom,
   isLevaConfigPanelOnAtom,
-  selectedLabelForAnnotationAtom,
 } from "./state";
 
 /**

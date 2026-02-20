@@ -1,9 +1,11 @@
+import { useAnnotationEventBus } from "@fiftyone/annotation";
 import { KnownContexts, usePushUndoable } from "@fiftyone/commands";
 import * as fos from "@fiftyone/state";
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { isDetection, isPolyline } from "../../types";
+import { quaternionToRadians } from "../../utils";
 import type {
   CuboidTransformData,
   PolylinePointTransformData,
@@ -20,8 +22,6 @@ import {
   useUpdateWorkingLabel,
   workingAtom,
 } from "./working";
-import { quaternionToRadians } from "../../utils";
-import { useAnnotationEventBus } from "@fiftyone/annotation";
 
 // =============================================================================
 // CUBOID OPERATIONS

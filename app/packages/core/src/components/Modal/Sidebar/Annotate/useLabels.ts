@@ -327,6 +327,7 @@ export default function useLabels() {
     resetOverlays();
   }, [active, removeOverlay, setLabels, setLoading]); // omit: [currentLabels]
 
+  // Reset labels when active schemas change to reload and update scene
   useEffect(() => {
     // Flipped to `true` by the cleanup function so in-flight async work
     // from a superseded effect invocation can bail out before mutating state.

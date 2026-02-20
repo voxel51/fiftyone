@@ -1,3 +1,4 @@
+import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 import { DETECTION } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
@@ -6,7 +7,6 @@ import { useCallback, useMemo } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, useLighter } from "@fiftyone/lighter";
 
 /**
  * Flag to track if quick draw mode is active.

@@ -34,7 +34,10 @@ export const QuickEditEntry: FC<QuickEditEntryProps> = ({
     >
       {children}
       {enabled && canAnnotate && (
-        <Clickable onClick={() => enterAnnotationMode(path)}>
+        <Clickable
+          data-cy={"quick-edit"}
+          onClick={() => enterAnnotationMode(path)}
+        >
           <Icon name={IconName.Edit} size={Size.Sm} />
         </Clickable>
       )}

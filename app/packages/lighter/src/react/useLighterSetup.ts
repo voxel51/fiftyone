@@ -8,10 +8,10 @@ import { useEffect, useRef } from "react";
 import {
   PixiRenderer2D,
   Scene2D,
+  UNDEFINED_LIGHTER_SCENE_ID,
   globalPixiResourceLoader,
   lighterSceneAtom,
   useLighterEventBus,
-  UNDEFINED_LIGHTER_SCENE_ID,
 } from "../index";
 
 // TODO: Ultimately, we'll want to remove dependency on "looker" and create our own options type

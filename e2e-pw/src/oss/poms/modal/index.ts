@@ -8,6 +8,7 @@ import { ModalGroupActionsPom } from "./group-actions";
 import { ModalImaAsVideoControlsPom } from "./imavid-controls";
 import { Looker3DControlsPom } from "./looker-3d-controls";
 import { ModalSidebarPom } from "./modal-sidebar";
+import { SampleCanvasPom } from "./sample-canvas";
 import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
@@ -22,6 +23,7 @@ export class ModalPom {
   readonly imavid: ModalImaAsVideoControlsPom;
   readonly looker3dControls: Looker3DControlsPom;
   readonly panel: ModalPanelPom;
+  readonly sampleCanvas: SampleCanvasPom;
   readonly sidebar: ModalSidebarPom;
   readonly tagger: ModalTaggerPom;
   readonly url: UrlPom;
@@ -42,6 +44,7 @@ export class ModalPom {
     this.imavid = new ModalImaAsVideoControlsPom(page, this);
     this.looker3dControls = new Looker3DControlsPom(page, this);
     this.panel = new ModalPanelPom(page, this);
+    this.sampleCanvas = new SampleCanvasPom(page, eventUtils);
     this.sidebar = new ModalSidebarPom(page);
     this.tagger = new ModalTaggerPom(page, this);
     this.url = new UrlPom(page, eventUtils);

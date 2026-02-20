@@ -7,9 +7,8 @@ import {
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
+import type { LighterEventGroup, Scene2D } from "@fiftyone/lighter";
 import {
-  type LighterEventGroup,
-  type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
   UpdateLabelCommand,
   useLighterEventBus,
@@ -17,8 +16,8 @@ import {
 } from "@fiftyone/lighter";
 import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
-import { currentData } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
+import { currentData } from "../Sidebar/Annotate/Edit/state";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 

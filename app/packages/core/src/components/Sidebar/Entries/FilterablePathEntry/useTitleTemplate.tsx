@@ -1,17 +1,17 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { VisibilityOff } from "@mui/icons-material";
-import React, { Suspense, useState } from "react";
+import { Suspense, useState } from "react";
 import {
   DefaultValue,
   selectorFamily,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
+import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
-import { QuickEditEntry } from "../../../Modal/Sidebar/Annotate";
 
 const PATH_OVERRIDES = {
   tags: "sample tags",
