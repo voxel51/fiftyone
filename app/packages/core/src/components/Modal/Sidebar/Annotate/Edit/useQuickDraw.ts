@@ -283,7 +283,9 @@ export const useQuickDraw = () => {
           currentScene.renderLoopActive
         ) {
           currentScene.exitInteractiveMode();
-          addOverlay(currentLabel.overlay as BaseOverlay);
+          if (currentLabel.overlay) {
+            addOverlay(currentLabel.overlay as BaseOverlay);
+          }
         }
 
         // Track last-used detection field and label for auto-assignment
