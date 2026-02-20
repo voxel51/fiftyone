@@ -19,7 +19,7 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { SimilarityRun } from "../types";
 import StatusBadge from "./StatusBadge";
 
@@ -141,6 +141,19 @@ export default function RunList({
   onGetSampleMedia,
 }: RunListProps) {
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
+
+  // Accumulate sample media across multiple expand calls so previous
+  // thumbnails aren't lost when a new card is expanded
+  const accumulatedMedia = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (sampleMedia && Object.keys(sampleMedia).length > 0) {
+      accumulatedMedia.current = {
+        ...accumulatedMedia.current,
+        ...sampleMedia,
+      };
+    }
+  }, [sampleMedia]);
+  const mergedMedia = { ...accumulatedMedia.current, ...sampleMedia };
 
   const handleToggleExpand = useCallback(
     (run: SimilarityRun) => {
@@ -349,7 +362,7 @@ export default function RunList({
                           </Text>
                           <SampleThumbnails
                             ids={positiveIds}
-                            sampleMedia={sampleMedia}
+                            sampleMedia={mergedMedia}
                           />
                         </div>
                       )}
@@ -364,7 +377,7 @@ export default function RunList({
                           </Text>
                           <SampleThumbnails
                             ids={negativeIds}
-                            sampleMedia={sampleMedia}
+                            sampleMedia={mergedMedia}
                           />
                         </div>
                       )}
