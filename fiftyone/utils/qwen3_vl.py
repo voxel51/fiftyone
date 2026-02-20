@@ -146,6 +146,12 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         embedding_dim (None): output embedding dimension for MRL truncation;
             if None, uses full model dimension (2048 for 2B, 3584 for 8B)
         normalize_embeddings (True): whether to L2 normalize embeddings
+        video_fps (2.0): frame sampling rate for video inputs; Qwen3-VL's
+            default is 2.0 FPS. Lower values = fewer frames = faster
+        max_video_frames (128): maximum frames to sample from a video;
+            prevents OOM on long videos. Matches qwen-vl-utils MAX_FRAMES.
+        mode (None): the media type mode, "image" or "video"; if None,
+            defaults to the dataset's media type at inference time
     """
 
     def __init__(self, d):
@@ -162,6 +168,13 @@ class Qwen3VLModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.normalize_embeddings = self.parse_bool(
             d, "normalize_embeddings", default=True
         )
+        self.video_fps = self.parse_number(d, "video_fps", default=2.0)
+        if self.video_fps <= 0:
+            raise ValueError(
+                f"video_fps must be positive, got {self.video_fps}"
+            )
+        self.max_video_frames = self.parse_int(d, "max_video_frames", default=128)
+        self.mode = self.parse_string(d, "mode", default=None)
 
         self.raw_inputs = True
 
@@ -217,7 +230,16 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
 
     def __init__(self, config):
         self._processor = None
+        self._mode = config.mode
         super().__init__(config)
+
+    @property
+    def mode(self):
+        return self._mode
+
+    @mode.setter
+    def mode(self, value):
+        self._mode = value
 
     @property
     def has_embeddings(self):
@@ -245,7 +267,7 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
 
     @property
     def media_type(self):
-        return "image"
+        return self._mode or "image"
 
     def _get_prompt(self):
         if self.config.prompt is not None:
@@ -383,14 +405,20 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
         return img
 
     def embed(self, arg):
-        """Generate embedding for a single image.
+        """Generate embedding for a single image or video.
 
         Args:
-            arg: a PIL image, numpy array, or torch tensor
+            arg: a PIL image, numpy array, torch tensor, or an open
+                ``eta.core.video.FFmpegVideoReader``
 
         Returns:
             a 1D numpy array embedding
         """
+        import eta.core.video as etav
+
+        if isinstance(arg, etav.FFmpegVideoReader):
+            return self._embed_video(arg)
+
         return self.embed_all([arg])[0]
 
     def embed_all(self, args):
@@ -403,3 +431,79 @@ class Qwen3VLModel(fout.TorchImageModel, fom.EmbeddingsMixin):
             a ``num_images x embedding_dim`` numpy array
         """
         return self._predict_all(args)
+
+    def _embed_video(self, video_reader):
+        """Generate a single embedding for a video via native Qwen3-VL video input.
+
+        Samples frames at ``config.video_fps`` and passes them as a video
+        message to Qwen3-VL, which processes the full temporal context
+        and returns one embedding vector.
+
+        Args:
+            video_reader: an ``eta.core.video.FFmpegVideoReader``
+
+        Returns:
+            a 1D numpy array embedding
+        """
+        from PIL import Image as PILImage
+
+        raw_fps = video_reader.frame_rate
+        sample_fps = self.config.video_fps
+
+        if raw_fps > 0 and sample_fps > 0:
+            step = max(1, round(raw_fps / sample_fps))
+        else:
+            step = 1
+
+        frames = []
+        for i, frame in enumerate(video_reader):
+            if i % step == 0:
+                frames.append(self._prepare_image(frame))
+                if len(frames) >= self.config.max_video_frames:
+                    break
+
+        if not frames:
+            return np.zeros(
+                self.config.embedding_dim or self._model.config.hidden_size,
+                dtype=np.float32,
+            )
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "video",
+                        "video": frames,
+                        "fps": sample_fps,
+                    },
+                ],
+            }
+        ]
+
+        inputs = self._processor.apply_chat_template(
+            messages,
+            tokenize=True,
+            add_generation_prompt=False,
+            return_dict=True,
+            return_tensors="pt",
+        )
+        inputs = inputs.to(self._model.device)
+
+        with torch.no_grad():
+            outputs = self._model(
+                **inputs,
+                output_hidden_states=True,
+                return_dict=True,
+            )
+
+        last_hidden = outputs.hidden_states[-1]
+        embedding = last_hidden[:, -1, :]
+
+        if self.config.embedding_dim is not None:
+            embedding = embedding[:, : self.config.embedding_dim]
+
+        if self.config.normalize_embeddings:
+            embedding = torch.nn.functional.normalize(embedding, p=2, dim=-1)
+
+        return embedding.float().cpu().numpy().squeeze(0)
