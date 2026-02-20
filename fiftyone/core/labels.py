@@ -1776,25 +1776,39 @@ def _parse_segmentation_mask_targets(mask, frame_size, mask_targets):
 
 def _render_instance(mask, detection, target):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
-    obj_mask, offset = etai.render_instance_mask(
-        dobj.mask, dobj.bounding_box, img=mask
-    )
+    bbox = dobj.bounding_box
+    img_h, img_w = mask.shape[:2]
 
-    x0, y0 = offset
+    # Use round() instead of int() for the start position to avoid a ±1px
+    # shift caused by independently flooring both the start and end
+    # coordinates. The mask is placed at its actual dimensions with no
+    # resize, and clipped to image bounds.
+    x0 = round(bbox.top_left.x * img_w)
+    y0 = round(bbox.top_left.y * img_h)
+
+    obj_mask = np.asarray(dobj.mask, dtype=bool)
     dh, dw = obj_mask.shape
+
+    # Clip to image bounds
+    x1 = min(x0 + dw, img_w)
+    y1 = min(y0 + dh, img_h)
+    x0 = max(x0, 0)
+    y0 = max(y0, 0)
+    obj_mask = obj_mask[: (y1 - y0), : (x1 - x0)]
+
     target = np.asarray(target)
 
     if mask.ndim == 3:
-        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw), :]
+        patch = mask[y0:y1, x0:x1, :]
         if target.size == 3:
             patch[obj_mask, :] = np.reshape(target, (1, 1, 3))
         else:
             patch[obj_mask, :] = target
-        mask[y0 : (y0 + dh), x0 : (x0 + dw), :] = patch
+        mask[y0:y1, x0:x1, :] = patch
     else:
-        patch = mask[y0 : (y0 + dh), x0 : (x0 + dw)]
+        patch = mask[y0:y1, x0:x1]
         patch[obj_mask] = target
-        mask[y0 : (y0 + dh), x0 : (x0 + dw)] = patch
+        mask[y0:y1, x0:x1] = patch
 
 
 def _render_polyline(mask, polyline, target, thickness):
