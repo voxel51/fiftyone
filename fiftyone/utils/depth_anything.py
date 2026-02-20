@@ -1,0 +1,444 @@
+"""
+`Depth Anything V3 <https://github.com/ByteDance-Seed/Depth-Anything-3>`_
+wrapper for the FiftyOne Model Zoo.
+
+| Copyright 2017-2026, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+import logging
+import os
+
+import numpy as np
+
+import fiftyone.core.labels as fol
+import fiftyone.core.utils as fou
+import fiftyone.core.validation as fov
+import fiftyone.utils.torch as fout
+import fiftyone.zoo.models as fozm
+
+fou.ensure_torch()
+import torch
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_depth_anything_3():
+    if not fou.ensure_package("depth-anything-3", error_level=2):
+        fou.install_package(
+            "git+https://github.com/ByteDance-Seed/depth-anything-3.git"
+            "@2c21ea849ceec7b469a3e62ea0c0e270afc3281a"
+        )
+
+
+da3_api = fou.lazy_import(
+    "depth_anything_3.api",
+    callback=_ensure_depth_anything_3,
+)
+
+DEFAULT_DA3_MODEL = "depth-anything/da3-base"
+
+
+class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
+    """Output processor for Depth Anything V3 models.
+
+    Converts raw depth predictions to normalized
+    :class:`fiftyone.core.labels.Heatmap` instances with optional confidence.
+    """
+
+    def __call__(self, output, frame_size, **kwargs):
+        """Processes model output into heatmap labels.
+
+        Args:
+            output: a dict containing the model output with a ``"depth"`` key
+                and optionally ``"confidence"`` and ``"sky"`` keys
+            frame_size: a ``(width, height)`` tuple
+            **kwargs: additional keyword arguments
+
+        Returns:
+            a list of :class:`fiftyone.core.labels.Heatmap` instances, each
+            with optional ``confidence_map``, ``sky_mask``, and ``is_metric``
+            attributes
+        """
+        if not isinstance(output, dict):
+            raise TypeError(
+                "Expected dict output, got %s" % type(output).__name__
+            )
+
+        if "depth" not in output:
+            raise KeyError(
+                "Model output missing 'depth' key. Available: %s"
+                % list(output.keys())
+            )
+
+        depth_maps = output["depth"]
+
+        if isinstance(depth_maps, torch.Tensor):
+            depth_maps = depth_maps.detach().cpu().numpy()
+
+        if len(depth_maps.shape) == 2:
+            depth_maps = depth_maps[np.newaxis, ...]
+
+        conf_maps = output.get("confidence")
+        if conf_maps is not None:
+            if isinstance(conf_maps, torch.Tensor):
+                conf_maps = conf_maps.detach().cpu().numpy()
+            if len(conf_maps.shape) == 2:
+                conf_maps = conf_maps[np.newaxis, ...]
+
+        sky_masks = output.get("sky")
+        if sky_masks is not None:
+            if isinstance(sky_masks, torch.Tensor):
+                sky_masks = sky_masks.detach().cpu().numpy()
+            if len(sky_masks.shape) == 2:
+                sky_masks = sky_masks[np.newaxis, ...]
+
+        from PIL import Image
+
+        width, height = frame_size
+        results = []
+
+        for i, depth in enumerate(depth_maps):
+            if width is not None and height is not None:
+                if depth.shape[0] != height or depth.shape[1] != width:
+                    depth_img = Image.fromarray(depth)
+                    depth_img = depth_img.resize(
+                        (width, height), Image.Resampling.BILINEAR
+                    )
+                    depth = np.array(depth_img)
+
+            max_depth = np.max(depth)
+            if max_depth > 0:
+                depth_normalized = depth / max_depth
+            else:
+                logger.warning("Depth map has max value of 0, returning zeros")
+                depth_normalized = np.zeros_like(depth)
+
+            heatmap = fol.Heatmap(map=depth_normalized.astype(np.float32))
+
+            if conf_maps is not None:
+                conf = conf_maps[i]
+                if width is not None and height is not None:
+                    if conf.shape[0] != height or conf.shape[1] != width:
+                        conf_img = Image.fromarray(conf)
+                        conf_img = conf_img.resize(
+                            (width, height), Image.Resampling.BILINEAR
+                        )
+                        conf = np.array(conf_img)
+                heatmap.confidence_map = conf.astype(np.float32)
+
+            if sky_masks is not None:
+                sky = sky_masks[i]
+                if width is not None and height is not None:
+                    if sky.shape[0] != height or sky.shape[1] != width:
+                        sky_img = Image.fromarray(sky.astype(np.uint8) * 255)
+                        sky_img = sky_img.resize(
+                            (width, height), Image.Resampling.NEAREST
+                        )
+                        sky = (np.array(sky_img) > 127).astype(np.uint8)
+                heatmap.sky_mask = sky.astype(np.uint8)
+
+            heatmap.is_metric = output.get("is_metric", False)
+
+            if heatmap.is_metric:
+                heatmap.max_depth = float(max_depth)
+
+            results.append(heatmap)
+
+        if output.get("extrinsics") is not None:
+            results[0].extrinsics = output["extrinsics"]
+        if output.get("intrinsics") is not None:
+            results[0].intrinsics = output["intrinsics"]
+
+        if output.get("gaussians") is not None:
+            results[0].gaussians = output["gaussians"]
+
+        if output.get("aux"):
+            results[0].aux = output["aux"]
+
+        return results
+
+
+class DepthAnythingV3ModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
+    """Configuration for running a :class:`DepthAnythingV3Model`.
+
+    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
+    arguments.
+
+    Args:
+        name_or_path ("depth-anything/da3-base"): the name or path to the
+            Depth Anything V3 model
+        process_res (504): the processing resolution in pixels. The model
+            resizes inputs to this resolution for inference
+        process_res_method ("upper_bound_resize"): the resize strategy
+        use_ray_pose (False): whether to use ray-based pose estimation instead
+            of camera decoder (more accurate but slower)
+        infer_gs (False): whether to predict 3D Gaussian Splatting parameters.
+            Only supported by giant and nested models
+        export_feat_layers (None): optional list of transformer layer indices
+            to extract intermediate features from (e.g. ``[0, 5, 10]``)
+    """
+
+    def __init__(self, d):
+        d = self.init(d)
+        super().__init__(d)
+
+        self.name_or_path = self.parse_string(
+            d, "name_or_path", default=DEFAULT_DA3_MODEL
+        )
+
+        self.is_metric = (
+            "metric" in self.name_or_path.lower()
+            or "nested" in self.name_or_path.lower()
+        )
+
+        self.process_res = self.parse_int(d, "process_res", default=504)
+        self.process_res_method = self.parse_string(
+            d, "process_res_method", default="upper_bound_resize"
+        )
+
+        self.use_ray_pose = self.parse_bool(d, "use_ray_pose", default=False)
+
+        self.infer_gs = self.parse_bool(d, "infer_gs", default=False)
+
+        self.export_feat_layers = d.get("export_feat_layers", None)
+
+        self.raw_inputs = True
+
+        if self.output_processor_cls is None:
+            self.output_processor_cls = (
+                "fiftyone.utils.depth_anything.DepthAnythingV3OutputProcessor"
+            )
+
+
+class DepthAnythingV3Model(fout.TorchImageModel):
+    """Wrapper for running inference with
+    `Depth Anything V3 <https://github.com/ByteDance-Seed/Depth-Anything-3>`_.
+
+    Depth Anything V3 is a foundation model for monocular depth estimation.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset(
+            "quickstart", max_samples=5, shuffle=True, seed=51
+        )
+
+        model = foz.load_zoo_model("depth-anything-v3-large-torch")
+
+        dataset.apply_model(model, label_field="depth")
+
+        session = fo.launch_app(dataset)
+
+    Args:
+        config: a :class:`DepthAnythingV3ModelConfig`
+    """
+
+    def _download_model(self, config):
+        pass
+
+    def _load_model(self, config):
+        model = da3_api.DepthAnything3.from_pretrained(config.name_or_path)
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+        model.eval()
+        return model
+
+    @property
+    def media_type(self):
+        return "image"
+
+    def _forward_pass(self, imgs):
+        prediction = self._model.inference(
+            imgs,
+            process_res=self.config.process_res,
+            process_res_method=self.config.process_res_method,
+            infer_gs=self.config.infer_gs,
+            use_ray_pose=self.config.use_ray_pose,
+            export_feat_layers=self.config.export_feat_layers or [],
+        )
+        output = {"depth": prediction.depth}
+        if prediction.conf is not None:
+            output["confidence"] = prediction.conf
+        if prediction.sky is not None:
+            output["sky"] = prediction.sky
+        output["is_metric"] = self.config.is_metric
+        if prediction.extrinsics is not None:
+            output["extrinsics"] = prediction.extrinsics
+        if prediction.intrinsics is not None:
+            output["intrinsics"] = prediction.intrinsics
+        if self.config.infer_gs:
+            if prediction.gaussians is not None:
+                output["gaussians"] = prediction.gaussians
+            else:
+                logger.warning(
+                    "infer_gs=True but model returned no gaussians. "
+                    "Only giant and nested models support Gaussian Splatting"
+                )
+        if prediction.aux:
+            output["aux"] = prediction.aux
+        return output
+
+
+def compute_multiview_depth(
+    filepaths,
+    model_name="depth-anything/da3-large",
+    *,
+    process_res=504,
+    use_ray_pose=False,
+    infer_gs=False,
+    export_feat_layers=None,
+    extrinsics=None,
+    intrinsics=None,
+):
+    """Computes multi-view depth using Depth Anything V3.
+
+    Passes all images to the model simultaneously for cross-view
+    attention, producing geometrically consistent depth maps and
+    camera poses across views.
+
+    Examples::
+
+        import fiftyone.utils.depth_anything as fouda
+
+        results = fouda.compute_multiview_depth(
+            ["view1.jpg", "view2.jpg", "view3.jpg"],
+        )
+
+        for r in results:
+            print(r.map.shape)
+
+        print(results[0].extrinsics.shape)
+
+    Args:
+        filepaths: list of image file paths
+        model_name ("depth-anything/da3-large"): DA3 model to use
+        process_res (504): processing resolution in pixels
+        use_ray_pose (False): whether to use ray-based pose estimation
+        infer_gs (False): whether to predict Gaussian Splatting parameters
+        export_feat_layers (None): optional list of transformer layer
+            indices for feature extraction
+        extrinsics (None): optional ``(N, 4, 4)`` array of known camera
+            world-to-camera matrices for pose conditioning
+        intrinsics (None): optional ``(N, 3, 3)`` array of known camera
+            intrinsic matrices for pose conditioning
+
+    Returns:
+        list of :class:`fiftyone.core.labels.Heatmap` instances with
+        camera parameters and optional gaussians/features attached
+    """
+    _ensure_depth_anything_3()
+
+    model = da3_api.DepthAnything3.from_pretrained(model_name)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+
+    prediction = model.inference(
+        filepaths,
+        process_res=process_res,
+        use_ray_pose=use_ray_pose,
+        infer_gs=infer_gs,
+        export_feat_layers=export_feat_layers or [],
+        extrinsics=extrinsics,
+        intrinsics=intrinsics,
+    )
+
+    is_metric = (
+        "metric" in model_name.lower()
+        or "nested" in model_name.lower()
+    )
+
+    processor = DepthAnythingV3OutputProcessor()
+    output = {"depth": prediction.depth, "is_metric": is_metric}
+    if prediction.conf is not None:
+        output["confidence"] = prediction.conf
+    if prediction.sky is not None:
+        output["sky"] = prediction.sky
+    if prediction.extrinsics is not None:
+        output["extrinsics"] = prediction.extrinsics
+    if prediction.intrinsics is not None:
+        output["intrinsics"] = prediction.intrinsics
+    if infer_gs and prediction.gaussians is not None:
+        output["gaussians"] = prediction.gaussians
+    if prediction.aux:
+        output["aux"] = prediction.aux
+
+    return processor(output, (None, None))
+
+
+def compute_3d_exports(
+    samples,
+    output_dir,
+    export_format="glb",
+    model_name="depth-anything/da3-large",
+    rel_dir=None,
+    overwrite=False,
+    skip_failures=False,
+    progress=None,
+):
+    """Computes 3D exports (GLB, PLY) for samples using Depth Anything V3.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.utils.depth_anything as fouda
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
+        fouda.compute_3d_exports(dataset, "/tmp/exports", export_format="glb")
+
+        for sample in dataset:
+            print(sample.da3_export_path)
+
+    Args:
+        samples: a :class:`fiftyone.core.collections.SampleCollection`
+        output_dir: directory to write exports
+        export_format ("glb"): export format. One of ``"glb"``, ``"gs_ply"``
+        model_name ("depth-anything/da3-large"): DA3 model to use
+        rel_dir (None): optional relative directory to strip from filepaths
+        overwrite (False): whether to overwrite existing exports
+        skip_failures (False): whether to gracefully continue on errors
+        progress (None): whether to show progress bar
+    """
+    fov.validate_collection(samples)
+
+    infer_gs = export_format in ("gs_ply", "gs_video")
+
+    model = da3_api.DepthAnything3.from_pretrained(model_name)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+
+    filename_maker = fou.UniqueFilenameMaker(
+        output_dir=output_dir, rel_dir=rel_dir, ignore_existing=overwrite
+    )
+
+    for sample in samples.iter_samples(autosave=True, progress=progress):
+        sample_export_dir = filename_maker.get_output_path(
+            sample.filepath, output_ext=""
+        )
+
+        try:
+            prediction = model.inference(
+                [sample.filepath],
+                infer_gs=infer_gs,
+                export_dir=sample_export_dir,
+                export_format=export_format,
+            )
+        except Exception as e:
+            if not skip_failures:
+                raise
+            logger.warning("Failed to export %s: %s", sample.filepath, e)
+            continue
+
+        if export_format == "glb":
+            sample["da3_export_path"] = os.path.join(sample_export_dir, "scene.glb")
+        elif export_format == "gs_ply":
+            sample["da3_export_path"] = os.path.join(
+                sample_export_dir, "gs_ply", "0000.ply"
+            )
