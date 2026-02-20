@@ -159,6 +159,19 @@ class SimilaritySearchPanel(Panel):
         """Called when the panel navigates between pages."""
         pass
 
+    def get_sample_media(self, ctx):
+        """Return filepaths for the given sample IDs."""
+        sample_ids = ctx.params.get("sample_ids", [])
+        if not sample_ids:
+            return
+
+        try:
+            view = ctx.dataset.select(sample_ids)
+            filepaths = dict(zip(view.values("id"), view.values("filepath")))
+            ctx.panel.set_data("sample_media", filepaths)
+        except Exception as e:
+            logger.warning("Failed to get sample media: %s", e)
+
     # -- Render --
 
     def render(self, ctx):
@@ -176,6 +189,7 @@ class SimilaritySearchPanel(Panel):
                 delete_run=self.delete_run,
                 clone_run=self.clone_run,
                 rename_run=self.rename_run,
+                get_sample_media=self.get_sample_media,
             ),
         )
 

@@ -1,9 +1,8 @@
+import ArrowBack from "@mui/icons-material/ArrowBack";
 import {
   Button,
   FormField,
   Heading,
-  Icon,
-  IconName,
   Input,
   InputType,
   Select,
@@ -37,7 +36,7 @@ type NewSearchProps = {
   onSubmitted: () => void;
 };
 
-const BackIcon = () => <Icon name={IconName.ArrowLeft} size={Size.Md} />;
+const BackIcon = () => <ArrowBack fontSize="small" />;
 
 export default function NewSearch({
   brainKeys,
@@ -59,6 +58,8 @@ export default function NewSearch({
   const [reverse, setReverse] = useState(cloneConfig?.reverse ?? false);
   const [distField, setDistField] = useState(cloneConfig?.dist_field ?? "");
   const [runName, setRunName] = useState("");
+  const hasView = Array.isArray(view) && view.length > 0;
+  const [searchScope, setSearchScope] = useState<"view" | "dataset">("view");
 
   const { execute: initRun } = useOperatorExecutor(INIT_RUN_OPERATOR_URI);
 
@@ -116,8 +117,12 @@ export default function NewSearch({
       query,
       reverse,
       patches_field: selectedConfig?.patches_field,
-      source_view: view,
     };
+
+    // Only pass source_view when searching within the current view
+    if (searchScope === "view" && hasView) {
+      params.source_view = view;
+    }
 
     if (k !== "") params.k = k;
     if (distField.trim()) params.dist_field = distField.trim();
@@ -139,6 +144,8 @@ export default function NewSearch({
     runName,
     selectedConfig,
     view,
+    searchScope,
+    hasView,
     getQueryIds,
     getNegativeQueryIds,
   ]);
@@ -324,6 +331,39 @@ export default function NewSearch({
             onChange={(checked) => setReverse(checked)}
             label="Least similar (reverse)"
             size={Size.Sm}
+          />
+        )}
+
+        {/* Search scope */}
+        {hasView && (
+          <FormField
+            label="Search scope"
+            control={
+              <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+                <Button
+                  variant={
+                    searchScope === "view" ? Variant.Primary : Variant.Secondary
+                  }
+                  size={Size.Sm}
+                  onClick={() => setSearchScope("view")}
+                  style={{ flex: 1 }}
+                >
+                  Current View
+                </Button>
+                <Button
+                  variant={
+                    searchScope === "dataset"
+                      ? Variant.Primary
+                      : Variant.Secondary
+                  }
+                  size={Size.Sm}
+                  onClick={() => setSearchScope("dataset")}
+                  style={{ flex: 1 }}
+                >
+                  Full Dataset
+                </Button>
+              </Stack>
+            }
           />
         )}
 

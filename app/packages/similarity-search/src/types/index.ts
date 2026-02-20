@@ -33,6 +33,7 @@ export type SimilarityRun = {
   reverse: boolean;
   dist_field?: string;
   patches_field?: string;
+  negative_query_ids?: string[];
   result_ids: string[];
   result_count: number;
   creation_time?: string;

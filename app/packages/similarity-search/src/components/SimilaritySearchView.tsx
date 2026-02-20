@@ -26,6 +26,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
     renameRun: (payload: { run_id: string; new_name: string }) => void;
     listRuns: () => void;
     getBrainKeys: () => void;
+    getSampleMedia: (payload: { sample_ids: string[] }) => void;
   }>({
     applyRun: view.apply_run,
     deleteRun: view.delete_run,
@@ -33,10 +34,12 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
     renameRun: view.rename_run,
     listRuns: view.list_runs,
     getBrainKeys: view.get_brain_keys,
+    getSampleMedia: view.get_sample_media,
   });
 
   const brainKeys = data.brain_keys ?? [];
   const appliedRunId = (props as any).data?.applied_run_id;
+  const sampleMedia: Record<string, string> = data.sample_media ?? {};
 
   const handleApply = useCallback(
     (runId: string) => {
@@ -88,11 +91,13 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
         <RunList
           runs={runs}
           appliedRunId={appliedRunId}
+          sampleMedia={sampleMedia}
           onApply={handleApply}
           onClone={handleClone}
           onDelete={handleDelete}
           onRefresh={refreshRuns}
           onNewSearch={handleNewSearch}
+          onGetSampleMedia={triggers.getSampleMedia}
         />
       )}
       {page === "new_search" && (

@@ -50,6 +50,7 @@ class RunManager:
             "start_time": None,
             "end_time": None,
             "source_view": run_params.get("source_view"),
+            "negative_query_ids": run_params.get("negative_query_ids"),
             "operator_run_id": None,
             "status_details": None,
         }

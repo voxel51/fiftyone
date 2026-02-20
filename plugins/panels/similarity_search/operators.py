@@ -170,19 +170,19 @@ class SimilaritySearchOperator(foo.Operator):
         """
         results = dataset.load_brain_results(brain_key)
 
-        pos_embeddings = []
-        for sid in positive_ids:
-            emb = results.get_embedding(sid)
-            if emb is not None:
-                pos_embeddings.append(np.asarray(emb))
+        embeddings, ids, _ = results.get_embeddings(
+            sample_ids=positive_ids, allow_missing=True
+        )
+        pos_embeddings = [np.asarray(e) for e in embeddings]
 
         neg_embeddings = []
-        for sid in negative_ids:
-            emb = results.get_embedding(sid)
-            if emb is not None:
-                neg_embeddings.append(np.asarray(emb))
+        if negative_ids:
+            embeddings, ids, _ = results.get_embeddings(
+                sample_ids=negative_ids, allow_missing=True
+            )
+            neg_embeddings = [np.asarray(e) for e in embeddings]
 
-        if not pos_embeddings:
+        if not len(pos_embeddings):
             raise ValueError("No embeddings found for positive samples")
 
         pos_mean = np.mean(pos_embeddings, axis=0)
