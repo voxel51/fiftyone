@@ -5,6 +5,8 @@ import { useAtom } from "jotai";
 import { SimilaritySearchViewProps } from "../types";
 import { useNavigate } from "../hooks/useNavigate";
 import { useRuns } from "../hooks/useRuns";
+import { useFilteredRuns } from "../hooks/useFilteredRuns";
+import { useMultiSelect } from "../hooks/useMultiSelect";
 import useTriggers from "../hooks/useTriggers";
 import atoms from "../state";
 import RunList from "./RunList";
@@ -18,10 +20,22 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const { runs, refreshRuns } = useRuns();
   const [cloneConfig, setCloneConfig] = useAtom(atoms.cloneConfig);
 
+  const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
+  const {
+    selectMode,
+    selectedRunIds,
+    toggleSelectMode,
+    toggleRunSelection,
+    selectAll,
+    deselectAll,
+    clearAndExit,
+  } = useMultiSelect();
+
   // Wire up panel event triggers following the VAL pattern
   const triggers = useTriggers<{
     applyRun: (payload: { run_id: string }) => void;
     deleteRun: (payload: { run_id: string }) => void;
+    bulkDeleteRuns: (payload: { run_ids: string[] }) => void;
     cloneRun: (payload: { run_id: string }) => void;
     renameRun: (payload: { run_id: string; new_name: string }) => void;
     listRuns: () => void;
@@ -30,6 +44,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   }>({
     applyRun: view.apply_run,
     deleteRun: view.delete_run,
+    bulkDeleteRuns: view.bulk_delete_runs,
     cloneRun: view.clone_run,
     renameRun: view.rename_run,
     listRuns: view.list_runs,
@@ -53,6 +68,15 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
       triggers.deleteRun({ run_id: runId });
     },
     [triggers]
+  );
+
+  const handleBulkDelete = useCallback(
+    (runIds: string[]) => {
+      triggers.bulkDeleteRuns({ run_ids: runIds });
+      clearAndExit();
+      refreshRuns();
+    },
+    [triggers, clearAndExit, refreshRuns]
   );
 
   const handleClone = useCallback(
@@ -81,8 +105,7 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
 
   const handleSubmitted = useCallback(() => {
     navigateHome();
-    // Refresh after a short delay to pick up the new run
-    setTimeout(() => refreshRuns(), 500);
+    refreshRuns();
   }, [navigateHome, refreshRuns]);
 
   return (
@@ -90,14 +113,25 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
       {page === "home" && (
         <RunList
           runs={runs}
+          filteredRuns={filteredRuns}
           appliedRunId={appliedRunId}
           sampleMedia={sampleMedia}
           onApply={handleApply}
           onClone={handleClone}
           onDelete={handleDelete}
+          onBulkDelete={handleBulkDelete}
           onRefresh={refreshRuns}
           onNewSearch={handleNewSearch}
           onGetSampleMedia={triggers.getSampleMedia}
+          filterState={filterState}
+          onFilterChange={setFilterState}
+          selectMode={selectMode}
+          selectedRunIds={selectedRunIds}
+          onToggleSelectMode={toggleSelectMode}
+          onToggleRunSelection={toggleRunSelection}
+          onSelectAll={selectAll}
+          onDeselectAll={deselectAll}
+          onClearAndExit={clearAndExit}
         />
       )}
       {page === "new_search" && (

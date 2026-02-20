@@ -1,6 +1,7 @@
 import Add from "@mui/icons-material/Add";
 import ContentCopy from "@mui/icons-material/ContentCopy";
 import Delete from "@mui/icons-material/Delete";
+import EditNote from "@mui/icons-material/EditNote";
 import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import GridView from "@mui/icons-material/GridView";
@@ -8,6 +9,7 @@ import Refresh from "@mui/icons-material/Refresh";
 import { getSampleSrc } from "@fiftyone/state";
 import {
   Button,
+  Checkbox,
   Heading,
   Size,
   Stack,
@@ -19,20 +21,39 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { SimilarityRun } from "../types";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { SimilarityRun, RunFilterState } from "../types";
 import StatusBadge from "./StatusBadge";
+import FilterBar from "./FilterBar";
+import BulkActionBar from "./BulkActionBar";
 
 type RunListProps = {
   runs: SimilarityRun[];
+  filteredRuns: SimilarityRun[];
   appliedRunId?: string;
   sampleMedia: Record<string, string>;
   onApply: (runId: string) => void;
   onClone: (runId: string) => void;
   onDelete: (runId: string) => void;
+  onBulkDelete: (runIds: string[]) => void;
   onRefresh: () => void;
   onNewSearch: () => void;
   onGetSampleMedia: (payload: { sample_ids: string[] }) => void;
+  filterState: RunFilterState;
+  onFilterChange: (state: RunFilterState) => void;
+  selectMode: boolean;
+  selectedRunIds: Set<string>;
+  onToggleSelectMode: () => void;
+  onToggleRunSelection: (runId: string) => void;
+  onSelectAll: (visibleRunIds: string[]) => void;
+  onDeselectAll: () => void;
+  onClearAndExit: () => void;
 };
 
 function formatQuery(run: SimilarityRun): string {
@@ -69,6 +90,7 @@ const CloneIcon = () => <ContentCopy fontSize="small" />;
 const DeleteIcon = () => <Delete fontSize="small" />;
 const RefreshIcon = () => <Refresh fontSize="small" />;
 const AddIcon = () => <Add fontSize="small" />;
+const ManageIcon = () => <EditNote fontSize="small" />;
 const ExpandMoreIcon = () => (
   <ExpandMore
     fontSize="small"
@@ -136,14 +158,25 @@ function SampleThumbnails({
 
 export default function RunList({
   runs,
+  filteredRuns,
   appliedRunId,
   sampleMedia,
   onApply,
   onClone,
   onDelete,
+  onBulkDelete,
   onRefresh,
   onNewSearch,
   onGetSampleMedia,
+  filterState,
+  onFilterChange,
+  selectMode,
+  selectedRunIds,
+  onToggleSelectMode,
+  onToggleRunSelection,
+  onSelectAll,
+  onDeselectAll,
+  onClearAndExit,
 }: RunListProps) {
   const [expandedRunIds, setExpandedRunIds] = useState<Set<string>>(new Set());
 
@@ -186,8 +219,43 @@ export default function RunList({
     [onGetSampleMedia]
   );
 
+  const visibleRunIds = useMemo(
+    () => filteredRuns.map((r) => r.run_id),
+    [filteredRuns]
+  );
+
+  const allVisibleSelected = useMemo(
+    () =>
+      visibleRunIds.length > 0 &&
+      visibleRunIds.every((id) => selectedRunIds.has(id)),
+    [visibleRunIds, selectedRunIds]
+  );
+
+  const handleSelectAllToggle = useCallback(
+    (checked: boolean) => {
+      if (checked) {
+        onSelectAll(visibleRunIds);
+      } else {
+        onDeselectAll();
+      }
+    },
+    [visibleRunIds, onSelectAll, onDeselectAll]
+  );
+
+  const handleBulkDelete = useCallback(() => {
+    onBulkDelete(Array.from(selectedRunIds));
+  }, [onBulkDelete, selectedRunIds]);
+
   return (
-    <div style={{ padding: "1rem", height: "100%" }}>
+    <div
+      style={{
+        padding: "1rem",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Header */}
       <Stack
         orientation={Orientation.Row}
         style={{
@@ -208,6 +276,14 @@ export default function RunList({
             />
           </Tooltip>
           <Button
+            variant={selectMode ? Variant.Secondary : Variant.Borderless}
+            size={Size.Sm}
+            leadingIcon={ManageIcon}
+            onClick={onToggleSelectMode}
+          >
+            {selectMode ? "Done" : "Manage"}
+          </Button>
+          <Button
             variant={Variant.Primary}
             size={Size.Sm}
             leadingIcon={AddIcon}
@@ -218,6 +294,27 @@ export default function RunList({
         </Stack>
       </Stack>
 
+      {/* Filter bar */}
+      <FilterBar
+        filterState={filterState}
+        onChange={onFilterChange}
+        resultCount={filteredRuns.length}
+        totalCount={runs.length}
+      />
+
+      {/* Select All row */}
+      {selectMode && filteredRuns.length > 0 && (
+        <div style={{ marginBottom: "0.5rem" }}>
+          <Checkbox
+            label={allVisibleSelected ? "Deselect all" : "Select all"}
+            checked={allVisibleSelected}
+            onChange={handleSelectAllToggle}
+            size={Size.Sm}
+          />
+        </div>
+      )}
+
+      {/* Content area */}
       {runs.length === 0 ? (
         <div
           style={{
@@ -225,7 +322,7 @@ export default function RunList({
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            height: "50%",
+            flex: 1,
             gap: "1rem",
           }}
         >
@@ -242,20 +339,35 @@ export default function RunList({
             New Search
           </Button>
         </div>
+      ) : filteredRuns.length === 0 ? (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            flex: 1,
+            gap: "0.5rem",
+          }}
+        >
+          <Text color={TextColor.Secondary}>No runs match your filters</Text>
+        </div>
       ) : (
         <div
           style={{
+            flex: 1,
             overflow: "auto",
             display: "flex",
             flexDirection: "column",
             gap: "0.5rem",
           }}
         >
-          {runs.map((run) => {
+          {filteredRuns.map((run) => {
             const isImage = run.query_type === "image";
             const isExpanded = expandedRunIds.has(run.run_id);
             const positiveIds = Array.isArray(run.query) ? run.query : [];
             const negativeIds = run.negative_query_ids ?? [];
+            const isSelected = selectedRunIds.has(run.run_id);
 
             return (
               <div
@@ -277,6 +389,24 @@ export default function RunList({
                     alignItems: "flex-start",
                   }}
                 >
+                  {/* Checkbox in select mode */}
+                  {selectMode && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        marginRight: "0.5rem",
+                        paddingTop: "0.125rem",
+                      }}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => onToggleRunSelection(run.run_id)}
+                        size={Size.Sm}
+                      />
+                    </div>
+                  )}
+
                   <Stack
                     orientation={Orientation.Column}
                     spacing={Spacing.Xs}
@@ -319,64 +449,69 @@ export default function RunList({
                     )}
                   </Stack>
 
-                  <Stack
-                    orientation={Orientation.Column}
-                    spacing={Spacing.Xs}
-                    style={{ flexShrink: 0, alignItems: "flex-end" }}
-                  >
-                    <div style={{ display: "flex", gap: 0 }}>
-                      <Tooltip content="Apply results">
-                        <Button
-                          borderless
-                          size={Size.Sm}
-                          variant={Variant.Borderless}
-                          leadingIcon={ApplyIcon}
-                          onClick={() => onApply(run.run_id)}
-                          disabled={run.status !== "completed"}
-                        />
-                      </Tooltip>
-                      <Tooltip content="Clone search">
-                        <Button
-                          borderless
-                          size={Size.Sm}
-                          variant={Variant.Borderless}
-                          leadingIcon={CloneIcon}
-                          onClick={() => onClone(run.run_id)}
-                        />
-                      </Tooltip>
-                      <Tooltip content="Delete">
-                        <Button
-                          borderless
-                          size={Size.Sm}
-                          variant={Variant.Borderless}
-                          leadingIcon={DeleteIcon}
-                          onClick={() => onDelete(run.run_id)}
-                        />
-                      </Tooltip>
-                    </div>
-                    {isImage && (
-                      <div
-                        style={{ display: "flex", justifyContent: "flex-end" }}
-                      >
-                        <Tooltip
-                          content={isExpanded ? "Collapse" : "Show samples"}
-                        >
+                  {!selectMode && (
+                    <Stack
+                      orientation={Orientation.Column}
+                      spacing={Spacing.Xs}
+                      style={{ flexShrink: 0, alignItems: "flex-end" }}
+                    >
+                      <div style={{ display: "flex", gap: 0 }}>
+                        <Tooltip content="Apply results">
                           <Button
                             borderless
                             size={Size.Sm}
-                            variant={Variant.Secondary}
-                            leadingIcon={
-                              isExpanded ? ExpandLessIcon : ExpandMoreIcon
-                            }
-                            onClick={() => handleToggleExpand(run)}
+                            variant={Variant.Borderless}
+                            leadingIcon={ApplyIcon}
+                            onClick={() => onApply(run.run_id)}
+                            disabled={run.status !== "completed"}
+                          />
+                        </Tooltip>
+                        <Tooltip content="Clone search">
+                          <Button
+                            borderless
+                            size={Size.Sm}
+                            variant={Variant.Borderless}
+                            leadingIcon={CloneIcon}
+                            onClick={() => onClone(run.run_id)}
+                          />
+                        </Tooltip>
+                        <Tooltip content="Delete">
+                          <Button
+                            borderless
+                            size={Size.Sm}
+                            variant={Variant.Borderless}
+                            leadingIcon={DeleteIcon}
+                            onClick={() => onDelete(run.run_id)}
                           />
                         </Tooltip>
                       </div>
-                    )}
-                  </Stack>
+                      {isImage && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <Tooltip
+                            content={isExpanded ? "Collapse" : "Show samples"}
+                          >
+                            <Button
+                              borderless
+                              size={Size.Sm}
+                              variant={Variant.Secondary}
+                              leadingIcon={
+                                isExpanded ? ExpandLessIcon : ExpandMoreIcon
+                              }
+                              onClick={() => handleToggleExpand(run)}
+                            />
+                          </Tooltip>
+                        </div>
+                      )}
+                    </Stack>
+                  )}
                 </Stack>
 
-                {isImage && isExpanded && (
+                {isImage && isExpanded && !selectMode && (
                   <div
                     style={{
                       marginTop: "0.75rem",
@@ -425,6 +560,15 @@ export default function RunList({
             );
           })}
         </div>
+      )}
+
+      {/* Bulk action bar */}
+      {selectMode && (
+        <BulkActionBar
+          selectedCount={selectedRunIds.size}
+          onDelete={handleBulkDelete}
+          onCancel={onClearAndExit}
+        />
       )}
     </div>
   );

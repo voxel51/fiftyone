@@ -66,6 +66,24 @@ export type SimilaritySearchPanelData = {
 };
 
 /**
+ * Date filter presets for the filter bar.
+ */
+export type DateFilterPreset =
+  | "all"
+  | "today"
+  | "last_7_days"
+  | "last_30_days"
+  | "older_than_30_days";
+
+/**
+ * Filter state for the runs list.
+ */
+export type RunFilterState = {
+  searchText: string;
+  datePreset: DateFilterPreset;
+};
+
+/**
  * Event names exposed by the Python panel's render() method.
  */
 export type SimilaritySearchEventName =
@@ -73,9 +91,11 @@ export type SimilaritySearchEventName =
   | "list_runs"
   | "apply_run"
   | "delete_run"
+  | "bulk_delete_runs"
   | "clone_run"
   | "rename_run"
-  | "on_change_view";
+  | "on_change_view"
+  | "get_sample_media";
 
 /**
  * Schema view with panel event methods.

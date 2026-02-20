@@ -125,6 +125,28 @@ class SimilaritySearchPanel(Panel):
         ctx.ops.notify("Run deleted", variant="success")
         self.list_runs(ctx)
 
+    def bulk_delete_runs(self, ctx):
+        """Delete multiple runs from the store."""
+        run_ids = ctx.params.get("run_ids", [])
+        if not run_ids:
+            ctx.ops.notify("No runs selected", variant="warning")
+            return
+
+        manager = RunManager(ctx)
+        applied = ctx.panel.get_state("applied_run_id")
+
+        for run_id in run_ids:
+            manager.delete_run(run_id)
+            if applied == run_id:
+                ctx.panel.set_state("applied_run_id", None)
+
+        count = len(run_ids)
+        ctx.ops.notify(
+            f"Deleted {count} {'run' if count == 1 else 'runs'}",
+            variant="success",
+        )
+        self.list_runs(ctx)
+
     def clone_run(self, ctx):
         """Return a run's config for pre-filling the new search form."""
         run_id = ctx.params.get("run_id")
@@ -196,6 +218,7 @@ class SimilaritySearchPanel(Panel):
                 list_runs=self.list_runs,
                 apply_run=self.apply_run,
                 delete_run=self.delete_run,
+                bulk_delete_runs=self.bulk_delete_runs,
                 clone_run=self.clone_run,
                 rename_run=self.rename_run,
                 get_sample_media=self.get_sample_media,
