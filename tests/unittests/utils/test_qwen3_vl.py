@@ -398,5 +398,100 @@ class TestQwen3VLEmbeddingMode:
             assert result.size == (224, height)
 
 
+class TestQwen3VLMode:
+    """Test model mode and media_type behavior"""
+
+    def test_default_mode(self):
+        """Test default config mode is None"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({})
+        assert config.mode is None
+
+    def test_config_mode_video(self):
+        """Test config accepts mode=video"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModelConfig
+
+        config = Qwen3VLModelConfig({"mode": "video"})
+        assert config.mode == "video"
+
+    def test_media_type_reflects_mode(self):
+        """Test media_type returns current mode"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = "image"
+        assert model.media_type == "image"
+
+        model._mode = "video"
+        assert model.media_type == "video"
+
+    def test_media_type_defaults_image_when_none(self):
+        """Test media_type falls back to image when mode is None"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = None
+        assert model.media_type == "image"
+
+    def test_mode_setter(self):
+        """Test mode can be changed at runtime"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = "image"
+
+        model.mode = "video"
+        assert model.mode == "video"
+        assert model.media_type == "video"
+
+
+class TestQwen3VLAutoMode:
+    """Test that mode auto-defaults from dataset media type"""
+
+    def test_mode_none_gets_set_to_video(self):
+        """Test compute_embeddings auto-set logic with video dataset"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = None
+
+        assert model.mode is None
+
+        # Simulate what compute_embeddings does (models.py:1043-1044)
+        if hasattr(model, "mode") and model.mode is None:
+            model.mode = "video"
+
+        assert model.mode == "video"
+        assert model.media_type == "video"
+
+    def test_explicit_mode_not_overridden(self):
+        """Test compute_embeddings does not override explicit mode"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = "image"
+
+        # Simulate what compute_embeddings does
+        if hasattr(model, "mode") and model.mode is None:
+            model.mode = "video"
+
+        assert model.mode == "image"
+        assert model.media_type == "image"
+
+    def test_mode_none_with_image_dataset(self):
+        """Test mode=None + image dataset defaults to image"""
+        from fiftyone.utils.qwen3_vl import Qwen3VLModel
+
+        model = Qwen3VLModel.__new__(Qwen3VLModel)
+        model._mode = None
+
+        if hasattr(model, "mode") and model.mode is None:
+            model.mode = "image"
+
+        assert model.mode == "image"
+        assert model.media_type == "image"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

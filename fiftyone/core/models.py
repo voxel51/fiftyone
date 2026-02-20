@@ -1040,6 +1040,10 @@ def compute_embeddings(
 
         context.enter_context(model)
 
+        if hasattr(model, "mode") and model.mode is None:
+            model.mode = samples.media_type
+            context.callback(setattr, model, "mode", None)
+
         if model.media_type == "video":
             return _compute_video_embeddings(
                 samples, model, embeddings_field, skip_failures, progress
