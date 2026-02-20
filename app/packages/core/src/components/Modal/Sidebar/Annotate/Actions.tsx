@@ -28,12 +28,13 @@ import {
   TextVariant,
   Variant,
 } from "@voxel51/voodo";
-import { useSetAtom } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ItemLeft, ItemRight } from "./Components";
 import { editing } from "./Edit";
+import { fieldsOfType } from "./Edit/state";
 import useCreate from "./Edit/useCreate";
 import { useQuickDraw } from "./Edit/useQuickDraw";
 import useCanManageSchema from "./useCanManageSchema";
@@ -130,17 +131,23 @@ const Square = styled(Container)<{ $active?: boolean }>`
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
+  const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
+  const disabled = fields.length === 0;
 
   const handleCreateClassification = useCallback(() => {
+    if (disabled) return;
     create();
 
     // Exit other "persistent" annotation modes like 3D
     reset3dAnnotationMode();
-  }, [create]);
+  }, [create, disabled]);
 
   return (
     <Tooltip placement="top-center" text="Create new classification">
-      <Square onClick={handleCreateClassification}>
+      <Square
+        onClick={handleCreateClassification}
+        className={disabled ? "disabled" : ""}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="19"
@@ -162,11 +169,15 @@ const Classification = () => {
 const Detection = () => {
   const { enableQuickDraw } = useQuickDraw();
   const create = useCreate(DETECTION);
+  const fields = useAtomValue(fieldsOfType(DETECTION));
+  const disabled = fields.length === 0;
 
   return (
     <Tooltip placement="top-center" text="Create new detections">
       <Square
+        className={disabled ? "disabled" : ""}
         onClick={() => {
+          if (disabled) return;
           enableQuickDraw();
 
           // Create first detection in quick draw mode,
@@ -242,6 +253,7 @@ export const ThreeDPolylines = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const visibleFields = useAtomValue(fieldsOfType(POLYLINE));
 
   const polylineFields = use3dAnnotationFields(
     useCallback(
@@ -253,6 +265,7 @@ export const ThreeDPolylines = () => {
   );
 
   const hasPolylineFieldsInSchema = polylineFields && polylineFields.length > 0;
+  const disabled = visibleFields.length === 0;
   const isPolylineAnnotateActive =
     current3dAnnotationMode === ANNOTATION_POLYLINE;
 
@@ -267,7 +280,9 @@ export const ThreeDPolylines = () => {
     >
       <Square
         $active={isPolylineAnnotateActive}
+        className={disabled ? "disabled" : ""}
         onClick={() => {
+          if (disabled) return;
           if (isPolylineAnnotateActive) {
             setCurrent3dAnnotationMode(null);
             return;
@@ -293,6 +308,7 @@ export const ThreeDCuboids = () => {
   const setEditing = useSetAtom(editing);
   const current3dAnnotationMode = useCurrent3dAnnotationMode();
   const setCurrent3dAnnotationMode = useSetCurrent3dAnnotationMode();
+  const visibleFields = useAtomValue(fieldsOfType(DETECTION));
 
   const cuboidFields = use3dAnnotationFields(
     useCallback(
@@ -304,6 +320,7 @@ export const ThreeDCuboids = () => {
   );
 
   const hasCuboidFieldsInSchema = cuboidFields && cuboidFields.length > 0;
+  const disabled = visibleFields.length === 0;
   const isCuboidAnnotateActive = current3dAnnotationMode === ANNOTATION_CUBOID;
 
   return (
@@ -317,7 +334,9 @@ export const ThreeDCuboids = () => {
     >
       <Square
         $active={isCuboidAnnotateActive}
+        className={disabled ? "disabled" : ""}
         onClick={() => {
+          if (disabled) return;
           if (isCuboidAnnotateActive) {
             setCurrent3dAnnotationMode(null);
             return;
