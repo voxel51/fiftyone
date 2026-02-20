@@ -306,7 +306,7 @@ export const useCreateTimeline = (
           isLastDrawFinishedRef.current = true;
         });
     },
-    [pause, timelineName]
+    [pause, timelineName, updateFreq]
   );
 
   const startAnimation = useCallback(() => {
@@ -374,6 +374,11 @@ export const useCreateTimeline = (
         return;
       }
 
+      // Skip frame stepping when optOutOfAnimation is true
+      if (newTimelineProps.optOutOfAnimation) {
+        return;
+      }
+
       const key = e.key.toLowerCase();
 
       if (key === " ") {
@@ -406,7 +411,14 @@ export const useCreateTimeline = (
         e.stopPropagation();
       }
     },
-    [play, pause, playHeadState]
+    [
+      play,
+      pause,
+      playHeadState,
+      timelineName,
+      setFrameNumber,
+      newTimelineProps.optOutOfAnimation,
+    ]
   );
 
   useKeydownHandler(keyDownHandler);
@@ -424,7 +436,7 @@ export const useCreateTimeline = (
         newFrameNumber: e.detail.frameNumber,
       });
     },
-    [timelineName]
+    [timelineName, pause, setFrameNumber]
   );
 
   useEventHandler(window, setFrameEventName, setFrameNumberFromEventHandler);

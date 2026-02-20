@@ -49,7 +49,7 @@ export const VertexTooltip = ({
   }
 
   return (
-    <Html position={position} scale={scale}>
+    <Html position={position} scale={scale} pointerEvents="none">
       <TooltipContainer>
         <TooltipContent>
           <div>{tooltipDescriptor}</div>

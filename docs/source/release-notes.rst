@@ -3,6 +3,41 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+
+FiftyOne Enterprise 2.16.2
+--------------------------
+*Released February 20, 2026*
+
+Includes all updates from :ref:`FiftyOne 1.13.2 <release-notes-v1.13.2>`, plus:
+
+- Fixed a bug where Guest users were unable to load datasets.
+
+
+.. _release-notes-v1.13.2:
+
+FiftyOne 1.13.2
+---------------
+*Released February 20, 2026*
+
+:ref:`In-App Annotation <in-app-annotation>`
+
+- Added some 3D annotation polish. We now zoom to the selected vertex for 3D
+  polylines. Label selection now uses heuristics to select the right label by
+  default. Tooltips are now hidden while editing a 3D label.
+  `#7022 <https://github.com/voxel51/fiftyone/pull/7022>`_,
+  `#7043 <https://github.com/voxel51/fiftyone/pull/7043>`_
+- Fixed a bug with undo/redo when deleting 3D labels.
+  `#7022 <https://github.com/voxel51/fiftyone/pull/7022>`_
+
+App
+
+- Fixed issues with video timeline sync: timeline subscribers were not
+  receiving frame updates during video playback, and frame stepping (using `.`
+  and `,` keys) had a momentary off-by-one flicker.
+  `#7044 <https://github.com/voxel51/fiftyone/pull/7044>`_
+
+
+
 FiftyOne Enterprise 2.16.1
 --------------------------
 *Released February 18, 2026*
@@ -86,7 +121,7 @@ FiftyOne 1.13.0
 
 App
 
-- New Feature: :ref:`Human Annotation! <fiftyone-annotation>` Create, edit, and
+- New Feature: :ref:`In-App Annotation <in-app-annotation>` Create, edit, and
   delete classification and detection labels on images, as well as cuboid and
   3d polylines on 3d datasets. :ref:`Dataset Managers <enterprise-can-edit>`
   can define an annotation schema to constrain all metadata edits, either
