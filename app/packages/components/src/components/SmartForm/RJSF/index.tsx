@@ -10,10 +10,10 @@ import widgets from "./widgets";
 
 export { isJSONSchema, isSchemaIOSchema } from "./translators";
 
+import { isNullish } from "@fiftyone/utilities";
 import type { IChangeEvent } from "@rjsf/core";
 import { isObject, type RJSFSchema } from "@rjsf/utils";
 import { SmartFormProps } from "../types";
-import { isNullish } from "@fiftyone/utilities";
 
 /**
  * Custom handler for deserializing server-side representations of data.
@@ -116,7 +116,7 @@ export default function RJSF(props: SmartFormProps) {
       onChange={handleChange}
       onSubmit={handleSubmit}
       showErrorList={false}
-      transformErrors={transformErrors}
+      transformErrors={(errors) => transformErrors(errors, uiSchema)}
       {...props.formProps}
     />
   );
