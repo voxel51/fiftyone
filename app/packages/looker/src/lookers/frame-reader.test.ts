@@ -168,14 +168,14 @@ describe("frame-reader", () => {
         const options = createMockOptions({ frameCount: 200, frameNumber: 100 });
         const requestFrames = acquireReader(options);
 
-        // Load frames 100-130. After this, nextRange advances to [131, ...].
+        // Load frames 100-129. After this, nextRange advances to [130, ...].
         simulateFrameChunk(
             Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 100 })),
-            [100, 130]
+            [100, 129]
         );
 
         // Request frame 50 â it was never loaded and is behind the stream
-        // position (50 < 131). This simulates the user scrubbing backward
+        // position (50 < 130). This simulates the user scrubbing backward
         // to a region the stream has already passed.
         requestFrames(50);
 
@@ -196,13 +196,13 @@ describe("frame-reader", () => {
         const options = createMockOptions({ frameCount: 200, frameNumber: 100 });
         const requestFrames = acquireReader(options);
 
-        // Load frames 100-130. nextRange advances to [131, ...]
+        // Load frames 100-129. nextRange advances to [130, ...]
         simulateFrameChunk(
             Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 100 })),
-            [100, 130]
+            [100, 129]
         );
 
-        // First call: frame 50 is behind stream position (50 < 131),
+        // First call: frame 50 is behind stream position (50 < 130),
         // triggers restart from frame 50
         requestFrames(50);
         expect(createWorker).toHaveBeenCalledTimes(2);
