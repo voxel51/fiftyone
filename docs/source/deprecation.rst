@@ -24,11 +24,11 @@ June 1, 2026 might no longer be compatible with Python 3.9.
 
 MongoDB 6.0
 -----------
-*Support ending December 1, 2025*
+*Support ended March 1, 2026*
 
 `MongoDB 6.0 <https://www.mongodb.com/legal/support-policy/lifecycles>`_
 transitioned to `end-of-life` effective July of 2025. FiftyOne
-releases after December 1, 2025 might no longer be compatible with
+releases after March 1, 2026 might no longer be compatible with
 MongoDB 6.0 and older.
 
 .. _deprecation-kubernetes-1.30:
