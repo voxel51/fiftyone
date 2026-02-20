@@ -93,7 +93,12 @@ function SampleThumbnails({
 
   return (
     <div
-      style={{ display: "flex", overflowX: "auto", gap: 4, paddingBottom: 4 }}
+      style={{
+        display: "flex",
+        overflowX: "auto",
+        gap: "0.25rem",
+        paddingBottom: "0.25rem",
+      }}
     >
       {ids.map((id) => {
         const filepath = sampleMedia[id];
@@ -102,11 +107,11 @@ function SampleThumbnails({
             <div
               key={id}
               style={{
-                width: 48,
-                height: 48,
-                minWidth: 48,
-                borderRadius: 4,
-                background: "#333",
+                width: "3rem",
+                height: "3rem",
+                minWidth: "3rem",
+                borderRadius: "0.25rem",
+                background: "var(--fo-palette-background-level2)",
               }}
             />
           );
@@ -182,11 +187,14 @@ export default function RunList({
   );
 
   return (
-    <div className="p-4 h-full">
+    <div style={{ padding: "1rem", height: "100%" }}>
       <Stack
         orientation={Orientation.Row}
-        style={{ marginBottom: "1rem" }}
-        className="justify-between items-center"
+        style={{
+          marginBottom: "1rem",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
       >
         <Heading level="h2">Similarity Search</Heading>
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
@@ -211,7 +219,16 @@ export default function RunList({
       </Stack>
 
       {runs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-1/2 gap-4">
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            height: "50%",
+            gap: "1rem",
+          }}
+        >
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             Create a new search to find similar samples using your computed
@@ -226,7 +243,14 @@ export default function RunList({
           </Button>
         </div>
       ) : (
-        <div className="overflow-auto flex flex-col gap-2">
+        <div
+          style={{
+            overflow: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.5rem",
+          }}
+        >
           {runs.map((run) => {
             const isImage = run.query_type === "image";
             const isExpanded = expandedRunIds.has(run.run_id);
@@ -236,51 +260,58 @@ export default function RunList({
             return (
               <div
                 key={run.run_id}
-                className={`border rounded-md p-3 ${
-                  appliedRunId === run.run_id
-                    ? "border-action-primary-primary bg-content-bg-card-2"
-                    : "border-content-border-secondary-primary bg-content-bg-card-1"
-                }`}
+                style={{
+                  border:
+                    appliedRunId === run.run_id
+                      ? "1px solid var(--fo-palette-text-secondary)"
+                      : "1px solid var(--fo-palette-text-secondary)",
+                  borderRadius: "0.375rem",
+                  padding: "0.75rem",
+                  background: "var(--fo-palette-background-level1)",
+                }}
               >
                 <Stack
                   orientation={Orientation.Row}
-                  className="justify-between items-start"
+                  style={{
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                  }}
                 >
                   <Stack
                     orientation={Orientation.Column}
                     spacing={Spacing.Xs}
-                    className="flex-1 min-w-0"
+                    style={{ flex: 1, minWidth: 0 }}
                   >
                     <Stack
                       orientation={Orientation.Row}
                       spacing={Spacing.Sm}
-                      className="items-center"
+                      style={{ alignItems: "center" }}
                     >
                       <Text
                         variant={TextVariant.Md}
                         color={TextColor.Primary}
-                        className="font-bold"
+                        style={{ fontWeight: "bold" }}
                       >
                         {run.run_name}
                       </Text>
                       <StatusBadge status={run.status} />
                       {run.status === "completed" && (
-                        <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                        <Text variant={TextVariant.Md} color={TextColor.Muted}>
                           {run.result_count} results
                         </Text>
                       )}
                     </Stack>
-                    <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
+                    <Text variant={TextVariant.Md} color={TextColor.Secondary}>
                       {formatQuery(run)} {"\u00B7"} {run.brain_key}
                       {run.k ? ` \u00B7 k=${run.k}` : ""}
                       {run.reverse ? " (least similar)" : ""}
                     </Text>
-                    <Text variant={TextVariant.Sm} color={TextColor.Muted}>
+                    <Text variant={TextVariant.Md} color={TextColor.Muted}>
                       {formatTime(run.creation_time)}
                     </Text>
                     {run.status === "failed" && run.status_details && (
                       <Text
-                        variant={TextVariant.Sm}
+                        variant={TextVariant.Md}
                         color={TextColor.Destructive}
                       >
                         {run.status_details}
@@ -291,7 +322,7 @@ export default function RunList({
                   <Stack
                     orientation={Orientation.Column}
                     spacing={Spacing.Xs}
-                    className="shrink-0 items-end"
+                    style={{ flexShrink: 0, alignItems: "flex-end" }}
                   >
                     <div style={{ display: "flex", gap: 0 }}>
                       <Tooltip content="Apply results">
@@ -346,7 +377,13 @@ export default function RunList({
                 </Stack>
 
                 {isImage && isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-content-border-secondary-primary">
+                  <div
+                    style={{
+                      marginTop: "0.75rem",
+                      paddingTop: "0.75rem",
+                      borderTop: "1px solid var(--fo-palette-divider)",
+                    }}
+                  >
                     <Stack
                       orientation={Orientation.Column}
                       spacing={Spacing.Sm}
@@ -354,9 +391,9 @@ export default function RunList({
                       {positiveIds.length > 0 && (
                         <div>
                           <Text
-                            variant={TextVariant.Sm}
+                            variant={TextVariant.Md}
                             color={TextColor.Success}
-                            className="mb-1.5"
+                            style={{ marginBottom: "0.375rem" }}
                           >
                             Positive ({positiveIds.length})
                           </Text>
@@ -369,9 +406,9 @@ export default function RunList({
                       {negativeIds.length > 0 && (
                         <div>
                           <Text
-                            variant={TextVariant.Sm}
+                            variant={TextVariant.Md}
                             color={TextColor.Destructive}
-                            className="mb-1.5"
+                            style={{ marginBottom: "0.375rem" }}
                           >
                             Negative ({negativeIds.length})
                           </Text>
