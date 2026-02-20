@@ -6,6 +6,8 @@ import ExpandLess from "@mui/icons-material/ExpandLess";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import GridView from "@mui/icons-material/GridView";
 import Refresh from "@mui/icons-material/Refresh";
+import ImageList from "@mui/material/ImageList";
+import ImageListItem from "@mui/material/ImageListItem";
 import { getSampleSrc } from "@fiftyone/state";
 import {
   Button,
@@ -76,6 +78,10 @@ const ExpandLessIcon = () => (
   />
 );
 
+const THUMB_SIZE = 36;
+const THUMB_GAP = 4;
+const THUMB_SINGLE_ROW_MAX = 10;
+
 function SampleThumbnails({
   ids,
   sampleMedia,
@@ -85,28 +91,51 @@ function SampleThumbnails({
 }) {
   if (!ids.length) return null;
 
+  const useOneRow = ids.length <= THUMB_SINGLE_ROW_MAX;
+  const cols = useOneRow ? ids.length : Math.ceil(ids.length / 2);
+  const rows = useOneRow ? 1 : 2;
+
   return (
-    <div className="flex overflow-x-auto gap-1 pb-1">
+    <ImageList
+      cols={cols}
+      rowHeight={THUMB_SIZE}
+      gap={THUMB_GAP}
+      sx={{
+        gridTemplateColumns: `repeat(${cols}, ${THUMB_SIZE}px) !important`,
+        overflowX: "auto",
+        overflowY: "hidden",
+        maxHeight: THUMB_SIZE * rows + THUMB_GAP * (rows - 1),
+        m: 0,
+      }}
+    >
       {ids.map((id) => {
         const filepath = sampleMedia[id];
-        if (!filepath) {
-          return (
-            <div
-              key={id}
-              className="w-12 h-12 min-w-[3rem] rounded"
-              style={{ background: "var(--fo-palette-background-level2)" }}
-            />
-          );
-        }
         return (
-          <img
-            key={id}
-            src={getSampleSrc(filepath)}
-            className="w-12 h-12 min-w-[48px] rounded object-cover"
-          />
+          <ImageListItem key={id}>
+            {filepath ? (
+              <img
+                src={getSampleSrc(filepath)}
+                style={{
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: 4,
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: THUMB_SIZE,
+                  height: THUMB_SIZE,
+                  borderRadius: 4,
+                  background: "var(--fo-palette-background-level2)",
+                }}
+              />
+            )}
+          </ImageListItem>
         );
       })}
-    </div>
+    </ImageList>
   );
 }
 
