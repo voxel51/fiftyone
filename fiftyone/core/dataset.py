@@ -9031,6 +9031,33 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _sample_dict_to_doc(self, d, *, _reload_backing_docs=True):
         try:
             return self._sample_doc_cls.from_dict(d)
+        except moe.NotRegistered as e:
+            # Handle unknown embedded document types by sanitizing the document
+            # and retrying. This enables backward compatibility when loading
+            # datasets created with newer FiftyOne versions that have types not
+            # available in this version.
+            from fiftyone.core.odm.utils import sanitize_unknown_embedded_docs
+
+            logger.warning(
+                "Detected unknown embedded document class while loading sample with "
+                "ID %s. Attempting to replace unknown types with DynamicEmbeddedDocument. "
+                "Original error: %s",
+                (d or {}).get("_id", "None"),
+                str(e),
+            )
+
+            # Sanitize the document to remove unknown embedded document types
+            d_sanitized = sanitize_unknown_embedded_docs(d)
+
+            try:
+                return self._sample_doc_cls.from_dict(d_sanitized)
+            except Exception as retry_error:
+                logger.debug(
+                    "Even after sanitizing, failed to load sample with ID %s: %s",
+                    (d or {}).get("_id", "None"),
+                    str(retry_error),
+                )
+                raise retry_error
         except Exception as e:
             logger.debug(
                 f'Error loading sample with ID {(d or {}).get("_id", "None")}. Error: {e}'
