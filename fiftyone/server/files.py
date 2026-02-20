@@ -204,7 +204,12 @@ def _check_and_resolve_path(path: str) -> str:
             details={"path": path},
         )
 
-    if not (normalized.startswith(base + os.sep) or normalized == base):
+    try:
+        inside = os.path.commonpath([base, normalized]) == base
+    except ValueError:
+        inside = False
+
+    if not inside:
         raise FileOperationError(
             code=FileOperationErrorCode.PATH_NOT_ALLOWED,
             message="Path must be within the configured file operations directory.",
