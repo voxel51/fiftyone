@@ -165,9 +165,12 @@ const Classification = () => {
 
 const Detection = () => {
   const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
+  const tooltip = quickDrawActive
+    ? "Exit detection creation"
+    : "Create new detections";
 
   return (
-    <Tooltip placement="top-center" text="Create new detections">
+    <Tooltip placement="top-center" text={tooltip}>
       <Square
         $active={quickDrawActive}
         onClick={() => {
