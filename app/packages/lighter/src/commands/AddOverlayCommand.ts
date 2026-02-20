@@ -2,11 +2,11 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import type { Undoable } from "@fiftyone/commands";
 import { Scene2D } from "../core/Scene2D";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import { Rect } from "../types";
-import type { Undoable } from "@fiftyone/commands";
 
 /**
  * Command for adding an overlay to the scene with undo/redo support.

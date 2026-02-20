@@ -117,6 +117,12 @@ export class BoundingBoxOverlay
 
   setAbsoluteBounds(bounds: Rect): void {
     this.absoluteBounds = { ...bounds };
+    this.relativeBounds = {
+      x: bounds.x / 914,
+      y: bounds.y / 620,
+      width: bounds.width / 914,
+      height: bounds.height / 620,
+    };
     this._needsCoordinateUpdate = false;
     this.markDirty();
   }
@@ -197,6 +203,7 @@ export class BoundingBoxOverlay
         this.containerId
       );
     } else if (overlayStrokeColor && overlayDash) {
+      console.log("BOUNDS", this.absoluteBounds);
       renderer.drawRect(
         this.absoluteBounds,
         {
@@ -276,11 +283,12 @@ export class BoundingBoxOverlay
   }
 
   setPosition(position: Point): void {
-    this.absoluteBounds = {
+    console.log("POSITION");
+    this.setAbsoluteBounds({
       ...this.absoluteBounds,
       x: position.x,
       y: position.y,
-    };
+    });
 
     this.markForCoordinateUpdate();
   }
@@ -291,32 +299,6 @@ export class BoundingBoxOverlay
 
   getMoveStartBounds(): Rect | undefined {
     return this.moveStartBounds;
-  }
-
-  private calculateMoving(point: Point, worldPoint: Point, scale: number) {
-    if (!this.isSelected() || !this.moveStartPoint || this.moveState !== "NONE")
-      return;
-
-    // Respect read-only flags
-    if (!this.isDraggable && !this.isResizeable) return;
-
-    const distance = Math.sqrt(
-      Math.pow((point.x - this.moveStartPoint.x) / scale, 2) +
-        Math.pow((point.y - this.moveStartPoint.y) / scale, 2)
-    );
-
-    if (distance > this.CLICK_THRESHOLD) {
-      const resizeRegion = this.getResizeRegion(worldPoint, scale);
-      if (!this.hasValidBounds()) {
-        this.moveState = "SETTING";
-      } else if (resizeRegion && this.isResizeable) {
-        console.log("YESSSS", resizeRegion);
-        this.moveState = resizeRegion;
-      } else if (!resizeRegion && this.isDraggable) {
-        console.log("NOOOOO", resizeRegion);
-        this.moveState = "DRAGGING";
-      }
-    }
   }
 
   getMoveState() {
@@ -454,7 +436,8 @@ export class BoundingBoxOverlay
     scale: number,
     maintainAspectRatio?: boolean
   ): boolean {
-    this.calculateMoving(point, worldPoint, scale);
+    // this.calculateMoving(point, worldPoint, scale);
+    console.log("WHAT IS HAPP", this.moveState);
     if (this.moveState === "DRAGGING") {
       return this.onDrag(point, event, scale);
     }
@@ -473,7 +456,7 @@ export class BoundingBoxOverlay
       x: (point.x - this.moveStartPoint.x) / scale,
       y: (point.y - this.moveStartPoint.y) / scale,
     };
-
+    console.log("DRAGGGG");
     // Update absolute bounds
     this.absoluteBounds = {
       x: this.moveStartBounds.x + delta.x,
@@ -586,14 +569,12 @@ export class BoundingBoxOverlay
     }
 
     // Update absolute bounds
-    this.absoluteBounds = {
+    this.setAbsoluteBounds({
       x,
       y,
       width,
       height,
-    };
-
-    this.markDirty();
+    });
 
     return true;
   }
@@ -651,6 +632,7 @@ export class BoundingBoxOverlay
    * @param bounds - The new bounds.
    */
   setBounds(bounds: Rect): void {
+    console.log("SET BOUNDS", bounds);
     this.absoluteBounds = { ...bounds };
     this.markForCoordinateUpdate();
   }

@@ -155,7 +155,7 @@ class ModalAnnotateEditAsserter {
    *
    * @param enabled Whether the redo button is enabled or not
    */
-  async isRedoEnabled(enabled = true) {
+  async redoIsEnabled(enabled = true) {
     const redoButton = this.modalAnnotateEdit.redoButton;
     return enabled
       ? await expect(redoButton).not.toHaveClass(/disabled/)
@@ -167,7 +167,7 @@ class ModalAnnotateEditAsserter {
    *
    * @param enabled Whether the undo button is enabled or not
    */
-  async isUndoEnabled(enabled = true) {
+  async undoIsEnabled(enabled = true) {
     const undoButton = this.modalAnnotateEdit.undoButton;
     return enabled
       ? await expect(undoButton).not.toHaveClass(/disabled/)

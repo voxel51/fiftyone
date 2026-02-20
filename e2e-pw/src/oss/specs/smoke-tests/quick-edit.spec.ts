@@ -106,6 +106,47 @@ test.describe.serial("quick edit", () => {
     );
   });
 
+  const points = (x: number, y: number, width: number, height: number) => {
+    return [
+      {
+        cursor: "nwse",
+        x,
+        y,
+      },
+      { cursor: "ns", x: x + width / 2, y },
+      {
+        cursor: "nesw",
+        x: x + width,
+        y,
+      },
+      {
+        cursor: "ew",
+        x: x + width,
+        y: y + height / 2,
+      },
+      {
+        cursor: "nwse",
+        x: x + width,
+        y: y + height,
+      },
+      {
+        cursor: "ns",
+        x: x + width / 2,
+        y: y + height,
+      },
+      {
+        cursor: "nesw",
+        x,
+        y: y + height,
+      },
+      {
+        cursor: "ew",
+        x,
+        y: y + height / w,
+      },
+    ];
+  };
+
   test("detections via tooltip", async ({ modal }) => {
     // Init
     await modal.assert.isOpen();
@@ -134,11 +175,18 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.tooltip.quickEdit();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
-    await modal.sidebar.edit.assert.isRedoEnabled(false);
-    await modal.sidebar.edit.assert.isUndoEnabled(false);
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused.png"
     );
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "228.5");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.y", "155");
+    await modal.sidebar.edit.assert.verifyFieldValue("dimensions.width", "457");
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.height",
+      "310"
+    );
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
 
     // Resize box
     await modal.sampleCanvas.move(0.75, 0.75, "nwse-resize");
@@ -149,6 +197,34 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-focused-small.png"
     );
+    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "228.5");
+    await modal.sidebar.edit.assert.verifyFieldValue("position.y", "155");
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.width",
+      "228.5"
+    );
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.height",
+      "155"
+    );
+
+    // Undo
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    await modal.sidebar.edit.undo();
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "centered-bounding-box-lighter-focused.png"
+    );
+
+    // Redo
+    await modal.sidebar.edit.assert.redoIsEnabled();
+    await modal.sidebar.edit.redo();
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
+    await modal.sampleCanvas.assert.hasScreenshot(
+      "centered-bounding-box-lighter-focused-small.png"
+    );
+
+    await modal.sidebar.edit.assert.undoIsEnabled();
 
     // Resize to original box
     await modal.sampleCanvas.move(0.5, 0.5, "nwse-resize");
@@ -157,12 +233,12 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.up();
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused-again.png"
+      "centered-bounding-box-lighter-focused.png"
     );
-
-    await await modal.sampleCanvas.move(0.5, 0.5, "pointer");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.5, 0.5, "pointer");
-    await modal.sampleCanvas.up();
+    await modal.sidebar.edit.assert.verifyFieldValue("dimensions.width", "457");
+    await modal.sidebar.edit.assert.verifyFieldValue(
+      "dimensions.height",
+      "310"
+    );
   });
 });

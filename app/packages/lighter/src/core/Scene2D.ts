@@ -1391,7 +1391,7 @@ export class Scene2D {
     this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
-
+        console.log("SPATIAL CHANGEEE");
         this.updateAllSpatialOverlays();
         this.updateClassifications();
       }
@@ -1488,6 +1488,7 @@ export class Scene2D {
     if (BaseOverlay.validBounds(relativeBounds)) {
       const absoluteBounds =
         this.coordinateSystem.relativeToAbsolute(relativeBounds);
+      console.log("UPDATE UPDATE");
       overlay.setAbsoluteBounds(absoluteBounds);
     }
   }

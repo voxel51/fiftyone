@@ -148,7 +148,7 @@ class SampleCanvasAsserter {
     }
 
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
-    return await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
+    await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
   }
 
   /**
