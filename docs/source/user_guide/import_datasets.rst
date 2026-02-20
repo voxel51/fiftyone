@@ -737,6 +737,12 @@ refer to the corresponding dataset format when reading the dataset from disk.
     | :ref:`TF Image Classification <TFImageClassificationDataset-import>`                  | A labeled dataset consisting of images and their associated classification labels  |
     |                                                                                       | stored as TFRecords.                                                               |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`HDF5 <HDF5Dataset-import>`                                                      | A dataset consisting of images stored in an                                        |
+    |                                                                                       | `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.                           |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
+    | :ref:`HDF5 Image Classification <HDF5ImageClassificationDataset-import>`              | A labeled dataset consisting of images and their associated classification labels  |
+    |                                                                                       | stored in an `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.              |
+    +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
     | :ref:`COCO <COCODetectionDataset-import>`                                             | A labeled dataset consisting of images and their associated object detections      |
     |                                                                                       | saved in `COCO Object Detection Format <https://cocodataset.org/#format-data>`_.   |
     +---------------------------------------------------------------------------------------+------------------------------------------------------------------------------------+
@@ -1590,6 +1596,214 @@ as a directory of TFRecords in the above format as follows:
     You can provide the `tf_records_path` argument instead of `dataset_dir` in
     the examples above to directly specify the path to the TFRecord(s) to load.
     See :class:`TFImageClassificationDatasetImporter <fiftyone.utils.tf.TFImageClassificationDatasetImporter>`
+    for details.
+
+.. _HDF5Dataset-import:
+
+HDF5
+____
+
+The :class:`fiftyone.types.HDF5Dataset` type represents a dataset consisting
+of images stored in an
+`HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.
+
+The HDF5 file should contain a dataset keyed by ``images_key`` (default
+``"images"``) containing images stored as either pixel arrays of shape
+``(N, H, W, C)`` or ``(N, H, W)``, or encoded image bytes (e.g., PNG/JPEG)
+of shape ``(N,)``.
+
+During import, images are extracted from the HDF5 file and written to
+individual image files in a specified directory.
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data.h5
+
+where ``data.h5`` (or any ``.h5`` file) contains:
+
+.. code-block:: text
+
+    images    # (N, H, W, C), (N, H, W), or (N,) encoded bytes
+
+.. note::
+
+    See :class:`HDF5UnlabeledImageDatasetImporter <fiftyone.utils.hdf5.HDF5UnlabeledImageDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from an unlabeled image dataset stored in
+HDF5 format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        hdf5_path = "/path/to/data.h5"
+        images_dir = "/path/for/images"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.HDF5Dataset,
+            hdf5_path=hdf5_path,
+            images_dir=images_dir,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+    When the above command is executed, the images in the HDF5 file will be
+    written to the provided ``images_dir``, which is required because FiftyOne
+    datasets must make their images available as individual files on disk.
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        HDF5_PATH=/path/to/data.h5
+        IMAGES_DIR=/path/for/images
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.HDF5Dataset \
+            --kwargs \
+                hdf5_path=$HDF5_PATH \
+                images_dir=$IMAGES_DIR
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    When the above command is executed, the images in the HDF5 file will be
+    written to the provided ``IMAGES_DIR``, which is required because FiftyOne
+    datasets must make their images available as individual files on disk.
+
+.. note::
+
+    You can provide the ``hdf5_path`` argument instead of ``dataset_dir`` in
+    the examples above to directly specify the path to the HDF5 file to load.
+    See :class:`HDF5UnlabeledImageDatasetImporter <fiftyone.utils.hdf5.HDF5UnlabeledImageDatasetImporter>`
+    for details.
+
+.. _HDF5ImageClassificationDataset-import:
+
+HDF5 Image Classification
+_________________________
+
+The :class:`fiftyone.types.HDF5ImageClassificationDataset` type represents a
+labeled dataset consisting of images and their associated classification labels
+stored in an `HDF5 <https://www.hdfgroup.org/solutions/hdf5/>`_ file.
+
+The HDF5 file should contain a dataset keyed by ``images_key`` (default
+``"images"``) containing images stored as either pixel arrays of shape
+``(N, H, W, C)`` or ``(N, H, W)``, or encoded image bytes (e.g., PNG/JPEG)
+of shape ``(N,)``; and a dataset keyed by ``labels_key`` (default
+``"labels"``) containing string or integer classification labels of shape
+``(N,)``.
+
+During import, images are extracted from the HDF5 file and written to
+individual image files in a specified directory, analogous to how
+TFRecords-based datasets are imported.
+
+.. code-block:: text
+
+    <dataset_dir>/
+        data.h5
+
+where ``data.h5`` (or any ``.h5`` file) contains:
+
+.. code-block:: text
+
+    images    # (N, H, W, C), (N, H, W), or (N,) encoded bytes
+    labels    # (N,) string or integer labels
+
+.. note::
+
+    See :class:`HDF5ImageDatasetImporter <fiftyone.utils.hdf5.HDF5ImageDatasetImporter>`
+    for parameters that can be passed to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
+    customize the import of datasets of this type.
+
+You can create a FiftyOne dataset from a labeled image classification dataset
+stored in HDF5 format as follows:
+
+.. tabs::
+
+  .. group-tab:: Python
+
+    .. code-block:: python
+        :linenos:
+
+        import fiftyone as fo
+
+        name = "my-dataset"
+        hdf5_path = "/path/to/data.h5"
+        images_dir = "/path/for/images"
+
+        # Create the dataset
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.HDF5ImageClassificationDataset,
+            hdf5_path=hdf5_path,
+            images_dir=images_dir,
+            name=name,
+        )
+
+        # View summary info about the dataset
+        print(dataset)
+
+        # Print the first few samples in the dataset
+        print(dataset.head())
+
+    When the above command is executed, the images in the HDF5 file will be
+    written to the provided ``images_dir``, which is required because FiftyOne
+    datasets must make their images available as individual files on disk.
+
+  .. group-tab:: CLI
+
+    .. code-block:: shell
+
+        NAME=my-dataset
+        HDF5_PATH=/path/to/data.h5
+        IMAGES_DIR=/path/for/images
+
+        # Create the dataset
+        fiftyone datasets create \
+            --name $NAME \
+            --type fiftyone.types.HDF5ImageClassificationDataset \
+            --kwargs \
+                hdf5_path=$HDF5_PATH \
+                images_dir=$IMAGES_DIR
+
+        # View summary info about the dataset
+        fiftyone datasets info $NAME
+
+        # Print the first few samples in the dataset
+        fiftyone datasets head $NAME
+
+    When the above command is executed, the images in the HDF5 file will be
+    written to the provided ``IMAGES_DIR``, which is required because FiftyOne
+    datasets must make their images available as individual files on disk.
+
+.. note::
+
+    You can provide the ``hdf5_path`` argument instead of ``dataset_dir`` in
+    the examples above to directly specify the path to the HDF5 file to load.
+    See :class:`HDF5ImageDatasetImporter <fiftyone.utils.hdf5.HDF5ImageDatasetImporter>`
     for details.
 
 .. _COCODetectionDataset-import:

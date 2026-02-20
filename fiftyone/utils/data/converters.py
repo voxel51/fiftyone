@@ -84,7 +84,9 @@ def convert_dataset(
 
             # If the input dataset contains TFRecords, they must be unpacked
             # into a temporary directory during conversion
-            if _is_tf_records(input_type) and "images_dir" not in input_kwargs:
+            if (
+                _is_tf_records(input_type) or _is_hdf5(input_type)
+            ) and "images_dir" not in input_kwargs:
                 images_dir = etau.make_temp_dir()
                 input_kwargs["images_dir"] = images_dir
 
@@ -147,4 +149,14 @@ def _is_tf_records(dataset_type):
     return isinstance(
         dataset_type,
         (fot.TFImageClassificationDataset, fot.TFObjectDetectionDataset),
+    )
+
+
+def _is_hdf5(dataset_type):
+    if inspect.isclass(dataset_type):
+        dataset_type = dataset_type()
+
+    return isinstance(
+        dataset_type,
+        (fot.HDF5Dataset, fot.HDF5ImageClassificationDataset),
     )
