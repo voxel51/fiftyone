@@ -3,12 +3,13 @@ import type {
   SchemaType,
 } from "@fiftyone/core/src/plugins/SchemaIO/utils/types";
 import { BOOLEAN_FIELD, STRING_FIELD } from "@fiftyone/utilities";
+import { ComponentType, FieldType } from "../useSchemaManager";
 
 export interface PrimitiveSchema {
-  type: string;
-  component?: string;
+  type: FieldType;
+  component?: ComponentType;
   choices?: unknown[];
-  values?: string[];
+  values?: string[] | number[];
   range?: [number, number];
   readOnly?: boolean;
 }
@@ -101,7 +102,7 @@ export const createSlider = (
 
 export const createRadio = (
   name: string,
-  choices: string[],
+  choices: string[] | number[],
   type: string = "string"
 ) => {
   return {
@@ -110,7 +111,7 @@ export const createRadio = (
       name: "RadioGroup",
       label: name,
       component: "RadioView",
-      choices: choices.map((choice: string) => ({
+      choices: choices.map((choice: string | number) => ({
         label: getLabel(choice),
         value: choice,
       })),
@@ -118,7 +119,7 @@ export const createRadio = (
   };
 };
 
-export const createTags = (name: string, choices: string[]) => {
+export const createTags = (name: string, choices: string[] | number[]) => {
   return {
     type: "array",
     items: {
@@ -140,7 +141,7 @@ export const createTags = (name: string, choices: string[]) => {
 
 export const createSelect = (
   name: string,
-  choices: string[],
+  choices: string[] | number[],
   type: string = "string"
 ) => {
   return {
@@ -220,7 +221,10 @@ export const createJsonInput = (name: string): SchemaType => {
 /**
  * Creates an array schema for numeric lists: list<float> and list<int>
  */
-export const createNumericList = (name: string, choices: number[]) => {
+export const createNumericList = (
+  name: string,
+  choices: string[] | number[]
+) => {
   return {
     type: "array",
     items: {
@@ -300,4 +304,17 @@ export function generatePrimitiveSchema(
 
   console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);
   return createReadOnly(name);
+}
+
+/**
+ * Special handling for label types that need to be parsed differently.
+ * Currently labelSchema will default to text for a label that has no
+ * classes. This function remaps this to dropdown (which will have no values).
+ * @param component - The label component from the schema
+ * @returns The parsed component type
+ */
+export function parseLabelComponent(component?: ComponentType): ComponentType {
+  if (!component) return "dropdown";
+  if (component === "text") return "dropdown";
+  return component;
 }
