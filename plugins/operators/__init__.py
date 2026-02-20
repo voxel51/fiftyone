@@ -158,7 +158,7 @@ class EditFieldValues(foo.Operator):
             label="Edit field values",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -405,7 +405,7 @@ class CloneSampleField(foo.Operator):
             label="Clone sample field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -517,7 +517,7 @@ class CloneFrameField(foo.Operator):
             label="Clone frame field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -638,7 +638,7 @@ class RenameSampleField(foo.Operator):
             label="Rename sample field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -724,7 +724,7 @@ class RenameFrameField(foo.Operator):
             label="Rename frame field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -819,7 +819,7 @@ class ClearSampleField(foo.Operator):
             label="Clear sample field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -921,7 +921,7 @@ class ClearFrameField(foo.Operator):
             label="Clear frame field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -1214,7 +1214,7 @@ class DeleteSampleField(foo.Operator):
             label="Delete sample field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -1283,7 +1283,7 @@ class DeleteFrameField(foo.Operator):
             label="Delete frame field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -2027,7 +2027,7 @@ class CreateSummaryField(foo.Operator):
             label="Create summary field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -2227,7 +2227,7 @@ class UpdateSummaryField(foo.Operator):
             label="Update summary field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -2294,7 +2294,7 @@ class DeleteSummaryField(foo.Operator):
             label="Delete summary field",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -2408,7 +2408,7 @@ class RenameGroupSlice(foo.Operator):
             label="Rename group slice",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -2476,7 +2476,7 @@ class DeleteGroupSlice(foo.Operator):
             label="Delete group slice",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
@@ -3236,7 +3236,7 @@ class SyncLastModifiedAt(foo.Operator):
             label="Sync last modified at",
             allow_delegated_execution=True,
             allow_immediate_execution=True,
-            default_choice_to_delegated=False,
+            default_choice_to_delegated=True,
             dynamic=True,
         )
 
