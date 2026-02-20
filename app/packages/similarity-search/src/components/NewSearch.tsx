@@ -25,9 +25,8 @@ import {
 } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
-
-const SEARCH_OPERATOR_URI = "@voxel51/panels/similarity_search";
-const INIT_RUN_OPERATOR_URI = "@voxel51/panels/init_similarity_run";
+import { SEARCH_OPERATOR_URI, INIT_RUN_OPERATOR_URI } from "../constants";
+import { canSubmitSearch, buildExecutionParams } from "../utils";
 
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
@@ -100,55 +99,40 @@ export default function NewSearch({
     return [];
   }, [altSelectedSamples]);
 
-  const canSubmit = useCallback(() => {
-    if (!brainKey) return false;
-    if (queryType === "text" && !textQuery.trim()) return false;
-    if (queryType === "image" && getQueryIds().length === 0) return false;
-    return true;
-  }, [brainKey, queryType, textQuery, getQueryIds]);
-
   // Build the params that will be passed to the operator
-  const executionParams = useMemo(() => {
-    const query = queryType === "text" ? textQuery.trim() : getQueryIds();
-
-    const params: Record<string, any> = {
-      brain_key: brainKey,
-      query_type: queryType,
-      query,
+  const executionParams = useMemo(
+    () =>
+      buildExecutionParams({
+        brainKey,
+        queryType,
+        textQuery,
+        queryIds: getQueryIds(),
+        reverse,
+        patchesField: selectedConfig?.patches_field,
+        searchScope,
+        hasView,
+        view: view as unknown[],
+        k,
+        distField,
+        runName,
+        negativeQueryIds: getNegativeQueryIds(),
+      }),
+    [
+      brainKey,
+      queryType,
+      textQuery,
+      k,
       reverse,
-      patches_field: selectedConfig?.patches_field,
-    };
-
-    // Only pass source_view when searching within the current view
-    if (searchScope === "view" && hasView) {
-      params.source_view = view;
-    }
-
-    if (k !== "") params.k = k;
-    if (distField.trim()) params.dist_field = distField.trim();
-    if (runName.trim()) params.run_name = runName.trim();
-
-    const negativeIds = getNegativeQueryIds();
-    if (negativeIds.length > 0) {
-      params.negative_query_ids = negativeIds;
-    }
-
-    return params;
-  }, [
-    brainKey,
-    queryType,
-    textQuery,
-    k,
-    reverse,
-    distField,
-    runName,
-    selectedConfig,
-    view,
-    searchScope,
-    hasView,
-    getQueryIds,
-    getNegativeQueryIds,
-  ]);
+      distField,
+      runName,
+      selectedConfig,
+      view,
+      searchScope,
+      hasView,
+      getQueryIds,
+      getNegativeQueryIds,
+    ]
+  );
 
   // Called when operator execution completes (or is queued for delegation)
   const handleSuccess = useCallback(
@@ -195,7 +179,7 @@ export default function NewSearch({
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
-        className="items-center mb-6"
+        style={{ alignItems: "center", marginBottom: "1.5rem" }}
       >
         <Button
           borderless
@@ -244,7 +228,7 @@ export default function NewSearch({
               }
               size={Size.Sm}
               onClick={() => setQueryType("text")}
-              className="flex-1"
+              style={{ flex: 1 }}
             >
               Text Prompt
             </Button>
@@ -254,7 +238,7 @@ export default function NewSearch({
               }
               size={Size.Sm}
               onClick={() => setQueryType("image")}
-              className="flex-1"
+              style={{ flex: 1 }}
             >
               Image Similarity
             </Button>
@@ -401,7 +385,14 @@ export default function NewSearch({
             executionParams={executionParams}
             onSuccess={handleSuccess}
             onError={handleError}
-            disabled={!canSubmit()}
+            disabled={
+              !canSubmitSearch(
+                brainKey,
+                queryType,
+                textQuery,
+                getQueryIds().length
+              )
+            }
             variant="contained"
           >
             Search

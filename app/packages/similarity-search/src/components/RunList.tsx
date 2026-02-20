@@ -29,6 +29,7 @@ import React, {
   useState,
 } from "react";
 import { SimilarityRun, RunFilterState } from "../types";
+import { formatQuery, formatTime } from "../utils";
 import StatusBadge from "./StatusBadge";
 import FilterBar from "./FilterBar";
 import BulkActionBar from "./BulkActionBar";
@@ -55,35 +56,6 @@ type RunListProps = {
   onDeselectAll: () => void;
   onClearAndExit: () => void;
 };
-
-function formatQuery(run: SimilarityRun): string {
-  if (run.query_type === "text" && typeof run.query === "string") {
-    return run.query.length > 50
-      ? run.query.substring(0, 50) + "..."
-      : run.query;
-  }
-  if (run.query_type === "image") {
-    const count = Array.isArray(run.query) ? run.query.length : 0;
-    const negCount = run.negative_query_ids?.length ?? 0;
-    let label = `Image similarity (${count} ${
-      count === 1 ? "sample" : "samples"
-    })`;
-    if (negCount > 0) {
-      label += ` \u00B7 ${negCount} negative`;
-    }
-    return label;
-  }
-  return run.query_type;
-}
-
-function formatTime(isoString?: string): string {
-  if (!isoString) return "";
-  try {
-    return new Date(isoString).toLocaleString();
-  } catch {
-    return isoString;
-  }
-}
 
 const ApplyIcon = () => <GridView fontSize="small" />;
 const CloneIcon = () => <ContentCopy fontSize="small" />;
@@ -114,27 +86,15 @@ function SampleThumbnails({
   if (!ids.length) return null;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        overflowX: "auto",
-        gap: "0.25rem",
-        paddingBottom: "0.25rem",
-      }}
-    >
+    <div className="flex overflow-x-auto gap-1 pb-1">
       {ids.map((id) => {
         const filepath = sampleMedia[id];
         if (!filepath) {
           return (
             <div
               key={id}
-              style={{
-                width: "3rem",
-                height: "3rem",
-                minWidth: "3rem",
-                borderRadius: "0.25rem",
-                background: "var(--fo-palette-background-level2)",
-              }}
+              className="w-12 h-12 min-w-[3rem] rounded"
+              style={{ background: "var(--fo-palette-background-level2)" }}
             />
           );
         }
@@ -142,13 +102,7 @@ function SampleThumbnails({
           <img
             key={id}
             src={getSampleSrc(filepath)}
-            style={{
-              width: 48,
-              height: 48,
-              minWidth: 48,
-              borderRadius: 4,
-              objectFit: "cover",
-            }}
+            className="w-12 h-12 min-w-[48px] rounded object-cover"
           />
         );
       })}
@@ -247,14 +201,7 @@ export default function RunList({
   }, [onBulkDelete, selectedRunIds]);
 
   return (
-    <div
-      style={{
-        padding: "1rem",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
+    <div className="p-4 h-full flex flex-col">
       {/* Header */}
       <Stack
         orientation={Orientation.Row}
@@ -304,7 +251,7 @@ export default function RunList({
 
       {/* Select All row */}
       {selectMode && filteredRuns.length > 0 && (
-        <div style={{ marginBottom: "0.5rem" }}>
+        <div className="mb-2">
           <Checkbox
             label={allVisibleSelected ? "Deselect all" : "Select all"}
             checked={allVisibleSelected}
@@ -316,16 +263,7 @@ export default function RunList({
 
       {/* Content area */}
       {runs.length === 0 ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            gap: "1rem",
-          }}
-        >
+        <div className="flex flex-col items-center justify-center flex-1 gap-4">
           <Text color={TextColor.Secondary}>No similarity searches yet</Text>
           <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
             Create a new search to find similar samples using your computed
@@ -340,28 +278,11 @@ export default function RunList({
           </Button>
         </div>
       ) : filteredRuns.length === 0 ? (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            flex: 1,
-            gap: "0.5rem",
-          }}
-        >
+        <div className="flex flex-col items-center justify-center flex-1 gap-2">
           <Text color={TextColor.Secondary}>No runs match your filters</Text>
         </div>
       ) : (
-        <div
-          style={{
-            flex: 1,
-            overflow: "auto",
-            display: "flex",
-            flexDirection: "column",
-            gap: "0.5rem",
-          }}
-        >
+        <div className="flex-1 overflow-auto flex flex-col gap-2">
           {filteredRuns.map((run) => {
             const isImage = run.query_type === "image";
             const isExpanded = expandedRunIds.has(run.run_id);
@@ -372,13 +293,9 @@ export default function RunList({
             return (
               <div
                 key={run.run_id}
+                className="rounded-md p-3"
                 style={{
-                  border:
-                    appliedRunId === run.run_id
-                      ? "1px solid var(--fo-palette-text-secondary)"
-                      : "1px solid var(--fo-palette-text-secondary)",
-                  borderRadius: "0.375rem",
-                  padding: "0.75rem",
+                  border: "1px solid var(--fo-palette-text-secondary)",
                   background: "var(--fo-palette-background-level1)",
                 }}
               >
@@ -391,14 +308,7 @@ export default function RunList({
                 >
                   {/* Checkbox in select mode */}
                   {selectMode && (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        marginRight: "0.5rem",
-                        paddingTop: "0.125rem",
-                      }}
-                    >
+                    <div className="flex items-center mr-2 pt-0.5">
                       <Checkbox
                         checked={isSelected}
                         onChange={() => onToggleRunSelection(run.run_id)}
@@ -455,7 +365,7 @@ export default function RunList({
                       spacing={Spacing.Xs}
                       style={{ flexShrink: 0, alignItems: "flex-end" }}
                     >
-                      <div style={{ display: "flex", gap: 0 }}>
+                      <div className="flex">
                         <Tooltip content="Apply results">
                           <Button
                             borderless
@@ -486,12 +396,7 @@ export default function RunList({
                         </Tooltip>
                       </div>
                       {isImage && (
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "flex-end",
-                          }}
-                        >
+                        <div className="flex justify-end">
                           <Tooltip
                             content={isExpanded ? "Collapse" : "Show samples"}
                           >
@@ -513,11 +418,8 @@ export default function RunList({
 
                 {isImage && isExpanded && !selectMode && (
                   <div
-                    style={{
-                      marginTop: "0.75rem",
-                      paddingTop: "0.75rem",
-                      borderTop: "1px solid var(--fo-palette-divider)",
-                    }}
+                    className="mt-3 pt-3"
+                    style={{ borderTop: "1px solid var(--fo-palette-divider)" }}
                   >
                     <Stack
                       orientation={Orientation.Column}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAtom } from "jotai";
 import { useRecoilValue } from "recoil";
 import { useOperatorExecutor } from "@fiftyone/operators";
@@ -13,7 +13,9 @@ import { SimilarityRun } from "../types";
 export const useFetchRuns = (): {
   refreshRuns: () => Promise<void>;
   sortFn: (a: SimilarityRun, b: SimilarityRun) => number;
+  loaded: boolean;
 } => {
+  const [loaded, setLoaded] = useState(false);
   const initialized = useRef(false);
   const lastPanelId = useRef<string | undefined>();
   const lastDatasetName = useRef<string | null | undefined>();
@@ -47,6 +49,7 @@ export const useFetchRuns = (): {
               if (response?.runs) {
                 setRuns([...response.runs].sort(sortFn));
               }
+              setLoaded(true);
               resolve();
             } catch (e) {
               console.error("Error processing runs callback:", e);
@@ -83,5 +86,5 @@ export const useFetchRuns = (): {
     }
   }, [refreshRuns, runs, panelId, datasetName]);
 
-  return { refreshRuns, sortFn };
+  return { refreshRuns, sortFn, loaded };
 };

@@ -10,7 +10,8 @@ import {
   Spacing,
   Variant,
 } from "@voxel51/voodo";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { pluralizeRuns } from "../utils";
 
 type BulkActionBarProps = {
   selectedCount: number;
@@ -27,6 +28,13 @@ export default function BulkActionBar({
 }: BulkActionBarProps) {
   const [confirming, setConfirming] = useState(false);
 
+  // Reset confirmation state when selection is cleared
+  useEffect(() => {
+    if (selectedCount === 0) {
+      setConfirming(false);
+    }
+  }, [selectedCount]);
+
   const handleDeleteClick = useCallback(() => {
     setConfirming(true);
   }, []);
@@ -42,29 +50,21 @@ export default function BulkActionBar({
 
   if (selectedCount === 0) return null;
 
-  const label = `${selectedCount} ${selectedCount === 1 ? "run" : "runs"}`;
+  const label = pluralizeRuns(selectedCount);
 
   return (
     <div
+      className="sticky bottom-0 inset-x-0 px-4 py-3 z-10"
       style={{
-        position: "sticky",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: "0.75rem 1rem",
         background: "var(--fo-palette-background-level2)",
         borderTop: "1px solid var(--fo-palette-divider)",
-        zIndex: 10,
       }}
     >
       {confirming ? (
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
-          style={{
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+          style={{ justifyContent: "space-between", alignItems: "center" }}
         >
           <Text variant={TextVariant.Md} color={TextColor.Destructive}>
             Delete {label}?
@@ -91,10 +91,7 @@ export default function BulkActionBar({
         <Stack
           orientation={Orientation.Row}
           spacing={Spacing.Sm}
-          style={{
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
+          style={{ justifyContent: "space-between", alignItems: "center" }}
         >
           <Text variant={TextVariant.Md} color={TextColor.Primary}>
             {label} selected

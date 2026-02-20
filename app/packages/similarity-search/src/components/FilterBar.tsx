@@ -1,4 +1,3 @@
-import Search from "@mui/icons-material/Search";
 import {
   Input,
   InputType,
@@ -13,6 +12,7 @@ import {
 } from "@voxel51/voodo";
 import React from "react";
 import { RunFilterState, DateFilterPreset } from "../types";
+import { DATE_PRESET_OPTIONS } from "../constants";
 
 type FilterBarProps = {
   filterState: RunFilterState;
@@ -20,16 +20,6 @@ type FilterBarProps = {
   resultCount: number;
   totalCount: number;
 };
-
-const SearchIcon = () => <Search fontSize="small" />;
-
-const DATE_PRESET_OPTIONS = [
-  { id: "all", data: { label: "All time" } },
-  { id: "today", data: { label: "Today" } },
-  { id: "last_7_days", data: { label: "Last 7 days" } },
-  { id: "last_30_days", data: { label: "Last 30 days" } },
-  { id: "older_than_30_days", data: { label: "Older than 30 days" } },
-];
 
 export default function FilterBar({
   filterState,
@@ -51,7 +41,7 @@ export default function FilterBar({
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <div style={{ flex: 1 }}>
+        <div className="flex-1">
           <Input
             type={InputType.Search}
             placeholder="Filter by name, query, or brain key..."
@@ -60,10 +50,9 @@ export default function FilterBar({
               onChange({ ...filterState, searchText: e.target.value })
             }
             size={Size.Sm}
-            icon={SearchIcon}
           />
         </div>
-        <div style={{ minWidth: "10rem" }}>
+        <div className="min-w-[10rem]">
           <Select
             exclusive
             options={DATE_PRESET_OPTIONS}

@@ -1,20 +1,7 @@
 import { Pill, TextColor } from "@voxel51/voodo";
 import React from "react";
 import { RunStatus } from "../types";
-
-const STATUS_COLORS: Record<RunStatus, TextColor> = {
-  pending: TextColor.Muted,
-  running: TextColor.Info,
-  completed: TextColor.Success,
-  failed: TextColor.Destructive,
-};
-
-const STATUS_LABELS: Record<RunStatus, string> = {
-  pending: "Pending",
-  running: "Running",
-  completed: "Completed",
-  failed: "Failed",
-};
+import { STATUS_COLORS, STATUS_LABELS } from "../constants";
 
 type StatusBadgeProps = {
   status: RunStatus;

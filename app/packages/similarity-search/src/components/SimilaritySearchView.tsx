@@ -1,6 +1,6 @@
 import { usePanelContext } from "@fiftyone/spaces";
 import { Spinner, Text, TextColor } from "@voxel51/voodo";
-import React, { Suspense, useCallback } from "react";
+import React, { Suspense, useCallback, useState } from "react";
 import { useAtom } from "jotai";
 import { SimilaritySearchViewProps } from "../types";
 import { useNavigate } from "../hooks/useNavigate";
@@ -17,7 +17,8 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const { view } = schema;
 
   const { page, navigateHome, navigateNewSearch } = useNavigate();
-  const { runs, refreshRuns } = useRuns();
+  const { runs, loaded, refreshRuns } = useRuns();
+  const [submitting, setSubmitting] = useState(false);
   const [cloneConfig, setCloneConfig] = useAtom(atoms.cloneConfig);
 
   const { filteredRuns, filterState, setFilterState } = useFilteredRuns(runs);
@@ -74,9 +75,8 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
     (runIds: string[]) => {
       triggers.bulkDeleteRuns({ run_ids: runIds });
       clearAndExit();
-      refreshRuns();
     },
-    [triggers, clearAndExit, refreshRuns]
+    [triggers, clearAndExit]
   );
 
   const handleClone = useCallback(
@@ -103,10 +103,20 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
     navigateNewSearch();
   }, [setCloneConfig, navigateNewSearch]);
 
-  const handleSubmitted = useCallback(() => {
+  const handleSubmitted = useCallback(async () => {
+    setSubmitting(true);
+    await refreshRuns();
+    setSubmitting(false);
     navigateHome();
-    refreshRuns();
   }, [navigateHome, refreshRuns]);
+
+  if (!loaded || submitting) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-full">

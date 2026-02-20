@@ -6,6 +6,7 @@ import { useFetchRuns } from "./useFetchRuns";
 
 type UseRunsResult = {
   runs: SimilarityRun[];
+  loaded: boolean;
   refreshRuns: () => Promise<void>;
   updateRun: (run: SimilarityRun) => void;
   removeRun: (runId: string) => void;
@@ -16,7 +17,7 @@ type UseRunsResult = {
  */
 export const useRuns = (): UseRunsResult => {
   const [runs, setRuns] = useAtom(atoms.runs);
-  const { refreshRuns, sortFn } = useFetchRuns();
+  const { refreshRuns, sortFn, loaded } = useFetchRuns();
 
   const updateRun = useCallback(
     (run: SimilarityRun) => {
@@ -40,5 +41,5 @@ export const useRuns = (): UseRunsResult => {
     [setRuns]
   );
 
-  return { runs, refreshRuns, updateRun, removeRun };
+  return { runs, loaded, refreshRuns, updateRun, removeRun };
 };
