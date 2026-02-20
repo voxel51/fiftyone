@@ -158,8 +158,12 @@ export const { acquireReader, clearReader } = (() => {
 
       return (frameNumber: number) => {
         const isCacheMiss = frameCache && !frameCache.has(frameNumber);
+        const isBeingFetched =
+          nextRange !== null &&
+          frameNumber >= nextRange[0] &&
+          frameNumber <= nextRange[1];
 
-        if (!nextRange || isCacheMiss) {
+        if (!nextRange || (isCacheMiss && !isBeingFetched)) {
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
           frameReader.postMessage({

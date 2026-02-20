@@ -1,28 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_FRAME_STREAM_SIZE } from "../constants";
 
-// dummy worker class to simulate worker behavior
+// Simplified dummy worker â only postMessage and terminate are used
+// by frame-reader.ts; no EventTarget or listener overrides needed.
 const { DummyWorker } = vi.hoisted(() => {
     return {
-        DummyWorker: class DummyWorker extends EventTarget {
+        DummyWorker: class DummyWorker {
             postMessage = vi.fn();
             terminate = vi.fn();
-
-            addEventListener(
-                type: string,
-                listener: EventListenerOrEventListenerObject,
-                options?: any
-            ): void {
-                super.addEventListener(type, listener, options);
-            }
-
-            removeEventListener(
-                type: string,
-                listener: EventListenerOrEventListenerObject,
-                options?: any
-            ): void {
-                super.removeEventListener(type, listener, options);
-            }
         },
     };
 });
@@ -152,7 +137,7 @@ describe("frame-reader", () => {
 
         // Request a frame that IS in the cache (frame 1 was loaded above).
         // Since the stream is active and the frame is cached, there is no
-        // cache miss — the existing stream should continue without restart.
+        // cache miss â the existing stream should continue without restart.
         requestFrames(1);
 
         // The requestFrames call should not create a new worker
@@ -170,29 +155,31 @@ describe("frame-reader", () => {
         );
 
         // Stream is now complete (nextRange === null)
-        // Request a frame — should restart the stream
+        // Request a frame â should restart the stream
         requestFrames(1);
 
         // A new worker should have been created (setStream terminates + recreates)
         expect(createWorker).toHaveBeenCalledTimes(2);
     });
 
-    it("restarts the stream on cache miss for uncached frames", () => {
-        const options = createMockOptions({ frameCount: 200 });
+    it("restarts the stream on cache miss when frame is behind the stream position", () => {
+        // Start the stream at frame 100 to simulate a video that has been
+        // playing for a while. The stream fetches forward from frame 100.
+        const options = createMockOptions({ frameCount: 200, frameNumber: 100 });
         const requestFrames = acquireReader(options);
 
-        // Simulate loading a chunk of frames (stream still active, end < frameCount)
+        // Load frames 100-130. After this, nextRange advances to [131, ...].
         simulateFrameChunk(
-            Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 1 })),
-            [1, 30]
+            Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 100 })),
+            [100, 130]
         );
 
-        // The stream is still active (end < frameCount), nextRange is set.
-        // Request frame 50 which was never loaded into the cache.
+        // Request frame 50 â it was never loaded and is behind the stream
+        // position (50 < 131). This simulates the user scrubbing backward
+        // to a region the stream has already passed.
         requestFrames(50);
 
-        // Because frame 50 is not in the cache, the fix detects the cache
-        // miss and restarts the stream from frame 50
+        // Should restart the stream from frame 50
         expect(createWorker).toHaveBeenCalledTimes(2);
 
         const secondWorker = vi.mocked(createWorker).mock.results[1].value;
@@ -205,20 +192,24 @@ describe("frame-reader", () => {
     });
 
     it("does not restart stream on repeated cache-miss calls for the same frame", () => {
-        const options = createMockOptions({ frameCount: 200 });
+        // Start stream at frame 100, simulating a video mid-playback
+        const options = createMockOptions({ frameCount: 200, frameNumber: 100 });
         const requestFrames = acquireReader(options);
 
+        // Load frames 100-130. nextRange advances to [131, ...]
         simulateFrameChunk(
-            Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 1 })),
-            [1, 30]
+            Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 100 })),
+            [100, 130]
         );
 
-        // First call: triggers restart (cache miss for frame 50)
+        // First call: frame 50 is behind stream position (50 < 131),
+        // triggers restart from frame 50
         requestFrames(50);
         expect(createWorker).toHaveBeenCalledTimes(2);
 
-        // Second call before worker responds: should NOT restart again
-        // because setStream already reset nextRange for frame 50
+        // Second call before worker responds: should NOT restart again.
+        // setStream already reset nextRange to [50, ...], and 50 >= 50
+        // means isBeingFetched is true.
         requestFrames(50);
         expect(createWorker).toHaveBeenCalledTimes(2);
     });
@@ -236,7 +227,7 @@ describe("frame-reader", () => {
         // Request a frame that IS in the cache (frame 15 was loaded)
         requestFrames(15);
 
-        // Should NOT restart the stream — only one createWorker call total
+        // Should NOT restart the stream â only one createWorker call total
         expect(createWorker).toHaveBeenCalledOnce();
     });
 
@@ -311,7 +302,9 @@ describe("frame-reader", () => {
         acquireReader(options);
 
         // Load enough frames to fill the cache and trigger eviction.
-        // sizeCalculation returns 1 per frame, so we need > MAX_FRAME_STREAM_SIZE.
+        // Note: The LRU cache has two limits: max (entry count) and maxSize (byte budget).
+        // Since sizeBytesEstimate is mocked to return 1, eviction here is driven by
+        // the max (entry count) limit (MAX_FRAME_STREAM_SIZE) rather than the byte budget.
         const batchSize = 100;
         const totalBatches = Math.ceil((MAX_FRAME_STREAM_SIZE + 100) / batchSize);
         for (let batch = 0; batch < totalBatches; batch++) {
