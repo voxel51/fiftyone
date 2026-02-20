@@ -157,7 +157,9 @@ export const { acquireReader, clearReader } = (() => {
       frameCache = createCache(options.removeFrame);
 
       return (frameNumber: number) => {
-        if (!nextRange) {
+        const isCacheMiss = frameCache && !frameCache.has(frameNumber);
+
+        if (!nextRange || isCacheMiss) {
           nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
