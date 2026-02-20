@@ -160,7 +160,6 @@ export const { acquireReader, clearReader } = (() => {
         const isCacheMiss = frameCache && !frameCache.has(frameNumber);
 
         if (!nextRange || isCacheMiss) {
-          nextRange = [frameNumber, frameNumber + CHUNK_SIZE];
           subscription = setStream({ ...currentOptions, frameNumber });
         } else if (!requestingFrames) {
           frameReader.postMessage({

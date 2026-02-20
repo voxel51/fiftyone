@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_FRAME_STREAM_SIZE } from "../constants";
 
 // dummy worker class to simulate worker behavior
 const { DummyWorker } = vi.hoisted(() => {
@@ -176,7 +177,7 @@ describe("frame-reader", () => {
         expect(createWorker).toHaveBeenCalledTimes(2);
     });
 
-    it("restarts the stream on cache miss for evicted frames", () => {
+    it("restarts the stream on cache miss for uncached frames", () => {
         const options = createMockOptions({ frameCount: 200 });
         const requestFrames = acquireReader(options);
 
@@ -186,13 +187,12 @@ describe("frame-reader", () => {
             [1, 30]
         );
 
-        // The stream is still active (end < frameCount), nextRange is set
-        // Request a frame that was NOT loaded (frame 50 was never added to cache)
-        // This simulates a cache miss scenario
+        // The stream is still active (end < frameCount), nextRange is set.
+        // Request frame 50 which was never loaded into the cache.
         requestFrames(50);
 
-        // Because frame 50 is not in the cache, the fix should detect the cache
-        // miss and restart the stream from frame 50
+        // Because frame 50 is not in the cache, the fix detects the cache
+        // miss and restarts the stream from frame 50
         expect(createWorker).toHaveBeenCalledTimes(2);
 
         const secondWorker = vi.mocked(createWorker).mock.results[1].value;
@@ -202,6 +202,25 @@ describe("frame-reader", () => {
                 frameNumber: 50,
             })
         );
+    });
+
+    it("does not restart stream on repeated cache-miss calls for the same frame", () => {
+        const options = createMockOptions({ frameCount: 200 });
+        const requestFrames = acquireReader(options);
+
+        simulateFrameChunk(
+            Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 1 })),
+            [1, 30]
+        );
+
+        // First call: triggers restart (cache miss for frame 50)
+        requestFrames(50);
+        expect(createWorker).toHaveBeenCalledTimes(2);
+
+        // Second call before worker responds: should NOT restart again
+        // because setStream already reset nextRange for frame 50
+        requestFrames(50);
+        expect(createWorker).toHaveBeenCalledTimes(2);
     });
 
     it("does not restart stream when requesting a frame from a larger cached batch", () => {
@@ -257,8 +276,9 @@ describe("frame-reader", () => {
     });
 
     it("dispatches buffering false after receiving a chunk", () => {
+        const dispatchEvent = vi.fn();
         const update = vi.fn();
-        const options = createMockOptions({ update });
+        const options = createMockOptions({ update, dispatchEvent });
         acquireReader(options);
 
         simulateFrameChunk([{ frame_number: 1 }], [1, 30]);
@@ -266,9 +286,11 @@ describe("frame-reader", () => {
         expect(update).toHaveBeenCalledWith(expect.any(Function));
 
         // Call the update function to verify it returns { buffering: false }
+        // and dispatches the buffering event when state.buffering is true
         const updateFn = update.mock.calls[0][0];
         const result = updateFn({ buffering: true });
         expect(result).toEqual({ buffering: false });
+        expect(dispatchEvent).toHaveBeenCalledWith("buffering", false);
     });
 
     it("clearReader resets state and terminates worker", () => {
@@ -284,13 +306,15 @@ describe("frame-reader", () => {
 
     it("calls removeFrame callback when cache evicts a frame", () => {
         const removeFrame = vi.fn();
-        const options = createMockOptions({ removeFrame, frameCount: 10000 });
+        const frameCount = MAX_FRAME_STREAM_SIZE + 200;
+        const options = createMockOptions({ removeFrame, frameCount });
         acquireReader(options);
 
-        // Load enough frames to fill the cache and trigger eviction
-        // MAX_FRAME_STREAM_SIZE is 5100, sizeCalculation returns 1 per frame
+        // Load enough frames to fill the cache and trigger eviction.
+        // sizeCalculation returns 1 per frame, so we need > MAX_FRAME_STREAM_SIZE.
         const batchSize = 100;
-        for (let batch = 0; batch < 52; batch++) {
+        const totalBatches = Math.ceil((MAX_FRAME_STREAM_SIZE + 100) / batchSize);
+        for (let batch = 0; batch < totalBatches; batch++) {
             const start = batch * batchSize + 1;
             const end = start + batchSize - 1;
             const frames = Array.from({ length: batchSize }, (_, i) => ({
@@ -299,7 +323,7 @@ describe("frame-reader", () => {
             simulateFrameChunk(frames, [start, end]);
         }
 
-        // After loading 5200 frames with max of 5100, eviction should have occurred
+        // After loading more than MAX_FRAME_STREAM_SIZE frames, eviction should occur
         expect(removeFrame).toHaveBeenCalled();
     });
 });
