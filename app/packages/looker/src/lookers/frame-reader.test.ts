@@ -129,19 +129,25 @@ describe("frame-reader", () => {
         const options = createMockOptions();
         const requestFrames = acquireReader(options);
 
-        // Simulate a chunk response so nextRange is updated (stream is ongoing)
+        // Simulate a chunk response so nextRange is updated (stream is ongoing).
+        // The frameChunk callback also sends requestFrameChunk internally
+        // (because end < frameCount) and sets requestingFrames = true.
         simulateFrameChunk(
             [{ frame_number: 1 }, { frame_number: 2 }],
             [1, 2]
         );
 
+        const worker = vi.mocked(createWorker).mock.results[0].value;
+        const callsBeforeRequest = worker.postMessage.mock.calls.length;
+
         // Request a frame that IS in the cache (frame 1 was loaded above).
-        // Since the stream is active and the frame is cached, there is no
-        // cache miss â the existing stream should continue without restart.
+        // Since requestingFrames is already true from the chunk callback,
+        // no additional postMessage is sent (Path D: no-op).
         requestFrames(1);
 
-        // The requestFrames call should not create a new worker
+        // No new worker created, and no additional postMessage sent
         expect(createWorker).toHaveBeenCalledOnce();
+        expect(worker.postMessage).toHaveBeenCalledTimes(callsBeforeRequest);
     });
 
     it("restarts the stream when requestFrames is called after stream completes", () => {
@@ -155,11 +161,19 @@ describe("frame-reader", () => {
         );
 
         // Stream is now complete (nextRange === null)
-        // Request a frame â should restart the stream
+        // Request a frame â should restart the stream via setStream
         requestFrames(1);
 
         // A new worker should have been created (setStream terminates + recreates)
         expect(createWorker).toHaveBeenCalledTimes(2);
+
+        const secondWorker = vi.mocked(createWorker).mock.results[1].value;
+        expect(secondWorker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: "setStream",
+                frameNumber: 1,
+            })
+        );
     });
 
     it("restarts the stream on cache miss when frame is behind the stream position", () => {
@@ -207,28 +221,40 @@ describe("frame-reader", () => {
         requestFrames(50);
         expect(createWorker).toHaveBeenCalledTimes(2);
 
+        // Capture the second worker's postMessage count after setStream
+        const secondWorker = vi.mocked(createWorker).mock.results[1].value;
+        const callsAfterRestart = secondWorker.postMessage.mock.calls.length;
+
         // Second call before worker responds: should NOT restart again.
         // setStream already reset nextRange to [50, ...], and 50 >= 50
-        // means isBeingFetched is true.
+        // means isBeingFetched is true. requestingFrames is also true,
+        // so no postMessage is sent either (Path D: no-op).
         requestFrames(50);
         expect(createWorker).toHaveBeenCalledTimes(2);
+        expect(secondWorker.postMessage).toHaveBeenCalledTimes(callsAfterRestart);
     });
 
     it("does not restart stream when requesting a frame from a larger cached batch", () => {
         const options = createMockOptions({ frameCount: 200 });
         const requestFrames = acquireReader(options);
 
-        // Simulate loading frames 1-30
+        // Simulate loading frames 1-30. The chunk callback sends
+        // requestFrameChunk internally and sets requestingFrames = true.
         simulateFrameChunk(
             Array.from({ length: 30 }, (_, i) => ({ frame_number: i + 1 })),
             [1, 30]
         );
 
-        // Request a frame that IS in the cache (frame 15 was loaded)
+        const worker = vi.mocked(createWorker).mock.results[0].value;
+        const callsBeforeRequest = worker.postMessage.mock.calls.length;
+
+        // Request a frame that IS in the cache (frame 15 was loaded).
+        // requestingFrames is already true, so no postMessage (Path D: no-op).
         requestFrames(15);
 
-        // Should NOT restart the stream â only one createWorker call total
+        // No new worker, and no additional postMessage sent
         expect(createWorker).toHaveBeenCalledOnce();
+        expect(worker.postMessage).toHaveBeenCalledTimes(callsBeforeRequest);
     });
 
     it("calls addFrame for each frame in a chunk response", () => {
