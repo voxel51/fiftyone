@@ -151,8 +151,8 @@ export type LighterEventGroup = {
   // ============================================================================
   /** Emitted when the canvas or container is resized */
   "lighter:resize": { width: number; height: number };
-  /** Emitted when the canonical media overlay is changed */
-  "lighter:canonical-media-changed": { overlayId: string };
+  /** Emitted when the canonical media's bounds change (resize, initial layout, etc.) */
+  "lighter:canonical-media-bounds-changed": { bounds: Rect };
   /** Emitted when scene options change (activePaths, showOverlays, alpha) */
   "lighter:scene-options-changed": {
     activePaths?: string[];

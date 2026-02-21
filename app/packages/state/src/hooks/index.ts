@@ -1,8 +1,8 @@
 export * from "./hooks-utils";
-export * from "./useActivityToast";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
 export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";
+export * from "./useActivityToast";
 export {
   BeforeScreenshotContext,
   callbacks as screenshotCallbacks,
@@ -21,6 +21,7 @@ export { default as useJSONPanel } from "./useJSONPanel";
 export { default as useKeyDown } from "./useKeyDown";
 export * from "./useLookerStore";
 export { default as useLookerStore } from "./useLookerStore";
+export { default as useMutation } from "./useMutation";
 export { default as useNotification } from "./useNotification";
 export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
@@ -47,6 +48,8 @@ export { default as useTimeout } from "./useTimeout";
 export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
+export type { ComputeCoordinatesReturnType } from "./useTooltip";
+export { computeCoordinates } from "./useTooltip.utils";
 export { default as useToPatches } from "./useToPatches";
 export {
   default as useUnboundState,
@@ -54,7 +57,6 @@ export {
 } from "./useUnboundState";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
-export { default as useMutation } from "./useMutation";
 
 // types
 export * from "./types";
