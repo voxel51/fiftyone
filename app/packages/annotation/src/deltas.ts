@@ -381,29 +381,35 @@ export const buildDetectionMutationDelta = (
   ) ?? { detections: [] };
 
   const newDetection = makeDetectionLabel(label);
+  const existingDetection =
+    existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
 
   if (isGenerated) {
     // Field-level single updates
-    const existingDetection =
-      existingLabel.detections?.find((det) => det._id === label.data._id) ?? {};
+
     return generateJsonPatch(existingDetection, newDetection);
   }
 
   // Merge with existing data so server-enriched properties (tags,
   // attributes, _cls, etc.) are preserved when the overlay only carries
   // a minimal subset of fields.
-  const { detections } = existingLabel;
-  const exists = detections.some((det) => det._id === label.data._id);
-  const newDetections = exists
-    ? detections.map((det) =>
-        det._id === label.data._id ? { ...det, ...newDetection } : det
-      )
-    : [...detections, newDetection];
+  const mergedDetection = existingDetection
+    ? { ...existingDetection, ...newDetection }
+    : newDetection;
 
-  return generateJsonPatch(existingLabel, {
+  const newArray = [...existingLabel.detections];
+  upsertArrayElement(
+    newArray,
+    mergedDetection,
+    (det) => det._id === label.data._id
+  );
+
+  const newLabel = {
     ...existingLabel,
-    detections: newDetections,
-  });
+    detections: newArray,
+  };
+
+  return generateJsonPatch(existingLabel, newLabel);
 };
 
 /**

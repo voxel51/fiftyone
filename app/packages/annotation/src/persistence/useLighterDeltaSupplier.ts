@@ -13,7 +13,7 @@ import { buildAnnotationPath, type LabelProxy } from "../deltas";
 import { hasValidBounds } from "@fiftyone/utilities";
 import { BoundingBox } from "@fiftyone/looker/src/state";
 import { useRecoilValue } from "recoil";
-import { isGeneratedView } from "@fiftyone/state";
+import { isGeneratedView, isPatchesView } from "@fiftyone/state";
 
 /**
  * Build a {@link LabelProxy} instance from a lighter overlay.
@@ -57,7 +57,7 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
 export const useLighterDeltaSupplier = (): DeltaSupplier => {
   const { scene } = useLighter();
   const getLabelDelta = useGetLabelDelta(buildAnnotationLabel);
-  const isGenerated = useRecoilValue(isGeneratedView);
+  const isPatches = useRecoilValue(isPatchesView);
 
   return useCallback(() => {
     const overlays = scene?.getAllOverlays() ?? [];
@@ -74,19 +74,22 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
       }
     }
 
+    // Must include additional metadata for all generated views so the backend can
+    // update the source data as well.
+    // Note: Only supported for patches views currently
     let metadata;
-    if (isGenerated && firstChangedOverlay) {
-      // Must include label metadata for generated views
-      // so that the backend can identify the correct label to update
+    if (isPatches && firstChangedOverlay) {
+      // Patches views by definition are flattened detections fields so updates
+      // will always be single label
       const labelProxy = buildAnnotationLabel(firstChangedOverlay);
       if (labelProxy) {
         metadata = {
           labelId: (labelProxy.data as { _id?: string })._id,
-          labelPath: buildAnnotationPath(labelProxy, isGenerated),
+          labelPath: buildAnnotationPath(labelProxy, isPatches),
         };
       }
     }
 
     return { deltas: allDeltas, metadata };
-  }, [getLabelDelta, isGenerated, scene]);
+  }, [getLabelDelta, isPatches, scene]);
 };

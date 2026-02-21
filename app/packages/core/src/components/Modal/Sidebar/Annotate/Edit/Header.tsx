@@ -27,6 +27,7 @@ import { useCurrent3dAnnotationMode } from "@fiftyone/looker-3d/src/state/access
 import useColor from "./useColor";
 import useExit from "./useExit";
 import { useQuickDraw } from "./useQuickDraw";
+import { useAnnotationController } from "@fiftyone/annotation";
 
 const LabelHamburgerMenu = () => {
   const [open, setOpen] = useState<boolean>(false);
@@ -93,6 +94,7 @@ const Header = () => {
   const Icon = ICONS[type?.toLowerCase() ?? ""];
   const color = useColor(useAtomValue(currentOverlay) ?? undefined);
 
+  const { exitAnnotationMode } = useAnnotationController();
   const onExit = useExit();
   const { scene } = useLighter();
   const { disableQuickDraw } = useQuickDraw();
@@ -111,12 +113,18 @@ const Header = () => {
 
   const handleExit = useCallback(() => {
     if (shouldExitToExplore) {
-      void setModalMode(fos.ModalMode.EXPLORE);
+      exitAnnotationMode();
     }
     disableQuickDraw();
     scene?.exitInteractiveMode();
     onExit();
-  }, [shouldExitToExplore, setModalMode, onExit, disableQuickDraw, scene]);
+  }, [
+    shouldExitToExplore,
+    exitAnnotationMode,
+    onExit,
+    disableQuickDraw,
+    scene,
+  ]);
 
   return (
     <Row>

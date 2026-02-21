@@ -165,7 +165,7 @@ export const patchSample = async (
       !request.generatedSampleId ||
       request.generatedSampleId === request.sampleId
     ) {
-      throw new MalformedRequestError(
+      throw new Error(
         "generatedSampleId is required and must be different from sampleId when generatedDatasetName is provided"
       );
     }

@@ -82,8 +82,8 @@ export const doPatchSample = async ({
           deltas: sampleDeltas,
           versionToken,
           // Pass generated view parameters for field-level updates
-          labelId: isGenerated ? labelId : undefined,
-          path: isGenerated ? labelPath : undefined,
+          labelId: labelId,
+          path: labelPath,
           generatedDatasetName,
           generatedSampleId: isGenerated ? sample._id : undefined,
         });
