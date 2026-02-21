@@ -2,7 +2,7 @@ import { DETECTION } from "@fiftyone/utilities";
 import { atom, useAtom, useAtomValue } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
@@ -61,6 +61,12 @@ export const useQuickDraw = () => {
   const useEventHandler = useLighterEventHandler(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
+
+  // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
+  const sceneRef = useRef(scene);
+  sceneRef.current = scene;
+  const selectedLabelRef = useRef(selectedLabel);
+  selectedLabelRef.current = selectedLabel;
 
   /**
    * Getter which wraps {@link fieldType} atom family.
@@ -295,19 +301,28 @@ export const useQuickDraw = () => {
      * the `lighter:overlay-create` event will invoke it on the next pointer-down.
      */
     () => {
-      if (selectedLabel && quickDrawActive) {
+      const currentScene = sceneRef.current;
+      const currentLabel = selectedLabelRef.current;
+
+      if (currentLabel && quickDrawActive) {
         // Always exit interactive mode after save
         // This ensures clean state transition
-        if (scene && !scene.isDestroyed && scene.renderLoopActive) {
-          scene.exitInteractiveMode();
-          addOverlay(selectedLabel.overlay as BaseOverlay);
+        if (
+          currentScene &&
+          !currentScene.isDestroyed &&
+          currentScene.renderLoopActive
+        ) {
+          currentScene.exitInteractiveMode();
+          if (currentLabel.overlay) {
+            addOverlay(currentLabel.overlay as BaseOverlay);
+          }
         }
 
         // Track last-used detection field and label for auto-assignment
-        trackLastUsedDetection(selectedLabel.path, selectedLabel.data.label);
+        trackLastUsedDetection(currentLabel.path, currentLabel.data.label);
       }
     },
-    [addOverlay, quickDrawActive, scene, selectedLabel, trackLastUsedDetection]
+    [addOverlay, quickDrawActive, trackLastUsedDetection]
   );
 
   const claimCreateEvent = useAtomCallback(
@@ -316,7 +331,9 @@ export const useQuickDraw = () => {
         if (get(lastProcessedCreateIdAtom) === eventId) {
           return false;
         }
+
         set(lastProcessedCreateIdAtom, eventId);
+
         return true;
       },
       []
