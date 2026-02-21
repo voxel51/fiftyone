@@ -343,7 +343,12 @@ const Schema = () => {
   const showModal = useShowModal();
 
   return (
-    <Button variant={Variant.Borderless} size={Size.Sm} onClick={showModal}>
+    <Button
+      variant={Variant.Borderless}
+      size={Size.Sm}
+      onClick={showModal}
+      data-cy="open-schema-manager"
+    >
       Schema
     </Button>
   );

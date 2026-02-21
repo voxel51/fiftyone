@@ -188,6 +188,7 @@ const AttributesSection = ({
       <EditSectionHeader>
         <Text variant={TextVariant.Lg}>Attributes</Text>
         <Button
+          data-cy="add-attribute-button"
           size={Size.Md}
           variant={Variant.Secondary}
           onClick={() => setIsAdding(true)}

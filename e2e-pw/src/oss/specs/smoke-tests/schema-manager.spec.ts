@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
@@ -15,6 +15,24 @@ const groupVideoDatasetName = getUniqueDatasetNameWithPrefix(
 const id = "000000000000000000000000";
 const videoId = "000000000000000000000001";
 const groupVideoId = "000000000000000000000003";
+
+const classificationFieldName = "animal_type_field";
+const classificationClasses = ["dog", "cat"];
+const primitiveFieldName = "test_float_field";
+const sliderRange = { min: "0", max: "100" };
+const detectionFieldName = "test_detection_field";
+const detectionAttribute = {
+  name: "sensor",
+  values: ["nikon", "sony", "zeiss"],
+};
+const intRadioFieldName = "test_int_radio_field";
+const intRadioValues = ["0", "1", "2"];
+const dateFieldName = "test_date_field";
+const boolFieldName = "test_bool_field";
+const dictFieldName = "test_dict_field";
+const stringListFieldName = "test_string_list_field";
+const stringListValues = ["a", "b", "c", "d", "e", "f"];
+const stringListSelections = ["a", "c", "e"];
 
 const test = base.extend<{
   grid: GridPom;
@@ -291,5 +309,338 @@ test.describe.serial("schema manager", () => {
       "has no slices that support annotation"
     );
     await schemaManager.assert.isDisabled();
+  });
+
+  test("add new classification field", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create a new classification field with classes
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(classificationFieldName);
+    await schemaManager.selectType("Classification");
+    for (const cls of classificationClasses) {
+      await schemaManager.addClass(cls);
+    }
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: classificationFieldName, type: "Classification" },
+    ]);
+
+    // Close schema manager and return to annotation sidebar
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Create a new classification annotation, select field, and verify classes
+    await modal.sidebar.clickCreateClassification();
+    await modal.sidebar.assert.hasFieldOption(classificationFieldName);
+    await modal.sidebar.selectField(classificationFieldName);
+    await modal.sidebar.assert.hasRadioOptions(classificationClasses);
+  });
+
+  test("add new primitive slider field", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create a new primitive slider field
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(primitiveFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Float");
+    await schemaManager.selectComponentType("slider");
+    await schemaManager.fillRange(sliderRange.min, sliderRange.max);
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: primitiveFieldName, type: "Float" },
+    ]);
+
+    // Open the field's edit view to verify slider configuration
+    const row = schemaManager.getFieldRow(primitiveFieldName);
+    await row.assert.hasRangeConfig(sliderRange.min, sliderRange.max);
+
+    // Close schema manager
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+  });
+
+  test("add new detection field with attribute", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create a new detection field with an attribute
+    // Default label type is already "Detections", no need to select it
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(detectionFieldName);
+
+    // Add "sensor" attribute: String type, Radio component, with values
+    await schemaManager.clickAddAttribute();
+    await schemaManager.fillAttributeName(detectionAttribute.name);
+    await schemaManager.selectComponentType("radio");
+    for (const value of detectionAttribute.values) {
+      await schemaManager.addAttributeValue(value);
+    }
+    await schemaManager.saveAttribute();
+    await schemaManager.create();
+
+    // Verify field auto-activated in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: detectionFieldName, type: "Detections" },
+    ]);
+
+    // Close schema manager and return to annotation sidebar
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Create a new detection annotation, select field, and verify attribute radio options
+    await modal.sidebar.clickCreateDetection();
+    await modal.sidebar.assert.hasFieldOption(detectionFieldName);
+    await modal.sidebar.selectField(detectionFieldName);
+    await modal.sidebar.assert.hasRadioOptions(detectionAttribute.values);
+  });
+
+  test("add new integer field with radio values", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create integer field with radio component and values
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(intRadioFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Integer");
+    await schemaManager.selectComponentType("radio");
+    for (const value of intRadioValues) {
+      await schemaManager.addAttributeValue(value);
+    }
+    await schemaManager.create();
+
+    // Verify field in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: intRadioFieldName, type: "Int" },
+    ]);
+
+    // Verify radio component type is preserved in edit view
+    const intRow = schemaManager.getFieldRow(intRadioFieldName);
+    await intRow.assert.hasComponentType("radio");
+
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+  });
+
+  test("add new date field with datepicker", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create date field (datepicker is default and only component)
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(dateFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Date");
+    await schemaManager.create();
+
+    // Verify field in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: dateFieldName, type: "Date" },
+    ]);
+
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Close and reopen modal to refresh sample data with the new field
+    await modal.close();
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Verify date picker renders in annotation sidebar
+    await modal.sidebar.clickPrimitiveEntry(dateFieldName);
+    await modal.sidebar.assert.hasDatePicker();
+  });
+
+  test("add new boolean field with toggle", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create boolean field (toggle is default component)
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(boolFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Boolean");
+    await schemaManager.create();
+
+    // Verify field in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: boolFieldName, type: "Bool" },
+    ]);
+
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Close and reopen modal to refresh sample data with the new field
+    await modal.close();
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Verify toggle renders in annotation sidebar
+    await modal.sidebar.clickPrimitiveEntry(boolFieldName);
+    await modal.sidebar.assert.hasBooleanToggle();
+  });
+
+  test("add new dictionary field with json editor", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create dictionary field (json is default and only component)
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(dictFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("Dictionary");
+    await schemaManager.create();
+
+    // Verify field in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: dictFieldName, type: "Dict" },
+    ]);
+
+    // Verify json component type in edit view
+    const dictRow = schemaManager.getFieldRow(dictFieldName);
+    await dictRow.assert.hasComponentType("json");
+
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+  });
+
+  test("add new string list field with checkboxes and select values", async ({
+    fiftyoneLoader,
+    page,
+    modal,
+    schemaManager,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+
+    // Create string list field with checkboxes component and values
+    await schemaManager.clickNewField();
+    await schemaManager.fillFieldName(stringListFieldName);
+    await schemaManager.selectPrimitiveCategory();
+    await schemaManager.selectType("String list");
+    for (const value of stringListValues) {
+      await schemaManager.addAttributeValue(value);
+    }
+    await schemaManager.create();
+
+    // Verify field in active fields
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: stringListFieldName, type: "List<str>" },
+    ]);
+
+    await schemaManager.close();
+    await schemaManager.assert.isClosed();
+
+    // Close and reopen modal to refresh sample data with the new field
+    await modal.close();
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      searchParams: new URLSearchParams({ id }),
+    });
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+
+    // Verify in annotation sidebar — renders as autocomplete with configured choices
+    await modal.sidebar.clickPrimitiveEntry(stringListFieldName);
+    for (const value of stringListSelections) {
+      await modal.sidebar.openAutocomplete();
+      await modal.sidebar.selectAutocompleteOption(value);
+    }
+    await modal.sidebar.assert.hasSelectedTags(stringListSelections);
   });
 });

@@ -154,4 +154,20 @@ class FieldRowAsserter {
     const text = await this.fieldRowPom.getType();
     expect(text).toBe(type);
   }
+
+  /**
+   * Open the field's edit view and verify the range inputs match
+   */
+  async hasRangeConfig(min: string, max: string) {
+    await this.fieldRowPom.edit();
+    await this.fieldRowPom.schemaManager.assert.hasRangeValues(min, max);
+  }
+
+  /**
+   * Open the field's edit view and verify the selected component type
+   */
+  async hasComponentType(id: string) {
+    await this.fieldRowPom.edit();
+    await this.fieldRowPom.schemaManager.assert.hasSelectedComponentType(id);
+  }
 }

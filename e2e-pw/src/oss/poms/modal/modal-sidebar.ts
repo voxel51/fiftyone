@@ -82,6 +82,81 @@ export class ModalSidebarPom {
   async toggleSidebarGroup(name: string) {
     await this.locator.getByTestId(`sidebar-group-entry-${name}`).click();
   }
+
+  // =========================================================================
+  // Annotation sidebar actions
+  // =========================================================================
+
+  /**
+   * The modal locator (parent of sidebar)
+   */
+  get modal() {
+    return this.page.getByTestId("modal");
+  }
+
+  /**
+   * Click the "Schema" button in the annotation sidebar actions area
+   */
+  async clickSchemaButton() {
+    await this.modal.getByRole("button", { name: "Schema" }).click();
+  }
+
+  /**
+   * Click the Classification create button (SVG with title "Classification")
+   */
+  async clickCreateClassification() {
+    await this.modal.locator('svg:has-text("Classification")').click();
+  }
+
+  /**
+   * Click the Detection create button (SVG with title "Detection")
+   */
+  async clickCreateDetection() {
+    await this.modal.locator('svg:has-text("Detection")').click();
+  }
+
+  /**
+   * Click a primitive entry by its field path name
+   */
+  async clickPrimitiveEntry(path: string) {
+    await this.modal.getByText(path, { exact: true }).click();
+  }
+
+  /**
+   * Open the MUI Autocomplete dropdown in the modal by clicking its input
+   */
+  async openAutocomplete() {
+    await this.modal.getByRole("combobox").click();
+  }
+
+  /**
+   * Select an option from an MUI Autocomplete dropdown in the modal
+   */
+  async selectAutocompleteOption(label: string) {
+    await this.page.getByRole("option", { name: label }).click();
+  }
+
+  /**
+   * The field dropdown (MUI Select) in the annotation editing view
+   */
+  get fieldDropdown() {
+    return this.modal.locator('.MuiSelect-select[role="combobox"]');
+  }
+
+  /**
+   * Get a portalled field dropdown option by name
+   */
+  getFieldOption(name: string) {
+    return this.page.getByRole("option", { name });
+  }
+
+  /**
+   * Select a field from the annotation editing field dropdown
+   */
+  async selectField(name: string) {
+    await this.fieldDropdown.click();
+    await this.getFieldOption(name).click();
+  }
 }
 
 class SidebarAsserter {
@@ -177,5 +252,83 @@ class SidebarAsserter {
     await expect(
       this.modalSidebarPom.locator.getByText(messageSubstring)
     ).toBeVisible();
+  }
+
+  // =========================================================================
+  // Annotation editing assertions
+  // =========================================================================
+
+  /**
+   * Assert the field dropdown is visible and contains a specific field
+   */
+  async hasFieldOption(name: string) {
+    await expect(this.modalSidebarPom.fieldDropdown).toBeVisible();
+    await this.modalSidebarPom.fieldDropdown.click();
+    await expect(this.modalSidebarPom.getFieldOption(name)).toBeVisible();
+    // close the dropdown by pressing Escape
+    await this.modalSidebarPom.page.keyboard.press("Escape");
+  }
+
+  /**
+   * Assert that a radio option with the given label is visible
+   */
+  async hasRadioOption(label: string) {
+    await expect(
+      this.modalSidebarPom.modal.getByRole("radio", { name: label })
+    ).toBeVisible();
+  }
+
+  /**
+   * Assert that all provided radio options are visible
+   */
+  async hasRadioOptions(labels: string[]) {
+    for (const label of labels) {
+      await this.hasRadioOption(label);
+    }
+  }
+
+  /**
+   * Assert that a slider is visible with the given min and max values
+   */
+  async hasSliderWithRange(min: string, max: string) {
+    const slider = this.modalSidebarPom.modal.locator('[role="slider"]');
+    await expect(slider).toBeVisible();
+    await expect(slider).toHaveAttribute("aria-valuemin", min);
+    await expect(slider).toHaveAttribute("aria-valuemax", max);
+  }
+
+  /**
+   * Assert that a date picker is visible in the modal
+   */
+  async hasDatePicker() {
+    await expect(
+      this.modalSidebarPom.modal.locator(".react-datepicker-wrapper")
+    ).toBeVisible();
+  }
+
+  /**
+   * Assert that a toggle switch is visible in the modal
+   */
+  async hasBooleanToggle() {
+    // voodo ToggleSwitch renders Headless UI tabs
+    await expect(
+      this.modalSidebarPom.modal.getByRole("tab", { name: "False" })
+    ).toBeVisible();
+    await expect(
+      this.modalSidebarPom.modal.getByRole("tab", { name: "True" })
+    ).toBeVisible();
+  }
+
+  /**
+   * Assert that MUI Autocomplete chips/tags with the given labels are visible
+   */
+  async hasSelectedTags(labels: string[]) {
+    for (const label of labels) {
+      await expect(
+        this.modalSidebarPom.modal
+          .locator('[data-cy="selected-tag"]')
+          .filter({ hasText: label })
+      ).toBeVisible();
+    }
   }
 }
