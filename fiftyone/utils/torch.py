@@ -13,8 +13,6 @@ import multiprocessing
 import os
 import pickle
 import sys
-from typing import Any, Optional, List
-import warnings
 
 import cv2
 import numpy as np
@@ -27,11 +25,8 @@ import eta.core.utils as etau
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
-import fiftyone.core.media as fomd
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-import fiftyone.utils.image as foui
-import fiftyone.core.collections as focol
 import fiftyone.core.view as fov
 
 fou.ensure_torch()
@@ -2379,6 +2374,11 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
         num_workers (0): the number of DataLoader workers. When > 0 and using
             ``samples``/``patches_field``, the dataset is partitioned across
             workers via ``$bucketAuto``
+        read_fn (None): an optional callable that takes a file path and returns
+            bytes. Used for concurrent I/O prefetching. By default uses
+            :func:`fiftyone.core.storage.read_file`
+        prefetch_workers (8): the number of threads to use for concurrent
+            image I/O prefetching. Set to 0 to disable prefetching
     """
 
     def __init__(
@@ -2398,7 +2398,8 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
         alpha=None,
         skip_failures=False,
         num_workers=0,
-        _prefetch_fn=None,
+        read_fn=None,
+        prefetch_workers=8,
     ):
         self.handle_missing = handle_missing
         self.transform = transform
@@ -2408,11 +2409,10 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
         self.skip_failures = skip_failures
         self.force_rgb = force_rgb
         self.use_numpy = use_numpy
-        self._prefetch_fn = _prefetch_fn or _read_images
+        self._read_fn = read_fn
+        self._prefetch_workers = prefetch_workers
 
         if samples is not None and patches_field is not None:
-            # Pre-compute all pickle-safe DB iteration state so that
-            # DataLoader workers can serialize this dataset
             self._db_config = _prepare_db_detection_config(
                 samples,
                 patches_field,
@@ -2437,12 +2437,14 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
         extract_patches = self._extract_patches
 
         if self._db_config is not None:
-            detections = _iter_db_detections(**self._db_config)
-            detections = self._prefetch_fn(detections)
+            records = _iter_db_detections(**self._db_config)
         else:
-            detections = _iter_list_detections(**self._list_config)
+            records = _iter_list_detections(**self._list_config)
 
-        for image_or_path, bboxes, sample_id, label_ids in detections:
+        if self._prefetch_workers > 0:
+            records = self._prefetch(records)
+
+        for image_or_path, bboxes, sample_id, label_ids in records:
             try:
                 if not bboxes:
                     if handle_missing == "skip":
@@ -2503,6 +2505,24 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
 
         return torch.stack(img_patches, dim=0)
 
+    def _prefetch(self, records):
+        from concurrent.futures import ThreadPoolExecutor
+
+        read_fn = self._read_fn
+        if read_fn is None:
+            import fiftyone.core.storage as fos
+
+            read_fn = functools.partial(fos.read_file, binary=True)
+
+        def _resolve(record):
+            path, *rest = record
+            if path is not None:
+                return (read_fn(path), *rest)
+            return record
+
+        with ThreadPoolExecutor(max_workers=self._prefetch_workers) as pool:
+            yield from pool.map(_resolve, records)
+
     @staticmethod
     def worker_init_fn(worker_id):
         """Disconnects pymongo so each worker creates its own connections."""
@@ -2511,36 +2531,7 @@ class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
         food._disconnect()
 
 
-def _read_images(records, num_workers=8):
-    """Reads images into memory via a thread pool.
-
-    Replaces file paths with in-memory bytes using
-    :func:`fiftyone.core.storage.read_bytes`.  The thread pool keeps
-    ``num_workers`` reads in flight so the main thread is never blocked
-    waiting on I/O.
-
-    Yields ``(image_bytes, bboxes, sample_id, label_ids)`` tuples.
-    """
-    import fiftyone.core.storage as fos
-    from concurrent.futures import ThreadPoolExecutor
-
-    def _read_one(record):
-        path, bboxes, sample_id, label_ids = record
-        if path is not None:
-            return (
-                fos.read_file(path, binary=True),
-                bboxes,
-                sample_id,
-                label_ids,
-            )
-        return record
-
-    with ThreadPoolExecutor(max_workers=num_workers) as pool:
-        yield from pool.map(_read_one, records)
-
-
 def _decode_image(image_bytes, force_rgb):
-    """Decodes an in-memory image (bytes) to a numpy array."""
     arr = np.frombuffer(image_bytes, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:
@@ -2551,12 +2542,7 @@ def _decode_image(image_bytes, force_rgb):
 
 
 def _prepare_db_detection_config(samples, patches_field, num_workers):
-    """Extracts pickle-safe configuration from a
-    :class:`fiftyone.core.collections.SampleCollection` for streaming
-    detection data from MongoDB.
-
-    Returns a dict of keyword arguments for :func:`_iter_db_detections`.
-    """
+    # Serialize the view so we can apply it in the worker processes
     label_type = samples._get_label_field_type(patches_field)
     is_list_field = issubclass(label_type, fol._HasLabelList)
     is_polyline = issubclass(label_type, (fol.Polyline, fol.Polylines))
@@ -2574,8 +2560,31 @@ def _prepare_db_detection_config(samples, patches_field, num_workers):
         array_path=array_path,
         bbox_attr=bbox_attr,
         is_polyline=is_polyline,
-        partitions=focol._compute_id_partitions(samples, num_workers),
+        partitions=_compute_id_partitions(samples, num_workers),
     )
+
+
+def _compute_id_partitions(samples, num_buckets):
+    if num_buckets <= 0:
+        return None
+
+    pipeline = samples._pipeline(
+        pipeline=[{"$bucketAuto": {"groupBy": "$_id", "buckets": num_buckets}}]
+    )
+    coll = samples._dataset._sample_collection
+    return [
+        (r["_id"]["min"], r["_id"]["max"])
+        for r in coll.aggregate(pipeline, hint={"_id": 1})
+    ]
+
+
+def _id_partition_match(partitions, worker_id):
+    if worker_id >= len(partitions):
+        return None
+
+    min_id, max_id = partitions[worker_id]
+    op = "$lte" if worker_id == len(partitions) - 1 else "$lt"
+    return {"$match": {"_id": {"$gte": min_id, op: max_id}}}
 
 
 def _iter_db_detections(
@@ -2587,20 +2596,11 @@ def _iter_db_detections(
     is_polyline,
     partitions,
 ):
-    """Yields ``(raw_path, bboxes, sample_id, label_ids)`` tuples by
-    streaming detection data from MongoDB.
-
-    Yields raw media paths as stored in the database.  The caller is
-    responsible for resolving cloud paths via the media cache before
-    reading the image.
-    """
-    import fiftyone.core.odm.database as food
-
     pipeline = list(view_pipeline)
 
     worker_info = torch.utils.data.get_worker_info()
     if worker_info is not None and partitions:
-        match = focol._id_partition_match(partitions, worker_info.id)
+        match = _id_partition_match(partitions, worker_info.id)
         if match is None:
             return
         pipeline.append(match)
@@ -2619,7 +2619,7 @@ def _iter_db_detections(
         }
     )
 
-    coll = food.get_db_conn()[collection_name]
+    coll = foo.get_db_conn()[collection_name]
     for doc in coll.aggregate(pipeline, hint={"_id": 1}, allowDiskUse=True):
         sample_id = str(doc["_id"])
 
@@ -2644,11 +2644,6 @@ def _iter_db_detections(
 
 
 def _prepare_list_detection_config(image_paths, patches, sample_ids):
-    """Builds a pickle-safe configuration dict for streaming detection data
-    from in-memory image paths and label lists.
-
-    Returns a dict of keyword arguments for :func:`_iter_list_detections`.
-    """
     return dict(
         image_paths=image_paths,
         patches=patches,
@@ -2657,9 +2652,6 @@ def _prepare_list_detection_config(image_paths, patches, sample_ids):
 
 
 def _iter_list_detections(image_paths, patches, sample_ids):
-    """Yields ``(image_path, bboxes, sample_id, label_ids)`` tuples from
-    in-memory image paths and label lists.
-    """
     worker_info = torch.utils.data.get_worker_info()
     if worker_info is not None:
         wid = worker_info.id
@@ -2681,18 +2673,6 @@ def _iter_list_detections(image_paths, patches, sample_ids):
 
 
 def _labels_to_bboxes(label):
-    """Converts a label object to a list of ``[tlx, tly, w, h]`` bounding
-    boxes.
-
-    Args:
-        label: a :class:`fiftyone.core.labels.Detection`,
-            :class:`fiftyone.core.labels.Detections`,
-            :class:`fiftyone.core.labels.Polyline`,
-            :class:`fiftyone.core.labels.Polylines`, or ``None``
-
-    Returns:
-        a list of ``[tlx, tly, w, h]`` lists, or ``None``
-    """
     if label is None:
         return None
 
