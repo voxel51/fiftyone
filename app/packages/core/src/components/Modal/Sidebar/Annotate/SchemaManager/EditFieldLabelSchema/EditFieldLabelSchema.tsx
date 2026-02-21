@@ -1,4 +1,3 @@
-import { scrollable } from "@fiftyone/components";
 import {
   Anchor,
   Button,
@@ -20,7 +19,7 @@ import { useCallback, useState } from "react";
 import { TAB_GUI, TAB_IDS, TAB_JSON, TabId } from "../constants";
 import Footer from "../Footer";
 import { useIsLargeDataset, useToggleFieldVisibility } from "../hooks";
-import { EditContainer, SchemaSection } from "../styled";
+import { ListContainer, SchemaSection } from "../styled";
 import Errors from "./Errors";
 import GUIContent from "./GUIContent";
 import Header from "./Header";
@@ -44,7 +43,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
   );
 
   return (
-    <EditContainer className={scrollable}>
+    <ListContainer>
       <Header field={field} />
 
       <div style={{ marginTop: "1rem", marginBottom: "1rem" }}>
@@ -184,7 +183,7 @@ const EditFieldLabelSchema = ({ field }: { field: string }) => {
           text: labelSchema.isSaving ? "Saving..." : "Save",
         }}
       />
-    </EditContainer>
+    </ListContainer>
   );
 };
 

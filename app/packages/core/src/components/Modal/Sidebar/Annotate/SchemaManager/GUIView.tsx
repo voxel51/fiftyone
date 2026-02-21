@@ -8,7 +8,7 @@ import { Code, scrollable } from "@fiftyone/components";
 import { Size, Text, TextColor, ToggleSwitch } from "@voxel51/voodo";
 import { useCallback } from "react";
 import ActiveFieldsSection from "./ActiveFieldsSection";
-import { Container, Item } from "./Components";
+import { Item } from "./Components";
 import { TAB_GUI, TAB_IDS, TAB_JSON } from "./constants";
 import HiddenFieldsSection from "./HiddenFieldsSection";
 import {
@@ -17,7 +17,7 @@ import {
   useSchemaEditorGUIJSONToggle,
   useSelectionCleanup,
 } from "./hooks";
-import { ContentArea } from "./styled";
+import { ContentArea, ListContainer } from "./styled";
 
 // =============================================================================
 // Re-exports for backwards compatibility
@@ -105,7 +105,7 @@ const GUIView = () => {
   );
 
   return (
-    <Container className={scrollable} style={{ marginTop: "1.5rem" }}>
+    <ListContainer style={{ marginTop: "1.5rem" }}>
       <ToggleSwitch
         size={Size.Md}
         defaultIndex={defaultIndex}
@@ -127,7 +127,7 @@ const GUIView = () => {
           },
         ]}
       />
-    </Container>
+    </ListContainer>
   );
 };
 
