@@ -103,7 +103,72 @@ class _DummyExecutor:
         return _DummyFuture(value=fn(*args, **kwargs))
 
 
-class SaveContext(object):
+class _AsyncBatchWriter(object):
+    """Base class that manages a ThreadPoolExecutor and a list of futures for
+    asynchronous batch writing.
+
+    Subclasses must override :meth:`_do_save_batch` to perform the actual
+    write operation.
+
+    Args:
+        max_workers (1): the number of worker threads
+        async_writes (True): whether to use a real executor or the synchronous
+            ``_DummyExecutor``
+    """
+
+    def __init__(self, max_workers=1, async_writes=True):
+        self.executor = (
+            ThreadPoolExecutor(max_workers=max_workers)
+            if async_writes
+            else _DummyExecutor()
+        )
+        self.futures = []
+
+    def __enter__(self):
+        self.executor.__enter__()
+        return self
+
+    def __exit__(self, *args):
+        self._submit_batch()
+
+        error = None
+        try:
+            while self.futures:
+                futures = self.futures
+                self.futures = []
+                for future in futures:
+                    try:
+                        future.result()
+                    except Exception as e:
+                        if error is None:
+                            error = e
+            self.futures.clear()
+        finally:
+            self.executor.__exit__(*args)
+
+        if error and (not args or args[0] is None):
+            raise error
+
+    def _submit_batch(self):
+        pending = []
+        for future in self.futures:
+            if not future.done():
+                pending.append(future)
+            else:
+                try:
+                    future.result()
+                except Exception:
+                    pending.append(future)  # re-raise in __exit__
+        self.futures = pending
+
+        future = self.executor.submit(self._do_save_batch)
+        self.futures.append(future)
+
+    def _do_save_batch(self):
+        raise NotImplementedError("subclasses must implement _do_save_batch()")
+
+
+class SaveContext(_AsyncBatchWriter):
     """Context that saves samples from a collection according to a configurable
     batching strategy.
 
@@ -136,6 +201,10 @@ class SaveContext(object):
         batching_strategy=None,
         async_writes=False,
     ):
+        # Using more than one worker may introduce race conditions in the
+        # state preserved between DB writes
+        super().__init__(max_workers=1, async_writes=async_writes)
+
         batch_size, batching_strategy = fou.parse_batching_strategy(
             batch_size=batch_size, batching_strategy=batching_strategy
         )
@@ -164,14 +233,6 @@ class SaveContext(object):
         self.batch_ids_lock = threading.Lock()
         self.reloading_lock = threading.Lock()
 
-        self.executor = (
-            # Using more than one worker will introduce race conditions in the state preserved between DB writes
-            ThreadPoolExecutor(max_workers=1)
-            if async_writes
-            else _DummyExecutor()
-        )
-        self.futures = []
-
     def __enter__(self):
         if self._batching_strategy == "static":
             self._curr_batch_size = 0
@@ -180,31 +241,7 @@ class SaveContext(object):
         elif self._batching_strategy == "latency":
             self._last_time = timeit.default_timer()
 
-        self.executor.__enter__()
-        return self
-
-    def __exit__(self, *args):
-        self._save_batch()
-
-        error = None
-        try:
-            # Loop-drain self.futures so any submissions triggered by
-            # self._save_batch() are awaited.
-            while self.futures:
-                futures = self.futures
-                self.futures = []
-                for future in futures:
-                    try:
-                        future.result()
-                    except Exception as e:
-                        if error is None:
-                            error = e
-            self.futures.clear()
-        finally:
-            self.executor.__exit__(*args)
-
-        if error and (not args or args[0] is None):
-            raise error
+        return super().__enter__()
 
     def save(self, sample):
         """Registers the sample for saving in the next batch.
@@ -241,7 +278,7 @@ class SaveContext(object):
         if self._batching_strategy == "static":
             self._curr_batch_size += 1
             if self._curr_batch_size >= self.batch_size:
-                self._save_batch()
+                self._submit_batch()
                 self._curr_batch_size = 0
         elif self._batching_strategy == "size":
             if sample_ops:
@@ -258,11 +295,11 @@ class SaveContext(object):
                 self._curr_batch_size_bytes
                 >= self.batch_size * self._encoding_ratio
             ):
-                self._save_batch()
+                self._submit_batch()
                 self._curr_batch_size_bytes = 0
         elif self._batching_strategy == "latency":
             if timeit.default_timer() - self._last_time >= self.batch_size:
-                self._save_batch()
+                self._submit_batch()
                 self._last_time = timeit.default_timer()
 
     def _do_save_batch(self):
@@ -310,20 +347,71 @@ class SaveContext(object):
             for sample in reload_parents:
                 sample._reload_parents()
 
-    def _save_batch(self):
-        pending = []
-        for future in self.futures:
-            if not future.done():
-                pending.append(future)
-            else:
-                try:
-                    future.result()
-                except Exception:
-                    pending.append(future)  # re-raise in __exit__
-        self.futures = pending
 
-        future = self.executor.submit(self._do_save_batch)
-        self.futures.append(future)
+class BulkWriteContext(_AsyncBatchWriter):
+    """Context manager that batches MongoDB write operations and executes them
+    asynchronously via :meth:`pymongo.collection.Collection.bulk_write`.
+
+    Errors are logged rather than raised (fire-and-forget semantics).
+
+    Args:
+        coll: a ``pymongo.collection.Collection``
+        batch_size (100): the number of operations to accumulate before
+            flushing a batch
+        max_workers (4): the number of worker threads
+    """
+
+    def __init__(self, coll, batch_size=100, max_workers=4):
+        super().__init__(max_workers=max_workers, async_writes=True)
+        self._coll = coll
+        self._batch_size = batch_size
+        self._ops = []
+        self._ops_lock = threading.Lock()
+
+    def __exit__(self, *args):
+        self._submit_batch()
+
+        try:
+            while self.futures:
+                futures = self.futures
+                self.futures = []
+                for future in futures:
+                    try:
+                        future.result()
+                    except Exception:
+                        logger.exception("bulk_write failed")
+            self.futures.clear()
+        finally:
+            self.executor.__exit__(*args)
+
+    def add(self, op):
+        """Adds a write operation to the current batch.
+
+        When the batch reaches :attr:`batch_size`, it is automatically
+        submitted for asynchronous execution.
+
+        Args:
+            op: a :class:`pymongo.operations.UpdateOne` or similar
+        """
+        with self._ops_lock:
+            self._ops.append(op)
+            count = len(self._ops)
+
+        if count >= self._batch_size:
+            self._submit_batch()
+
+    def _do_save_batch(self):
+        with self._ops_lock:
+            ops = self._ops.copy()
+            self._ops.clear()
+
+        if not ops:
+            return
+
+        try:
+            self._coll.bulk_write(ops, ordered=False)
+        except Exception:
+            logger.exception("bulk_write failed for %d ops", len(ops))
 
 
 class SampleCollection(object):
