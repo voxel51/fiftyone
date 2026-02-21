@@ -30,6 +30,7 @@ import { useAnnotationTracking } from "./Sidebar/Annotate/useAnnotationTracking"
 import { TooltipInfo } from "./TooltipInfo";
 import { useLookerHelpers, useTooltipEventHandler } from "./hooks";
 import { modalContext } from "./modal-context";
+import { useMediaFieldNavigation } from "./useMediaFieldNavigation";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -106,88 +107,78 @@ const Modal = () => {
   const { jsonPanel, helpPanel } = useLookerHelpers();
 
   const modalCloseHandler = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const isTooltipCurrentlyLocked = await snapshot.getPromise(
-          fos.isTooltipLocked
-        );
-        if (isTooltipCurrentlyLocked) {
-          set(fos.isTooltipLocked, false);
-          return;
-        }
+    ({ snapshot, set }) => async () => {
+      const isTooltipCurrentlyLocked = await snapshot.getPromise(
+        fos.isTooltipLocked
+      );
+      if (isTooltipCurrentlyLocked) {
+        set(fos.isTooltipLocked, false);
+        return;
+      }
 
-        jsonPanel.close();
-        helpPanel.close();
+      jsonPanel.close();
+      helpPanel.close();
 
-        const isFullScreen = await snapshot.getPromise(fos.fullscreen);
+      const isFullScreen = await snapshot.getPromise(fos.fullscreen);
 
-        if (isFullScreen) {
-          set(fos.fullscreen, false);
-          return;
-        }
+      if (isFullScreen) {
+        set(fos.fullscreen, false);
+        return;
+      }
 
-        clearModal();
-        activeLookerRef.current?.removeEventListener(
-          "close",
-          modalCloseHandler
-        );
+      clearModal();
+      activeLookerRef.current?.removeEventListener("close", modalCloseHandler);
 
-        selectiveRenderingEventBus.removeAllListeners();
+      selectiveRenderingEventBus.removeAllListeners();
 
-        jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
-      },
+      jotaiStore.set(currentModalUniqueIdJotaiAtom, "");
+    },
     [clearModal, jsonPanel, helpPanel]
   );
 
   const selectCallback = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const current = await snapshot.getPromise(fos.modalSelector);
-        set(fos.selectedSamples, (selected) => {
-          const newSelected = new Set([...Array.from(selected)]);
-          if (current?.id) {
-            if (newSelected.has(current.id)) {
-              newSelected.delete(current.id);
-            } else {
-              newSelected.add(current.id);
-            }
+    ({ snapshot, set }) => async () => {
+      const current = await snapshot.getPromise(fos.modalSelector);
+      set(fos.selectedSamples, (selected) => {
+        const newSelected = new Set([...Array.from(selected)]);
+        if (current?.id) {
+          if (newSelected.has(current.id)) {
+            newSelected.delete(current.id);
+          } else {
+            newSelected.add(current.id);
           }
-          return newSelected;
-        });
-      },
+        }
+        return newSelected;
+      });
+    },
     []
   );
 
   const sidebarFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.sidebarVisible(true), (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.sidebarVisible(true), (prev) => !prev);
+    },
     []
   );
 
   const fullscreenFn = useRecoilCallback(
-    ({ set }) =>
-      async () => {
-        set(fos.fullscreen, (prev) => !prev);
-      },
+    ({ set }) => async () => {
+      set(fos.fullscreen, (prev) => !prev);
+    },
     []
   );
 
   const closeFn = useRecoilCallback(
-    ({ snapshot }) =>
-      async () => {
-        const mediaType = await snapshot.getPromise(fos.mediaType);
-        const is3dVisible = await snapshot.getPromise(
-          fos.groupMediaIs3dVisible
-        );
-        if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
-          // we handle close logic in modal + other places
-          return;
-        }
+    ({ snapshot }) => async () => {
+      const mediaType = await snapshot.getPromise(fos.mediaType);
+      const is3dVisible = await snapshot.getPromise(fos.groupMediaIs3dVisible);
+      if (activeLookerRef.current || mediaType === "3d" || is3dVisible) {
+        // we handle close logic in modal + other places
+        return;
+      }
 
-        await modalCloseHandler();
-      },
+      await modalCloseHandler();
+    },
     [modalCloseHandler]
   );
 
@@ -241,22 +232,21 @@ const Modal = () => {
   > | null>(null);
 
   const onLookerSet = useRecoilCallback(
-    ({ snapshot }) =>
-      (looker: fos.Lookers) => {
-        looker.addEventListener("close", modalCloseHandler);
+    ({ snapshot }) => (looker: fos.Lookers) => {
+      looker.addEventListener("close", modalCloseHandler);
 
-        // remove previous event listener
-        removeTooltipEventHanlderRef.current?.();
-        removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
+      // remove previous event listener
+      removeTooltipEventHanlderRef.current?.();
+      removeTooltipEventHanlderRef.current = addTooltipEventHandler(looker);
 
-        // set the current modal unique id
-        jotaiStore.set(
-          currentModalUniqueIdJotaiAtom,
-          `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
-            .getLoadable(fos.nullableModalSampleId)
-            .getValue()}`
-        );
-      },
+      // set the current modal unique id
+      jotaiStore.set(
+        currentModalUniqueIdJotaiAtom,
+        `${snapshot.getLoadable(fos.groupId).getValue()}-${snapshot
+          .getLoadable(fos.nullableModalSampleId)
+          .getValue()}`
+      );
+    },
     [modalCloseHandler, addTooltipEventHandler]
   );
 
@@ -267,6 +257,8 @@ const Modal = () => {
     },
     [onLookerSet]
   );
+
+  useMediaFieldNavigation();
 
   return ReactDOM.createPortal(
     <modalContext.Provider

@@ -6,7 +6,7 @@ import { v4 as uuid } from "uuid";
 import { useClearSelectedLabels, useShowOverlays } from "./ModalLooker";
 import { useLookerOptionsUpdate, useModalContext } from "./hooks";
 import useKeyEvents from "./use-key-events";
-import { shortcutToHelpItems } from "./utils";
+import { getMediaFieldShortcuts, shortcutToHelpItems } from "./utils";
 
 const CLOSE = "close";
 
@@ -37,6 +37,8 @@ function useLooker<L extends fos.Lookers>({
   );
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const colorScheme = useRecoilValue(fos.colorScheme);
+  const mediaFields = useRecoilValue(fos.mediaFields);
+  const hasMultipleMediaFields = Boolean(mediaFields && mediaFields.length > 1);
 
   // use a ref for sample data to prevent instance recreation
   //
@@ -106,7 +108,11 @@ function useLooker<L extends fos.Lookers>({
         if (showHelp === CLOSE) {
           helpPanel.close();
         } else {
-          helpPanel[showHelp](shortcutToHelpItems(SHORTCUTS));
+          const helpItems = [
+            ...shortcutToHelpItems(SHORTCUTS),
+            ...getMediaFieldShortcuts(hasMultipleMediaFields),
+          ];
+          helpPanel[showHelp](helpItems);
         }
       }
 
