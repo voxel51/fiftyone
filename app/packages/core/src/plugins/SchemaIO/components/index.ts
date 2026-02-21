@@ -39,6 +39,7 @@ export { default as MediaPlayerView } from "./MediaPlayerView";
 export { default as ModalView } from "./ModalView";
 export { default as NativeModelEvaluationView } from "./NativeModelEvaluationView";
 export { default as ObjectView } from "./ObjectView";
+export { SimilaritySearchView } from "@fiftyone/similarity-search";
 export { default as OneOfView } from "./OneOfView";
 export { default as OperatorExecutionButtonView } from "./OperatorExecutionButtonView";
 export { default as PillBadgeView } from "./PillBadgeView";
