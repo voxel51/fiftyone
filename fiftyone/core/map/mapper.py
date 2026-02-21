@@ -160,8 +160,8 @@ class Mapper(abc.ABC):
         else:
             if save is True:
                 logger.warning("Unable to save when `iter_fcn` is provided")
-                
-        
+
+
 
 
         yield from self._map_samples(
