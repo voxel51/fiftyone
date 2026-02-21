@@ -81,6 +81,49 @@ view_stage = _make_registrar()
 aggregation = _make_registrar()
 
 
+def _compute_id_partitions(samples, num_buckets):
+    """Partitions a sample collection's ``_id`` space into ranges using
+    MongoDB's ``$bucketAuto``.
+
+    Args:
+        samples: a :class:`SampleCollection`
+        num_buckets: the number of partitions to create
+
+    Returns:
+        a list of ``(min_id, max_id)`` :class:`bson.ObjectId` pairs, or
+        ``None`` if ``num_buckets <= 0``
+    """
+    if num_buckets <= 0:
+        return None
+
+    pipeline = samples._pipeline(
+        pipeline=[{"$bucketAuto": {"groupBy": "$_id", "buckets": num_buckets}}]
+    )
+    coll = samples._dataset._sample_collection
+    return [
+        (r["_id"]["min"], r["_id"]["max"])
+        for r in coll.aggregate(pipeline, hint={"_id": 1})
+    ]
+
+
+def _id_partition_match(partitions, worker_id):
+    """Returns a ``$match`` stage that filters to a single partition range.
+
+    Args:
+        partitions: the list from :func:`_compute_id_partitions`
+        worker_id: the zero-based worker index
+
+    Returns:
+        a ``$match`` dict, or ``None`` if the worker_id is out of range
+    """
+    if worker_id >= len(partitions):
+        return None
+
+    min_id, max_id = partitions[worker_id]
+    op = "$lte" if worker_id == len(partitions) - 1 else "$lt"
+    return {"$match": {"_id": {"$gte": min_id, op: max_id}}}
+
+
 class _DummyFuture:
     def __init__(self, *, value=None):
         self.value = value

@@ -9,6 +9,7 @@ FiftyOne models.
 import contextlib
 import inspect
 import logging
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -19,6 +20,10 @@ import eta.core.utils as etau
 import eta.core.video as etav
 import eta.core.web as etaw
 
+from bson import ObjectId
+from pymongo import UpdateOne
+
+from fiftyone.core.odm.utils import serialize_value
 import fiftyone as fo
 import fiftyone.core.collections as foc
 import fiftyone.core.fields as fof
@@ -1803,64 +1808,94 @@ def _embed_patches_data_loader(
     skip_failures,
     progress,
 ):
-    data_loader = _make_patch_data_loader(
+    data_loader, num_workers = _make_patch_data_loader(
         samples,
         model,
         patches_field,
         force_square,
         alpha,
         handle_missing,
+        batch_size,
         num_workers,
         skip_failures,
     )
 
-    samples = _select_fields_for_patch_embeddings(samples, patches_field)
+    label_type = samples._get_label_field_type(patches_field)
+    is_list_field = issubclass(label_type, fol._HasLabelList)
 
-    if embeddings_field is not None:
-        label_parser = _make_label_parser(samples, patches_field)
+    if is_list_field:
+        array_path = f"{patches_field}.{label_type._LABEL_LIST_FIELD}"
     else:
-        embeddings_dict = {}
+        array_path = patches_field
 
-    with contextlib.ExitStack() as context:
-        pb = context.enter_context(fou.ProgressBar(samples, progress=progress))
-        if embeddings_field is not None:
-            ctx = context.enter_context(foc.SaveContext(samples))
+    save = embeddings_field is not None
+    coll = samples._dataset._sample_collection if save else None
+    embeddings_dict = {}
 
-        for sample, patches in pb(zip(samples, data_loader)):
-            embeddings = None
+    with contextlib.ExitStack() as exit_stack:
+        bulk_ctx = None
+        if save:
+            bulk_ctx = exit_stack.enter_context(foc.BulkWriteContext(coll))
 
-            try:
-                if isinstance(patches, Exception):
-                    raise patches
+        pb = exit_stack.enter_context(
+            fou.ProgressBar(total=len(samples), progress=progress)
+        )
 
-                if patches is not None:
-                    embeddings = []
-                    for patches_batch in fou.iter_slices(patches, batch_size):
-                        embeddings_batch = model.embed_all(patches_batch)
-                        embeddings.append(embeddings_batch)
+        for (
+            sample_ids,
+            label_ids_list,
+            flat_patches,
+            counts,
+        ) in data_loader:
+            if flat_patches is not None:
+                all_embeddings = np.concatenate(
+                    [
+                        model.embed_all(b)
+                        for b in fou.iter_slices(flat_patches, batch_size)
+                    ]
+                )
 
-                    embeddings = np.concatenate(embeddings)
+            offset = 0
+            for sample_id, label_ids, count in zip(
+                sample_ids, label_ids_list, counts
+            ):
+                pb.update()
 
-            except Exception as e:
-                if not skip_failures:
-                    raise e
+                try:
+                    if isinstance(count, Exception):
+                        raise count
 
-                logger.warning("Sample: %s\nError: %s\n", sample.id, e)
+                    if count is None:
+                        if not save:
+                            embeddings_dict[sample_id] = None
+                        continue
 
-            if embeddings_field is not None:
-                if embeddings is not None:
-                    labels = label_parser(sample)
-                    for label, embedding in zip(labels, embeddings):
-                        label[embeddings_field] = embedding
+                    embeddings = all_embeddings[offset : offset + count]
+                    offset += count
 
-                    ctx.save(sample)
-            else:
-                embeddings_dict[sample.id] = embeddings
+                    if not save:
+                        embeddings_dict[sample_id] = embeddings
+                        continue
 
-    if embeddings_field is not None:
-        return None
+                    bulk_ctx.add(
+                        _build_patch_embeddings_update(
+                            sample_id,
+                            label_ids if is_list_field else None,
+                            embeddings,
+                            array_path,
+                            embeddings_field,
+                        )
+                    )
 
-    return embeddings_dict
+                except Exception as e:
+                    if not skip_failures:
+                        raise
+
+                    logger.warning("Sample: %s\nError: %s\n", sample_id, e)
+                    if not save:
+                        embeddings_dict[sample_id] = None
+
+    return None if save else embeddings_dict
 
 
 def _embed_frame_patches(
@@ -1969,14 +2004,10 @@ def _make_patch_data_loader(
     force_square,
     alpha,
     handle_missing,
+    batch_size,
     num_workers,
     skip_failures,
 ):
-    # This function supports DataLoaders that emit numpy arrays that can
-    # therefore be used for non-Torch models; but we do not currently use this
-    # functionality
-    use_numpy = not isinstance(model, TorchModelMixin)
-
     num_workers = fout.recommend_num_workers(num_workers)
 
     dataset = fout.TorchImagePatchesDataset(
@@ -1985,23 +2016,54 @@ def _make_patch_data_loader(
         handle_missing=handle_missing,
         transform=model.transforms,
         ragged_batches=model.ragged_batches,
-        use_numpy=use_numpy,
-        force_rgb=True,
         force_square=force_square,
         alpha=alpha,
         skip_failures=skip_failures,
-    )
-
-    return tud.DataLoader(
-        dataset,
-        batch_size=1,
+        force_rgb=True,
         num_workers=num_workers,
-        collate_fn=_patch_collate_fn,
+    )
+    return (
+        tud.DataLoader(
+            dataset,
+            batch_size=batch_size or 1,
+            num_workers=num_workers,
+            collate_fn=fout.patch_collate_fn,
+            worker_init_fn=fout.TorchImagePatchesDataset.worker_init_fn,
+        ),
+        num_workers,
     )
 
 
-def _patch_collate_fn(batch):
-    return batch[0]  # return patches directly
+def _build_patch_embeddings_update(
+    sample_id,
+    label_ids,
+    embeddings,
+    array_path,
+    embeddings_field,
+):
+    now = datetime.now(timezone.utc)
+    sample_oid = ObjectId(sample_id)
+    set_doc = {"last_modified_at": now}
+
+    if label_ids is not None:
+        array_filters = []
+        for i, (lid, emb) in enumerate(zip(label_ids, embeddings)):
+            name = f"f{i}"
+            set_doc[
+                f"{array_path}.$[{name}].{embeddings_field}"
+            ] = serialize_value(emb)
+            array_filters.append({f"{name}._id": ObjectId(lid)})
+
+        return UpdateOne(
+            {"_id": sample_oid},
+            {"$set": set_doc},
+            array_filters=array_filters,
+        )
+
+    set_doc[f"{array_path}.{embeddings_field}"] = serialize_value(
+        embeddings[0]
+    )
+    return UpdateOne({"_id": sample_oid}, {"$set": set_doc})
 
 
 def _parse_batch_size(batch_size, model, use_data_loader):

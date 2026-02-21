@@ -2307,16 +2307,18 @@ class TorchImageClassificationDataset(Dataset):
         return image_paths, sample_ids, targets, str_targets
 
 
-class TorchImagePatchesDataset(Dataset):
-    """A :class:`torch:torch.utils.data.Dataset` of image patch tensors
+class TorchImagePatchesDataset(torch.utils.data.IterableDataset):
+    """A :class:`torch:torch.utils.data.IterableDataset` of image patch tensors
     extracted from a list of images.
 
     Provide either ``image_paths`` and ``patches`` or ``samples`` and
     ``patches_field`` in order to use this dataset.
 
-    Instances of this dataset emit image patches for each sample, or
-    ``(patches, sample_id)`` tuples if ``sample_ids`` are provided or
-    ``include_ids == True``.
+    Each iteration yields ``(sample_id, label_ids, patches)`` tuples where
+    ``patches`` is a stacked tensor (or list when ``ragged_batches=True``)
+    of extracted image patches, ``sample_id`` is the string sample ID (or
+    ``None``), and ``label_ids`` is a list of label IDs corresponding to
+    each patch (or ``None``).
 
     By default, this class will load images in PIL format and emit Torch
     tensors, but you can use numpy images/tensors instead by passing
@@ -2374,6 +2376,9 @@ class TorchImagePatchesDataset(Dataset):
             ``alpha = -0.1`` to contract the boxes by 10%
         skip_failures (False): whether to return an ``Exception`` object rather
             than raising it if an error occurs while loading a sample
+        num_workers (0): the number of DataLoader workers. When > 0 and using
+            ``samples``/``patches_field``, the dataset is partitioned across
+            workers via ``$bucketAuto``
     """
 
     def __init__(
@@ -2392,189 +2397,318 @@ class TorchImagePatchesDataset(Dataset):
         force_square=False,
         alpha=None,
         skip_failures=False,
+        num_workers=0,
+        _prefetch_fn=None,
     ):
-        image_paths, sample_ids, patch_edges, patches = self._parse_inputs(
-            image_paths=image_paths,
-            patches=patches,
-            samples=samples,
-            patches_field=patches_field,
-            handle_missing=handle_missing,
-            sample_ids=sample_ids,
-            include_ids=include_ids,
-        )
-
-        self.image_paths = image_paths
+        self.handle_missing = handle_missing
         self.transform = transform
-        self.sample_ids = sample_ids
         self.ragged_batches = ragged_batches
-        self.use_numpy = use_numpy
-        self.force_rgb = force_rgb
         self.force_square = force_square
         self.alpha = alpha
         self.skip_failures = skip_failures
+        self.force_rgb = force_rgb
+        self.use_numpy = use_numpy
+        self._prefetch_fn = _prefetch_fn or _read_images
 
-        self._patch_edges = patch_edges
-        self._patches = patches
+        if samples is not None and patches_field is not None:
+            # Pre-compute all pickle-safe DB iteration state so that
+            # DataLoader workers can serialize this dataset
+            self._db_config = _prepare_db_detection_config(
+                samples,
+                patches_field,
+                num_workers,
+            )
+            self._list_config = None
+        elif image_paths is not None:
+            self._db_config = None
+            self._list_config = _prepare_list_detection_config(
+                image_paths,
+                patches,
+                sample_ids,
+            )
+        else:
+            raise ValueError(
+                "Either `samples`/`patches_field` or `image_paths` required"
+            )
 
-    def __len__(self):
-        return len(self.image_paths)
+    def __iter__(self):
+        handle_missing = self.handle_missing
+        skip_failures = self.skip_failures
+        extract_patches = self._extract_patches
 
-    def __getitem__(self, idx):
-        first = self._patch_edges[idx]
-        last = self._patch_edges[idx + 1]
+        if self._db_config is not None:
+            detections = _iter_db_detections(**self._db_config)
+            detections = self._prefetch_fn(detections)
+        else:
+            detections = _iter_list_detections(**self._list_config)
 
-        try:
-            if first >= last:
-                img_patches = None
-            else:
-                image_path = self.image_paths[idx].decode()
-                patches = self._patches[first:last, :]
-                img_patches = self._extract_patches(image_path, patches)
-        except Exception as e:
-            if not self.skip_failures:
-                raise e
+        for image_or_path, bboxes, sample_id, label_ids in detections:
+            try:
+                if not bboxes:
+                    if handle_missing == "skip":
+                        yield sample_id, None, None
+                        continue
+                    elif handle_missing == "image":
+                        bboxes, label_ids = [[0, 0, 1, 1]], []
+                    else:
+                        raise ValueError(
+                            "No patches for sample '%s'"
+                            % (sample_id or image_or_path)
+                        )
 
-            img_patches = e
+                yield (
+                    sample_id,
+                    label_ids,
+                    extract_patches(image_or_path, bboxes),
+                )
 
-        if self.has_sample_ids:
-            # pylint: disable=unsubscriptable-object
-            return img_patches, self.sample_ids[idx].decode()
+            except Exception as e:
+                if not skip_failures:
+                    raise
+                yield sample_id, None, e
 
-        return img_patches
+    def _extract_patches(self, image_or_path, bboxes):
+        alpha = self.alpha
+        force_square = self.force_square
+        use_numpy = self.use_numpy
+        transform = self.transform
 
-    @property
-    def has_sample_ids(self):
-        """Whether this dataset has sample IDs."""
-        return self.sample_ids is not None
-
-    def _extract_patches(self, image_path, patches):
-        img = _load_image(image_path, True, self.force_rgb)
+        if isinstance(image_or_path, bytes):
+            img = _decode_image(image_or_path, self.force_rgb)
+        else:
+            img = _load_image(image_or_path, True, self.force_rgb)
 
         img_patches = []
-        for bounding_box in patches:
+        for bounding_box in bboxes:
             bbox = _to_eta_bbox(bounding_box)
 
-            if self.alpha is not None:
-                bbox = bbox.pad_relative(self.alpha)
+            if alpha is not None:
+                bbox = bbox.pad_relative(alpha)
 
-            img_patch = bbox.extract_from(img, force_square=self.force_square)
+            img_patch = bbox.extract_from(img, force_square=force_square)
 
-            if not self.use_numpy:
+            if not use_numpy:
                 img_patch = Image.fromarray(img_patch)
 
-            if self.transform is not None:
-                img_patch = self.transform(img_patch)
+            if transform is not None:
+                img_patch = transform(img_patch)
 
             img_patches.append(img_patch)
 
         if self.ragged_batches:
             return img_patches
 
-        if self.use_numpy:
-            img_patches = np.stack(img_patches, axis=0)
-        else:
-            img_patches = torch.stack(img_patches, dim=0)
+        if use_numpy:
+            return np.stack(img_patches, axis=0)
 
-        return img_patches
+        return torch.stack(img_patches, dim=0)
 
-    def _parse_inputs(
-        self,
-        image_paths=None,
-        patches=None,
-        samples=None,
-        patches_field=None,
-        handle_missing="skip",
-        sample_ids=None,
-        include_ids=False,
-    ):
-        if image_paths is None and samples is None:
-            raise ValueError(
-                "Either `image_paths` or `samples` must be provided"
+    @staticmethod
+    def worker_init_fn(worker_id):
+        """Disconnects pymongo so each worker creates its own connections."""
+        import fiftyone.core.odm.database as food
+
+        food._disconnect()
+
+
+def _read_images(records, num_workers=8):
+    """Reads images into memory via a thread pool.
+
+    Replaces file paths with in-memory bytes using
+    :func:`fiftyone.core.storage.read_bytes`.  The thread pool keeps
+    ``num_workers`` reads in flight so the main thread is never blocked
+    waiting on I/O.
+
+    Yields ``(image_bytes, bboxes, sample_id, label_ids)`` tuples.
+    """
+    import fiftyone.core.storage as fos
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _read_one(record):
+        path, bboxes, sample_id, label_ids = record
+        if path is not None:
+            return (
+                fos.read_file(path, binary=True),
+                bboxes,
+                sample_id,
+                label_ids,
             )
+        return record
 
-        if image_paths is None:
-            image_paths = samples.values("filepath")
+    with ThreadPoolExecutor(max_workers=num_workers) as pool:
+        yield from pool.map(_read_one, records)
 
-        image_paths = _to_bytes_array(image_paths)
 
-        if include_ids and sample_ids is None:
-            sample_ids = samples.values("id")
+def _decode_image(image_bytes, force_rgb):
+    """Decodes an in-memory image (bytes) to a numpy array."""
+    arr = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if img is None:
+        raise ValueError("Failed to decode image from bytes")
+    if force_rgb:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
 
-        if sample_ids is not None:
-            sample_ids = _to_bytes_array(sample_ids)
 
-        if patches is not None:
-            bboxes = []
+def _prepare_db_detection_config(samples, patches_field, num_workers):
+    """Extracts pickle-safe configuration from a
+    :class:`fiftyone.core.collections.SampleCollection` for streaming
+    detection data from MongoDB.
 
-            for p in patches:
-                if p is None:
-                    boxes = None
-                elif isinstance(p, fol.Detection):
-                    boxes = [p.bounding_box]
-                elif isinstance(p, fol.Detections):
-                    boxes = [d.bounding_box for d in p.detections]
-                elif isinstance(p, fol.Polyline):
-                    boxes = [p.to_detection().bounding_box]
-                elif isinstance(p, fol.Polylines):
-                    boxes = [
-                        _p.to_detection().bounding_box for _p in p.polylines
-                    ]
-                else:
-                    raise ValueError("Unsupported patches type %s" % type(p))
+    Returns a dict of keyword arguments for :func:`_iter_db_detections`.
+    """
+    label_type = samples._get_label_field_type(patches_field)
+    is_list_field = issubclass(label_type, fol._HasLabelList)
+    is_polyline = issubclass(label_type, (fol.Polyline, fol.Polylines))
+    bbox_attr = "points" if is_polyline else "bounding_box"
 
-                bboxes.append(boxes)
-        elif patches_field is not None:
-            label_type = samples._get_label_field_type(patches_field)
+    if is_list_field:
+        array_path = f"{patches_field}.{label_type._LABEL_LIST_FIELD}"
+    else:
+        array_path = patches_field
 
-            if issubclass(label_type, (fol.Detection, fol.Detections)):
-                _, bbox_path = samples._get_label_field_path(
-                    patches_field, "bounding_box"
-                )
-                bboxes = samples.values(bbox_path)
-            elif issubclass(label_type, (fol.Polyline, fol.Polylines)):
-                _, points_path = samples._get_label_field_path(
-                    patches_field, "points"
-                )
-                points = samples.values(points_path)
+    return dict(
+        collection_name=samples._dataset._sample_collection_name,
+        view_pipeline=samples._pipeline(),
+        media_field=samples._parse_media_field("filepath")[0],
+        array_path=array_path,
+        bbox_attr=bbox_attr,
+        is_polyline=is_polyline,
+        partitions=focol._compute_id_partitions(samples, num_workers),
+    )
 
-                if issubclass(label_type, fol.Polyline):
-                    bboxes = [_polyline_to_bbox(p) for p in points]
-                else:
-                    bboxes = [_polylines_to_bboxes(p) for p in points]
-            else:
-                raise ValueError(
-                    "Patches field '%s' has unsupported type %s"
-                    % (patches_field, label_type)
-                )
 
-            if not issubclass(label_type, fol._HasLabelList):
-                bboxes = [[b] if b is not None else None for b in bboxes]
-        else:
-            raise ValueError(
-                "Either `patches` or `patches_field` must be provided"
-            )
+def _iter_db_detections(
+    collection_name,
+    view_pipeline,
+    media_field,
+    array_path,
+    bbox_attr,
+    is_polyline,
+    partitions,
+):
+    """Yields ``(raw_path, bboxes, sample_id, label_ids)`` tuples by
+    streaming detection data from MongoDB.
 
-        num_patches = 0
-        patch_edges = [0]
-        patches = []
+    Yields raw media paths as stored in the database.  The caller is
+    responsible for resolving cloud paths via the media cache before
+    reading the image.
+    """
+    import fiftyone.core.odm.database as food
 
-        for filepath, boxes in zip(image_paths, bboxes):
-            if not boxes:
-                if handle_missing == "skip":
-                    boxes = []
-                elif handle_missing == "image":
-                    boxes = [[0, 0, 1, 1]]
-                else:
-                    raise ValueError("Image '%s' has no patches" % filepath)
+    pipeline = list(view_pipeline)
 
-            num_patches += len(boxes)
-            patch_edges.append(num_patches)
-            patches.extend(boxes)
+    worker_info = torch.utils.data.get_worker_info()
+    if worker_info is not None and partitions:
+        match = focol._id_partition_match(partitions, worker_info.id)
+        if match is None:
+            return
+        pipeline.append(match)
 
-        patch_edges = np.array(patch_edges)
-        patches = np.array(patches)
+    array_path_parts = array_path.split(".")
+    id_field_path = array_path + "._id"
+    bbox_field_path = f"{array_path}.{bbox_attr}"
 
-        return image_paths, sample_ids, patch_edges, patches
+    pipeline.append(
+        {
+            "$project": {
+                media_field: 1,
+                bbox_field_path: 1,
+                id_field_path: 1,
+            }
+        }
+    )
+
+    coll = food.get_db_conn()[collection_name]
+    for doc in coll.aggregate(pipeline, hint={"_id": 1}, allowDiskUse=True):
+        sample_id = str(doc["_id"])
+
+        val = doc
+        for part in array_path_parts:
+            val = val.get(part) if isinstance(val, dict) else None
+            if val is None:
+                break
+
+        elements = (
+            val if isinstance(val, list) else [val] if val is not None else []
+        )
+
+        bboxes, label_ids = [], []
+        for elem in elements:
+            raw = elem.get(bbox_attr)
+            if raw is not None:
+                bboxes.append(_polyline_to_bbox(raw) if is_polyline else raw)
+                label_ids.append(str(elem["_id"]))
+
+        yield doc.get(media_field), bboxes, sample_id, label_ids
+
+
+def _prepare_list_detection_config(image_paths, patches, sample_ids):
+    """Builds a pickle-safe configuration dict for streaming detection data
+    from in-memory image paths and label lists.
+
+    Returns a dict of keyword arguments for :func:`_iter_list_detections`.
+    """
+    return dict(
+        image_paths=image_paths,
+        patches=patches,
+        sample_ids=list(sample_ids) if sample_ids is not None else None,
+    )
+
+
+def _iter_list_detections(image_paths, patches, sample_ids):
+    """Yields ``(image_path, bboxes, sample_id, label_ids)`` tuples from
+    in-memory image paths and label lists.
+    """
+    worker_info = torch.utils.data.get_worker_info()
+    if worker_info is not None:
+        wid = worker_info.id
+        num_workers = worker_info.num_workers
+    else:
+        wid = 0
+        num_workers = 1
+
+    patches_iter = patches if patches is not None else itertools.repeat(None)
+
+    for idx, (image_path, label) in enumerate(zip(image_paths, patches_iter)):
+        if idx % num_workers != wid:
+            continue
+
+        bboxes = _labels_to_bboxes(label)
+        sample_id = sample_ids[idx] if sample_ids is not None else None
+
+        yield image_path, bboxes, sample_id, None
+
+
+def _labels_to_bboxes(label):
+    """Converts a label object to a list of ``[tlx, tly, w, h]`` bounding
+    boxes.
+
+    Args:
+        label: a :class:`fiftyone.core.labels.Detection`,
+            :class:`fiftyone.core.labels.Detections`,
+            :class:`fiftyone.core.labels.Polyline`,
+            :class:`fiftyone.core.labels.Polylines`, or ``None``
+
+    Returns:
+        a list of ``[tlx, tly, w, h]`` lists, or ``None``
+    """
+    if label is None:
+        return None
+
+    if isinstance(label, fol.Detection):
+        return [label.bounding_box]
+
+    if isinstance(label, fol.Detections):
+        return [d.bounding_box for d in label.detections]
+
+    if isinstance(label, fol.Polyline):
+        return [label.to_detection().bounding_box]
+
+    if isinstance(label, fol.Polylines):
+        return [p.to_detection().bounding_box for p in label.polylines]
+
+    raise ValueError("Unsupported patches type %s" % type(label))
 
 
 def _to_eta_bbox(bounding_box):
@@ -2869,3 +3003,29 @@ def local_broadcast_process_authkey(local_process_group):
         )
         logger.info("Overwriting local authkey ...")
         multiprocessing.current_process().authkey = local_leader_key
+
+
+def patch_collate_fn(batch):
+    """Collates multiple samples into a flat patch batch for model inference.
+
+    Returns ``(sample_ids, label_ids_list, flat_patches, counts)`` where
+    *flat_patches* is all valid patches concatenated and ``counts[i]`` is the
+    patch count per sample (or ``None``/``Exception`` for skipped/failed
+    samples).
+    """
+    sample_ids = []
+    label_ids_list = []
+    to_cat = []
+    counts = []
+
+    for sample_id, label_ids, patches in batch:
+        sample_ids.append(sample_id)
+        label_ids_list.append(label_ids)
+        if patches is None or isinstance(patches, Exception):
+            counts.append(patches)
+        else:
+            counts.append(len(patches))
+            to_cat.append(patches)
+
+    flat_patches = torch.cat(to_cat) if to_cat else None
+    return sample_ids, label_ids_list, flat_patches, counts
