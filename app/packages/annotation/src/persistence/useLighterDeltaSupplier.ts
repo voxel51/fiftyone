@@ -84,7 +84,7 @@ export const useLighterDeltaSupplier = (): DeltaSupplier => {
       const labelProxy = buildAnnotationLabel(firstChangedOverlay);
       if (labelProxy) {
         metadata = {
-          labelId: (labelProxy.data as { _id?: string })._id,
+          labelId: firstChangedOverlay.id,
           labelPath: buildAnnotationPath(labelProxy, isPatches),
         };
       }
