@@ -185,7 +185,7 @@ const Detection = () => {
         $active={quickDrawActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
-          if (!disabled) return;
+          if (disabled) return;
           toggleQuickDraw();
         }}
       >
