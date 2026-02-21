@@ -201,8 +201,7 @@ class SaveContext(_AsyncBatchWriter):
         batching_strategy=None,
         async_writes=False,
     ):
-        # Using more than one worker may introduce race conditions in the
-        # state preserved between DB writes
+        # Conservatively default to 1 until we have more testing data
         super().__init__(max_workers=1, async_writes=async_writes)
 
         batch_size, batching_strategy = fou.parse_batching_strategy(
