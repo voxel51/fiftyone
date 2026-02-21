@@ -20,11 +20,11 @@ export const useRegisterRendererEventHandlers = () => {
   const { entranceLabelId, clearEntranceLabelId } =
     useAnnotationContextManager();
 
-  // If we entered annotation mode via direct label edit (e.g. via the label's tooltip),
-  // we want to open the label for editing once it's been initialized and
-  // added to the rendered scene.
+  // If we entered annotation mode via direct label edit (e.g. via the label's tooltip)
+  // or need to auto-edit a label (e.g. patches view), we want to open the label
+  // for editing once it's been initialized and added to the rendered scene.
 
-  // For 2D, we can listen to the overlay-added event and select the relevant
+  // For 2D, we listen to the overlay-added event and select the relevant
   // label once it's available.
   handleLighterEvent(
     "lighter:overlay-added",
@@ -40,6 +40,16 @@ export const useRegisterRendererEventHandlers = () => {
       [clearEntranceLabelId, entranceLabelId, scene]
     )
   );
+
+  // Handle the case where the overlay is already in the scene when
+  // entranceLabelId is set (e.g. patches view auto-edit, where overlays are
+  // added before the auto-edit logic determines which label to activate).
+  useEffect(() => {
+    if (scene && entranceLabelId && scene.hasOverlay(entranceLabelId)) {
+      scene.selectOverlay(entranceLabelId);
+      clearEntranceLabelId();
+    }
+  }, [scene, entranceLabelId, clearEntranceLabelId]);
 
   // For 3D, we can listen to changes in the working label set and select
   // the label once it's available.

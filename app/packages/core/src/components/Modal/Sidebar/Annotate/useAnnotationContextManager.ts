@@ -5,7 +5,7 @@ import {
   useActiveModalFields,
   useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
@@ -77,6 +77,7 @@ export interface AnnotationContextManager {
 }
 
 const contextManagerAtom = atom<ContextManager>(new DefaultContextManager());
+
 const activeLabelIdAtom = atom<string | null>(null);
 
 /**
@@ -224,3 +225,13 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
     [activeLabelId, enter, exit, setActiveLabelId]
   );
 };
+
+/**
+ * Hook that returns a setter for the entrance label ID.
+ *
+ * Use this to request that a label be activated for editing once its overlay
+ * is ready in the scene. This integrates with
+ * {@link useRegisterRendererEventHandlers} which handles the actual overlay
+ * selection, avoiding race conditions with scene/overlay initialization.
+ */
+export const useSetActiveLabelId = () => useSetAtom(activeLabelIdAtom);

@@ -1,8 +1,9 @@
 import { LoadingSpinner } from "@fiftyone/components";
-import { EntryKind } from "@fiftyone/state";
+import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { atom, useAtomValue } from "jotai";
 import React, { useEffect } from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
@@ -30,8 +31,7 @@ const DISABLED_MESSAGES: Record<
 > = {
   generatedView: (
     <p>
-      Annotation isn&rsquo;t supported for patches, frames, clips, or
-      materialized views.
+      Annotation isn&rsquo;t supported for frames, clips, or materialized views.
     </p>
   ),
   groupedDatasetNoSupportedSlices: (
@@ -65,22 +65,26 @@ const Loading = () => {
 
 const AnnotateSidebar = () => {
   usePrimitivesCount();
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
+  const isGenerated = useRecoilValue(isGeneratedView);
+  const [entries] = useEntries();
 
-  if (editing) return null;
+  // Don't show label list in edit mode or in generated views (patches/clips/frames)
+  // In generated views, only the edit panel should be visible
+  if (isEditingValue || isGenerated) return null;
 
   return (
     <>
       <Actions />
       <Sidebar
         isDisabled={() => true}
-        render={(key, group, entry) => {
+        render={(_key, _group, entry) => {
           if (entry.kind === EntryKind.GROUP) {
             return { children: <GroupEntry name={entry.name} /> };
           }
 
           if (entry.kind === EntryKind.LABEL) {
-            const { kind: _, atom } = entry;
+            const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
               disabled: true,
@@ -118,7 +122,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
   const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
-  const editing = useAtomValue(isEditing);
+  const isEditingValue = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
@@ -144,7 +148,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
 
   return (
     <>
-      {editing && <Edit key="edit" />}
+      {isEditingValue && <Edit key="edit" />}
       {showImport || isDisabled ? (
         <ImportSchema
           key="import"

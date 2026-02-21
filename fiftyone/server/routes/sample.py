@@ -400,6 +400,7 @@ def handle_json_patch(target: Any, patch_list: List[dict]) -> Any:
         ) from err
 
     if errors:
+        logger.error("Errors applying JSON patches to sample: %s", target)
         for error in errors:
             logger.error(error)
         raise HTTPException(
@@ -597,6 +598,7 @@ class SampleField(HTTPEndpoint):
             )
 
         # Apply patches - RootDeleteError signals deletion is needed
+        logger.debug("Applying patches to field with id %s", field_id)
         try:
             handle_json_patch(field, data)
             is_delete = False
@@ -606,6 +608,7 @@ class SampleField(HTTPEndpoint):
 
         # Save the source sample
         etag = save_sample(sample, source_if_match)
+        logger.debug("Saved changes to source sample %s", sample.id)
 
         if generated_dataset_name and generated_sample_id:
             # Sync changes to generated dataset
@@ -618,6 +621,11 @@ class SampleField(HTTPEndpoint):
                     data,
                     delete=is_delete,
                 )
+                logger.debug(
+                    "Synced changes to generated dataset %s",
+                    generated_dataset_name,
+                )
+
                 if generated_sample is not None:
                     return utils.json.JSONResponse(
                         utils.json.serialize(generated_sample),

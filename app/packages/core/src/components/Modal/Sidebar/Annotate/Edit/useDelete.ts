@@ -3,6 +3,7 @@ import { useCommandBus } from "@fiftyone/command-bus";
 import { useLighter } from "@fiftyone/lighter";
 import { isDetection3dOverlay, isPolyline3dOverlay } from "@fiftyone/looker-3d";
 import * as fos from "@fiftyone/state";
+import { isGeneratedView } from "@fiftyone/state";
 
 import {
   DelegatingUndoable,
@@ -28,6 +29,7 @@ export default function useDelete() {
 
   const exit = useExit();
   const setNotification = fos.useNotification();
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const undoable = useMemo(() => {
     return new DelegatingUndoable(
@@ -66,7 +68,6 @@ export default function useDelete() {
 
           removeLabelFromSidebar(label.data._id);
           removeOverlay(label.overlay.id, false);
-
           setNotification({
             msg: `Label "${label.data.label}" successfully deleted.`,
             variant: "success",
@@ -112,6 +113,7 @@ export default function useDelete() {
       }
     );
   }, [
+    addLabelToSidebar,
     commandBus,
     exit,
     label,
@@ -131,7 +133,8 @@ export default function useDelete() {
           return undoable;
         },
         enablement: () => {
-          if (!label) {
+          // Disable delete for generated views (patches/clips/frames)
+          if (!label || isGenerated) {
             return false;
           }
 
@@ -150,6 +153,6 @@ export default function useDelete() {
         description: "Delete label",
       },
     ],
-    [undoable]
+    [undoable, isGenerated]
   );
 }

@@ -241,7 +241,7 @@ test.describe.serial("schema manager", () => {
     await schemaManager.assert.isDisabled();
   });
 
-  test("annotation disabled for patches view", async ({
+  test("annotation enabled for patches view", async ({
     fiftyoneLoader,
     page,
     grid,
@@ -266,11 +266,8 @@ test.describe.serial("schema manager", () => {
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
 
-    // Annotation should be disabled for generated views
-    await modal.sidebar.assert.hasDisabledMessage(
-      "isn\u2019t supported for patches, frames, clips"
-    );
-    await schemaManager.assert.isDisabled();
+    // Annotation should be enabled for patches views
+    await schemaManager.assert.isEnabled();
   });
 
   test("annotation disabled for grouped dataset with no supported slices", async ({
