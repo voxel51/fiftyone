@@ -167,7 +167,7 @@ To use the MongoDB backend, simply set the optional `backend` parameter of
 
     fob.compute_similarity(..., backend="mongodb", ...)
 
-Alternatively, you can permanently configure FiftyOne to use the MonogDB
+Alternatively, you can permanently configure FiftyOne to use the MongoDB
 backend by setting the following environment variable:
 
 .. code-block:: shell

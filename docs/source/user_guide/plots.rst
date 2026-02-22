@@ -46,7 +46,7 @@ Overview
 ________
 
 All |Session| instances provide a
-:meth:`plots attribute <fiftyone.core.session.Session.plots>` attribute that
+:meth:`plots attribute <fiftyone.core.session.Session.plots>` that
 you can use to attach |ResponsivePlot| instances to the FiftyOne App.
 
 When |ResponsivePlot| instances are attached to a |Session|, they are
