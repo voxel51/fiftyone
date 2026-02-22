@@ -48,6 +48,7 @@ class SegmentAnything3ImageModelConfig(
 
     def __init__(self, d):
         d = self.init(d)
+        d["raw_inputs"] = True
         super().__init__(d)
 
         self.text_prompt = self.parse_string(d, "text_prompt", default=None)
@@ -195,43 +196,25 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         self._processor = sam3_processor_module.Sam3Processor(model, **kwargs)
         return model
 
-    def _get_text_prompt(self, sample=None):
-        """Get text prompt from config, prompt field, or sample."""
-        if self.config.text_prompt is not None:
-            return self.config.text_prompt
-
-        if "text_prompt" in self.needs_fields:
-            field_name = self.needs_fields["text_prompt"]
-            if sample is not None:
-                return sample.get_field(field_name)
-
+    def _get_field(self):
+        """Get the prompt field name from needs_fields."""
+        if "prompt_field" in self.needs_fields:
+            return self.needs_fields["prompt_field"]
         return None
 
     def _get_box_prompts(self, sample, field_name):
         """Extract box prompts from a Detections field."""
         if sample is None or field_name is None:
-            return None, None
+            return None
 
         value = sample.get_field(field_name)
         if value is None or not isinstance(value, fol.Detections):
-            return None, None
+            return None
 
         if len(value.detections) == 0:
-            return None, None
+            return None
 
         return value, [d.label for d in value.detections]
-
-    def predict(self, img, sample=None):
-        """Run SAM3 inference on a single image.
-
-        Args:
-            img: the image tensor
-            sample: the optional :class:`fiftyone.core.sample.Sample`
-
-        Returns:
-            a :class:`fiftyone.core.labels.Detections` instance
-        """
-        return self.predict_all([img], [sample] if sample else None)[0]
 
     def predict_all(self, imgs, samples=None):
         """Run SAM3 inference on a batch of images.
@@ -243,48 +226,49 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         Returns:
             a list of :class:`fiftyone.core.labels.Detections` instances
         """
-        if samples is None:
-            samples = [None] * len(imgs)
+        prompt_field = self._get_field()
+        if prompt_field is not None and samples is not None:
+            self._curr_box_prompts = [
+                self._get_box_prompts(s, prompt_field) for s in samples
+            ]
+        else:
+            self._curr_box_prompts = [None] * len(imgs)
 
-        prompt_field = None
-        if "prompt_field" in self.needs_fields:
-            prompt_field = self.needs_fields["prompt_field"]
+        return self._predict_all(imgs)
 
+    def _forward_pass(self, imgs):
+        """Run SAM3 inference on a batch of images."""
         results = []
-        for img, sample in zip(imgs, samples, strict=True):
-            detections = self._predict_single(img, sample, prompt_field)
-            results.append(detections)
+        for img, box_data in zip(imgs, self._curr_box_prompts):
+            img_pil = self._to_pil(img)
+            width, height = img_pil.size
+
+            state = self._processor.set_image(img_pil)
+
+            text_prompt = self.config.text_prompt
+
+            if text_prompt is not None:
+                output = self._processor.set_text_prompt(
+                    text_prompt, state
+                )
+                results.append(
+                    self._parse_output(output, width, height, text_prompt)
+                )
+            elif box_data is not None:
+                box_prompts, box_labels = box_data
+                results.append(
+                    self._predict_with_boxes(
+                        state, box_prompts, box_labels, width, height
+                    )
+                )
+            else:
+                logger.warning(
+                    "No text_prompt or prompt_field provided. "
+                    "Returning empty detections."
+                )
+                results.append(fol.Detections(detections=[]))
 
         return results
-
-    def _predict_single(self, img, sample, prompt_field):
-        """Run inference on a single image."""
-        img_pil = self._to_pil(img)
-        width, height = img_pil.size
-
-        state = self._processor.set_image(img_pil)
-
-        text_prompt = self._get_text_prompt(sample)
-        box_prompts, box_labels = None, None
-
-        if prompt_field is not None and sample is not None:
-            box_prompts, box_labels = self._get_box_prompts(sample, prompt_field)
-
-        if text_prompt is not None:
-            output = self._processor.set_text_prompt(text_prompt, state)
-            return self._parse_output(output, width, height, text_prompt)
-
-        elif box_prompts is not None:
-            return self._predict_with_boxes(
-                state, box_prompts, box_labels, width, height
-            )
-
-        else:
-            logger.warning(
-                "No text_prompt or prompt_field provided. "
-                "Returning empty detections."
-            )
-            return fol.Detections(detections=[])
 
     def _predict_with_boxes(
         self, state, box_prompts, box_labels, width, height
