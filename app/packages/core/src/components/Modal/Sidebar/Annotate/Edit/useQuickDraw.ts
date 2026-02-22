@@ -6,8 +6,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, UNDEFINED_LIGHTER_SCENE_ID, useLighter, useLighterEventHandler, type BoundingBoxLabel } from "@fiftyone/lighter";
-import { AnnotationLabel, DetectionAnnotationLabel } from "@fiftyone/state";
+import { BaseOverlay, UNDEFINED_LIGHTER_SCENE_ID, useLighter, useLighterEventHandler } from "@fiftyone/lighter";
 import useCreate from "./useCreate";
 
 /**
@@ -233,98 +232,6 @@ export const useQuickDraw = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  /**
-   * Track the last-used detection field and label value after a successful save.
-   * This updates the auto-assignment state for future label creation in quick draw mode.
-   *
-   * Should be called after each detection is successfully saved in quick draw mode.
-   */
-  const trackLastUsedDetection = useCallback(
-    (fieldPath: string, labelValue?: string) => {
-      // Update last-used detection field
-      setLastUsedField(fieldPath);
-
-      // Update last-used label for this field (if label exists)
-      if (labelValue) {
-        setLastUsedLabel(fieldPath, labelValue);
-      }
-    },
-    [setLastUsedField, setLastUsedLabel]
-  );
-
-  /**
-   * This function manages both the atom state and overlay updates, bypassing the
-   * normal currentField setter which would wipe out the label data.
-   *
-   * @param newFieldPath - The new field path to switch to
-   * @param currentLabel - The current label atom/data
-   * @param setCurrent - Setter function for the current atom
-   * @returns The complete updated data object
-   */
-  const handleQuickDrawFieldChange = useCallback(
-    (
-      newFieldPath: string,
-      currentLabel: DetectionAnnotationLabel,
-      setCurrent: (label: AnnotationLabel) => void
-    ): void => {
-      if (!quickDrawActive || !currentLabel) {
-        return;
-      }
-
-      const newLabelValue = getQuickDrawDetectionLabel(newFieldPath);
-
-      const newData = {
-        ...currentLabel.data,
-        ...(newLabelValue ? { label: newLabelValue } : {}),
-      };
-
-      currentLabel.overlay.updateField(newFieldPath);
-      currentLabel.overlay.updateLabel(newData as BoundingBoxLabel);
-
-      setCurrent({ ...currentLabel, path: newFieldPath, data: newData });
-    },
-    [quickDrawActive, getQuickDrawDetectionLabel]
-  );
-
-  /**
-   * Handle the transition from creating one detection to another.
-   *
-   * This effectively finalizes the current bounding box and creates a new
-   * drawing session.
-   */
-  const handleQuickDrawTransition = useCallback(
-    /**
-     * Closes the current drawing session and enters a "ready to draw" state.
-     * The next detection is deferred until the user mouses down in the scene.
-     *
-     * The create callback registered by {@link enableQuickDraw} is preserved —
-     * the `lighter:overlay-create` event will invoke it on the next pointer-down.
-     */
-    () => {
-      const currentScene = sceneRef.current;
-      const currentLabel = selectedLabelRef.current;
-
-      if (currentLabel && quickDrawActive) {
-        // Always exit interactive mode after save
-        // This ensures clean state transition
-        if (
-          currentScene &&
-          !currentScene.isDestroyed &&
-          currentScene.renderLoopActive
-        ) {
-          currentScene.exitInteractiveMode();
-          if (currentLabel.overlay) {
-            addOverlay(currentLabel.overlay as BaseOverlay);
-          }
-        }
-
-        // Track last-used detection field and label for auto-assignment
-        trackLastUsedDetection(currentLabel.path, currentLabel.data.label);
-      }
-    },
-    [addOverlay, quickDrawActive, trackLastUsedDetection]
-  );
-
   const claimCreateEvent = useAtomCallback(
     useCallback(
       (get, set, eventId: string) => {
@@ -340,25 +247,61 @@ export const useQuickDraw = () => {
     )
   );
 
+  /**
+   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
+   * on pointer-down when no interactive handler exists.
+   *
+   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
+   *    remember field/label for auto-assignment).
+   * 2. Resolve field and label for the next detection.
+   * 3. Create the next detection.
+   */
   useEventHandler(
     "lighter:overlay-create",
     useCallback(
       (payload) => {
-        if (claimCreateEvent(payload.eventId)) {
-          handleQuickDrawTransition();
-          const field = getQuickDrawDetectionField() ?? undefined;
-          const labelValue = field
-            ? (getQuickDrawDetectionLabel(field) ?? undefined)
-            : undefined;
-          createDetection({ field, labelValue });
+        if (!claimCreateEvent(payload.eventId)) {
+          return;
         }
+
+        // Finalize the previous detection if one exists
+        const currentScene = sceneRef.current;
+        const currentLabel = selectedLabelRef.current;
+
+        if (currentLabel && quickDrawActive) {
+          if (
+            currentScene &&
+            !currentScene.isDestroyed &&
+            currentScene.renderLoopActive
+          ) {
+            currentScene.exitInteractiveMode();
+            if (currentLabel.overlay) {
+              addOverlay(currentLabel.overlay as BaseOverlay);
+            }
+          }
+
+          setLastUsedField(currentLabel.path);
+          if (currentLabel.data.label) {
+            setLastUsedLabel(currentLabel.path, currentLabel.data.label);
+          }
+        }
+
+        // Create the next detection
+        const field = getQuickDrawDetectionField() ?? undefined;
+        const labelValue = field
+          ? (getQuickDrawDetectionLabel(field) ?? undefined)
+          : undefined;
+        createDetection({ field, labelValue });
       },
       [
+        addOverlay,
         claimCreateEvent,
         createDetection,
         getQuickDrawDetectionField,
         getQuickDrawDetectionLabel,
-        handleQuickDrawTransition,
+        quickDrawActive,
+        setLastUsedField,
+        setLastUsedLabel,
       ]
     )
   );
