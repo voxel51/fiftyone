@@ -92,6 +92,10 @@ const ExpandLessIcon = () => (
   />
 );
 
+/** Tooltip content with explicit dark-mode text color (Voodo tooltip
+ *  doesn't set one, so it inherits black from the browser default). */
+const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
+
 const THUMB_SIZE = 36;
 const THUMB_GAP = 4;
 const THUMB_SINGLE_ROW_MAX = 10;
@@ -392,7 +396,7 @@ export default function RunList({
         <Heading level="h2">Similarity Search</Heading>
         <Stack orientation={Orientation.Row} spacing={Spacing.Sm}>
           {runs.length > 0 && (
-            <Tooltip content="Refresh">
+            <Tooltip content={tip("Refresh")}>
               <Button
                 size={Size.Sm}
                 variant={Variant.Borderless}
@@ -414,8 +418,8 @@ export default function RunList({
           <Tooltip
             content={
               brainKeys.length === 0
-                ? "No similarity index computed"
-                : "Start a new search"
+                ? tip("No similarity index computed")
+                : tip("Start a new search")
             }
           >
             <span>
@@ -548,7 +552,7 @@ export default function RunList({
                       style={{ flexShrink: 0, alignItems: "flex-end" }}
                     >
                       <div style={s.actionButtons}>
-                        <Tooltip content="Apply results">
+                        <Tooltip content={tip("Apply results")}>
                           <Button
                             size={Size.Sm}
                             variant={Variant.Borderless}
@@ -557,7 +561,7 @@ export default function RunList({
                             disabled={run.status !== "completed"}
                           />
                         </Tooltip>
-                        <Tooltip content="Clone search">
+                        <Tooltip content={tip("Clone search")}>
                           <Button
                             size={Size.Sm}
                             variant={Variant.Borderless}
@@ -565,7 +569,7 @@ export default function RunList({
                             onClick={() => onClone(run.run_id)}
                           />
                         </Tooltip>
-                        <Tooltip content="Delete">
+                        <Tooltip content={tip("Delete")}>
                           <Button
                             size={Size.Sm}
                             variant={Variant.Borderless}
@@ -577,7 +581,9 @@ export default function RunList({
                       {isImage && (
                         <div style={s.expandButton}>
                           <Tooltip
-                            content={isExpanded ? "Collapse" : "Show samples"}
+                            content={
+                              isExpanded ? tip("Collapse") : tip("Show samples")
+                            }
                           >
                             <Button
                               size={Size.Sm}
