@@ -143,7 +143,6 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
     """
 
     def __init__(self, config):
-        self._text_prompt = config.text_prompt
         self._confidence_threshold = config.confidence_threshold
         self._mask_threshold = config.mask_threshold
         self._processor = None
@@ -156,11 +155,11 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
     @property
     def prompts(self):
-        return self._text_prompt
+        return self.config.text_prompt
 
     @prompts.setter
     def prompts(self, prompts):
-        self._text_prompt = prompts
+        self.config.text_prompt = prompts
 
     @property
     def can_embed_prompts(self):
@@ -198,8 +197,8 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
 
     def _get_text_prompt(self, sample=None):
         """Get text prompt from config, prompt field, or sample."""
-        if self._text_prompt is not None:
-            return self._text_prompt
+        if self.config.text_prompt is not None:
+            return self.config.text_prompt
 
         if "text_prompt" in self.needs_fields:
             field_name = self.needs_fields["text_prompt"]
@@ -433,7 +432,6 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)
 
-        self._text_prompt = config.text_prompt
         self._confidence_threshold = config.confidence_threshold
         self._mask_threshold = config.mask_threshold
         self._propagation_direction = config.propagation_direction
@@ -447,11 +445,11 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
     @property
     def prompts(self):
-        return self._text_prompt
+        return self.config.text_prompt
 
     @prompts.setter
     def prompts(self, prompts):
-        self._text_prompt = prompts
+        self.config.text_prompt = prompts
 
     def _download_model(self, config):
         pass
@@ -461,8 +459,8 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
     def _get_text_prompt(self, sample=None):
         """Get text prompt from config or needs_fields."""
-        if self._text_prompt is not None:
-            return self._text_prompt
+        if self.config.text_prompt is not None:
+            return self.config.text_prompt
 
         if "text_prompt" in self.needs_fields:
             field_name = self.needs_fields["text_prompt"]
