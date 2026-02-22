@@ -1434,12 +1434,37 @@ class FIWDataset(FiftyOneDataset):
         :func:`get_identifier_filepaths_map() <fiftyone.utils.fiw.get_identifier_filepaths_map>`
         utilities for FIW.
 
+    In order to load the FIW dataset, you must download the source data
+    manually. The directory should contain the official FIW structure::
+
+        source_dir/
+            FIDs/
+                F0001/
+                    MID1/
+                        *.jpg
+                    mid.csv
+                F0002/
+                    ...
+            FIW_PIDs.csv (optional)
+            FIW_FIDs.csv (optional)
+            FIW_RIDs.csv (optional)
+
+    You can register at
+    https://docs.google.com/forms/d/e/1FAIpQLSd5_hbg-7QlrqE9V4MJShgww308yCxHlj6VOLctETX6aYLQgg/viewform
+    in order to get access to download the data.
+
     Example usage::
 
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("fiw", split="test")
+        source_dir = "/path/to/dir-with-fiw-files"
+
+        dataset = foz.load_zoo_dataset(
+            "fiw",
+            split="train",
+            source_dir=source_dir,
+        )
 
         session = fo.launch_app(dataset)
 
@@ -1448,7 +1473,14 @@ class FIWDataset(FiftyOneDataset):
 
     Source
         https://web.northeastern.edu/smilelab/fiw
+
+    Args:
+        source_dir (None): the directory containing the manually downloaded
+            FIW files
     """
+
+    def __init__(self, source_dir=None):
+        self.source_dir = source_dir
 
     @property
     def name(self):
@@ -1473,18 +1505,17 @@ class FIWDataset(FiftyOneDataset):
     def supported_splits(self):
         return "train", "val", "test"
 
+    @property
+    def requires_manual_download(self):
+        return True
+
     def _download_and_prepare(self, dataset_dir, scratch_dir, split):
-        #
-        # FIW is distributed as a single download that contains all splits,
-        # so we remove the split from `dataset_dir` and download the whole
-        # dataset (if necessary)
-        #
         split = os.path.basename(dataset_dir)
-        dataset_dir = os.path.dirname(dataset_dir)  # remove split dir
-        num_samples, classes = fouf.download_fiw_dataset(
+        dataset_dir = os.path.dirname(dataset_dir)
+        num_samples, classes = fouf.parse_fiw_dataset(
+            self.source_dir,
             dataset_dir,
             split,
-            scratch_dir,
         )
 
         dataset_type = fot.FIWDataset()
