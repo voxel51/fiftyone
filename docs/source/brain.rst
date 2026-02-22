@@ -94,6 +94,12 @@ workflow:
   examples to train on in your data and for visualizing common modes of the
   data.
 
+* :ref:`Redaction <brain-media-redaction>`:
+  When working with sensitive data, one may want to strip it of
+  personally identifiable information before sharing it with others.
+  The FiftyOne Brain offers a *media redaction method* that can replace regions
+  of images or videos, as per detection labels, with blurred or masked pixels.
+
 .. note::
 
     Check out the :ref:`tutorials page <tutorials>` for detailed examples
@@ -2057,6 +2063,70 @@ samples being less representative and closer samples being more representative.
    :align: center
 
 .. _brain-managing-runs:
+
+.. _brain-media-redaction:
+
+Redaction
+_________
+
+The FiftyOne Brain provides a redaction method that can be used to replace
+regions of images or videos, as per detection labels, with blurred or masked pixels.
+This is useful when working with sensitive data to remove personally identifiable information
+before sharing it with others.
+
+The redaction method can be used to create a new |Dataset| with the redacted media.
+The method is invoked via the
+:meth:`create_redaction() <fiftyone.brain.create_redaction>`
+method.
+
+**Input**: A |SampleCollection| on which sensitive data predictions have been
+computed and are stored in the `label_field` argument. The `label_classes`
+argument is used to specify the classes of the sensitive data to redact.
+The other arguments configure the type (segmentation mask or bounding box)
+and method (gaussian blur or mask/black-out) of the redaction.
+
+**Output**: A |RedactionResults| object with the `samples` field containing the
+view of input samples. These have a new media field (specifiable with the `redaction_field` argument)
+containing the path to the redacted media. The samples also have a tag for indicating
+that redaction has been performed.
+The output object further has a
+:meth:`generate_redacted_dataset() <fiftyone.brain.RedactionResults.generate_redacted_dataset>`
+method that can be used to generate a new |Dataset| with the redacted media.
+
+Create Redaction Example
+------------------------
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # Create detections if not already present
+    # This will create detections in the label_field "your-model-detections"
+    # Use redaction_type="segmentation_mask" or "bounding_box" according to the model output
+    dataset.apply_model(
+        your_model_instance,
+        label_field="your-model-detections",
+    )
+
+    # Create redacted media
+    results = fob.create_redaction(
+        dataset,
+        label_field="your-model-detections",
+        label_classes=["sensitive_label_1", "sensitive_label_2"],
+        redaction_type="segmentation_mask",
+        redaction_mode="gaussian_blur",
+        redaction_field="redacted-media-filepath",
+    )
+
+    # Optionally, export to a new dataset with the redacted media
+    redacted_dataset = results.generate_redacted_dataset(name="quickstart-redacted")
+
+    session = fo.launch_app(dataset)
 
 Managing brain runs
 ___________________
