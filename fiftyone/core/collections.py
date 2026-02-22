@@ -11613,6 +11613,9 @@ class SampleCollection(object):
             if _group_slices:
                 group_slices.update(_group_slices)
 
+            # Optimization: some aggregations are allowed to change field name
+            big_field = getattr(aggregation, "_big_field", big_field)
+
             try:
                 assert len(_pipeline) == 1
                 project[big_field] = _pipeline[0]["$project"][big_field]
@@ -11621,6 +11624,9 @@ class SampleCollection(object):
                     "Batchable aggregations must have pipelines with a single "
                     "$project stage; found %s" % _pipeline
                 )
+
+        if "_id" not in project:
+            project["_id"] = False
 
         return self._pipeline(
             pipeline=[{"$project": project}],
