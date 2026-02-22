@@ -198,6 +198,14 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         self._processor = sam3_processor_module.Sam3Processor(model, **kwargs)
         return model
 
+    def build_get_item(
+        self, field_mapping: Optional[Dict[str, str]] = None
+    ) -> fout.ImageGetItem:
+        return fout.ImageGetItem(
+            raw_inputs=True,
+            field_mapping=field_mapping,
+        )
+
     def _get_field(self) -> Optional[str]:
         if "prompt_field" in self.needs_fields:
             return self.needs_fields["prompt_field"]
