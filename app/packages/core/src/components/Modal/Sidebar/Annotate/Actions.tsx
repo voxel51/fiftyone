@@ -80,9 +80,13 @@ const Container = styled.div<{ $active?: boolean }>`
     $active &&
     `
     color: ${theme.text.primary};
-    
+
     path {
       fill: ${theme.primary.plainColor};
+    }
+
+    svg {
+      filter: drop-shadow(0 0 5px ${theme.primary.plainColor});
     }
   `}
 
@@ -167,22 +171,22 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { enableQuickDraw } = useQuickDraw();
-  const create = useCreate(DETECTION);
+  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
+  const tooltip = quickDrawActive
+    ? "Exit detection creation"
+    : "Create new detections";
+
   const fields = useAtomValue(fieldsOfType(DETECTION));
   const disabled = fields.length === 0;
 
   return (
-    <Tooltip placement="top-center" text="Create new detections">
+    <Tooltip placement="top-center" text={tooltip}>
       <Square
+        $active={quickDrawActive}
         className={disabled ? "disabled" : ""}
         onClick={() => {
           if (disabled) return;
-          enableQuickDraw();
-
-          // Create first detection in quick draw mode,
-          // `true` to work around stale quickDrawActive closure
-          create(true);
+          toggleQuickDraw();
         }}
       >
         <svg

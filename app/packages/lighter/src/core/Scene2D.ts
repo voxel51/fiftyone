@@ -236,15 +236,19 @@ export class Scene2D {
 
     // Listen for OVERLAY_ESTABLISH events to unset bounds of new overlay
     this.registerEventHandler("lighter:overlay-establish", (event) => {
-      const { overlay, absoluteBounds, relativeBounds } = event;
+      const { overlay, absoluteBounds } = event;
 
       if (overlay) {
+        const relativeBounds =
+          this.coordinateSystem.absoluteToRelative(absoluteBounds);
+
         const addCommand = new AddOverlayCommand(
           this,
           overlay,
           absoluteBounds,
           relativeBounds
         );
+
         CommandContextManager.instance()
           .getActiveContext()
           .pushUndoable(addCommand);

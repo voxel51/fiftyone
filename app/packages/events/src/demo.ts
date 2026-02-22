@@ -29,7 +29,7 @@ export async function runDemo() {
   // compile-time error; event payload mismatch
   // eventBus.dispatch("demo:eventA", {foo: "bar"});
 
-  // compile-time error; event payload muse be undefined
+  // compile-time error; event payload must be undefined
   // eventBus.dispatch("demo:eventD", {foo: "bar"});
 
   const eventAHandler: EventHandler<DemoEventGroup["demo:eventA"]> = (

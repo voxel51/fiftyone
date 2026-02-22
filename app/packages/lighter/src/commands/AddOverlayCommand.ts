@@ -2,7 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
+import { getEventBus } from "@fiftyone/events";
 import { Scene2D } from "../core/Scene2D";
+import type { LighterEventGroup } from "../events";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import type { BaseOverlay } from "../overlay/BaseOverlay";
 import { Rect } from "../types";
@@ -36,24 +38,42 @@ export class AddOverlayCommand implements Undoable {
       if (this.relativeBounds) {
         handler.setRelativeBounds(this.relativeBounds);
       }
+
       interactionManager.removeHandler(this.overlay);
-      interactionManager.addHandler(handler);
+      this.scene.addOverlay(handler, false);
     } else {
       this.scene.addOverlay(this.overlay, false);
     }
   }
 
   undo(): void {
-    if (this.overlay instanceof InteractiveDetectionHandler) {
-      const handler = this.overlay.getOverlay();
-      const interactionManager = this.scene.getInteractionManager();
+    const overlayID =
+      this.overlay instanceof InteractiveDetectionHandler
+        ? this.overlay.getOverlay().id
+        : this.overlay.id;
 
-      handler.unsetBounds();
-      interactionManager.removeHandler(handler);
-      interactionManager.addHandler(this.overlay);
-      this.scene.setCursor(this.overlay.cursor);
-    } else {
-      this.scene.removeOverlay(this.overlay.id, false);
+    // Dispatch before removeOverlay so the label is still in the labels list
+    // when the bridge handles this event for backend persistence
+    const eventBus = getEventBus<LighterEventGroup>(
+      this.scene.getEventChannel()
+    );
+
+    try {
+      eventBus.dispatch("lighter:overlay-undone", { id: overlayID });
+    } catch (error) {
+      console.error(
+        `Failed to dispatch overlay-undone for ${overlayID}:`,
+        error
+      );
+    } finally {
+      if (this.overlay instanceof InteractiveDetectionHandler) {
+        const handler = this.overlay.getOverlay();
+
+        handler.unsetBounds();
+        this.scene.removeOverlay(handler.id, false);
+      } else {
+        this.scene.removeOverlay(this.overlay.id, false);
+      }
     }
   }
 }

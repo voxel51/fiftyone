@@ -9,9 +9,6 @@ import { editing } from "./Edit";
 import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
 import { labelMap } from "./useLabels";
-import { useQuickDraw } from "./Edit/useQuickDraw";
-import useCreate from "./Edit/useCreate";
-import { DETECTION } from "@fiftyone/utilities";
 
 const STORE = getDefaultStore();
 
@@ -22,8 +19,6 @@ export default function useFocus() {
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
-  const createDetection = useCreate(DETECTION);
-  const { quickDrawActive, handleQuickDrawTransition } = useQuickDraw();
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -43,18 +38,14 @@ export default function useFocus() {
   useEventHandler(
     "lighter:overlay-deselect",
     useCallback(
-      async (payload) => {
+      (payload) => {
         if (payload.ignoreSideEffects) {
           return;
         }
 
-        if (!quickDrawActive) {
-          onExit();
-        } else {
-          handleQuickDrawTransition(createDetection);
-        }
+        onExit();
       },
-      [createDetection, handleQuickDrawTransition, onExit, quickDrawActive]
+      [onExit]
     )
   );
 

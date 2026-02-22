@@ -4,10 +4,14 @@
 
 import {
   AnnotationEventGroup,
+  DeleteAnnotationCommand,
+  getFieldSchema,
   useAnnotationEventBus,
   useAnnotationEventHandler,
 } from "@fiftyone/annotation";
+import { useCommandBus } from "@fiftyone/command-bus";
 import {
+  BoundingBoxOverlay,
   type LighterEventGroup,
   type Scene2D,
   UNDEFINED_LIGHTER_SCENE_ID,
@@ -15,9 +19,14 @@ import {
   useLighterEventBus,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import type { DetectionLabel } from "@fiftyone/looker";
+import * as fos from "@fiftyone/state";
 import { useSetAtom } from "jotai";
+import { useAtomCallback } from "jotai/utils";
 import { useCallback, useEffect } from "react";
-import { currentData } from "../Sidebar/Annotate/Edit/state";
+import { useRecoilValue } from "recoil";
+import { editing } from "../Sidebar/Annotate/Edit";
+import { current, currentData, savedLabel } from "../Sidebar/Annotate/Edit/state";
 import { coerceStringBooleans, useLabelsContext } from "../Sidebar/Annotate";
 import useColorMappingContext from "./useColorMappingContext";
 import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
@@ -32,6 +41,7 @@ import { useLighterTooltipEventHandler } from "./useLighterTooltipEventHandler";
 export const useBridge = (scene: Scene2D | null) => {
   useLighterTooltipEventHandler(scene);
   const annotationEventBus = useAnnotationEventBus();
+  const commandBus = useCommandBus();
   const eventBus = useLighterEventBus(
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
@@ -39,7 +49,16 @@ export const useBridge = (scene: Scene2D | null) => {
     scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
   );
   const save = useSetAtom(currentData);
-  const { updateLabelData } = useLabelsContext();
+  const setEditing = useSetAtom(editing);
+  const setSavedLabel = useSetAtom(savedLabel);
+  const getCurrentLabel = useAtomCallback(
+    useCallback((get) => get(current), [])
+  );
+  const { addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData } =
+    useLabelsContext();
+  const fieldSchema = useRecoilValue(
+    fos.fieldSchema({ space: fos.State.SPACE.SAMPLE })
+  );
 
   useAnnotationEventHandler(
     "annotation:sidebarValueUpdated",
@@ -114,6 +133,71 @@ export const useBridge = (scene: Scene2D | null) => {
         );
       },
       [annotationEventBus]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-removed",
+    useCallback(
+      (payload) => {
+        // Read at event-handling time to avoid stale closure
+        const currentLabel = getCurrentLabel();
+
+        // If the removed overlay is the one being edited, close the sidebar
+        if (currentLabel?.overlay?.id === payload.id) {
+          setEditing(null);
+          setSavedLabel(null);
+        }
+
+        removeLabelFromSidebar(payload.id);
+      },
+      [getCurrentLabel, removeLabelFromSidebar, setEditing, setSavedLabel]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-added",
+    useCallback(
+      (payload) => {
+        if (
+          payload.overlay instanceof BoundingBoxOverlay &&
+          payload.overlay.field
+        ) {
+          addLabelToSidebar({
+            data: payload.overlay.label as DetectionLabel,
+            overlay: payload.overlay,
+            path: payload.overlay.field,
+            type: "Detection",
+          });
+        }
+      },
+      [addLabelToSidebar]
+    )
+  );
+
+  useEventHandler(
+    "lighter:overlay-undone",
+    useCallback(
+      (payload) => {
+        // Look up the label before it gets removed from the sidebar
+        // (lighter:overlay-undone fires before lighter:overlay-removed)
+        const label = getLabelById(payload.id);
+        if (!label) {
+          return;
+        }
+
+        const schema = getFieldSchema(fieldSchema, label.path);
+        if (!schema) {
+          return;
+        }
+
+        commandBus
+          .execute(new DeleteAnnotationCommand(label, schema))
+          .catch((error) => {
+            console.error("Failed to persist undo of creation:", error);
+          });
+      },
+      [commandBus, fieldSchema, getLabelById]
     )
   );
 
