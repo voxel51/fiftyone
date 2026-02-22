@@ -12,6 +12,7 @@ import {
 } from "@voxel51/voodo";
 import React, { useCallback, useEffect, useState } from "react";
 import { pluralizeRuns } from "../utils";
+import * as s from "./styles";
 
 type BulkActionBarProps = {
   selectedCount: number;
@@ -53,13 +54,7 @@ export default function BulkActionBar({
   const label = pluralizeRuns(selectedCount);
 
   return (
-    <div
-      className="sticky bottom-0 inset-x-0 px-4 py-3 z-10"
-      style={{
-        background: "var(--fo-palette-background-level2)",
-        borderTop: "1px solid var(--fo-palette-divider)",
-      }}
-    >
+    <div style={s.bulkActionBar}>
       {confirming ? (
         <Stack
           orientation={Orientation.Row}

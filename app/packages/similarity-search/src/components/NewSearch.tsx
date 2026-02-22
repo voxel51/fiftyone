@@ -27,6 +27,7 @@ import * as fos from "@fiftyone/state";
 import { BrainKeyConfig, CloneConfig, QueryType } from "../types";
 import { SEARCH_OPERATOR_URI, INIT_RUN_OPERATOR_URI } from "../constants";
 import { canSubmitSearch, buildExecutionParams } from "../utils";
+import * as s from "./styles";
 
 type NewSearchProps = {
   brainKeys: BrainKeyConfig[];
@@ -82,7 +83,7 @@ export default function NewSearch({
     }
   }, [supportsPrompts, queryType]);
 
-  const getQueryIds = useCallback(() => {
+  const queryIds = useMemo(() => {
     if (selectedLabels && selectedLabels.length > 0) {
       return selectedLabels.map((l: any) => l.label_id);
     }
@@ -92,7 +93,7 @@ export default function NewSearch({
     return [];
   }, [selectedSamples, selectedLabels]);
 
-  const getNegativeQueryIds = useCallback(() => {
+  const negativeQueryIds = useMemo(() => {
     if (altSelectedSamples && altSelectedSamples.size > 0) {
       return Array.from(altSelectedSamples);
     }
@@ -106,7 +107,7 @@ export default function NewSearch({
         brainKey,
         queryType,
         textQuery,
-        queryIds: getQueryIds(),
+        queryIds,
         reverse,
         patchesField: selectedConfig?.patches_field,
         searchScope,
@@ -115,7 +116,7 @@ export default function NewSearch({
         k,
         distField,
         runName,
-        negativeQueryIds: getNegativeQueryIds(),
+        negativeQueryIds,
       }),
     [
       brainKey,
@@ -129,8 +130,8 @@ export default function NewSearch({
       view,
       searchScope,
       hasView,
-      getQueryIds,
-      getNegativeQueryIds,
+      queryIds,
+      negativeQueryIds,
     ]
   );
 
@@ -175,14 +176,13 @@ export default function NewSearch({
   const kError = maxK != null && typeof k === "number" && k > maxK;
 
   return (
-    <div className="p-4">
+    <div style={s.newSearchContainer}>
       <Stack
         orientation={Orientation.Row}
         spacing={Spacing.Sm}
         style={{ alignItems: "center", marginBottom: "1.5rem" }}
       >
         <Button
-          borderless
           size={Size.Sm}
           variant={Variant.Borderless}
           leadingIcon={BackIcon}
@@ -208,13 +208,10 @@ export default function NewSearch({
         />
 
         {brainKeys.length === 0 && (
-          <div className="rounded-md border border-content-border-secondary-primary bg-content-bg-card-2 p-3">
+          <div style={s.noBrainKeysWarning}>
             <Text variant={TextVariant.Sm} color={TextColor.Secondary}>
-              No similarity brain keys found. Run{" "}
-              <code className="font-mono text-xs">
-                dataset.compute_similarity()
-              </code>{" "}
-              first to create an index.
+              No similarity indexes found. Compute a similarity index on your
+              dataset first.
             </Text>
           </div>
         )}
@@ -261,26 +258,24 @@ export default function NewSearch({
           />
         ) : (
           <div
-            className={`rounded-md border p-3 ${
-              getQueryIds().length > 0
-                ? "border-action-primary-primary bg-content-bg-card-2"
-                : "border-content-border-secondary-primary bg-content-bg-card-2"
-            }`}
+            style={
+              queryIds.length > 0
+                ? s.querySelectorBoxActive
+                : s.querySelectorBoxInactive
+            }
           >
             <Text
               variant={TextVariant.Sm}
               color={
-                getQueryIds().length > 0
-                  ? TextColor.Success
-                  : TextColor.Secondary
+                queryIds.length > 0 ? TextColor.Success : TextColor.Secondary
               }
             >
-              {getQueryIds().length > 0
-                ? `${getQueryIds().length} ${
+              {queryIds.length > 0
+                ? `${queryIds.length} ${
                     selectedLabels?.length > 0 ? "labels" : "samples"
                   } selected (positive)${
-                    getNegativeQueryIds().length > 0
-                      ? ` \u00B7 ${getNegativeQueryIds().length} negative`
+                    negativeQueryIds.length > 0
+                      ? ` \u00B7 ${negativeQueryIds.length} negative`
                       : ""
                   }`
                 : "Select samples in the grid (Alt+click for negative)"}
@@ -379,19 +374,14 @@ export default function NewSearch({
         />
 
         {/* Submit with execution target selector */}
-        <div className="flex justify-end">
+        <div style={s.submitRow}>
           <OperatorExecutionButton
             operatorUri={SEARCH_OPERATOR_URI}
             executionParams={executionParams}
             onSuccess={handleSuccess}
             onError={handleError}
             disabled={
-              !canSubmitSearch(
-                brainKey,
-                queryType,
-                textQuery,
-                getQueryIds().length
-              )
+              !canSubmitSearch(brainKey, queryType, textQuery, queryIds.length)
             }
             variant="contained"
           >

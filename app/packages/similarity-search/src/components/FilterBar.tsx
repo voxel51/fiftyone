@@ -13,6 +13,7 @@ import {
 import React from "react";
 import { RunFilterState, DateFilterPreset } from "../types";
 import { DATE_PRESET_OPTIONS } from "../constants";
+import * as s from "./styles";
 
 type FilterBarProps = {
   filterState: RunFilterState;
@@ -41,7 +42,7 @@ export default function FilterBar({
         spacing={Spacing.Sm}
         style={{ alignItems: "center" }}
       >
-        <div className="flex-1">
+        <div style={s.filterBarSearchCol}>
           <Input
             type={InputType.Search}
             placeholder="Filter by name, query, or brain key..."
@@ -52,7 +53,7 @@ export default function FilterBar({
             size={Size.Sm}
           />
         </div>
-        <div className="min-w-[10rem]">
+        <div style={s.filterBarDateCol}>
           <Select
             exclusive
             options={DATE_PRESET_OPTIONS}

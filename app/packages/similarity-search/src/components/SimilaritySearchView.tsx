@@ -1,5 +1,5 @@
 import { usePanelContext } from "@fiftyone/spaces";
-import { Spinner, Text, TextColor } from "@voxel51/voodo";
+import { Spinner } from "@voxel51/voodo";
 import React, { Suspense, useCallback, useState } from "react";
 import { useAtom } from "jotai";
 import { SimilaritySearchViewProps } from "../types";
@@ -11,6 +11,7 @@ import useTriggers from "../hooks/useTriggers";
 import atoms from "../state";
 import RunList from "./RunList";
 import NewSearch from "./NewSearch";
+import * as s from "./styles";
 
 function SimilaritySearchReady(props: SimilaritySearchViewProps) {
   const { data = {}, schema } = props;
@@ -112,18 +113,19 @@ function SimilaritySearchReady(props: SimilaritySearchViewProps) {
 
   if (!loaded || submitting) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div style={s.fullCenter}>
         <Spinner />
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full">
+    <div style={s.fullSize}>
       {page === "home" && (
         <RunList
           runs={runs}
           filteredRuns={filteredRuns}
+          brainKeys={brainKeys}
           appliedRunId={appliedRunId}
           sampleMedia={sampleMedia}
           onApply={handleApply}
@@ -162,7 +164,7 @@ export default function SimilaritySearchView(props: SimilaritySearchViewProps) {
 
   if (!panelId) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
+      <div style={s.fullCenter}>
         <Spinner />
       </div>
     );
@@ -171,7 +173,7 @@ export default function SimilaritySearchView(props: SimilaritySearchViewProps) {
   return (
     <Suspense
       fallback={
-        <div className="w-full h-full flex items-center justify-center">
+        <div style={s.fullCenter}>
           <Spinner />
         </div>
       }

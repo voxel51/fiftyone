@@ -26,6 +26,7 @@ export {
   useOperatorBrowser,
   useOperatorExecutor,
   useOperatorPlacements,
+  usePromptOperatorInput,
 } from "./state";
 export * as types from "./types";
 export {

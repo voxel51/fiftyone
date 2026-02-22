@@ -2957,7 +2957,7 @@ __metadata:
     vite-plugin-externals: "npm:^0.5.0"
   peerDependencies:
     "@mui/icons-material": "*"
-    "@mui/material": "*"
+    "@voxel51/voodo": "*"
     jotai: "*"
     recoil: "*"
   languageName: unknown
