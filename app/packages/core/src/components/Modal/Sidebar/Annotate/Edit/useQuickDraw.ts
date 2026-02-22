@@ -345,6 +345,7 @@ export const useQuickDraw = () => {
     useCallback(
       (payload) => {
         if (claimCreateEvent(payload.eventId)) {
+          handleQuickDrawTransition();
           const field = getQuickDrawDetectionField() ?? undefined;
           const labelValue = field
             ? (getQuickDrawDetectionLabel(field) ?? undefined)
@@ -357,6 +358,7 @@ export const useQuickDraw = () => {
         createDetection,
         getQuickDrawDetectionField,
         getQuickDrawDetectionLabel,
+        handleQuickDrawTransition,
       ]
     )
   );
@@ -371,13 +373,6 @@ export const useQuickDraw = () => {
       enableQuickDraw,
       disableQuickDraw,
       toggleQuickDraw,
-
-      // Tracking and transitions
-      trackLastUsedDetection,
-      handleQuickDrawTransition,
-
-      // Field switching (for Field component)
-      handleQuickDrawFieldChange,
     }),
     [
       quickDrawActive,
@@ -385,9 +380,6 @@ export const useQuickDraw = () => {
       enableQuickDraw,
       disableQuickDraw,
       toggleQuickDraw,
-      handleQuickDrawTransition,
-      trackLastUsedDetection,
-      handleQuickDrawFieldChange,
     ]
   );
 };
