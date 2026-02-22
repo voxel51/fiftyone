@@ -126,12 +126,8 @@ export const useQuickDraw = () => {
    * Toggle quick draw mode.
    */
   const toggleQuickDraw = useCallback(() => {
-    if (quickDrawActive) {
-      disableQuickDraw();
-    } else {
-      enableQuickDraw();
-    }
-  }, [quickDrawActive, disableQuickDraw, enableQuickDraw]);
+    setQuickDrawActive((prev) => !prev);
+  }, [setQuickDrawActive]);
 
   /**
    * Get the auto-assigned detection field path.
