@@ -274,7 +274,10 @@ def export_samples(
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
             dataset_exporter, "export_media", export_media
-        ) not in {False, "symlink"}
+        ) not in {
+            False,
+            "symlink",
+        }
 
         #
         # Clips are always written to a temporary directory first, so the
@@ -327,7 +330,10 @@ def export_samples(
         # True for copy/move/symlink, False for manifest/no export
         _export_media = getattr(
             dataset_exporter, "export_media", export_media
-        ) not in {False, "symlink"}
+        ) not in {
+            False,
+            "symlink",
+        }
 
         #
         # Clips are always written to a temporary directory first, so the
@@ -486,8 +492,7 @@ def build_dataset_exporter(
     """
     if dataset_type is None:
         raise ValueError(
-            "You must provide a `dataset_type` in order to build a dataset "
-            "exporter"
+            "You must provide a `dataset_type` in order to build a dataset exporter"
         )
 
     if etau.is_str(dataset_type):
@@ -1568,8 +1573,14 @@ class UnlabeledImageDatasetExporter(DatasetExporter):
 class UnlabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of unlabeled video samples.
 
+    Typically, dataset exporters should implement the parameters documented on
+    this class, although this is not mandatory.
+
     See :ref:`this page <writing-a-custom-dataset-exporter>` for information
     about implementing/using dataset exporters.
+
+    .. automethod:: __enter__
+    .. automethod:: __exit__
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1579,21 +1590,58 @@ class UnlabeledVideoDatasetExporter(DatasetExporter):
     @property
     def requires_video_metadata(self):
         """Whether this exporter requires
-        :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
-        being exported.
+        :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
         """
         raise NotImplementedError(
             "subclass must implement requires_video_metadata"
         )
 
     def export_sample(self, video_path, metadata=None):
-        """Exports the given sample to the dataset.
+        """Exports the given sample.
 
         Args:
-            video_path: the path to a video on disk
-            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
-                instance for the sample. Only required when
-                :meth:`requires_video_metadata` is ``True``
+            video_path: the path to the video on disk
+            metadata (None): an :class:`fiftyone.core.metadata.VideoMetadata`
+                instance for the video, or ``None`` if
+                :meth:`requires_video_metadata` is ``False``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class UnlabeledAudioDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of unlabeled audio samples.
+
+    Typically, dataset exporters should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    .. automethod:: __enter__
+    .. automethod:: __exit__
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    @property
+    def requires_audio_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each audio.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_audio_metadata"
+        )
+
+    def export_sample(self, audio_path, metadata=None):
+        """Exports the given sample.
+
+        Args:
+            audio_path: the path to the audio on disk
+            metadata (None): an :class:`fiftyone.core.metadata.AudioMetadata`
+                instance for the audio, or ``None`` if
+                :meth:`requires_audio_metadata` is ``False``
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
@@ -1689,8 +1737,14 @@ class LabeledImageDatasetExporter(DatasetExporter):
 class LabeledVideoDatasetExporter(DatasetExporter):
     """Interface for exporting datasets of labeled video samples.
 
+    Typically, dataset exporters should implement the parameters documented on
+    this class, although this is not mandatory.
+
     See :ref:`this page <writing-a-custom-dataset-exporter>` for information
     about implementing/using dataset exporters.
+
+    .. automethod:: __enter__
+    .. automethod:: __exit__
 
     Args:
         export_dir (None): the directory to write the export. This may be
@@ -1700,8 +1754,7 @@ class LabeledVideoDatasetExporter(DatasetExporter):
     @property
     def requires_video_metadata(self):
         """Whether this exporter requires
-        :class:`fiftyone.core.metadata.VideoMetadata` instances for each sample
-        being exported.
+        :class:`fiftyone.core.metadata.VideoMetadata` instances for each video.
         """
         raise NotImplementedError(
             "subclass must implement requires_video_metadata"
@@ -1709,60 +1762,128 @@ class LabeledVideoDatasetExporter(DatasetExporter):
 
     @property
     def label_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class(es) that can be
-        exported at the sample-level.
+        """The :class:`fiftyone.core.labels.Label` class(es) supported by this
+        exporter.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            exporter directly exports sample-level labels of this type
+            exporter supports exactly this label type
         -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
-            this case, the exporter can export a single sample-level label
-            field of any of these types
+            this case, the exporter supports any of these label types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-            In this case, the exporter can export multiple label fields with
-            value-types specified by this dictionary. Not all keys need be
-            present in the exported sample-level labels
-        -   ``None``. In this case, the exporter makes no guarantees about the
-            sample-level labels that it can export
+            In this case, the exporter supports label dictionaries with keys
+            and value-types specified by this dictionary
+        -   ``None``. In this case, the exporter accepts labels of any type
         """
         raise NotImplementedError("subclass must implement label_cls")
 
     @property
     def frame_labels_cls(self):
-        """The :class:`fiftyone.core.labels.Label` class(es) that can be
-        exported by this exporter at the frame-level.
+        """The :class:`fiftyone.core.labels.Label` class(es) supported by this
+        exporter for frame labels.
 
         This can be any of the following:
 
         -   a :class:`fiftyone.core.labels.Label` class. In this case, the
-            exporter directly exports frame labels of this type
+            exporter supports exactly this label type
         -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
-            this case, the exporter can export a single frame label field of
-            any of these types
+            this case, the exporter supports any of these label types
         -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
-            In this case, the exporter can export multiple frame label fields
-            with value-types specified by this dictionary. Not all keys need be
-            present in the exported frame labels
-        -   ``None``. In this case, the exporter makes no guarantees about the
-            frame labels that it can export
+            In this case, the exporter supports label dictionaries with keys
+            and value-types specified by this dictionary
+        -   ``None``. In this case, the exporter accepts labels of any type
         """
         raise NotImplementedError("subclass must implement frame_labels_cls")
 
-    def export_sample(self, video_path, label, frames, metadata=None):
-        """Exports the given sample to the dataset.
+    def export_sample(self, video_path, labels, frames, metadata=None):
+        """Exports the given sample.
 
         Args:
-            video_path: the path to a video on disk
-            label: an instance of :meth:`label_cls`, or a dictionary mapping
-                field names to :class:`fiftyone.core.labels.Label` instances,
-                or ``None`` if the sample has no sample-level labels
-            frames: a dictionary mapping frame numbers to dictionaries that map
-                field names to :class:`fiftyone.core.labels.Label` instances,
-                or ``None`` if the sample has no frame-level labels
-            metadata (None): a :class:`fiftyone.core.metadata.VideoMetadata`
-                instance for the sample. Only required when
-                :meth:`requires_video_metadata` is ``True``
+            video_path: the path to the video on disk
+            labels: the sample-level labels for the video, which can be any of
+                the following:
+
+                -   a :class:`fiftyone.core.labels.Label` instance
+                -   a dictionary mapping label fields to
+                    :class:`fiftyone.core.labels.Label` instances
+                -   ``None`` if the sample has no sample-level labels
+
+            frames: the frame-level labels for the video, which can be any of
+                the following:
+
+                -   a dictionary mapping frame numbers to dictionaries that
+                    map label fields to :class:`fiftyone.core.labels.Label`
+                    instances for each video frame
+                -   ``None`` if the sample has no frame-level labels
+
+            metadata (None): an :class:`fiftyone.core.metadata.VideoMetadata`
+                instance for the video, or ``None`` if
+                :meth:`requires_video_metadata` is ``False``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
+
+
+class LabeledAudioDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of labeled audio samples.
+
+    Typically, dataset exporters should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    .. automethod:: __enter__
+    .. automethod:: __exit__
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    @property
+    def requires_audio_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each audio.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_audio_metadata"
+        )
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) supported by this
+        exporter.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter supports exactly this label type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the exporter supports any of these label types
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter supports label dictionaries with keys
+            and value-types specified by this dictionary
+        -   ``None``. In this case, the exporter accepts labels of any type
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
+    def export_sample(self, audio_path, labels, metadata=None):
+        """Exports the given sample.
+
+        Args:
+            audio_path: the path to the audio on disk
+            labels: the sample-level labels for the audio, which can be any of
+                the following:
+
+                -   a :class:`fiftyone.core.labels.Label` instance
+                -   a dictionary mapping label fields to
+                    :class:`fiftyone.core.labels.Label` instances
+                -   ``None`` if the sample has no sample-level labels
+
+            metadata (None): an :class:`fiftyone.core.metadata.AudioMetadata`
+                instance for the audio, or ``None`` if
+                :meth:`requires_audio_metadata` is ``False``
         """
         raise NotImplementedError("subclass must implement export_sample()")
 
@@ -2499,6 +2620,65 @@ class ImageDirectoryExporter(UnlabeledImageDatasetExporter):
 
     def export_sample(self, image_or_path, metadata=None):
         self._media_exporter.export(image_or_path)
+
+    def close(self, *args):
+        self._media_exporter.close()
+
+
+class AudioDirectoryExporter(UnlabeledAudioDatasetExporter):
+    """Exporter that writes a directory of audio files to disk.
+
+    See :ref:`this page <AudioDirectory-export>` for format details.
+
+    The filenames of the input audio files will be maintained in the export
+    directory, unless a name conflict would occur, in which case an index of
+    the form ``"-%d" % count`` is appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        export_media (None): defines how to export the raw media contained
+            in the dataset. The supported values are:
+
+            -   ``True`` (default): copy all media files into the export
+                directory
+            -   ``"move"``: move media files into the export directory
+            -   ``"symlink"``: create symlinks to each media file in the export
+                directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each audio. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported audio. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
+    """
+
+    def __init__(self, export_dir, export_media=None, rel_dir=None):
+        if export_media is None:
+            export_media = True
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
+        self.rel_dir = rel_dir
+
+        self._media_exporter = None
+
+    @property
+    def requires_audio_metadata(self):
+        return False
+
+    def setup(self):
+        self._media_exporter = MediaExporter(
+            self.export_media,
+            export_path=self.export_dir,
+            rel_dir=self.rel_dir,
+            supported_modes=(True, "move", "symlink"),
+        )
+        self._media_exporter.setup()
+
+    def export_sample(self, audio_path, metadata=None):
+        self._media_exporter.export(audio_path)
 
     def close(self, *args):
         self._media_exporter.close()
@@ -3939,8 +4119,8 @@ def _parse_detections(
         if labels_map_rev is not None:
             if label not in labels_map_rev:
                 msg = (
-                    "Ignoring detection with label '%s' not in provided "
-                    "classes" % label
+                    "Ignoring detection with label '%s' not in provided classes"
+                    % label
                 )
                 warnings.warn(msg)
                 continue

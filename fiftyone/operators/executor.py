@@ -17,6 +17,7 @@ import traceback
 from typing import Optional
 
 import fiftyone as fo
+import fiftyone.core.config as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -228,7 +229,7 @@ def _parse_ctx(ctx=None, **kwargs):
     return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
-@coroutine_timeout(seconds=fo.config.operator_timeout)
+@coroutine_timeout(seconds=foc.load_config().operator_timeout)
 async def execute_or_delegate_operator(
     operator_uri, request_params, exhaust=False
 ):

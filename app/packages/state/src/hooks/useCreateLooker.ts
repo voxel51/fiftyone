@@ -1,5 +1,6 @@
 import {
   AbstractLooker,
+  AudioLooker,
   FO_LABEL_TOGGLED_EVENT,
   FrameLooker,
   ImaVidLooker,
@@ -98,6 +99,7 @@ export default <T extends AbstractLooker<BaseState>>(
           | typeof ImaVidLooker
           | typeof ThreeDLooker
           | typeof VideoLooker
+          | typeof AudioLooker
           | typeof MetadataLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
@@ -118,17 +120,18 @@ export default <T extends AbstractLooker<BaseState>>(
             create = ThreeDLooker;
           } else if (mimeType !== null) {
             const isVideo = mimeType.startsWith("video/");
+            const isAudio = mimeType.startsWith("audio/");
 
             if (isVideo && (isFrame || isPatch)) {
               create = FrameLooker;
-            }
-
-            if (isVideo) {
+            } else if (isVideo) {
               create = VideoLooker;
-            }
-
-            if (!isVideo && shouldRenderImaVidLooker) {
+            } else if (isAudio) {
+              create = AudioLooker;
+            } else if (shouldRenderImaVidLooker) {
               create = ImaVidLooker;
+            } else {
+              create = ImageLooker;
             }
           } else {
             create = ImageLooker;

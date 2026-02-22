@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import itertools
 import logging
@@ -217,6 +218,59 @@ class VideoMetadata(Metadata):
         )
 
 
+class AudioMetadata(Metadata):
+    """Class for storing metadata about audio samples.
+
+    Args:
+        size_bytes (None): the size of the audio on disk, in bytes
+        mime_type (None): the MIME type of the audio
+        sample_rate (None): the sample rate of the audio
+        num_channels (None): the number of channels in the audio
+        duration (None): the duration of the audio, in seconds
+        encoding_str (None): the encoding string for the audio
+    """
+
+    sample_rate = fof.IntField()
+    num_channels = fof.IntField()
+    duration = fof.FloatField()
+    encoding_str = fof.StringField()
+
+    @classmethod
+    def build_for(cls, audio_path_or_url, mime_type=None):
+        """Builds an :class:`AudioMetadata` object for the given audio.
+
+        Args:
+            audio_path_or_url: the path to an audio file on disk or a URL
+            mime_type (None): the MIME type of the audio. If not provided, it
+                will be guessed
+
+        Returns:
+            a :class:`AudioMetadata`
+        """
+        if audio_path_or_url.startswith("http"):
+            # @todo support audio URLs
+            return cls._build_for_url(audio_path_or_url, mime_type=mime_type)
+
+        return cls._build_for_local(audio_path_or_url, mime_type=mime_type)
+
+    @classmethod
+    def _build_for_local(cls, filepath, mime_type=None):
+        if mime_type is None:
+            mime_type = etau.guess_mime_type(filepath)
+
+        size_bytes = os.path.getsize(filepath)
+        info = get_audio_info(filepath)
+
+        return cls(
+            size_bytes=size_bytes,
+            mime_type=mime_type,
+            sample_rate=info.get("sample_rate"),
+            num_channels=info.get("channels"),
+            duration=info.get("duration"),
+            encoding_str=info.get("codec_name"),
+        )
+
+
 class SceneMetadata(Metadata):
     """Class for storing metadata about 3D scene samples.
 
@@ -413,6 +467,8 @@ def get_metadata_cls(media_type):
         return ImageMetadata
     elif media_type == fom.VIDEO:
         return VideoMetadata
+    elif media_type == fom.AUDIO:
+        return AudioMetadata
     elif media_type == fom.THREE_D:
         return SceneMetadata
 
@@ -535,6 +591,53 @@ def get_image_info(f):
         width, height = img.width, img.height
 
     return width, height, len(img.getbands())
+
+
+def get_audio_info(filepath):
+    """Retrieves metadata for the given audio file using ``ffprobe``.
+
+    Args:
+        filepath: the path to the audio file
+
+    Returns:
+        a dict of metadata
+    """
+    import subprocess
+    import json
+
+    cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-show_format",
+        "-show_streams",
+        "-of",
+        "json",
+        filepath,
+    ]
+
+    try:
+        res = subprocess.check_output(cmd)
+        data = json.loads(res)
+    except Exception as e:
+        logger.warning("Failed to extract audio metadata: %s", e)
+        return {}
+
+    info = {}
+    if "streams" in data:
+        for stream in data["streams"]:
+            if stream.get("codec_type") == "audio":
+                info["sample_rate"] = int(stream.get("sample_rate", 0))
+                info["channels"] = int(stream.get("channels", 0))
+                info["duration"] = float(stream.get("duration", 0))
+                info["codec_name"] = stream.get("codec_name")
+                break
+
+    # Fallback to format info if needed
+    if "format" in data and "duration" not in info:
+        info["duration"] = float(data["format"].get("duration", 0))
+
+    return info
 
 
 def _compute_metadata(
@@ -689,6 +792,8 @@ def _get_metadata(
         metadata = ImageMetadata.build_for(filepath)
     elif media_type == fom.VIDEO:
         metadata = VideoMetadata.build_for(filepath)
+    elif media_type == fom.AUDIO:
+        metadata = AudioMetadata.build_for(filepath)
     elif media_type == fom.THREE_D:
         metadata = SceneMetadata.build_for(
             filepath,
