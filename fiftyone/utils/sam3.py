@@ -42,8 +42,8 @@ class SegmentAnything3ImageModelConfig(
 
     Args:
         text_prompt (None): the default text prompt to use for segmentation
-        confidence_threshold (0.5): minimum confidence threshold for detections
-        mask_threshold (0.5): threshold for converting soft masks to binary
+        confidence_threshold (None): confidence threshold; defers to Sam3Processor default if None
+        mask_threshold (None): mask binarization threshold; defers to Sam3Processor default if None
     """
 
     def __init__(self, d):
@@ -52,10 +52,10 @@ class SegmentAnything3ImageModelConfig(
 
         self.text_prompt = self.parse_string(d, "text_prompt", default=None)
         self.confidence_threshold = self.parse_number(
-            d, "confidence_threshold", default=0.5
+            d, "confidence_threshold", default=None
         )
         self.mask_threshold = self.parse_number(
-            d, "mask_threshold", default=0.5
+            d, "mask_threshold", default=None
         )
 
 
@@ -69,8 +69,8 @@ class SegmentAnything3VideoModelConfig(
 
     Args:
         text_prompt (None): the default text prompt to use for segmentation
-        confidence_threshold (0.5): minimum confidence threshold for detections
-        mask_threshold (0.5): threshold for converting soft masks to binary
+        confidence_threshold (None): confidence threshold; defers to Sam3Processor default if None
+        mask_threshold (None): mask binarization threshold; defers to Sam3Processor default if None
         propagation_direction ("forward"): direction to propagate in video;
             supported values are ``"forward"``, ``"backward"``, and ``"both"``
     """
@@ -81,10 +81,10 @@ class SegmentAnything3VideoModelConfig(
 
         self.text_prompt = self.parse_string(d, "text_prompt", default=None)
         self.confidence_threshold = self.parse_number(
-            d, "confidence_threshold", default=0.5
+            d, "confidence_threshold", default=None
         )
         self.mask_threshold = self.parse_number(
-            d, "mask_threshold", default=0.5
+            d, "mask_threshold", default=None
         )
         self.propagation_direction = self.parse_string(
             d, "propagation_direction", default="forward"
@@ -189,10 +189,10 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             device=device,
             load_from_HF=True,
         )
-        self._processor = sam3_processor_module.Sam3Processor(
-            model,
-            confidence_threshold=self._confidence_threshold,
-        )
+        kwargs = {}
+        if self._confidence_threshold is not None:
+            kwargs["confidence_threshold"] = self._confidence_threshold
+        self._processor = sam3_processor_module.Sam3Processor(model, **kwargs)
         return model
 
     def _get_text_prompt(self, sample=None):
@@ -324,7 +324,7 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             if hasattr(score, "item"):
                 score = score.item()
 
-            if score < self._confidence_threshold:
+            if self._confidence_threshold is not None and score < self._confidence_threshold:
                 continue
 
             if hasattr(mask, "cpu"):
@@ -360,7 +360,7 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             if mask_crop.size == 0:
                 continue
 
-            if mask_crop.dtype != bool:
+            if mask_crop.dtype != bool and self._mask_threshold is not None:
                 mask_crop = mask_crop > self._mask_threshold
 
             detections.append(
@@ -582,7 +582,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             if hasattr(score, "item"):
                 score = score.item()
 
-            if score < self._confidence_threshold:
+            if self._confidence_threshold is not None and score < self._confidence_threshold:
                 continue
 
             x_norm, y_norm, w_norm, h_norm = box_xywh
@@ -606,7 +606,7 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             if mask_crop.size == 0:
                 continue
 
-            if mask_crop.dtype != bool:
+            if mask_crop.dtype != bool and self._mask_threshold is not None:
                 mask_crop = mask_crop > self._mask_threshold
 
             detections.append(

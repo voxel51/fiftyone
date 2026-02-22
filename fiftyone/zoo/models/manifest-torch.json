@@ -1148,10 +1148,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.sam3.SegmentAnything3ImageModel",
-                "config": {
-                    "confidence_threshold": 0.5,
-                    "mask_threshold": 0.5
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "sam3"],
@@ -1198,9 +1195,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.sam3.SegmentAnything3VideoModel",
-                "config": {
-                    "confidence_threshold": 0.5
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "sam3"],
