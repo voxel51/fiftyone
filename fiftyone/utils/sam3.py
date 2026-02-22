@@ -8,6 +8,7 @@ wrapper for the FiftyOne Model Zoo.
 """
 
 import logging
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -42,8 +43,10 @@ class SegmentAnything3ImageModelConfig(
 
     Args:
         text_prompt (None): the default text prompt to use for segmentation
-        confidence_threshold (None): confidence threshold; defers to Sam3Processor default if None
-        mask_threshold (None): mask binarization threshold; defers to Sam3Processor default if None
+        confidence_threshold (None): confidence threshold passed to
+            Sam3Processor; defers to Sam3Processor default if None
+        mask_threshold (None): mask binarization threshold for the output
+            processor; defers to default 0.5 if None
     """
 
     def __init__(self, d):
@@ -70,8 +73,10 @@ class SegmentAnything3VideoModelConfig(
 
     Args:
         text_prompt (None): the default text prompt to use for segmentation
-        confidence_threshold (None): confidence threshold; defers to Sam3Processor default if None
-        mask_threshold (None): mask binarization threshold; defers to Sam3Processor default if None
+        confidence_threshold (None): confidence threshold; defers to
+            Sam3Processor default if None
+        mask_threshold (None): mask binarization threshold; defers to default
+            0.5 if None
         propagation_direction ("forward"): direction to propagate in video;
             supported values are ``"forward"``, ``"backward"``, and ``"both"``
     """
@@ -143,45 +148,42 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
         config: a :class:`SegmentAnything3ImageModelConfig`
     """
 
-    def __init__(self, config):
-        self._confidence_threshold = config.confidence_threshold
-        self._mask_threshold = config.mask_threshold
+    def __init__(self, config: SegmentAnything3ImageModelConfig) -> None:
         self._processor = None
+        self._curr_prompt_type = None
+        self._curr_prompts = None
+        self._curr_classes = None
         fout.TorchSamplesMixin.__init__(self)
         fout.TorchImageModel.__init__(self, config)
 
     @property
-    def media_type(self):
+    def media_type(self) -> str:
         return "image"
 
     @property
-    def prompts(self):
+    def needs_fields(self) -> Dict[str, str]:
+        return self._fields
+
+    @needs_fields.setter
+    def needs_fields(self, fields: Dict[str, str]) -> None:
+        if "text_prompt" in fields:
+            self.config.text_prompt = fields.pop("text_prompt")
+        self._fields = fields
+
+    @property
+    def prompts(self) -> Optional[str]:
         return self.config.text_prompt
 
     @prompts.setter
-    def prompts(self, prompts):
+    def prompts(self, prompts: Optional[str]) -> None:
         self.config.text_prompt = prompts
 
-    @property
-    def can_embed_prompts(self):
-        """Whether this model supports embedding prompts."""
-        return False
-
-    def embed_prompt(self, arg):
-        """Embed a prompt for this model.
-
-        Raises:
-            NotImplementedError: SAM3 does not support prompt embedding.
-        """
-        raise NotImplementedError(
-            "SAM3 does not support prompt embedding. Use text_prompt or "
-            "prompt_field instead."
-        )
-
-    def _download_model(self, config):
+    def _download_model(self, config: SegmentAnything3ImageModelConfig) -> None:
         pass
 
-    def _load_model(self, config):
+    def _load_model(
+        self, config: SegmentAnything3ImageModelConfig
+    ) -> Any:
         device = config.device
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -191,189 +193,179 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             load_from_HF=True,
         )
         kwargs = {}
-        if self._confidence_threshold is not None:
-            kwargs["confidence_threshold"] = self._confidence_threshold
+        if config.confidence_threshold is not None:
+            kwargs["confidence_threshold"] = config.confidence_threshold
         self._processor = sam3_processor_module.Sam3Processor(model, **kwargs)
         return model
 
-    def _get_field(self):
-        """Get the prompt field name from needs_fields."""
+    def _get_field(self) -> Optional[str]:
         if "prompt_field" in self.needs_fields:
             return self.needs_fields["prompt_field"]
         return None
 
-    def _get_box_prompts(self, sample, field_name):
-        """Extract box prompts from a Detections field."""
-        if sample is None or field_name is None:
-            return None
-
-        value = sample.get_field(field_name)
-        if value is None or not isinstance(value, fol.Detections):
-            return None
-
-        if len(value.detections) == 0:
-            return None
-
-        return value, [d.label for d in value.detections]
-
-    def predict_all(self, imgs, samples=None):
-        """Run SAM3 inference on a batch of images.
-
-        Args:
-            imgs: a list of image tensors
-            samples: an optional list of :class:`fiftyone.core.sample.Sample`
-
-        Returns:
-            a list of :class:`fiftyone.core.labels.Detections` instances
-        """
-        prompt_field = self._get_field()
-        if prompt_field is not None and samples is not None:
-            self._curr_box_prompts = [
-                self._get_box_prompts(s, prompt_field) for s in samples
-            ]
+    def predict_all(
+        self, imgs: List, samples: Optional[List] = None
+    ) -> List[fol.Detections]:
+        field_name = self._get_field()
+        if field_name is not None and samples is not None:
+            prompt_type, prompts, classes = self._parse_samples(
+                samples, field_name
+            )
         else:
-            self._curr_box_prompts = [None] * len(imgs)
+            if self.config.text_prompt is not None:
+                prompt_type = "text"
+                prompts = None
+                classes = [self.config.text_prompt]
+            else:
+                prompt_type, prompts, classes = None, None, None
+
+        self._curr_prompt_type = prompt_type
+        self._curr_prompts = prompts
+        self._curr_classes = classes
+
+        if classes is not None:
+            op_kwargs = {}
+            if self.config.mask_threshold is not None:
+                op_kwargs["mask_thresh"] = self.config.mask_threshold
+            self._output_processor = fout.InstanceSegmenterOutputProcessor(
+                classes, **op_kwargs
+            )
+        else:
+            self._output_processor = None
 
         return self._predict_all(imgs)
 
-    def _forward_pass(self, imgs):
-        """Run SAM3 inference on a batch of images."""
-        results = []
-        for img, box_data in zip(imgs, self._curr_box_prompts):
-            img_pil = self._to_pil(img)
-            width, height = img_pil.size
+    def _parse_samples(
+        self, samples: List, field_name: str
+    ) -> Tuple[str, List, List[str]]:
+        prompts = []
+        classes = set()
+        for sample in samples:
+            value = sample.get_field(field_name)
+            if value is None:
+                prompts.append(None)
+                continue
 
-            state = self._processor.set_image(img_pil)
-
-            text_prompt = self.config.text_prompt
-
-            if text_prompt is not None:
-                output = self._processor.set_text_prompt(
-                    text_prompt, state
+            if not isinstance(value, fol.Detections):
+                raise ValueError(
+                    "Unsupported prompt type %s. Supported types: %s"
+                    % (type(value), (fol.Detections,))
                 )
-                results.append(
-                    self._parse_output(output, width, height, text_prompt)
-                )
-            elif box_data is not None:
-                box_prompts, box_labels = box_data
-                results.append(
-                    self._predict_with_boxes(
-                        state, box_prompts, box_labels, width, height
-                    )
-                )
-            else:
-                logger.warning(
-                    "No text_prompt or prompt_field provided. "
-                    "Returning empty detections."
-                )
-                results.append(fol.Detections(detections=[]))
 
-        return results
+            prompts.append(value)
+            classes.update(d.label for d in value.detections)
 
-    def _predict_with_boxes(
-        self, state, box_prompts, box_labels, width, height
-    ):
-        """Run inference using box prompts."""
-        all_detections = []
+        return "boxes", prompts, sorted(classes)
 
-        for detection, label in zip(box_prompts.detections, box_labels, strict=True):
-            x_norm, y_norm, w_norm, h_norm = detection.bounding_box
-            x_px = x_norm * width
-            y_px = y_norm * height
-            w_px = w_norm * width
-            h_px = h_norm * height
-            cx = x_px + w_px / 2
-            cy = y_px + h_px / 2
-            box_cxcywh = [cx, cy, w_px, h_px]
+    def _forward_pass(self, imgs: List) -> List:
+        forward_methods = {
+            "text": self._forward_pass_text,
+            "boxes": self._forward_pass_boxes,
+        }
+        method = forward_methods.get(self._curr_prompt_type)
+        if method is None:
+            logger.warning(
+                "No text_prompt or prompt_field provided. "
+                "Returning empty detections."
+            )
+            self._output_processor = None
+            return [fol.Detections(detections=[]) for _ in imgs]
 
-            output = self._processor.add_geometric_prompt(
-                box=box_cxcywh,
-                label=True,
-                state=state,
+        return method(imgs)
+
+    def _forward_pass_text(
+        self, imgs: List
+    ) -> List[Dict[str, Any]]:
+        outputs = []
+        for img in imgs:
+            state = self._processor.set_image(img)
+            output = self._processor.set_text_prompt(
+                self.config.text_prompt, state
             )
 
-            detections = self._parse_output(output, width, height, label)
-            all_detections.extend(detections.detections)
+            masks = output.get("masks")
+            boxes = output.get("boxes")
+            scores = output.get("scores")
 
-        return fol.Detections(detections=all_detections)
-
-    def _parse_output(self, output, width, height, label):
-        """Convert SAM3 output to FiftyOne Detections."""
-        masks = output.get("masks", [])
-        boxes = output.get("boxes", [])
-        scores = output.get("scores", [])
-
-        detections = []
-        for mask, box, score in zip(masks, boxes, scores, strict=True):
-            if hasattr(score, "item"):
-                score = score.item()
-
-            if self._confidence_threshold is not None and score < self._confidence_threshold:
+            if masks is None or len(masks) == 0:
+                outputs.append(_empty_output(img))
                 continue
 
-            if hasattr(mask, "cpu"):
-                mask = mask.cpu().numpy()
-            if hasattr(box, "cpu"):
-                box = box.cpu().numpy()
+            if masks.ndim == 3:
+                masks = masks.unsqueeze(1)
 
-            if mask.ndim == 3:
-                mask = np.squeeze(mask, axis=0)
+            labels = torch.zeros(len(masks), dtype=torch.int64)
 
-            x1, y1, x2, y2 = box
-            x_norm = max(0.0, x1 / width)
-            y_norm = max(0.0, y1 / height)
-            w_norm = (x2 - x1) / width
-            h_norm = (y2 - y1) / height
-            bounding_box = [
-                x_norm,
-                y_norm,
-                min(1.0 - x_norm, w_norm),
-                min(1.0 - y_norm, h_norm),
-            ]
+            outputs.append({
+                "boxes": boxes,
+                "labels": labels,
+                "masks": masks,
+                "scores": scores,
+            })
 
-            y1_int = max(0, round(y1))
-            y2_int = min(height, round(y2))
-            x1_int = max(0, round(x1))
-            x2_int = min(width, round(x2))
+        return outputs
 
-            if y2_int <= y1_int or x2_int <= x1_int:
+    def _forward_pass_boxes(
+        self, imgs: List
+    ) -> List[Dict[str, Any]]:
+        outputs = []
+        for img, detections in zip(imgs, self._curr_prompts):
+            if detections is None or len(detections.detections) == 0:
+                outputs.append(_empty_output(img))
                 continue
 
-            mask_crop = mask[y1_int:y2_int, x1_int:x2_int]
+            state = self._processor.set_image(img)
+            w, h = _get_image_size(img)
 
-            if mask_crop.size == 0:
-                continue
+            all_boxes = []
+            all_labels = []
+            all_masks = []
+            all_scores = []
 
-            if mask_crop.dtype != bool and self._mask_threshold is not None:
-                mask_crop = mask_crop > self._mask_threshold
+            for det in detections.detections:
+                x_norm, y_norm, w_norm, h_norm = det.bounding_box
+                x_px = x_norm * w
+                y_px = y_norm * h
+                w_px = w_norm * w
+                h_px = h_norm * h
+                cx = x_px + w_px / 2
+                cy = y_px + h_px / 2
 
-            detections.append(
-                fol.Detection(
-                    label=label,
-                    bounding_box=bounding_box,
-                    mask=mask_crop,
-                    confidence=score,
+                output = self._processor.add_geometric_prompt(
+                    box=[cx, cy, w_px, h_px],
+                    label=True,
+                    state=state,
                 )
-            )
 
-        return fol.Detections(detections=detections)
+                masks = output.get("masks")
+                boxes = output.get("boxes")
+                scores = output.get("scores")
 
-    def _to_pil(self, img):
-        """Convert image tensor to PIL Image."""
-        from PIL import Image
+                if masks is None or len(masks) == 0:
+                    continue
 
-        if isinstance(img, Image.Image):
-            return img
+                label_idx = self._curr_classes.index(det.label)
 
-        if isinstance(img, torch.Tensor):
-            img = img.cpu().numpy()
-            if img.ndim == 3 and img.shape[0] in (1, 3):
-                img = np.transpose(img, (1, 2, 0))
+                for m, b, s in zip(masks, boxes, scores):
+                    if m.ndim == 2:
+                        m = m.unsqueeze(0)
+                    all_masks.append(m)
+                    all_boxes.append(b)
+                    all_labels.append(label_idx)
+                    all_scores.append(s)
 
-        if np.issubdtype(img.dtype, np.floating):
-            img = (img * 255).astype(np.uint8)
+            if not all_masks:
+                outputs.append(_empty_output(img))
+                continue
 
-        return Image.fromarray(img)
+            outputs.append({
+                "boxes": torch.stack(all_boxes),
+                "labels": torch.tensor(all_labels, dtype=torch.int64),
+                "masks": torch.stack(all_masks),
+                "scores": torch.stack(all_scores),
+            })
+
+        return outputs
 
 
 class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
@@ -406,43 +398,56 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
         config: a :class:`SegmentAnything3VideoModelConfig`
     """
 
-    def __init__(self, config):
+    def __init__(self, config: SegmentAnything3VideoModelConfig) -> None:
         self._fields = {}
         self.config = config
         self.needs_fields = {}
 
         device = config.device
         if device is None:
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         self._device = torch.device(device)
 
-        self._confidence_threshold = config.confidence_threshold
-        self._mask_threshold = config.mask_threshold
         self._propagation_direction = config.propagation_direction
 
         self._download_model(config)
         self._predictor = self._load_model(config)
 
     @property
-    def media_type(self):
+    def media_type(self) -> str:
         return "video"
 
     @property
-    def prompts(self):
+    def needs_fields(self) -> Dict[str, str]:
+        return self._fields
+
+    @needs_fields.setter
+    def needs_fields(self, fields: Dict[str, str]) -> None:
+        if "text_prompt" in fields:
+            self.config.text_prompt = fields.pop("text_prompt")
+        self._fields = fields
+
+    @property
+    def prompts(self) -> Optional[str]:
         return self.config.text_prompt
 
     @prompts.setter
-    def prompts(self, prompts):
+    def prompts(self, prompts: Optional[str]) -> None:
         self.config.text_prompt = prompts
 
-    def _download_model(self, config):
+    def _download_model(
+        self, config: SegmentAnything3VideoModelConfig
+    ) -> None:
         pass
 
-    def _load_model(self, config):
+    def _load_model(
+        self, config: SegmentAnything3VideoModelConfig
+    ) -> Any:
         return sam3_builder.build_sam3_video_predictor(device=self._device)
 
-    def _get_text_prompt(self, sample=None):
-        """Get text prompt from config or needs_fields."""
+    def _get_text_prompt(
+        self, sample: Optional[Any] = None
+    ) -> Optional[str]:
         if self.config.text_prompt is not None:
             return self.config.text_prompt
 
@@ -453,17 +458,9 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         return None
 
-    def predict(self, video_reader, sample):
-        """Run SAM3 inference on a video.
-
-        Args:
-            video_reader: the video reader
-            sample: the :class:`fiftyone.core.sample.Sample`
-
-        Returns:
-            a dict mapping frame numbers to
-            :class:`fiftyone.core.labels.Detections` instances
-        """
+    def predict(
+        self, video_reader: Any, sample: Any
+    ) -> Dict[int, fol.Detections]:
         text_prompt = self._get_text_prompt(sample)
 
         if text_prompt is None:
@@ -525,8 +522,13 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
 
         return sample_detections
 
-    def _parse_frame_outputs(self, outputs, frame_width, frame_height, label):
-        """Parse SAM3 video frame outputs into FiftyOne Detection objects."""
+    def _parse_frame_outputs(
+        self,
+        outputs: Dict[str, Any],
+        frame_width: int,
+        frame_height: int,
+        label: str,
+    ) -> List[fol.Detection]:
         masks = outputs.get("out_binary_masks")
         boxes_xywh = outputs.get("out_boxes_xywh")
         scores = outputs.get("out_probs")
@@ -566,7 +568,10 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             if hasattr(score, "item"):
                 score = score.item()
 
-            if self._confidence_threshold is not None and score < self._confidence_threshold:
+            if (
+                self.config.confidence_threshold is not None
+                and score < self.config.confidence_threshold
+            ):
                 continue
 
             x_norm, y_norm, w_norm, h_norm = box_xywh
@@ -580,7 +585,9 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             x1_int = max(0, round(x_norm * frame_width))
             y1_int = max(0, round(y_norm * frame_height))
             x2_int = min(frame_width, round((x_norm + w_norm) * frame_width))
-            y2_int = min(frame_height, round((y_norm + h_norm) * frame_height))
+            y2_int = min(
+                frame_height, round((y_norm + h_norm) * frame_height)
+            )
 
             if y2_int <= y1_int or x2_int <= x1_int:
                 continue
@@ -590,8 +597,11 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             if mask_crop.size == 0:
                 continue
 
-            if mask_crop.dtype != bool and self._mask_threshold is not None:
-                mask_crop = mask_crop > self._mask_threshold
+            if (
+                mask_crop.dtype != bool
+                and self.config.mask_threshold is not None
+            ):
+                mask_crop = mask_crop > self.config.mask_threshold
 
             detections.append(
                 fol.Detection(
@@ -604,3 +614,29 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
             )
 
         return detections
+
+
+def _get_image_size(img: Any) -> Tuple[int, int]:
+    """Get (width, height) from an image tensor, ndarray, or PIL Image."""
+    if isinstance(img, torch.Tensor):
+        return img.shape[-1], img.shape[-2]
+
+    if hasattr(img, "size") and callable(getattr(img, "size", None)):
+        # PIL Image — .size is a property returning (w, h)
+        return img.size
+
+    if hasattr(img, "size"):
+        # PIL Image fallback
+        return img.size
+
+    return img.shape[1], img.shape[0]
+
+
+def _empty_output(img: Any) -> Dict[str, Any]:
+    """Build an empty output dict for InstanceSegmenterOutputProcessor."""
+    w, h = _get_image_size(img)
+    return {
+        "boxes": torch.empty([0, 4]),
+        "labels": torch.empty([0], dtype=torch.int64),
+        "masks": torch.empty([0, 1, h, w]),
+    }
