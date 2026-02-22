@@ -1134,6 +1134,102 @@
             "date_added": "2024-08-05 14:38:20"
         },
         {
+            "base_name": "segment-anything-3-image-torch",
+            "base_filename": "sam3.pt",
+            "version": null,
+            "description": "Open-vocabulary instance segmentation that finds and segments all objects matching a text concept like 'person' or 'yellow school bus'",
+            "source": "https://github.com/facebookresearch/sam3",
+            "author": "Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, et al.",
+            "license": "SAM License",
+            "size_bytes": 3704365056,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam3.SegmentAnything3ImageModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "sam3"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "instance-segmentation",
+                "zero-shot",
+                "open-vocabulary",
+                "text-prompted",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://ai.meta.com/datasets/segment-anything/"
+                },
+                {
+                    "name": "SA-Co",
+                    "url": "https://github.com/facebookresearch/sam3"
+                }
+            ],
+            "date_added": "2026-01-30"
+        },
+        {
+            "base_name": "segment-anything-3-video-torch",
+            "base_filename": "sam3_video.pt",
+            "version": null,
+            "description": "Open-vocabulary video segmentation that finds, segments, and tracks all objects matching a text concept across video frames",
+            "source": "https://github.com/facebookresearch/sam3",
+            "author": "Nicolas Carion, Laura Gustafson, Yuan-Ting Hu, et al.",
+            "license": "SAM License",
+            "size_bytes": 3704365056,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.sam3.SegmentAnything3VideoModel",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "sam3"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "segmentation",
+                "instance-segmentation",
+                "video",
+                "tracking",
+                "zero-shot",
+                "open-vocabulary",
+                "text-prompted",
+                "transformer",
+                "official"
+            ],
+            "training_data": [
+                {
+                    "name": "SA-1B",
+                    "url": "https://ai.meta.com/datasets/segment-anything/"
+                },
+                {
+                    "name": "SA-Co",
+                    "url": "https://github.com/facebookresearch/sam3"
+                }
+            ],
+            "date_added": "2026-01-30"
+        },
+        {
             "base_name": "deeplabv3-resnet50-coco-torch",
             "base_filename": "deeplabv3_resnet50_coco-cd0a2569.pth",
             "version": null,
