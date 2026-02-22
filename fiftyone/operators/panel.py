@@ -373,3 +373,14 @@ class PanelRef(object):
         if title is None:
             raise ValueError("title cannot be None")
         self._ctx.ops.set_panel_title(id=self.id, title=title)
+
+    def trigger(self, event, params=None):
+        """Triggers a client-side event of a panel.
+
+        Args:
+            event: name of client-side event to trigger
+            params: parameters to pass to the event
+        """
+        self._ctx.ops.trigger_panel_client_event(
+            id=self.id, event=event, params=params
+        )

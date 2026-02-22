@@ -23,7 +23,7 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { useOperatorExecutor } from ".";
+import { useOperatorExecutor, usePanelClientEvent } from ".";
 import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
 import registerPanel from "./Panel/register";
 import {
@@ -37,7 +37,6 @@ import {
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 import usePanelEvent from "./usePanelEvent";
-import { Clear } from "@mui/icons-material";
 
 //
 // BUILT-IN OPERATORS
@@ -1159,11 +1158,10 @@ export class SetActiveFields extends Operator {
   } {
     return {
       setActiveFields: useRecoilCallback(
-        ({ snapshot, set }) =>
-          async (fields) => {
-            const modal = !!(await snapshot.getPromise(fos.modal));
-            set(fos.activeFields({ modal }), fields);
-          }
+        ({ snapshot, set }) => async (fields) => {
+          const modal = !!(await snapshot.getPromise(fos.modal));
+          set(fos.activeFields({ modal }), fields);
+        }
       ),
     };
   }
@@ -1214,7 +1212,9 @@ export class TrackEvent extends Operator {
       unlisted: true,
     });
   }
-  useHooks(ctx: ExecutionContext): {
+  useHooks(
+    ctx: ExecutionContext
+  ): {
     setActiveFields: (fields: string[]) => void;
   } {
     const trackEvent = useTrackEvent();
@@ -1606,6 +1606,29 @@ class BrowserDownload extends Operator {
   }
 }
 
+class TriggerPanelClientEvent extends Operator {
+  _builtIn = true;
+  get config() {
+    return new OperatorConfig({
+      name: "trigger_panel_client_event",
+      label: "Trigger panel client event",
+    });
+  }
+  useHooks() {
+    const { trigger } = usePanelClientEvent();
+    return {
+      trigger: (params) => {
+        const panelId = params.panel_id;
+        trigger(params.event, params?.params, panelId);
+      },
+    };
+  }
+  async execute(ctx: ExecutionContext) {
+    const { hooks, params } = ctx;
+    hooks.trigger(params);
+  }
+}
+
 export function registerBuiltInOperators() {
   try {
     _registerBuiltInOperator(CopyViewAsJSON);
@@ -1664,6 +1687,7 @@ export function registerBuiltInOperators() {
     _registerBuiltInOperator(ToggleSidebar);
     _registerBuiltInOperator(BrowserDownload);
     _registerBuiltInOperator(ClearActiveFields);
+    _registerBuiltInOperator(TriggerPanelClientEvent);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);

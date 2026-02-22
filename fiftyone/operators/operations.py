@@ -716,6 +716,19 @@ class Operations(object):
 
         return self._ctx.trigger("browser_download", params=params)
 
+    def trigger_panel_client_event(self, id, event, params=None):
+        """Triggers a panel client-side event.
+
+        Args:
+            id: the ID of the panel
+            event: the event to trigger
+            params: the parameters to pass to the event
+        """
+        return self._ctx.trigger(
+            "trigger_panel_client_event",
+            {"panel_id": id, "event": event, "params": params},
+        )
+
 
 def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
