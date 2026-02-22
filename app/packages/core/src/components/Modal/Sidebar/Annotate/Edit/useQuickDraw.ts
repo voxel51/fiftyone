@@ -1,12 +1,17 @@
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, UNDEFINED_LIGHTER_SCENE_ID, useLighter, useLighterEventHandler } from "@fiftyone/lighter";
+import {
+  BaseOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
 import useCreate from "./useCreate";
 
 /**
@@ -49,7 +54,7 @@ export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(
     _dangerousQuickDrawActiveAtom
   );
-  const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
+  const setLastUsedField = useSetAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene, addOverlay } = useLighter();
@@ -233,18 +238,15 @@ export const useQuickDraw = () => {
   );
 
   const claimCreateEvent = useAtomCallback(
-    useCallback(
-      (get, set, eventId: string) => {
-        if (get(lastProcessedCreateIdAtom) === eventId) {
-          return false;
-        }
+    useCallback((get, set, eventId: string) => {
+      if (get(lastProcessedCreateIdAtom) === eventId) {
+        return false;
+      }
 
-        set(lastProcessedCreateIdAtom, eventId);
+      set(lastProcessedCreateIdAtom, eventId);
 
-        return true;
-      },
-      []
-    )
+      return true;
+    }, [])
   );
 
   /**
@@ -289,7 +291,7 @@ export const useQuickDraw = () => {
         // Create the next detection
         const field = getQuickDrawDetectionField() ?? undefined;
         const labelValue = field
-          ? (getQuickDrawDetectionLabel(field) ?? undefined)
+          ? getQuickDrawDetectionLabel(field) ?? undefined
           : undefined;
         createDetection({ field, labelValue });
       },
@@ -310,19 +312,12 @@ export const useQuickDraw = () => {
     () => ({
       // State (read-only)
       quickDrawActive,
-      lastUsedDetectionField: lastUsedField,
 
       // Mode control (for UI components)
       enableQuickDraw,
       disableQuickDraw,
       toggleQuickDraw,
     }),
-    [
-      quickDrawActive,
-      lastUsedField,
-      enableQuickDraw,
-      disableQuickDraw,
-      toggleQuickDraw,
-    ]
+    [quickDrawActive, enableQuickDraw, disableQuickDraw, toggleQuickDraw]
   );
 };
