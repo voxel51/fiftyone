@@ -5,10 +5,8 @@
 import { MARGIN } from "./constants";
 import { ItemData, OnItemResize, Render, RowData, Section } from "./state";
 
-import {
-  flashlightSection,
-  flashlightSectionHidden,
-} from "./styles.module.css";
+import styles from "./styles.module.css";
+const { flashlightSection, flashlightSectionHidden } = styles;
 
 export default class SectionElement implements Section {
   private attached: boolean = false;

@@ -19,12 +19,8 @@ import {
 import { createScrollReader } from "./zooming";
 export type { Render, Response } from "./state";
 
-import {
-  flashlight,
-  flashlightContainer,
-  flashlightPixels,
-  scrollbar,
-} from "./styles.module.css";
+import styles from "./styles.module.css";
+const { flashlight, flashlightContainer, flashlightPixels, scrollbar } = styles;
 import tile from "./tile";
 import { argMin, getDims } from "./util";
 
@@ -346,7 +342,10 @@ export default class Flashlight<K> {
     this.loading = true;
     const ctx = this.ctx;
     return this.state
-      .get(this.state.currentRequestKey, this.state.selectedMediaFieldName)
+      .get(
+        this.state.currentRequestKey,
+        this.state.options.selectedMediaFieldName
+      )
       .then(({ items, nextRequestKey }) => {
         if (ctx !== this.ctx) {
           return;

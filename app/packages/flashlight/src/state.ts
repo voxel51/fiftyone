@@ -32,7 +32,10 @@ export interface Response<K> {
   nextRequestKey: K | null;
 }
 
-export type Get<K> = (key: K) => Promise<Response<K>>;
+export type Get<K> = (
+  key: K,
+  selectedMediaFieldName?: string
+) => Promise<Response<K>>;
 
 export type ItemIndexMap = { [key: string]: number };
 
@@ -56,7 +59,7 @@ export type OnItemResize = (id: string, dimensions: [number, number]) => void;
 export interface Options {
   rowAspectRatioThreshold: number;
   offset: number;
-  selectedMediaFieldName: string;
+  selectedMediaFieldName?: string;
 }
 
 export type OnResize = (width: number) => Partial<Options>;

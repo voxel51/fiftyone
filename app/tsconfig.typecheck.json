@@ -88,6 +88,7 @@
         "packages/commands/src/**/*",
         "packages/events/src/**/*",
         "packages/feature-flags/src/**/*",
+        "packages/flashlight/src/**/*",
         "packages/spotlight/src/**/*"
     ],
     "exclude": ["**/*.test.ts", "**/*.test.tsx", "node_modules"]
