@@ -232,11 +232,13 @@ export class CommandContextManager {
    * Fires any context listeners that are registered
    * TODO: currently unused because stack is fixed — will be needed after refactor
    */
+  /*
   private _fireListeners() {
     this.listeners.forEach((listener) => {
       listener(this.getActiveContext().id);
     });
   }
+  */
 
   /**
    * Handles the keydown event.  Only public for testing.
