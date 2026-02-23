@@ -5,7 +5,7 @@ import * as jsonpatch from "fast-json-patch";
  *
  * @param data Data to normalize
  */
-const normalizeData = (data: unknown): unknown => {
+export const normalizeData = (data: unknown): unknown => {
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>;
 

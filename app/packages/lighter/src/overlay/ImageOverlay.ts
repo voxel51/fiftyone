@@ -44,7 +44,6 @@ export class ImageOverlay
   private originalDimensions?: Dimensions;
   private currentBounds?: Rect;
   private resizeObserver?: ResizeObserver;
-  private boundsChangeCallbacks: ((bounds: Rect) => void)[] = [];
   private viewportUnsubscribe?: () => void;
   private sceneEventBus?: EventDispatcher<LighterEventGroup>;
   private isImageLoaded = false;
@@ -135,6 +134,9 @@ export class ImageOverlay
   private createImageElement(container: HTMLElement): void {
     this.imgElement = document.createElement("img");
     this.imgElement.setAttribute("data-cy", "lighter-sample-image");
+
+    // We'll toggle to "show" in render
+    this.hide();
 
     // Note: No CORS requirement
     const src = getSampleSrc(this.options.src);
@@ -291,6 +293,7 @@ export class ImageOverlay
     }
 
     this.notifyBoundsChanged();
+    this.show();
   }
 
   /**
@@ -360,26 +363,6 @@ export class ImageOverlay
   }
 
   /**
-   * Register a callback for bounds changes.
-   * @returns Unsubscribe function
-   */
-  onBoundsChanged(callback: (bounds: Rect) => void): () => void {
-    this.boundsChangeCallbacks.push(callback);
-
-    // Immediately call with current bounds if available
-    if (this.currentBounds) {
-      callback(this.currentBounds);
-    }
-
-    return () => {
-      const index = this.boundsChangeCallbacks.indexOf(callback);
-      if (index > -1) {
-        this.boundsChangeCallbacks.splice(index, 1);
-      }
-    };
-  }
-
-  /**
    * Force update the bounds calculation.
    */
   updateBounds(): void {
@@ -409,17 +392,13 @@ export class ImageOverlay
   }
 
   /**
-   * Notify all callbacks of bounds change.
+   * Emit canonical media bounds changed event.
    */
   private notifyBoundsChanged(): void {
-    if (!this.currentBounds) return;
+    if (!this.currentBounds || !this.sceneEventBus) return;
 
-    this.boundsChangeCallbacks.forEach((callback) => {
-      try {
-        callback(this.currentBounds!);
-      } catch (error) {
-        console.error("Error in bounds change callback:", error);
-      }
+    this.sceneEventBus.dispatch("lighter:canonical-media-bounds-changed", {
+      bounds: this.currentBounds,
     });
   }
 
@@ -488,6 +467,8 @@ export class ImageOverlay
    * Cleanup method to remove resize observer when overlay is destroyed.
    */
   destroy(): void {
+    super.destroy();
+
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = undefined;
@@ -504,7 +485,5 @@ export class ImageOverlay
       this.imgElement.remove();
       this.imgElement = undefined;
     }
-
-    this.boundsChangeCallbacks = [];
   }
 }

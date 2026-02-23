@@ -1,9 +1,11 @@
 import {
+  ModalMode,
   ModalSample,
   modalSample,
   modalSampleId,
   useHoveredSample,
   useKeyDown,
+  useModalMode,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
@@ -25,6 +27,7 @@ export const SampleWrapper = ({
   sampleAtom?: RecoilValueReadOnly<ModalSample>;
 }>) => {
   const [hovering, setHovering] = useState(false);
+  const modalMode = useModalMode();
 
   const timeout: MutableRefObject<number | null> = useRef<number>(null);
 
@@ -53,6 +56,11 @@ export const SampleWrapper = ({
     update,
     clear,
   });
+
+  if (modalMode === ModalMode.ANNOTATE) {
+    return <>{children}</>;
+  }
+
   return (
     <div
       style={{ width: "100%", height: "100%", position: "relative" }}

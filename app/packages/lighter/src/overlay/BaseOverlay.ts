@@ -219,7 +219,8 @@ export abstract class BaseOverlay<Label extends RawLookerLabel = RawLookerLabel>
    * Override this method in subclasses to perform specific cleanup.
    */
   destroy(): void {
-    // Base implementation - subclasses should override if needed
+    this._eventBus = undefined;
+    this._eventChannel = undefined;
   }
 
   // InteractionHandler interface implementation

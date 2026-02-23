@@ -9,6 +9,7 @@ import {
 import { useCallback } from "react";
 import { useRecoilCallback, useSetRecoilState } from "recoil";
 import {
+  recordLastCreatedLabel,
   useCuboidOperations,
   usePolylineOperations,
   workingAtom,
@@ -46,10 +47,20 @@ export const use3dAnnotationEventHandlers = () => {
 
         if (!existingLabel) return;
 
+        const coerced = coerceStringBooleans(updates);
+
+        if (
+          coerced.label &&
+          typeof coerced.label === "string" &&
+          existingLabel.path
+        ) {
+          recordLastCreatedLabel(existingLabel.path, coerced.label);
+        }
+
         if (isDetection(existingLabel)) {
-          updateCuboid(_id, coerceStringBooleans(updates));
+          updateCuboid(_id, coerced);
         } else if (isPolyline(existingLabel)) {
-          updatePolyline(_id, coerceStringBooleans(updates));
+          updatePolyline(_id, coerced);
         }
       },
     [updateCuboid, updatePolyline]
