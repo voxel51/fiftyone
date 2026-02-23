@@ -150,7 +150,11 @@ export class CommandContextManager {
    * @returns the current command context
    */
   public getActiveContext(): CommandContext {
-    return this.contextStack[this.contextStack.length - 1];
+    const active = this.contextStack[this.contextStack.length - 1];
+    if (active) {
+      return active;
+    }
+    throw new Error("No active context");
   }
 
   /**
@@ -230,7 +234,7 @@ export class CommandContextManager {
    */
   private _fireListeners() {
     this.listeners.forEach((listener) => {
-      listener(this.contextStack[this.contextStack.length - 1].id);
+      listener(this.getActiveContext().id);
     });
   }
 
@@ -255,12 +259,14 @@ export class CommandContextManager {
     // Try to match key with all contexts starting from top of stack
     for (let i = this.contextStack.length - 1; i >= 0; i--) {
       const context = this.contextStack[i];
-      const match = context.handleKeyDown(event);
-      if (match.full && match.full.isEnabled()) {
-        await context.executeCommand(match.full);
-        event.stopPropagation();
-        event.preventDefault();
-        return;
+      if (context) {
+        const match = context.handleKeyDown(event);
+        if (match.full && match.full.isEnabled()) {
+          await context.executeCommand(match.full);
+          event.stopPropagation();
+          event.preventDefault();
+          return;
+        }
       }
     }
   }

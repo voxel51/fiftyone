@@ -1,26 +1,12 @@
 {
+    "extends": "./tsconfig.json",
     "compilerOptions": {
-        "module": "esnext",
-        "moduleResolution": "node",
-        "target": "esnext",
-        "lib": ["esnext", "dom"],
-        "types": ["node"],
-        "sourceMap": false,
-        "declaration": true,
-        "declarationMap": false,
-        "noUncheckedIndexedAccess": true,
-        "exactOptionalPropertyTypes": true,
-        "strict": true,
-        "jsx": "react-jsx",
-        "isolatedModules": true,
-        "moduleDetection": "force",
-        "skipLibCheck": true
+        "noEmit": true,
+        "noUncheckedIndexedAccess": false
     },
-    "include": ["**/*"],
+    "types": ["jest"],
+    "include": ["**/*.test.ts", "**/*.spec.ts"],
     "exclude": [
-        "**/*.test.ts",
-        "**/*.spec.ts",
-        "__mocks__",
         "node_modules",
         "dist",
         "packages/aggregations/**/*",
