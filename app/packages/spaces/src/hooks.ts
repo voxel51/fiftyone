@@ -258,7 +258,7 @@ export function usePanelState<T>(
   );
   const computedState = state || defaultState;
 
-  return [computedState, setState];
+  return [computedState, setState] as const;
 }
 
 export function useSetPanelStateById<T>(local?: boolean, scope?: string) {
@@ -291,7 +291,7 @@ export function useSetCustomPanelState<T>(local?: boolean) {
   const [panelState, setPanelState] = usePanelState<T>(null, undefined, local);
   return (fn: (state: T) => T) => {
     setPanelState((panelState) => {
-      const customPanelState = fn(panelState?.state || {});
+      const customPanelState = fn((panelState as any)?.state || {});
       const state = fn(customPanelState);
       return { ...panelState, state };
     });

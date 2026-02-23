@@ -85,6 +85,7 @@ export default function Workspaces() {
       {open && (
         <Popout
           onClose={() => setOpen(false)}
+          popoutProps={{}}
           style={{
             minWidth: "300px",
             position: "absolute",
@@ -120,7 +121,7 @@ export default function Workspaces() {
                   >
                     {filteredWorkspaces.map((space) => (
                       <Workspace
-                        key={space.id}
+                        key={space.name}
                         onEdit={() => {
                           setOpen(false);
                         }}

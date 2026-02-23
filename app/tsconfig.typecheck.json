@@ -92,6 +92,7 @@
         "packages/flashlight/src/**/*",
         "packages/lighter/src/**/*",
         "packages/playback/src/**/*",
+        "packages/spaces/src/**/*",
         "packages/plugins/src/**/*",
         "packages/spotlight/src/**/*",
         "packages/utilities/src/**/*"

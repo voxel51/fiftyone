@@ -26,7 +26,7 @@ export function useWorkspaces() {
             return {
               ...state,
               initialized: true,
-              workspaces: result?.result?.workspaces || [],
+              workspaces: (result?.result as any)?.workspaces || [],
               dataset: currentDataset,
             };
           });

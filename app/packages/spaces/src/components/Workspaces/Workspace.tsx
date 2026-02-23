@@ -85,8 +85,6 @@ type WorkspacePropsType = {
   name: string;
   color: string;
   description: string;
-  onDelete: (id: string) => void;
-  onUpdate: (id: string, value: string) => void;
   onClick: (name: string) => void;
   onEdit: () => void;
 };

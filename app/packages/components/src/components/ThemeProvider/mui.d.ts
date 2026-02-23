@@ -7,10 +7,24 @@ declare module "@mui/material/styles" {
 
   interface Palette {
     themeMode: "light" | "dark";
+    custom: {
+      shadow: string;
+      shadowDark: string;
+      lightning: string;
+      toastBackgroundColor: string;
+      primarySoft: string;
+    };
   }
 
   interface PaletteOptions {
     themeMode?: "light" | "dark";
+    custom?: {
+      shadow?: string;
+      shadowDark?: string;
+      lightning?: string;
+      toastBackgroundColor?: string;
+      primarySoft?: string;
+    };
   }
 
   interface TypeBackground {

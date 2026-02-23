@@ -48,7 +48,7 @@ function Panel(props: PanelProps) {
       id={node.id}
       data-cy={panelContentTestId}
       className={scrollable}
-      ref={dimensions.ref}
+      ref={dimensions.ref as unknown as React.RefObject<HTMLDivElement>}
     >
       <PanelContext.Provider value={{ node, scope }}>
         <Component panelNode={node} dimensions={dimensions} />
