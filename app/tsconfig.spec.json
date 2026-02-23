@@ -2,7 +2,11 @@
     "compilerOptions": {
         "noEmit": true,
         "noUncheckedIndexedAccess": false,
-        "strict": true
+        "strict": true,
+        "module": "esnext",
+        "skipLibCheck": true,
+        "target": "esnext",
+        "moduleResolution": "bundler"
     },
     "types": ["jest"],
     "include": ["**/*.test.ts", "**/*.spec.ts"],
