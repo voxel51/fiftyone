@@ -520,6 +520,10 @@ class SegmentAnything3VideoModel(fom.SamplesMixin, fom.Model):
                         detections=detections
                     )
 
+        except Exception:
+            logger.exception("SAM3 video prediction failed")
+            raise
+
         finally:
             self._predictor.handle_request(
                 request={
