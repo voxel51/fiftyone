@@ -1,11 +1,12 @@
 import {
+  activeFields,
   ANNOTATE,
   EXPLORE,
   datasetName,
   modalMode,
   useModalExplorEntries,
 } from "@fiftyone/state";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import ExploreSidebar from "../../Sidebar";
@@ -13,6 +14,7 @@ import SidebarContainer from "../../Sidebar/SidebarContainer";
 import Annotate from "./Annotate";
 import { AnnotationSliceSelector } from "./Annotate/AnnotationSliceSelector";
 import { GroupModeTransitionManager } from "./Annotate/GroupModeTransitionManager";
+import { exploreActiveFields } from "./Annotate/state";
 import useCanAnnotate from "./Annotate/useCanAnnotate";
 import useLoadSchemas from "./Annotate/useLoadSchemas";
 import Mode from "./Mode";
@@ -36,6 +38,15 @@ const Sidebar = () => {
   const { showAnnotationTab, disabledReason, isGroupedDataset } =
     useCanAnnotate();
   const datasetNameValue = useRecoilValue(datasetName);
+  const exploreFields = useRecoilValue(
+    activeFields({ modal: true, expanded: false })
+  );
+  const setExploreFields = useSetAtom(exploreActiveFields);
+
+  useEffect(() => {
+    setExploreFields(exploreFields);
+    return () => setExploreFields(null);
+  }, [exploreFields, setExploreFields]);
 
   const loadSchemas = useLoadSchemas();
 

@@ -1,18 +1,18 @@
-import type { DeltaSupplier } from "./deltaSupplier";
+import type { JSONDeltas } from "@fiftyone/core";
 import {
   type BaseOverlay,
   BoundingBoxOverlay,
   ClassificationOverlay,
   useLighter,
 } from "@fiftyone/lighter";
-import { useCallback } from "react";
-import type { JSONDeltas } from "@fiftyone/core";
 import type { DetectionLabel } from "@fiftyone/looker";
 import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
-import { useGetLabelDelta } from "./useGetLabelDelta";
-import type { LabelProxy } from "../deltas";
-import { hasValidBounds } from "@fiftyone/utilities";
 import { BoundingBox } from "@fiftyone/looker/src/state";
+import { hasValidBounds } from "@fiftyone/utilities";
+import { useCallback } from "react";
+import type { LabelProxy } from "../deltas";
+import type { DeltaSupplier } from "./deltaSupplier";
+import { useGetLabelDelta } from "./useGetLabelDelta";
 
 /**
  * Build a {@link LabelProxy} instance from a reconciled 3d label.
@@ -21,7 +21,7 @@ import { BoundingBox } from "@fiftyone/looker/src/state";
  */
 const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
   if (overlay instanceof BoundingBoxOverlay && overlay.label.label) {
-    const bounds = overlay.getRelativeBounds();
+    const bounds = overlay.relativeBounds;
     const boundingBox: BoundingBox = [
       bounds.x,
       bounds.y,

@@ -3,6 +3,7 @@
  */
 
 import { BaseLabel } from "@fiftyone/looker/src/overlays/base";
+import { CoordinateSystem2D } from "./core/CoordinateSystem2D";
 
 /**
  * 2D rectangle with position and size.
@@ -160,8 +161,8 @@ export interface CanonicalMedia {
   /** Get aspect ratio */
   getAspectRatio(): number;
 
-  /** Listen for bounds changes */
-  onBoundsChanged(callback: (bounds: Rect) => void): () => void;
+  /** Force update bounds calculation */
+  updateBounds(): void;
 }
 
 /**
@@ -203,5 +204,6 @@ export class BoundingBoxPersistence {
 
 export interface RenderMeta {
   canonicalMediaBounds: Rect;
+  coordinateSystem: CoordinateSystem2D;
   overlayIndex: number;
 }

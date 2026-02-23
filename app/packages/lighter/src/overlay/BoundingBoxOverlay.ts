@@ -17,7 +17,6 @@ import { CONTAINS } from "../core/Scene2D";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import type { Selectable } from "../selection/Selectable";
 import type {
-  BoundedOverlay,
   Hoverable,
   Point,
   RawLookerLabel,
@@ -72,7 +71,7 @@ export const NO_BOUNDS = { x: NaN, y: NaN, width: NaN, height: NaN };
  */
 export class BoundingBoxOverlay
   extends BaseOverlay<BoundingBoxLabel>
-  implements Movable, Selectable, BoundedOverlay, Spatial, Hoverable
+  implements Movable, Selectable, Spatial, Hoverable
 {
   private isDraggable: boolean;
   private isResizeable: boolean;
@@ -81,8 +80,8 @@ export class BoundingBoxOverlay
   private moveStartPosition?: Point;
   private moveStartBounds?: Rect;
   private isSelectedState = false;
-  private coordinateSystem: CoordinateSystem2D;
 
+  #coordinateSystem?: CoordinateSystem2D;
   #relativeBounds: Rect;
 
   private textBounds?: Rect;
@@ -99,6 +98,27 @@ export class BoundingBoxOverlay
 
   getOverlayType(): string {
     return "BoundingBoxOverlay";
+  }
+  getPosition() {
+    return {
+      x: this.absoluteBounds.x,
+      y: this.absoluteBounds.y,
+    };
+  }
+
+  get ready() {
+    return !!this.#coordinateSystem;
+  }
+
+  get bounds() {
+    return this.absoluteBounds;
+  }
+
+  get coordinateSystem() {
+    if (!this.#coordinateSystem) {
+      throw new Error("no coordinate system");
+    }
+    return this.#coordinateSystem;
   }
 
   get absoluteBounds(): Rect {
@@ -132,6 +152,7 @@ export class BoundingBoxOverlay
   protected renderImpl(renderer: Renderer2D, _renderMeta: RenderMeta): void {
     // Dispose of old elements before creating new ones
     renderer.dispose(this.containerId);
+    this.#coordinateSystem = _renderMeta.coordinateSystem;
 
     const style = this.currentStyle;
 
@@ -377,7 +398,10 @@ export class BoundingBoxOverlay
 
     // Store move start information
     this.moveStartPoint = point;
-    this.moveStartPosition = this.getPosition();
+    this.moveStartPosition = {
+      x: this.absoluteBounds.x,
+      y: this.absoluteBounds.y,
+    };
     this.moveStartBounds = { ...this.absoluteBounds };
 
     return true;

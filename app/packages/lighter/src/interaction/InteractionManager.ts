@@ -309,8 +309,8 @@ export class InteractionManager {
         this.eventBus.dispatch(type, {
           id: handler.id,
           startPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          absoluteBounds: handler.absoluteBounds,
+          relativeBounds: handler.relativeBounds,
         });
       }
 
@@ -394,8 +394,8 @@ export class InteractionManager {
 
           this.eventBus.dispatch(type, {
             id: handler.id,
-            absoluteBounds: handler.getAbsoluteBounds(),
-            relativeBounds: handler.getRelativeBounds(),
+            absoluteBounds: handler.absoluteBounds,
+            relativeBounds: handler.relativeBounds,
           });
         }
 
@@ -444,8 +444,8 @@ export class InteractionManager {
           startBounds,
           startPosition,
           endPosition: handler.getPosition(),
-          absoluteBounds: handler.getAbsoluteBounds(),
-          relativeBounds: handler.getRelativeBounds(),
+          absoluteBounds: handler.absoluteBounds,
+          relativeBounds: handler.relativeBounds,
         };
 
         if (moveState === "SETTING") {
