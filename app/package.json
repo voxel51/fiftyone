@@ -23,6 +23,8 @@
     },
     "devDependencies": {
         "@testing-library/react": "latest",
+        "@tsconfig/bases": "^1.0.22",
+        "@tsconfig/vite-react": "^7.0.2",
         "@types/colormap": "^2",
         "@types/react-plotly.js": "^2.6.3",
         "@typescript-eslint/eslint-plugin": "^5.44.0",
