@@ -15,10 +15,6 @@ export const fullSize: CSSProperties = {
   height: "100%",
 };
 
-export const tooltipText: CSSProperties = {
-  color: "var(--color-content-text-primary)",
-};
-
 export const flexColumn: CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -27,6 +23,10 @@ export const flexColumn: CSSProperties = {
 export const flexRow: CSSProperties = {
   display: "flex",
   flexDirection: "row",
+};
+
+export const tooltipText: CSSProperties = {
+  color: "var(--color-content-text-primary)",
 };
 
 export const divider: CSSProperties = {
