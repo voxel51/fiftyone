@@ -38,7 +38,6 @@ export const Cuboid = ({
   lineWidth,
   selected,
   onClick,
-  tooltip,
   label,
   color,
   useLegacyCoordinates,
@@ -69,7 +68,7 @@ export const Cuboid = ({
   }, [label]);
 
   const { onPointerOver, onPointerOut, ...restEventHandlers } =
-    useEventHandlers(tooltip, labelWoQuaternion);
+    useEventHandlers(labelWoQuaternion);
 
   const { strokeAndFillColor, isSimilarLabelHovered } = useLabelColor(
     { selected, color },

@@ -82,7 +82,6 @@ export const ThreeDLabels = ({
     polylineLabelLineWidthAtom
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
-  const tooltip = fos.useTooltip();
   const labelAlpha = globalOpacity ?? colorScheme.opacity;
 
   const [selectedLabelForAnnotation, setSelectedLabelForAnnotation] =
@@ -302,7 +301,6 @@ export const ThreeDLabels = ({
             opacity={labelAlpha}
             {...(overlay as unknown as CuboidProps)}
             label={overlay}
-            tooltip={tooltip}
             useLegacyCoordinates={settings.useLegacyCoordinates}
             color={getOverlayColor(overlay)}
           />
@@ -315,7 +313,6 @@ export const ThreeDLabels = ({
       itemRotation,
       labelAlpha,
       handleSelect,
-      tooltip,
       settings,
       getOverlayColor,
     ]
@@ -337,7 +334,6 @@ export const ThreeDLabels = ({
           lineWidth={polylineWidth}
           {...(overlay as unknown as PolyLineProps)}
           label={overlay}
-          tooltip={tooltip}
           color={getOverlayColor(overlay)}
         />
       </DragGate3D>
@@ -348,7 +344,6 @@ export const ThreeDLabels = ({
     labelAlpha,
     polylineWidth,
     handleSelect,
-    tooltip,
     getOverlayColor,
   ]);
 

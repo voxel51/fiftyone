@@ -256,7 +256,7 @@ export class CommandContextManager {
     for (let i = this.contextStack.length - 1; i >= 0; i--) {
       const context = this.contextStack[i];
       const match = context.handleKeyDown(event);
-      if (match.full) {
+      if (match.full && match.full.isEnabled()) {
         await context.executeCommand(match.full);
         event.stopPropagation();
         event.preventDefault();

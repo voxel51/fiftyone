@@ -1,4 +1,3 @@
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 import {
   canAnnotate,
   isGeneratedView,

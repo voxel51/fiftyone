@@ -524,11 +524,29 @@ function findByUserData(
 }
 
 const DEFAULT_CUBOID_CREATION_MARGIN = 50;
+const DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE = 5;
+const MIN_POLYLINE_VERTEX_FOCUS_SIZE = 1;
+const MAX_POLYLINE_VERTEX_FOCUS_SIZE = 30;
 
 const BoundsSideEffectsComponent = () => {
   const api = useBounds();
 
   const { scene } = useThree();
+
+  const getVertexFocusBoxSize = () => {
+    const sceneBounds = new Box3().setFromObject(scene);
+    if (sceneBounds.isEmpty()) {
+      return DEFAULT_POLYLINE_VERTEX_FOCUS_SIZE;
+    }
+
+    const sceneSize = sceneBounds.getSize(new Vector3());
+    const maxSceneDimension = Math.max(sceneSize.x, sceneSize.y, sceneSize.z);
+    return THREE.MathUtils.clamp(
+      maxSceneDimension * 0.05,
+      MIN_POLYLINE_VERTEX_FOCUS_SIZE,
+      MAX_POLYLINE_VERTEX_FOCUS_SIZE
+    );
+  };
 
   useAnnotationEventHandler("annotation:3dLabelSelected", (payload) => {
     const { label } = payload;
@@ -587,6 +605,31 @@ const BoundsSideEffectsComponent = () => {
       boxGeometry.dispose();
     }, 0);
   });
+
+  useAnnotationEventHandler(
+    "annotation:3dPolylineVertexSelected",
+    (payload) => {
+      const { position } = payload;
+      const focusBoxSize = getVertexFocusBoxSize();
+
+      const boxGeometry = new THREE.BoxGeometry(
+        focusBoxSize,
+        focusBoxSize,
+        focusBoxSize
+      );
+      const helperMesh = new THREE.Mesh(boxGeometry);
+      helperMesh.position.set(position[0], position[1], position[2]);
+      helperMesh.visible = false;
+      scene.add(helperMesh);
+
+      api.refresh(helperMesh).reset().fit();
+
+      setTimeout(() => {
+        scene.remove(helperMesh);
+        boxGeometry.dispose();
+      }, 0);
+    }
+  );
 
   return null;
 };

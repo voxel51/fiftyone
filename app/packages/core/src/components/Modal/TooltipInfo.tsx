@@ -1,4 +1,3 @@
-import { useAnnotationController } from "@fiftyone/annotation";
 import { IconButton, Tooltip } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { ModalMode, useModalMode } from "@fiftyone/state";
@@ -10,15 +9,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { Typography } from "@mui/material";
 import { animated, useSpring } from "@react-spring/web";
-import {
-  Button,
-  Icon,
-  IconName,
-  Orientation,
-  Size,
-  Spacing,
-  Stack,
-} from "@voxel51/voodo";
+import { Orientation, Spacing, Stack } from "@voxel51/voodo";
 import React, {
   useCallback,
   useEffect,
@@ -33,6 +24,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { joinStringArray } from "../Filters/utils";
 import { ContentDiv, ContentHeader } from "../utils";
+import { QuickEditEntry } from "./Sidebar/Annotate";
 import { useCanAnnotateField } from "./Sidebar/Annotate/useCanAnnotateField";
 
 const TOOLTIP_HEADER_ID = "fo-tooltip-header";
@@ -518,15 +510,12 @@ const HiddenItemRow = ({
   );
 };
 
-const EditIcon = ({ ...props }) => <Icon name={IconName.Edit} {...props} />;
-
 const Header = ({ title, labelId }: { title: string; labelId: string }) => {
   const [isTooltipLocked, setIsTooltipLocked] = useRecoilState(
     fos.isTooltipLocked
   );
   const setTooltipDetail = useSetRecoilState(fos.tooltipDetail);
-  const { enterAnnotationMode } = useAnnotationController();
-  const canAnnotate = useCanAnnotateField(title);
+  const canAnnotateField = useCanAnnotateField(title);
   const modalMode = useModalMode();
 
   const closeTooltip = useCallback(() => {
@@ -548,17 +537,13 @@ const Header = ({ title, labelId }: { title: string; labelId: string }) => {
       </span>
       {isTooltipLocked ? (
         <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-          {modalMode === ModalMode.EXPLORE && canAnnotate && (
-            <Button
-              data-cy={"quick-edit"}
-              leadingIcon={EditIcon}
-              size={Size.Xs}
-              onClick={() => {
-                enterAnnotationMode(title, labelId);
-                closeTooltip();
-              }}
-            />
-          )}
+          <QuickEditEntry
+            enabled={modalMode === ModalMode.EXPLORE && canAnnotateField}
+            labelId={labelId}
+            onClick={closeTooltip}
+            path={title}
+            type="button"
+          />
 
           <IconButton size="small" onClick={closeTooltip}>
             <CloseIcon fontSize="small" />

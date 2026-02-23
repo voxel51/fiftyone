@@ -42,7 +42,7 @@ export const useSetEditingToNewCuboid = () => {
   const jotaiStore = getDefaultStore();
 
   return useCallback(
-    (labelId: string, transformData: CuboidTransformData) => {
+    (labelId: string, transformData: CuboidTransformData, labelClass = "") => {
       if (!transformData.location || !transformData.dimensions) return;
 
       // If what we already have in sidebar is same as the new label, don't do anything
@@ -64,7 +64,7 @@ export const useSetEditingToNewCuboid = () => {
         location: transformData.location,
         dimensions: transformData.dimensions,
         rotation,
-        label: "",
+        label: labelClass,
         path: currentActiveField,
         sampleId: currentSampleId,
       };

@@ -1,7 +1,11 @@
 import { isSystemReadOnlyField } from "./SchemaManager/constants";
-import { useIsFieldReadOnly } from "./SchemaManager/hooks";
+import {
+  useActiveFieldsList,
+  useFieldSchemaData,
+  useHiddenFieldsWithMetadata,
+  useIsFieldReadOnly,
+} from "./SchemaManager/hooks";
 import useCanAnnotate from "./useCanAnnotate";
-import { useValidAnnotationFields } from "./useValidAnnotationFields";
 
 /**
  * Hook which returns whether the specified field can be annotated by the user.
@@ -10,12 +14,17 @@ import { useValidAnnotationFields } from "./useValidAnnotationFields";
  */
 export const useCanAnnotateField = (path: string): boolean => {
   const { showAnnotationTab: canAnnotate } = useCanAnnotate();
-  const { validFields } = useValidAnnotationFields();
+  const { fields: activeFields } = useActiveFieldsList();
+  const { fields: hiddenFields } = useHiddenFieldsWithMetadata();
   const isFieldReadOnly = useIsFieldReadOnly();
+  const isFieldUnsupported = useFieldSchemaData(path)?.unsupported;
+
+  const validFields = [...activeFields, ...hiddenFields];
 
   return (
     canAnnotate &&
     validFields.includes(path) &&
+    !isFieldUnsupported &&
     !isFieldReadOnly(path) &&
     !isSystemReadOnlyField(path)
   );

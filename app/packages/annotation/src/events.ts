@@ -110,6 +110,15 @@ export type AnnotationEventGroup = {
     label: Looker3dOverlayLabel;
   };
   /**
+   * Notification event emitted when a 3D polyline vertex is selected.
+   */
+  "annotation:3dPolylineVertexSelected": {
+    labelId: string;
+    segmentIndex: number;
+    pointIndex: number;
+    position: [number, number, number];
+  };
+  /**
    * Notification event emitted when a label is unselected for annotation.
    */
   "annotation:3dLabelUnselected": {

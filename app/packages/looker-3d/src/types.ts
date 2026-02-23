@@ -1,5 +1,6 @@
 import { DETECTION, POLYLINE } from "@fiftyone/utilities";
 import { TransformControlsProps } from "@react-three/drei";
+import type { ThreeEvent } from "@react-three/fiber";
 import type { RefObject } from "react";
 import * as THREE from "three";
 import type {
@@ -137,7 +138,6 @@ export interface BaseOverlayProps {
   rotation: THREE.Vector3Tuple;
   selected: boolean;
   onClick: (e: any) => void;
-  tooltip: any;
   label: OverlayLabel;
   color: string;
 }
@@ -158,7 +158,8 @@ export interface HoverState {
 export interface EventHandlers {
   onPointerOver: () => void;
   onPointerOut: () => void;
-  restEventHandlers: Record<string, any>;
+  onPointerMissed: () => void;
+  onPointerMove: (e: ThreeEvent<PointerEvent>) => void;
 }
 
 export type Archetype3d = "point" | "cuboid" | "polyline" | "annotation-plane";

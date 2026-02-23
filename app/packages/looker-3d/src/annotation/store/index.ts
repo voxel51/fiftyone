@@ -59,3 +59,10 @@ export {
 
 // Operations
 export { useCuboidOperations, usePolylineOperations } from "./operations";
+
+// Label resolution utils
+export {
+  clearLastCreatedLabels,
+  getDefaultLabel,
+  recordLastCreatedLabel,
+} from "./labelResolution";
