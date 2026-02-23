@@ -62,7 +62,10 @@ export function getByType(type: PluginComponentType) {
 }
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
-  const result = await getFetchFunction()("GET", "/plugins");
+  const result = await getFetchFunction()<void, { plugins?: unknown[] } | null>(
+    "GET",
+    "/plugins"
+  );
   if (result && result.plugins) {
     return result.plugins.map((p) => new PluginDefinition(p));
   }

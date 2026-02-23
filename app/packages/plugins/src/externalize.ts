@@ -46,6 +46,7 @@ declare global {
 if (typeof window !== "undefined") {
   // @ts-ignore
   window.React = React;
+  // @ts-ignore (operators has a nested @types/react-dom causing an intersection type mismatch)
   window.ReactDOM = ReactDOM;
   window.recoil = recoil;
   window.__fos__ = fos;

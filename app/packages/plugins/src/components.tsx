@@ -1,8 +1,20 @@
 import React, { Component } from "react";
 import { ErrorBoundary } from "@fiftyone/components";
 
-class PluginErrorBoundary extends Component {
-  constructor(props) {
+interface PluginErrorBoundaryProps {
+  children?: React.ReactNode;
+}
+
+interface PluginErrorBoundaryState {
+  hasError: boolean;
+}
+
+class PluginErrorBoundary extends Component<
+  PluginErrorBoundaryProps,
+  PluginErrorBoundaryState
+> {
+  constructor(props: PluginErrorBoundaryProps) {
+    super(props);
     this.state = { hasError: false };
   }
   componentDidCatch(error, errorInfo) {
