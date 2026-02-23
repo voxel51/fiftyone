@@ -14,6 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
+import fiftyone as fo
 import fiftyone.core.storage as fos
 
 from fiftyone.server.files import (
@@ -182,14 +183,10 @@ class TestFileOperationsConfig:
 
     def test_allow_browser_file_operations_config_exists(self):
         """Config has allow_browser_file_operations attribute."""
-        import fiftyone as fo
-
         assert hasattr(fo.config, "allow_browser_file_operations")
 
     def test_browser_file_operations_dir_config_exists(self):
         """Config has browser_file_operations_dir attribute."""
-        import fiftyone as fo
-
         assert hasattr(fo.config, "browser_file_operations_dir")
 
 

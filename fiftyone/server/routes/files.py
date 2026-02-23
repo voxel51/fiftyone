@@ -31,7 +31,7 @@ class FileUpload(HTTPEndpoint):
     """
 
     async def post(self, request: Request) -> JSONResponse:
-        path = request.query_params.get("path")
+        path = request.query_params.get("path", "")
 
         try:
             resolved_path = await fsf.stream_upload(
@@ -56,7 +56,7 @@ class FileDelete(HTTPEndpoint):
     """
 
     async def delete(self, request: Request) -> Response:
-        path = request.query_params.get("path")
+        path = request.query_params.get("path", "")
 
         try:
             await fsf.delete_file(path=path)
