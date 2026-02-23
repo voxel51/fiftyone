@@ -84,6 +84,7 @@
     "include": [
         "packages/aggregations/src/**/*",
         "packages/analytics/src/**/*",
+        "packages/annotation/src/**/*",
         "packages/command-bus/src/**/*",
         "packages/commands/src/**/*",
         "packages/events/src/**/*",

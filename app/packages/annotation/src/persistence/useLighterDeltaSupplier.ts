@@ -37,7 +37,10 @@ const buildAnnotationLabel = (overlay: BaseOverlay): LabelProxy | undefined => {
         path: overlay.field,
       };
     }
-  } else if (overlay instanceof ClassificationOverlay && overlay.label.label) {
+  } else if (
+    overlay instanceof ClassificationOverlay &&
+    (overlay.label as ClassificationLabel)?.label
+  ) {
     return {
       type: "Classification",
       data: overlay.label as ClassificationLabel,

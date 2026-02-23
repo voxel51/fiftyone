@@ -134,9 +134,15 @@ export const buildMutationDeltas = (
     }
   } else if (label.type === "Classification") {
     if (isFieldType(schema, "Classifications")) {
-      return buildClassificationsMutationDeltas(sample, label);
+      return buildClassificationsMutationDeltas(
+        sample,
+        label as LabelMetadata<ClassificationLabel>
+      );
     } else if (isFieldType(schema, "Classification")) {
-      return buildClassificationMutationDeltas(sample, label);
+      return buildClassificationMutationDeltas(
+        sample,
+        label as LabelMetadata<ClassificationLabel>
+      );
     }
   } else if (label.type === "Polyline") {
     if (isFieldType(schema, "Polylines")) {
@@ -155,7 +161,7 @@ export const buildMutationDeltas = (
       sample,
       label.path,
       (label as PrimitiveValue).data,
-      label.op
+      (label as PrimitiveValue).op
     );
   }
 
@@ -293,7 +299,7 @@ const buildPrimitiveMutationDelta = (
   }
 
   // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [delta];
+  return [delta] as JSONDeltas;
 };
 
 /**
