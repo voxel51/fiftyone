@@ -46,12 +46,17 @@ def get_unique_path(path: str) -> str:
         base_without_num = base
         start_num = 1
 
-    counter = start_num
-    while True:
-        candidate = f"{base_without_num}_{counter}{ext}"
+    max_attempts = 100
+    for i in range(max_attempts):
+        candidate = f"{base_without_num}_{start_num + i}{ext}"
         if not fos.exists(candidate):
             return candidate
-        counter += 1
+
+    raise FileOperationError(
+        code=FileOperationErrorCode.WRITE_FAILED,
+        message=f"Could not find a unique filename after {max_attempts} attempts.",
+        details={"path": path},
+    )
 
 
 def check_feature_enabled():

@@ -12,6 +12,7 @@ filesystems.
 |
 """
 
+import errno
 import logging
 from typing import AsyncIterator
 
@@ -40,7 +41,7 @@ def _sync_resolve_and_open(normalized: str):
     """
     resolved = get_unique_path(normalized)
     fos.ensure_basedir(resolved)
-    fh = fos.open_file(resolved, "wb").__enter__()
+    fh = fos.open_file(resolved, "wb")
     return resolved, fh
 
 
@@ -94,21 +95,15 @@ async def stream_upload(
             await anyio.to_thread.run_sync(lambda: fh.close())
     except FileOperationError:
         raise
-    except OSError as e:
-        await anyio.to_thread.run_sync(lambda: _sync_try_remove(resolved_path))
-        if e.errno == 28:  # ENOSPC -- no space left on device
-            raise FileOperationError(
-                code=FileOperationErrorCode.STORAGE_FULL,
-                message="No space left on device.",
-                details={"path": resolved_path},
-            )
-        raise FileOperationError(
-            code=FileOperationErrorCode.WRITE_FAILED,
-            message=f"Failed to write file: {e}",
-            details={"path": resolved_path},
-        )
     except Exception as e:
         await anyio.to_thread.run_sync(lambda: _sync_try_remove(resolved_path))
+        if isinstance(e, OSError):
+            if e.errno == errno.ENOSPC:
+                raise FileOperationError(
+                    code=FileOperationErrorCode.STORAGE_FULL,
+                    message="No space left on device.",
+                    details={"path": resolved_path},
+                )
         raise FileOperationError(
             code=FileOperationErrorCode.WRITE_FAILED,
             message=f"Failed to write file: {e}",
