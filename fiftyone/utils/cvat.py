@@ -4932,8 +4932,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         self, search_url_fcn, target, target_key, value_key
     ):
         search_url = search_url_fcn(target)
-        resp = self.get(search_url).json()
-        for info in resp["results"]:
+        results = self._get_paginated_results(search_url)
+        for info in results:
             if info[target_key] == target:
                 return info[value_key]
 
