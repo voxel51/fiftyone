@@ -17,6 +17,13 @@ jobs:
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
       - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/docs/**
+          sparse-checkout-cone-mode: false
       - uses: dorny/paths-filter@v3
         id: filter
         with:
