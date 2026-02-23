@@ -16,7 +16,6 @@ jobs:
       e2e-changes: ${{ steps.filter.outputs.e2e-pw }}
       fiftyone-changes: ${{ steps.filter.outputs.fiftyone }}
     steps:
-      - uses: actions/checkout@v6
       - name: Checkout
         uses: actions/checkout@v6
         with:

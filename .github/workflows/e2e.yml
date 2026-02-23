@@ -85,7 +85,6 @@ jobs:
         with:
           large-packages: false # e2e test failed when `true`
       - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
           uv pip install --system -r requirements/e2e.txt
 

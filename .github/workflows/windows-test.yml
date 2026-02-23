@@ -46,7 +46,6 @@ jobs:
             requirements/github.txt
             requirements/test.txt
       - name: Install requirements
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
           uv pip install --system -U wheel setuptools
           uv pip install --system -r requirements/github.txt
