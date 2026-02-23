@@ -694,7 +694,10 @@ export class InteractionManager {
   }
 
   private getInteractiveHandler(): InteractiveDetectionHandler | undefined {
-    return this.handlers.find((h) => h instanceof InteractiveDetectionHandler);
+    return this.handlers.find(
+      (h): h is InteractiveDetectionHandler =>
+        h instanceof InteractiveDetectionHandler
+    );
   }
 
   /**

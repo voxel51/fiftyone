@@ -8,9 +8,10 @@ import {
   TAB_DASH_SELECTED,
   TAB_DASH_WIDTH,
 } from "../constants";
+import type { ClassificationLabel } from "@fiftyone/looker/src/overlays/classifications";
 import type { Renderer2D } from "../renderer/Renderer2D";
 import { Selectable } from "../selection/Selectable";
-import { Point, RawLookerLabel, Rect, RenderMeta } from "../types";
+import { Point, Rect, RenderMeta } from "../types";
 import { BaseOverlay } from "./BaseOverlay";
 
 /**
@@ -19,13 +20,16 @@ import { BaseOverlay } from "./BaseOverlay";
 export interface ClassificationOptions {
   id: string;
   field: string;
-  label: RawLookerLabel;
+  label: ClassificationLabel;
 }
 
 /**
  * Classification overlay implementation with selection support.
  */
-export class ClassificationOverlay extends BaseOverlay implements Selectable {
+export class ClassificationOverlay
+  extends BaseOverlay<ClassificationLabel>
+  implements Selectable
+{
   private isSelectedState = false;
   private textBounds?: Rect;
 
@@ -58,7 +62,7 @@ export class ClassificationOverlay extends BaseOverlay implements Selectable {
     const hasLabel = !!this.label?.label;
 
     const confidence =
-      this.label?.confidence && !isNaN(this.label.confidence)
+      this.label?.confidence && !isNaN(this.label.confidence as number)
         ? this.label.confidence
         : "";
 

@@ -90,6 +90,7 @@
         "packages/events/src/**/*",
         "packages/feature-flags/src/**/*",
         "packages/flashlight/src/**/*",
+        "packages/lighter/src/**/*",
         "packages/playback/src/**/*",
         "packages/plugins/src/**/*",
         "packages/spotlight/src/**/*",
