@@ -31,7 +31,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
   }
 
   resetOverlay(): void {
-    this.overlay.unsetBounds();
+    this.overlay.absoluteBounds = undefined;
   }
 
   markDirty(): void {
@@ -46,12 +46,12 @@ export class InteractiveDetectionHandler implements InteractionHandler {
     this.startPoint = point;
     this._isDragging = true;
     this.overlay.toggleSelected();
-    this.overlay.setBounds({
+    this.overlay.absoluteBounds = {
       x: point.x,
       y: point.y,
       width: 0,
       height: 0,
-    });
+    };
 
     return true;
   }
@@ -65,16 +65,14 @@ export class InteractiveDetectionHandler implements InteractionHandler {
   }
 
   private updateBounds(point: Point): boolean {
-    console.log("UPDATE", this._isDragging, this.startPoint);
     if (!this._isDragging || !this.startPoint) return false;
 
-    console.log("KJFDOLJLD");
     const x = Math.min(this.startPoint.x, point.x);
     const y = Math.min(this.startPoint.y, point.y);
     const width = Math.abs(point.x - this.startPoint.x);
     const height = Math.abs(point.y - this.startPoint.y);
 
-    this.overlay.setBounds({ x, y, width, height });
+    this.overlay.absoluteBounds = { x, y, width, height };
     return true;
   }
 
@@ -98,7 +96,7 @@ export class InteractiveDetectionHandler implements InteractionHandler {
       return false;
     }
 
-    const tempBounds = this.overlay.getAbsoluteBounds();
+    const tempBounds = this.overlay.absoluteBounds;
 
     // Only create detection if we have a meaningful size
     const minSize = MIN_PIXELS;

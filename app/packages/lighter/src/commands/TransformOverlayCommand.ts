@@ -2,19 +2,9 @@
  * Copyright 2017-2026, Voxel51, Inc.
  */
 
-import { Undoable } from "@fiftyone/commands";
+import type { Undoable } from "@fiftyone/commands";
 import type { Rect } from "../types";
-import { Movable } from "./MoveOverlayCommand";
-
-/**
- * Options for transforming an overlay.
- */
-export interface TransformOptions {
-  /** New bounds for the overlay */
-  bounds?: Rect;
-  /** New scale factors */
-  scale?: { x: number; y: number };
-}
+import type { Movable } from "./MoveOverlayCommand";
 
 /**
  * Command for transforming an overlay with undo/redo support.
@@ -34,10 +24,10 @@ export class TransformOverlayCommand implements Undoable {
   }
 
   execute(): void {
-    this.overlay.setBounds(this.newBounds);
+    this.overlay.bounds = this.newBounds;
   }
 
   undo(): void {
-    this.overlay.setBounds(this.oldBounds);
+    this.overlay.bounds = this.oldBounds;
   }
 }

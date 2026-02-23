@@ -5,11 +5,11 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
-import { currentData, currentOverlay } from "./state";
-import { useAtom, useAtomValue } from "jotai";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
+import { currentData, currentOverlay } from "./state";
 
 const createInput = (name: string, readOnly?: boolean) => {
   return {
@@ -82,14 +82,14 @@ export default function Position({ readOnly = false }: PositionProps) {
       ) {
         return;
       }
-      const rect = overlay.getAbsoluteBounds();
+      const rect = overlay.absoluteBounds;
 
       setState({
         position: { x: rect.x, y: rect.y },
         dimensions: { width: rect.width, height: rect.height },
       });
 
-      const relative = overlay.getRelativeBounds();
+      const relative = overlay.relativeBounds;
       setData({
         bounding_box: [relative.x, relative.y, relative.width, relative.height],
       });

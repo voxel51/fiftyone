@@ -4,9 +4,58 @@ import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("quick-edit");
+interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
+const datasetName = getUniqueDatasetNameWithPrefix("quick-edit");
 const id = "000000000000000000000000";
+const imageWidth = 914;
+const imageHeight = 620;
+const initialBoundingBox = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
+const detectionTestPoints = (({ x, y, width, height }: Box) => {
+  return [
+    {
+      cursor: "nwse",
+      x,
+      y,
+    },
+    { cursor: "ns", x: x + width / 2, y },
+    {
+      cursor: "nesw",
+      x: x + width,
+      y,
+    },
+    {
+      cursor: "ew",
+      x: x + width,
+      y: y + height / 2,
+    },
+    {
+      cursor: "nwse",
+      x: x + width,
+      y: y + height,
+    },
+    {
+      cursor: "ns",
+      x: x + width / 2,
+      y: y + height,
+    },
+    {
+      cursor: "nesw",
+      x,
+      y: y + height,
+    },
+    {
+      cursor: "ew",
+      x,
+      y: y + height / 2,
+    },
+  ];
+})(initialBoundingBox);
 
 const test = base.extend<{
   modal: ModalPom;
@@ -25,8 +74,8 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
   await foWebServer.startWebServer();
   await mediaFactory.createBlankImage({
     outputPath: "/tmp/blank.png",
-    width: 914,
-    height: 620,
+    width: imageWidth,
+    height: imageHeight,
     fillColor: "#ffffff",
     hideLogs: true,
   });
@@ -44,7 +93,7 @@ test.beforeAll(async ({ fiftyoneLoader, mediaFactory, foWebServer }) => {
       classification=fo.Classification(label="value"),
       detections=fo.Detections(
           detections=[
-              fo.Detection(label="value", bounding_box=[0.25, 0.25, 0.5, 0.5])
+              fo.Detection(label="value", bounding_box=[0.25, 0.25, 0.5, 0.5]),
           ]
       ),
       filepath="/tmp/blank.png"
@@ -106,48 +155,26 @@ test.describe.serial("quick edit", () => {
     );
   });
 
-  const points = (x: number, y: number, width: number, height: number) => {
-    return [
-      {
-        cursor: "nwse",
-        x,
-        y,
-      },
-      { cursor: "ns", x: x + width / 2, y },
-      {
-        cursor: "nesw",
-        x: x + width,
-        y,
-      },
-      {
-        cursor: "ew",
-        x: x + width,
-        y: y + height / 2,
-      },
-      {
-        cursor: "nwse",
-        x: x + width,
-        y: y + height,
-      },
-      {
-        cursor: "ns",
-        x: x + width / 2,
-        y: y + height,
-      },
-      {
-        cursor: "nesw",
-        x,
-        y: y + height,
-      },
-      {
-        cursor: "ew",
-        x,
-        y: y + height / w,
-      },
-    ];
-  };
-
   test("detections via tooltip", async ({ modal }) => {
+    const assertPosition = async function ({ x, y, width, height }: Box) {
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "position.x",
+        (x * imageWidth).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "position.y",
+        (y * imageHeight).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.width",
+        (width * imageWidth).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.height",
+        (height * imageHeight).toString()
+      );
+    };
+
     // Init
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
@@ -175,70 +202,99 @@ test.describe.serial("quick edit", () => {
     await modal.sampleCanvas.tooltip.quickEdit();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused.png"
-    );
-    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "228.5");
-    await modal.sidebar.edit.assert.verifyFieldValue("position.y", "155");
-    await modal.sidebar.edit.assert.verifyFieldValue("dimensions.width", "457");
-    await modal.sidebar.edit.assert.verifyFieldValue(
-      "dimensions.height",
-      "310"
-    );
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
-
-    // Resize box
-    await modal.sampleCanvas.move(0.75, 0.75, "nwse-resize");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.5, 0.5);
-    await modal.sampleCanvas.up();
-    await modal.sampleCanvas.move(0.75, 0.75, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused-small.png"
-    );
-    await modal.sidebar.edit.assert.verifyFieldValue("position.x", "228.5");
-    await modal.sidebar.edit.assert.verifyFieldValue("position.y", "155");
-    await modal.sidebar.edit.assert.verifyFieldValue(
-      "dimensions.width",
-      "228.5"
-    );
-    await modal.sidebar.edit.assert.verifyFieldValue(
-      "dimensions.height",
-      "155"
+      `detection-lighter-selected-centered.png`
     );
 
-    // Undo
-    await modal.sidebar.edit.assert.undoIsEnabled();
-    await modal.sidebar.edit.undo();
-    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    for (const point of detectionTestPoints) {
+      // Resize box
+      await modal.sampleCanvas.move(point.x, point.y, `${point.cursor}-resize`);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.5, 0.5);
+      await modal.sampleCanvas.up();
+      await modal.sampleCanvas.move(point.x, point.y, "default");
+      await modal.sidebar.edit.assert.undoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        `detection-lighter-selected-${point.cursor}.png`
+      );
+      // await assertPosition({ ...point, width: 0.25, height: 0.25 });
+
+      // Undo
+      await modal.sidebar.edit.undo();
+      await modal.sidebar.edit.assert.redoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "detection-lighter-selected-centered.png"
+      );
+
+      // Redo
+      await modal.sidebar.edit.redo();
+      await modal.sidebar.edit.assert.redoIsEnabled(false);
+      await modal.sidebar.edit.assert.undoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        `detection-lighter-selected-${point.cursor}.png`
+      );
+
+      // Resize to original box
+      await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(point.x, point.y);
+      await modal.sampleCanvas.up();
+      await modal.sampleCanvas.move(0.9, 0.9, "default");
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "detection-lighter-selected-centered.png"
+      );
+    }
+
+    for (const point of detectionTestPoints) {
+      // Move box
+      await modal.sampleCanvas.move(0.5, 0.5);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(point.x, point.y);
+      await modal.sampleCanvas.up();
+      await modal.sidebar.edit.assert.undoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        `detection-lighter-selected-${point.cursor}-move.png`
+      );
+
+      // Undo
+      await modal.sidebar.edit.undo();
+      await modal.sidebar.edit.assert.redoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "detection-lighter-selected-centered.png"
+      );
+
+      // Redo
+      await modal.sidebar.edit.redo();
+      await modal.sidebar.edit.assert.redoIsEnabled(false);
+      await modal.sidebar.edit.assert.undoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        `detection-lighter-selected-${point.cursor}-move.png`
+      );
+
+      // Move back
+      await modal.sampleCanvas.move(point.x, point.y);
+      await modal.sampleCanvas.down();
+      await modal.sampleCanvas.move(0.5, 0.5);
+      await modal.sampleCanvas.up();
+      await modal.sidebar.edit.assert.undoIsEnabled();
+      await modal.sampleCanvas.assert.hasScreenshot(
+        "detection-lighter-selected-centered.png"
+      );
+    }
+
+    await modal.sidebar.edit.setFieldValue("confidence", "1.0");
+    await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused.png"
+      "centered-bounding-box-lighter-selected-confidence-1.0.png"
     );
 
-    // Redo
-    await modal.sidebar.edit.assert.redoIsEnabled();
-    await modal.sidebar.edit.redo();
-    await modal.sidebar.edit.assert.redoIsEnabled(false);
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused-small.png"
-    );
-
-    await modal.sidebar.edit.assert.undoIsEnabled();
-
-    // Resize to original box
-    await modal.sampleCanvas.move(0.5, 0.5, "nwse-resize");
-    await modal.sampleCanvas.down();
-    await modal.sampleCanvas.move(0.75, 0.75);
-    await modal.sampleCanvas.up();
+    await modal.sampleCanvas.move(0.5, 0.5, "grab");
+    await modal.sampleCanvas.click(0.5, 0.5);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-focused.png"
-    );
-    await modal.sidebar.edit.assert.verifyFieldValue("dimensions.width", "457");
-    await modal.sidebar.edit.assert.verifyFieldValue(
-      "dimensions.height",
-      "310"
+      "centered-bounding-box-lighter-confidence-1.0.png"
     );
   });
 });

@@ -245,7 +245,6 @@ export class InteractionManager {
   }
 
   private handlePointerDown = (event: PointerEvent): void => {
-    console.log("DOONNWWNWN");
     const point = this.getCanvasPoint(event);
     const worldPoint = this.renderer.screenToWorld(point);
     const scale = this.renderer.getScale();

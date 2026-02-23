@@ -25,6 +25,7 @@ import type { InteractionHandler } from "../interaction/InteractionManager";
 import { InteractionManager } from "../interaction/InteractionManager";
 import { InteractiveDetectionHandler } from "../interaction/InteractiveDetectionHandler";
 import { BaseOverlay } from "../overlay/BaseOverlay";
+import { BoundingBoxOverlay } from "../overlay/BoundingBoxOverlay";
 import { ClassificationOverlay } from "../overlay/ClassificationOverlay";
 import type { Selectable } from "../selection/Selectable";
 import type { SelectionOptions } from "../selection/SelectionManager";
@@ -67,7 +68,7 @@ export const TypeGuards = {
   isSpatial: (
     body: BaseOverlay | InteractionHandler
   ): body is BaseOverlay & Spatial =>
-    "getRelativeBounds" in body && "setAbsoluteBounds" in body,
+    "relativeBounds" in body && "absoluteBounds" in body,
 
   isTransformable: (
     body: BaseOverlay | InteractionHandler
@@ -1129,7 +1130,7 @@ export class Scene2D {
     }
 
     // Get current bounds for undo/redo
-    const oldBounds = overlay.getBounds();
+    const oldBounds = overlay.bounds;
 
     // Calculate new bounds
     let newBounds = { ...oldBounds };
@@ -1391,8 +1392,6 @@ export class Scene2D {
     this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
       (bounds) => {
         this.coordinateSystem.updateTransform(bounds);
-        console.log("SPATIAL CHANGEEE");
-        this.updateAllSpatialOverlays();
         this.updateClassifications();
       }
     );
@@ -1457,59 +1456,13 @@ export class Scene2D {
   }
 
   /**
-   * Updates coordinates for all spatial overlays.
-   */
-  private updateAllSpatialOverlays(): void {
-    for (const overlay of this.overlays.values()) {
-      if (TypeGuards.isSpatial(overlay)) {
-        this.updateSpatialOverlayCoordinates(overlay);
-      }
-    }
-  }
-
-  /**
    * Marks Classifications as dirty to be redrawn
    */
   private updateClassifications(): void {
-    this.overlays.forEach((overlay) => {
+    for (const overlay of this.overlays) {
       if (overlay instanceof ClassificationOverlay) {
         overlay.markDirty();
       }
-    });
-  }
-
-  /**
-   * Updates coordinates for a single spatial overlay.
-   */
-  private updateSpatialOverlayCoordinates(
-    overlay: BaseOverlay & Spatial
-  ): void {
-    const relativeBounds = overlay.getRelativeBounds();
-    if (BaseOverlay.validBounds(relativeBounds)) {
-      const absoluteBounds =
-        this.coordinateSystem.relativeToAbsolute(relativeBounds);
-      console.log("UPDATE UPDATE");
-      overlay.setAbsoluteBounds(absoluteBounds);
-    }
-  }
-
-  /**
-   * Updates relative bounds for a spatial overlay based on its current absolute bounds.
-   * This is used when an overlay's position is changed and we need to update its relative coordinates.
-   * @param overlay - The spatial overlay to update.
-   */
-  private updateSpatialOverlayRelativeBounds(
-    overlay: BaseOverlay & Spatial
-  ): void {
-    const absoluteBounds = overlay.getAbsoluteBounds();
-
-    if (BaseOverlay.validBounds(absoluteBounds)) {
-      const relativeBounds =
-        this.coordinateSystem.absoluteToRelative(absoluteBounds);
-
-      // Update the overlays relative bounds
-      overlay.setRelativeBounds(relativeBounds);
-      overlay.markCoordinateUpdateComplete();
     }
   }
 
@@ -1530,21 +1483,12 @@ export class Scene2D {
 
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
-      if (TypeGuards.isSpatial(overlay) && overlay.needsCoordinateUpdate()) {
-        this.updateSpatialOverlayRelativeBounds(overlay);
-        const absoluteBounds = overlay.getAbsoluteBounds();
-        const relativeBounds = overlay.getRelativeBounds();
-
-        if (
-          BaseOverlay.validBounds(absoluteBounds) &&
-          BaseOverlay.validBounds(relativeBounds)
-        ) {
-          this.eventBus.dispatch("lighter:overlay-bounds-changed", {
-            id: overlay.id,
-            absoluteBounds,
-            relativeBounds,
-          });
-        }
+      if (overlay instanceof BoundingBoxOverlay) {
+        this.eventBus.dispatch("lighter:overlay-bounds-changed", {
+          id: overlay.id,
+          absoluteBounds: overlay.absoluteBounds,
+          relativeBounds: overlay.relativeBounds,
+        });
       }
     }
 
