@@ -39,10 +39,10 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const schema = useMemo(() => createSchema(fields, disabled), [
-    disabled,
-    fields,
-  ]);
+  const schema = useMemo(
+    () => createSchema(fields, disabled),
+    [disabled, fields]
+  );
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
 
