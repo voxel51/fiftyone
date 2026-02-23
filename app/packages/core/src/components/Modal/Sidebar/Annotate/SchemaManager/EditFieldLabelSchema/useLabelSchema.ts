@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/state";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { isEqual } from "lodash";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   activeLabelSchemas,
   addToActiveSchemas,
@@ -18,7 +18,7 @@ import {
   removeFromActiveSchemas,
 } from "../../state";
 import { useSchemaManager } from "../../useSchemaManager";
-import { currentLabelSchema, pendingActiveSchemas } from "../state";
+import { currentLabelSchema } from "../state";
 import { reconcileComponent } from "../utils";
 
 // =============================================================================
@@ -66,71 +66,26 @@ const useHasChanges = (one: unknown, two: unknown) => {
   }, [one, two]);
 };
 
-// Assumes elements in each array are distinct (true for field name lists).
-const sameSet = (a: string[], b: string[]): boolean => {
-  if (a.length !== b.length) return false;
-  const setB = new Set(b);
-  return a.every((f) => setB.has(f));
-};
-
 /**
- * Manages pending visibility for a field. The toggle updates
- * pendingActiveSchemas (lazily initialized from activeLabelSchemas).
- * Changes are only persisted on save via set_active_label_schemas.
+ * Manages pending visibility for a single field. Uses local state to track
+ * whether the user toggled visibility; persisted on save via per-field
+ * activate/deactivate operators.
  */
 const useVisibility = (field: string) => {
   const activeSchemas = useAtomValue(activeLabelSchemas);
-  const [pending, setPending] = useAtom(pendingActiveSchemas);
+  const [toggled, setToggled] = useState(false);
 
-  // Lazily initialize pending from current active schemas
-  const effective = useMemo(
-    () => pending ?? activeSchemas ?? [],
-    [pending, activeSchemas]
-  );
-
-  const isFieldVisible = effective.includes(field);
-
-  const visibilityChanged = useMemo(
-    () => !sameSet(effective, activeSchemas ?? []),
-    [effective, activeSchemas]
-  );
+  const savedVisible = (activeSchemas ?? []).includes(field);
+  const isFieldVisible = toggled ? !savedVisible : savedVisible;
+  const visibilityChanged = toggled;
 
   const toggleVisibility = useCallback(() => {
-    if (effective.includes(field)) {
-      setPending(effective.filter((f) => f !== field));
-    } else {
-      // Append new field at the end
-      setPending([...effective, field]);
-    }
-  }, [field, effective, setPending]);
+    setToggled((t) => !t);
+  }, []);
 
   const discardVisibility = useCallback(() => {
-    const current = pending ?? activeSchemas ?? [];
-    const original = activeSchemas ?? [];
-    const wasActive = original.includes(field);
-    const isPending = current.includes(field);
-
-    if (wasActive === isPending) return; // no change for this field
-
-    if (wasActive && !isPending) {
-      // Was active, user hid it — revert by re-inserting at original position
-      const newPending = [...current];
-      const originalIndex = original.indexOf(field);
-      let insertAt = newPending.length;
-      for (let i = originalIndex - 1; i >= 0; i--) {
-        const idx = newPending.indexOf(original[i]);
-        if (idx >= 0) {
-          insertAt = idx + 1;
-          break;
-        }
-      }
-      newPending.splice(insertAt, 0, field);
-      setPending(newPending);
-    } else {
-      // Was hidden, user activated it — revert by removing
-      setPending(current.filter((f) => f !== field));
-    }
-  }, [field, pending, activeSchemas, setPending]);
+    setToggled(false);
+  }, []);
 
   return {
     isFieldVisible,
@@ -181,13 +136,10 @@ const useSavedLabelSchema = (field: string) => {
 const useSave = (field: string, visibilityChanged: boolean) => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedLabelSchema, setSaved] = useSavedLabelSchema(field);
-  const update = useOperatorExecutor("update_label_schema");
-  const activate = useOperatorExecutor("activate_label_schemas");
-  const { setActiveSchemas } = useSchemaManager();
+  const { updateSchema, activateSchemas, deactivateSchemas } =
+    useSchemaManager();
   const addToActive = useSetAtom(addToActiveSchemas);
   const removeFromActive = useSetAtom(removeFromActiveSchemas);
-  const setActiveLabelSchemasAtom = useSetAtom(activeLabelSchemas);
-  const [pending, setPending] = useAtom(pendingActiveSchemas);
   const activeSchemas = useAtomValue(activeLabelSchemas);
   const notify = useNotification();
   const [current] = useCurrentLabelSchema(field);
@@ -195,82 +147,53 @@ const useSave = (field: string, visibilityChanged: boolean) => {
 
   return {
     isSaving,
-    save: () => {
+    save: async () => {
       const isFirstSave = !savedLabelSchema;
       setIsSaving(true);
 
       const labelSchema = current ? reconcileComponent(current) : current;
-      const params: Record<string, unknown> = {
-        field,
-        label_schema: labelSchema,
-      };
 
-      update.execute(params, {
-        callback: (result) => {
-          // Always reset saving state
-          setIsSaving(false);
-          document.dispatchEvent(
-            new CustomEvent("schema-manager-save-complete")
-          );
+      try {
+        await updateSchema({ field, label_schema: labelSchema });
+      } catch (error) {
+        console.error("Failed to save label schema:", error);
+        setIsSaving(false);
+        document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
+        return;
+      }
 
-          // Check for errors in the result
-          if (result.error) {
-            console.error("Failed to save label schema:", result.error);
-            return;
-          }
+      setSaved(current);
+      setIsSaving(false);
+      document.dispatchEvent(new CustomEvent("schema-manager-save-complete"));
 
-          // Only update state on success
-          setSaved(current);
+      // Determine activation change: first save auto-activates,
+      // otherwise apply the visibility toggle for this field
+      const fieldSet = new Set([field]);
+      const wasActive = (activeSchemas ?? []).includes(field);
+      const shouldActivate = isFirstSave || (visibilityChanged && !wasActive);
+      const shouldDeactivate = !isFirstSave && visibilityChanged && wasActive;
 
-          // Auto-activate the field on first save
-          if (isFirstSave) {
-            const fieldSet = new Set([field]);
-            addToActive(fieldSet);
-            activate.execute(
-              { fields: [field] },
-              {
-                callback: (activateResult) => {
-                  if (activateResult.error) {
-                    removeFromActive(fieldSet);
-                    notify({
-                      msg: `Failed to activate field: ${
-                        activateResult.errorMessage || activateResult.error
-                      }`,
-                      variant: "error",
-                    });
-                  }
-                },
-              }
-            );
-          }
+      if (shouldActivate) {
+        addToActive(fieldSet);
+        activateSchemas({ fields: [field] }).catch((error) => {
+          removeFromActive(fieldSet);
+          notify({
+            msg: `Failed to activate field: ${error}`,
+            variant: "error",
+          });
+        });
+      } else if (shouldDeactivate) {
+        removeFromActive(fieldSet);
+        deactivateSchemas({ fields: [field] }).catch((error) => {
+          addToActive(fieldSet);
+          notify({
+            msg: `Failed to deactivate field: ${error}`,
+            variant: "error",
+          });
+        });
+      }
 
-          // Persist pending visibility changes
-          if (visibilityChanged && pending) {
-            // Build ordered list: old items first, new appended at end
-            const oldSet = new Set(activeSchemas ?? []);
-            const kept = (activeSchemas ?? []).filter((f) =>
-              pending.includes(f)
-            );
-            const added = pending.filter((f) => !oldSet.has(f));
-            const ordered = [...kept, ...added];
-
-            setActiveSchemas({ fields: ordered }).then(
-              () => {
-                setActiveLabelSchemasAtom(ordered);
-                setPending(null);
-              },
-              (error) => {
-                notify({
-                  msg: `Failed to update field visibility: ${error}`,
-                  variant: "error",
-                });
-              }
-            );
-          }
-
-          setCurrentField(null);
-        },
-      });
+      setCurrentField(null);
     },
     savedLabelSchema,
   };
@@ -385,6 +308,17 @@ export default function useLabelSchema(field: string) {
 
   const hasChanges =
     schemaChanged || !!validate.errors.length || visibility.visibilityChanged;
+
+  // Discard unsaved schema edits when navigating away (back button unmounts
+  // this view). Visibility is local state so it resets automatically on unmount.
+  // After a successful save, savedLabelSchema is already updated before unmount,
+  // so re-opening the field will show the saved state correctly.
+  const setCurrentSchema = useSetAtom(currentLabelSchema(field));
+  useEffect(() => {
+    return () => {
+      setCurrentSchema(undefined);
+    };
+  }, [setCurrentSchema]);
 
   // Wrap discard to also revert visibility
   const originalDiscard = validate.discard;
