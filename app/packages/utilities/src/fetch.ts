@@ -596,6 +596,7 @@ export const getEventSource = (
             }
 
             throw new ServerError(
+              // @ts-ignore (SSE context: response metadata unavailable; only stack matters)
               {},
               (err as unknown as { stack: string }).stack
             );

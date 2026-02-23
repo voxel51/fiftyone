@@ -92,7 +92,8 @@
         "packages/flashlight/src/**/*",
         "packages/playback/src/**/*",
         "packages/plugins/src/**/*",
-        "packages/spotlight/src/**/*"
+        "packages/spotlight/src/**/*",
+        "packages/utilities/src/**/*"
     ],
     "exclude": ["**/*.test.ts", "**/*.test.tsx", "node_modules"]
 }

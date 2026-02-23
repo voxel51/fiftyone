@@ -8,3 +8,9 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// FiftyOne server injects these globals at runtime
+interface Window {
+  FIFTYONE_SERVER_ADDRESS?: string;
+  FIFTYONE_SERVER_PATH_PREFIX?: string;
+}
