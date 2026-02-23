@@ -69,9 +69,14 @@ function xhrPost(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
 
+    const onSignalAbort = () => xhr.abort();
     if (options.signal) {
-      options.signal.addEventListener("abort", () => xhr.abort());
+      options.signal.addEventListener("abort", onSignalAbort);
     }
+
+    const cleanup = () => {
+      options.signal?.removeEventListener("abort", onSignalAbort);
+    };
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
@@ -80,6 +85,7 @@ function xhrPost(
     };
 
     xhr.onload = () => {
+      cleanup();
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           resolve(JSON.parse(xhr.responseText));
@@ -100,8 +106,14 @@ function xhrPost(
       }
     };
 
-    xhr.onerror = () => reject(new Error("Network error"));
-    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error("Network error"));
+    };
+    xhr.onabort = () => {
+      cleanup();
+      reject(new DOMException("Aborted", "AbortError"));
+    };
 
     xhr.open("POST", url);
     xhr.setRequestHeader(
