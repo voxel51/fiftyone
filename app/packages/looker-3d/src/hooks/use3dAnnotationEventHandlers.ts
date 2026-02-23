@@ -49,7 +49,11 @@ export const use3dAnnotationEventHandlers = () => {
 
         const coerced = coerceStringBooleans(updates);
 
-        if (typeof coerced.label === "string" && existingLabel.path) {
+        if (
+          coerced.label &&
+          typeof coerced.label === "string" &&
+          existingLabel.path
+        ) {
           recordLastCreatedLabel(existingLabel.path, coerced.label);
         }
 
