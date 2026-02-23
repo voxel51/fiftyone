@@ -1,0 +1,94 @@
+{
+    // Flat typecheck config for incremental adoption.
+    //
+    // Run: yarn typecheck
+    //
+    // HOW TO USE:
+    //   Add packages to "include" below one at a time as you fix errors.
+    //   Because TypeScript always type-checks transitive imports, adding a package
+    //   may surface errors from packages it imports. Fix those too, working
+    //   bottom-up through the dependency graph.
+    //
+    //   The "paths" mappings ensure all @fiftyone/* imports resolve consistently
+    //   to source files rather than going through node_modules symlinks.
+    //
+    // NOTE: test files are excluded — add "**/*.test.ts" to include if desired.
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "moduleResolution": "node",
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "jsx": "react-jsx",
+        "noEmit": true,
+        "skipLibCheck": true,
+        "strict": false,
+        "noImplicitAny": false,
+        "baseUrl": ".",
+        "paths": {
+            "@fiftyone/aggregations": ["packages/aggregations/src/index.ts"],
+            "@fiftyone/aggregations/*": ["packages/aggregations/src/*"],
+            "@fiftyone/analytics": ["packages/analytics/src/index.ts"],
+            "@fiftyone/analytics/*": ["packages/analytics/src/*"],
+            "@fiftyone/annotation": ["packages/annotation/src/index.ts"],
+            "@fiftyone/annotation/*": ["packages/annotation/src/*"],
+            "@fiftyone/app": ["packages/app/src/index.tsx"],
+            "@fiftyone/app/*": ["packages/app/src/*"],
+            "@fiftyone/command-bus": ["packages/command-bus/src/index.ts"],
+            "@fiftyone/command-bus/*": ["packages/command-bus/src/*"],
+            "@fiftyone/commands": ["packages/commands/src/index.ts"],
+            "@fiftyone/commands/*": ["packages/commands/src/*"],
+            "@fiftyone/components": ["packages/components/src/index.ts"],
+            "@fiftyone/components/*": ["packages/components/src/*"],
+            "@fiftyone/core": ["packages/core/src/index.ts"],
+            "@fiftyone/core/*": ["packages/core/src/*"],
+            "@fiftyone/embeddings": ["packages/embeddings/src/index.ts"],
+            "@fiftyone/embeddings/*": ["packages/embeddings/src/*"],
+            "@fiftyone/events": ["packages/events/src/index.ts"],
+            "@fiftyone/events/*": ["packages/events/src/*"],
+            "@fiftyone/feature-flags": ["packages/feature-flags/src/index.ts"],
+            "@fiftyone/feature-flags/*": ["packages/feature-flags/src/*"],
+            "@fiftyone/flashlight": ["packages/flashlight/src/index.ts"],
+            "@fiftyone/flashlight/*": ["packages/flashlight/src/*"],
+            "@fiftyone/lighter": ["packages/lighter/src/index.ts"],
+            "@fiftyone/lighter/*": ["packages/lighter/src/*"],
+            "@fiftyone/looker": ["packages/looker/src/index.ts"],
+            "@fiftyone/looker/*": ["packages/looker/src/*"],
+            "@fiftyone/looker-3d": ["packages/looker-3d/src/index.ts"],
+            "@fiftyone/looker-3d/*": ["packages/looker-3d/src/*"],
+            "@fiftyone/map": ["packages/map/src/index.ts"],
+            "@fiftyone/map/*": ["packages/map/src/*"],
+            "@fiftyone/operators": ["packages/operators/src/index.ts"],
+            "@fiftyone/operators/*": ["packages/operators/src/*"],
+            "@fiftyone/playback": ["packages/playback/index.ts"],
+            "@fiftyone/playback/*": ["packages/playback/*"],
+            "@fiftyone/plugins": ["packages/plugins/src/index.ts"],
+            "@fiftyone/plugins/*": ["packages/plugins/src/*"],
+            "@fiftyone/relay": ["packages/relay/src/index.ts"],
+            "@fiftyone/relay/*": ["packages/relay/src/*"],
+            "@fiftyone/spaces": ["packages/spaces/src/index.ts"],
+            "@fiftyone/spaces/*": ["packages/spaces/src/*"],
+            "@fiftyone/spotlight": ["packages/spotlight/src/index.ts"],
+            "@fiftyone/spotlight/*": ["packages/spotlight/src/*"],
+            "@fiftyone/state": ["packages/state/src/index.ts"],
+            "@fiftyone/state/*": ["packages/state/src/*"],
+            "@fiftyone/utilities": ["packages/utilities/src/index.ts"],
+            "@fiftyone/utilities/*": ["packages/utilities/src/*"]
+        }
+    },
+    // Add packages here incrementally. Start small — fixing one package's errors
+    // may require fixing errors in packages it imports too.
+    // Note: the `yarn typecheck` script filters type errors to only these files
+    "include": [
+        "packages/aggregations/src/**/*",
+        "packages/analytics/src/**/*",
+        "packages/command-bus/src/**/*",
+        "packages/commands/src/**/*",
+        "packages/events/src/**/*",
+        "packages/feature-flags/src/**/*",
+        "packages/spotlight/src/**/*"
+    ],
+    "exclude": ["**/*.test.ts", "**/*.test.tsx", "node_modules"]
+}
