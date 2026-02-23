@@ -108,9 +108,12 @@ export const currentField = atom(
   },
   (get, set, path: string) => {
     const label = get(current);
-    if (!label) {
+
+    // no label or label is already set to this field
+    if (!label || label.path === path) {
       return;
     }
+
     label.overlay?.updateField(path);
     label.overlay?.updateLabel({ _id: label.data._id });
     set(current, { ...label, path, data: { _id: label.data._id } });
