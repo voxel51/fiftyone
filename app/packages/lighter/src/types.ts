@@ -193,9 +193,6 @@ export interface CanonicalMedia {
   /** Get aspect ratio */
   getAspectRatio(): number;
 
-  /** Listen for bounds changes */
-  onBoundsChanged(callback: (bounds: Rect) => void): () => void;
-
   /** Force update bounds calculation */
   updateBounds(): void;
 }

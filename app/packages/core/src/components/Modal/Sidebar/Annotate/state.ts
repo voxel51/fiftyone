@@ -3,6 +3,7 @@ import { atomFamily } from "jotai/utils";
 import { capitalize } from "lodash";
 import { LabelSchemaMeta } from "./useSchemaManager";
 import { useMemo } from "react";
+import { PRIMITIVE_FIELD_TYPES } from "./SchemaManager/constants";
 
 // Tab state for GUI/JSON toggle
 export const activeSchemaTab = atom<"gui" | "json">("gui");
@@ -23,6 +24,37 @@ export const labelSchemaData = atomFamily((field: string) => {
 });
 
 export const activeLabelSchemas = atom<string[] | null>(null);
+
+/**
+ * Mirror of Recoil activeFields({ modal: true }), written by Sidebar.tsx.
+ * Can't read Recoil from inside a Jotai atom's getter, so we need the data
+ * bridged into a Jotai atom. null means not yet initialized — in that case
+ * visibleLabelSchemas treats the explore set as empty (only primitive fields
+ * pass through).
+ */
+export const exploreActiveFields = atom<string[] | null>(null);
+
+/**
+ * Intersection of activeLabelSchemas and exploreActiveFields.
+ * Display consumers should read this instead of activeLabelSchemas so that
+ * hiding a field in the Explore sidebar also hides it in Annotate.
+ */
+export const visibleLabelSchemas = atom((get) => {
+  const active = get(activeLabelSchemas);
+  if (!active) return [];
+
+  const explore = get(exploreActiveFields);
+  const exploreSet = new Set(explore ?? []);
+  return active.filter((field) => {
+    const type = get(fieldType(field));
+    // Primitive fields don't appear in the Explore sidebar — always show them.
+    // Everything else is a label (embedded doc) type — filter by explore visibility.
+    if (type && PRIMITIVE_FIELD_TYPES.has(type)) {
+      return true;
+    }
+    return exploreSet.has(field);
+  });
+});
 
 export const inactiveLabelSchemas = atom((get) =>
   Object.keys(get(labelSchemasData) ?? {})
@@ -109,9 +141,7 @@ export const showModal = atom(false);
  * User-set schema `read_only` (from Schema Manager) takes precedence,
  * then falls back to field-level `read_only` (from Python backend).
  */
-export const isFieldReadOnly = (
-  data: LabelSchemaMeta | undefined
-): boolean => {
+export const isFieldReadOnly = (data: LabelSchemaMeta | undefined): boolean => {
   return !!data?.label_schema?.read_only || !!data?.read_only;
 };
 

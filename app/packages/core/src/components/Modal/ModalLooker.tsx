@@ -20,19 +20,15 @@ export const useShowOverlays = () => {
 
 export const useClearSelectedLabels = () => {
   return useRecoilCallback(
-    ({ set }) => async () => set(fos.selectedLabels, []),
+    ({ set }) =>
+      async () =>
+        set(fos.selectedLabels, []),
     []
   );
 };
 
 interface LookerProps {
-  sample: fos.ModalSample;
-
-  // note: this is a hack we're using while migrating to lighter
-  // a lot of components depend on lighterRef being defined (see `useVisibleSampleLabels` for example)
-  // we'll remove this once we've migrated to lighter
-  // `ghost` means looker will render but with width and height set to 0
-  ghost?: boolean;
+  sample?: fos.ModalSample;
   showControls?: boolean;
 }
 
@@ -48,8 +44,8 @@ const ModalLookerNoTimeline = React.memo((props: LookerProps) => {
       id={id}
       data-cy="modal-looker-container"
       style={{
-        width: props.ghost ? 0 : "100%",
-        height: props.ghost ? 0 : "100%",
+        width: "100%",
+        height: "100%",
         background: theme.background.level2,
         position: "relative",
       }}
@@ -77,6 +73,13 @@ export const ModalLooker = React.memo(
     );
     const video = useRecoilValue(fos.isVideoDataset);
 
+    const mediaType =
+      (sample.sample.media_type as unknown as string) ??
+      sample.sample._media_type;
+
+    const isNative = isNativeMediaType(mediaType as string);
+    const isAnnotate = mode === fos.ModalMode.ANNOTATE;
+
     const modalMediaField = useRecoilValue(fos.selectedMediaField(true));
 
     if (shouldRenderImavid) {
@@ -90,23 +93,22 @@ export const ModalLooker = React.memo(
     }
 
     if (video) {
-      return (
-        <VideoLookerReact sample={sample} showControls={mode !== "annotate"} />
-      );
+      return <VideoLookerReact sample={sample} showControls={!isAnnotate} />;
     }
 
-    if (
-      isNativeMediaType(sample.sample.media_type ?? sample.sample._media_type)
-    ) {
-      return (
-        <>
-          {mode === "annotate" && <LighterSampleRenderer sample={sample} />}
-          <ModalLookerNoTimeline
-            sample={sample}
-            ghost={mode === "annotate"}
-            showControls={mode !== "annotate"}
-          />
-        </>
+    if (isNative) {
+      return isAnnotate ? (
+        <div
+          style={{
+            width: "100%",
+            height: "100%",
+            position: "absolute",
+          }}
+        >
+          <LighterSampleRenderer sample={sample} />
+        </div>
+      ) : (
+        <ModalLookerNoTimeline sample={sample} showControls />
       );
     }
 

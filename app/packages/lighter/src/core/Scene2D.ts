@@ -155,7 +155,6 @@ export class Scene2D {
   private renderingState = new RenderingStateManager();
   private sceneOptions?: SceneOptions;
   private selectionManager: SelectionManager;
-  private unsubscribeCanonicalMediaBounds?: () => void;
   private renderCallbacks = new Map<string, RenderCallback>();
   private colorMappingContext?: ColorMappingContext;
   private overlayOrderOptions: OverlayOrderOptions = {};
@@ -186,6 +185,16 @@ export class Scene2D {
     );
 
     this.eventBus = getEventBus<LighterEventGroup>(this.eventChannel);
+
+    // Listen for canonical media bounds changes to update coordinate system and overlays
+    this.registerEventHandler(
+      "lighter:canonical-media-bounds-changed",
+      (event) => {
+        this.coordinateSystem.updateTransform(event.bounds);
+        this.updateAllSpatialOverlays();
+        this.updateClassifications();
+      }
+    );
 
     // Listen for scene options changes to trigger re-rendering
     this.registerEventHandler("lighter:scene-options-changed", (event) => {
@@ -1254,14 +1263,6 @@ export class Scene2D {
 
     this.isRenderLoopActive = false;
 
-    // Clean up canonical media subscription BEFORE clearing overlays
-    // This ensures we properly unsubscribe from boundsChangeCallbacks
-    // before the ImageOverlay's boundsChangeCallbacks array is replaced
-    if (this.unsubscribeCanonicalMediaBounds) {
-      this.unsubscribeCanonicalMediaBounds();
-      this.unsubscribeCanonicalMediaBounds = undefined;
-    }
-
     // Clear canonical media references
     this.canonicalMedia = undefined;
     this.canonicalMediaId = undefined;
@@ -1380,21 +1381,6 @@ export class Scene2D {
 
     // Ensure canonical media is in the background
     this.ensureCanonicalMediaInBackground(overlayOrMedia.id);
-
-    // Set up bounds change listener for coordinate system updates
-    this.unsubscribeCanonicalMediaBounds = overlayOrMedia.onBoundsChanged(
-      (bounds) => {
-        this.coordinateSystem.updateTransform(bounds);
-
-        this.updateAllSpatialOverlays();
-        this.updateClassifications();
-      }
-    );
-
-    // Emit event for coordinate transformation updates
-    this.eventBus.dispatch("lighter:canonical-media-changed", {
-      overlayId: this.canonicalMediaId || "custom",
-    });
   }
 
   /**
