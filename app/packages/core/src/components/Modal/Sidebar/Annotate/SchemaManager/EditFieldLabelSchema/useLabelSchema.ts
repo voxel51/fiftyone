@@ -17,7 +17,10 @@ import {
   labelSchemaData,
   removeFromActiveSchemas,
 } from "../../state";
-import { useSchemaManager } from "../../useSchemaManager";
+import {
+  useSchemaManager,
+  type UpdateSchemaRequest,
+} from "../../useSchemaManager";
 import { currentLabelSchema } from "../state";
 import { reconcileComponent } from "../utils";
 
@@ -154,7 +157,10 @@ const useSave = (field: string, visibilityChanged: boolean) => {
       const labelSchema = current ? reconcileComponent(current) : current;
 
       try {
-        await updateSchema({ field, label_schema: labelSchema });
+        await updateSchema({
+          field,
+          label_schema: labelSchema,
+        } as UpdateSchemaRequest);
       } catch (error) {
         console.error("Failed to save label schema:", error);
         setIsSaving(false);
@@ -313,12 +319,11 @@ export default function useLabelSchema(field: string) {
   // this view). Visibility is local state so it resets automatically on unmount.
   // After a successful save, savedLabelSchema is already updated before unmount,
   // so re-opening the field will show the saved state correctly.
-  const setCurrentSchema = useSetAtom(currentLabelSchema(field));
   useEffect(() => {
     return () => {
-      setCurrentSchema(undefined);
+      currentLabelSchema.remove(field);
     };
-  }, [setCurrentSchema]);
+  }, [field]);
 
   // Wrap discard to also revert visibility
   const originalDiscard = validate.discard;

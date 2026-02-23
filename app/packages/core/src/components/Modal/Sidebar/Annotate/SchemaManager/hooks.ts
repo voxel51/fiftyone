@@ -37,7 +37,6 @@ import {
   hiddenFieldTypes,
   isNewFieldMode,
   jsonValidationErrors,
-  pendingActiveSchemas,
   selectedActiveFields,
   selectedHiddenFields,
   sortedInactivePaths,
@@ -650,14 +649,11 @@ export const useIsLargeDataset = () => {
  */
 export const useSchemaManagerCleanup = () => {
   const setCurrentFieldAtom = useSetAtom(currentField);
-  const setPendingActiveSchemas = useSetAtom(pendingActiveSchemas);
 
   useEffect(() => {
     return () => {
       // Reset field editing state
       setCurrentFieldAtom(null);
-      // Reset pending visibility state
-      setPendingActiveSchemas(null);
     };
   }, []);
 };
