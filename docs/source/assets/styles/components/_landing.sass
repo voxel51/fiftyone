@@ -1,0 +1,404 @@
+// ==========================================================================
+// Landing Page — Search Hero variant
+// ==========================================================================
+
+// --- Section A: Hero with Search ---
+
+.landing-hero
+  text-align: center
+  padding: 60px 20px 40px
+  max-width: 720px
+  margin: 0 auto
+
+.hero-heading
+  font-size: 2.5rem
+  font-weight: $font-weight-bold
+  margin-bottom: 12px
+  color: var(--pst-color-text-base)
+
+.hero-subheading
+  font-size: 1.1rem
+  color: var(--pst-color-text-secondary)
+  margin-bottom: 28px
+
+.hero-search-container
+  display: flex
+  gap: 10px
+  justify-content: center
+  margin-bottom: 24px
+  flex-wrap: wrap
+
+.hero-search-btn.DocSearch.DocSearch-Button
+  flex: 1 1 320px
+  max-width: 460px
+  display: flex
+  align-items: center
+  gap: 10px
+  padding: 12px 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 8px
+  background: var(--pst-color-surface)
+  color: var(--pst-color-text-secondary)
+  font-size: 1rem
+  cursor: pointer
+  transition: border-color $transition-normal, box-shadow $transition-normal
+  height: auto
+  width: auto
+
+  &:hover
+    border-color: $voxel-primary
+    box-shadow: 0 0 0 2px $voxel-primary-light
+
+  .DocSearch-Search-Icon,
+  .DocSearch-Button-Keys
+    display: none
+
+.hero-search-placeholder
+  flex: 1
+  text-align: left
+
+.hero-ask-ai-btn
+  display: flex
+  align-items: center
+  gap: 8px
+  padding: 12px 24px
+  border: none
+  border-radius: 8px
+  background: $voxel-primary
+  color: $white
+  font-size: 1rem
+  font-weight: $font-weight-medium
+  cursor: pointer
+  transition: background $transition-normal, transform 0.1s
+  white-space: nowrap
+
+  &:hover
+    background: $voxel-primary-hover
+    transform: translateY(-1px)
+
+  svg
+    stroke: $white
+
+// Quick Action Pills
+
+.quick-action-pills
+  display: flex
+  flex-wrap: wrap
+  gap: 8px
+  justify-content: center
+
+.quick-action-pill
+  display: inline-block
+  padding: 8px 16px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 20px
+  color: var(--pst-color-text-base)
+  font-size: 0.875rem
+  text-decoration: none
+  transition: background $transition-normal, border-color $transition-normal, color $transition-normal
+  background: transparent
+
+  &:hover
+    background: $voxel-primary
+    border-color: $voxel-primary
+    color: $white
+    text-decoration: none
+
+// --- Section B: Use-Case Cards ---
+
+.use-case-section
+  padding: 32px 0
+
+.section-heading
+  font-size: 1.75rem
+  font-weight: $font-weight-bold
+  margin-bottom: 20px
+  color: var(--pst-color-text-base)
+
+.use-case-cards-grid
+  display: flex
+  flex-wrap: wrap
+
+.use-case-card-container
+  padding: 10px
+  margin-bottom: 0
+
+.use-case-card
+  display: flex
+  flex-direction: column
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  overflow: hidden
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow $transition-slow, transform $transition-normal
+  height: 100%
+  background: var(--pst-color-surface)
+
+  &:hover
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-3px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+.use-case-card-image
+  width: 100%
+  height: 160px
+  overflow: hidden
+  background: var(--color-background)
+
+  img
+    width: 100%
+    height: 100%
+    object-fit: cover
+
+.use-case-card-body
+  padding: 14px 16px
+
+  h5
+    font-size: 1rem
+    font-weight: $font-weight-bold
+    margin: 0 0 6px
+
+  p
+    font-size: 0.85rem
+    color: var(--pst-color-text-secondary)
+    margin: 0
+    line-height: 1.4
+
+// --- Section C: Popular Topics Grid ---
+
+.topics-section
+  padding: 32px 0
+
+.topics-grid
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 14px
+
+.topic-card
+  display: block
+  position: relative
+  overflow: hidden
+  padding: 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow $transition-slow, border-color $transition-normal, transform $transition-normal
+  background: var(--pst-color-surface)
+
+  &::before
+    content: ""
+    position: absolute
+    left: 0
+    top: 0
+    bottom: 0
+    width: 3px
+    background: $voxel-primary
+    border-radius: 0 3px 3px 0
+    opacity: 0
+    transition: opacity $transition-normal
+
+  &:hover
+    border-color: $voxel-primary
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-2px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+    &::before
+      opacity: 1
+
+  h4
+    font-size: 1rem
+    font-weight: $font-weight-bold
+    margin: 0 0 6px
+
+  p
+    font-size: 0.85rem
+    color: var(--pst-color-text-secondary)
+    margin: 0
+    line-height: 1.4
+
+// --- Section F: Social + Support Bar ---
+
+.landing-social-bar
+  display: flex
+  flex-wrap: wrap
+  gap: 24px
+  justify-content: center
+  align-items: center
+  padding: 30px 20px
+  margin: 30px 0 10px
+  border-top: 1px solid var(--pst-border-color)
+  border-bottom: 1px solid var(--pst-border-color)
+
+.social-bar-item
+  display: flex
+  align-items: center
+  gap: 8px
+  color: var(--pst-color-text-secondary)
+  text-decoration: none
+  font-size: 0.9rem
+  transition: color $transition-normal
+
+  &:hover
+    color: $voxel-primary
+    text-decoration: none
+
+  img
+    width: 22px
+    height: 22px
+
+  svg
+    flex-shrink: 0
+
+// --- Onboarding Banner ---
+
+.onboarding-banner
+  display: none
+  align-items: center
+  justify-content: space-between
+  gap: 16px
+  padding: 16px 24px
+  margin: 24px 0
+  border: 1px solid $voxel-primary
+  border-radius: 10px
+  background: $voxel-primary-light
+
+.onboarding-banner-text
+  flex: 1
+  font-size: 0.95rem
+  color: var(--pst-color-text-base)
+
+  strong
+    font-weight: $font-weight-bold
+
+.onboarding-banner-cta
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  padding: 8px 18px
+  border-radius: 6px
+  background: $voxel-primary
+  color: $white
+  text-decoration: none
+  font-size: 0.875rem
+  font-weight: $font-weight-medium
+  white-space: nowrap
+  transition: background $transition-normal
+
+  &:hover
+    background: $voxel-primary-hover
+    color: $white
+    text-decoration: none
+
+.onboarding-dismiss
+  background: none
+  border: none
+  padding: 4px 8px
+  cursor: pointer
+  color: var(--pst-color-text-secondary)
+  font-size: 1.2rem
+  line-height: 1
+  transition: color $transition-fast
+
+  &:hover
+    color: var(--pst-color-text-base)
+
+// --- Search Shortcut Badge ---
+
+.search-shortcut-badge
+  display: inline-block
+  padding: 2px 8px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 4px
+  background: var(--color-background, #f1ecea)
+  color: var(--pst-color-text-secondary)
+  font-size: 0.75rem
+  font-family: $font-family-monospace
+  margin-left: auto
+
+// --- Integrations toggle ---
+
+.integrations-overflow
+  flex-wrap: wrap
+  justify-content: center
+
+.integrations-toggle-btn
+  display: block
+  margin: 12px auto 0
+  padding: 8px 20px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 20px
+  background: transparent
+  color: var(--pst-color-text-secondary)
+  font-size: 0.875rem
+  cursor: pointer
+  transition: background $transition-normal, color $transition-normal, border-color $transition-normal
+
+  &:hover
+    background: $voxel-primary
+    border-color: $voxel-primary
+    color: $white
+
+// --- Responsive ---
+
+@media (max-width: $tablet)
+  .landing-hero
+    padding: 40px 16px 30px
+
+  .hero-heading
+    font-size: 2rem
+
+  .hero-search-btn.DocSearch.DocSearch-Button
+    flex: 1 1 100%
+    max-width: none
+
+  .topics-grid
+    grid-template-columns: repeat(2, 1fr)
+
+  .use-case-card-container
+    flex: 0 0 50%
+    max-width: 50%
+
+@media (max-width: $mobile)
+  .hero-heading
+    font-size: 1.6rem
+
+  .hero-subheading
+    font-size: 0.95rem
+
+  .topics-grid
+    grid-template-columns: 1fr
+
+  .use-case-card-container
+    flex: 0 0 100%
+    max-width: 100%
+
+  .landing-social-bar
+    flex-direction: column
+    gap: 16px
+
+  .onboarding-banner
+    flex-direction: column
+    text-align: center
+
+  .search-shortcut-badge
+    display: none
+
+// --- Center social links on landing page ---
+
+.social-links #social-links-table
+  justify-content: center
+
+  tbody tr
+    justify-content: center
+
+// --- Hide IN THIS ARTICLE header on landing page only ---
+
+.onthispage
+  display: none

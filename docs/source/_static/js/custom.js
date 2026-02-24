@@ -751,3 +751,62 @@ document.addEventListener("DOMContentLoaded", () => {
   initDirectAgentAccess();
   initAIChatButtons();
 });
+
+// --- Landing: Progressive Integrations Toggle ---
+function initIntegrationsToggle() {
+  var container = document.querySelector('.integrations-logos');
+  if (!container) return;
+
+  var items = Array.from(container.children);
+  var VISIBLE_COUNT = 15;
+  if (items.length <= VISIBLE_COUNT) return;
+
+  var overflow = items.slice(VISIBLE_COUNT);
+  var wrapper = document.createElement('div');
+  wrapper.className = 'integrations-overflow';
+  wrapper.style.display = 'none';
+  overflow.forEach(function(el) { wrapper.appendChild(el); });
+  container.appendChild(wrapper);
+
+  var btn = document.createElement('button');
+  btn.className = 'integrations-toggle-btn';
+  btn.textContent = 'Show all ' + (items.length) + '+ integrations';
+  btn.addEventListener('click', function() {
+    var expanded = wrapper.style.display !== 'none';
+    wrapper.style.display = expanded ? 'none' : 'flex';
+    btn.textContent = expanded
+      ? 'Show all ' + (items.length) + '+ integrations'
+      : 'Show fewer integrations';
+  });
+  container.parentNode.insertBefore(btn, container.nextSibling);
+}
+
+document.addEventListener('DOMContentLoaded', initIntegrationsToggle);
+
+// --- Landing: Onboarding Banner ---
+function initOnboardingBanner() {
+  if (localStorage.getItem('fo-onboarding-dismissed')) return;
+  var banner = document.querySelector('.onboarding-banner');
+  if (!banner) return;
+  banner.style.display = 'flex';
+  var btn = banner.querySelector('.onboarding-dismiss');
+  if (btn) {
+    btn.addEventListener('click', function() {
+      banner.style.display = 'none';
+      localStorage.setItem('fo-onboarding-dismissed', '1');
+    });
+  }
+}
+
+// --- Landing: Keyboard Shortcut Hint ---
+function initSearchShortcut() {
+  var badge = document.querySelector('.search-shortcut-badge');
+  if (!badge) return;
+  var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  badge.textContent = isMac ? '\u2318K' : 'Ctrl+K';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  initOnboardingBanner();
+  initSearchShortcut();
+});
