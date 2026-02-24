@@ -643,6 +643,13 @@ export class Scene2D {
   }
 
   /**
+   * Reset the scene's zoom level to 100% and clears pan translation.
+   */
+  resetZoomPan(): void {
+    this.config.renderer.resetZoomPan();
+  }
+
+  /**
    * Gets the canvas bounding rectangle for coordinate conversion.
    * This is a safer alternative to getCanvas() when you only need the bounds.
    * @returns The DOMRect of the canvas element.
