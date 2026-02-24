@@ -161,7 +161,7 @@ describe("frame-reader", () => {
         );
 
         // Stream is now complete (nextRange === null)
-        // Request a frame â should restart the stream via setStream
+        // Requesting a frame should restart the stream via setStream
         requestFrames(1);
 
         // A new worker should have been created (setStream terminates + recreates)
