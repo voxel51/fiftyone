@@ -101,12 +101,6 @@ export const doPatchSample = async ({
         }
       }
 
-      if (isGenerated && opType === "delete") {
-        // Response contains the source sample and the patch sample was deleted
-        // so don't attempt to refresh the patch sample
-        return true;
-      }
-
       if (updatedSample) {
         // transform response data to match the graphql sample format
         const cleanedSample = transformSampleData(updatedSample);
