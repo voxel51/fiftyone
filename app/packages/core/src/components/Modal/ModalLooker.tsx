@@ -7,7 +7,7 @@ import React, { useMemo } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ImaVidLookerReact } from "./ImaVidLooker";
 import { LighterSampleRenderer } from "./Lighter/LighterSampleRenderer";
-import { MetadataLooker } from "./MetadataLooker";
+import { ModalFileRendererOverride } from "./ModalFileRendererOverride";
 import { VideoLookerReact } from "./VideoLooker";
 import useLooker from "./use-looker";
 import { useImageModalSelectiveRendering } from "./use-modal-selective-rendering";
@@ -112,6 +112,12 @@ export const ModalLooker = React.memo(
       );
     }
 
-    return <MetadataLooker sample={sample} />;
+    return (
+      <ModalFileRendererOverride
+        sample={sample}
+        modalMediaField={modalMediaField}
+        isAnnotate={isAnnotate}
+      />
+    );
   }
 );
