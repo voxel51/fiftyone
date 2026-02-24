@@ -1,11 +1,11 @@
 import {
+  matchesModalFileRenderer,
   ModalFileRendererContext,
   ModalFileRendererMatchContext,
   PluginComponentRegistration,
-  matchesModalFileRenderer,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getMimeType } from "@fiftyone/utilities";
+import { getMimeType, Schema } from "@fiftyone/utilities";
 
 type StandardizedUrls = Record<string, string>;
 type ModalFileRendererSelectionOptions = {
@@ -50,8 +50,8 @@ export function getSelectedModalMediaPath(
 export function getModalFileRendererContext(
   sample: fos.ModalSample,
   selectedMediaField: string,
-  dataset: unknown,
-  schema: unknown
+  dataset: fos.State.Dataset,
+  schema: Schema
 ): ModalFileRendererContext {
   const selectedMediaPath = getSelectedModalMediaPath(
     sample,
