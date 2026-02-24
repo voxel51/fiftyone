@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_FRAME_STREAM_SIZE } from "../constants";
 
-// Simplified dummy worker â only postMessage and terminate are used
+// Simplified dummy worker -- only postMessage and terminate are used
 // by frame-reader.ts; no EventTarget or listener overrides needed.
 const { DummyWorker } = vi.hoisted(() => {
     return {
