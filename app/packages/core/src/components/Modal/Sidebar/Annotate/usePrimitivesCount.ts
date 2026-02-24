@@ -5,8 +5,7 @@ import { primitivesCount } from "./GroupEntry";
 import useSamplePrimitives from "./useSamplePrimitives";
 
 export const usePrimitivesCount = () => {
-  const modalSample = useModalSample();
-  const currentSample = modalSample?.sample;
+  const currentSample = useModalSample()?.sample;
   const samplePrimitives = useSamplePrimitives();
   const setPrimitivesCount = useSetAtom(primitivesCount);
 
