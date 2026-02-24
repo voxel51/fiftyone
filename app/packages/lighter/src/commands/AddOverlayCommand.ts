@@ -52,6 +52,8 @@ export class AddOverlayCommand implements Undoable {
         ? this.overlay.getOverlay().id
         : this.overlay.id;
 
+    this.scene.exitInteractiveMode();
+
     // Dispatch before removeOverlay so the label is still in the labels list
     // when the bridge handles this event for backend persistence
     const eventBus = getEventBus<LighterEventGroup>(
