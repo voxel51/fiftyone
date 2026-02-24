@@ -1,0 +1,408 @@
+// ==========================================================================
+// Landing Page — Curriculum (Progressive Learning) variant
+// ==========================================================================
+
+// --- Section A: Dark Hero Quickstart ---
+
+.curriculum-hero-dark
+  background: linear-gradient(165deg, #1e2023 0%, #2a2d31 40%, #1e2023 100%)
+  color: $white
+  padding: 48px 24px 40px
+  border-radius: 12px
+  margin-bottom: 40px
+  text-align: center
+  border-top: 3px solid $voxel-primary
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15)
+  position: relative
+  overflow: hidden
+
+  &::before
+    content: ""
+    position: absolute
+    top: 0
+    left: 0
+    right: 0
+    height: 120px
+    background: linear-gradient(180deg, rgba(255, 109, 4, 0.06) 0%, transparent 100%)
+    pointer-events: none
+
+.curriculum-hero-heading
+  font-size: 2.2rem
+  font-weight: $font-weight-bold
+  margin-bottom: 28px
+  color: $white
+  position: relative
+
+.curriculum-code-steps
+  max-width: 520px
+  margin: 0 auto 28px
+  text-align: left
+  position: relative
+
+.code-step
+  display: flex
+  align-items: flex-start
+  gap: 14px
+  margin-bottom: 10px
+  padding: 12px 18px
+  background: rgba(255, 255, 255, 0.04)
+  border-radius: 8px
+  border: 1px solid rgba(255, 255, 255, 0.08)
+  backdrop-filter: blur(4px)
+  transition: background $transition-normal, border-color $transition-normal
+
+  &:hover
+    background: rgba(255, 255, 255, 0.07)
+    border-color: rgba(255, 109, 4, 0.3)
+
+.step-number
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  min-width: 26px
+  height: 26px
+  border-radius: 50%
+  background: $voxel-primary
+  color: $white
+  font-size: 0.75rem
+  font-weight: $font-weight-bold
+  flex-shrink: 0
+  margin-top: 1px
+  box-shadow: 0 2px 8px rgba(255, 109, 4, 0.3)
+
+.code-step code
+  font-size: 0.875rem
+  color: #e0dcd8
+  line-height: 1.5
+  background: transparent
+  padding: 0
+
+.curriculum-hero-screenshot
+  max-width: 600px
+  margin: 0 auto 24px
+
+  img
+    width: 100%
+    border-radius: 8px
+    border: 1px solid rgba(255, 255, 255, 0.15)
+
+.curriculum-hero-cta
+  display: flex
+  gap: 12px
+  justify-content: center
+  flex-wrap: wrap
+  position: relative
+  margin-top: 8px
+
+.curriculum-cta-primary
+  display: inline-flex
+  align-items: center
+  padding: 10px 24px
+  border-radius: 8px
+  background: $voxel-primary
+  color: $white
+  font-size: 0.95rem
+  font-weight: $font-weight-medium
+  text-decoration: none
+  transition: background $transition-normal, transform 0.1s, box-shadow $transition-normal
+  border: 1px solid $voxel-primary
+  box-shadow: 0 2px 12px rgba(255, 109, 4, 0.25)
+
+  &:hover
+    background: $voxel-primary-hover
+    border-color: $voxel-primary-hover
+    color: $white
+    text-decoration: none
+    transform: translateY(-1px)
+    box-shadow: 0 4px 16px rgba(255, 109, 4, 0.35)
+
+.curriculum-cta-secondary
+  display: inline-flex
+  align-items: center
+  padding: 10px 24px
+  border-radius: 8px
+  background: transparent
+  color: rgba(255, 255, 255, 0.85)
+  font-size: 0.95rem
+  font-weight: $font-weight-medium
+  text-decoration: none
+  border: 1px solid rgba(255, 255, 255, 0.25)
+  transition: border-color $transition-normal, color $transition-normal, transform 0.1s, background $transition-normal
+
+  &:hover
+    border-color: $white
+    color: $white
+    background: rgba(255, 255, 255, 0.06)
+    text-decoration: none
+    transform: translateY(-1px)
+
+// --- Section B: Learning Tracks ---
+
+.curriculum-paths-section
+  padding: 32px 0
+
+.section-heading
+  font-size: 1.75rem
+  font-weight: $font-weight-bold
+  margin-bottom: 20px
+  color: var(--pst-color-text-base)
+
+.curriculum-tracks
+  display: grid
+  grid-template-columns: repeat(3, 1fr)
+  gap: 16px
+
+.track-card
+  position: relative
+  overflow: hidden
+  padding: 24px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  background: var(--pst-color-surface)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow $transition-slow, border-color $transition-normal, transform $transition-normal
+
+  &::before
+    content: ""
+    position: absolute
+    left: 0
+    top: 0
+    bottom: 0
+    width: 3px
+    background: $voxel-primary
+    border-radius: 0 3px 3px 0
+    opacity: 0
+    transition: opacity $transition-normal
+
+  &:hover
+    border-color: $voxel-primary
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-2px)
+
+    &::before
+      opacity: 1
+
+.track-header
+  display: flex
+  align-items: center
+  justify-content: space-between
+  margin-bottom: 8px
+
+  h3
+    font-size: 1.1rem
+    font-weight: $font-weight-bold
+    margin: 0
+    color: var(--pst-color-text-base)
+
+.track-time
+  font-size: 0.8rem
+  color: var(--pst-color-text-secondary)
+  background: var(--pst-color-surface)
+  padding: 2px 10px
+  border-radius: 12px
+  border: 1px solid var(--pst-border-color)
+  white-space: nowrap
+
+.track-card > p
+  font-size: 0.85rem
+  color: var(--pst-color-text-secondary)
+  margin: 0 0 14px
+  line-height: 1.4
+
+.track-steps
+  padding-left: 20px
+  margin: 0
+
+  li
+    margin-bottom: 8px
+    font-size: 0.875rem
+
+    a
+      color: $voxel-primary
+      text-decoration: none
+
+      &:hover
+        text-decoration: underline
+
+// --- Section C: Toolkit Accordion (uses sphinx_design) ---
+
+.curriculum-toolkit-section
+  padding: 32px 0 0
+
+// --- Section D: Use-Case Carousel ---
+
+.carousel-section
+  padding: 32px 0
+
+.horizontal-carousel
+  display: flex
+  gap: 16px
+  overflow-x: auto
+  scroll-snap-type: x mandatory
+  -webkit-overflow-scrolling: touch
+  padding-bottom: 12px
+
+  // Hide scrollbar visually
+  scrollbar-width: thin
+  scrollbar-color: var(--pst-border-color) transparent
+
+  &::-webkit-scrollbar
+    height: 6px
+
+  &::-webkit-scrollbar-track
+    background: transparent
+
+  &::-webkit-scrollbar-thumb
+    background: var(--pst-border-color)
+    border-radius: 3px
+
+.carousel-card
+  flex: 0 0 240px
+  scroll-snap-align: start
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  overflow: hidden
+  text-decoration: none
+  color: var(--pst-color-text-base)
+  background: var(--pst-color-surface)
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06)
+  transition: box-shadow $transition-slow, transform $transition-normal
+
+  &:hover
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1)
+    transform: translateY(-2px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+  img
+    width: 100%
+    height: 140px
+    object-fit: cover
+
+.carousel-card-body
+  padding: 12px 14px
+
+  h4
+    font-size: 0.95rem
+    font-weight: $font-weight-bold
+    margin: 0 0 4px
+
+  p
+    font-size: 0.8rem
+    color: var(--pst-color-text-secondary)
+    margin: 0
+    line-height: 1.3
+
+// --- Section E: Go Deeper ---
+
+.go-deeper-section
+  padding: 32px 0
+
+.go-deeper-grid
+  display: grid
+  grid-template-columns: repeat(4, 1fr)
+  gap: 12px
+
+.go-deeper-link
+  display: flex
+  align-items: center
+  justify-content: center
+  padding: 16px
+  border: 1px solid var(--pst-border-color)
+  border-radius: 10px
+  font-size: 0.95rem
+  font-weight: $font-weight-medium
+  color: var(--pst-color-text-base)
+  text-decoration: none
+  background: var(--pst-color-surface)
+  transition: border-color $transition-normal, box-shadow $transition-slow, background $transition-normal, transform $transition-normal
+
+  &:hover
+    border-color: $voxel-primary
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1)
+    background: $voxel-primary-light
+    transform: translateY(-1px)
+    text-decoration: none
+    color: var(--pst-color-text-base)
+
+// --- Section F: Social + Support Bar ---
+
+.landing-social-bar
+  display: flex
+  flex-wrap: wrap
+  gap: 24px
+  justify-content: center
+  align-items: center
+  padding: 30px 20px
+  margin: 30px 0 10px
+  border-top: 1px solid var(--pst-border-color)
+  border-bottom: 1px solid var(--pst-border-color)
+
+.social-bar-item
+  display: flex
+  align-items: center
+  gap: 8px
+  color: var(--pst-color-text-secondary)
+  text-decoration: none
+  font-size: 0.9rem
+  transition: color $transition-normal
+
+  &:hover
+    color: $voxel-primary
+    text-decoration: none
+
+  img
+    width: 22px
+    height: 22px
+
+  svg
+    flex-shrink: 0
+
+// --- Responsive ---
+
+@media (max-width: $tablet)
+  .curriculum-hero-dark
+    padding: 36px 16px 32px
+
+  .curriculum-hero-heading
+    font-size: 1.8rem
+
+  .curriculum-tracks
+    grid-template-columns: 1fr
+
+  .go-deeper-grid
+    grid-template-columns: repeat(2, 1fr)
+
+  .carousel-card
+    flex: 0 0 200px
+
+@media (max-width: $mobile)
+  .curriculum-hero-heading
+    font-size: 1.5rem
+
+  .curriculum-hero-cta
+    flex-direction: column
+    align-items: center
+
+  .go-deeper-grid
+    grid-template-columns: 1fr 1fr
+
+  .carousel-card
+    flex: 0 0 180px
+
+  .landing-social-bar
+    flex-direction: column
+    gap: 16px
+
+// --- Center social links on landing page ---
+
+.social-links #social-links-table
+  justify-content: center
+
+  tbody tr
+    justify-content: center
+
+// --- Hide IN THIS ARTICLE header on landing page only ---
+
+.onthispage
+  display: none

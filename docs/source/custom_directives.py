@@ -421,3 +421,55 @@ _CUSTOM_ANIMATED_CTA_TEMPLATE = """
         </a>
     </div>
 """
+
+
+class CustomUseCaseCardDirective(Directive):
+    """A custom use-case card with image, title, description, and link.
+
+    Renders a responsive card for industry use-case sections on the landing page.
+
+    Example usage::
+
+        .. customusecasecard::
+            :title: Medical Imaging
+            :description: Explore medical imaging workflows with DICOM and CT scans.
+            :link: getting_started/medical_imaging/index.html
+            :image: https://cdn.voxel51.com/all_patients_ct.webp
+    """
+
+    option_spec = {
+        "title": directives.unchanged,
+        "description": directives.unchanged,
+        "link": directives.unchanged,
+        "image": directives.unchanged,
+    }
+
+    def run(self):
+        title = self.options.get("title", "")
+        description = self.options.get("description", "")
+        link = self.options.get("link", "")
+        image = self.options.get("image", "")
+
+        html = _CUSTOM_USE_CASE_CARD_TEMPLATE.format(
+            title=title,
+            description=description,
+            link=link,
+            image=image,
+        )
+
+        return [nodes.raw("", html, format="html")]
+
+
+_CUSTOM_USE_CASE_CARD_TEMPLATE = """
+    <div class="col-md-4 col-sm-6 use-case-card-container">
+        <a href="{link}" class="use-case-card">
+            <div class="use-case-card-image">
+                <img src="{image}" alt="{title}" loading="lazy" decoding="async" />
+            </div>
+            <div class="use-case-card-body">
+                <h5>{title}</h5>
+                <p>{description}</p>
+            </div>
+        </a>
+    </div>
+"""
