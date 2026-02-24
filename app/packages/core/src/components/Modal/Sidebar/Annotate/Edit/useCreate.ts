@@ -45,32 +45,11 @@ const useCreateAnnotationLabel = () => {
 
       // Extract default values from the label schema for new annotations
       const fieldSchema = store.get(labelSchemaData(field));
-      const labelSchema = fieldSchema?.label_schema;
-      const defaults: Record<string, unknown> = {};
 
-      // Top-level default applies to the "label" value (e.g., default class)
-      if (labelSchema?.default !== undefined) {
-        defaults.label = labelSchema.default;
-      }
-
-      // Attribute-level defaults
-      if (Array.isArray(labelSchema?.attributes)) {
-        for (const attr of labelSchema.attributes) {
-          if (attr.name && attr.default !== undefined) {
-            defaults[attr.name] = attr.default;
-          }
-        }
-      }
-
-      const data = {
-        _id: id,
-        ...defaults,
-        ...(labelValue && { label: labelValue }),
-      };
+      // Build label data with defaults and quick draw values (if applicable)
+      const data = buildNewLabelData(field, type, id, labelValue);
 
       if (type === CLASSIFICATION) {
-        data["_cls"] = "Classification";
-
         const overlay = overlayFactory.create<
           ClassificationOptions,
           ClassificationOverlay
@@ -87,8 +66,6 @@ const useCreateAnnotationLabel = () => {
       }
 
       if (type === DETECTION) {
-        data["_cls"] = "Detection";
-
         const readOnly = isFieldReadOnly(fieldSchema);
 
         const overlay = overlayFactory.create<
@@ -107,10 +84,6 @@ const useCreateAnnotationLabel = () => {
         scene?.enterInteractiveMode(handler);
         store.set(savedLabel, data);
         return { data, overlay, path: field, type };
-      }
-
-      if (type === POLYLINE) {
-        throw new Error("todo");
       }
 
       return undefined;
@@ -150,4 +123,52 @@ export default function useCreate(type: LabelType) {
     },
     [createAnnotationLabel, setEditing, type]
   );
+}
+
+export function buildNewLabelData(
+  field: string,
+  type: LabelType,
+  id?: string,
+  label?: string
+) {
+  const labelId = id || objectId();
+  const store = getDefaultStore();
+
+  // Extract default values from the label schema for new annotations
+  const fieldSchema = store.get(labelSchemaData(field));
+  const labelSchema = fieldSchema?.label_schema;
+  const defaults: Record<string, unknown> = {};
+  const labelValue = label || labelSchema?.classes?.[0];
+
+  // Top-level default applies to the "label" value (e.g., default class)
+  if (labelSchema?.default !== undefined) {
+    defaults.label = labelSchema.default;
+  }
+
+  // Attribute-level defaults
+  if (Array.isArray(labelSchema?.attributes)) {
+    for (const attr of labelSchema.attributes) {
+      if (attr.name && attr.default !== undefined) {
+        defaults[attr.name] = attr.default;
+      }
+    }
+  }
+
+  const data = {
+    _cls:
+      type === CLASSIFICATION
+        ? "Classification"
+        : type === DETECTION
+        ? "Detection"
+        : undefined,
+    _id: labelId,
+    ...defaults,
+    ...(labelValue && { label: labelValue }),
+  };
+
+  if (type === POLYLINE) {
+    throw new Error("todo");
+  }
+
+  return data;
 }
