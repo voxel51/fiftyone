@@ -3,6 +3,22 @@ FiftyOne
 
 .. raw:: html
 
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FiftyOne",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Linux, macOS, Windows",
+    "description": "The open-source tool for building high-quality datasets and computer vision models",
+    "url": "https://docs.voxel51.com",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "softwareHelp": { "@type": "CreativeWork", "url": "https://docs.voxel51.com" }
+  }
+  </script>
+
+.. raw:: html
+
   <div class="responsive-banner">
     <a href="https://link.voxel51.com/visual-ai-survey-5" target="_blank" aria-label="Share how you build, deploy, and scale visual AI">
       <video class="banner-mobile" autoplay loop muted playsinline aria-hidden="true">
@@ -13,8 +29,6 @@ FiftyOne
       </video>
     </a>
   </div>
-
-.. Social links ---------------------------------------------------------------
 
 .. raw:: html
 
@@ -33,352 +47,244 @@ FiftyOne
         </a>
       </th>
       <th>
-        <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb">
-          <img alt="Colab quickstart" src="_static/images/icons/colab-logo-256px.png">
-          &nbsp Try it in Colab
+        <a href="enterprise/index.html">
+          <img alt="FiftyOne Enterprise" src="_static/images/icons/voxel51-166px.png">
+          &nbsp Explore FiftyOne Enterprise
         </a>
       </th>
     </table>
   </div>
 
-.. End social links -----------------------------------------------------------
 
-**The open-source tool for building high-quality datasets and computer vision models**
-
-Nothing hinders the success of machine learning systems more than poor quality
-data. And without the right tools, improving a model can be time-consuming and
-inefficient.
-
-FiftyOne supercharges your machine learning workflows by enabling you to
-visualize datasets and interpret models faster and more effectively.
+.. Section A: Compact Hero ----------------------------------------------------
 
 .. raw:: html
 
-  <div style="margin-top: 20px; margin-bottom: 20px">
-    <video controls muted poster="https://voxel51.com/images/fiftyone-poster-v2.png" style="width: 100%;">
-      <source src="https://voxel51.com/images/fiftyone_long_sizzle_light_bg.mp4" type="video/mp4">
-    </video>
+  <div class="intent-hero">
+    <h1 class="intent-hero-heading">Build better computer vision with FiftyOne</h1>
+    <div class="intent-hero-actions">
+      <a href="installation/index.html" class="intent-cta intent-cta-primary">Install FiftyOne</a>
+      <a href="user_guide/basics.html" class="intent-cta intent-cta-secondary">Learn the Basics</a>
+    </div>
+    <div class="intent-search-row">
+      <button class="hero-search-btn DocSearch DocSearch-Button" aria-label="Search docs">
+        <svg width="20" height="20" viewBox="0 0 20 20"><path d="M14.386 14.386l4.088 4.088-4.088-4.088A7.533 7.533 0 1 1 3.733 3.733a7.533 7.533 0 0 1 10.653 10.653z" stroke="currentColor" fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span class="hero-search-placeholder">Search documentation...</span>
+        <span class="search-shortcut-badge"></span>
+      </button>
+    </div>
   </div>
 
-Improving data quality and understanding your model's failure modes are the
-most impactful ways to boost the performance of your model.
+.. Section B: Diátaxis 2×2 Grid -----------------------------------------------
 
-FiftyOne provides the building blocks for optimizing your dataset analysis
-pipeline. Use it to get hands-on with your data, including visualizing complex
-labels, evaluating your models, exploring scenarios of interest, identifying
-failure modes, finding annotation mistakes, and much more.
-
-.. note::
-
-  FiftyOne is growing!
-  `Sign up for the mailing list <https://share.hsforms.com/1zpJ60ggaQtOoVeBqIZdaaA2ykyk>`_
-  to learn about new features as they come out.
-
-Where to Begin
-______________
-
-Get up and running in a couple minutes by installing FiftyOne:
-
-.. customanimatedcta::
-    :button_text: Install FiftyOne
-    :button_link: installation/index.html
-
-Then check out a guided learning experience tailored to your use case:
+Find what you need
+__________________
 
 .. raw:: html
 
-    <div class="row getting-started-cards">
-
-.. customguidescard::
-    :title: Medical Imaging Guide
-    :description: Explore medical imaging workflows with DICOM, CT scans, and volumetric data.
-    :level: Beginner
-    :time: 15-25 min
-    :link: getting_started/medical_imaging/index.html
-
-.. customguidescard::
-    :title: Self-Driving Guide
-    :description: Dive into autonomous vehicle data workflows with sensor fusion and trajectory analysis.
-    :level: Beginner
-    :time: 20-30 min
-    :link: getting_started/self_driving/index.html
-
-.. customguidescard::
-    :title: Model Evaluation Guide
-    :description: Comprehensive model evaluation workflows with advanced analysis techniques.
-    :level: Beginner
-    :time: 15-25 min
-    :link: getting_started/model_evaluation/index.html
-
-.. raw:: html
-
-    </div>
-
-None of those guides seem quite right? Here are some more options:
-
-**Working with object detection?** → :doc:`Explore the Object Detection Guide <getting_started/object_detection/index>`
-
-**Have medical imaging data?** → :doc:`Check out the Medical Imaging Guide <getting_started/medical_imaging/index>`
-
-**Working on autonomous vehicles?** → :doc:`Jump into the Self-Driving Guide <getting_started/self_driving/index>`
-
-**Need 3D computer vision?** → :doc:`Explore the 3D Visual AI Guide <getting_started/threed_visual_ai/index>`
-
-**Want to evaluate model performance?** → :doc:`Follow the Model Evaluation Guide <getting_started/model_evaluation/index>`
-
-.. customanimatedcta::
-    :button_text: Explore all getting started guides
-    :button_link: getting_started/index.html
-
-Ready to dive deeper into FiftyOne? Check out these resources:
-
-* Try one of the :doc:`tutorials <tutorials/index>` that demonstrate the unique
-  capabilities of FiftyOne
-* Explore :doc:`recipes <recipes/index>` for integrating FiftyOne into
-  your current ML workflows
-* Check out the :doc:`cheat sheets <cheat_sheets/index>` for topics you may
-  want to master quickly
-* Consult the :doc:`user guide <user_guide/index>` for detailed instructions on
-  how to accomplish various tasks with FiftyOne
-
-.. _core-capabilities:
-
-Core Capabilities
-_________________
-
-.. Callout items --------------------------------------------------------------
-
-.. raw:: html
-
-    <div class="tutorials-callout-container">
-        <div class="row">
-
-.. Add callout items below this line
-
-.. customcalloutitem::
-    :header: Curating datasets
-    :description: Surveys show that machine learning engineers spend over half of their time wrangling data, but it doesn't have to be that way. Use FiftyOne's powerful dataset import and manipulation capabilities to manage your data with ease.
-    :button_text: Learn how to import data into FiftyOne
-    :button_link: user_guide/import_datasets.html
-    :image: _static/images/homepage_curate.gif
-
-.. customcalloutitem::
-    :header: Evaluating models
-    :description: Aggregate metrics alone don’t give you the full picture of your ML models. In practice, the limiting factor on your model’s performance is often data quality issues that you need to see to address. FiftyOne makes it easy to do just that.
-    :button_text: See how to evaluate models with FiftyOne
-    :button_link: tutorials/evaluate_detections.html
-    :image: _static/images/homepage_evaluate.gif
-
-.. customcalloutitem::
-    :header: Visualizing embeddings
-    :description: Are you using embeddings to analyze your data and models? Use FiftyOne's embeddings visualization capabilities to reveal hidden structure in you data, mine hard samples, pre-annotate data, recommend new samples for annotation, and more.
-    :button_text: Experience the power of embeddings
-    :button_link: tutorials/image_embeddings.html
-    :image: _static/images/homepage_embeddings.gif
-
-.. customcalloutitem::
-    :header: Working with geolocation
-    :description: Many datasets have location metadata, but visualizing location-based datasets has traditionally required closed source or cloud-based tools. FiftyOne provides native support for storing, visualizing, and querying datasets by location.
-    :button_text: Visualize your location data
-    :button_link: user_guide/plots.html#geolocation-plots
-    :image: _static/images/homepage_location.gif
-
-.. customcalloutitem::
-    :header: Finding annotation mistakes
-    :description: Annotations mistakes create an artificial ceiling on the performance of your model. However, finding these mistakes by hand is not feasible! Use FiftyOne to automatically identify possible label mistakes in your datasets.
-    :button_text: Check out the label mistakes tutorial
-    :button_link: tutorials/classification_mistakes.html
-    :image: _static/images/homepage_mistakes.gif
-
-.. customcalloutitem::
-    :header: Annotating samples
-    :description: AI development projects move faster when annotation happens close to data curation and model evaluation. Fix label mistakes and annotate 2D and 3D datasets from scratch in the FiftyOne App without any cumbersome ontology or project requirements. Available to all Open Source and Enterprise users.
-    :button_text: Edit and create labels in FiftyOne
-    :button_link: user_guide/annotation.html
-    :image: _static/images/annotate.gif
-
-.. customcalloutitem::
-    :header: Removing redundant images
-    :description: During model training, the best results will be seen when training on unique data. Use FiftyOne to automatically remove duplicate or near-duplicate images from your datasets and curate diverse training datasets from your raw data.
-    :button_text: Try the image uniqueness tutorial
-    :button_link: tutorials/uniqueness.html
-    :image: _static/images/homepage_redundant.gif
-
-.. End callouts ---------------------------------------------------------------
-
-.. raw:: html
-
+  <div class="diataxis-section">
+    <div class="diataxis-grid">
+      <div class="diataxis-card">
+        <div class="diataxis-card-image">
+          <img src="_static/images/homepage_curate.gif" alt="Tutorials" loading="lazy" />
         </div>
+        <div class="diataxis-card-body">
+          <h3>Tutorials</h3>
+          <p>Step-by-step guided learning for hands-on experience</p>
+          <ul>
+            <li><a href="getting_started/medical_imaging/index.html">Medical Imaging Guide</a></li>
+            <li><a href="getting_started/object_detection/index.html">Object Detection Guide</a></li>
+            <li><a href="getting_started/self_driving/index.html">Self-Driving Guide</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="diataxis-card">
+        <div class="diataxis-card-image">
+          <img src="_static/images/homepage_evaluate.gif" alt="How-to Guides" loading="lazy" />
+        </div>
+        <div class="diataxis-card-body">
+          <h3>How-To</h3>
+          <p>Practical recipes for specific tasks and workflows</p>
+          <ul>
+            <li><a href="recipes/index.html">Recipes</a></li>
+            <li><a href="cheat_sheets/index.html">Cheat Sheets</a></li>
+            <li><a href="user_guide/import_datasets.html">Import &amp; Export Data</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="diataxis-card">
+        <div class="diataxis-card-image">
+          <img src="_static/images/homepage_location.gif" alt="Reference" loading="lazy" />
+        </div>
+        <div class="diataxis-card-body">
+          <h3>Reference</h3>
+          <p>Technical specifications and API documentation</p>
+          <ul>
+            <li><a href="api/fiftyone.html">Python API</a></li>
+            <li><a href="cli/index.html">CLI Reference</a></li>
+            <li><a href="dataset_zoo/index.html">Dataset &amp; Model Zoo</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="diataxis-card">
+        <div class="diataxis-card-image">
+          <img src="_static/images/homepage_embeddings.gif" alt="Explanation" loading="lazy" />
+        </div>
+        <div class="diataxis-card-body">
+          <h3>Explanation</h3>
+          <p>Concepts, architecture, and deeper understanding</p>
+          <ul>
+            <li><a href="user_guide/index.html">User Guide</a></li>
+            <li><a href="brain.html">FiftyOne Brain</a></li>
+            <li><a href="plugins/index.html">Plugins Framework</a></li>
+          </ul>
+        </div>
+      </div>
     </div>
+  </div>
 
-.. End of callout items -------------------------------------------------------
+.. Section C: Domain Task Selector --------------------------------------------
 
-Core Concepts
-_____________
+What are you working on?
+________________________
 
-.. _fiftyone-library:
+.. raw:: html
 
-FiftyOne Library
-----------------
+  <div class="domain-section">
+    <div class="intent-pills">
+      <button class="intent-pill active" data-domain="medical">Medical</button>
+      <button class="intent-pill" data-domain="av">Autonomous Vehicles</button>
+      <button class="intent-pill" data-domain="detection">Object Detection</button>
+      <button class="intent-pill" data-domain="segmentation">Segmentation</button>
+      <button class="intent-pill" data-domain="manufacturing">Manufacturing</button>
+      <button class="intent-pill" data-domain="threed">3D Vision</button>
+    </div>
+    <div class="task-panels">
+      <div class="task-panel active" data-domain="medical">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://cdn.voxel51.com/all_patients_ct.webp" alt="Medical Imaging" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>Medical Imaging</h4>
+            <p>Work with DICOM, CT scans, and volumetric data in FiftyOne.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/medical_imaging/index.html">Medical Imaging Guide</a>
+              <a href="user_guide/import_datasets.html">Import Medical Data</a>
+              <a href="user_guide/app.html">Visualize in the App</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="task-panel" data-domain="av">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://cdn.voxel51.com/getting_started_self_driving/notebook1/enuscenes.webp" alt="Autonomous Vehicles" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>Autonomous Vehicles</h4>
+            <p>Sensor fusion, point clouds, and trajectory analysis for self-driving.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/self_driving/index.html">Self-Driving Guide</a>
+              <a href="user_guide/groups.html">Grouped Data (multi-sensor)</a>
+              <a href="getting_started/threed_visual_ai/index.html">3D Visualization</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="task-panel" data-domain="detection">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://cdn.voxel51.com/dice_dataset.webp" alt="Object Detection" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>Object Detection</h4>
+            <p>Bounding boxes, annotations, evaluation, and detection pipelines.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/object_detection/index.html">Object Detection Guide</a>
+              <a href="tutorials/evaluate_detections.html">Evaluate Detections</a>
+              <a href="integrations/ultralytics.html">Ultralytics Integration</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="task-panel" data-domain="segmentation">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://cdn.voxel51.com/getting_started_segmentation/notebook1/coffe_beans.webp" alt="Segmentation" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>Segmentation</h4>
+            <p>Semantic and instance segmentation masks, polygons, and polylines.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/segmentation/index.html">Segmentation Guide</a>
+              <a href="user_guide/using_datasets.html#labels">Working with Labels</a>
+              <a href="integrations/huggingface.html">Hugging Face Models</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="task-panel" data-domain="manufacturing">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://cdn.voxel51.com/getting_started_manufacturing/notebook1/filtering.webp" alt="Manufacturing" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>Manufacturing</h4>
+            <p>Defect detection, quality inspection, and anomaly detection workflows.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/manufacturing/index.html">Manufacturing Guide</a>
+              <a href="brain.html">FiftyOne Brain</a>
+              <a href="getting_started/annotation/index.html">Annotation Guide</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="task-panel" data-domain="threed">
+        <div class="task-panel-content">
+          <div class="task-panel-image">
+            <img src="https://docs.voxel51.com/_images/pointe_headphones_fo.gif" alt="3D Vision" loading="lazy" />
+          </div>
+          <div class="task-panel-body">
+            <h4>3D Vision</h4>
+            <p>Point clouds, meshes, and 3D scene understanding.</p>
+            <div class="task-panel-links">
+              <a href="getting_started/threed_visual_ai/index.html">3D Visual AI Guide</a>
+              <a href="user_guide/groups.html">Grouped 3D + 2D Views</a>
+              <a href="getting_started/depth_estimation/index.html">Depth Estimation Guide</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-FiftyOne's core library provides a structured yet dynamic representation to
-explore your datasets. You can efficiently query and manipulate your dataset by
-adding custom tags, model predictions and more.
+.. Section D: Quick Install ---------------------------------------------------
 
-.. customanimatedcta::
-    :button_text: Explore the library
-    :button_link: user_guide/basics.html
+Get started in seconds
+______________________
 
-.. code-block:: python
-    :linenos:
+.. raw:: html
 
-    import fiftyone as fo
-
-    dataset = fo.Dataset("my_dataset")
-
-    sample = fo.Sample(filepath="/path/to/image.png")
-    sample.tags.append("train")
-    sample["custom_field"] = 51
-
-    dataset.add_sample(sample)
-
-    view = dataset.match_tags("train").sort_by("custom_field").limit(10)
-
-    for sample in view:
-        print(sample)
-
-.. note::
-
-    FiftyOne is designed to be lightweight and flexible, making it easy to load
-    your datasets. FiftyOne supports loading datasets in a variety of common
-    formats out-of-the-box, and it also provides the extensibility to load
-    datasets in custom formats.
-
-    Check out :doc:`importing datasets <user_guide/import_datasets>` to see
-    how to load your data into FiftyOne.
-
-FiftyOne App
-------------
-
-The FiftyOne App is a graphical user interface that makes it easy to explore
-and rapidly gain intuition into your datasets. You can visualize labels like
-bounding boxes and segmentations overlaid on the samples; sort, query and
-slice your dataset into any subset of interest; and more.
-
-.. customanimatedcta::
-    :button_text: See more of the App
-    :button_link: user_guide/app.html
-
-.. image:: images/homepage_app.png
-   :alt: fiftyone-app
-   :align: center
-
-FiftyOne Brain
---------------
-
-The FiftyOne Brain is a library of powerful machine learning-powered
-capabilities that provide insights into your datasets and recommend ways to
-modify your datasets that will lead to measurably better performance of your
-models.
-
-.. customanimatedcta::
-    :button_text: Learn more about the Brain
-    :button_link: brain.html
-
-.. code-block:: python
-   :linenos:
-
-   import fiftyone.brain as fob
-
-   fob.compute_uniqueness(dataset)
-   rank_view = dataset.sort_by("uniqueness")
-
-FiftyOne Plugins
-----------------
-
-FiftyOne provides a powerful plugin framework that allows for extending and
-customizing the functionality of the tool to suit your specific needs.
-
-With plugins, you can add new functionality to the FiftyOne App, create
-integrations with other tools and APIs, render custom panels, and add custom
-buttons to menus.
-
-With :ref:`FiftyOne Enterprise <enterprise-delegated-operations>`, you can even write
-plugins that allow users to execute long-running tasks from within the App that
-run on a connected compute cluster.
-
-.. customanimatedcta::
-    :button_text: Install some plugins!
-    :button_link: plugins/index.html
-
-.. image:: images/plugins/operators/examples/embeddings.gif
-   :alt: fiftyone-plugins
-   :align: center
-
-Dataset Zoo
------------
-
-The FiftyOne Dataset Zoo provides a powerful interface for downloading datasets
-and loading them into FiftyOne.
-
-It provides native access to dozens of popular benchmark datasets, and it als
-supports downloading arbitrary public or private datasets whose
-download/preparation methods are provided via GitHub repositories or URLs.
-
-.. customanimatedcta::
-    :button_text: Check out the Dataset Zoo
-    :button_link: dataset_zoo/index.html
-
-.. code-block:: python
-   :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("coco-2017", split="validation")
-
-    session = fo.launch_app(dataset)
-
-.. image:: images/dataset_zoo_coco_2017.png
-   :alt: dataset-zoo
-   :align: center
-
-Model Zoo
----------
-
-The FiftyOne Model Zoo provides a powerful interface for downloading models and
-applying them to your FiftyOne datasets.
-
-It provides native access to hundreds of pre-trained models, and it also
-supports downloading arbitrary public or private models whose definitions are
-provided via GitHub repositories or URLs.
-
-.. customanimatedcta::
-    :button_text: Check out the Model Zoo
-    :button_link: model_zoo/index.html
+  <div class="quick-install-section">
 
 .. code-block:: python
-   :linenos:
 
+    pip install fiftyone
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset(
-        "coco-2017",
-        split="validation",
-        max_samples=50,
-        shuffle=True,
-    )
-
-    model = foz.load_zoo_model(
-        "clip-vit-base32-torch",
-        text_prompt="A photo of a",
-        classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
-    )
-
-    dataset.apply_model(model, label_field="zero_shot_predictions")
-
+    dataset = foz.load_zoo_dataset("quickstart")
     session = fo.launch_app(dataset)
+
+.. raw:: html
+
+  <div class="quick-install-actions">
+    <a href="installation/index.html" class="intent-cta intent-cta-secondary">Full install guide →</a>
+    <a href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" target="_blank" class="intent-cta intent-cta-secondary">Try in Colab →</a>
+  </div>
+
+.. Section E: Integrations ----------------------------------------------------
 
 Integrations
 ____________
@@ -396,11 +302,6 @@ learn how:
     :image_title: PyTorch
 
 .. customimagelink::
-    :image_link: integrations/lightning_flash.html
-    :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
-    :image_title: PyTorch Lightning
-
-.. customimagelink::
     :image_link: integrations/huggingface.html
     :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
     :image_title: Hugging Face
@@ -411,29 +312,14 @@ learn how:
     :image_title: Ultralytics
 
 .. customimagelink::
-    :image_link: integrations/super_gradients.html
-    :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
-    :image_title: SuperGradients
-
-.. customimagelink::
     :image_link: recipes/adding_detections.html
     :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
     :image_title: TensorFlow
 
 .. customimagelink::
-    :image_link: tutorials/detectron2.html
-    :image_src: https://voxel51.com/images/integrations/detectron2-128.png
-    :image_title: Detectron2
-
-.. customimagelink::
     :image_link: integrations/qdrant.html
     :image_src: https://voxel51.com/images/integrations/qdrant-128.png
     :image_title: Qdrant
-
-.. customimagelink::
-    :image_link: integrations/redis.html
-    :image_src: https://voxel51.com/images/integrations/redis-128.png
-    :image_title: Redis
 
 .. customimagelink::
     :image_link: integrations/pinecone.html
@@ -446,115 +332,50 @@ learn how:
     :image_title: MongoDB
 
 .. customimagelink::
-    :image_link: integrations/elasticsearch.html
-    :image_src: https://voxel51.com/images/integrations/elasticsearch-128.png
-    :image_title: Elasticsearch
-
-.. customimagelink::
-    :image_link: integrations/postgres.html
-    :image_src: https://voxel51.com/images/integrations/postgres-128.png
-    :image_title: PostgreSQL
-
-.. customimagelink::
-    :image_link: integrations/mosaic.html
-    :image_src: https://voxel51.com/images/integrations/mosaic-128.png
-    :image_title: Mosaic
-
-.. customimagelink::
-    :image_link: integrations/milvus.html
-    :image_src: https://voxel51.com/images/integrations/milvus-128.png
-    :image_title: Milvus
-
-.. customimagelink::
-    :image_link: integrations/lancedb.html
-    :image_src: https://voxel51.com/images/integrations/lancedb-128.png
-    :image_title: LanceDB
-
-.. customimagelink::
-    :image_link: integrations/activitynet.html
-    :image_src: https://voxel51.com/images/integrations/activitynet-128.png
-    :image_title: ActivityNet
-
-.. customimagelink::
-    :image_link: integrations/coco.html
-    :image_src: https://voxel51.com/images/integrations/coco-128.png
-    :image_title: COCO
-
-.. customimagelink::
-    :image_link: integrations/open_images.html
-    :image_src: https://voxel51.com/images/integrations/open-images-128.png
-    :image_title: Open Images
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/jupyter-128.png
-    :image_title: Jupyter
-
-.. customimagelink::
-    :image_link: environments/index.html#notebooks
-    :image_src: https://voxel51.com/images/integrations/colab-128.png
-    :image_title: Google Colab
-
-.. customimagelink::
-    :image_link: user_guide/plots.html
-    :image_src: https://voxel51.com/images/integrations/plotly-128.png
-    :image_title: Plotly
-
-.. customimagelink::
-    :image_link: integrations/cvat.html
-    :image_src: https://voxel51.com/images/integrations/cvat-128.png
-    :image_title: CVAT
-
-.. customimagelink::
-    :image_link: integrations/labelstudio.html
-    :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
-    :image_title: Label Studio
-
-.. customimagelink::
-    :image_link: integrations/v7.html
-    :image_src: https://voxel51.com/images/integrations/v7-128.png
-    :image_title: V7
-
-.. customimagelink::
-    :image_link: https://github.com/segments-ai/segments-voxel51-plugin
-    :image_src: https://voxel51.com/images/integrations/segments-128.png
-    :image_title: Segments
-
-.. customimagelink::
     :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
-
-.. customimagelink::
-    :image_link: api/fiftyone.utils.scale.html
-    :image_src: https://voxel51.com/images/integrations/scale-128.png
-    :image_title: Scale AI
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#google-cloud-storage
-    :image_src: https://voxel51.com/images/integrations/google-cloud-128.png
-    :image_title: Google Cloud
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#amazon-s3
-    :image_src: https://voxel51.com/images/integrations/aws-128.png
-    :image_title: Amazon Web Services
-
-.. customimagelink::
-    :image_link: enterprise/installation.html#microsoft-azure
-    :image_src: https://voxel51.com/images/integrations/azure-128.png
-    :image_title: Azure
 
 .. raw:: html
 
     </div>
 
-Need Support?
-_____________
+.. raw:: html
 
-If you run into any issues with FiftyOne or have any burning questions, feel
-free to `connect with us on Discord <https://community.voxel51.com>`_ or reach out to
-us at support@voxel51.com.
+    <div style="margin-top: 10px;">
+
+.. customanimatedcta::
+    :button_text: View all 30+ integrations
+    :button_link: integrations/index.html
+
+.. raw:: html
+
+    </div>
+
+.. Section F: Social + Support Bar --------------------------------------------
+
+.. raw:: html
+
+  <div class="landing-social-bar">
+    <a target="_blank" href="https://github.com/voxel51/fiftyone" class="social-bar-item">
+      <img alt="GitHub" src="_static/images/icons/github-logo-256px.png" />
+      <span>GitHub</span>
+    </a>
+    <a target="_blank" href="https://community.voxel51.com/" class="social-bar-item">
+      <img alt="Discord" src="_static/images/icons/discord-logo-256px.png" />
+      <span>Discord</span>
+    </a>
+    <a target="_blank" href="https://colab.research.google.com/github/voxel51/fiftyone-examples/blob/master/examples/quickstart.ipynb" class="social-bar-item">
+      <img alt="Colab" src="_static/images/icons/colab-logo-256px.png" />
+      <span>Try in Colab</span>
+    </a>
+    <a href="mailto:support@voxel51.com" class="social-bar-item">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      <span>support@voxel51.com</span>
+    </a>
+  </div>
+
+.. Toctree (unchanged) --------------------------------------------------------
 
 .. toctree::
    :maxdepth: 1

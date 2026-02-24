@@ -751,3 +751,40 @@ document.addEventListener("DOMContentLoaded", () => {
   initDirectAgentAccess();
   initAIChatButtons();
 });
+
+// --- Landing: Domain Task Selector ---
+function initTaskSelector() {
+  var pills = document.querySelectorAll('.intent-pill');
+  var panels = document.querySelectorAll('.task-panel');
+  if (!pills.length || !panels.length) return;
+
+  pills.forEach(function(pill) {
+    pill.addEventListener('click', function() {
+      var domain = this.getAttribute('data-domain');
+
+      pills.forEach(function(p) { p.classList.remove('active'); });
+      this.classList.add('active');
+
+      panels.forEach(function(panel) {
+        if (panel.getAttribute('data-domain') === domain) {
+          panel.classList.add('active');
+        } else {
+          panel.classList.remove('active');
+        }
+      });
+    });
+  });
+}
+
+// --- Landing: Keyboard Shortcut Hint ---
+function initSearchShortcut() {
+  var badge = document.querySelector('.search-shortcut-badge');
+  if (!badge) return;
+  var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  badge.textContent = isMac ? '\u2318K' : 'Ctrl+K';
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  initTaskSelector();
+  initSearchShortcut();
+});
