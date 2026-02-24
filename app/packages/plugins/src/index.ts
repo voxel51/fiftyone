@@ -7,6 +7,8 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
+import type { ModalFileRenderer } from "./modal-file-renderer";
+import { hasModalFileRendererMatchers } from "./modal-file-renderer";
 import { pluginsLoaderAtom } from "./state";
 
 declare global {
@@ -59,6 +61,11 @@ export function subscribeToRegistry(handler: RegistryEventHandler) {
  */
 export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
+}
+
+/** Returns the original (unwrapped) component registered under the given name. */
+export function getRawComponent(name: string) {
+  return usingRegistry().getRawComponent(name);
 }
 
 async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
@@ -373,6 +380,12 @@ type PanelOptions = {
   category?: CategoryID;
 
   /**
+   * Optional file matching rules that allow this panel to override modal file
+   * rendering when the current media matches.
+   */
+  modalFileRenderer?: ModalFileRenderer;
+
+  /**
    * Whether the plugin is in alpha.
    * This is used to highlight alpha plugins.
    *
@@ -455,6 +468,7 @@ const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
   private pluginDefinitions = new Map<string, PluginDefinition>();
+  private rawComponents = new Map<string, FunctionComponent<unknown>>();
   private scripts = new Set<string>();
   private subscribers = new Set<RegistryEventHandler>();
   registerScript(name: string) {
@@ -469,6 +483,9 @@ class PluginComponentRegistry {
   hasScript(name: string) {
     return this.scripts.has(name);
   }
+  getRawComponent(name: string) {
+    return this.rawComponents.get(name);
+  }
   register(registration: PluginComponentRegistration) {
     const { name } = registration;
 
@@ -476,7 +493,7 @@ class PluginComponentRegistry {
       registration.activator = DEFAULT_ACTIVATOR;
     }
 
-    for (let fieldName of REQUIRED) {
+    for (const fieldName of REQUIRED) {
       assert(
         registration[fieldName],
         `${fieldName} is required to register a Plugin Component`
@@ -491,16 +508,34 @@ class PluginComponentRegistry {
       `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
 
+    if (registration.panelOptions?.modalFileRenderer) {
+      warn(
+        registration.type === PluginComponentType.Panel,
+        `${name} declared panelOptions.modalFileRenderer but is not a Panel Plugin Component`
+      );
+      warn(
+        hasModalFileRendererMatchers(
+          registration.panelOptions.modalFileRenderer
+        ),
+        `${name} declared panelOptions.modalFileRenderer without any matchers`
+      );
+    }
+
     const wrappedRegistration = {
       ...registration,
       component: wrapCustomComponent(registration.component),
     };
 
+    this.rawComponents.set(
+      name,
+      registration.component as FunctionComponent<unknown>
+    );
     this.data.set(name, wrappedRegistration);
 
     this.notifyAllSubscribers("register");
   }
   unregister(name: string): boolean {
+    this.rawComponents.delete(name);
     this.notifyAllSubscribers("unregister");
     return this.data.delete(name);
   }
@@ -516,6 +551,7 @@ class PluginComponentRegistry {
   }
   clear() {
     this.data.clear();
+    this.rawComponents.clear();
   }
   subscribe(handler: RegistryEventHandler) {
     this.subscribers.add(handler);
@@ -555,6 +591,13 @@ export function usePluginSettings<T>(
 }
 
 export * from "./state";
+
+export { matchesModalFileRenderer } from "./modal-file-renderer";
+export type {
+  ModalFileRenderer,
+  ModalFileRendererContext,
+  ModalFileRendererMatchContext,
+} from "./modal-file-renderer";
 
 type RegistryEvent = "register" | "unregister";
 type RegistryEventHandler = (event: RegistryEvent) => void;
