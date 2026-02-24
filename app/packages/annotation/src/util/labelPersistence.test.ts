@@ -45,7 +45,8 @@ describe("handleLabelPersistence", () => {
 
     vi.mocked(buildLabelDeltas).mockReturnValue([]);
     vi.mocked(buildJsonPath).mockImplementation(
-      (basePath, deltaPath) => `${basePath ?? ""}.${deltaPath}`
+      (basePath, deltaPath) =>
+        `/${[...(basePath?.split(".") || []), deltaPath].join("/")}`
     );
     vi.mocked(buildAnnotationPath).mockReturnValue("predictions.detections");
   });
