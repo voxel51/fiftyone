@@ -288,39 +288,64 @@ def import_annotations(
         api.close()
 
 
-class _BasenameLookup:
+_MISSING = object()  # sentinel for _BasenameLookup.__getitem__
+
+
+class _BasenameLookup(dict):
     """Maps CVAT filenames to local filepaths via a basename index.
 
     Builds a ``{basename: [filepaths]}`` index once, then resolves CVAT
     filenames in O(1) when basenames are unique or O(k) when *k* paths
     share the same basename (disambiguated by suffix matching).
+
+    Subclasses :class:`dict` so that downstream code expecting a dict-like
+    ``data_map`` (e.g. ``data_map.get(filename)``) continues to work.
     """
 
     def __init__(self, filepaths):
         self._index = defaultdict(list)
         for f in filepaths:
             self._index[os.path.basename(f)].append(f)
+        super().__init__(self._index)
 
     def get(self, filename, default=None):
         basename = filename.replace(os.sep, "/").rsplit("/", 1)[-1]
-        candidates = self._index.get(basename)
-        if not candidates:
+        if candidates := self._index.get(basename):
+            if len(candidates) == 1:
+                return candidates[0]
+
+            # Multiple files share the same basename — use the CVAT
+            # relative path to disambiguate, but only if it contains
+            # directory components.  A bare basename (no "/") matches
+            # all candidates and is ambiguous.
+            normalized = filename.replace(os.sep, "/")
+            if "/" in normalized:
+                suffix = "/" + normalized
+                matches = [
+                    f
+                    for f in candidates
+                    if f.replace(os.sep, "/").endswith(suffix)
+                ]
+                if len(matches) == 1:
+                    return matches[0]
+
+                if len(matches) > 1:
+                    logger.warning(
+                        "Ambiguous CVAT filename '%s' matched %d local "
+                        "paths; skipping",
+                        filename,
+                        len(matches),
+                    )
+
             return default
 
-        if len(candidates) == 1:
-            return candidates[0]
-
-        # Multiple files share the same basename — use the CVAT relative
-        # path to disambiguate, but only if it contains directory components.
-        # A bare basename (no "/") matches all candidates and is ambiguous.
-        normalized = filename.replace(os.sep, "/")
-        if "/" in normalized:
-            suffix = "/" + normalized
-            for f in candidates:
-                if f.replace(os.sep, "/").endswith(suffix):
-                    return f
-
         return default
+
+    def __getitem__(self, filename):
+        result = self.get(filename, _MISSING)
+        if result is _MISSING:
+            raise KeyError(filename)
+        return result
 
 
 def _parse_task_metadata(
