@@ -302,7 +302,7 @@ class _BasenameLookup:
             self._index[os.path.basename(f)].append(f)
 
     def get(self, filename, default=None):
-        basename = filename.replace(os.sep, "/").split("/")[-1]
+        basename = filename.replace(os.sep, "/").rsplit("/", 1)[-1]
         candidates = self._index.get(basename)
         if not candidates:
             return default
