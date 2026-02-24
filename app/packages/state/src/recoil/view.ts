@@ -255,3 +255,42 @@ export const selectedSavedViewState = atom<DatasetViewOption | null>({
   key: "selectedSavedViewState",
   default: DEFAULT_SELECTED,
 });
+
+/**
+ * Helper to extract a kwarg value from a view stage's kwargs array.
+ * kwargs are stored as arrays of [key, value] tuples.
+ */
+export const getStageKwarg = <T>(
+  stage: State.Stage,
+  key: string
+): T | undefined => {
+  const kwarg = stage.kwargs?.find(([k]) => k === key);
+  return kwarg ? (kwarg[1] as T) : undefined;
+};
+
+/**
+ * Extracts the generated dataset name from the view stages.
+ * Generated views (patches, clips, frames) store their dataset info in the
+ * `_state` kwarg of the view stage that created them (e.g., ToPatches, ToClips).
+ */
+export const generatedDatasetName = selector<string | undefined>({
+  key: "generatedDatasetName",
+  get: ({ get }) => {
+    if (!get(isGeneratedView)) {
+      return undefined;
+    }
+
+    const stages = get(view);
+    for (const stage of stages) {
+      const state = getStageKwarg<{ name?: string }>(stage, "_state");
+      if (state?.name) {
+        return state.name;
+      }
+    }
+
+    return undefined;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
