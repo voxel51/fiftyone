@@ -174,7 +174,7 @@ def import_annotations(
     elif etau.is_str(data_path):
         if os.path.isdir(data_path):
             data_map = {
-                os.path.relpath(f, data_path): f
+                os.path.relpath(f, data_path).replace(os.sep, "/"): f
                 for f in etau.list_files(
                     data_path, abs_paths=True, recursive=True
                 )
