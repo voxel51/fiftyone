@@ -21,12 +21,16 @@ export default function JsonEditorWidget(props: WidgetProps) {
     uiSchema,
   } = props;
   const [localValue, setLocalValue] = useState("");
-  const [hasErrors, setHasErrors] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const height = uiSchema?.["ui:options"]?.height ?? DEFAULT_HEIGHT;
 
   useEffect(() => {
-    setLocalValue(JSON.stringify(value ?? {}, undefined, 2));
+    try {
+      setLocalValue(JSON.stringify(value ?? {}, undefined, 2));
+    } catch {
+      setLocalValue("{}");
+    }
   }, [value]);
 
   const handleEditorChange = (editorValue: unknown) => {
@@ -36,10 +40,11 @@ export default function JsonEditorWidget(props: WidgetProps) {
     try {
       const parsedValue = JSON.parse(strValue);
       onChange(parsedValue);
-      setHasErrors(false);
+      setErrorMessage(null);
     } catch (error) {
-      // invalid JSON
-      setHasErrors(true);
+      setErrorMessage(
+        error instanceof Error ? error.message : "Invalid JSON syntax"
+      );
     }
   };
 
@@ -51,7 +56,7 @@ export default function JsonEditorWidget(props: WidgetProps) {
         backgroundColor: "transparent",
         overflow: "auto",
         minHeight: height,
-        border: hasErrors ? ERROR_BORDER_STYLES : undefined,
+        border: errorMessage ? ERROR_BORDER_STYLES : undefined,
       }}
     >
       <Code
@@ -74,7 +79,7 @@ export default function JsonEditorWidget(props: WidgetProps) {
     <FormField
       control={contentArea}
       label={label}
-      error={hasErrors ? "Invalid JSON" : undefined}
+      error={errorMessage ?? undefined}
     />
   );
 }
