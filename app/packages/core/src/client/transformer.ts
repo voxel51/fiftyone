@@ -93,3 +93,44 @@ export const transformSampleData = (
 ): Record<string, unknown> => {
   return SampleTransformer.transform(sample);
 };
+
+const OBJECT_ID_PATTERN = /^[0-9a-f]{24}$/;
+const OBJECT_ID_FIELDS = new Set(["_id", "_sample_id"]);
+
+/**
+ * Convert a value to MongoDB Extended JSON format.
+ *
+ * This is the inverse of the {@link ObjectIdTransformer}: it converts plain
+ * ObjectId hex strings back to `{ $oid: "..." }` so that the server can
+ * deserialize them as `bson.ObjectId` rather than storing them as strings.
+ *
+ * @param data Value to transform
+ * @param fieldName Name of the field containing the value (used to identify
+ *   ObjectId fields)
+ */
+export const toExtendedJson = (data: unknown, fieldName?: string): unknown => {
+  if (
+    typeof data === "string" &&
+    fieldName &&
+    OBJECT_ID_FIELDS.has(fieldName) &&
+    OBJECT_ID_PATTERN.test(data)
+  ) {
+    return { $oid: data };
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => toExtendedJson(item));
+  }
+
+  if (isObject(data)) {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(
+      data as Record<string, unknown>
+    )) {
+      result[key] = toExtendedJson(value, key);
+    }
+    return result;
+  }
+
+  return data;
+};
