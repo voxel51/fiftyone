@@ -104,7 +104,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
     // Guard: don't compute deltas during active drag
     // This prevents intermediate states from being persisted
     if (dragInProgress) {
-      return [];
+      return { deltas: [] };
     }
 
     const sampleDeltas: JSONDeltas = [];
@@ -126,7 +126,7 @@ export const use3dDeltaSupplier = (): DeltaSupplier => {
       }
     });
 
-    return sampleDeltas;
+    return { deltas: sampleDeltas };
   }, [
     getLabelDelta,
     getLabelDeleteDelta,
