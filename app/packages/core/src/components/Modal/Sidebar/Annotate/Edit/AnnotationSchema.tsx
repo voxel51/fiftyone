@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import { useRecoilCallback } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import { SchemaType } from "../../../../../plugins/SchemaIO/utils/types";
-import { generatePrimitiveSchema, parseLabelComponent } from "./schemaHelpers";
+import { generatePrimitiveSchema } from "./schemaHelpers";
 import {
   currentData,
   currentField,
@@ -38,7 +38,7 @@ const useSchema = (readOnly: boolean) => {
         {
           label: generatePrimitiveSchema("label", {
             type: "str",
-            component: parseLabelComponent(config?.component),
+            component: config?.component || "dropdown",
             values: config?.classes || [],
             readOnly: effectiveReadOnly,
           }),

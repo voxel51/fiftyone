@@ -305,16 +305,3 @@ export function generatePrimitiveSchema(
   console.warn(`Unknown schema type: ${schema.type}, ${schema.component}`);
   return createReadOnly(name);
 }
-
-/**
- * Special handling for label types that need to be parsed differently.
- * Currently labelSchema will default to text for a label that has no
- * classes. This function remaps this to dropdown (which will have no values).
- * @param component - The label component from the schema
- * @returns The parsed component type
- */
-export function parseLabelComponent(component?: ComponentType): ComponentType {
-  if (!component) return "dropdown";
-  if (component === "text") return "dropdown";
-  return component;
-}
