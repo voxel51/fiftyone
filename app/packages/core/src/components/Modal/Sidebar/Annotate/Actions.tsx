@@ -10,7 +10,7 @@ import {
   useReset3dAnnotationMode,
   useSetCurrent3dAnnotationMode,
 } from "@fiftyone/looker-3d/src/state/accessors";
-import { is3DDataset, pinned3d } from "@fiftyone/state";
+import { is3DDataset, isPatchesView, pinned3d } from "@fiftyone/state";
 import {
   CLASSIFICATION,
   DETECTION,
@@ -134,9 +134,10 @@ const Square = styled(Container)<{ $active?: boolean }>`
 
 const Classification = () => {
   const create = useCreate(CLASSIFICATION);
+  const isPatchView = useRecoilValue(isPatchesView);
   const reset3dAnnotationMode = useReset3dAnnotationMode();
   const fields = useAtomValue(fieldsOfType(CLASSIFICATION));
-  const disabled = fields.length === 0;
+  const disabled = isPatchView || fields.length === 0;
 
   const handleCreateClassification = useCallback(() => {
     if (disabled) return;
@@ -147,7 +148,14 @@ const Classification = () => {
   }, [create, disabled]);
 
   return (
-    <Tooltip placement="top-center" text="Create new classification">
+    <Tooltip
+      placement="top-center"
+      text={
+        isPatchView
+          ? "Creating classifications is not supported in this view"
+          : "Create new classification"
+      }
+    >
       <Square
         onClick={handleCreateClassification}
         className={disabled ? "disabled" : ""}
@@ -172,12 +180,16 @@ const Classification = () => {
 
 const Detection = () => {
   const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
-  const tooltip = quickDrawActive
-    ? "Exit detection creation"
-    : "Create new detections";
+  const isPatchView = useRecoilValue(isPatchesView);
 
   const fields = useAtomValue(fieldsOfType(DETECTION));
-  const disabled = fields.length === 0;
+  const disabled = isPatchView || fields.length === 0;
+
+  const tooltip = isPatchView
+    ? "Creating detections is not supported in this view"
+    : quickDrawActive
+    ? "Exit detection creation"
+    : "Create new detections";
 
   return (
     <Tooltip placement="top-center" text={tooltip}>

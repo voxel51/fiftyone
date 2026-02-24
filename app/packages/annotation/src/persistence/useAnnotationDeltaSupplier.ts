@@ -1,4 +1,4 @@
-import { DeltaSupplier } from "./deltaSupplier";
+import type { DeltaSupplier } from "./deltaSupplier";
 import { useLighterDeltaSupplier } from "./useLighterDeltaSupplier";
 import { useCallback } from "react";
 import { useSidebarDeltaSupplier } from "./useSidebarDeltaSupplier";
@@ -14,10 +14,17 @@ export const useAnnotationDeltaSupplier = (): DeltaSupplier => {
   const supplySidebarDeltas = useSidebarDeltaSupplier();
 
   return useCallback(() => {
-    return [
-      ...supply3dDeltas(),
-      ...supplyLighterDeltas(),
-      ...supplySidebarDeltas(),
+    const result3d = supply3dDeltas();
+    const resultLighter = supplyLighterDeltas();
+    const resultSidebar = supplySidebarDeltas();
+
+    const deltas = [
+      ...result3d.deltas,
+      ...resultLighter.deltas,
+      ...resultSidebar.deltas,
     ];
+
+    // Metadata for generated views only comes from Lighter
+    return { deltas, metadata: resultLighter.metadata };
   }, [supply3dDeltas, supplyLighterDeltas, supplySidebarDeltas]);
 };

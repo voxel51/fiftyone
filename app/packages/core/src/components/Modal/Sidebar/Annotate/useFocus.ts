@@ -3,8 +3,10 @@ import {
   useLighter,
   useLighterEventHandler,
 } from "@fiftyone/lighter";
+import { isGeneratedView } from "@fiftyone/state";
 import { getDefaultStore } from "jotai";
 import { useCallback, useRef } from "react";
+import { useRecoilValue } from "recoil";
 import { editing } from "./Edit";
 import { current, savedLabel } from "./Edit/state";
 import useExit from "./Edit/useExit";
@@ -19,6 +21,7 @@ export default function useFocus() {
   );
   const selectId = useRef<string | null>(null);
   const onExit = useExit();
+  const isGenerated = useRecoilValue(isGeneratedView);
 
   const select = useCallback(() => {
     const id = selectId.current;
@@ -43,9 +46,15 @@ export default function useFocus() {
           return;
         }
 
+        // In generated views (patches/clips/frames), don't exit edit mode on deselect
+        // The user should stay in edit mode for the single label
+        if (isGenerated) {
+          return;
+        }
+
         onExit();
       },
-      [onExit]
+      [isGenerated, onExit]
     )
   );
 
@@ -63,6 +72,12 @@ export default function useFocus() {
           const currentLabel = STORE.get(current);
 
           if (currentLabel?.isNew) return;
+
+          // If clicking on the same overlay that's already being edited, allow it
+          // (needed for drag/resize interactions in patches view auto-edit)
+          if (currentLabel?.overlay?.id === payload.id) {
+            return;
+          }
 
           // a label is already being edited, let the DESELECT event handle it
           scene?.deselectOverlay(payload.id, { ignoreSideEffects: true });
