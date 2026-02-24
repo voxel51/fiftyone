@@ -20,7 +20,6 @@
         "packages/analytics/**/*",
         "packages/annotation/**/*",
         "packages/app/**/*",
-        "packages/command-bus/**/*",
         "packages/components/**/*",
         "packages/core/**/*",
         "packages/embeddings/**/*",
