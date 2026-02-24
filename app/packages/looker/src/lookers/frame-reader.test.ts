@@ -188,7 +188,7 @@ describe("frame-reader", () => {
             [100, 129]
         );
 
-        // Request frame 50 â it was never loaded and is behind the stream
+        // Request frame 50 as it was never loaded and is behind the stream
         // position (50 < 130). This simulates the user scrubbing backward
         // to a region the stream has already passed.
         requestFrames(50);
