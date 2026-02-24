@@ -5,7 +5,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getCommandBus } from "../dispatch";
-import { Command, CommandCtor } from "../types";
+import { Command, CommandCtor, CommandHandler } from "../types";
 import { useRegisterCommandHandler } from "./useRegisterCommandHandler";
 
 class TestCommand extends Command<{ value: number }> {
@@ -127,23 +127,37 @@ describe("useRegisterCommandHandler", () => {
       return cmd.text.toUpperCase();
     });
 
+    type Props =
+      | {
+          type: CommandCtor<TestCommand>;
+          handler: CommandHandler<TestCommand>;
+        }
+      | {
+          type: CommandCtor<AnotherCommand>;
+          handler: CommandHandler<AnotherCommand>;
+        };
+
     const { rerender } = renderHook(
-      ({
-        type,
-        handler,
-      }: {
-        type: CommandCtor<TestCommand> | CommandCtor<AnotherCommand>;
-        handler: any;
-      }) => {
-        useRegisterCommandHandler(type as any, handler);
+      (props: Props) => {
+        if (props.type === TestCommand) {
+          useRegisterCommandHandler(
+            props.type,
+            props.handler as CommandHandler<TestCommand>
+          );
+        } else {
+          useRegisterCommandHandler(
+            props.type as CommandCtor<AnotherCommand>,
+            props.handler as CommandHandler<AnotherCommand>
+          );
+        }
       },
       {
-        initialProps: { type: TestCommand, handler: handler1 },
+        initialProps: { type: TestCommand, handler: handler1 } as Props,
       }
     );
 
     const bus = getCommandBus();
-    let result = await bus.execute(new TestCommand(5));
+    const result = await bus.execute(new TestCommand(5));
     expect(handler1).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ value: 10 });
 
@@ -173,18 +187,29 @@ describe("useRegisterCommandHandler", () => {
       return cmd.text.toLowerCase();
     });
 
+    type Props =
+      | { type: CommandCtor<TestCommand>; handler: CommandHandler<TestCommand> }
+      | {
+          type: CommandCtor<AnotherCommand>;
+          handler: CommandHandler<AnotherCommand>;
+        };
+
     const { rerender } = renderHook(
-      ({
-        type,
-        handler,
-      }: {
-        type: CommandCtor<TestCommand> | CommandCtor<AnotherCommand>;
-        handler: any;
-      }) => {
-        useRegisterCommandHandler(type as any, handler);
+      (props: Props) => {
+        if (props.type === TestCommand) {
+          useRegisterCommandHandler(
+            props.type,
+            props.handler as CommandHandler<TestCommand>
+          );
+        } else {
+          useRegisterCommandHandler(
+            props.type as CommandCtor<AnotherCommand>,
+            props.handler as CommandHandler<AnotherCommand>
+          );
+        }
       },
       {
-        initialProps: { type: TestCommand, handler: handler1 },
+        initialProps: { type: TestCommand, handler: handler1 } as Props,
       }
     );
 
