@@ -6,4 +6,5 @@ export * from "./useLabelPersistence";
 export * from "./usePatchSample";
 export * from "./useRegisterAnnotationCommandHandlers";
 export * from "./useRegisterAnnotationEventHandlers";
+export * from "./useRegisterAnnotationKeyBindings";
 export * from "./useRegisterRendererEventHandlers";
