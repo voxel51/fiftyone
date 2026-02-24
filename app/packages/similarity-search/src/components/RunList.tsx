@@ -15,7 +15,7 @@ import {
   useFirstExistingUri,
 } from "@fiftyone/operators";
 import { scrollable } from "@fiftyone/components";
-import { getSampleSrc } from "@fiftyone/state";
+import { getFetchParameters } from "@fiftyone/utilities";
 import {
   Button,
   Checkbox,
@@ -96,6 +96,13 @@ const ExpandLessIcon = () => (
  *  doesn't set one, so it inherits black from the browser default). */
 const tip = (text: string) => <span style={s.tooltipText}>{text}</span>;
 
+/** Always proxy through the media endpoint — handles gs://, s3://, etc. */
+function getMediaUrl(filepath: string): string {
+  const params = getFetchParameters();
+  const path = `${params.pathPrefix}/media`.replaceAll("//", "/");
+  return `${params.origin}${path}?filepath=${encodeURIComponent(filepath)}`;
+}
+
 const THUMB_SIZE = 36;
 const THUMB_GAP = 4;
 const THUMB_SINGLE_ROW_MAX = 10;
@@ -131,7 +138,7 @@ function SampleThumbnails({
         return (
           <ImageListItem key={id}>
             {filepath ? (
-              <img src={getSampleSrc(filepath)} alt="" style={s.thumbnail} />
+              <img src={getMediaUrl(filepath)} alt="" style={s.thumbnail} />
             ) : (
               <div style={s.thumbnailPlaceholder} />
             )}

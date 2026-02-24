@@ -314,37 +314,35 @@ export default function NewSearch({
         )}
 
         {/* Search scope */}
-        {hasView && (
-          <FormField
-            label="Search scope"
-            control={
-              <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
-                <Button
-                  variant={
-                    searchScope === "view" ? Variant.Primary : Variant.Secondary
-                  }
-                  size={Size.Sm}
-                  onClick={() => setSearchScope("view")}
-                  style={{ flex: 1 }}
-                >
-                  Current View
-                </Button>
-                <Button
-                  variant={
-                    searchScope === "dataset"
-                      ? Variant.Primary
-                      : Variant.Secondary
-                  }
-                  size={Size.Sm}
-                  onClick={() => setSearchScope("dataset")}
-                  style={{ flex: 1 }}
-                >
-                  Full Dataset
-                </Button>
-              </Stack>
-            }
-          />
-        )}
+        <FormField
+          label="Search scope"
+          control={
+            <Stack orientation={Orientation.Row} spacing={Spacing.Xs}>
+              <Button
+                variant={
+                  searchScope === "view" ? Variant.Primary : Variant.Secondary
+                }
+                size={Size.Sm}
+                onClick={() => setSearchScope("view")}
+                style={{ flex: 1 }}
+              >
+                Current View
+              </Button>
+              <Button
+                variant={
+                  searchScope === "dataset"
+                    ? Variant.Primary
+                    : Variant.Secondary
+                }
+                size={Size.Sm}
+                onClick={() => setSearchScope("dataset")}
+                style={{ flex: 1 }}
+              >
+                Full Dataset
+              </Button>
+            </Stack>
+          }
+        />
 
         {/* Distance field */}
         <FormField
