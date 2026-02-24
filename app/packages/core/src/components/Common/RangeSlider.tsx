@@ -29,7 +29,7 @@ interface SliderStyledProps {
   $alternateThumbLabelDirection?: boolean;
 }
 
-const SliderStyled = styled(SliderUnstyled)<SliderStyledProps>`
+const SliderStyled = styled(SliderUnstyled) <SliderStyledProps>`
   && {
     color: ${({ theme }) => theme.palette.primary.plainColor};
     margin: 0 1.5rem 0 1.3rem;
@@ -200,13 +200,13 @@ const BaseSlider = <T extends Range | number>({
     adjustLabelsPosition();
   }, []);
 
-  // Adjust on value/clicking changes
+  // Adjust on value changes
   useLayoutEffect(() => {
     if (!sliderRef.current || !containerRef?.current) return;
 
     const frameId = requestAnimationFrame(adjustLabelsPosition);
     return () => cancelAnimationFrame(frameId);
-  }, [value, clicking, adjustLabelsPosition]);
+  }, [value, adjustLabelsPosition]);
 
   if (!isBoundsValid(bounds)) {
     return null;
