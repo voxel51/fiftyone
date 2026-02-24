@@ -55,6 +55,7 @@ const Field = () => {
         <div>
           <SchemaIOComponent
             schema={schema}
+            smartForm={true}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
               setCurrentField(field);
