@@ -323,7 +323,6 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
                 continue
 
             state = self._processor.set_image(img)
-            w, h = _get_image_size(img)
 
             all_boxes = []
             all_labels = []
@@ -331,16 +330,13 @@ class SegmentAnything3ImageModel(fout.TorchSamplesMixin, fout.TorchImageModel):
             all_scores = []
 
             for det in detections.detections:
+                self._processor.reset_all_prompts(state)
                 x_norm, y_norm, w_norm, h_norm = det.bounding_box
-                x_px = x_norm * w
-                y_px = y_norm * h
-                w_px = w_norm * w
-                h_px = h_norm * h
-                cx = x_px + w_px / 2
-                cy = y_px + h_px / 2
+                cx_norm = x_norm + w_norm / 2
+                cy_norm = y_norm + h_norm / 2
 
                 output = self._processor.add_geometric_prompt(
-                    box=[cx, cy, w_px, h_px],
+                    box=[cx_norm, cy_norm, w_norm, h_norm],
                     label=True,
                     state=state,
                 )
