@@ -102,12 +102,16 @@ export const useActivityToast = (): IActivityToast => {
       setOpen(true);
     }
 
-    const timeout = setTimeout(
-      () => setOpen(false),
-      config.timeout ?? DEFAULT_VISIBILITY_TIMEOUT
-    );
+    let onUnmount: () => void;
 
-    return () => clearTimeout(timeout);
+    const timeoutMs = config.timeout ?? DEFAULT_VISIBILITY_TIMEOUT;
+    if (timeoutMs > 0) {
+      const timeout = setTimeout(() => setOpen(false), timeoutMs);
+
+      onUnmount = () => clearTimeout(timeout);
+    }
+
+    return onUnmount;
   }, [config]);
 
   return useMemo(
