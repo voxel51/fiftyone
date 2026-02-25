@@ -33,8 +33,8 @@ export const EditContainer = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   margin-bottom: 2rem;
+  padding-right: 1rem;
 `;
 
 export const EditSectionHeader = styled.div`
@@ -63,7 +63,6 @@ export const SchemaSection = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 `;
 
 export const TabsRow = styled.div`
