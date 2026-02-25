@@ -1,7 +1,7 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
 import { Typography } from "@mui/material";
-import { atom, useAtomValue } from "jotai";
+import { useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -9,21 +9,20 @@ import Sidebar from "../../../Sidebar";
 import Actions from "./Actions";
 import Edit, { isEditing } from "./Edit";
 import GroupEntry from "./GroupEntry";
-import ImportSchema from "./ImportSchema";
+import ImportSchema, { useShowImportSchema } from "./ImportSchema";
 import LabelEntry from "./LabelEntry";
 import LoadingEntry from "./LoadingEntry";
 import PrimitiveEntry from "./PrimitiveEntry";
 import SchemaManager from "./SchemaManager";
-import { activeLabelSchemas, labelSchemasData, showModal } from "./state";
+import { labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
+import useMissingSourceField from "./useMissingSourceField";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
 import useDelete from "./Edit/useDelete";
 import { KnownContexts, useUndoRedo } from "@fiftyone/commands";
-
-const showImportPage = atom((get) => !get(activeLabelSchemas)?.length);
 
 const DISABLED_MESSAGES: Record<
   Exclude<AnnotationDisabledReason, null>,
@@ -120,11 +119,14 @@ interface AnnotateProps {
 
 const Annotate = ({ disabledReason }: AnnotateProps) => {
   const showSchemaModal = useAtomValue(showModal);
-  const showImport = useAtomValue(showImportPage);
   const loading = useAtomValue(labelSchemasData) === null;
   const isEditingValue = useAtomValue(isEditing);
   const contextManager = useAnnotationContextManager();
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
+
+  const isDisabled = disabledReason !== null;
+  const requiredField = useMissingSourceField();
+  const showSetup = useShowImportSchema(isDisabled, requiredField);
 
   useLabels();
   useDelete();
@@ -138,7 +140,6 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
     };
   }, []);
 
-  const isDisabled = disabledReason !== null;
   const disabledMsg =
     disabledReason !== null ? DISABLED_MESSAGES[disabledReason] : undefined;
 
@@ -149,11 +150,12 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   return (
     <>
       {isEditingValue && <Edit key="edit" />}
-      {showImport || isDisabled ? (
+      {showSetup ? (
         <ImportSchema
           key="import"
           disabled={isDisabled}
           disabledMsg={disabledMsg}
+          requiredField={requiredField}
         />
       ) : (
         <AnnotateSidebar key="annotate" />

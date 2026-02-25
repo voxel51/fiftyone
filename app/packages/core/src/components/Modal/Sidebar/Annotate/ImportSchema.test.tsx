@@ -12,49 +12,110 @@ vi.mock("./useShowModal", () => ({
   default: vi.fn(() => vi.fn()),
 }));
 
+// Mock RequiredFieldPrompt to avoid pulling in its deep dependencies
+vi.mock("./RequiredFieldPrompt", () => ({
+  default: vi.fn(({ requiredField }) => (
+    <div data-testid="required-field-prompt">{requiredField.field}</div>
+  )),
+}));
+
 describe("ImportSchema", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("renders with button enabled when disabled=false and user can manage", () => {
-    render(<ImportSchema disabled={false} />);
+  describe("SetupPrompt (default)", () => {
+    it("renders with button enabled when disabled=false and user can manage", () => {
+      render(<ImportSchema disabled={false} />);
 
-    const button = screen.getByRole("button", { name: /add schema/i });
-    expect(button.disabled).toBe(false);
+      const button = screen.getByRole("button", { name: /add schema/i });
+      expect(button.disabled).toBe(false);
+    });
+
+    it("renders with button disabled when disabled=true", () => {
+      render(<ImportSchema disabled={true} />);
+
+      const button = screen.getByRole("button", { name: /add schema/i });
+      expect(button.disabled).toBe(true);
+    });
+
+    it("renders the main title and description", () => {
+      render(<ImportSchema disabled={false} />);
+
+      expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
+      expect(
+        screen.getByText(
+          /import your dataset schema to access and edit labels/i
+        )
+      ).toBeTruthy();
+    });
   });
 
-  it("renders with button disabled when disabled=true", () => {
-    render(<ImportSchema disabled={true} />);
+  describe("alert messages", () => {
+    it("shows unsupported media alert when disabled=true", () => {
+      render(<ImportSchema disabled={true} />);
 
-    const button = screen.getByRole("button", { name: /add schema/i });
-    expect(button.disabled).toBe(true);
+      const alert = screen.getByText(
+        /annotation is not yet supported for this type of media or view/i
+      );
+      expect(alert).toBeTruthy();
+    });
+
+    it("shows custom disabled message when provided", () => {
+      render(
+        <ImportSchema disabled={true} disabledMsg="Custom disabled reason" />
+      );
+
+      expect(screen.getByText("Custom disabled reason")).toBeTruthy();
+    });
+
+    it("does not show alert when disabled=false", () => {
+      render(<ImportSchema disabled={false} />);
+
+      const alert = screen.queryByText(
+        /annotation is not yet supported for this type of media or view/i
+      );
+      expect(alert).toBeNull();
+    });
   });
 
-  it("shows unsupported media alert when disabled=true", () => {
-    render(<ImportSchema disabled={true} />);
+  describe("requiredField prop", () => {
+    it("shows RequiredFieldPrompt when requiredField is provided and not disabled", () => {
+      render(
+        <ImportSchema
+          requiredField={{ field: "ground_truth", hasSchema: false }}
+        />
+      );
 
-    const alert = screen.getByText(
-      /annotation is not yet supported for this type of media or view/i
-    );
-    expect(alert).toBeTruthy();
-  });
+      expect(screen.getByTestId("required-field-prompt")).toBeTruthy();
+      expect(screen.getByText("ground_truth")).toBeTruthy();
+      expect(screen.queryByText(/annotate faster than ever/i)).toBeNull();
+    });
 
-  it("does not show unsupported media alert when disabled=false", () => {
-    render(<ImportSchema disabled={false} />);
+    it("shows SetupPrompt (not RequiredFieldPrompt) when disabled even with requiredField", () => {
+      render(
+        <ImportSchema
+          disabled={true}
+          requiredField={{ field: "ground_truth", hasSchema: false }}
+        />
+      );
 
-    const alert = screen.queryByText(
-      /annotation is not yet supported for this type of media or view/i
-    );
-    expect(alert).toBeNull();
-  });
+      expect(screen.queryByTestId("required-field-prompt")).toBeNull();
+      expect(screen.getByRole("button", { name: /add schema/i })).toBeTruthy();
+    });
 
-  it("renders the main title and description", () => {
-    render(<ImportSchema disabled={false} />);
+    it("shows SetupPrompt when requiredField is null", () => {
+      render(<ImportSchema requiredField={null} />);
 
-    expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
-    expect(
-      screen.getByText(/import your dataset schema to access and edit labels/i)
-    ).toBeTruthy();
+      expect(screen.queryByTestId("required-field-prompt")).toBeNull();
+      expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
+    });
+
+    it("shows SetupPrompt when requiredField is not provided", () => {
+      render(<ImportSchema />);
+
+      expect(screen.queryByTestId("required-field-prompt")).toBeNull();
+      expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
+    });
   });
 });
