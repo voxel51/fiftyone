@@ -1,6 +1,6 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
-import { Typography } from "@mui/material";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
@@ -64,9 +64,13 @@ const Loading = () => {
   return (
     <Container>
       <LoadingSpinner />
-      <Typography color="secondary" padding="1rem 0">
+      <Text
+        color={TextColor.Secondary}
+        variant={TextVariant.Md}
+        style={{ padding: "1rem 0" }}
+      >
         Loading
-      </Typography>
+      </Text>
     </Container>
   );
 };
@@ -103,20 +107,14 @@ const AnnotateSidebar = () => {
             return {
               children: (
                 <EmptyLabelsContainer>
-                  <Typography
-                    color="text.primary"
-                    variant="body1"
-                    fontWeight={500}
-                  >
-                    No labels to annotate
-                  </Typography>
-                  <Typography
-                    color="text.secondary"
-                    variant="body2"
-                    textAlign="center"
+                  <Text variant={TextVariant.Lg}>No labels to annotate</Text>
+                  <Text
+                    color={TextColor.Secondary}
+                    variant={TextVariant.Md}
+                    style={{ textAlign: "center" }}
                   >
                     Check that your fields are enabled on Explore.
-                  </Typography>
+                  </Text>
                 </EmptyLabelsContainer>
               ),
               disabled: true,
