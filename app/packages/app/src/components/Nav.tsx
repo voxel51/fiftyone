@@ -95,8 +95,10 @@ const Nav: React.FC<
           </Suspense>
         )}
         {!hasDataset && <div style={{ flex: 1 }} />}
-        <div className={iconContainer}>
+        <div style={{ padding: '0.5rem' }}>
           <Teams />
+        </div>
+        <div className={iconContainer}>
           <IconButton
             title={mode === "dark" ? "Light mode" : "Dark mode"}
             onClick={() => {
@@ -107,8 +109,7 @@ const Nav: React.FC<
             sx={{
               color: (theme) => theme.palette.text.secondary,
               m: 0,
-              height: "32px",
-              width: "32px",
+              p: "0.5rem",
             }}
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}

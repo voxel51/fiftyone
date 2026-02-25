@@ -3,8 +3,7 @@ div.iconContainer {
   justify-content: flex-end;
   height: 100%;
   align-items: center;
-  column-gap: 2px;
-  padding: 1rem;
+  padding-right: 1rem;
 }
 
 a.iconLink {
@@ -12,10 +11,8 @@ a.iconLink {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
   border-radius: 50%;
-  padding: 4px;
+  padding: 0.5rem;
 }
 
 a.iconLink:hover {
