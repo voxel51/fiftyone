@@ -127,6 +127,11 @@ export interface Renderer2D {
   getCanvas(): HTMLCanvasElement;
 
   /**
+   * Reset the renderer's zoom level to 100% and clear any pan translation.
+   */
+  resetZoomPan(): void;
+
+  /**
    * Disables zoom and pan interactions (e.g., during overlay dragging).
    */
   disableZoomPan(): void;

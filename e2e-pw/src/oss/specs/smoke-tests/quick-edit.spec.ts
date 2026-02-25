@@ -1,15 +1,8 @@
 import { test as base } from "src/oss/fixtures";
 import { ModalPom } from "src/oss/poms/modal";
-import { SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
+import { Box, SampleCanvasType } from "src/oss/poms/modal/sample-canvas";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
-
-interface Box {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 const datasetName = getUniqueDatasetNameWithPrefix("quick-edit");
 const id = "000000000000000000000000";
@@ -19,37 +12,44 @@ const initialBoundingBox = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 };
 const detectionTestPoints = (({ x, y, width, height }: Box) => {
   return [
     {
+      name: "top-left",
       cursor: "nwse",
       x,
       y,
     },
-    { cursor: "ns", x: x + width / 2, y },
+    { name: "top", cursor: "ns", x: x + width / 2, y },
     {
+      name: "top-right",
       cursor: "nesw",
       x: x + width,
       y,
     },
     {
+      name: "right",
       cursor: "ew",
       x: x + width,
       y: y + height / 2,
     },
     {
+      name: "bottom-right",
       cursor: "nwse",
       x: x + width,
       y: y + height,
     },
     {
+      name: "bottom",
       cursor: "ns",
       x: x + width / 2,
       y: y + height,
     },
     {
+      name: "bottom-left",
       cursor: "nesw",
       x,
       y: y + height,
     },
     {
+      name: "left",
       cursor: "ew",
       x,
       y: y + height / 2,
@@ -186,7 +186,7 @@ test.describe.serial("quick edit", () => {
     await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.undoIsEnabled(false);
     await modal.sampleCanvas.assert.hasScreenshot(
-      `detection-lighter-selected-centered.png`
+      "detection-lighter-selected-centered.png"
     );
 
     for (const point of detectionTestPoints) {
@@ -198,7 +198,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.move(point.x, point.y, "default");
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.cursor}.png`
+        `detection-lighter-selected-${point.name}.png`
       );
 
       // Undo
@@ -213,7 +213,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.redoIsEnabled(false);
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.cursor}.png`
+        `detection-lighter-selected-${point.name}.png`
       );
 
       // Resize to original box
@@ -235,7 +235,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.up();
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.cursor}-move.png`
+        `detection-lighter-selected-${point.name}-move.png`
       );
 
       // Undo
@@ -250,7 +250,7 @@ test.describe.serial("quick edit", () => {
       await modal.sidebar.edit.assert.redoIsEnabled(false);
       await modal.sidebar.edit.assert.undoIsEnabled();
       await modal.sampleCanvas.assert.hasScreenshot(
-        `detection-lighter-selected-${point.cursor}-move.png`
+        `detection-lighter-selected-${point.name}-move.png`
       );
 
       // Move back

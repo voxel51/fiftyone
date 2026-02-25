@@ -337,8 +337,10 @@ export const setFetchFunction = (
       }${path}`;
     }
 
+    // set content type only if body is present, otherwise it can cause Bad Request
+    // errors for endpoints that don't expect a body
     headers = mergeHeaders(
-      { "Content-Type": "application/json" },
+      body ? { "Content-Type": "application/json" } : {},
       defaultHeaders,
       headers
     );

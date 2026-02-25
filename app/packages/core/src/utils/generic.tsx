@@ -92,82 +92,45 @@ export const formatDateTime = (timeStamp: number, timeZone: string): string => {
 
 export const getDateTimeRangeFormattersWithPrecision = (() => {
   const twoDigit = "2-digit";
-  let locale = "en-ZA";
-
-  const MS = 1000;
-  const S = 60 * MS;
-  const M = 60 * S;
-  const H = 24 * M;
+  const locale = "en-CA";
 
   return (
     timeZone: string,
     d1: number,
     d2: number
-  ): [Intl.DateTimeFormat | null, Intl.DateTimeFormat] => {
-    const delta = Math.abs(d1 - d2);
+  ): { common: Intl.DateTimeFormat | null; diff: Intl.DateTimeFormat } => {
     timeZone = resolveTimeZone(timeZone);
 
-    let common: Intl.DateTimeFormatOptions = { timeZone, hour12: false };
+    let common: Intl.DateTimeFormatOptions | null = { timeZone, hour12: false };
     let diff: Intl.DateTimeFormatOptions = {
       timeZone,
       hour12: false,
     };
 
-    if (d1 % H === 0 && d2 % H === 0) {
-      common = null;
-      diff = {
-        year: "numeric",
-        month: twoDigit,
-        day: twoDigit,
-        ...diff,
-      };
-      locale = "en-CA";
-    } else if (delta < MS) {
+    const formatter = new Intl.DateTimeFormat(locale, {
+      timeZone,
+      year: "numeric",
+      month: twoDigit,
+      day: twoDigit,
+    });
+    const date1Str = formatter.format(d1);
+    const date2Str = formatter.format(d2);
+    const sameDay = date1Str === date2Str;
+
+    if (sameDay) {
       common = {
         year: "numeric",
-        day: twoDigit,
         month: twoDigit,
+        day: twoDigit,
         ...common,
       };
       diff = {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
-        // @ts-ignore
         fractionalSecondDigits: 3,
         ...diff,
       };
-      locale = "en-ZA";
-    } else if (delta < S) {
-      common = {
-        year: "numeric",
-        day: twoDigit,
-        month: twoDigit,
-        hour: twoDigit,
-        minute: twoDigit,
-        ...common,
-      };
-      diff = {
-        second: twoDigit,
-        // @ts-ignore
-        fractionalSecondDigits: 3,
-        ...diff,
-      };
-      locale = "en-ZA";
-    } else if (delta < M) {
-      common = {
-        year: "numeric",
-        day: twoDigit,
-        month: twoDigit,
-        ...common,
-      };
-      diff = {
-        hour: twoDigit,
-        minute: twoDigit,
-        second: twoDigit,
-        ...diff,
-      };
-      locale = "en-ZA";
     } else {
       common = null;
       diff = {
@@ -177,15 +140,15 @@ export const getDateTimeRangeFormattersWithPrecision = (() => {
         hour: twoDigit,
         minute: twoDigit,
         second: twoDigit,
+        fractionalSecondDigits: 3,
         ...diff,
       };
-      locale = "en-ZA";
     }
 
-    return [
-      common ? new Intl.DateTimeFormat(locale, common) : null,
-      new Intl.DateTimeFormat(locale, diff),
-    ];
+    return {
+      common: common ? new Intl.DateTimeFormat(locale, common) : null,
+      diff: new Intl.DateTimeFormat(locale, diff),
+    };
   };
 })();
 

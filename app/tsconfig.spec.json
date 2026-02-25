@@ -1,0 +1,40 @@
+{
+    "compilerOptions": {
+        "noEmit": true,
+        "noUncheckedIndexedAccess": false,
+        "strict": true,
+        "module": "esnext",
+        "skipLibCheck": true,
+        "target": "esnext",
+        "moduleResolution": "bundler"
+    },
+    "types": ["jest"],
+    "include": ["**/*.test.ts", "**/*.spec.ts"],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "packages/aggregations/**/*",
+        "packages/analytics/**/*",
+        "packages/annotation/**/*",
+        "packages/app/**/*",
+        "packages/command-bus/**/*",
+        "packages/components/**/*",
+        "packages/core/**/*",
+        "packages/embeddings/**/*",
+        "packages/events/**/*",
+        "packages/feature-flags/**/*",
+        "packages/flashlight/**/*",
+        "packages/lighter/**/*",
+        "packages/looker/**/*",
+        "packages/looker-3d/**/*",
+        "packages/map/**/*",
+        "packages/operators/**/*",
+        "packages/playback/**/*",
+        "packages/plugins/**/*",
+        "packages/relay/**/*",
+        "packages/spaces/**/*",
+        "packages/spotlight/**/*",
+        "packages/state/**/*",
+        "packages/utilities/**/*"
+    ]
+}

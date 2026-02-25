@@ -2,6 +2,13 @@ import { Page, expect } from "src/oss/fixtures";
 import type { EventUtils } from "src/shared/event-utils";
 import { TooltipPom } from "./tooltip";
 
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export enum SampleCanvasType {
   LIGHTER = "lighter-sample-renderer",
   LOOKER = "modal-looker-container",
@@ -17,6 +24,7 @@ export enum SampleCanvasType {
  */
 export class SampleCanvasPom {
   readonly assert: SampleCanvasAsserter;
+  #box?: Box;
 
   constructor(readonly page: Page, readonly eventUtils: EventUtils) {
     this.assert = new SampleCanvasAsserter(this);
@@ -34,6 +42,13 @@ export class SampleCanvasPom {
    */
   get tooltip() {
     return new TooltipPom(this.page, this.eventUtils);
+  }
+
+  /**
+   * The top-left checkbox, if present
+   */
+  get checkbox() {
+    return this.page.getByTestId("sample-canvas-checkbox");
   }
 
   /**
@@ -104,8 +119,11 @@ export class SampleCanvasPom {
   }
 
   async #toScreenCoordinates(x: number, y: number) {
-    const box = await this.locator.boundingBox();
+    if (!this.#box) {
+      this.#box = await this.locator.boundingBox();
+    }
 
+    const box = this.#box;
     const xPixels = x * box.width;
     const yPixels = y * box.height;
 
@@ -138,15 +156,7 @@ class SampleCanvasAsserter {
    * @param name the name of the screenshot
    */
   async hasScreenshot(name: string) {
-    if (
-      await this.sampleCanvasPom.page
-        .getByTestId("sample-canvas-checkbox")
-        .isVisible()
-    ) {
-      // Hide controls before checking the screenshot
-      await this.sampleCanvasPom.page.keyboard.press("c");
-    }
-
+    await expect(this.sampleCanvasPom.checkbox).toBeHidden();
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name);
   }

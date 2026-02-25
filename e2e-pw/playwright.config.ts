@@ -32,12 +32,6 @@ export default defineConfig({
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
   },
-  expect: {
-    toHaveScreenshot: {
-      // since label color assignment is non-deterministic, we allow a small amount of pixel difference
-      maxDiffPixelRatio: 0.02,
-    },
-  },
   /* Configure projects for major browsers */
   projects: [
     {

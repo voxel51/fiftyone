@@ -8,7 +8,7 @@ import { CommandRegistry } from "../registry";
 
 export type KeyMatchState = {
   partial: boolean;
-  full?: Command;
+  full?: Command | undefined;
 };
 
 /**
@@ -43,8 +43,9 @@ export class KeyManager {
       const sequences = KeyParser.parseBinding(binding);
       for (const [index, sequence] of sequences.entries()) {
         //Match to prior matches for the begining if there are any
-        if (index < this.priorMatches.length) {
-          if (!sequence.matches(this.priorMatches[index])) {
+        const priorMatch = this.priorMatches[index];
+        if (priorMatch) {
+          if (!sequence.matches(priorMatch)) {
             break;
           }
         } else {

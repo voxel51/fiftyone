@@ -1,14 +1,43 @@
 {
-    "files": [],
-    "references": [
-        { "path": "packages/analytics" },
-        { "path": "packages/app" },
-        { "path": "packages/components" },
-        { "path": "packages/flashlight" },
-        { "path": "packages/looker" },
-        { "path": "packages/utilities" },
-        { "path": "packages/plugins" },
-        { "path": "packages/state" },
-        { "path": "packages/aggregations" }
+    "extends": [
+        "@tsconfig/vite-react/tsconfig.json",
+        "@tsconfig/bases/node-lts"
+    ],
+    "compilerOptions": {
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "verbatimModuleSyntax": false,
+        "erasableSyntaxOnly": false
+    },
+    "include": ["**/*"],
+    "exclude": [
+        "**/*.test.ts",
+        "**/*.spec.ts",
+        "__mocks__",
+        "node_modules",
+        "dist",
+        "packages/aggregations/**/*",
+        "packages/analytics/**/*",
+        "packages/annotation/**/*",
+        "packages/app/**/*",
+        "packages/command-bus/**/*",
+        "packages/components/**/*",
+        "packages/core/**/*",
+        "packages/embeddings/**/*",
+        "packages/events/**/*",
+        "packages/feature-flags/**/*",
+        "packages/flashlight/**/*",
+        "packages/lighter/**/*",
+        "packages/looker/**/*",
+        "packages/looker-3d/**/*",
+        "packages/map/**/*",
+        "packages/operators/**/*",
+        "packages/playback/**/*",
+        "packages/plugins/**/*",
+        "packages/relay/**/*",
+        "packages/spaces/**/*",
+        "packages/spotlight/**/*",
+        "packages/state/**/*",
+        "packages/utilities/**/*"
     ]
 }
