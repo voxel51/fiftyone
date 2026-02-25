@@ -1,6 +1,6 @@
 import { useQueryPerformanceSampleLimit } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import type { RequiredField } from "./useMissingSourceField";
@@ -10,11 +10,6 @@ interface RequiredFieldPromptProps {
   requiredField: RequiredField;
 }
 
-/**
- * Prompt shown when a required field (e.g. the patches source field) is not
- * yet in the active annotation schema. Handles initializing the schema if
- * needed and activating the field.
- */
 const RequiredFieldPrompt = ({ requiredField }: RequiredFieldPromptProps) => {
   const canManage = useCanManageSchema();
   const schemaManager = useSchemaManager();

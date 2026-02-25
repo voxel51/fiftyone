@@ -52,6 +52,8 @@ export function getSourceFieldFromStages(
 export default function useMissingSourceField(): RequiredField | null {
   const isPatches = useRecoilValue(isPatchesView);
   const stages = useRecoilValue(view);
+
+  // These relfect the schemas defined on the src dataset.
   const schemas = useAtomValue(labelSchemasData);
   const active = useAtomValue(activeLabelSchemas);
 

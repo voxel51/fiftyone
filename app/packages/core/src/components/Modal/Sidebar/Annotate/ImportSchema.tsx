@@ -56,21 +56,12 @@ const AlertBox = styled.div`
   box-shadow: 0px 1px 2px 0px rgba(16, 24, 40, 0.05);
 `;
 
-/**
- * Whether ImportSchema should be shown instead of the annotation sidebar.
- *
- * Encapsulates all the conditions:
- * - No active schemas (first-time setup)
- * - Annotation disabled for this view type
- * - A required field is missing from the active schema (e.g. patches field)
- */
 export function useShowImportSchema(
   disabled: boolean,
   requiredField: RequiredField | null
 ): boolean {
   const noActiveSchemas = !useAtomValue(activeLabelSchemas)?.length;
   const isEditingValue = useAtomValue(isEditing);
-
   return (
     noActiveSchemas || disabled || (requiredField != null && !isEditingValue)
   );
@@ -147,6 +138,7 @@ const ImportSchema = (
             }}
             name="draw"
           />
+
           {showRequiredFieldPrompt ? (
             <RequiredFieldPrompt requiredField={requiredField!} />
           ) : (
