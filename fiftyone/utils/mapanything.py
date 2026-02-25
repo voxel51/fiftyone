@@ -69,6 +69,13 @@ class MapAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.output_type = self.parse_string(
             d, "output_type", default="depth"
         )
+
+        _valid_output_types = ("depth", "pointcloud")
+        if self.output_type not in _valid_output_types:
+            raise ValueError(
+                "output_type must be one of %s, got '%s'"
+                % (_valid_output_types, self.output_type)
+            )
         self.use_amp = self.parse_bool(d, "use_amp", default=True)
         self.amp_dtype = self.parse_string(d, "amp_dtype", default="bf16")
 

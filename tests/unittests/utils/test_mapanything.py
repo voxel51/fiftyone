@@ -195,10 +195,10 @@ class TestMapAnythingModelConfig:
         config = MapAnythingModelConfig({"hf_repo": ""})
         assert config.hf_repo == ""
 
-    def test_output_type_arbitrary_string(self):
+    def test_output_type_invalid_raises(self):
         from fiftyone.utils.mapanything import MapAnythingModelConfig
-        config = MapAnythingModelConfig({"output_type": "mesh"})
-        assert config.output_type == "mesh"
+        with pytest.raises(ValueError, match="output_type must be one of"):
+            MapAnythingModelConfig({"output_type": "mesh"})
 
 
 # ===================================================================
@@ -606,7 +606,6 @@ class TestPredictAll:
         model = _make_model("depth")
         _patch_infer(model, _mock_pred())
         created_files = []
-        original_load = None
 
         def capture_and_load(paths):
             created_files.extend(paths)
