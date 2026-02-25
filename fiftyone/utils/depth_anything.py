@@ -145,16 +145,17 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
 
             results.append(heatmap)
 
-        if output.get("extrinsics") is not None:
-            results[0].extrinsics = output["extrinsics"]
-        if output.get("intrinsics") is not None:
-            results[0].intrinsics = output["intrinsics"]
+        if results:
+            if output.get("extrinsics") is not None:
+                results[0].extrinsics = output["extrinsics"]
+            if output.get("intrinsics") is not None:
+                results[0].intrinsics = output["intrinsics"]
 
-        if output.get("gaussians") is not None:
-            results[0].gaussians = output["gaussians"]
+            if output.get("gaussians") is not None:
+                results[0].gaussians = output["gaussians"]
 
-        if output.get("aux"):
-            results[0].aux = output["aux"]
+            if output.get("aux"):
+                results[0].aux = output["aux"]
 
         return results
 
