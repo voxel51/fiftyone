@@ -3,9 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 } from "uuid";
 
 /**
- * Continue retrying for 30 seconds after attempts exceeded.
+ * Maximum number of attempts before triggering fallback behavior.
  */
-const RETRY_TIMEOUT_PERIOD_MS = 30_000;
+const MAX_ATTEMPTS = 3;
+
+/**
+ * Fallback duration after attempts exceeded.
+ */
+const FALLBACK_TIMEOUT_PERIOD_MS = 30_000;
 
 /**
  * {@link RetryController} which enforces request count and time constraints.
@@ -25,17 +30,24 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
   const [canRetry, setCanRetry] = useState<boolean>(true);
   const [isUnhealthy, setIsUnhealthy] = useState<boolean>(false);
 
+  // standard retry controller to track consecutive failed attempts
   const { canAttempt, recordAttempt, reset } = useRetryController({
     id: useMemo(() => v4(), []),
-    maxAttempts: 3,
+    maxAttempts: MAX_ATTEMPTS,
   });
+
+  // helper to reset internal state
+  const resetInternal = useCallback(() => {
+    setCanRetry(true);
+    setIsUnhealthy(false);
+  }, [setCanRetry, setIsUnhealthy]);
 
   // When `canAttempt` transitions to false, start a timer to disable retries.
   useEffect(() => {
     if (!canAttempt) {
       const timeout = setTimeout(
         () => setCanRetry(false),
-        RETRY_TIMEOUT_PERIOD_MS
+        FALLBACK_TIMEOUT_PERIOD_MS
       );
       setIsUnhealthy(true);
 
@@ -44,16 +56,15 @@ export const usePersistenceRetryController = (): AnnotationRetryController => {
         setIsUnhealthy(false);
       };
     } else {
-      setCanRetry(true);
-      setIsUnhealthy(false);
+      resetInternal();
     }
   }, [canAttempt]);
 
+  // reset internal and controlled state
   const resetController = useCallback(() => {
     reset();
-    setIsUnhealthy(false);
-    setCanRetry(true);
-  }, [reset, setCanRetry]);
+    resetInternal();
+  }, [reset, resetInternal]);
 
   return useMemo(
     () => ({
