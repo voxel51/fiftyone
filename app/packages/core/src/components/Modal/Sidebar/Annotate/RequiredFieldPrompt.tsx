@@ -62,6 +62,7 @@ const RequiredFieldPrompt = ({ requiredField }: RequiredFieldPromptProps) => {
       </Text>
       <Button
         variant={Variant.Primary}
+        data-cy="activate-field-schema"
         disabled={!canManage || activating}
         onClick={handleAddField}
       >

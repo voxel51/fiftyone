@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SchemaManagerPom } from "src/oss/poms/schema-manager";
@@ -241,33 +241,51 @@ test.describe.serial("schema manager", () => {
     await schemaManager.assert.isDisabled();
   });
 
-  test("annotation enabled for patches view", async ({
+  test("patches view required field prompt activates schema and enters edit mode", async ({
     fiftyoneLoader,
     page,
     grid,
     modal,
     schemaManager,
   }) => {
-    // Start on detection dataset - annotation should be enabled
-    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
-    await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-    await schemaManager.assert.isEnabled();
-
-    // Switch to patches view
-    await modal.close();
+    // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
       searchParams: new URLSearchParams({ view: "patches" }),
     });
 
-    // Open first sample in the patches grid
+    // Open first patch in modal
     await grid.openFirstSample();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
 
-    // Annotation should be enabled for patches views
-    await schemaManager.assert.isEnabled();
+    // The required field prompt should appear since "predictions" has no active schema
+    await expect(page.getByText("Field not in label schema")).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByText("predictions")).toBeVisible();
+
+    // Click the activate button to initialize and activate the predictions schema
+    const activateButton = page.getByTestId("activate-field-schema");
+    await expect(activateButton).toBeEnabled();
+    await activateButton.click();
+
+    // After activation, the edit panel should appear with "Edit Detection"
+    await expect(page.getByText("Edit Detection")).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // Navigate to the source dataset and verify predictions is an active label field
+    await modal.close();
+    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
+    await grid.openFirstSample();
+    await modal.assert.isOpen();
+    await modal.sidebar.switchMode("annotate");
+    await schemaManager.open();
+    await schemaManager.assert.isOpen();
+    await schemaManager.assert.hasActiveFieldRows([
+      { name: "predictions", type: "Detections" },
+    ]);
+    await schemaManager.close();
   });
 
   test("annotation disabled for grouped dataset with no supported slices", async ({
