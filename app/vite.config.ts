@@ -1,10 +1,10 @@
-import { defineConfig as defineViteConfig, mergeConfig } from "vite";
-import { defineConfig as defineVitestConfig } from "vitest/config";
+import { defineConfig } from "vite";
 import relay from "vite-plugin-relay";
+import "vitest/config";
 
 const { DISABLE_COVERAGE } = process.env;
 
-const vitestConfig = defineVitestConfig({
+export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
@@ -27,9 +27,6 @@ const vitestConfig = defineVitestConfig({
       ],
     },
   },
-});
-
-const viteConfig = defineViteConfig({
   plugins: [relay],
   resolve: {
     alias: {
@@ -39,5 +36,3 @@ const viteConfig = defineViteConfig({
     extensions: [".mjs", ".js", ".mts", ".ts", ".jsx", ".tsx", ".json"],
   },
 });
-
-export default mergeConfig(viteConfig, vitestConfig);

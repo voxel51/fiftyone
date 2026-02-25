@@ -150,11 +150,7 @@ export class CommandContextManager {
    * @returns the current command context
    */
   public getActiveContext(): CommandContext {
-    const active = this.contextStack[this.contextStack.length - 1];
-    if (active) {
-      return active;
-    }
-    throw new Error("No active context");
+    return this.contextStack[this.contextStack.length - 1];
   }
 
   /**
@@ -232,13 +228,11 @@ export class CommandContextManager {
    * Fires any context listeners that are registered
    * TODO: currently unused because stack is fixed — will be needed after refactor
    */
-  /*
   private _fireListeners() {
     this.listeners.forEach((listener) => {
-      listener(this.getActiveContext().id);
+      listener(this.contextStack[this.contextStack.length - 1].id);
     });
   }
-  */
 
   /**
    * Handles the keydown event.  Only public for testing.
@@ -261,14 +255,12 @@ export class CommandContextManager {
     // Try to match key with all contexts starting from top of stack
     for (let i = this.contextStack.length - 1; i >= 0; i--) {
       const context = this.contextStack[i];
-      if (context) {
-        const match = context.handleKeyDown(event);
-        if (match.full && match.full.isEnabled()) {
-          await context.executeCommand(match.full);
-          event.stopPropagation();
-          event.preventDefault();
-          return;
-        }
+      const match = context.handleKeyDown(event);
+      if (match.full && match.full.isEnabled()) {
+        await context.executeCommand(match.full);
+        event.stopPropagation();
+        event.preventDefault();
+        return;
       }
     }
   }

@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "target": "ES2024",
+        "module": "ES2022",
+        "lib": ["ES2024", "DOM", "DOM.Iterable"],
+        "moduleResolution": "Node",
+        "sourceMap": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noImplicitAny": false,
+        "plugins": [{ "name": "typescript-plugin-css-modules" }]
+    },
+    "include": ["./src"]
+}
