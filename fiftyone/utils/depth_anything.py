@@ -336,6 +336,7 @@ def compute_multiview_depth(
     model_name="depth-anything/da3-large",
     *,
     process_res=504,
+    process_res_method="upper_bound_resize",
     use_ray_pose=False,
     infer_gs=False,
     export_feat_layers=None,
@@ -365,6 +366,7 @@ def compute_multiview_depth(
         filepaths: list of image file paths
         model_name ("depth-anything/da3-large"): DA3 model to use
         process_res (504): processing resolution in pixels
+        process_res_method ("upper_bound_resize"): the resize strategy
         use_ray_pose (False): whether to use ray-based pose estimation
         infer_gs (False): whether to predict Gaussian Splatting parameters
         export_feat_layers (None): optional list of transformer layer
@@ -388,6 +390,7 @@ def compute_multiview_depth(
     prediction = model.inference(
         filepaths,
         process_res=process_res,
+        process_res_method=process_res_method,
         use_ray_pose=use_ray_pose,
         infer_gs=infer_gs,
         export_feat_layers=export_feat_layers or [],
