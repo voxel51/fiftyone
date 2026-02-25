@@ -279,7 +279,7 @@ const buildPrimitiveMutationDelta = (
   // convert any undefined values to null so they are serialized
   // as null for the server
   const newValue = data ?? null;
-  const existingValue = get(sample, path) ?? (null as Primitive);
+  const existingValue = get(sample, path) ?? null;
 
   // If the value hasn't changed, return empty deltas
   if (arePrimitivesEqual(existingValue, newValue)) {
