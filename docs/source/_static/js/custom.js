@@ -830,7 +830,7 @@ function initOnboardingBanner() {
 // --- Landing: Keyboard Shortcut Hint ---
 function initSearchShortcut() {
   var badge = document.querySelector('.search-shortcut-badge');
-  if (\!badge) return;
+  if (!badge) return;
   var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   badge.textContent = isMac ? '\u2318K' : 'Ctrl+K';
 }
