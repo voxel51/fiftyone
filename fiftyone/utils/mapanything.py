@@ -72,6 +72,13 @@ class MapAnythingModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.use_amp = self.parse_bool(d, "use_amp", default=True)
         self.amp_dtype = self.parse_string(d, "amp_dtype", default="bf16")
 
+        _valid_amp_dtypes = ("bf16", "fp16", "fp32")
+        if self.amp_dtype not in _valid_amp_dtypes:
+            raise ValueError(
+                "amp_dtype must be one of %s, got '%s'"
+                % (_valid_amp_dtypes, self.amp_dtype)
+            )
+
 
 class MapAnythingModel(fout.TorchImageModel):
     """Wrapper for running
