@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "esModuleInterop": true,
+    "lib": ["ES2023"],
+    "plugins": [{ "name": "typescript-plugin-css-modules" }],
+    "target": "ES2022"
+  },
+  "extends": "../../tsconfig.json",
+  "include": ["./src/**/*"]
+}
