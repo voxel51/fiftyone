@@ -17,7 +17,7 @@ import SchemaManager from "./SchemaManager";
 import { labelSchemasData, showModal } from "./state";
 import type { AnnotationDisabledReason } from "./useCanAnnotate";
 import useEntries from "./useEntries";
-import useMissingSourceField from "./useMissingSourceField";
+import useSourceFieldToActivate from "./useSourceFieldToActivate";
 import useLabels from "./useLabels";
 import { usePrimitivesCount } from "./usePrimitivesCount";
 import { useAnnotationContextManager } from "./useAnnotationContextManager";
@@ -155,7 +155,7 @@ const Annotate = ({ disabledReason }: AnnotateProps) => {
   const { clear: clearUndo } = useUndoRedo(KnownContexts.ModalAnnotate);
 
   const isDisabled = disabledReason !== null;
-  const requiredField = useMissingSourceField();
+  const requiredField = useSourceFieldToActivate();
   const showSetup = useShowImportSchema(isDisabled, requiredField);
 
   useLabels();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSourceFieldFromStages } from "./useMissingSourceField";
+import { getSourceFieldFromStages } from "./useSourceFieldToActivate";
 
 const toPatches = (field: string) => ({
   _cls: "fiftyone.core.stages.ToPatches",

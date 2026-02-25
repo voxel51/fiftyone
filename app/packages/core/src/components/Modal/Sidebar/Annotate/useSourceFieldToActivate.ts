@@ -33,7 +33,8 @@ export function getSourceFieldFromStages(
 
     for (const stage of stages) {
       if (stage._cls === cls) {
-        return getStageKwarg<string>(stage, kwarg);
+        const value = getStageKwarg<string>(stage, kwarg);
+        if (value != null) return value;
       }
     }
   }
@@ -48,7 +49,7 @@ export function getSourceFieldFromStages(
  * Returns a {@link RequiredField} when the user needs to add the field,
  * or `null` when no action is needed.
  */
-export default function useMissingSourceField(): RequiredField | null {
+export default function useSourceFieldToActivate(): RequiredField | null {
   const isPatches = useRecoilValue(isPatchesView);
   const stages = useRecoilValue(view);
 

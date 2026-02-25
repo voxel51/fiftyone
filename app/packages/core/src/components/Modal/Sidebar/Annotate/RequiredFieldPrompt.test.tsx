@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
 import { InitializationStatus } from "./useAnnotationContextManager";
-import type { RequiredField } from "./useMissingSourceField";
+import type { RequiredField } from "./useSourceFieldToActivate";
 
 const mockActivateField = vi.fn(() =>
   Promise.resolve({ status: InitializationStatus.Success })

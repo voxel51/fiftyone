@@ -19,7 +19,7 @@ import { isEditing } from "./Edit";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
 import { activeLabelSchemas } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
-import type { RequiredField } from "./useMissingSourceField";
+import type { RequiredField } from "./useSourceFieldToActivate";
 import useShowModal from "./useShowModal";
 
 const DISABLED_DEFAULT =

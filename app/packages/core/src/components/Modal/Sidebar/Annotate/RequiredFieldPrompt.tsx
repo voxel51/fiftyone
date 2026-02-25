@@ -6,7 +6,7 @@ import {
   InitializationStatus,
   useAnnotationContextManager,
 } from "./useAnnotationContextManager";
-import type { RequiredField } from "./useMissingSourceField";
+import type { RequiredField } from "./useSourceFieldToActivate";
 
 interface RequiredFieldPromptProps {
   requiredField: RequiredField;
