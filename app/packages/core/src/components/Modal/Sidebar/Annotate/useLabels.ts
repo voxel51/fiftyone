@@ -220,6 +220,14 @@ export interface LabelsContext {
   addLabelToSidebar: (label: AnnotationLabel) => void;
 
   /**
+   * Look up an annotation label by its `_id`.
+   *
+   * @param id The `_id` of the label to find
+   * @returns The matching label, or `undefined`
+   */
+  getLabelById: (id: string) => AnnotationLabel | undefined;
+
+  /**
    * Remove a label from the annotation sidebar.
    *
    * @param labelId ID of label to remove
@@ -252,6 +260,14 @@ export const useLabelsContext = (): LabelsContext => {
   const updateLabelData = useUpdateLabelAtom();
   const setLabels = useSetAtom(labels);
 
+  const getLabelById = useAtomCallback(
+    useCallback(
+      (get, _set, id: string) =>
+        get(labels).find((label) => label.data._id === id),
+      []
+    )
+  );
+
   const removeLabelFromSidebar = useCallback(
     (labelId: string) =>
       setLabels((prev) => prev.filter((label) => label.data._id !== labelId)),
@@ -259,8 +275,13 @@ export const useLabelsContext = (): LabelsContext => {
   );
 
   return useMemo(
-    () => ({ addLabelToSidebar, removeLabelFromSidebar, updateLabelData }),
-    [addLabelToSidebar, removeLabelFromSidebar, updateLabelData]
+    () => ({
+      addLabelToSidebar,
+      getLabelById,
+      removeLabelFromSidebar,
+      updateLabelData,
+    }),
+    [addLabelToSidebar, getLabelById, removeLabelFromSidebar, updateLabelData]
   );
 };
 

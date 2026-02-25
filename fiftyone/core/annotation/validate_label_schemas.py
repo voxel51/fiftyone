@@ -416,7 +416,9 @@ def _validate_label_field_label_schema(
     )
     component = label_schema.get(foac.COMPONENT, None)
     settings = foac.LABEL_SETTINGS
-    values = label_schema.get(foac.CLASSES, None)
+
+    # if the user provided no classes, default to an empty list
+    values = label_schema.get(foac.CLASSES, [])
     if component in foac.VALUES_COMPONENTS:
         _validate_values_setting(field_name, values, str, key=foac.CLASSES)
         settings = settings.union({foac.CLASSES})
@@ -671,12 +673,6 @@ def _validate_values_setting(field_name, value, _type, key=foac.VALUES):
     if not isinstance(value, list):
         raise ValueError(
             f"'{key}' setting for field '{field_name}' must be a list"
-        )
-
-    if not value:
-        raise ValueError(
-            f"'{key}' setting for field '{field_name}' must have at least "
-            f"one value"
         )
 
     if len(value) > foac.VALUES_THRESHOLD:
