@@ -1,6 +1,6 @@
 import { LoadingSpinner } from "@fiftyone/components";
 import { EntryKind, isGeneratedView } from "@fiftyone/state";
-import { Typography } from "@mui/material";
+import { Text, TextColor, TextVariant } from "@voxel51/voodo";
 import { atom, useAtomValue } from "jotai";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
@@ -52,13 +52,25 @@ const Container = styled.div`
   overflow: auto;
 `;
 
+const EmptyLabelsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+`;
+
 const Loading = () => {
   return (
     <Container>
       <LoadingSpinner />
-      <Typography color="secondary" padding="1rem 0">
+      <Text
+        color={TextColor.Secondary}
+        variant={TextVariant.Md}
+        style={{ padding: "1rem 0" }}
+      >
         Loading
-      </Typography>
+      </Text>
     </Container>
   );
 };
@@ -87,6 +99,24 @@ const AnnotateSidebar = () => {
             const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.EMPTY_ANNOTATIONS) {
+            return {
+              children: (
+                <EmptyLabelsContainer>
+                  <Text variant={TextVariant.Lg}>No labels to annotate</Text>
+                  <Text
+                    color={TextColor.Secondary}
+                    variant={TextVariant.Md}
+                    style={{ textAlign: "center" }}
+                  >
+                    Check that your fields are enabled on Explore.
+                  </Text>
+                </EmptyLabelsContainer>
+              ),
               disabled: true,
             };
           }
