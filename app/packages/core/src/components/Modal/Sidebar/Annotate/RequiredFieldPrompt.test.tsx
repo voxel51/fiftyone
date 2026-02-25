@@ -8,7 +8,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
-import { InitializationStatus } from "./useInitializeFieldSchema";
+import { InitializationStatus } from "./useAnnotationContextManager";
 import type { RequiredField } from "./useMissingSourceField";
 
 const mockActivateField = vi.fn(() =>
@@ -20,17 +20,16 @@ vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
-vi.mock("./useAnnotationContextManager", () => ({
-  useAnnotationContextManager: vi.fn(() => ({
-    activateField: mockActivateField,
-  })),
-}));
-
-vi.mock("./useInitializeFieldSchema", async (importOriginal) => {
+vi.mock("./useAnnotationContextManager", async (importOriginal) => {
   const actual = await importOriginal<
-    typeof import("./useInitializeFieldSchema")
+    typeof import("./useAnnotationContextManager")
   >();
-  return { ...actual };
+  return {
+    ...actual,
+    useAnnotationContextManager: vi.fn(() => ({
+      activateField: mockActivateField,
+    })),
+  };
 });
 
 vi.mock("@fiftyone/state", () => ({

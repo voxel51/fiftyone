@@ -2,8 +2,10 @@ import { useNotification } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
 import React, { useCallback, useState } from "react";
 import useCanManageSchema from "./useCanManageSchema";
-import { useAnnotationContextManager } from "./useAnnotationContextManager";
-import { InitializationStatus } from "./useInitializeFieldSchema";
+import {
+  InitializationStatus,
+  useAnnotationContextManager,
+} from "./useAnnotationContextManager";
 import type { RequiredField } from "./useMissingSourceField";
 
 interface RequiredFieldPromptProps {

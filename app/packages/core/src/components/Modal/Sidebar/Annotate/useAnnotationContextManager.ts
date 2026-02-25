@@ -3,15 +3,24 @@ import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
+  useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
-import useInitializeFieldSchema, {
-  InitializationStatus,
-} from "./useInitializeFieldSchema";
+import useCanManageSchema from "./useCanManageSchema";
+import { useSchemaManager } from "./useSchemaManager";
+
+/**
+ * Status code when attempting to initialize annotation schema.
+ */
+export enum InitializationStatus {
+  InsufficientPermissions,
+  ServerError,
+  Success,
+}
 
 /**
  * Result type when attempting to enter annotation context.
@@ -92,30 +101,72 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
-  const initializeFieldSchema = useInitializeFieldSchema();
+  const schemaManager = useSchemaManager();
+  const sampleScanLimit = useQueryPerformanceSampleLimit();
+  const canManageSchema = useCanManageSchema();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
 
   const activateField = useCallback(
     async (field: string): Promise<EnterResult> => {
+      // activate only the specified field
       setActiveFields([field]);
+
+      // clear annotation state
       setLabelSchema(null);
       setActiveSchemaPaths(null);
 
-      const result = await initializeFieldSchema(field);
+      // create and activate the field schema
+      try {
+        // check for existing schema
+        let listSchemaResponse = await schemaManager.listSchemas({});
 
-      if (
-        result.status === InitializationStatus.Success &&
-        isPrimitive(field)
-      ) {
-        setActivePrimitive(field);
+        // if it doesn't exist, create it
+        if (!listSchemaResponse.label_schemas[field]?.label_schema) {
+          if (!canManageSchema) {
+            setLabelSchema(listSchemaResponse.label_schemas);
+            return {
+              status: InitializationStatus.InsufficientPermissions,
+            };
+          }
+
+          await schemaManager.initializeSchema({
+            field,
+            scan_samples: true,
+            limit: sampleScanLimit,
+          });
+        }
+
+        if (canManageSchema) {
+          await schemaManager.activateSchemas({ fields: [field] });
+        }
+
+        // refresh annotation state
+        listSchemaResponse = await schemaManager.listSchemas({});
+        setLabelSchema(listSchemaResponse.label_schemas);
+        setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
+
+        // if the field is a primitive, activate it directly
+        if (isPrimitive(field)) {
+          setActivePrimitive(field);
+        }
+
+        return {
+          status: InitializationStatus.Success,
+        };
+      } catch (error) {
+        console.error(`Error initializing schema for field ${field}`, error);
+        return {
+          status: InitializationStatus.ServerError,
+          message: error instanceof Error ? error.message : `${error}`,
+        };
       }
-
-      return result;
     },
     [
-      initializeFieldSchema,
+      canManageSchema,
       isPrimitive,
+      sampleScanLimit,
+      schemaManager,
       setActiveFields,
       setActivePrimitive,
       setActiveSchemaPaths,

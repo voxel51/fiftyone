@@ -262,7 +262,7 @@ test.describe.serial("schema manager", () => {
     await expect(page.getByText("Field not in label schema")).toBeVisible({
       timeout: 5_000,
     });
-    await expect(page.getByText("predictions")).toBeVisible();
+    await expect(page.getByTestId("activate-field-schema")).toBeVisible();
 
     // Click the activate button to initialize and activate the predictions schema
     const activateButton = page.getByTestId("activate-field-schema");
@@ -274,13 +274,23 @@ test.describe.serial("schema manager", () => {
       timeout: 10_000,
     });
 
+    // In patches view, the Schema button should not be visible
+    // (AnnotateSidebar returns null when isGenerated is true)
+    await expect(
+      page.getByRole("button", { name: "Schema" })
+    ).not.toBeVisible();
+
     // Navigate to the source dataset and verify predictions is an active label field
     await modal.close();
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
     await grid.openFirstSample();
     await modal.assert.isOpen();
     await modal.sidebar.switchMode("annotate");
-    await schemaManager.open();
+
+    // Schemas are now active, so the "Schema" button in the actions bar opens the manager
+    const schemaButton = page.getByRole("button", { name: "Schema" });
+    await schemaButton.waitFor({ state: "visible", timeout: 10_000 });
+    await schemaButton.click();
     await schemaManager.assert.isOpen();
     await schemaManager.assert.hasActiveFieldRows([
       { name: "predictions", type: "Detections" },
