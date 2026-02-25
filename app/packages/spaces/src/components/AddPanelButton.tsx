@@ -20,7 +20,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
   const isModalActive = useRecoilValue(fos.isModalActive);
   const panelsPredicate = useCallback(
     (panel: PluginComponentRegistration) => {
-      if (isModalActive && panel.panelOptions?.modalFileRenderer) {
+      if (panel.panelOptions?.renderClaims) {
         return false;
       }
 

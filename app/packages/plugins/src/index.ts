@@ -7,8 +7,11 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import type { ModalFileRenderer } from "./modal-file-renderer";
-import { hasModalFileRendererMatchers } from "./modal-file-renderer";
+import type { RenderClaims } from "./render-claims";
+import {
+  getUnsupportedRenderClaimModeExtensions,
+  hasRenderClaimMatchers,
+} from "./render-claims";
 import { pluginsLoaderAtom } from "./state";
 
 declare global {
@@ -380,10 +383,10 @@ type PanelOptions = {
   category?: CategoryID;
 
   /**
-   * Optional file matching rules that allow this panel to override modal file
-   * rendering when the current media matches.
+   * Optional file matching rules that allow this panel to claim rendering for
+   * matching non-native files in modal and/or grid rendering flows.
    */
-  modalFileRenderer?: ModalFileRenderer;
+  renderClaims?: RenderClaims;
 
   /**
    * Whether the plugin is in alpha.
@@ -508,16 +511,24 @@ class PluginComponentRegistry {
       `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
 
-    if (registration.panelOptions?.modalFileRenderer) {
+    if (registration.panelOptions?.renderClaims) {
       warn(
         registration.type === PluginComponentType.Panel,
-        `${name} declared panelOptions.modalFileRenderer but is not a Panel Plugin Component`
+        `${name} declared panelOptions.renderClaims but is not a Panel Plugin Component`
       );
       warn(
-        hasModalFileRendererMatchers(
-          registration.panelOptions.modalFileRenderer
-        ),
-        `${name} declared panelOptions.modalFileRenderer without any matchers`
+        hasRenderClaimMatchers(registration.panelOptions.renderClaims),
+        `${name} declared panelOptions.renderClaims without any matchers`
+      );
+
+      const unsupportedModeExtensions = getUnsupportedRenderClaimModeExtensions(
+        registration.panelOptions.renderClaims
+      );
+      warn(
+        unsupportedModeExtensions.length === 0,
+        `${name} declared panelOptions.renderClaims with unsupported modeExtensions: ${unsupportedModeExtensions.join(
+          ", "
+        )}`
       );
     }
 
@@ -592,12 +603,25 @@ export function usePluginSettings<T>(
 
 export * from "./state";
 
-export { matchesModalFileRenderer } from "./modal-file-renderer";
+export {
+  getFileExtension,
+  getMatchingRenderClaimsPanel,
+  getRenderClaimsContext,
+  getSelectedMediaPath,
+  hasRenderClaimModeExtension,
+  matchesRenderClaims,
+  RENDER_CLAIM_MODE_EXTENSION_GRID,
+  RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE,
+  sortRenderClaimPanelsByPriority,
+} from "./render-claims";
 export type {
-  ModalFileRenderer,
-  ModalFileRendererContext,
-  ModalFileRendererMatchContext,
-} from "./modal-file-renderer";
+  RenderClaimModeExtension,
+  RenderClaimPanelLike,
+  RenderClaims,
+  RenderClaimsContext,
+  RenderClaimSelectionOptions,
+  RenderClaimsMatchContext,
+} from "./render-claims";
 
 type RegistryEvent = "register" | "unregister";
 type RegistryEventHandler = (event: RegistryEvent) => void;
