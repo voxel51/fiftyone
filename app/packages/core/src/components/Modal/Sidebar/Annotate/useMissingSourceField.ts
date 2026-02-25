@@ -22,8 +22,7 @@ const STAGE_FIELD_EXTRACTORS: {
 ];
 
 /**
- * Extracts the source field name from the view stages for the current
- * generated view type.
+ * Extracts the source field name from the view stages for stages with internal state
  */
 export function getSourceFieldFromStages(
   stages: { _cls: string; kwargs: [string, unknown][] }[],
@@ -53,7 +52,7 @@ export default function useMissingSourceField(): RequiredField | null {
   const isPatches = useRecoilValue(isPatchesView);
   const stages = useRecoilValue(view);
 
-  // These relfect the schemas defined on the src dataset.
+  // These reflect the schemas defined on the src dataset.
   const schemas = useAtomValue(labelSchemasData);
   const active = useAtomValue(activeLabelSchemas);
 
