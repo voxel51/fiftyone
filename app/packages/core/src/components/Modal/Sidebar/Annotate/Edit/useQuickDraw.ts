@@ -1,12 +1,18 @@
 import { DETECTION } from "@fiftyone/utilities";
-import { atom, useAtom, useAtomValue } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { atomFamily, useAtomCallback } from "jotai/utils";
 import { countBy, maxBy } from "lodash";
 import { useCallback, useMemo, useRef } from "react";
 import { fieldType, isFieldReadOnly, labelSchemaData } from "../state";
 import { labelsByPath } from "../useLabels";
 import { defaultField, useAnnotationContext } from "./state";
-import { BaseOverlay, useLighter } from "@fiftyone/lighter";
+import {
+  BaseOverlay,
+  UNDEFINED_LIGHTER_SCENE_ID,
+  useLighter,
+  useLighterEventHandler,
+} from "@fiftyone/lighter";
+import useCreate from "./useCreate";
 
 /**
  * Flag to track if quick draw mode is active.
@@ -28,11 +34,18 @@ const lastUsedDetectionFieldAtom = atom<string | null>(null);
  * Tracks the last-used label value (class) for each field path.
  * Used for auto-assignment when creating new labels in quick draw mode.
  */
-const lastUsedLabelByFieldAtom = atomFamily((field: string) =>
+const lastUsedLabelByFieldAtom = atomFamily((_field: string) =>
   atom<string | null>(null)
 );
 
 const detectionTypes = new Set(["Detection", "Detections"]);
+
+/**
+ * Tracks the last processed `lighter:overlay-create` event ID so that only one
+ * `useQuickDraw` instance handles each event, even though the hook is
+ * called in multiple components.
+ */
+const lastProcessedCreateIdAtom = atom<string | null>(null);
 
 /**
  * Centralized hook for managing quick draw mode state and operations.
@@ -41,11 +54,17 @@ export const useQuickDraw = () => {
   const [quickDrawActive, setQuickDrawActive] = useAtom(
     _dangerousQuickDrawActiveAtom
   );
-  const [lastUsedField, setLastUsedField] = useAtom(lastUsedDetectionFieldAtom);
+  const setLastUsedField = useSetAtom(lastUsedDetectionFieldAtom);
   const labelsMap = useAtomValue(labelsByPath);
   const defaultDetectionField = useAtomValue(defaultField(DETECTION));
   const { scene, addOverlay } = useLighter();
   const { selectedLabel } = useAnnotationContext();
+
+  const createDetection = useCreate(DETECTION);
+
+  const useEventHandler = useLighterEventHandler(
+    scene?.getEventChannel() ?? UNDEFINED_LIGHTER_SCENE_ID
+  );
 
   // Using refs to prevent shared closure contexts from retaining old Scene2D instances.
   const sceneRef = useRef(scene);
@@ -90,6 +109,7 @@ export const useQuickDraw = () => {
 
   /**
    * Enable quick draw mode for Detection annotations.
+   * The actual overlay/label creation is deferred until the user mouses down in the scene.
    */
   const enableQuickDraw = useCallback(() => {
     setQuickDrawActive(true);
@@ -97,10 +117,16 @@ export const useQuickDraw = () => {
 
   /**
    * Disable quick draw mode.
-   * Resets the active flag to false. Last-used field and label atoms
    */
   const disableQuickDraw = useCallback(() => {
     setQuickDrawActive(false);
+  }, [setQuickDrawActive]);
+
+  /**
+   * Toggle quick draw mode.
+   */
+  const toggleQuickDraw = useCallback(() => {
+    setQuickDrawActive((prev) => !prev);
   }, [setQuickDrawActive]);
 
   /**
@@ -207,129 +233,87 @@ export const useQuickDraw = () => {
     [getLabelSchema, getLastUsedLabel, labelsMap]
   );
 
-  /**
-   * Track the last-used detection field and label value after a successful save.
-   * This updates the auto-assignment state for future label creation in quick draw mode.
-   *
-   * Should be called after each detection is successfully saved in quick draw mode.
-   */
-  const trackLastUsedDetection = useCallback(
-    (fieldPath: string, labelValue?: string) => {
-      // Update last-used detection field
-      setLastUsedField(fieldPath);
-
-      // Update last-used label for this field (if label exists)
-      if (labelValue) {
-        setLastUsedLabel(fieldPath, labelValue);
+  const claimCreateEvent = useAtomCallback(
+    useCallback((get, set, eventId: string) => {
+      if (get(lastProcessedCreateIdAtom) === eventId) {
+        return false;
       }
-    },
-    [setLastUsedField, setLastUsedLabel]
+
+      set(lastProcessedCreateIdAtom, eventId);
+
+      return true;
+    }, [])
   );
 
   /**
-   * This function manages both the atom state and overlay updates, bypassing the
-   * normal currentField setter which would wipe out the label data.
+   * Handles the `lighter:overlay-create` event fired by `InteractionManager`
+   * on pointer-down when no interactive handler exists.
    *
-   * @param newFieldPath - The new field path to switch to
-   * @param currentLabel - The current label atom/data
-   * @param setCurrent - Setter function for the current atom
-   * @returns The complete updated data object
+   * 1. Finalize the previous detection (exit interactive mode, persist overlay,
+   *    remember field/label for auto-assignment).
+   * 2. Resolve field and label for the next detection.
+   * 3. Create the next detection.
    */
-  const handleQuickDrawFieldChange = useCallback(
-    (newFieldPath: string, currentLabel: any, setCurrent: any): any => {
-      if (!quickDrawActive || !currentLabel) {
-        return null;
-      }
+  useEventHandler(
+    "lighter:overlay-create",
+    useCallback(
+      (payload) => {
+        if (!claimCreateEvent(payload.eventId)) {
+          return;
+        }
 
-      const newLabelValue = getQuickDrawDetectionLabel(newFieldPath);
+        // Finalize the previous detection if one exists
+        const currentScene = sceneRef.current;
+        const currentLabel = selectedLabelRef.current;
 
-      const newData = {
-        ...currentLabel.data,
-        ...(newLabelValue ? { label: newLabelValue } : {}),
-      };
+        if (currentLabel && quickDrawActive) {
+          if (
+            currentScene &&
+            !currentScene.isDestroyed &&
+            currentScene.renderLoopActive
+          ) {
+            currentScene.exitInteractiveMode();
+            if (currentLabel.overlay) {
+              addOverlay(currentLabel.overlay as BaseOverlay);
+            }
+          }
 
-      currentLabel.overlay?.updateField(newFieldPath);
-      currentLabel.overlay?.updateLabel(newData);
-
-      setCurrent({ ...currentLabel, path: newFieldPath, data: newData });
-
-      return newData;
-    },
-    [quickDrawActive, getQuickDrawDetectionLabel]
-  );
-
-  /**
-   * Handle the transition from creating one detection to another.
-   *
-   * This effectively finalizes the current bounding box and creates a new
-   * drawing session.
-   */
-  const handleQuickDrawTransition = useCallback(
-    /**
-     * Closes the current drawing session and initializes a new detection.
-     *
-     * @param initDetection Function to initialize a new detection label
-     */
-    (initDetection: () => void) => {
-      const currentScene = sceneRef.current;
-      const currentLabel = selectedLabelRef.current;
-
-      if (currentLabel && quickDrawActive) {
-        // Always exit interactive mode after save
-        // This ensures clean state transition
-        if (
-          currentScene &&
-          !currentScene.isDestroyed &&
-          currentScene.renderLoopActive
-        ) {
-          currentScene.exitInteractiveMode();
-          if (currentLabel.overlay) {
-            addOverlay(currentLabel.overlay as BaseOverlay);
+          setLastUsedField(currentLabel.path);
+          if (currentLabel.data.label) {
+            setLastUsedLabel(currentLabel.path, currentLabel.data.label);
           }
         }
 
-        // Track last-used detection field and label for auto-assignment
-        trackLastUsedDetection(currentLabel.path, currentLabel.data.label);
-
-        // Create next detection immediately
-        // This will enter interactive mode with a new handler
-        initDetection();
-      }
-    },
-    [addOverlay, quickDrawActive, trackLastUsedDetection]
+        // Create the next detection
+        const field = getQuickDrawDetectionField() ?? undefined;
+        const labelValue = field
+          ? getQuickDrawDetectionLabel(field) ?? undefined
+          : undefined;
+        createDetection({ field, labelValue });
+      },
+      [
+        addOverlay,
+        claimCreateEvent,
+        createDetection,
+        getQuickDrawDetectionField,
+        getQuickDrawDetectionLabel,
+        quickDrawActive,
+        setLastUsedField,
+        setLastUsedLabel,
+      ]
+    )
   );
 
   return useMemo(
     () => ({
       // State (read-only)
       quickDrawActive,
-      lastUsedDetectionField: lastUsedField,
 
       // Mode control (for UI components)
       enableQuickDraw,
       disableQuickDraw,
-
-      // Auto-assignment (for useCreate)
-      getQuickDrawDetectionField,
-      getQuickDrawDetectionLabel,
-
-      // Tracking and transitions
-      trackLastUsedDetection,
-      handleQuickDrawTransition,
-
-      // Field switching (for Field component)
-      handleQuickDrawFieldChange,
+      toggleQuickDraw,
     }),
-    [
-      quickDrawActive,
-      lastUsedField,
-      enableQuickDraw,
-      disableQuickDraw,
-      getQuickDrawDetectionField,
-      getQuickDrawDetectionLabel,
-      handleQuickDrawTransition,
-      trackLastUsedDetection,
-      handleQuickDrawFieldChange,
-    ]
+    [quickDrawActive, enableQuickDraw, disableQuickDraw, toggleQuickDraw]
   );
 };
