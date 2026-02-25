@@ -11,6 +11,7 @@ import logging
 import os
 
 import numpy as np
+from PIL import Image
 
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
@@ -93,8 +94,6 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                 sky_masks = sky_masks.detach().cpu().numpy()
             if len(sky_masks.shape) == 2:
                 sky_masks = sky_masks[np.newaxis, ...]
-
-        from PIL import Image
 
         width, height = frame_size
         results = []
