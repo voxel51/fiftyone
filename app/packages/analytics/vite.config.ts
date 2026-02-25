@@ -1,7 +1,7 @@
-import { UserConfig } from "vite";
+import { ESBuildOptions, UserConfig } from "vite";
 
 export default <UserConfig>{
-  esbuild: true,
+  esbuild: {} as ESBuildOptions,
   build: {
     lib: {
       entry: "src/index.ts",

@@ -10,9 +10,13 @@ import usingAnalytics from "./usingAnalytics";
  * service.
  */
 export default function useTrackEvent() {
-  const info = useRecoilValue<AnalyticsInfo>(analyticsInfo);
+  const info = useRecoilValue<AnalyticsInfo | null>(analyticsInfo);
   return useCallback(
-    (eventName: string, properties?: Record<string, any>) => {
+    (eventName: string, properties?: Record<string, unknown>) => {
+      if (!info) {
+        console.warn("Analytics not initialized");
+        return;
+      }
       try {
         const analytics = usingAnalytics(info);
         analytics.trackEvent(eventName, properties);
