@@ -285,6 +285,51 @@ class DepthAnythingV3Model(fout.TorchImageModel):
             output["aux"] = prediction.aux
         return output
 
+    def compute_multiview_depth(
+        self,
+        filepaths,
+        *,
+        extrinsics=None,
+        intrinsics=None,
+    ):
+        """Computes multi-view depth using the loaded model.
+
+        Args:
+            filepaths: list of image file paths
+            extrinsics (None): optional ``(N, 4, 4)`` camera matrices
+            intrinsics (None): optional ``(N, 3, 3)`` intrinsic matrices
+
+        Returns:
+            list of :class:`fiftyone.core.labels.Heatmap` instances
+        """
+        prediction = self._model.inference(
+            filepaths,
+            process_res=self.config.process_res,
+            process_res_method=self.config.process_res_method,
+            infer_gs=self.config.infer_gs,
+            use_ray_pose=self.config.use_ray_pose,
+            export_feat_layers=self.config.export_feat_layers or [],
+            extrinsics=extrinsics,
+            intrinsics=intrinsics,
+        )
+
+        output = {"depth": prediction.depth, "is_metric": self.config.is_metric}
+        if prediction.conf is not None:
+            output["confidence"] = prediction.conf
+        if prediction.sky is not None:
+            output["sky"] = prediction.sky
+        if prediction.extrinsics is not None:
+            output["extrinsics"] = prediction.extrinsics
+        if prediction.intrinsics is not None:
+            output["intrinsics"] = prediction.intrinsics
+        if self.config.infer_gs and prediction.gaussians is not None:
+            output["gaussians"] = prediction.gaussians
+        if prediction.aux:
+            output["aux"] = prediction.aux
+
+        processor = DepthAnythingV3OutputProcessor()
+        return processor(output, (None, None))
+
 
 def compute_multiview_depth(
     filepaths,
