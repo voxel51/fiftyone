@@ -322,24 +322,24 @@ const buildPrimitiveMutationDelta = (
   data: Primitive,
   op?: OpType
 ): JSONDeltas => {
-  const existingValue = get(sample, path) as Primitive;
+  // convert any undefined values to null so they are serialized
+  // as null for the server
+  const newValue = data ?? null;
+  const existingValue = get(sample, path) ?? null;
 
   // If the value hasn't changed, return empty deltas
-  if (arePrimitivesEqual(existingValue, data)) {
+  if (arePrimitivesEqual(existingValue, newValue)) {
     return [];
   }
 
-  const delta = { op: "replace", path: "", value: data };
-
+  // we leave path empty because buildJsonPath will prepend the label path
   if (op === "delete") {
-    delta.op = "remove";
-    delete delta.value;
+    return [{ op: "remove", path: "" }];
   } else if (op === "add") {
-    delta.op = "add";
+    return [{ op: "add", path: "", value: newValue }];
+  } else {
+    return [{ op: "replace", path: "", value: newValue }];
   }
-
-  // Return a replace operation with empty path - buildJsonPath will prepend the label path
-  return [delta];
 };
 
 /**

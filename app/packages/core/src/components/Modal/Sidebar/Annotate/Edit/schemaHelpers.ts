@@ -213,6 +213,7 @@ export const createJsonInput = (name: string): SchemaType => {
     view: {
       name: "JsonEditorView",
       component: "JsonEditorView",
+      height: 200,
       label: name,
     },
   };
