@@ -3,7 +3,7 @@ div.iconContainer {
   justify-content: flex-end;
   height: 100%;
   align-items: center;
-  column-gap: 0.5rem;
+  column-gap: 2px;
   padding: 1rem;
 }
 
@@ -12,6 +12,14 @@ a.iconLink {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  padding: 4px;
+}
+
+a.iconLink:hover {
+  background-color: var(--fo-palette-background-level2);
 }
 
 a.iconLink svg {

@@ -106,7 +106,9 @@ const Nav: React.FC<
             }}
             sx={{
               color: (theme) => theme.palette.text.secondary,
-              pr: 0,
+              m: 0,
+              height: "32px",
+              width: "32px",
             }}
           >
             {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
