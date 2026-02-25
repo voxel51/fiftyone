@@ -61,7 +61,7 @@ describe("RequiredFieldPrompt", () => {
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
 
     expect(screen.getByText("ground_truth")).toBeTruthy();
-    expect(screen.getByText(/field not in schema/i)).toBeTruthy();
+    expect(screen.getByText(/field not in label schema/i)).toBeTruthy();
   });
 
   it("renders the add button with the field name", () => {
