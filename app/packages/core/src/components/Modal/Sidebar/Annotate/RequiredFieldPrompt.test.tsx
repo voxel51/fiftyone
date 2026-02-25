@@ -8,37 +8,33 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import React from "react";
 import RequiredFieldPrompt from "./RequiredFieldPrompt";
+import { InitializationStatus } from "./useInitializeFieldSchema";
 import type { RequiredField } from "./useMissingSourceField";
 
-const mockInitializeSchema = vi.fn(() => Promise.resolve());
-const mockActivateSchemas = vi.fn(() => Promise.resolve());
-const mockListSchemas = vi.fn(() =>
-  Promise.resolve({ label_schemas: {}, active_label_schemas: [] })
+const mockActivateField = vi.fn(() =>
+  Promise.resolve({ status: InitializationStatus.Success })
 );
-const mockSetLabelSchema = vi.fn();
-const mockSetActiveSchemaPaths = vi.fn();
+const mockNotify = vi.fn();
 
 vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
 
-vi.mock("./useSchemaManager", () => ({
-  useSchemaManager: vi.fn(() => ({
-    initializeSchema: mockInitializeSchema,
-    activateSchemas: mockActivateSchemas,
-    listSchemas: mockListSchemas,
+vi.mock("./useAnnotationContextManager", () => ({
+  useAnnotationContextManager: vi.fn(() => ({
+    activateField: mockActivateField,
   })),
 }));
+
+vi.mock("./useInitializeFieldSchema", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("./useInitializeFieldSchema")
+  >();
+  return { ...actual };
+});
 
 vi.mock("@fiftyone/state", () => ({
-  useQueryPerformanceSampleLimit: vi.fn(() => 1000),
-}));
-
-vi.mock("./state", () => ({
-  useAnnotationSchemaContext: vi.fn(() => ({
-    setLabelSchema: mockSetLabelSchema,
-    setActiveSchemaPaths: mockSetActiveSchemaPaths,
-  })),
+  useNotification: vi.fn(() => mockNotify),
 }));
 
 describe("RequiredFieldPrompt", () => {
@@ -50,11 +46,6 @@ describe("RequiredFieldPrompt", () => {
   const fieldWithoutSchema: RequiredField = {
     field: "ground_truth",
     hasSchema: false,
-  };
-
-  const fieldWithSchema: RequiredField = {
-    field: "predictions",
-    hasSchema: true,
   };
 
   it("renders the field name in the prompt text", () => {
@@ -74,41 +65,33 @@ describe("RequiredFieldPrompt", () => {
     expect(button.disabled).toBe(false);
   });
 
-  it("calls initializeSchema then activateSchemas when field has no schema", async () => {
+  it("calls activateField on the context manager when clicked", async () => {
     render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
 
-    const button = screen.getByRole("button", {
-      name: /add "ground_truth" to schema/i,
-    });
-    fireEvent.click(button);
+    fireEvent.click(
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+    );
 
     await waitFor(() => {
-      expect(mockInitializeSchema).toHaveBeenCalledWith({
-        field: "ground_truth",
-        scan_samples: true,
-        limit: 1000,
-      });
-      expect(mockActivateSchemas).toHaveBeenCalledWith({
-        fields: ["ground_truth"],
-      });
-      expect(mockListSchemas).toHaveBeenCalled();
-      expect(mockSetLabelSchema).toHaveBeenCalled();
-      expect(mockSetActiveSchemaPaths).toHaveBeenCalled();
+      expect(mockActivateField).toHaveBeenCalledWith("ground_truth");
     });
   });
 
-  it("skips initializeSchema when field already has a schema", async () => {
-    render(<RequiredFieldPrompt requiredField={fieldWithSchema} />);
-
-    const button = screen.getByRole("button", {
-      name: /add "predictions" to schema/i,
+  it("shows error notification on failure", async () => {
+    mockActivateField.mockResolvedValueOnce({
+      status: InitializationStatus.ServerError,
+      message: "something went wrong",
     });
-    fireEvent.click(button);
+
+    render(<RequiredFieldPrompt requiredField={fieldWithoutSchema} />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /add "ground_truth" to schema/i })
+    );
 
     await waitFor(() => {
-      expect(mockInitializeSchema).not.toHaveBeenCalled();
-      expect(mockActivateSchemas).toHaveBeenCalledWith({
-        fields: ["predictions"],
+      expect(mockNotify).toHaveBeenCalledWith({
+        msg: 'Failed to add "ground_truth" to schema',
+        variant: "error",
       });
     });
   });

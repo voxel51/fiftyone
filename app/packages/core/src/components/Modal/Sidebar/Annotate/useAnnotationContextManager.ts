@@ -3,24 +3,15 @@ import {
   type ContextManager,
   DefaultContextManager,
   useActiveModalFields,
-  useQueryPerformanceSampleLimit,
 } from "@fiftyone/state";
 import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { usePrimitiveController } from "./Edit/useActivePrimitive";
 import useSave from "./Edit/useSave";
 import { useAnnotationSchemaContext } from "./state";
-import useCanManageSchema from "./useCanManageSchema";
-import { useSchemaManager } from "./useSchemaManager";
-
-/**
- * Status code when attempting to initialize annotation schema.
- */
-export enum InitializationStatus {
-  InsufficientPermissions,
-  ServerError,
-  Success,
-}
+import useInitializeFieldSchema, {
+  InitializationStatus,
+} from "./useInitializeFieldSchema";
 
 /**
  * Result type when attempting to enter annotation context.
@@ -34,6 +25,17 @@ export type EnterResult = {
  * Manager which provides methods for stateful entry-into and exit-from annotation mode.
  */
 export interface AnnotationContextManager {
+  /**
+   * Initialize and activate a field's annotation schema within an
+   * already-active annotation context.
+   *
+   * Use this when the annotation context is already entered (e.g. the
+   * Annotate tab is mounted) and you need to activate a specific field.
+   *
+   * @param field The field name to initialize and activate
+   */
+  activateField: (field: string) => Promise<EnterResult>;
+
   /**
    * Enter annotation mode, performing any required setup for the specified `path`.
    *
@@ -90,67 +92,32 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   const [activeFields, setActiveFields] = useActiveModalFields();
   const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
-  const schemaManager = useSchemaManager();
-  const sampleScanLimit = useQueryPerformanceSampleLimit();
-  const canManageSchema = useCanManageSchema();
+  const initializeFieldSchema = useInitializeFieldSchema();
   const { isPrimitive, setActivePrimitive } = usePrimitiveController();
   const { reset: clearStaleMutations } = useSampleMutationManager();
 
-  const initializeFieldSchema = useCallback(
-    async (field: string) => {
-      // activate only the specified field
+  const activateField = useCallback(
+    async (field: string): Promise<EnterResult> => {
       setActiveFields([field]);
-
-      // clear annotation state
       setLabelSchema(null);
       setActiveSchemaPaths(null);
 
-      // create and activate the field schema
-      try {
-        // check for existing schema
-        let listSchemaResponse = await schemaManager.listSchemas({});
+      const result = await initializeFieldSchema(field);
 
-        // if it doesn't exist, create it
-        if (!listSchemaResponse.label_schemas[field]?.label_schema) {
-          if (!canManageSchema) {
-            setLabelSchema(listSchemaResponse.label_schemas);
-            return {
-              status: InitializationStatus.InsufficientPermissions,
-            };
-          }
-
-          await schemaManager.initializeSchema({
-            field,
-            scan_samples: true,
-            limit: sampleScanLimit,
-          });
-        }
-
-        if (canManageSchema) {
-          await schemaManager.activateSchemas({ fields: [field] });
-        }
-
-        // refresh annotation state
-        listSchemaResponse = await schemaManager.listSchemas({});
-        setLabelSchema(listSchemaResponse.label_schemas);
-        setActiveSchemaPaths(listSchemaResponse.active_label_schemas);
-
-        return {
-          status: InitializationStatus.Success,
-        };
-      } catch (error) {
-        console.error(`Error initializing schema for field ${field}`, error);
-        return {
-          status: InitializationStatus.ServerError,
-          message: error instanceof Error ? error.message : `${error}`,
-        };
+      if (
+        result.status === InitializationStatus.Success &&
+        isPrimitive(field)
+      ) {
+        setActivePrimitive(field);
       }
+
+      return result;
     },
     [
-      canManageSchema,
-      sampleScanLimit,
-      schemaManager,
+      initializeFieldSchema,
+      isPrimitive,
       setActiveFields,
+      setActivePrimitive,
       setActiveSchemaPaths,
       setLabelSchema,
     ]
@@ -179,15 +146,7 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
       // initialize and activate field schema if specified
       if (field) {
-        result = await initializeFieldSchema(field);
-
-        // if the field is a primitive, activate it directly
-        if (
-          result.status === InitializationStatus.Success &&
-          isPrimitive(field)
-        ) {
-          setActivePrimitive(field);
-        }
+        result = await activateField(field);
       }
 
       if (labelId) {
@@ -197,13 +156,11 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
       return result;
     },
     [
+      activateField,
       activeFields,
       contextManager,
-      initializeFieldSchema,
-      isPrimitive,
       setActiveFields,
       setActiveLabelId,
-      setActivePrimitive,
     ]
   );
 
@@ -217,12 +174,13 @@ export const useAnnotationContextManager = (): AnnotationContextManager => {
 
   return useMemo(
     () => ({
+      activateField,
       clearEntranceLabelId: () => setActiveLabelId(null),
       enter,
       entranceLabelId: activeLabelId,
       exit,
     }),
-    [activeLabelId, enter, exit, setActiveLabelId]
+    [activateField, activeLabelId, enter, exit, setActiveLabelId]
   );
 };
 

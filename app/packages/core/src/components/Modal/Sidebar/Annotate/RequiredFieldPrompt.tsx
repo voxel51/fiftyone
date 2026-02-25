@@ -1,10 +1,10 @@
-import { useQueryPerformanceSampleLimit } from "@fiftyone/state";
+import { useNotification } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
 import React, { useCallback, useState } from "react";
-import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
+import { useAnnotationContextManager } from "./useAnnotationContextManager";
+import { InitializationStatus } from "./useInitializeFieldSchema";
 import type { RequiredField } from "./useMissingSourceField";
-import { useSchemaManager } from "./useSchemaManager";
 
 interface RequiredFieldPromptProps {
   requiredField: RequiredField;
@@ -12,40 +12,22 @@ interface RequiredFieldPromptProps {
 
 const RequiredFieldPrompt = ({ requiredField }: RequiredFieldPromptProps) => {
   const canManage = useCanManageSchema();
-  const schemaManager = useSchemaManager();
-  const sampleScanLimit = useQueryPerformanceSampleLimit();
-  const { setLabelSchema, setActiveSchemaPaths } = useAnnotationSchemaContext();
+  const contextManager = useAnnotationContextManager();
   const [activating, setActivating] = useState(false);
+  const notify = useNotification();
 
   const handleAddField = useCallback(async () => {
     setActivating(true);
-    try {
-      if (!requiredField.hasSchema) {
-        await schemaManager.initializeSchema({
-          field: requiredField.field,
-          scan_samples: true,
-          limit: sampleScanLimit,
-        });
-      }
-      await schemaManager.activateSchemas({ fields: [requiredField.field] });
-      const response = await schemaManager.listSchemas({});
-      setLabelSchema(response.label_schemas);
-      setActiveSchemaPaths(response.active_label_schemas);
-    } catch (error) {
-      console.error(
-        `Error adding field "${requiredField.field}" to schema`,
-        error
-      );
-    } finally {
-      setActivating(false);
+    const result = await contextManager.activateField(requiredField.field);
+    setActivating(false);
+
+    if (result.status !== InitializationStatus.Success) {
+      notify({
+        msg: `Failed to add "${requiredField.field}" to schema`,
+        variant: "error",
+      });
     }
-  }, [
-    requiredField,
-    sampleScanLimit,
-    schemaManager,
-    setActiveSchemaPaths,
-    setLabelSchema,
-  ]);
+  }, [requiredField, contextManager, notify]);
 
   return (
     <>
