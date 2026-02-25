@@ -23,11 +23,11 @@ describe("Analytics", () => {
     page: vi.fn(),
     identify: vi.fn(),
     group: vi.fn(),
-  };
+  } as unknown as AnalyticsBrowser;
 
   beforeEach(() => {
     // Mock return value of AnalyticsBrowser.load
-    AnalyticsBrowser.load.mockReturnValue(mockSegment);
+    vi.mocked(AnalyticsBrowser.load).mockReturnValue(mockSegment);
     analytics = new Analytics({
       debounceInterval: 5000,
     });
@@ -125,7 +125,8 @@ describe("Analytics", () => {
 
   it("should not log debug information when debug mode is disabled", () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    analytics = new Analytics({
+    analytics = new Analytics();
+    analytics.load({
       writeKey: "test",
       userId: "user",
       userGroup: "group",
@@ -151,7 +152,7 @@ describe("Analytics", () => {
     // segment should be called with context.page.url = undefined
     expect(mockSegment.track).toHaveBeenCalledWith("custom_event", undefined, {
       context: {
-        page: { url: null, path: null, title: null },
+        page: { url: undefined, path: undefined, title: undefined },
       },
     });
   });

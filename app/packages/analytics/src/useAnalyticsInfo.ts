@@ -3,8 +3,8 @@ import { analyticsInfo } from "./state";
 import type { AnalyticsInfo } from "./usingAnalytics";
 
 export default function useAnalyticsInfo(): [
-  AnalyticsInfo,
+  AnalyticsInfo | null,
   (info: AnalyticsInfo) => void
 ] {
-  return useRecoilState<AnalyticsInfo>(analyticsInfo);
+  return useRecoilState<AnalyticsInfo | null>(analyticsInfo);
 }

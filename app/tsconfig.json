@@ -17,7 +17,6 @@
         "node_modules",
         "dist",
         "packages/aggregations/**/*",
-        "packages/analytics/**/*",
         "packages/annotation/**/*",
         "packages/app/**/*",
         "packages/command-bus/**/*",
