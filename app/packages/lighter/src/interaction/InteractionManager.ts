@@ -286,6 +286,18 @@ export class InteractionManager {
           this.selectionManager.clearSelection();
 
           interactiveHandler = this.getInteractiveHandler();
+
+          if (!interactiveHandler) {
+            // Ask QuickDraw (via React) to create a detection and register
+            // an interactive handler. This relies on the event bus invoking
+            // handlers synchronously so the handler is available immediately
+            // after dispatch returns.
+            this.eventBus.dispatch("lighter:overlay-create", {
+              eventId: crypto.randomUUID(),
+            });
+            interactiveHandler = this.getInteractiveHandler();
+          }
+
           if (interactiveHandler) {
             handler = interactiveHandler.getOverlay();
             this.selectionManager.select(handler.id);
@@ -471,8 +483,6 @@ export class InteractionManager {
       }
 
       this.canvas.releasePointerCapture(event.pointerId);
-      // Re-enable zoom/pan after overlay dragging ends
-      this.renderer.enableZoomPan();
       event.preventDefault();
     } else if (handler && !handler.isMoving?.()) {
       // This was a click, not a drag - handle as click for selection
@@ -486,6 +496,7 @@ export class InteractionManager {
       this.handleClick(point, event, now);
     }
 
+    this.renderer.enableZoomPan();
     this.canvas.style.cursor =
       handler?.getCursor?.(worldPoint, scale) || this.canvas.style.cursor;
     this.clickStartPoint = undefined;

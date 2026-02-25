@@ -1,19 +1,23 @@
 import { useIsWorkingInitialized } from "@fiftyone/looker-3d";
+import { isPatchesView } from "@fiftyone/state";
 import { useAtom, useAtomValue } from "jotai";
 import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
 } from "./state";
-import { useQuickDraw } from "./useQuickDraw";
 
-const createSchema = (choices: string[], disabled: Set<string>) => ({
+const createSchema = (
+  choices: string[],
+  disabled: Set<string>,
+  readOnly = false
+) => ({
   type: "object",
   view: {
     component: "ObjectView",
@@ -26,6 +30,7 @@ const createSchema = (choices: string[], disabled: Set<string>) => ({
         label: "field",
         placeholder: "Select a field",
         component: "DropdownView",
+        readOnly,
         choices: choices.map((choice) => ({
           name: "Choice",
           label: choice,
@@ -41,12 +46,12 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const [currentLabel, setCurrent] = useAtom(current);
-  const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
-  const schema = useMemo(
-    () => createSchema(fields, disabled),
-    [disabled, fields]
-  );
+  const isPatches = useRecoilValue(isPatchesView);
+  const schema = useMemo(() => createSchema(fields, disabled, isPatches), [
+    disabled,
+    fields,
+    isPatches,
+  ]);
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
 
@@ -62,11 +67,7 @@ const Field = () => {
             smartForm={true}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              if (quickDrawActive) {
-                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
-              } else {
-                setCurrentField(field);
-              }
+              setCurrentField(field);
             }}
           />
         </div>
