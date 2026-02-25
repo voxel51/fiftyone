@@ -3,28 +3,14 @@ import { useAtomValue } from "jotai";
 import { useRecoilValue } from "recoil";
 import { activeLabelSchemas, labelSchemasData } from "./state";
 
-/**
- * Describes a field that needs to be activated in the annotation schema
- * before annotation can work in the current view.
- */
 export interface RequiredField {
-  /** The field path (e.g. "ground_truth") */
   field: string;
-  /** Whether the field already has a configured label_schema (just needs activation) */
   hasSchema: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// View stage → field extractors
-//
-// Each generated view type has its own stage class and kwarg layout.
-// Add new extractors here as more generated view types support annotation.
-// ---------------------------------------------------------------------------
 
 const STAGE_FIELD_EXTRACTORS: {
   cls: string;
   kwarg: string;
-  /** Optional guard — return false to skip this extractor for the current view */
   guard?: (helpers: { isPatches: boolean }) => boolean;
 }[] = [
   {
@@ -32,7 +18,7 @@ const STAGE_FIELD_EXTRACTORS: {
     kwarg: "field",
     guard: ({ isPatches }) => isPatches,
   },
-  // Future: add entries for ToClips, ToFrames, ToEvaluationPatches, etc.
+  // TODO: add entries for ToClips, ToFrames, etc.
 ];
 
 /**
