@@ -1,6 +1,6 @@
 import { useQueryPerformanceSampleLimit } from "@fiftyone/state";
 import { Button, Text, TextColor, TextVariant, Variant } from "@voxel51/voodo";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useAnnotationSchemaContext } from "./state";
 import useCanManageSchema from "./useCanManageSchema";
 import type { RequiredField } from "./useMissingSourceField";
