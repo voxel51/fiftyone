@@ -48,7 +48,7 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
     :class:`fiftyone.core.labels.Heatmap` instances with optional confidence.
     """
 
-    def __call__(self, output, frame_size, **kwargs):
+    def __call__(self, output, frame_size, confidence_thresh=None, classes=None, **kwargs):
         """Processes model output into heatmap labels.
 
         Args:
