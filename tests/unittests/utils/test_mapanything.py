@@ -16,6 +16,27 @@ from PIL import Image
 from unittest.mock import patch, MagicMock
 
 import fiftyone.core.labels as fol
+import fiftyone.utils.mapanything as _ma_module
+
+
+# ---------------------------------------------------------------------------
+# Prevent lazy-import callbacks from triggering `pip install` in CI
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def _mock_mapanything_deps():
+    """Replace lazy-import proxies with MagicMock so tests never trigger
+    _ensure_mapanything() which tries to pip-install from git."""
+    orig_image = _ma_module.mapanything_image
+    orig_models = _ma_module.mapanything_models
+    orig_geometry = _ma_module.mapanything_geometry
+    _ma_module.mapanything_image = MagicMock()
+    _ma_module.mapanything_models = MagicMock()
+    _ma_module.mapanything_geometry = MagicMock()
+    yield
+    _ma_module.mapanything_image = orig_image
+    _ma_module.mapanything_models = orig_models
+    _ma_module.mapanything_geometry = orig_geometry
 
 
 # ---------------------------------------------------------------------------
