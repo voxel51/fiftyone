@@ -13,7 +13,7 @@ vi.mock("./useShowModal", () => ({
 
 vi.mock("./RequiredFieldPrompt", () => ({
   default: vi.fn(({ requiredField }) => (
-    <div data-testid="required-field-prompt">{requiredField.field}</div>
+    <div data-testid="required-field-prompt">{requiredField?.field}</div>
   )),
 }));
 
