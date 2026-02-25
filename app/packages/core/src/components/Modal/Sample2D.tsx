@@ -63,6 +63,7 @@ export const SampleWrapper = ({
 
   return (
     <div
+      data-cy="sample-canvas"
       style={{ width: "100%", height: "100%", position: "relative" }}
       {...hoverEventHandlers}
     >

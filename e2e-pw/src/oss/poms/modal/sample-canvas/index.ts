@@ -34,7 +34,7 @@ export class SampleCanvasPom {
    * The sample canvas locator
    */
   get locator() {
-    return this.page.getByTestId("panel-content-fo-sample-modal-plugin");
+    return this.page.getByTestId("sample-canvas");
   }
 
   /**
