@@ -21,14 +21,14 @@ export type RetryConfig = {
  */
 export interface RetryController {
   /**
-   * If true, operation can be retried.
+   * If `true`, operation can be attempted.
    */
   canAttempt: boolean;
 
   /**
-   * Register a failed attempt; this counts against the maximum number of attempts.
+   * Record an attempt; this counts against the maximum number of attempts.
    */
-  registerAttempt: () => void;
+  recordAttempt: () => void;
 
   /**
    * Reset the retry state.
@@ -52,7 +52,7 @@ export const useRetryController = ({
 }: RetryConfig): RetryController => {
   const [retryCounts, setRetryCounts] = useAtom(retryCountAtom);
 
-  const registerAttempt = useCallback(() => {
+  const recordAttempt = useCallback(() => {
     setRetryCounts((prev) => ({
       ...prev,
       [id]: (prev[id] ?? 0) + 1,
@@ -70,9 +70,9 @@ export const useRetryController = ({
   return useMemo(
     () => ({
       canAttempt: (retryCounts[id] ?? 0) < maxAttempts,
-      registerAttempt,
+      recordAttempt,
       reset,
     }),
-    [id, maxAttempts, registerAttempt, reset, retryCounts]
+    [id, maxAttempts, recordAttempt, reset, retryCounts]
   );
 };

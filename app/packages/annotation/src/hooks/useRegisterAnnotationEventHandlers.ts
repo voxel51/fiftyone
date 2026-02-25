@@ -1,11 +1,13 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
-import { useActivityToast, useRetryController } from "@fiftyone/state";
-import { useCallback, useMemo } from "react";
+import { useActivityToast } from "@fiftyone/state";
+import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
 import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
-import { usePersistenceEventHandler } from "../persistence";
-import { v4 } from "uuid";
+import {
+  usePersistenceEventHandler,
+  usePersistenceRetryController,
+} from "../persistence";
 
 /**
  * Hook which registers global annotation event handlers.
@@ -15,44 +17,32 @@ export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
   const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
-  const {
-    canAttempt: canAttemptPersistence,
-    registerAttempt: registerFailedAttempt,
-    reset: resetRetryController,
-  } = useRetryController({
-    id: useMemo(() => v4(), []),
-    maxAttempts: 3,
-  });
+  const retryController = usePersistenceRetryController();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
     useCallback(async () => {
-      if (canAttemptPersistence) {
+      if (retryController.canAttempt) {
         await handlePersistenceRequest();
-      } else {
-        setConfig({
-          iconName: IconName.Error,
-          message:
-            "We couldn’t save your work. Please refresh the page and try again.",
-          variant: Variant.Danger,
-          // keep toast open indefinitely
-          timeout: -1,
-        });
+        retryController.recordAttempt();
       }
-    }, [canAttemptPersistence, handlePersistenceRequest, setConfig])
+    }, [handlePersistenceRequest, retryController])
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceInFlight",
     useCallback(() => {
-      setConfig({
-        iconName: IconName.Spinner,
-        message: "Saving changes...",
-        variant: Variant.Secondary,
-        // keep toast open until call resolves
-        timeout: -1,
-      });
-    }, [setConfig])
+      // silence notifications when unhealthy
+      if (!retryController.isUnhealthy) {
+        setConfig({
+          iconName: IconName.Spinner,
+          message: "Saving changes...",
+          variant: Variant.Secondary,
+          // keep toast open until call resolves
+          timeout: -1,
+        });
+      }
+    }, [retryController.isUnhealthy, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -64,8 +54,8 @@ export const useRegisterAnnotationEventHandlers = () => {
         variant: Variant.Success,
       });
 
-      resetRetryController();
-    }, [resetRetryController, setConfig])
+      retryController.reset();
+    }, [retryController, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -74,15 +64,24 @@ export const useRegisterAnnotationEventHandlers = () => {
       ({ error }) => {
         console.error(error);
 
-        setConfig({
-          iconName: IconName.Error,
-          message: "Unable to save changes. Please try again.",
-          variant: Variant.Danger,
-        });
-
-        registerFailedAttempt();
+        if (retryController.isUnhealthy) {
+          setConfig({
+            iconName: IconName.Error,
+            message:
+              "We couldn’t save your work. Please refresh the page and try again.",
+            variant: Variant.Danger,
+            // keep toast open indefinitely
+            timeout: -1,
+          });
+        } else {
+          setConfig({
+            iconName: IconName.Error,
+            message: "Unable to save changes. Please try again.",
+            variant: Variant.Danger,
+          });
+        }
       },
-      [registerFailedAttempt, setConfig]
+      [retryController.isUnhealthy, setConfig]
     )
   );
 
