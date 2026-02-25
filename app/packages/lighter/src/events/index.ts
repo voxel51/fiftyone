@@ -54,6 +54,8 @@ export type LighterEventGroup = {
   // ============================================================================
   // USER INTERACTION EVENTS
   // ============================================================================
+  /** Emitted on "pointer down" to inform QuickDraw to create a new detection */
+  "lighter:overlay-create": { eventId: string };
   /** Emitted when an overlay finishes being established */
   "lighter:overlay-establish": {
     id: string;
@@ -61,8 +63,9 @@ export type LighterEventGroup = {
     startBounds: Rect;
     startPosition: Point;
     absoluteBounds: Rect;
-    relativeBounds: Rect;
   };
+  /** Emitted when an overlay creation is undone, before the overlay is removed */
+  "lighter:overlay-undone": { id: string };
   /** Emitted when an overlay starts being dragged */
   "lighter:overlay-drag-start": {
     id: string;

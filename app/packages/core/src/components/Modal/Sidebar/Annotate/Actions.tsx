@@ -80,9 +80,13 @@ const Container = styled.div<{ $active?: boolean }>`
     $active &&
     `
     color: ${theme.text.primary};
-    
+
     path {
       fill: ${theme.primary.plainColor};
+    }
+
+    svg {
+      filter: drop-shadow(0 0 5px ${theme.primary.plainColor});
     }
   `}
 
@@ -175,34 +179,27 @@ const Classification = () => {
 };
 
 const Detection = () => {
-  const { enableQuickDraw } = useQuickDraw();
-  const create = useCreate(DETECTION);
-
+  const { quickDrawActive, toggleQuickDraw } = useQuickDraw();
   const isPatchView = useRecoilValue(isPatchesView);
+
   const fields = useAtomValue(fieldsOfType(DETECTION));
   const disabled = isPatchView || fields.length === 0;
 
-  const handleCreateDetection = useCallback(() => {
-    if (disabled) return;
-    enableQuickDraw();
-
-    // Create first detection in quick draw mode,
-    // `true` to work around stale quickDrawActive closure
-    create(true);
-  }, [create, disabled, enableQuickDraw]);
+  const tooltip = isPatchView
+    ? "Creating detections is not supported in this view"
+    : quickDrawActive
+    ? "Exit detection creation"
+    : "Create new detections";
 
   return (
-    <Tooltip
-      placement="top-center"
-      text={
-        isPatchView
-          ? "Creating detections is not supported in this view"
-          : "Create new detection"
-      }
-    >
+    <Tooltip placement="top-center" text={tooltip}>
       <Square
-        onClick={handleCreateDetection}
-        className={isPatchView ? "disabled" : ""}
+        $active={quickDrawActive}
+        className={disabled ? "disabled" : ""}
+        onClick={() => {
+          if (disabled) return;
+          toggleQuickDraw();
+        }}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

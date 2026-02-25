@@ -6,14 +6,12 @@ import { useRecoilValue } from "recoil";
 import { SchemaIOComponent } from "../../../../../plugins/SchemaIO";
 import AddSchema from "./AddSchema";
 import {
-  current,
   currentDisabledFields,
   currentField,
   currentFields,
   currentType,
   editing,
 } from "./state";
-import { useQuickDraw } from "./useQuickDraw";
 
 const createSchema = (
   choices: string[],
@@ -48,13 +46,12 @@ const Field = () => {
   const fields = useAtomValue(currentFields);
   const disabled = useAtomValue(currentDisabledFields);
   const [currentFieldValue, setCurrentField] = useAtom(currentField);
-  const [currentLabel, setCurrent] = useAtom(current);
-  const { quickDrawActive, handleQuickDrawFieldChange } = useQuickDraw();
   const isPatches = useRecoilValue(isPatchesView);
-  const schema = useMemo(
-    () => createSchema(fields, disabled, isPatches),
-    [disabled, fields, isPatches]
-  );
+  const schema = useMemo(() => createSchema(fields, disabled, isPatches), [
+    disabled,
+    fields,
+    isPatches,
+  ]);
   const type = useAtomValue(currentType);
   const state = useAtomValue(editing);
 
@@ -70,11 +67,7 @@ const Field = () => {
             smartForm={true}
             data={{ field: currentFieldValue }}
             onChange={({ field }) => {
-              if (quickDrawActive) {
-                handleQuickDrawFieldChange(field, currentLabel, setCurrent);
-              } else {
-                setCurrentField(field);
-              }
+              setCurrentField(field);
             }}
           />
         </div>
