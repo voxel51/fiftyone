@@ -825,6 +825,18 @@ myst:
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
+                processed_readme = re.sub(
+                    r"^#+\s*$", "", processed_readme, flags=re.MULTILINE
+                )
+
+                has_heading = any(
+                    line.lstrip().startswith("#")
+                    and len(line.lstrip("#").strip()) > 0
+                    for line in processed_readme.splitlines()
+                )
+                if not has_heading:
+                    processed_readme = f"# {display_name}\n\n" + processed_readme
+
                 if plugin.category == "community":
                     community_note = """```{note}
 This is a **community plugin**, an external project maintained by its respective author.
