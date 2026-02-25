@@ -15,7 +15,11 @@ export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
   const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
-  const retryController = useRetryController({
+  const {
+    canAttempt: canAttemptPersistence,
+    registerAttempt: registerFailedAttempt,
+    reset: resetRetryController,
+  } = useRetryController({
     id: useMemo(() => v4(), []),
     maxAttempts: 3,
   });
@@ -23,7 +27,7 @@ export const useRegisterAnnotationEventHandlers = () => {
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
     useCallback(async () => {
-      if (retryController.canAttempt) {
+      if (canAttemptPersistence) {
         await handlePersistenceRequest();
       } else {
         setConfig({
@@ -35,7 +39,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           timeout: -1,
         });
       }
-    }, [handlePersistenceRequest, retryController.canAttempt, setConfig])
+    }, [canAttemptPersistence, handlePersistenceRequest, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -60,8 +64,8 @@ export const useRegisterAnnotationEventHandlers = () => {
         variant: Variant.Success,
       });
 
-      retryController.reset();
-    }, [retryController, setConfig])
+      resetRetryController();
+    }, [resetRetryController, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -76,9 +80,9 @@ export const useRegisterAnnotationEventHandlers = () => {
           variant: Variant.Danger,
         });
 
-        retryController.registerAttempt();
+        registerFailedAttempt();
       },
-      [retryController, setConfig]
+      [registerFailedAttempt, setConfig]
     )
   );
 
