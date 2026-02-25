@@ -1,19 +1,16 @@
 {
-    "extends": [
-        "@tsconfig/vite-react/tsconfig.json",
-        "@tsconfig/bases/node-lts"
-    ],
     "compilerOptions": {
+        "noEmit": true,
+        "noUncheckedIndexedAccess": false,
+        "strict": true,
         "module": "esnext",
-        "moduleResolution": "bundler",
-        "verbatimModuleSyntax": false,
-        "erasableSyntaxOnly": false
+        "skipLibCheck": true,
+        "target": "esnext",
+        "moduleResolution": "bundler"
     },
-    "include": ["**/*"],
+    "types": ["jest"],
+    "include": ["**/*.test.ts", "**/*.spec.ts"],
     "exclude": [
-        "**/*.test.ts",
-        "**/*.spec.ts",
-        "__mocks__",
         "node_modules",
         "dist",
         "packages/aggregations/**/*",
