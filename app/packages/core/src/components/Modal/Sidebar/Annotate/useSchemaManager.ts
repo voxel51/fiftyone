@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 /**
  * Schema field types.
  */
-type FieldType =
+export type FieldType =
   | "bool"
   | "date"
   | "datetime"
@@ -21,7 +21,7 @@ type FieldType =
 /**
  * Schema component types.
  */
-type ComponentType =
+export type ComponentType =
   | "checkbox"
   | "checkboxes"
   | "datepicker"
