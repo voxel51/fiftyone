@@ -52,6 +52,14 @@ const Container = styled.div`
   overflow: auto;
 `;
 
+const EmptyLabelsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 1rem;
+  gap: 0.5rem;
+`;
+
 const Loading = () => {
   return (
     <Container>
@@ -87,6 +95,30 @@ const AnnotateSidebar = () => {
             const { kind: _kind, atom } = entry;
             return {
               children: <LabelEntry atom={atom} />,
+              disabled: true,
+            };
+          }
+
+          if (entry.kind === EntryKind.EMPTY_ANNOTATIONS) {
+            return {
+              children: (
+                <EmptyLabelsContainer>
+                  <Typography
+                    color="text.primary"
+                    variant="body1"
+                    fontWeight={500}
+                  >
+                    No labels to annotate
+                  </Typography>
+                  <Typography
+                    color="text.secondary"
+                    variant="body2"
+                    textAlign="center"
+                  >
+                    Check that your fields are enabled on Explore.
+                  </Typography>
+                </EmptyLabelsContainer>
+              ),
               disabled: true,
             };
           }
