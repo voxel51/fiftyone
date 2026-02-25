@@ -107,6 +107,10 @@ class DepthAnythingV3OutputProcessor(fout.OutputProcessor):
                     )
                     depth = np.array(depth_img)
 
+            if not np.all(np.isfinite(depth)):
+                logger.warning("Depth map contains NaN/inf values, replacing with 0")
+                depth = np.where(np.isfinite(depth), depth, 0)
+
             max_depth = np.max(depth)
             if max_depth > 0:
                 depth_normalized = depth / max_depth
