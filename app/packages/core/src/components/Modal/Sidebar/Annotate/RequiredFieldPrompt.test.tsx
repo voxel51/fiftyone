@@ -39,7 +39,7 @@ vi.mock("@fiftyone/state", () => ({
 describe("RequiredFieldPrompt", () => {
   afterEach(() => {
     cleanup();
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   const fieldWithoutSchema: RequiredField = {

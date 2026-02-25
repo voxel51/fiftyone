@@ -59,13 +59,13 @@ export default function useMissingSourceField(): RequiredField | null {
   const sourceField = getSourceFieldFromStages(stages, { isPatches });
   if (!sourceField) return null;
 
-  const isActive = active?.includes(sourceField) ?? false;
-  if (isActive) return null;
+  // Treat null as "still loading" so we don't surface a prompt mistakenly
+  if (active == null || schemas == null) return null;
+
+  if (active.includes(sourceField)) return null;
 
   const hasSchema =
-    schemas != null &&
-    sourceField in schemas &&
-    !!schemas[sourceField]?.label_schema;
+    sourceField in schemas && !!schemas[sourceField]?.label_schema;
 
   return { field: sourceField, hasSchema };
 }
