@@ -99,6 +99,7 @@ export class BoundingBoxOverlay
   getOverlayType(): string {
     return "BoundingBoxOverlay";
   }
+
   getPosition() {
     return {
       x: this.absoluteBounds.x,
@@ -114,7 +115,10 @@ export class BoundingBoxOverlay
     return this.absoluteBounds;
   }
 
-  get coordinateSystem() {
+  set bounds(bounds) {
+    this.absoluteBounds = bounds;
+  }
+  private get coordinateSystem() {
     if (!this.#coordinateSystem) {
       throw new Error("no coordinate system");
     }
@@ -134,6 +138,7 @@ export class BoundingBoxOverlay
     const relative = this.coordinateSystem.absoluteToRelative(bounds);
 
     this.#relativeBounds = relative;
+    this.markDirty();
   }
 
   get relativeBounds(): Rect {
@@ -441,8 +446,6 @@ export class BoundingBoxOverlay
       height: this.moveStartBounds.height,
     };
 
-    this.markDirty();
-
     return true;
   }
 
@@ -572,7 +575,7 @@ export class BoundingBoxOverlay
    * @returns True if current bounds are valid
    */
   hasValidBounds(): boolean {
-    return BaseOverlay.validBounds(this.absoluteBounds);
+    return this.ready && BaseOverlay.validBounds(this.absoluteBounds);
   }
 
   /**
@@ -619,6 +622,10 @@ export class BoundingBoxOverlay
    * @returns The containment level (NONE = 0, CONTENT = 1, BORDER = 2).
    */
   getContainmentLevel(point: Point): CONTAINS {
+    if (!this.ready) {
+      return CONTAINS.NONE;
+    }
+
     const drawnBounds = this.getDrawnBBox();
 
     // Check if point is inside the main bounding box

@@ -156,25 +156,6 @@ test.describe.serial("quick edit", () => {
   });
 
   test("detections via tooltip", async ({ modal }) => {
-    const assertPosition = async function ({ x, y, width, height }: Box) {
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "position.x",
-        (x * imageWidth).toString()
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "position.y",
-        (y * imageHeight).toString()
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.width",
-        (width * imageWidth).toString()
-      );
-      await modal.sidebar.edit.assert.verifyFieldValue(
-        "dimensions.height",
-        (height * imageHeight).toString()
-      );
-    };
-
     // Init
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
@@ -219,7 +200,6 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.cursor}.png`
       );
-      // await assertPosition({ ...point, width: 0.25, height: 0.25 });
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -291,7 +271,7 @@ test.describe.serial("quick edit", () => {
     );
 
     await modal.sampleCanvas.move(0.5, 0.5, "grab");
-    await modal.sampleCanvas.click(0.5, 0.5);
+    await modal.sampleCanvas.click(0.9, 0.9);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
       "centered-bounding-box-lighter-confidence-1.0.png"

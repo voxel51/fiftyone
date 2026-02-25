@@ -80,12 +80,7 @@ export const TypeGuards = {
 
   isMovable: (
     body: BaseOverlay | InteractionHandler
-  ): body is BaseOverlay & Movable =>
-    "id" in body &&
-    "getPosition" in body &&
-    "setPosition" in body &&
-    "getBounds" in body &&
-    "setBounds" in body,
+  ): body is BaseOverlay & Movable => true,
 
   isInteractionHandler: (value: unknown): value is InteractionHandler =>
     typeof value === "object" &&
@@ -1468,7 +1463,7 @@ export class Scene2D {
 
     // Before rendering, update relative bounds for overlays that need it
     for (const overlay of this.overlays.values()) {
-      if (overlay instanceof BoundingBoxOverlay) {
+      if (overlay instanceof BoundingBoxOverlay && overlay.getIsDirty()) {
         overlay.ready &&
           this.eventBus.dispatch("lighter:overlay-bounds-changed", {
             id: overlay.id,

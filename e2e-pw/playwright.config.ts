@@ -31,13 +31,6 @@ export default defineConfig({
     trace: process.env.CI ? "on-all-retries" : "retain-on-failure",
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
-    video: {
-      mode: "on",
-      size: {
-        width: 1920,
-        height: 1080,
-      },
-    },
   },
   expect: {
     toHaveScreenshot: {
