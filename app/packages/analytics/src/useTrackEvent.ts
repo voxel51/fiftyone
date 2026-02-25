@@ -13,8 +13,12 @@ export default function useTrackEvent() {
   const info = useRecoilValue<AnalyticsInfo | null>(analyticsInfo);
   return useCallback(
     (eventName: string, properties?: Record<string, unknown>) => {
+      if (!info) {
+        console.warn("Analytics not initialized");
+        return;
+      }
       try {
-        const analytics = usingAnalytics(info!);
+        const analytics = usingAnalytics(info);
         analytics.trackEvent(eventName, properties);
       } catch (err) {
         console.warn("Failed to track event", err);
