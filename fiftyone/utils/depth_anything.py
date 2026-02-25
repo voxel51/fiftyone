@@ -238,7 +238,9 @@ class DepthAnythingV3Model(fout.TorchImageModel):
     """
 
     def _download_model(self, config):
-        pass
+        from huggingface_hub import snapshot_download
+
+        snapshot_download(config.name_or_path)
 
     def _load_model(self, config):
         model = da3_api.DepthAnything3.from_pretrained(config.name_or_path)
