@@ -32,9 +32,13 @@ vi.mock("./useAnnotationContextManager", async (importOriginal) => {
   };
 });
 
-vi.mock("@fiftyone/state", () => ({
-  useNotification: vi.fn(() => mockNotify),
-}));
+vi.mock("@fiftyone/state", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@fiftyone/state")>();
+  return {
+    ...actual,
+    useNotification: vi.fn(() => mockNotify),
+  };
+});
 
 describe("RequiredFieldPrompt", () => {
   afterEach(() => {
