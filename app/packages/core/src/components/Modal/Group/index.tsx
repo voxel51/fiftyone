@@ -15,6 +15,7 @@ const Group = () => {
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
+  const isAnnotateMode = fos.useModalMode() === fos.ModalMode.ANNOTATE;
 
   const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
     fos.dynamicGroupsViewMode(true)
@@ -23,8 +24,8 @@ const Group = () => {
     fos.groupMediaIsMain2DViewerVisibleSetting
   );
 
+  // This effect enforces view-mode constraints for dynamic groups (skipped in annotate mode)
   useEffect(() => {
-    // if it is unordered nested dynamic group and mode is not pagination, set to pagination
     if (
       isNestedDynamicGroup &&
       !isOrderedDynamicGroup &&
@@ -33,10 +34,10 @@ const Group = () => {
       setDynamicGroupsViewMode("pagination");
     }
 
-    // hide 3d looker and carousel if `hasGroupSlices`
     if (
       dynamicGroupsViewMode === "video" &&
-      (isLooker3DVisible || isCarouselVisible)
+      (isLooker3DVisible || isCarouselVisible) &&
+      !isAnnotateMode
     ) {
       setIsMainLookerVisible(true);
     }
@@ -46,6 +47,7 @@ const Group = () => {
     isOrderedDynamicGroup,
     isLooker3DVisible,
     isCarouselVisible,
+    isAnnotateMode,
   ]);
 
   if (dynamic) {
