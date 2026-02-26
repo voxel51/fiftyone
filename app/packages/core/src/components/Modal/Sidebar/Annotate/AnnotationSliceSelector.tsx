@@ -108,13 +108,7 @@ export const AnnotationSliceSelector: React.FC<
         onSliceSelected?.();
       }
     }
-  }, [
-    effectiveSlice,
-    onSliceSelected,
-    applyVisibilityForSlice,
-    setPreferredSlice,
-    setModalGroupSlice,
-  ]);
+  }, [effectiveSlice, onSliceSelected, applyVisibilityForSlice]);
 
   const useSearch = useCallback(
     (search: string) => {
