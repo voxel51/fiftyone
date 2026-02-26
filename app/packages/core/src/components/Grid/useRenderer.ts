@@ -3,10 +3,11 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo } from "react";
 import type { LookerCache } from "./types";
 import useFontSize from "./useFontSize";
+import { useGridRenderClaimsLooker } from "./useGridRenderClaimsLooker";
 import useSelectSample from "./useSelectSample";
 import type { SampleStore } from "./useSpotlightPager";
 
-export default function ({
+export default function useRenderer({
   cache,
   id,
   records,
@@ -21,6 +22,7 @@ export default function ({
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
   const getFontSize = useFontSize(id);
   const selectSample = useSelectSample(records);
+  const renderClaims = useGridRenderClaimsLooker(createLooker);
 
   const detachItem = useCallback(
     (id: ID) => cache.get(id.description)?.detach(),
@@ -55,15 +57,23 @@ export default function ({
       const result = store.get(id);
 
       if (!createLooker.current || !result) {
-        throw new Error("bad data");
+        throw new Error(
+          `Failed to retrieve sample from store: ${id.description}`
+        );
       }
 
-      const looker: fos.Lookers = createLooker.current?.(
-        { ...result, symbol: id },
-        {
-          fontSize: getFontSize(),
-        }
-      );
+      const looker = renderClaims.shouldOverrideRender({
+        sample: result.sample,
+      })
+        ? renderClaims.createLookerWithPluginRenderer(
+            { sample: result.sample },
+            id,
+            getFontSize()
+          )
+        : (createLooker.current?.(
+            { ...result, symbol: id },
+            { fontSize: getFontSize() }
+          ) as fos.Lookers);
 
       looker.addEventListener("selectthumbnail", ({ detail }) =>
         selectSample.current?.(detail)
@@ -77,7 +87,7 @@ export default function ({
       looker.attach(element, dimensions);
       return cache.sizeOf(key);
     },
-    [cache, createLooker, getFontSize, selectSample, store]
+    [cache, createLooker, renderClaims, getFontSize, selectSample, store]
   );
 
   return {
