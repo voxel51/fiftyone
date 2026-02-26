@@ -160,6 +160,7 @@ class SampleCanvasAsserter {
     await this.sampleCanvasPom.tooltip.assert.isVisible(false);
     await expect(this.sampleCanvasPom.locator).toHaveScreenshot(name, {
       animations: "allow",
+      maxDiffPixelRatio: 0,
     });
   }
 

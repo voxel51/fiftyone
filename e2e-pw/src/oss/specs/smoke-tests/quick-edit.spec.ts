@@ -16,56 +16,64 @@ const detectionTestPoints = (({ x, y, width, height }: Box) => {
       cursor: "nwse",
       x,
       y,
-      change: { x: 0.5, y: 0.5, width: 0.25, height: 0.25 },
+      resize: { x: 0.5, y: 0.5, width: 0.25, height: 0.25 },
+      move: { x: 0, y: 0, height, width },
     },
     {
       name: "top",
       cursor: "ns",
       x: x + width / 2,
       y,
-      change: { x: 0.25, y: 0.5, width: 0.5, height: 0.25 },
+      resize: { x: 0.25, y: 0.5, width: 0.5, height: 0.25 },
+      move: { x: 0.25, y: 0, height, width },
     },
     {
       name: "top-right",
       cursor: "nesw",
       x: x + width,
       y,
-      change: { x: 0.25, y: 0.5, width: 0.25, height: 0.25 },
+      resize: { x: 0.25, y: 0.5, width: 0.25, height: 0.25 },
+      move: { x: 0.5, y: 0, height, width },
     },
     {
       name: "right",
       cursor: "ew",
       x: x + width,
       y: y + height / 2,
-      change: { x: 0.25, y: 0.25, width: 0.25, height: 0.5 },
+      resize: { x: 0.25, y: 0.25, width: 0.25, height: 0.5 },
+      move: { x: 0.5, y: 0.25, height, width },
     },
     {
       name: "bottom-right",
       cursor: "nwse",
       x: x + width,
       y: y + height,
-      change: { x: 0.25, y: 0.25, width: 0.25, height: 0.25 },
+      resize: { x: 0.25, y: 0.25, width: 0.25, height: 0.25 },
+      move: { x: 0.5, y: 0.5, height, width },
     },
     {
       name: "bottom",
       cursor: "ns",
       x: x + width / 2,
       y: y + height,
-      change: { x: 0.25, y: 0.25, width: 0.5, height: 0.25 },
+      resize: { x: 0.25, y: 0.25, width: 0.5, height: 0.25 },
+      move: { x: 0.25, y: 0.5, height, width },
     },
     {
       name: "bottom-left",
       cursor: "nesw",
       x,
       y: y + height,
-      change: { x: 0.5, y: 0.25, width: 0.25, height: 0.25 },
+      resize: { x: 0.5, y: 0.25, width: 0.25, height: 0.25 },
+      move: { x: 0, y: 0.5, height, width },
     },
     {
       name: "left",
       cursor: "ew",
       x,
       y: y + height / 2,
-      change: { x: 0.5, y: 0.25, width: 0.25, height: 0.5 },
+      resize: { x: 0.5, y: 0.25, width: 0.25, height: 0.5 },
+      move: { x: 0, y: 0.25, height, width },
     },
   ];
 })(initialBoundingBox);
@@ -143,9 +151,7 @@ test.describe.serial("quick edit", () => {
     await modal.assert.isOpen();
     await modal.sampleCanvas.assert.is(SampleCanvasType.LOOKER);
     await modal.sampleCanvas.move(0.9, 0.9);
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "classification-label-looker.png"
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("classification-looker.png");
 
     // Show tooltip
     await modal.sampleCanvas.move(0.05, 0.03, "pointer");
@@ -163,9 +169,7 @@ test.describe.serial("quick edit", () => {
     // Transition to quick edit via the sidebar
     await modal.sidebar.quickEdit("classification");
     await modal.sampleCanvas.assert.is(SampleCanvasType.LIGHTER);
-    await modal.sampleCanvas.assert.hasScreenshot(
-      "classification-label-lighter.png"
-    );
+    await modal.sampleCanvas.assert.hasScreenshot("classification-lighter.png");
   });
 
   test("detections via tooltip", async ({ modal }) => {
@@ -232,7 +236,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`
       );
-      await assertPosition(point.change);
+      await assertPosition(point.resize);
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -240,7 +244,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
+      await assertPosition(initialBoundingBox);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -249,7 +253,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`
       );
-      await assertPosition(point.change);
+      await assertPosition(point.resize);
 
       // Resize to original box
       await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
@@ -260,7 +264,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
+      await assertPosition(initialBoundingBox);
     }
 
     for (const point of detectionTestPoints) {
@@ -273,6 +277,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
+      await assertPosition(point.move);
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -280,6 +285,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition(initialBoundingBox);
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -288,6 +294,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
+      await assertPosition(point.move);
 
       // Move back
       await modal.sampleCanvas.move(point.x, point.y);
@@ -298,19 +305,20 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition(initialBoundingBox);
     }
 
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");
     await modal.sampleCanvas.move(0.9, 0.9);
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-selected-confidence-1.0.png"
+      "detection-lighter-selected-centered-confidence-1.0.png"
     );
 
     await modal.sampleCanvas.move(0.5, 0.5, "grab");
     await modal.sampleCanvas.click(0.9, 0.9);
     await modal.sampleCanvas.move(0.9, 0.9, "default");
     await modal.sampleCanvas.assert.hasScreenshot(
-      "centered-bounding-box-lighter-confidence-1.0.png"
+      "detection-lighter-centered-confidence-1.0.png"
     );
   });
 });
