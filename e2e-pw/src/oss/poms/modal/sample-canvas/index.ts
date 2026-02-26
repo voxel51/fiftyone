@@ -52,7 +52,7 @@ export class SampleCanvasPom {
   }
 
   /**
-   * Get the current mouse cursor style
+   * The current mouse cursor style, e.g. "grab" or "pointer"
    */
   get cursor(): Promise<string> {
     // eslint-disable-next-line

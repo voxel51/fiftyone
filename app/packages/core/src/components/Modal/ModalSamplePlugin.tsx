@@ -34,7 +34,7 @@ export const ModalSample = React.memo(() => {
   }, []);
 
   return (
-    <ContentColumn>
+    <ContentColumn data-cy="sample-canvas">
       <ErrorBoundary onReset={() => {}}>
         <Suspense>
           {isGroup ? <Group /> : is3D ? <Sample3d /> : <Sample2D />}
