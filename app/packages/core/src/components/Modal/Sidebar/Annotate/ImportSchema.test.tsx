@@ -1,9 +1,8 @@
 import React from "react";
 import { render, screen, cleanup } from "@testing-library/react";
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach, beforeEach } from "vitest";
 import ImportSchema from "./ImportSchema";
 
-// Mock the custom hooks
 vi.mock("./useCanManageSchema", () => ({
   default: vi.fn(() => true),
 }));
@@ -12,49 +11,123 @@ vi.mock("./useShowModal", () => ({
   default: vi.fn(() => vi.fn()),
 }));
 
+vi.mock("./RequiredFieldPrompt", () => ({
+  default: vi.fn(({ requiredField }) => (
+    <div data-testid="required-field-prompt">{requiredField?.field}</div>
+  )),
+}));
+
 describe("ImportSchema", () => {
   afterEach(() => {
     cleanup();
   });
 
-  it("renders with button enabled when disabled=false and user can manage", () => {
-    render(<ImportSchema disabled={false} />);
+  describe("SetupPrompt", () => {
+    it("renders enabled button with title and description", () => {
+      render(<ImportSchema disabled={false} />);
 
-    const button = screen.getByRole("button", { name: /add schema/i });
-    expect(button.disabled).toBe(false);
-  });
+      expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
+      expect(
+        screen.getByText(
+          /import your dataset schema to access and edit labels/i
+        )
+      ).toBeTruthy();
+      expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
+        false
+      );
+    });
 
-  it("renders with button disabled when disabled=true", () => {
-    render(<ImportSchema disabled={true} />);
+    it("renders disabled button with default alert when disabled=true", () => {
+      render(<ImportSchema disabled={true} />);
 
-    const button = screen.getByRole("button", { name: /add schema/i });
-    expect(button.disabled).toBe(true);
-  });
+      expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
+        true
+      );
+      expect(
+        screen.getByText(
+          /annotation is not yet supported for this type of media or view/i
+        )
+      ).toBeTruthy();
+    });
 
-  it("shows unsupported media alert when disabled=true", () => {
-    render(<ImportSchema disabled={true} />);
+    it("shows custom disabled message when provided", () => {
+      render(
+        <ImportSchema disabled={true} disabledMsg="Custom disabled reason" />
+      );
 
-    const alert = screen.getByText(
-      /annotation is not yet supported for this type of media or view/i
+      expect(screen.getByText("Custom disabled reason")).toBeTruthy();
+    });
+
+    it.each([
+      ["null", { requiredField: null }],
+      ["undefined", {}],
+      [
+        "disabled=true with requiredField",
+        {
+          disabled: true,
+          requiredField: { field: "ground_truth", hasSchema: false },
+        },
+      ],
+    ])(
+      "shows SetupPrompt instead of RequiredFieldPrompt when requiredField is %s",
+      (_label, props) => {
+        render(<ImportSchema {...props} />);
+
+        expect(screen.queryByTestId("required-field-prompt")).toBeNull();
+        expect(
+          screen.getByRole("button", { name: /add schema/i })
+        ).toBeTruthy();
+      }
     );
-    expect(alert).toBeTruthy();
   });
 
-  it("does not show unsupported media alert when disabled=false", () => {
-    render(<ImportSchema disabled={false} />);
+  describe("RequiredFieldPrompt", () => {
+    it("renders when requiredField is provided and not disabled", () => {
+      render(
+        <ImportSchema
+          requiredField={{ field: "ground_truth", hasSchema: false }}
+        />
+      );
 
-    const alert = screen.queryByText(
-      /annotation is not yet supported for this type of media or view/i
-    );
-    expect(alert).toBeNull();
+      expect(screen.getByTestId("required-field-prompt")).toBeTruthy();
+      expect(screen.getByText("ground_truth")).toBeTruthy();
+      expect(screen.queryByText(/annotate faster than ever/i)).toBeNull();
+    });
   });
 
-  it("renders the main title and description", () => {
-    render(<ImportSchema disabled={false} />);
+  describe("canManage=false", () => {
+    beforeEach(async () => {
+      const mod = await import("./useCanManageSchema");
+      vi.mocked(mod.default).mockReturnValue(false);
+    });
 
-    expect(screen.getByText(/annotate faster than ever/i)).toBeTruthy();
-    expect(
-      screen.getByText(/import your dataset schema to access and edit labels/i)
-    ).toBeTruthy();
+    afterEach(async () => {
+      const mod = await import("./useCanManageSchema");
+      vi.mocked(mod.default).mockReturnValue(true);
+    });
+
+    it("shows permissions alert and renders RequiredFieldPrompt with requiredField", () => {
+      render(
+        <ImportSchema
+          requiredField={{ field: "ground_truth", hasSchema: false }}
+        />
+      );
+
+      expect(screen.getByTestId("required-field-prompt")).toBeTruthy();
+      expect(
+        screen.getByText("Only dataset managers can add schemas.")
+      ).toBeTruthy();
+    });
+
+    it("shows permissions alert and disables button without requiredField", () => {
+      render(<ImportSchema disabled={false} />);
+
+      expect(screen.getByRole("button", { name: /add schema/i }).disabled).toBe(
+        true
+      );
+      expect(
+        screen.getByText("Only dataset managers can add schemas.")
+      ).toBeTruthy();
+    });
   });
 });
