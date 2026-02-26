@@ -1,7 +1,7 @@
 import { Selector } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useAtomValue } from "jotai";
-import React, { useCallback, useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { isEditing } from "./Edit";
@@ -87,15 +87,34 @@ export const AnnotationSliceSelector: React.FC<
     return supportedSlices.length > 0 ? supportedSlices[0] : null;
   }, [preferredSlice, modalGroupSlice, supportedSlices]);
 
+  // Track the previous effective slice to avoid spurious onSliceSelected calls
+  // when only applyVisibilityForSlice ref changes (e.g. after page refetch)
+  const prevEffectiveSliceRef = useRef(effectiveSlice);
+
   // This effect syncs slice state whenever effectiveSlice changes
   useEffect(() => {
     if (effectiveSlice) {
+      const sliceChanged = prevEffectiveSliceRef.current !== effectiveSlice;
+      prevEffectiveSliceRef.current = effectiveSlice;
+
       setPreferredSlice(effectiveSlice);
       setModalGroupSlice(effectiveSlice);
       applyVisibilityForSlice(effectiveSlice);
-      onSliceSelected?.();
+
+      // Only reload schemas when the slice actually changed, not when
+      // applyVisibilityForSlice merely gets a new reference (e.g. from a
+      // page refetch triggered by refreshSchema).
+      if (sliceChanged) {
+        onSliceSelected?.();
+      }
     }
-  }, [effectiveSlice, onSliceSelected, applyVisibilityForSlice]);
+  }, [
+    effectiveSlice,
+    onSliceSelected,
+    applyVisibilityForSlice,
+    setPreferredSlice,
+    setModalGroupSlice,
+  ]);
 
   const useSearch = useCallback(
     (search: string) => {

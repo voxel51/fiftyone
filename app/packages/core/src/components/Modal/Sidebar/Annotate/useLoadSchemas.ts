@@ -1,6 +1,6 @@
 import { useOperatorExecutor } from "@fiftyone/operators";
 import { useSetAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
   activeLabelSchemas,
   activePathsOrder,
@@ -14,6 +14,11 @@ export default function useLoadSchemas() {
   const setActivePathsOrder = useSetAtom(activePathsOrder);
   const setShowModal = useSetAtom(showModal);
   const get = useOperatorExecutor("get_label_schemas");
+
+  // Keep a stable ref to get.execute so the callback below always calls
+  // the latest version without needing get.execute in its dependency array.
+  const executeRef = useRef(get.execute);
+  executeRef.current = get.execute;
 
   useEffect(() => {
     if (!get.result) {
@@ -37,6 +42,6 @@ export default function useLoadSchemas() {
     setActivePathsOrder(null);
     setShowModal(false);
 
-    get.execute({});
-  }, []);
+    executeRef.current({});
+  }, [setData, setActive, setActivePathsOrder, setShowModal]);
 }
