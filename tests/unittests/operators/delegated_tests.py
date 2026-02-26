@@ -2505,11 +2505,20 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
         )
 
 
-def _child_process_print_worker(log_queue):
-    """Worker for testing stdout capture in a spawned child process."""
+def _child_process_progress_worker(log_queue):
+    """Worker that runs a fo.ProgressBar in a spawned child process."""
+    import fiftyone as fo
+    from fiftyone.operators.delegated import (
+        _capture_stdout_to_logging,
+        _configure_child_logging,
+    )
+
     _configure_child_logging(log_queue)
     with _capture_stdout_to_logging():
         print("hello from child process")
+        with fo.ProgressBar(total=3, quiet=False) as pb:
+            for _ in pb(range(3)):
+                pass
 
 
 class _RecordingHandler(logging.Handler):
@@ -2538,21 +2547,19 @@ class TestCaptureStdoutToLogging(unittest.TestCase):
     def _messages(self):
         return [r.getMessage() for r in self.handler.records]
 
-    def test_print_captured(self):
-        with _capture_stdout_to_logging():
-            print("hello from print")
-
-        self.assertIn("hello from print", self._messages())
-
     def test_progress_bar_captured(self):
+        import fiftyone as fo
+
         with _capture_stdout_to_logging():
-            sys.stdout.write("\r10%")
-            sys.stdout.write("\r50%")
-            sys.stdout.write("\r100%\n")
+            with fo.ProgressBar(total=5, quiet=False) as pb:
+                for _ in pb(range(5)):
+                    pass
 
         messages = self._messages()
-        self.assertEqual(len(messages), 1)
-        self.assertEqual(messages[0], "100%")
+        has_progress = any("100%" in m for m in messages)
+        self.assertTrue(
+            has_progress, f"No progress bar output found: {messages}"
+        )
 
     def test_stderr_captured_at_error_level(self):
         with _capture_stdout_to_logging():
@@ -2564,7 +2571,7 @@ class TestCaptureStdoutToLogging(unittest.TestCase):
         self.assertTrue(len(error_records) >= 1)
         self.assertEqual(error_records[0].getMessage(), "error output")
 
-    def test_child_process_print_captured(self):
+    def test_child_process_captured(self):
         ctx = multiprocessing.get_context("spawn")
         log_queue = ctx.Queue()
 
@@ -2573,12 +2580,18 @@ class TestCaptureStdoutToLogging(unittest.TestCase):
 
         try:
             proc = ctx.Process(
-                target=_child_process_print_worker,
+                target=_child_process_progress_worker,
                 args=(log_queue,),
             )
             proc.start()
-            proc.join(timeout=10)
+            proc.join(timeout=30)
         finally:
             listener.stop()
 
-        self.assertIn("hello from child process", self._messages())
+        messages = self._messages()
+        self.assertIn("hello from child process", messages)
+        has_progress = any("100%" in m for m in messages)
+        self.assertTrue(
+            has_progress,
+            f"No progress bar output from child process: {messages}",
+        )

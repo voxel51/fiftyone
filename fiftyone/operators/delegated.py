@@ -13,7 +13,6 @@ import logging
 import logging.handlers
 import multiprocessing
 import os
-import re
 import shutil
 import sys
 import threading
@@ -37,8 +36,6 @@ logger = logging.getLogger(__name__)
 
 # This is for reduced code conflicts with enterprise logging
 logging_context = contextlib.nullcontext
-
-_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 class _TeeStream(io.TextIOBase):
@@ -85,9 +82,7 @@ class _TeeStream(io.TextIOBase):
         return self._original.fileno()
 
     def isatty(self):
-        # Always return False so libraries (tqdm, etc.) emit plain text
-        # instead of ANSI escape codes that would clutter log files.
-        return False
+        return self._original.isatty()
 
     @property
     def encoding(self):
