@@ -8,6 +8,10 @@ FiftyOne delegated operator related unit tests.
 
 import asyncio
 import copy
+import logging
+import logging.handlers
+import multiprocessing
+import sys
 import time
 import unittest
 from unittest import mock
@@ -34,6 +38,10 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
     PipelineExecutionContext,
+)
+from fiftyone.operators.delegated import (
+    _capture_stdout_to_logging,
+    _configure_child_logging,
 )
 from fiftyone.operators.operator import Operator, OperatorConfig
 from fiftyone.operators.types import Pipeline, PipelineRunInfo, PipelineStage
@@ -2495,3 +2503,82 @@ class TestPipelineRequestParamsOverrides(unittest.TestCase):
             doc.pipeline.stages[1].request_params_overrides,
             {"dataset_name": "export_dataset"},
         )
+
+
+def _child_process_print_worker(log_queue):
+    """Worker for testing stdout capture in a spawned child process."""
+    _configure_child_logging(log_queue)
+    with _capture_stdout_to_logging():
+        print("hello from child process")
+
+
+class _RecordingHandler(logging.Handler):
+    """A logging handler that stores records in a list."""
+
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+class TestCaptureStdoutToLogging(unittest.TestCase):
+    """Tests for _TeeStream and _capture_stdout_to_logging."""
+
+    def setUp(self):
+        self.handler = _RecordingHandler()
+        self.fo_logger = logging.getLogger("fiftyone")
+        self.fo_logger.addHandler(self.handler)
+        self.fo_logger.setLevel(logging.DEBUG)
+
+    def tearDown(self):
+        self.fo_logger.removeHandler(self.handler)
+
+    def _messages(self):
+        return [r.getMessage() for r in self.handler.records]
+
+    def test_print_captured(self):
+        with _capture_stdout_to_logging():
+            print("hello from print")
+
+        self.assertIn("hello from print", self._messages())
+
+    def test_progress_bar_captured(self):
+        with _capture_stdout_to_logging():
+            sys.stdout.write("\r10%")
+            sys.stdout.write("\r50%")
+            sys.stdout.write("\r100%\n")
+
+        messages = self._messages()
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(messages[0], "100%")
+
+    def test_stderr_captured_at_error_level(self):
+        with _capture_stdout_to_logging():
+            sys.stderr.write("error output\n")
+
+        error_records = [
+            r for r in self.handler.records if r.levelno == logging.ERROR
+        ]
+        self.assertTrue(len(error_records) >= 1)
+        self.assertEqual(error_records[0].getMessage(), "error output")
+
+    def test_child_process_print_captured(self):
+        ctx = multiprocessing.get_context("spawn")
+        log_queue = ctx.Queue()
+
+        listener = logging.handlers.QueueListener(log_queue, self.handler)
+        listener.start()
+
+        try:
+            proc = ctx.Process(
+                target=_child_process_print_worker,
+                args=(log_queue,),
+            )
+            proc.start()
+            proc.join(timeout=10)
+        finally:
+            listener.stop()
+
+        self.assertIn("hello from child process", self._messages())

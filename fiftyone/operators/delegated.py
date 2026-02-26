@@ -8,10 +8,15 @@ FiftyOne delegated operations.
 
 import asyncio
 import contextlib
+import io
 import logging
 import logging.handlers
 import multiprocessing
 import os
+import re
+import shutil
+import sys
+import threading
 import traceback
 
 import psutil
@@ -32,6 +37,165 @@ logger = logging.getLogger(__name__)
 
 # This is for reduced code conflicts with enterprise logging
 logging_context = contextlib.nullcontext
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+
+class _TeeStream(io.TextIOBase):
+    """A stream wrapper that writes to both the original stream and a logger.
+
+    This captures print() and other stdout/stderr output into the Python
+    logging system so it appears in both the terminal and the log file.
+    """
+
+    def __init__(self, original_stream, tee_logger, log_level=logging.INFO):
+        self._original = original_stream
+        self._log_level = log_level
+        self._logger = tee_logger
+        self._buffer = ""
+        self._lock = threading.RLock()
+
+    def write(self, data):
+        if not data:
+            return 0
+        self._original.write(data)
+        with self._lock:
+            self._buffer += data
+            # Handle \r (carriage return) by keeping only the text after
+            # the last \r. This mirrors terminal behavior where \r
+            # overwrites the current line, so progress bar updates replace
+            # each other in the buffer and only the final line (ending
+            # with \n) gets logged.
+            if "\r" in self._buffer:
+                self._buffer = self._buffer.rsplit("\r", 1)[-1]
+            while "\n" in self._buffer:
+                line, self._buffer = self._buffer.split("\n", 1)
+                if line:
+                    self._logger.log(self._log_level, line)
+        return len(data)
+
+    def flush(self):
+        self._original.flush()
+        with self._lock:
+            if self._buffer:
+                self._logger.log(self._log_level, self._buffer)
+                self._buffer = ""
+
+    def fileno(self):
+        return self._original.fileno()
+
+    def isatty(self):
+        # Always return False so libraries (tqdm, etc.) emit plain text
+        # instead of ANSI escape codes that would clutter log files.
+        return False
+
+    @property
+    def encoding(self):
+        return getattr(self._original, "encoding", "utf-8")
+
+
+@contextlib.contextmanager
+def _capture_stdout_to_logging():
+    """Context manager that tees stdout/stderr into the fiftyone logger.
+
+    To avoid infinite recursion (tee -> logger -> StreamHandler -> tee),
+    the tee logger is configured with ``propagate=False`` and only gets
+    non-console handlers (file handlers, queue handlers, etc.). Console
+    output is already handled by writing to the original stream directly.
+    """
+    tee_logger = logging.getLogger("fiftyone.delegated.stdout")
+    tee_logger.propagate = False
+    tee_logger.handlers.clear()
+
+    # Copy non-console handlers from the fiftyone root logger so log
+    # records reach the file/queue but don't loop back through stdout.
+    root_logger = logging.getLogger("fiftyone")
+    for handler in root_logger.handlers:
+        if isinstance(handler, logging.FileHandler):
+            tee_logger.addHandler(handler)
+        elif isinstance(handler, logging.handlers.QueueHandler):
+            tee_logger.addHandler(handler)
+        elif not isinstance(handler, logging.StreamHandler):
+            tee_logger.addHandler(handler)
+
+    tee_logger.setLevel(root_logger.level or logging.DEBUG)
+
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    tee_out = _TeeStream(old_stdout, tee_logger, logging.INFO)
+    tee_err = _TeeStream(old_stderr, tee_logger, logging.ERROR)
+    sys.stdout = tee_out
+    sys.stderr = tee_err
+    try:
+        yield
+    finally:
+        # Restore original streams first to stop intercepting writes
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+        # Flush any remaining buffered text to the logger
+        try:
+            tee_out.flush()
+        except Exception:
+            pass
+        try:
+            tee_err.flush()
+        except Exception:
+            pass
+        tee_logger.handlers.clear()
+        tee_logger.propagate = True
+
+
+def _format_system_metrics(child_pid=None):
+    """Returns a formatted string of system-level resource metrics.
+
+    Args:
+        child_pid (None): optional PID of the child process to report
+            process-specific metrics for
+
+    Returns:
+        a formatted metrics string, or None if collection failed
+    """
+    try:
+        vm = psutil.virtual_memory()
+        disk = shutil.disk_usage("/")
+        lines = [
+            "System metrics:",
+            f"  CPU usage: {psutil.cpu_percent(interval=0)}%",
+            f"  Memory: {vm.used / (1024 ** 3):.1f}GB / "
+            f"{vm.total / (1024 ** 3):.1f}GB ({vm.percent}%)",
+            f"  Disk: {disk.used / (1024 ** 3):.1f}GB / "
+            f"{disk.total / (1024 ** 3):.1f}GB "
+            f"({disk.used / disk.total * 100:.1f}%)",
+        ]
+
+        if child_pid:
+            try:
+                proc = psutil.Process(child_pid)
+                mem = proc.memory_info()
+                lines.append(
+                    f"  Child process (PID {child_pid}): "
+                    f"RSS={mem.rss / (1024 ** 2):.1f}MB, "
+                    f"CPU={proc.cpu_percent(interval=0)}%"
+                )
+            except psutil.NoSuchProcess:
+                pass
+
+        return "\n".join(lines)
+    except Exception:
+        logger.debug("Failed to collect system metrics", exc_info=True)
+        return None
+
+
+def _log_system_metrics(child_pid=None):
+    """Logs system-level resource metrics at DEBUG level.
+
+    Args:
+        child_pid (None): optional PID of the child process to report
+            process-specific metrics for
+    """
+    metrics = _format_system_metrics(child_pid=child_pid)
+    if metrics:
+        logger.debug(metrics)
 
 
 def _configure_child_logging(queue):
@@ -81,7 +245,7 @@ def _execute_operator_in_child_process(
         {
             "delegated_operation_id": str(operation_id),
         }
-    ):
+    ), _capture_stdout_to_logging():
         try:
             operation = service.get(operation_id)
             if not operation:
@@ -727,44 +891,48 @@ class DelegatedOperationService(object):
 
     def _execute_operation_sync(self, operation, log=False):
         """Executes an operation synchronously in the current process."""
-        try:
-            result = asyncio.run(self._execute_operator(operation))
-            result.raise_exceptions()
-            updated_doc = self.set_completed(
-                doc_id=operation.id,
-                result=result,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.info("Operation %s complete", operation.id)
-                else:
-                    logger.info(
-                        "Operation %s was not marked as COMPLETED because its state changed externally.",
-                        operation.id,
-                    )
-        except Exception:
-            logger.debug(
-                "Uncaught exception when executing operator",
-                exc_info=True,
-            )
-            result = ExecutionResult(error=traceback.format_exc())
-            updated_doc = self.set_failed(
-                doc_id=operation.id,
-                result=result,
-                update_pipeline=operation.parent_id,
-                required_state=ExecutionRunState.RUNNING,
-            )
-            if log:
-                if updated_doc:
-                    logger.info(
-                        "Operation %s failed\n%s", operation.id, result.error
-                    )
-                else:
-                    logger.info(
-                        "Operation %s was not marked as FAILED because its state changed externally.",
-                        operation.id,
-                    )
+        updated_doc = None
+        with _capture_stdout_to_logging():
+            try:
+                result = asyncio.run(self._execute_operator(operation))
+                result.raise_exceptions()
+                updated_doc = self.set_completed(
+                    doc_id=operation.id,
+                    result=result,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info("Operation %s complete", operation.id)
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as COMPLETED because its state changed externally.",
+                            operation.id,
+                        )
+            except Exception:
+                logger.debug(
+                    "Uncaught exception when executing operator",
+                    exc_info=True,
+                )
+                result = ExecutionResult(error=traceback.format_exc())
+                updated_doc = self.set_failed(
+                    doc_id=operation.id,
+                    result=result,
+                    update_pipeline=operation.parent_id,
+                    required_state=ExecutionRunState.RUNNING,
+                )
+                if log:
+                    if updated_doc:
+                        logger.info(
+                            "Operation %s failed\n%s",
+                            operation.id,
+                            result.error,
+                        )
+                    else:
+                        logger.info(
+                            "Operation %s was not marked as FAILED because its state changed externally.",
+                            operation.id,
+                        )
         if not updated_doc:
             return ExecutionResult(
                 error="Operation state changed externally during execution."
@@ -829,17 +997,28 @@ class DelegatedOperationService(object):
         return result
 
     def _monitor_operation(
-        self, child_process, operation_id, check_interval_seconds=60
+        self,
+        child_process,
+        operation_id,
+        check_interval_seconds=60,
+        metrics_interval=10,
     ):
+        """Monitors the child_process and operation state for failures.
+
+        Args:
+            child_process: the child process to monitor
+            operation_id: the ID of the operation being monitored
+            check_interval_seconds (60): seconds between monitor pings
+            metrics_interval (10): log system metrics every N pings
         """
-        Monitors the child_process and operation state for failures.
-        """
+        ping_count = metrics_interval - 1
         while child_process.is_alive():
             child_process.join(timeout=check_interval_seconds)
 
             if not child_process.is_alive():
                 return None
 
+            ping_count += 1
             try:
                 op_doc = self.get(operation_id)
                 if op_doc and op_doc.run_state == ExecutionRunState.FAILED:
@@ -862,6 +1041,8 @@ class DelegatedOperationService(object):
                 else:
                     logger.debug("Pinging operation %s", operation_id)
                     self._repo.ping(operation_id)
+                    if ping_count % metrics_interval == 0:
+                        _log_system_metrics(child_pid=child_process.pid)
             except Exception as e:
                 reason = f"Error in monitoring loop: {e}"
                 logger.error(
