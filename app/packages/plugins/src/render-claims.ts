@@ -18,7 +18,7 @@ type RenderClaimSampleLike = {
   };
   urls?:
     | { [field: string]: string }
-    | readonly { readonly field: string; readonly url: string }[];
+    | readonly { readonly field: string; readonly url: string | null }[];
 };
 
 type NormalizedRenderClaims = {

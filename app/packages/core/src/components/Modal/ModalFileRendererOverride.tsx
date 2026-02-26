@@ -1,22 +1,15 @@
 import {
-  ModalFileRendererContext,
-  PluginComponentType,
+  getMatchingRenderClaimsPanel,
   getRawComponent,
+  getRenderClaimsContext,
+  PluginComponentType,
+  type RenderClaimsContext,
   useActivePlugins,
 } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { MetadataLooker } from "./MetadataLooker";
-import {
-  getMatchingModalFileRendererPanel,
-  getModalFileRendererContext,
-} from "./modal-file-renderer";
-
-type ModalFileRendererProps = {
-  ctx: ModalFileRendererContext;
-  url: string;
-};
 
 type ModalFileRendererOverrideProps = {
   sample: fos.ModalSample;
@@ -24,11 +17,15 @@ type ModalFileRendererOverrideProps = {
   isAnnotate: boolean;
 };
 
-class ModalFileRendererErrorBoundary extends React.Component<
-  React.PropsWithChildren<{ sample: fos.ModalSample }>,
+/**
+ * Error boundary for modal render-claims renderers.
+ * On error, renders the provided fallback and logs the failure.
+ */
+class ModalRenderClaimsErrorBoundary extends React.Component<
+  React.PropsWithChildren<{ fallback: React.ReactNode }>,
   { hasError: boolean }
 > {
-  constructor(props: React.PropsWithChildren<{ sample: fos.ModalSample }>) {
+  constructor(props: React.PropsWithChildren<{ fallback: React.ReactNode }>) {
     super(props);
     this.state = { hasError: false };
   }
@@ -38,20 +35,25 @@ class ModalFileRendererErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    console.log("Modal file renderer failed, falling back to MetadataLooker", {
-      error,
-    });
+    console.error(
+      "Modal renderClaims renderer failed, falling back to MetadataLooker:",
+      error
+    );
   }
 
   render() {
     if (this.state.hasError) {
-      return <MetadataLooker sample={this.props.sample} />;
+      return this.props.fallback;
     }
 
     return this.props.children;
   }
 }
 
+/**
+ * Renders a plugin-claimed renderer for non-native media in the modal,
+ * or falls back to MetadataLooker when no matching plugin is found.
+ */
 export const ModalFileRendererOverride = React.memo(
   ({ sample, modalMediaField, isAnnotate }: ModalFileRendererOverrideProps) => {
     const dataset = useRecoilValue(fos.dataset);
@@ -61,38 +63,47 @@ export const ModalFileRendererOverride = React.memo(
     const panelCtx = useMemo(() => ({ schema, dataset }), [schema, dataset]);
     const panelPlugins = useActivePlugins(PluginComponentType.Panel, panelCtx);
 
-    const modalFileRendererContext = getModalFileRendererContext(
+    const fallback = <MetadataLooker sample={sample} />;
+
+    if (!dataset) {
+      return fallback;
+    }
+
+    const renderClaimsContext = getRenderClaimsContext(
       sample,
       modalMediaField,
       dataset,
       schema
     );
-    const matchedRenderer = getMatchingModalFileRendererPanel(
+
+    const matchedPanel = getMatchingRenderClaimsPanel(
       panelPlugins,
-      modalFileRendererContext,
-      { isAnnotate }
+      renderClaimsContext,
+      { surface: "modal", isAnnotate }
     );
 
-    if (matchedRenderer && modalFileRendererContext.selectedMediaUrl) {
-      const RawRenderer = getRawComponent(
-        matchedRenderer.name
-      ) as React.ComponentType<ModalFileRendererProps> | null;
-
-      if (RawRenderer) {
-        return (
-          <ModalFileRendererErrorBoundary
-            key={`${matchedRenderer.name}-${sample.id}-${modalFileRendererContext.selectedMediaUrl}`}
-            sample={sample}
-          >
-            <RawRenderer
-              ctx={modalFileRendererContext}
-              url={modalFileRendererContext.selectedMediaUrl}
-            />
-          </ModalFileRendererErrorBoundary>
-        );
-      }
+    if (!matchedPanel || !renderClaimsContext.selectedMediaUrl) {
+      return fallback;
     }
 
-    return <MetadataLooker sample={sample} />;
+    const RawRenderer = getRawComponent(matchedPanel.name) as
+      | React.ComponentType<{ ctx: RenderClaimsContext; url: string }>
+      | undefined;
+
+    if (!RawRenderer) {
+      return fallback;
+    }
+
+    // Include sample ID so the error boundary resets when navigating between samples
+    const rendererKey = `${matchedPanel.name}-${sample.sample.id}`;
+
+    return (
+      <ModalRenderClaimsErrorBoundary key={rendererKey} fallback={fallback}>
+        <RawRenderer
+          ctx={renderClaimsContext}
+          url={renderClaimsContext.selectedMediaUrl}
+        />
+      </ModalRenderClaimsErrorBoundary>
+    );
   }
 );
