@@ -66,23 +66,23 @@ test.describe.serial("annotate-sidebar-smoke", () => {
     await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
     await modal.sidebar.annotate.selectActiveLabel("bird", 1);
-    await modal.sidebar.edit.assert.verifyUndoButtonDisabled();
-    await modal.sidebar.edit.assert.verifyRedoButtonDisabled();
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.assert.verifyFieldLabel(
       "confidence",
       "confidence"
     );
     await modal.sidebar.edit.setFieldValue("confidence", "0.85");
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.85");
-    await modal.sidebar.edit.assert.verifyUndoButtonEnabled();
-    await modal.sidebar.edit.assert.verifyRedoButtonDisabled();
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
     await modal.sidebar.edit.undo();
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "");
-    await modal.sidebar.edit.assert.verifyUndoButtonDisabled();
-    await modal.sidebar.edit.assert.verifyRedoButtonEnabled();
+    await modal.sidebar.edit.assert.undoIsEnabled(false);
+    await modal.sidebar.edit.assert.redoIsEnabled();
     await modal.sidebar.edit.redo();
     await modal.sidebar.edit.assert.verifyFieldValue("confidence", "0.85");
-    await modal.sidebar.edit.assert.verifyUndoButtonEnabled();
-    await modal.sidebar.edit.assert.verifyRedoButtonDisabled();
+    await modal.sidebar.edit.assert.undoIsEnabled();
+    await modal.sidebar.edit.assert.redoIsEnabled(false);
   });
 });
