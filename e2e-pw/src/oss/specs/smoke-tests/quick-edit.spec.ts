@@ -16,43 +16,56 @@ const detectionTestPoints = (({ x, y, width, height }: Box) => {
       cursor: "nwse",
       x,
       y,
+      change: { x: 0.5, y: 0.5, width: 0.25, height: 0.25 },
     },
-    { name: "top", cursor: "ns", x: x + width / 2, y },
+    {
+      name: "top",
+      cursor: "ns",
+      x: x + width / 2,
+      y,
+      change: { x: 0.25, y: 0.5, width: 0.5, height: 0.25 },
+    },
     {
       name: "top-right",
       cursor: "nesw",
       x: x + width,
       y,
+      change: { x: 0.25, y: 0.5, width: 0.25, height: 0.25 },
     },
     {
       name: "right",
       cursor: "ew",
       x: x + width,
       y: y + height / 2,
+      change: { x: 0.25, y: 0.25, width: 0.25, height: 0.5 },
     },
     {
       name: "bottom-right",
       cursor: "nwse",
       x: x + width,
       y: y + height,
+      change: { x: 0.25, y: 0.25, width: 0.25, height: 0.25 },
     },
     {
       name: "bottom",
       cursor: "ns",
       x: x + width / 2,
       y: y + height,
+      change: { x: 0.25, y: 0.25, width: 0.5, height: 0.25 },
     },
     {
       name: "bottom-left",
       cursor: "nesw",
       x,
       y: y + height,
+      change: { x: 0.5, y: 0.25, width: 0.25, height: 0.25 },
     },
     {
       name: "left",
       cursor: "ew",
       x,
       y: y + height / 2,
+      change: { x: 0.5, y: 0.25, width: 0.25, height: 0.5 },
     },
   ];
 })(initialBoundingBox);
@@ -189,6 +202,25 @@ test.describe.serial("quick edit", () => {
       "detection-lighter-selected-centered.png"
     );
 
+    const assertPosition = async function ({ x, y, width, height }: Box) {
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "position.x",
+        (x * imageWidth).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "position.y",
+        (y * imageHeight).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.width",
+        (width * imageWidth).toString()
+      );
+      await modal.sidebar.edit.assert.verifyFieldValue(
+        "dimensions.height",
+        (height * imageHeight).toString()
+      );
+    };
+
     for (const point of detectionTestPoints) {
       // Resize box
       await modal.sampleCanvas.move(point.x, point.y, `${point.cursor}-resize`);
@@ -200,6 +232,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`
       );
+      await assertPosition(point.change);
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -207,6 +240,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -215,6 +249,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}.png`
       );
+      await assertPosition(point.change);
 
       // Resize to original box
       await modal.sampleCanvas.move(0.5, 0.5, `${point.cursor}-resize`);
@@ -225,6 +260,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
     }
 
     for (const point of detectionTestPoints) {
@@ -237,6 +273,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
+      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -244,6 +281,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -252,6 +290,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
+      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Move back
       await modal.sampleCanvas.move(point.x, point.y);
@@ -262,6 +301,7 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
+      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
     }
 
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");
