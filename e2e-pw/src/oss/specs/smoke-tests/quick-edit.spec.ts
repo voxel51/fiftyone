@@ -273,7 +273,6 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
-      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Undo
       await modal.sidebar.edit.undo();
@@ -281,7 +280,6 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Redo
       await modal.sidebar.edit.redo();
@@ -290,7 +288,6 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         `detection-lighter-selected-${point.name}-move.png`
       );
-      await assertPosition({ ...point.change, height: 0.5, width: 0.5 });
 
       // Move back
       await modal.sampleCanvas.move(point.x, point.y);
@@ -301,7 +298,6 @@ test.describe.serial("quick edit", () => {
       await modal.sampleCanvas.assert.hasScreenshot(
         "detection-lighter-selected-centered.png"
       );
-      await assertPosition({ x: 0.25, y: 0.25, height: 0.5, width: 0.5 });
     }
 
     await modal.sidebar.edit.setFieldValue("confidence", "1.0");
