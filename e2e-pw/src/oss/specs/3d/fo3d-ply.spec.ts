@@ -82,7 +82,9 @@ test.describe.serial("fo3d-ply", () => {
 
   test("PLY scene is rendered correctly", async ({ modal, grid, page }) => {
     const mask = getScreenshotMasks(modal);
-
+    await page.evaluate(() => {
+      localStorage.setItem("fo-3d-annotation-tips-dismissed", "true");
+    });
     await grid.openFirstSample();
     await modal.modalContainer.hover();
 
