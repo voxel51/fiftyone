@@ -129,10 +129,10 @@ class PluginDocGenerator:
         )
         self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
         self.empty_heading_pattern = re.compile(
-            r"^[ \t]{0,3}#{1,6}[ \t]*$",
+            r"^\s*#{1,6}\s*$",
             flags=re.MULTILINE,
         )
-        self.heading_pattern = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+\S")
+        self.heading_pattern = re.compile(r"^\s*#{1,6}\s+\S")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
