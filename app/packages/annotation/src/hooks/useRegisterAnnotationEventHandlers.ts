@@ -1,5 +1,5 @@
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
-import { useActivityToast } from "@fiftyone/state";
+import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
 import { useCallback } from "react";
 import { IconName, Variant } from "@voxel51/voodo";
 import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
@@ -38,8 +38,7 @@ export const useRegisterAnnotationEventHandlers = () => {
           iconName: IconName.Spinner,
           message: "Saving changes...",
           variant: Variant.Secondary,
-          // keep toast open until call resolves
-          timeout: -1,
+          timeout: INDEFINITE_TOAST_TIMEOUT,
         });
       }
     }, [retryController.isUnhealthy, setConfig])
@@ -70,8 +69,7 @@ export const useRegisterAnnotationEventHandlers = () => {
             message:
               "We couldn’t save your work. Please refresh the page and try again.",
             variant: Variant.Danger,
-            // keep toast open indefinitely
-            timeout: -1,
+            timeout: INDEFINITE_TOAST_TIMEOUT,
           });
         } else {
           setConfig({
