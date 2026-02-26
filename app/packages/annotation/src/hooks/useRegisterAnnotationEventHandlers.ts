@@ -1,8 +1,9 @@
 import { useLabelsContext } from "@fiftyone/core/src/components/Modal/Sidebar/Annotate/useLabels";
 import { DetectionLabel } from "@fiftyone/looker";
-import { useActivityToast } from "@fiftyone/state";
+import { INDEFINITE_TOAST_TIMEOUT, useActivityToast } from "@fiftyone/state";
 import { IconName, Variant } from "@voxel51/voodo";
 import { useCallback } from "react";
+import { usePersistenceRetryController } from "../persistence";
 import { usePersistenceEventHandler } from "../persistence/usePersistenceEventHandler";
 import { useAnnotationEventHandler } from "./useAnnotationEventHandler";
 
@@ -14,25 +15,31 @@ export const useRegisterAnnotationEventHandlers = () => {
   const { setConfig } = useActivityToast();
   const { addLabelToSidebar } = useLabelsContext();
   const handlePersistenceRequest = usePersistenceEventHandler();
+  const retryController = usePersistenceRetryController();
 
   useAnnotationEventHandler(
     "annotation:persistenceRequested",
     useCallback(async () => {
-      await handlePersistenceRequest();
-    }, [handlePersistenceRequest])
+      if (retryController.canAttempt) {
+        await handlePersistenceRequest();
+        retryController.recordAttempt();
+      }
+    }, [handlePersistenceRequest, retryController])
   );
 
   useAnnotationEventHandler(
     "annotation:persistenceInFlight",
     useCallback(() => {
-      setConfig({
-        iconName: IconName.Spinner,
-        message: "Saving changes...",
-        variant: Variant.Secondary,
-        // allow for slow API calls; keep toast open until call resolves
-        timeout: 300_000,
-      });
-    }, [setConfig])
+      // silence notifications when unhealthy
+      if (!retryController.isUnhealthy) {
+        setConfig({
+          iconName: IconName.Spinner,
+          message: "Saving changes...",
+          variant: Variant.Secondary,
+          timeout: INDEFINITE_TOAST_TIMEOUT,
+        });
+      }
+    }, [retryController.isUnhealthy, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -43,7 +50,9 @@ export const useRegisterAnnotationEventHandlers = () => {
         message: "Changes saved successfully",
         variant: Variant.Success,
       });
-    }, [setConfig])
+
+      retryController.reset();
+    }, [retryController, setConfig])
   );
 
   useAnnotationEventHandler(
@@ -52,13 +61,23 @@ export const useRegisterAnnotationEventHandlers = () => {
       ({ error }) => {
         console.error(error);
 
-        setConfig({
-          iconName: IconName.Error,
-          message: `Error saving changes: ${error}`,
-          variant: Variant.Danger,
-        });
+        if (retryController.isUnhealthy) {
+          setConfig({
+            iconName: IconName.Error,
+            message:
+              "We couldn’t save your work. Please refresh the page and try again.",
+            variant: Variant.Danger,
+            timeout: INDEFINITE_TOAST_TIMEOUT,
+          });
+        } else {
+          setConfig({
+            iconName: IconName.Error,
+            message: "Unable to save changes. Please try again.",
+            variant: Variant.Danger,
+          });
+        }
       },
-      [setConfig]
+      [retryController.isUnhealthy, setConfig]
     )
   );
 
