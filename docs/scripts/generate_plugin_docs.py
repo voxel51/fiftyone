@@ -128,6 +128,11 @@ class PluginDocGenerator:
             r"\bdef\s+download_model\s*\("
         )
         self.load_dataset_pattern = re.compile(r"\bdef\s+load_dataset\s*\(")
+        self.empty_heading_pattern = re.compile(
+            r"^[ \t]{0,3}#{1,6}[ \t]*$",
+            flags=re.MULTILINE,
+        )
+        self.heading_pattern = re.compile(r"^[ \t]{0,3}#{1,6}[ \t]+\S")
 
     def _remove_emojis(self, text: str) -> str:
         """Remove emoji and miscellaneous symbols from a string.
@@ -825,13 +830,12 @@ myst:
                 frontmatter = self._generate_frontmatter(seo_metadata)
                 github_badge = self._generate_github_badge(plugin)
 
-                processed_readme = re.sub(
-                    r"^#+\s*$", "", processed_readme, flags=re.MULTILINE
+                processed_readme = self.empty_heading_pattern.sub(
+                    "", processed_readme
                 )
 
                 has_heading = any(
-                    line.lstrip().startswith("#")
-                    and len(line.lstrip("#").strip()) > 0
+                    self.heading_pattern.match(line)
                     for line in processed_readme.splitlines()
                 )
                 if not has_heading:
