@@ -4710,6 +4710,84 @@ Using the custom component as the view for a Python operator field:
         def execute(self, ctx):
             return {}
 
+Custom file rendering claims
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Panels can declare file matching rules via ``panelOptions.renderClaims`` to
+provide custom rendering for non-native media types in the grid and modal.
+When a sample's file matches a panel's claims, that panel's component is used
+to render the sample instead of the default looker. Native media types
+(images, videos, 3d) always use the built-in renderers and cannot be overridden
+by claims.
+
+Each claim specifies one or more matcher lists: ``extensions``,
+``mimeTypes``, and ``mediaTypes``. All specified groups must match (AND), and
+a sample matches a group if it matches any value in that list (OR). Matching
+is case-insensitive.
+
+By default, render claims are only active in the modal. To enable claims in
+other contexts, add the appropriate constants to
+``renderClaims.modeExtensions``:
+
+-   Include ``RENDER_CLAIM_MODE_EXTENSION_GRID`` to enable rendering in the
+    grid
+-   Include ``RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE`` to enable
+    rendering in the modal's annotate mode
+
+The claim-based renderer component receives two props:
+
+-   ``ctx``: a rendering context object containing ``sample``,
+    ``selectedMediaField``, ``selectedMediaPath``, ``selectedMediaUrl``,
+    ``extension``, ``mimeType``, ``mediaType``, ``dataset``, and ``schema``
+-   ``url``: the resolved media URL (same value as ``ctx.selectedMediaUrl``)
+
+Here's an example of a hypothetical plugin config that renders PDF files in
+both the grid and modal:
+
+.. code-block:: jsx
+    :linenos:
+
+    import {
+      PluginComponentType,
+      RENDER_CLAIM_MODE_EXTENSION_GRID,
+      RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE,
+      registerComponent,
+    } from "@fiftyone/plugins";
+
+    function PdfRenderer({ ctx, url }) {
+      return (
+        <iframe
+          src={url}
+          title={ctx.sample.sample.filepath}
+          style={{ width: "100%", height: "100%", border: 0 }}
+        />
+      );
+    }
+
+    registerComponent({
+      name: "PDFRenderer",
+      label: "PDF renderer",
+      component: PdfRenderer,
+      type: PluginComponentType.Panel,
+      activator: () => true,
+      panelOptions: {
+        surfaces: "grid modal",
+        priority: 100,
+        renderClaims: {
+          extensions: [".pdf"],
+          mimeTypes: ["application/pdf"],
+          mediaTypes: ["unknown"],
+          modeExtensions: [
+            RENDER_CLAIM_MODE_EXTENSION_GRID,
+            RENDER_CLAIM_MODE_EXTENSION_MODAL_ANNOTATE,
+          ],
+        },
+      },
+    });
+
+If multiple panels match the same sample, the one with the highest
+``panelOptions.priority`` wins. Ties are broken by name.
+
 FiftyOne App state
 ------------------
 
