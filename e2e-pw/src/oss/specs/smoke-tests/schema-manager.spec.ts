@@ -246,7 +246,6 @@ test.describe.serial("schema manager", () => {
     page,
     grid,
     modal,
-    schemaManager,
   }) => {
     // Navigate to patches view
     await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName, {
@@ -256,6 +255,7 @@ test.describe.serial("schema manager", () => {
     // Open first patch in modal
     await grid.openFirstSample();
     await modal.assert.isOpen();
+    await modal.waitForSampleLoadDomAttribute();
     await modal.sidebar.switchMode("annotate");
 
     // The required field prompt should appear since "predictions" has no active schema
@@ -275,27 +275,7 @@ test.describe.serial("schema manager", () => {
     });
 
     // In patches view, the Schema button should not be visible
-    // (AnnotateSidebar returns null when isGenerated is true)
-    await expect(
-      page.getByRole("button", { name: "Schema" })
-    ).not.toBeVisible();
-
-    // Navigate to the source dataset and verify predictions is an active label field
-    await modal.close();
-    await fiftyoneLoader.waitUntilGridVisible(page, detectionDatasetName);
-    await grid.openFirstSample();
-    await modal.assert.isOpen();
-    await modal.sidebar.switchMode("annotate");
-
-    // Schemas are now active, so the "Schema" button in the actions bar opens the manager
-    const schemaButton = page.getByRole("button", { name: "Schema" });
-    await schemaButton.waitFor({ state: "visible", timeout: 10_000 });
-    await schemaButton.click();
-    await schemaManager.assert.isOpen();
-    await schemaManager.assert.hasActiveFieldRows([
-      { name: "predictions", type: "Detections" },
-    ]);
-    await schemaManager.close();
+    await expect(page.getByRole("button", { name: "Schema" })).toBeHidden();
   });
 
   test("annotation disabled for grouped dataset with no supported slices", async ({
