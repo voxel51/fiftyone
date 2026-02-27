@@ -553,12 +553,11 @@ Provider names and the class that extra kwargs are passed to:
 Managed Cloud Credentials
 -------------------------
 
-Credentials for cloud providers can also be managed directly using the
-Enterprise server. This allows managed credentials to be automatically loaded
-and used in all matching media requests a given user makes (within the App,
-local Enterprise SDK, Delegated Operators, etc). Credentials configured in this
-manner are stored (encrypted) in the Enterprise database, rather than needing
-to be configured through environment variables in your Enterprise deployment.
+Cloud provider credentials can be managed directly on the Enterprise server.
+Managed credentials are automatically loaded for all matching media requests
+(App, local SDK, Delegated Operators, etc.) and stored encrypted in the
+Enterprise database, eliminating the need for environment variable configuration
+in your deployment.
 
 Managed credentials can be scoped to be a specific user or user group, or be
 available globally to all users. Any user can configure credentials for their
