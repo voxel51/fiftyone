@@ -28,7 +28,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     clear,
   } = useFileManager(options);
 
-  const { upload, cancel, retry, cancelAll } = useUploadManager({
+  const { upload, cancel, retry, cancelAll, deleteAll } = useUploadManager({
     filesRef,
     updateFile,
     setFiles,
@@ -59,6 +59,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     cancel,
     retry,
     cancelAll,
+    deleteAll,
     dropProps,
     inputProps,
     browse,

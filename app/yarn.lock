@@ -2136,6 +2136,7 @@ __metadata:
     "@fiftyone/operators": "npm:*"
     "@fiftyone/spotlight": "npm:*"
     "@fiftyone/state": "npm:*"
+    "@fiftyone/upload": "npm:*"
     "@fiftyone/utilities": "npm:*"
     "@monaco-editor/react": "npm:^4.5.0"
     "@mui/icons-material": "catalog:"
@@ -2786,7 +2787,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@fiftyone/upload@workspace:packages/upload":
+"@fiftyone/upload@npm:*, @fiftyone/upload@workspace:packages/upload":
   version: 0.0.0-use.local
   resolution: "@fiftyone/upload@workspace:packages/upload"
   dependencies:
