@@ -550,40 +550,21 @@ Provider names and the class that extra kwargs are passed to:
 
 .. _enterprise-cloud-storage-page:
 
-Cloud storage page
-------------------
+Managed Cloud Credentials
+-------------------------
 
-Admins can also configure cloud credentials via the Settings > Cloud storage
-page.
+Credentials for cloud providers can also be managed directly using the
+Enterprise server. This allows managed credentials to be automatically loaded
+and used in all matching media requests a given user makes (within the App,
+local Enterprise SDK, Delegated Operators, etc). Credentials configured in this
+manner are stored (encrypted) in the Enterprise database, rather than needing
+to be configured through environment variables in your Enterprise deployment.
 
-Credentials configured via this page are stored (encrypted) in the Enterprise
-database, rather than needing to be configured through environment variables in
-your Enterprise deployment.
+Managed credentials can be scoped to be a specific user or user group, or be
+available globally to all users. Any user can configure credentials for their
+own use, while only admins can configure group specific or global credentials.
 
-.. note::
-
-    Any credentials configured via environment variables in your deployment
-    will not be displayed in this page.
-
-To upload a new credential, click the ``Add credential`` button:
-
-.. image:: /images/enterprise/cloud_creds_add_btn.png
-    :alt: cloud-creds-add-credentials-button
-    :align: center
-
-This will open a modal that you can use to add a credential for any of the
-available providers:
-
-.. image:: /images/enterprise/cloud_creds_modal_blank.png
-    :alt: blank-cloud-creds-modal
-    :align: center
-
-After the appropriate files or fields are populated, click ``Save credential``
-to store the (encrypted) credential.
-
-As depicted in the screenshot above, a credential can optionally be restricted
-to a specific list of bucket(s):
-
+A managed credential can optionally be restricted to a specific list of bucket(s):
 -   If one or more buckets are provided, the credentials are
     **bucket-specific credentials** that will only be used to read/write media
     within the specified bucket(s)
@@ -601,6 +582,52 @@ to a specific list of bucket(s):
     names like ``my-bucket``, or you can provide fully-qualified buckets like
     ``s3://my-bucket`` and
     ``https://voxel51.blob.core.windows.net/my-container``.
+
+
+Managed credentials are considered unique based on the scope (user, group,
+or global), cloud provider, and the optional bucket(s) they are associated
+with. The default order that managed credentials are used with media
+requests is as follows:
+1.  If the current user has any bucket-specific credentials that match the
+    bucket of the media being accessed, those credentials will be used
+2.  If the current user belongs to any groups that have bucket-specific
+    credentials that match the bucket of the media being accessed, those
+    credentials will be used
+3.  If any global bucket-specific credentials match the bucket of the media
+    being accessed, those credentials will be used
+4.  If the current user has any default credentials for the provider of the
+    media being accessed, those credentials will be used
+5.  If the current user belongs to any groups that have default credentials
+    for the provider of the media being accessed, those credentials will be
+    used
+6.  If any global default credentials for the provider of the media being
+    accessed exist, those credentials will be used
+
+Setting Managed Credentials
+___________________________
+
+Admins can configure cloud credentials via the Settings > Cloud storage page.
+
+To upload a new credential, click the ``Add credential`` button:
+
+.. image:: /images/enterprise/cloud_creds_add_btn.png
+    :alt: cloud-creds-add-credentials-button
+    :align: center
+
+This will open a modal that you can use to add a credential for any of the
+available providers:
+
+.. image:: /images/enterprise/cloud_creds_modal_blank.png
+    :alt: blank-cloud-creds-modal
+    :align: center
+
+.. note::
+    Any credentials configured via environment variables in your deployment
+    will not be displayed in this page.
+
+After the appropriate files or fields are populated, click ``Save credential``
+to store the (encrypted) credential.
+
 
 Alternatively, credentials can be updated programmatically with the
 :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
@@ -621,3 +648,26 @@ appropriate provider or specific bucket.
     Users cannot access stored credentials directly, either via the Enterprise UI or
     by using the Enterprise SDK locally. The credentials are only decrypted and
     used internally by the Enterprise servers.
+
+
+Cloud Credentials Origin Preference
+___________________________________
+If credentials are configured both on the local machine and remotely via the
+Enterprise server, the behavior is for the Enterprise SDK to use the first
+matching set of credentials found. If Enterprise SDK is being used in an Internal
+Service (APP server, delegated operator, etc.) the default is to prefer
+managed credentials returned by the server, otherwise the default is to prefer
+credentials configured on the local machine. This can be manually
+controlled by setting the  `FIFTYONE_CLOUD_CREDS_ORIGIN_PREFERENCE` environment
+variable on the machine to either `local` or `remote`. Regardless of the
+preference, credentials from both sources will be attempted to be fetched and
+used if possible, so if credentials from the preferred source have no matches for
+a given request, credentials from the other source will be attempted before
+giving up.
+
+
+By default, when using the Enterprise SDK with an API connection, any
+credential for a given user may be fetched to the local machine. This behavior
+may not be desirable. To disable downloading of credentials to machines, set
+the environment variable `ENABLE_CREDS_LOCAL_USE` to `false` on the Voxel-Hub
+API server.
