@@ -19,9 +19,9 @@ Cloud Media
 
 - Optimized cloud media access checks in order to reduce the number of requests
   being made.
-- Updated SDK precendence for cloud credentials. When running the SDK locally
+- Updated SDK precedence for cloud credentials. When running the SDK locally
   the system will default to using local credentials when they are available.
-  This precendence can be overridden by setting
+  This precedence can be overridden by setting
   `FIFTYONE_CLOUD_CRED_ORIGIN_PREFERENCE` to `remote` (or `local`).
 
 Models
